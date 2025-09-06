@@ -7,6 +7,7 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from "@/components/ui/menubar";
+import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 import {
   FileText,
   Palette,
@@ -21,9 +22,22 @@ import {
 
 export default function MpMakerPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="flex h-14 items-center px-4">
+    <div className="min-h-screen bg-background relative">
+      {/* Subtle Dot Pattern Background */}
+      <DotPattern
+        dotSize={3}
+        gap={32}
+        baseColor="#3992C3"
+        activeColor="#3992C3"
+        proximity={80}
+        shockRadius={250}
+        className="absolute inset-0 opacity-60 pointer-events-none"
+      />
+
+      {/* Content */}
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="flex h-14 items-center px-4">
         {/* Menu Bar */}
         <Menubar>
             <MenubarMenu>
@@ -134,6 +148,7 @@ export default function MpMakerPage() {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }
