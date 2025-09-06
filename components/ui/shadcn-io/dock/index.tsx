@@ -37,6 +37,7 @@ type DockProps = {
 type DockItemProps = {
   className?: string;
   children: React.ReactNode;
+  isActive?: boolean;
 };
 type DockLabelProps = {
   className?: string;
@@ -123,7 +124,7 @@ function Dock({
   );
 }
 
-function DockItem({ children, className }: DockItemProps) {
+function DockItem({ children, className, isActive = false }: DockItemProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   const { distance, magnification, mouseX, spring } = useDock();
@@ -153,6 +154,7 @@ function DockItem({ children, className }: DockItemProps) {
       onBlur={() => isHovered.set(0)}
       className={cn(
         'relative inline-flex items-center justify-center',
+        isActive && 'bg-blue-500 dark:bg-blue-600',
         className
       )}
       tabIndex={0}

@@ -136,16 +136,6 @@ export default function MpMakerPage() {
             </p>
           </div>
 
-          {/* Placeholder for design canvas */}
-          <div className="bg-card border-2 border-dashed border-muted-foreground/25 rounded-lg h-96 flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <Palette className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">Design Canvas</h3>
-              <p className="text-sm">
-                Start by selecting &quot;New Design&quot; from the File menu above
-              </p>
-            </div>
-          </div>
         </div>
       </main>
       </div>
