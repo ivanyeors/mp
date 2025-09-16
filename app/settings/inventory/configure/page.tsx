@@ -33,6 +33,8 @@ export default function ConfigureInventoryPage() {
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<Product["size"] | null>(null);
+  const [bolsterOpen, setBolsterOpen] = useState(false);
+  const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -54,6 +56,16 @@ export default function ConfigureInventoryPage() {
       setLoading(false);
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('bolster_bom_lines') : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as BomLine[];
+        setBolsterLines(Array.isArray(parsed) ? parsed : []);
+      }
+    } catch {}
   }, []);
 
   const itemsBy = useMemo(() => {
@@ -81,6 +93,24 @@ export default function ConfigureInventoryPage() {
     toast.success("Configuration saved for all sizes");
   };
 
+  const saveBolster = async () => {
+    try {
+      const lines = (bolsterLines ?? []).filter(l => (l.quantity ?? 0) > 0);
+      await fetch('/settings/inventory/configure/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'bolster', lines }),
+      });
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('bolster_bom_lines', JSON.stringify(lines));
+      }
+      toast.success('Bolster configuration saved');
+      setBolsterOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Failed to save bolster');
+    }
+  };
+
   const saveSize = async (size: Product["size"]) => {
     setSaving(true);
     const product = products.find(p => p.size === size);
@@ -100,7 +130,7 @@ export default function ConfigureInventoryPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Configure Pillow BOM</h1>
+        <h1 className="text-2xl font-semibold">Configure Mpillow</h1>
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
       </div>
       <Separator />
@@ -127,6 +157,27 @@ export default function ConfigureInventoryPage() {
         })}
       </div>
 
+      <Separator />
+      <div className="space-y-2">
+        <div className="text-sm text-muted-foreground">Configure Mbolster</div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={()=> { setBolsterOpen(true); }}
+            onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setBolsterOpen(true); } }}
+            className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
+          >
+            <div className="text-xs text-muted-foreground">Bolster</div>
+            <div className="text-2xl font-semibold">Standard</div>
+            <div className="mt-2 text-xs text-muted-foreground">Case, Protector, 6D-L</div>
+            <div className="mt-3">
+              <Button size="sm" variant="secondary">Configure</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
           <SheetHeader>
@@ -147,6 +198,22 @@ export default function ConfigureInventoryPage() {
             <Button onClick={() => { if (selectedSize) saveSize(selectedSize); }} disabled={saving}>
               {saving ? 'Saving…' : 'Save changes'}
             </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Bolster Sheet */}
+      <Sheet open={bolsterOpen} onOpenChange={setBolsterOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Configure Bolster</SheetTitle>
+            <SheetDescription>Adjust components and quantities for the single-size bolster, including packaging.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-4 px-2">
+            <BolsterEditor items={items} lines={bolsterLines} setLines={setBolsterLines} />
+          </div>
+          <SheetFooter>
+            <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
@@ -298,5 +365,96 @@ function ConfigureTable({ headers, children }: { headers: string[]; children: Re
         {children}
       </TableBody>
     </Table>
+  );
+}
+
+function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLine[]; setLines: (updater: any) => void }) {
+  const sized = (category: Item["category"]) => items.filter(i => i.category===category && (i.size==='Bolster'));
+  const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D-L');
+  const packaging = items.filter(i => i.category==='packaging' && i.size==='S');
+
+  const upsert = (item_id: number, quantity: number) => {
+    setLines((prev: BomLine[]) => {
+      const idx = prev.findIndex(l => l.item_id===item_id);
+      if (idx === -1) return [...prev, { item_id, quantity }];
+      return prev.map((l) => l.item_id===item_id ? { ...l, quantity } : l);
+    });
+  };
+
+  const remove = (item_id: number) => {
+    setLines((prev: BomLine[]) => prev.filter(l => l.item_id!==item_id));
+  };
+
+  const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <Section title="Case (Bolster)">
+        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
+          {sized('case').map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">Case</TableCell>
+              <TableCell>Bolster</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
+      </Section>
+
+      <Section title="Protector (Bolster)">
+        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
+          {sized('protector').map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">Protector</TableCell>
+              <TableCell>Bolster</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
+      </Section>
+
+      <Section title="Fillings (6D-L)">
+        <ConfigureTable headers={["Subtype", "Qty", "Actions"]}>
+          {fillings.map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> {
+                    const v = Math.max(0, parseInt(e.target.value||'0',10));
+                    if (v===0) remove(it.id); else upsert(it.id, v);
+                  }} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
+      </Section>
+
+      <Section title="Packaging (1 vacuum + 1 net typical)">
+        <ConfigureTable headers={["Item", "Size", "Qty", "Actions"]}>
+          {packaging.map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">{it.name}</TableCell>
+              <TableCell>{it.size}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
+      </Section>
+      <Separator />
+    </div>
   );
 }

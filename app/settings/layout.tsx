@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Boxes, Wrench } from "lucide-react";
+import { Boxes, Wrench, Settings2 } from "lucide-react";
 import {
   SidebarProvider,
   Sidebar,
@@ -43,10 +43,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             <SidebarGroupLabel>Settings</SidebarGroupLabel>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Inventory">
-                  <a href="/settings/inventory">
-                    <Boxes />
-                    <span>Inventory</span>
+                <SidebarMenuButton asChild tooltip="General Settings">
+                  <a href="/settings">
+                    <Settings2 />
+                    <span>General</span>
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -55,6 +55,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   <a href="/settings/inventory/configure">
                     <Wrench />
                     <span>Configure</span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Inventory">
+                  <a href="/settings/inventory">
+                    <Boxes />
+                    <span>Inventory</span>
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>

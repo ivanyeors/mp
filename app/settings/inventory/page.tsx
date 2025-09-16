@@ -5,7 +5,7 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { sellPillow, sellPart, receiveStock } from "./actions";
+import { sellPillow, sellPart, receiveStock, sellBolster } from "./actions";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -22,6 +22,7 @@ export default function InventoryPage() {
     pillows: Record<string, number>;
     parts: Record<number, number>;
   }>({ pillows: {}, parts: {} });
+  const [bolsterLines, setBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
 
   const load = async () => {
     setLoading(true);
@@ -41,10 +42,34 @@ export default function InventoryPage() {
 
   useEffect(() => { load(); }, []);
 
+  useEffect(() => {
+    const loadBolster = async () => {
+      const { data } = await supabaseClient.from('bolster_bom_lines').select('item_id,quantity');
+      const lines = (data ?? []).map((l: any) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
+      if (!lines.length) {
+        try {
+          const raw = typeof window !== 'undefined' ? window.localStorage.getItem('bolster_bom_lines') : null;
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) setBolsterLines(parsed);
+          }
+        } catch {}
+      } else {
+        setBolsterLines(lines);
+      }
+    };
+    loadBolster();
+  }, []);
+
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   const partGroups = useMemo(() => {
     const groups: { key: string; title: string; items: any[] }[] = [];
+    // Bolster-only parts
+    const bolsterCase = items.filter(i => i.category === 'case' && i.size === 'Bolster');
+    if (bolsterCase.length) groups.push({ key: 'bolster:case', title: 'Bolster case', items: bolsterCase });
+    const bolsterProtector = items.filter(i => i.category === 'protector' && i.size === 'Bolster');
+    if (bolsterProtector.length) groups.push({ key: 'bolster:protector', title: 'Bolster protector', items: bolsterProtector });
     // Sized categories grouped by category
     const sizedCats = ["cover", "case", "protector"] as const;
     for (const cat of sizedCats) {
@@ -79,6 +104,12 @@ export default function InventoryPage() {
     toast.message(`Selected 1 pillow size ${size}`);
   };
 
+  const buildableBolster = useMemo(() => {
+    if (!bolsterLines.length) return 0;
+    const counts = bolsterLines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
+    return counts.length ? Math.max(0, Math.min(...counts)) : 0;
+  }, [balances, bolsterLines]);
+
   const incrementPartSelection = (itemId: number) => {
     setCart(prev => ({ ...prev, parts: { ...prev.parts, [itemId]: (prev.parts[itemId] ?? 0) + 1 } }));
   };
@@ -111,10 +142,12 @@ export default function InventoryPage() {
     try {
       // Process pillows
       for (const [size, qty] of pillowEntries) {
-        const product = products.find(p => p.size === size);
-        if (product && qty > 0) {
-          await sellPillow({ productId: product.id, quantity: qty as number });
+        if (size === 'Bolster') {
+          if (qty > 0) await sellBolster({ quantity: qty as number });
+          continue;
         }
+        const product = products.find(p => p.size === size);
+        if (product && qty > 0) await sellPillow({ productId: product.id, quantity: qty as number });
       }
       // Process parts
       for (const [itemIdStr, qty] of partEntries) {
@@ -159,7 +192,7 @@ export default function InventoryPage() {
 
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select pillows</div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {['XS','S','M','L','XL'].map(sz => (
             <div key={sz} className="rounded border p-3">
               <div className="text-xs text-muted-foreground">{sz}</div>
@@ -169,6 +202,13 @@ export default function InventoryPage() {
               </div>
             </div>
           ))}
+          <div className="rounded border p-3">
+            <div className="text-xs text-muted-foreground">Bolster</div>
+            <div className="text-2xl font-semibold">{buildableBolster}</div>
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" onClick={() => incrementPillowSelection('Bolster')}>Select</Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -297,6 +337,21 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
   const [saving, setSaving] = useState(false);
 
   const variants = group?.variants ?? [];
+  const sortedVariants = useMemo(() => {
+    if (!group) return variants;
+    if (group.title !== 'Fillings') return variants;
+    const typeOrder = (t: string) => (t === '3D' ? 0 : t === '6D' ? 1 : 2);
+    const sizeOrder = (s: string) => (s === 'S' ? 0 : s === 'L' ? 1 : s === 'L+' ? 2 : 3);
+    return [...variants].sort((a: any, b: any) => {
+      const ta = String(a.subtype ?? a.name ?? '');
+      const tb = String(b.subtype ?? b.name ?? '');
+      const sa = String(a.size ?? '');
+      const sb = String(b.size ?? '');
+      const to = typeOrder(ta) - typeOrder(tb);
+      if (to !== 0) return to;
+      return sizeOrder(sa) - sizeOrder(sb);
+    });
+  }, [group, variants]);
 
   const onSaveAll = async () => {
     const entries = Object.entries(qtyByItem)
@@ -325,11 +380,15 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
           <SheetDescription>Stock in quantities for specific sizes or variants.</SheetDescription>
         </SheetHeader>
         <div className="mt-4 space-y-3 px-2">
-          {variants.map(v => (
+          {sortedVariants.map(v => (
             <div key={v.id} className="rounded border p-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium">{v.name ?? v.category}{v.size ? ` — ${v.size}` : ''}</div>
+                  <div className="font-medium">{
+                    v.category === 'filling'
+                      ? `${(v.subtype ?? v.name ?? 'Filling')}${v.size ? `-${v.size}` : ''}`
+                      : `${(v.name ?? v.category)}${v.size ? ` — ${v.size}` : ''}`
+                  }</div>
                   <div className="text-xs text-muted-foreground">On hand: {balances[v.id] ?? 0}</div>
                 </div>
                 <Button size="sm" variant="secondary" onClick={() => onSelectVariant(v.id)}>Select</Button>
