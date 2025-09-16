@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { sellPillow, sellPart, receiveStock } from "./actions";
+import { toast } from "sonner";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 export default function InventoryPage() {
   const [items, setItems] = useState<any[]>([]);
@@ -13,6 +15,13 @@ export default function InventoryPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [buildable, setBuildable] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [partDrawerOpen, setPartDrawerOpen] = useState(false);
+  const [partDrawerGroup, setPartDrawerGroup] = useState<{ title: string; variants: any[] } | null>(null);
+  const [cart, setCart] = useState<{
+    pillows: Record<string, number>;
+    parts: Record<number, number>;
+  }>({ pillows: {}, parts: {} });
 
   const load = async () => {
     setLoading(true);
@@ -32,25 +41,102 @@ export default function InventoryPage() {
 
   useEffect(() => { load(); }, []);
 
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  const partGroups = useMemo(() => {
+    const groups: { key: string; title: string; items: any[] }[] = [];
+    // Sized categories grouped by category
+    const sizedCats = ["cover", "case", "protector"] as const;
+    for (const cat of sizedCats) {
+      const groupItems = items.filter(i => i.category === cat);
+      if (groupItems.length) groups.push({ key: `cat:${cat}`, title: capitalize(cat), items: groupItems });
+    }
+    // Fillings consolidated into a single card
+    const fillings = items.filter(i => i.category === 'filling');
+    if (fillings.length) {
+      groups.push({ key: 'filling:all', title: 'Fillings', items: fillings });
+    }
+    // Packaging grouped by name
+    const pkgs = items.filter(i => i.category === 'packaging');
+    const pkgMap = new Map<string, any[]>();
+    for (const it of pkgs) {
+      const key = it.name;
+      const arr = pkgMap.get(key) ?? [];
+      arr.push(it); pkgMap.set(key, arr);
+    }
+    for (const [k, arr] of pkgMap.entries()) {
+      groups.push({ key: `pack:${k}`, title: k, items: arr });
+    }
+    return groups;
+  }, [items]);
+
   const lowStock = useMemo(() => {
     return items.filter(i => (balances[i.id] ?? 0) <= 0);
   }, [items, balances]);
 
-  const onSellPillow = async (size: string, qty: number) => {
-    const product = products.find(p => p.size===size);
-    if (!product) return alert('Product not found');
-    await sellPillow({ productId: product.id, quantity: qty });
-    await load();
+  const incrementPillowSelection = (size: string) => {
+    setCart(prev => ({ ...prev, pillows: { ...prev.pillows, [size]: (prev.pillows[size] ?? 0) + 1 } }));
+    toast.message(`Selected 1 pillow size ${size}`);
   };
 
-  const onSellPart = async (itemId: number, qty: number) => {
-    await sellPart({ itemId, quantity: qty });
-    await load();
+  const incrementPartSelection = (itemId: number) => {
+    setCart(prev => ({ ...prev, parts: { ...prev.parts, [itemId]: (prev.parts[itemId] ?? 0) + 1 } }));
+  };
+
+  const undoCartLine = (type: "pillow" | "part", key: string | number) => {
+    setCart(prev => {
+      if (type === "pillow") {
+        const size = String(key);
+        const nextQty = Math.max(0, (prev.pillows[size] ?? 0) - 1);
+        const next = { ...prev.pillows };
+        if (nextQty === 0) delete next[size]; else next[size] = nextQty;
+        return { ...prev, pillows: next };
+      } else {
+        const id = Number(key);
+        const nextQty = Math.max(0, (prev.parts[id] ?? 0) - 1);
+        const next = { ...prev.parts };
+        if (nextQty === 0) delete next[id]; else next[id] = nextQty;
+        return { ...prev, parts: next };
+      }
+    });
+  };
+
+  const sellFromCart = async () => {
+    const pillowEntries = Object.entries(cart.pillows);
+    const partEntries = Object.entries(cart.parts);
+    if (pillowEntries.length === 0 && partEntries.length === 0) {
+      toast.message("Cart is empty");
+      return;
+    }
+    try {
+      // Process pillows
+      for (const [size, qty] of pillowEntries) {
+        const product = products.find(p => p.size === size);
+        if (product && qty > 0) {
+          await sellPillow({ productId: product.id, quantity: qty as number });
+        }
+      }
+      // Process parts
+      for (const [itemIdStr, qty] of partEntries) {
+        const itemId = Number(itemIdStr);
+        if (qty > 0) {
+          await sellPart({ itemId, quantity: qty as number });
+        }
+      }
+      setCart({ pillows: {}, parts: {} });
+      await load();
+      toast.success("Sale completed");
+      setCartOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to sell");
+    }
   };
 
   const onReceive = async (itemId: number, qty: number) => {
+    if (!qty || qty <= 0) return;
     await receiveStock({ itemId, quantity: qty });
     await load();
+    toast.success(`Received ${qty} unit(s)`);
   };
 
   if (loading) return <div className="p-4">Loading…</div>;
@@ -59,19 +145,27 @@ export default function InventoryPage() {
     <div className="p-6 space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Inventory</h1>
-        <Button variant="secondary" onClick={load}>Refresh</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={load}>Refresh</Button>
+          <Button onClick={() => setCartOpen(true)} aria-label="Open cart">
+            <span className="mr-2" aria-hidden>🛒</span>
+            Cart ({
+              Object.values(cart.pillows).reduce((a, b) => a + b, 0) +
+              Object.values(cart.parts).reduce((a, b) => a + b, 0)
+            })
+          </Button>
+        </div>
       </div>
 
       <section className="space-y-2">
-        <div className="text-sm text-muted-foreground">Buildable pillows by size</div>
+        <div className="text-sm text-muted-foreground">Select pillows</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {['XS','S','M','L','XL'].map(sz => (
             <div key={sz} className="rounded border p-3">
               <div className="text-xs text-muted-foreground">{sz}</div>
               <div className="text-2xl font-semibold">{buildable[sz] ?? 0}</div>
               <div className="mt-2 flex gap-2">
-                <QtyButton label="Sell 1" onClick={()=> onSellPillow(sz, 1)} />
-                <QtyButton label="Sell 5" onClick={()=> onSellPillow(sz, 5)} />
+                <Button size="sm" onClick={() => incrementPillowSelection(sz)}>Select</Button>
               </div>
             </div>
           ))}
@@ -81,19 +175,37 @@ export default function InventoryPage() {
       <Separator />
 
       <section className="space-y-2">
-        <div className="text-sm text-muted-foreground">Parts stock</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {items.map(it => (
-            <div key={it.id} className="rounded border p-3 flex items-center gap-3">
-              <div className="flex-1">
-                <div className="font-medium">{it.category} {it.size ?? it.subtype ?? ''}</div>
-                <div className="text-xs text-muted-foreground">On hand: {balances[it.id] ?? 0}</div>
+        <div className="text-sm text-muted-foreground">Select parts</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {partGroups.map(group => {
+            const totalOnHand = group.items.reduce((sum, it) => sum + (Number(balances[it.id] ?? 0)), 0);
+            return (
+              <div
+                key={group.key}
+                className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
+                onClick={() => { setPartDrawerGroup({ title: group.title, variants: group.items }); setPartDrawerOpen(true); }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ title: group.title, variants: group.items }); setPartDrawerOpen(true); } }}
+              >
+                <div className="flex-1">
+                  <div className="font-medium">{group.title}</div>
+                  <div className="text-xs text-muted-foreground">On hand: {totalOnHand}</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={(e) => { e.stopPropagation(); setPartDrawerGroup({ title: group.title, variants: group.items }); setPartDrawerOpen(true); }}>Select</Button>
+                </div>
               </div>
-              <QtyInput label="Sell" onSubmit={(q)=> onSellPart(it.id, q)} />
-              <QtyInput label="Receive" onSubmit={(q)=> onReceive(it.id, q)} />
-            </div>
-          ))}
+            );
+          })}
         </div>
+      </section>
+
+      <Separator />
+
+      <section className="space-y-2">
+        <div className="text-sm text-muted-foreground">Inventory management</div>
+        {/* Use the Select sections above to open the drawer for stock-in per variant */}
       </section>
 
       {lowStock.length > 0 && (
@@ -106,20 +218,141 @@ export default function InventoryPage() {
           </ul>
         </section>
       )}
+
+      {/* Cart Drawer */}
+      <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Selected items</SheetTitle>
+            <SheetDescription>Review selected pillows and parts, undo, and sell.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            <div>
+              <div className="text-sm font-medium mb-2">Pillows</div>
+              {Object.keys(cart.pillows).length === 0 && (
+                <div className="text-sm text-muted-foreground">No pillows selected</div>
+              )}
+              <div className="space-y-2">
+                {Object.entries(cart.pillows).map(([size, qty]) => (
+                  <div key={size} className="flex items-center justify-between rounded border p-2">
+                    <div>
+                      <div className="font-medium">Size {size}</div>
+                      <div className="text-xs text-muted-foreground">Qty: {qty}</div>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={() => undoCartLine("pillow", size)}>Undo</Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Separator />
+            <div>
+              <div className="text-sm font-medium mb-2">Parts</div>
+              {Object.keys(cart.parts).length === 0 && (
+                <div className="text-sm text-muted-foreground">No parts selected</div>
+              )}
+              <div className="space-y-2">
+                {Object.entries(cart.parts).map(([itemIdStr, qty]) => {
+                  const it = items.find(i => i.id === Number(itemIdStr));
+                  return (
+                    <div key={itemIdStr} className="flex items-center justify-between rounded border p-2">
+                      <div>
+                        <div className="font-medium">{it?.category} {it?.size ?? it?.subtype ?? ''}</div>
+                        <div className="text-xs text-muted-foreground">Qty: {qty}</div>
+                      </div>
+                      <Button size="sm" variant="secondary" onClick={() => undoCartLine("part", Number(itemIdStr))}>Undo</Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <SheetFooter>
+            <Button onClick={sellFromCart} className="w-full">Sell</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Part Drawer */}
+      <PartDrawer
+        open={partDrawerOpen}
+        onOpenChange={setPartDrawerOpen}
+        group={partDrawerGroup}
+        balances={balances}
+        onReceive={onReceive}
+        onSelectVariant={(id) => incrementPartSelection(id)}
+      />
     </div>
   );
 }
 
-function QtyButton({ label, onClick }: { label: string; onClick: ()=>void }) {
-  return <Button size="sm" onClick={onClick}>{label}</Button>
-}
+function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVariant }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  group: { title: string; variants: any[] } | null;
+  balances: Record<number, number>;
+  onReceive: (itemId: number, qty: number) => Promise<void>;
+  onSelectVariant: (itemId: number) => void;
+}) {
+  const [qtyByItem, setQtyByItem] = useState<Record<number, string>>({});
+  const [saving, setSaving] = useState(false);
 
-function QtyInput({ label, onSubmit }: { label: string; onSubmit: (qty:number)=>void }) {
-  const [val, setVal] = useState('');
+  const variants = group?.variants ?? [];
+
+  const onSaveAll = async () => {
+    const entries = Object.entries(qtyByItem)
+      .map(([id, raw]) => ({ id: Number(id), qty: parseInt((raw || '0'), 10) }))
+      .filter(e => e.qty > 0);
+    if (entries.length === 0) return;
+    setSaving(true);
+    try {
+      for (const e of entries) {
+        await onReceive(e.id, e.qty);
+      }
+      setQtyByItem({});
+      onOpenChange(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasPositive = Object.values(qtyByItem).some(v => (parseInt((v || '0'), 10) > 0));
+
   return (
-    <div className="flex items-center gap-2">
-      <Input value={val} onChange={(e)=> setVal(e.target.value)} placeholder={label} className="w-20" />
-      <Button size="sm" variant="secondary" onClick={()=> { const q = parseInt(val||'0',10); if (q>0) onSubmit(q); setVal(''); }}>Go</Button>
-    </div>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>{group?.title ?? 'Part'}</SheetTitle>
+          <SheetDescription>Stock in quantities for specific sizes or variants.</SheetDescription>
+        </SheetHeader>
+        <div className="mt-4 space-y-3 px-2">
+          {variants.map(v => (
+            <div key={v.id} className="rounded border p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">{v.name ?? v.category}{v.size ? ` — ${v.size}` : ''}</div>
+                  <div className="text-xs text-muted-foreground">On hand: {balances[v.id] ?? 0}</div>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => onSelectVariant(v.id)}>Select</Button>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Input
+                  type="number"
+                  placeholder="Stockin"
+                  min={0}
+                  value={qtyByItem[v.id] ?? ''}
+                  onChange={(e) => setQtyByItem(prev => ({ ...prev, [v.id]: e.target.value }))}
+                  className="w-28"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <SheetFooter>
+          <Button onClick={onSaveAll} disabled={!hasPositive || saving} className="w-full">
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

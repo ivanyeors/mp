@@ -5,6 +5,9 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { toast } from "sonner";
 
 type Item = {
   id: number;
@@ -28,6 +31,8 @@ export default function ConfigureInventoryPage() {
   const [bom, setBom] = useState<BomState>({ XS: [], S: [], M: [], L: [], XL: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<Product["size"] | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -73,7 +78,21 @@ export default function ConfigureInventoryPage() {
       });
     }
     setSaving(false);
-    alert("Saved");
+    toast.success("Configuration saved for all sizes");
+  };
+
+  const saveSize = async (size: Product["size"]) => {
+    setSaving(true);
+    const product = products.find(p => p.size === size);
+    if (!product) { setSaving(false); return; }
+    const lines = bom[size];
+    await fetch("/settings/inventory/configure/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: product.id, lines }),
+    });
+    setSaving(false);
+    toast.success(`Configuration saved for size ${size}`);
   };
 
   if (loading) return <div className="p-4">Loading…</div>;
@@ -85,15 +104,52 @@ export default function ConfigureInventoryPage() {
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
       </div>
       <Separator />
-      {SIZES.map((size) => (
-        <SizeEditor
-          key={size}
-          size={size}
-          items={items}
-          bom={bom}
-          setBom={setBom}
-        />
-      ))}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {SIZES.map((size) => {
+          const partsCount = bom[size].filter(l => (l.quantity ?? 0) > 0).length;
+          return (
+            <div
+              key={size}
+              role="button"
+              tabIndex={0}
+              onClick={()=> { setSelectedSize(size); setOpen(true); }}
+              onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedSize(size); setOpen(true); } }}
+              className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
+            >
+              <div className="text-xs text-muted-foreground">Size</div>
+              <div className="text-2xl font-semibold">{size}</div>
+              <div className="mt-2 text-xs text-muted-foreground">{partsCount} parts configured</div>
+              <div className="mt-3">
+                <Button size="sm" variant="secondary">Configure</Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Configure Size {selectedSize ?? ''}</SheetTitle>
+            <SheetDescription>Adjust BOM quantities and save for this pillow size.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-4 px-2">
+            {selectedSize && (
+              <SizeEditor
+                size={selectedSize}
+                items={items}
+                bom={bom}
+                setBom={setBom}
+              />
+            )}
+          </div>
+          <SheetFooter>
+            <Button onClick={() => { if (selectedSize) saveSize(selectedSize); }} disabled={saving}>
+              {saving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -123,32 +179,84 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-medium">Size {size}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Section title="Cover (1)">
+      <Section title="Cover (1)">
+        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
           {sized('cover').map(it => (
-            <QtyRow key={it.id} label={`Cover ${size}`} value={getQty(it.id)} onChange={(v)=> upsert(it.id, v)} />
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">Cover</TableCell>
+              <TableCell>{size}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            </TableRow>
           ))}
-        </Section>
-        <Section title="Case (1)">
-          {sized('case').map(it => (
-            <QtyRow key={it.id} label={`Case ${size}`} value={getQty(it.id)} onChange={(v)=> upsert(it.id, v)} />
-          ))}
-        </Section>
-        <Section title="Protector (1)">
-          {sized('protector').map(it => (
-            <QtyRow key={it.id} label={`Protector ${size}`} value={getQty(it.id)} onChange={(v)=> upsert(it.id, v)} />
-          ))}
-        </Section>
-      </div>
-      <Section title="Fillings">
-        {fillings.map(it => (
-          <QtyRow key={it.id} label={it.subtype ?? it.name} value={getQty(it.id)} onChange={(v)=> v===0? remove(it.id) : upsert(it.id, v)} />
-        ))}
+        </ConfigureTable>
       </Section>
+      <Section title="Case (1)">
+        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
+          {sized('case').map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">Case</TableCell>
+              <TableCell>{size}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
+      </Section>
+      <Section title="Protector (1)">
+        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
+          {sized('protector').map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">Protector</TableCell>
+              <TableCell>{size}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
+      </Section>
+
+      <Section title="Fillings">
+        <ConfigureTable headers={["Subtype", "Qty", "Actions"]}>
+          {fillings.map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> {
+                    const v = Math.max(0, parseInt(e.target.value||'0',10));
+                    if (v===0) remove(it.id); else upsert(it.id, v);
+                  }} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
+      </Section>
+
       <Section title="Packaging (1 vacuum + 1 net)">
-        {packaging.map(it => (
-          <QtyRow key={it.id} label={`${it.name} ${it.size}`} value={getQty(it.id)} onChange={(v)=> upsert(it.id, v)} />
-        ))}
+        <ConfigureTable headers={["Item", "Size", "Qty", "Actions"]}>
+          {packaging.map(it => (
+            <TableRow key={it.id}>
+              <TableCell className="font-medium">{it.name}</TableCell>
+              <TableCell>{it.size}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input type="number" min={0} value={getQty(it.id)}
+                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+              </TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+            </TableRow>
+          ))}
+        </ConfigureTable>
       </Section>
       <Separator />
     </div>
@@ -173,5 +281,22 @@ function QtyRow({ label, value, onChange }: { label: string; value: number; onCh
         className="w-24" />
       <Button variant="secondary" onClick={()=> onChange(0)}>Clear</Button>
     </div>
+  );
+}
+
+function ConfigureTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          {headers.map((h) => (
+            <TableHead key={h}>{h}</TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {children}
+      </TableBody>
+    </Table>
   );
 }

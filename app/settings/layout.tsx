@@ -23,6 +23,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Toaster } from "sonner";
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -81,6 +82,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         </header>
         <div className="p-6">
           {children}
+          <Toaster richColors position="top-right" />
         </div>
       </SidebarInset>
     </SidebarProvider>
