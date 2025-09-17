@@ -233,7 +233,7 @@ export default function InventoryPage() {
           ))}
           <div className="rounded border p-3">
             <div className="text-xs text-muted-foreground">Bolster</div>
-            <div className="text-2xl font-semibold">{buildableBolster}</div>
+            <div className="text-2xl font-semibold">{buildableBolsterMedium}</div>
             <div className="mt-2 flex gap-2">
               <Button size="sm" onClick={() => incrementPillowSelection('Bolster')}>Select</Button>
             </div>
