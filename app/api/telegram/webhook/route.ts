@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { sellPillow, sellPart, receiveStock } from '@/app/settings/inventory/actions'
+import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/settings/inventory/actions'
 
 export const runtime = 'nodejs'
 
@@ -10,6 +10,7 @@ type TelegramUpdate = {
     message_id: number
     chat: { id: number; type: string; title?: string; username?: string; first_name?: string; last_name?: string }
     text?: string
+    reply_to_message?: { message_id: number; text?: string }
   }
   callback_query?: {
     id: string
@@ -38,8 +39,10 @@ function parseAllowedChats(): Set<number> {
 
 type InlineKeyboardButton = { text: string; callback_data: string }
 type InlineKeyboardMarkup = { inline_keyboard: InlineKeyboardButton[][] }
+type ForceReplyMarkup = { force_reply: true; selective?: boolean }
+type ReplyMarkup = InlineKeyboardMarkup | ForceReplyMarkup
 
-async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: InlineKeyboardMarkup) {
+async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: ReplyMarkup) {
   const token = getEnv('TELEGRAM_BOT_TOKEN')
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
@@ -53,7 +56,7 @@ async function sendTelegramMessage(chatId: number, text: string, replyMarkup?: I
   }
 }
 
-async function editTelegramMessage(chatId: number, messageId: number, text: string, replyMarkup?: InlineKeyboardMarkup) {
+async function editTelegramMessage(chatId: number, messageId: number, text: string, replyMarkup?: ReplyMarkup) {
   const token = getEnv('TELEGRAM_BOT_TOKEN')
   const res = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
     method: 'POST',
@@ -76,14 +79,29 @@ async function answerCallback(callbackId: string) {
   })
 }
 
+function makeQtyToken(action: 'in'|'out', target: string): string {
+  // target examples:
+  // product:XS
+  // bol:short
+  // item:cover:XS
+  // fill:6D-L
+  return `QTY|${action}|${target}`
+}
+
+async function requestQuantity(chatId: number, action: 'in'|'out', target: string, label: string) {
+  const token = makeQtyToken(action, target)
+  const prompt = `Enter quantity for ${action.toUpperCase()} – ${label}\n${token}`
+  const replyMarkup: ForceReplyMarkup = { force_reply: true }
+  await sendTelegramMessage(chatId, prompt, replyMarkup)
+}
+
 function helpText(): string {
   return [
     'Commands:',
     '/help – show this help',
-    '/stock_menu – interactive stock menu',
-    '/stock <id|code> – current stock (item) or buildable (pillow)',
-    '/in <id|code> <qty> – receive stock (parts only)',
-    '/out <id|code> <qty> – stock out (parts) or sell (pillow)',
+    '/stock – interactive stock and actions',
+    '/in – interactive stock-in (parts)',
+    '/out – interactive stock-out/sell',
     '',
     'Codes:',
     'Pillow: mpxs | mps | mpm | mpl | mpxl',
@@ -202,9 +220,20 @@ async function handleCommand(chatId: number, text: string) {
     }
 
     if (name === '/stock') {
+      if (!args.length) {
+        const kb: InlineKeyboardMarkup = {
+          inline_keyboard: [
+            [ { text: 'Pillows', callback_data: 'pillows' } ],
+            [ { text: 'Bolster', callback_data: 'bolster' } ],
+            [ { text: 'Parts', callback_data: 'parts' } ],
+          ],
+        }
+        await sendTelegramMessage(chatId, 'Select a category:', kb)
+        return
+      }
       const admin = supabaseAdmin()
       const ident = parseIdentifier(args[0] || '')
-      if (!ident) return sendTelegramMessage(chatId, 'Usage: /stock <id|code>')
+      if (!ident) return sendTelegramMessage(chatId, 'Usage: /stock')
 
       if (ident.kind === 'product') {
         const { data: product, error: pErr } = await admin.from('pillow_products').select('id,size').eq('size', ident.size).maybeSingle()
@@ -242,10 +271,15 @@ async function handleCommand(chatId: number, text: string) {
     }
 
     if (name === '/in') {
+      if (!args.length) {
+        const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: 'Parts', callback_data: 'in:parts' } ] ] }
+        await sendTelegramMessage(chatId, 'Stock In – select a category:', kb)
+        return
+      }
       const admin = supabaseAdmin()
       const ident = parseIdentifier(args[0] || '')
       const qty = Number(args[1])
-      if (!ident || !Number.isFinite(qty) || qty <= 0) return sendTelegramMessage(chatId, 'Usage: /in <id|code> <qty>')
+      if (!ident || !Number.isFinite(qty) || qty <= 0) return sendTelegramMessage(chatId, 'Usage: /in')
       if (ident.kind === 'product') return sendTelegramMessage(chatId, 'Use /out for pillows. /in applies to parts only.')
       const itemId = await resolveItemId(admin, ident)
       if (!itemId) return sendTelegramMessage(chatId, 'Item not found for given code')
@@ -255,10 +289,15 @@ async function handleCommand(chatId: number, text: string) {
     }
 
     if (name === '/out') {
+      if (!args.length) {
+        const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: 'Pillows', callback_data: 'out:pillows' } ], [ { text: 'Bolster', callback_data: 'out:bolster' } ], [ { text: 'Parts', callback_data: 'out:parts' } ] ] }
+        await sendTelegramMessage(chatId, 'Stock Out – select a category:', kb)
+        return
+      }
       const admin = supabaseAdmin()
       const ident = parseIdentifier(args[0] || '')
       const qty = Number(args[1])
-      if (!ident || !Number.isFinite(qty) || qty <= 0) return sendTelegramMessage(chatId, 'Usage: /out <id|code> <qty>')
+      if (!ident || !Number.isFinite(qty) || qty <= 0) return sendTelegramMessage(chatId, 'Usage: /out')
       if (ident.kind === 'product') {
         const { data: product, error } = await admin
           .from('pillow_products')
@@ -304,6 +343,7 @@ async function handleCallback(update: TelegramUpdate) {
       const kb: InlineKeyboardMarkup = {
         inline_keyboard: [
           [ { text: 'Pillows', callback_data: 'pillows' } ],
+          [ { text: 'Bolster', callback_data: 'bolster' } ],
           [ { text: 'Parts', callback_data: 'parts' } ],
         ],
       }
@@ -338,8 +378,14 @@ async function handleCallback(update: TelegramUpdate) {
           .maybeSingle()
         buildable = buildRec?.buildable ?? 0
       }
-      const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: '« Back', callback_data: 'pillows' } ], [ { text: '« Main', callback_data: 'menu' } ] ] }
-      await editTelegramMessage(chatId, messageId, `Pillow ${size}\nBuildable: ${buildable}`, kb)
+      const kb: InlineKeyboardMarkup = {
+        inline_keyboard: [
+          [ { text: 'Out', callback_data: `askqty:out:product:${size}` } ],
+          [ { text: '« Back', callback_data: 'pillows' } ],
+          [ { text: '« Main', callback_data: 'menu' } ],
+        ],
+      }
+      await editTelegramMessage(chatId, messageId, `Pillow ${size}\nBuildable: ${buildable}\nSelect action:`, kb)
       await answerCallback(cq.id)
       return
     }
@@ -353,6 +399,55 @@ async function handleCallback(update: TelegramUpdate) {
         ],
       }
       await editTelegramMessage(chatId, messageId, 'Parts – choose category:', kb)
+      await answerCallback(cq.id)
+      return
+    }
+
+    if (data === 'bolster') {
+      const kb: InlineKeyboardMarkup = {
+        inline_keyboard: [
+          [ { text: 'Short (0.8m)', callback_data: 'bol:short' } ],
+          [ { text: 'Medium (1.0m)', callback_data: 'bol:medium' } ],
+          [ { text: 'Long (1.2m)', callback_data: 'bol:long' } ],
+          [ { text: '« Back', callback_data: 'menu' } ],
+        ],
+      }
+      await editTelegramMessage(chatId, messageId, 'Bolster – choose length:', kb)
+      await answerCallback(cq.id)
+      return
+    }
+
+    if (data.startsWith('bol:')) {
+      const variant = data.split(':')[1] as 'short'|'medium'|'long'
+      const { data: lines } = await admin
+        .from('bolster_bom_lines')
+        .select('item_id,quantity')
+        .eq('variant', variant)
+      const items = (lines ?? []).map(l => l.item_id)
+      let buildable = 0
+      if (items.length > 0) {
+        const { data: bals } = await admin
+          .from('inventory_balances')
+          .select('item_id,on_hand')
+          .in('item_id', items)
+        const map = new Map<number, number>()
+        ;(bals ?? []).forEach(r => map.set(Number(r.item_id), Number(r.on_hand)))
+        const counts = (lines ?? []).map(l => {
+          const onHand = Number(map.get(Number(l.item_id)) ?? 0)
+          const qty = Math.max(1, Number(l.quantity))
+          return Math.floor(onHand / qty)
+        })
+        buildable = counts.length ? Math.max(0, Math.min(...counts)) : 0
+      }
+      const label = variant === 'short' ? 'Short (0.8m)' : variant === 'long' ? 'Long (1.2m)' : 'Medium (1.0m)'
+      const kb: InlineKeyboardMarkup = {
+        inline_keyboard: [
+          [ { text: 'Out', callback_data: `askqty:out:bol:${variant}` } ],
+          [ { text: '« Back', callback_data: 'bolster' } ],
+          [ { text: '« Main', callback_data: 'menu' } ],
+        ],
+      }
+      await editTelegramMessage(chatId, messageId, `Bolster ${label}\nBuildable: ${buildable}\nSelect action:`, kb)
       await answerCallback(cq.id)
       return
     }
@@ -400,8 +495,14 @@ async function handleCallback(update: TelegramUpdate) {
         const { data: bal } = await admin.from('inventory_balances').select('on_hand').eq('item_id', itemId).maybeSingle()
         onHand = bal?.on_hand ?? 0
       }
-      const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: '« Back', callback_data: `pcat:${cat}` } ], [ { text: '« Main', callback_data: 'menu' } ] ] }
-      await editTelegramMessage(chatId, messageId, `${cat} ${size}\nOn hand: ${onHand}`, kb)
+      const kb: InlineKeyboardMarkup = {
+        inline_keyboard: [
+          [ { text: 'In', callback_data: `askqty:in:item:${cat}:${size}` }, { text: 'Out', callback_data: `askqty:out:item:${cat}:${size}` } ],
+          [ { text: '« Back', callback_data: `pcat:${cat}` } ],
+          [ { text: '« Main', callback_data: 'menu' } ],
+        ],
+      }
+      await editTelegramMessage(chatId, messageId, `${cat} ${size}\nOn hand: ${onHand}\nSelect action:`, kb)
       await answerCallback(cq.id)
       return
     }
@@ -415,14 +516,44 @@ async function handleCallback(update: TelegramUpdate) {
         const { data: bal } = await admin.from('inventory_balances').select('on_hand').eq('item_id', itemId).maybeSingle()
         onHand = bal?.on_hand ?? 0
       }
-      const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: '« Back', callback_data: 'pcat:filling' } ], [ { text: '« Main', callback_data: 'menu' } ] ] }
-      await editTelegramMessage(chatId, messageId, `Filling ${subtype}\nOn hand: ${onHand}`, kb)
+      const kb: InlineKeyboardMarkup = {
+        inline_keyboard: [
+          [ { text: 'In', callback_data: `askqty:in:fill:${subtype}` }, { text: 'Out', callback_data: `askqty:out:fill:${subtype}` } ],
+          [ { text: '« Back', callback_data: 'pcat:filling' } ],
+          [ { text: '« Main', callback_data: 'menu' } ],
+        ],
+      }
+      await editTelegramMessage(chatId, messageId, `Filling ${subtype}\nOn hand: ${onHand}\nSelect action:`, kb)
+      await answerCallback(cq.id)
+      return
+    }
+
+    // askqty handlers
+    if (data.startsWith('askqty:')) {
+      const parts = data.split(':')
+      // askqty:<action>:<target_type>:...
+      const action = parts[1] as 'in'|'out'
+      const targetType = parts[2]
+      if (targetType === 'product') {
+        const size = parts[3] as 'XS'|'S'|'M'|'L'|'XL'
+        await requestQuantity(chatId, action, `product:${size}`, `Pillow ${size}`)
+      } else if (targetType === 'bol') {
+        const variant = parts[3] as 'short'|'medium'|'long'
+        await requestQuantity(chatId, action, `bol:${variant}`, `Bolster ${variant}`)
+      } else if (targetType === 'item') {
+        const cat = parts[3]
+        const size = parts[4]
+        await requestQuantity(chatId, action, `item:${cat}:${size}`, `${cat} ${size}`)
+      } else if (targetType === 'fill') {
+        const subtype = parts.slice(3).join(':')
+        await requestQuantity(chatId, action, `fill:${subtype}`, `Filling ${subtype}`)
+      }
       await answerCallback(cq.id)
       return
     }
 
     // Unknown action: go to root
-    const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: 'Pillows', callback_data: 'pillows' } ], [ { text: 'Parts', callback_data: 'parts' } ] ] }
+    const kb: InlineKeyboardMarkup = { inline_keyboard: [ [ { text: 'Pillows', callback_data: 'pillows' } ], [ { text: 'Bolster', callback_data: 'bolster' } ], [ { text: 'Parts', callback_data: 'parts' } ] ] }
     await editTelegramMessage(chatId, messageId, 'Select a category:', kb)
     await answerCallback(cq.id)
   } catch (err) {
@@ -444,6 +575,7 @@ export async function POST(req: NextRequest) {
     const msgChatId = update?.message?.chat?.id
     const cbChatId = update?.callback_query?.message?.chat?.id
     const text = update?.message?.text || ''
+    const replyText = update?.message?.reply_to_message?.text || ''
 
     const effectiveChatId = typeof cbChatId === 'number' ? cbChatId : msgChatId
     if (!effectiveChatId) return NextResponse.json({ ok: true }, { status: 200 })
@@ -453,6 +585,49 @@ export async function POST(req: NextRequest) {
 
     if (update.callback_query?.data) {
       await handleCallback(update)
+    } else if (replyText.startsWith('Enter quantity for')) {
+      // Parse embedded token on prior message
+      const tokenMatch = replyText.match(/QTY\|([a-z]+)\|(.+)$/i)
+      const qty = Number(text.trim())
+      if (!tokenMatch || !Number.isFinite(qty) || qty <= 0) {
+        // ignore
+      } else {
+        const action = tokenMatch[1] as 'in'|'out'
+        const target = tokenMatch[2]
+        const admin = supabaseAdmin()
+        if (target.startsWith('product:')) {
+          const size = target.split(':')[1] as 'XS'|'S'|'M'|'L'|'XL'
+          const { data: product } = await admin.from('pillow_products').select('id,size').eq('size', size).maybeSingle()
+          if (product && action === 'out') {
+            await sellPillow({ productId: Number(product.id), quantity: qty })
+            await sendTelegramMessage(effectiveChatId, `Sold ${qty} pillow(s) of size ${product.size}`)
+          }
+        } else if (target.startsWith('bol:')) {
+          const variant = target.split(':')[1] as 'short'|'medium'|'long'
+          if (action === 'out') {
+            await sellBolster({ quantity: qty, variant })
+            await sendTelegramMessage(effectiveChatId, `Sold ${qty} bolster(s) ${variant}`)
+          }
+        } else if (target.startsWith('item:')) {
+          const [, cat, size] = target.split(':')
+          const { data: item } = await admin.from('items').select('id').eq('category', cat).eq('size', size).maybeSingle()
+          const itemId = item?.id
+          if (itemId) {
+            if (action === 'in') await receiveStock({ itemId, quantity: qty })
+            else await sellPart({ itemId, quantity: qty })
+            await sendTelegramMessage(effectiveChatId, `${action === 'in' ? 'Received' : 'Stocked out'} ${qty} of item ${itemId}`)
+          }
+        } else if (target.startsWith('fill:')) {
+          const subtype = target.substring(5)
+          const { data: item } = await admin.from('items').select('id').eq('category', 'filling').eq('subtype', subtype).maybeSingle()
+          const itemId = item?.id
+          if (itemId) {
+            if (action === 'in') await receiveStock({ itemId, quantity: qty })
+            else await sellPart({ itemId, quantity: qty })
+            await sendTelegramMessage(effectiveChatId, `${action === 'in' ? 'Received' : 'Stocked out'} ${qty} of item ${itemId}`)
+          }
+        }
+      }
     } else if (text.startsWith('/')) {
       await handleCommand(effectiveChatId, text)
     }

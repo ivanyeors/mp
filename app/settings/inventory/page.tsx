@@ -26,6 +26,12 @@ export default function InventoryPage() {
     parts: Record<number, number>;
   }>({ pillows: {}, parts: {} });
   const [bolsterLinesByVariant, setBolsterLinesByVariant] = useState<Record<'short'|'medium'|'long', Array<{ item_id: number; quantity: number }>>>({ short: [], medium: [], long: [] });
+  const [customPillowSize, setCustomPillowSize] = useState<string>('M');
+  const [customPillowQty, setCustomPillowQty] = useState<string>('');
+  const [savingCustomPillow, setSavingCustomPillow] = useState(false);
+  const [customBolsterVariant, setCustomBolsterVariant] = useState<'short'|'medium'|'long'>('medium');
+  const [customBolsterQty, setCustomBolsterQty] = useState<string>('');
+  const [savingCustomBolster, setSavingCustomBolster] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -201,6 +207,42 @@ export default function InventoryPage() {
     toast.success(`Received ${qty} unit(s)`);
   };
 
+  const sellCustomPillow = async () => {
+    const qty = parseInt((customPillowQty || '0'), 10);
+    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    const product = products.find(p => p.size === customPillowSize);
+    if (!product) { toast.error('Invalid size'); return; }
+    setSavingCustomPillow(true);
+    try {
+      await sellPillow({ productId: product.id, quantity: qty });
+      setCustomPillowQty('');
+      await load();
+      toast.success('Custom pillow sold');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to sell pillow';
+      toast.error(message);
+    } finally {
+      setSavingCustomPillow(false);
+    }
+  };
+
+  const sellCustomBolster = async () => {
+    const qty = parseInt((customBolsterQty || '0'), 10);
+    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    setSavingCustomBolster(true);
+    try {
+      await sellBolster({ quantity: qty, variant: customBolsterVariant });
+      setCustomBolsterQty('');
+      await load();
+      toast.success('Custom bolster sold');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to sell bolster';
+      toast.error(message);
+    } finally {
+      setSavingCustomBolster(false);
+    }
+  };
+
   if (loading) return <div className="p-4">Loading…</div>;
 
   return (
@@ -223,19 +265,53 @@ export default function InventoryPage() {
         <div className="text-sm text-muted-foreground">Select pillows</div>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {['XS','S','M','L','XL'].map(sz => (
-            <div key={sz} className="rounded border p-3">
+            <div
+              key={sz}
+              className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onClick={() => incrementPillowSelection(sz)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') incrementPillowSelection(sz); }}
+            >
               <div className="text-xs text-muted-foreground">{sz}</div>
               <div className="text-2xl font-semibold">{buildable[sz] ?? 0}</div>
-              <div className="mt-2 flex gap-2">
-                <Button size="sm" onClick={() => incrementPillowSelection(sz)}>Select</Button>
-              </div>
             </div>
           ))}
-          <div className="rounded border p-3">
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onClick={() => incrementPillowSelection('Bolster')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') incrementPillowSelection('Bolster'); }}
+          >
             <div className="text-xs text-muted-foreground">Bolster</div>
             <div className="text-2xl font-semibold">{buildableBolsterMedium}</div>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" onClick={() => incrementPillowSelection('Bolster')}>Select</Button>
+          </div>
+          {/* Custom Pillow */}
+          <div className="rounded border p-3">
+            <div className="text-xs text-muted-foreground">Custom</div>
+            <div className="mt-2 flex items-center gap-2">
+              <select
+                aria-label="Custom pillow size"
+                className="rounded border px-2 py-1 text-sm"
+                value={customPillowSize}
+                onChange={(e) => setCustomPillowSize(e.target.value)}
+              >
+                {['XS','S','M','L','XL'].map(s => (<option key={s} value={s}>{s}</option>))}
+              </select>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Qty"
+                value={customPillowQty}
+                onChange={(e) => setCustomPillowQty(e.target.value)}
+                className="w-24"
+              />
+            </div>
+            <div className="mt-2">
+              <Button size="sm" className="w-full" onClick={sellCustomPillow} disabled={savingCustomPillow}>
+                {savingCustomPillow ? 'Selling…' : 'Sell'}
+              </Button>
             </div>
           </div>
         </div>
@@ -245,28 +321,66 @@ export default function InventoryPage() {
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select bolsters</div>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div className="rounded border p-3">
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onClick={() => incrementPillowSelection('Bolster Short (0.8m)')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') incrementPillowSelection('Bolster Short (0.8m)'); }}
+          >
             <div className="text-xs text-muted-foreground">Bolster</div>
             <div className="text-2xl font-semibold">{buildableBolsterShort}</div>
             <div className="mt-1 text-xs text-muted-foreground">Short (0.8m)</div>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" onClick={() => incrementPillowSelection('Bolster Short (0.8m)')}>Select</Button>
-            </div>
           </div>
-          <div className="rounded border p-3">
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onClick={() => incrementPillowSelection('Bolster Medium (1m)')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') incrementPillowSelection('Bolster Medium (1m)'); }}
+          >
             <div className="text-xs text-muted-foreground">Bolster</div>
             <div className="text-2xl font-semibold">{buildableBolsterMedium}</div>
             <div className="mt-1 text-xs text-muted-foreground">Medium (1m)</div>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" onClick={() => incrementPillowSelection('Bolster Medium (1m)')}>Select</Button>
-            </div>
           </div>
-          <div className="rounded border p-3">
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onClick={() => incrementPillowSelection('Bolster Long (1.2m)')}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') incrementPillowSelection('Bolster Long (1.2m)'); }}
+          >
             <div className="text-xs text-muted-foreground">Bolster</div>
             <div className="text-2xl font-semibold">{buildableBolsterLong}</div>
             <div className="mt-1 text-xs text-muted-foreground">Long (1.2m)</div>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" onClick={() => incrementPillowSelection('Bolster Long (1.2m)')}>Select</Button>
+          </div>
+          {/* Custom Bolster */}
+          <div className="rounded border p-3">
+            <div className="text-xs text-muted-foreground">Custom bolster</div>
+            <div className="mt-2 flex items-center gap-2">
+              <select
+                aria-label="Custom bolster variant"
+                className="rounded border px-2 py-1 text-sm"
+                value={customBolsterVariant}
+                onChange={(e) => setCustomBolsterVariant((e.target.value as 'short'|'medium'|'long'))}
+              >
+                <option value="short">Short (0.8m)</option>
+                <option value="medium">Medium (1m)</option>
+                <option value="long">Long (1.2m)</option>
+              </select>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Qty"
+                value={customBolsterQty}
+                onChange={(e) => setCustomBolsterQty(e.target.value)}
+                className="w-24"
+              />
+            </div>
+            <div className="mt-2">
+              <Button size="sm" className="w-full" onClick={sellCustomBolster} disabled={savingCustomBolster}>
+                {savingCustomBolster ? 'Selling…' : 'Sell'}
+              </Button>
             </div>
           </div>
         </div>
@@ -277,6 +391,20 @@ export default function InventoryPage() {
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select parts</div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Custom parts card */}
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
+            onClick={() => { setPartDrawerGroup({ title: 'Custom parts', variants: items }); setPartDrawerOpen(true); }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ title: 'Custom parts', variants: items }); setPartDrawerOpen(true); } }}
+          >
+            <div className="flex-1">
+              <div className="font-medium">Custom</div>
+              <div className="text-xs text-muted-foreground">Open drawer for all parts</div>
+            </div>
+          </div>
+
           {partGroups.map(group => {
             const totalOnHand = group.items.reduce((sum, it) => sum + (Number(balances[it.id] ?? 0)), 0);
             return (
@@ -291,9 +419,6 @@ export default function InventoryPage() {
                 <div className="flex-1">
                   <div className="font-medium">{group.title}</div>
                   <div className="text-xs text-muted-foreground">On hand: {totalOnHand}</div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={(e) => { e.stopPropagation(); setPartDrawerGroup({ title: group.title, variants: group.items }); setPartDrawerOpen(true); }}>Select</Button>
                 </div>
               </div>
             );
@@ -430,6 +555,23 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
     }
   };
 
+  const onSaveAndAnother = async () => {
+    const entries = Object.entries(qtyByItem)
+      .map(([id, raw]) => ({ id: Number(id), qty: parseInt((raw || '0'), 10) }))
+      .filter(e => e.qty > 0);
+    if (entries.length === 0) return;
+    setSaving(true);
+    try {
+      for (const e of entries) {
+        await onReceive(e.id, e.qty);
+      }
+      // Reset inputs but keep drawer open
+      setQtyByItem({});
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const hasPositive = Object.values(qtyByItem).some(v => (parseInt((v || '0'), 10) > 0));
 
   return (
@@ -467,9 +609,14 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
           ))}
         </div>
         <SheetFooter>
-          <Button onClick={onSaveAll} disabled={!hasPositive || saving} className="w-full">
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
+          <div className="flex w-full gap-2">
+            <Button onClick={onSaveAll} disabled={!hasPositive || saving} className="flex-1">
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+            <Button onClick={onSaveAndAnother} disabled={!hasPositive || saving} variant="secondary" className="flex-1">
+              {saving ? 'Saving…' : 'Add another'}
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
