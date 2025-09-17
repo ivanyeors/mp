@@ -34,6 +34,7 @@ export default function ConfigureInventoryPage() {
   const [open, setOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<Product["size"] | null>(null);
   const [bolsterOpen, setBolsterOpen] = useState(false);
+  const [bolsterVariant, setBolsterVariant] = useState<'Short (0.8m)' | 'Medium (1m)' | 'Long (1.2m)' | null>(null);
   const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
 
   useEffect(() => {
@@ -62,13 +63,45 @@ export default function ConfigureInventoryPage() {
 
   useEffect(() => {
     try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('bolster_bom_lines') : null;
+      // Load a default cache (medium) only once; specific variant will reload on open
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('bolster_bom_lines:medium') : null;
       if (raw) {
         const parsed = JSON.parse(raw) as BomLine[];
         setBolsterLines(Array.isArray(parsed) ? parsed : []);
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    const loadVariant = async () => {
+      if (!bolsterOpen || !bolsterVariant) return;
+      const variant = bolsterVariant === 'Short (0.8m)'
+        ? 'short' : bolsterVariant === 'Long (1.2m)'
+        ? 'long' : 'medium';
+      type LineRow = { item_id: number; quantity: number | string };
+      const { data } = await supabaseClient
+        .from('bolster_bom_lines')
+        .select('item_id,quantity')
+        .eq('variant', variant);
+      const rows = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
+      if (rows.length) {
+        setBolsterLines(rows);
+      } else {
+        try {
+          const raw = typeof window !== 'undefined' ? window.localStorage.getItem(`bolster_bom_lines:${variant}`) : null;
+          if (raw) {
+            const parsed = JSON.parse(raw) as BomLine[];
+            setBolsterLines(Array.isArray(parsed) ? parsed : []);
+          } else {
+            setBolsterLines([]);
+          }
+        } catch {
+          setBolsterLines([]);
+        }
+      }
+    };
+    loadVariant();
+  }, [bolsterOpen, bolsterVariant]);
 
   // removed unused itemsBy
 
@@ -90,13 +123,16 @@ export default function ConfigureInventoryPage() {
   const saveBolster = async () => {
     try {
       const lines = (bolsterLines ?? []).filter(l => (l.quantity ?? 0) > 0);
+      const variant = bolsterVariant === 'Short (0.8m)'
+        ? 'short' : bolsterVariant === 'Long (1.2m)'
+        ? 'long' : 'medium';
       await fetch('/settings/inventory/configure/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'bolster', lines }),
+        body: JSON.stringify({ kind: 'bolster', variant, lines }),
       });
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('bolster_bom_lines', JSON.stringify(lines));
+        window.localStorage.setItem(`bolster_bom_lines:${variant}`, JSON.stringify(lines));
       }
       toast.success('Bolster configuration saved');
       setBolsterOpen(false);
@@ -156,20 +192,27 @@ export default function ConfigureInventoryPage() {
       <div className="space-y-2">
         <div className="text-sm text-muted-foreground">Configure Mbolster</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={()=> { setBolsterOpen(true); }}
-            onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setBolsterOpen(true); } }}
-            className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
-          >
-            <div className="text-xs text-muted-foreground">Bolster</div>
-            <div className="text-2xl font-semibold">Standard</div>
-            <div className="mt-2 text-xs text-muted-foreground">Case, Protector, 6D-L</div>
-            <div className="mt-3">
-              <Button size="sm" variant="secondary">Configure</Button>
+          {[
+            { key: 'Short (0.8m)' as const, label: 'Short (0.8m)' },
+            { key: 'Medium (1m)' as const, label: 'Medium (1m)' },
+            { key: 'Long (1.2m)' as const, label: 'Long (1.2m)' },
+          ].map(v => (
+            <div
+              key={v.key}
+              role="button"
+              tabIndex={0}
+              onClick={()=> { setBolsterVariant(v.key); setBolsterOpen(true); }}
+              onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setBolsterVariant(v.key); setBolsterOpen(true); } }}
+              className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
+            >
+              <div className="text-xs text-muted-foreground">Bolster</div>
+              <div className="text-2xl font-semibold">{v.label}</div>
+              <div className="mt-2 text-xs text-muted-foreground">Case, Protector, 6D-L</div>
+              <div className="mt-3">
+                <Button size="sm" variant="secondary">Configure</Button>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -201,7 +244,7 @@ export default function ConfigureInventoryPage() {
       <Sheet open={bolsterOpen} onOpenChange={setBolsterOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
           <SheetHeader>
-            <SheetTitle>Configure Bolster</SheetTitle>
+            <SheetTitle>Configure Bolster{bolsterVariant ? ` — ${bolsterVariant}` : ''}</SheetTitle>
             <SheetDescription>Adjust components and quantities for the single-size bolster, including packaging.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4 px-2">

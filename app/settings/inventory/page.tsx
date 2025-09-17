@@ -25,7 +25,7 @@ export default function InventoryPage() {
     pillows: Record<string, number>;
     parts: Record<number, number>;
   }>({ pillows: {}, parts: {} });
-  const [bolsterLines, setBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [bolsterLinesByVariant, setBolsterLinesByVariant] = useState<Record<'short'|'medium'|'long', Array<{ item_id: number; quantity: number }>>>({ short: [], medium: [], long: [] });
 
   const load = async () => {
     setLoading(true);
@@ -49,20 +49,26 @@ export default function InventoryPage() {
 
   useEffect(() => {
     const loadBolster = async () => {
-      type LineRow = { item_id: number; quantity: number | string };
-      const { data } = await supabaseClient.from('bolster_bom_lines').select('item_id,quantity');
-      const lines = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
-      if (!lines.length) {
-        try {
-          const raw = typeof window !== 'undefined' ? window.localStorage.getItem('bolster_bom_lines') : null;
-          if (raw) {
-            const parsed = JSON.parse(raw) as Array<{ item_id: number; quantity: number }>;
-            if (Array.isArray(parsed)) setBolsterLines(parsed);
-          }
-        } catch {}
-      } else {
-        setBolsterLines(lines);
-      }
+      type LineRow = { variant: 'short'|'medium'|'long'; item_id: number; quantity: number | string };
+      const { data } = await supabaseClient.from('bolster_bom_lines').select('variant,item_id,quantity');
+      const grouped: Record<'short'|'medium'|'long', Array<{ item_id: number; quantity: number }>> = { short: [], medium: [], long: [] };
+      (data ?? []).forEach((r: LineRow) => {
+        const q = Number(r.quantity);
+        grouped[r.variant].push({ item_id: r.item_id, quantity: q });
+      });
+      // Fallback from localStorage if any variant missing
+      (['short','medium','long'] as const).forEach((v) => {
+        if (grouped[v].length === 0) {
+          try {
+            const raw = typeof window !== 'undefined' ? window.localStorage.getItem(`bolster_bom_lines:${v}`) : null;
+            if (raw) {
+              const parsed = JSON.parse(raw) as Array<{ item_id: number; quantity: number }>;
+              if (Array.isArray(parsed)) grouped[v] = parsed;
+            }
+          } catch {}
+        }
+      });
+      setBolsterLinesByVariant(grouped);
     };
     loadBolster();
   }, []);
@@ -111,11 +117,24 @@ export default function InventoryPage() {
     toast.message(`Selected 1 pillow size ${size}`);
   };
 
-  const buildableBolster = useMemo(() => {
-    if (!bolsterLines.length) return 0;
-    const counts = bolsterLines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
+  const buildableBolsterShort = useMemo(() => {
+    const lines = bolsterLinesByVariant.short;
+    if (!lines.length) return 0;
+    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
     return counts.length ? Math.max(0, Math.min(...counts)) : 0;
-  }, [balances, bolsterLines]);
+  }, [balances, bolsterLinesByVariant]);
+  const buildableBolsterMedium = useMemo(() => {
+    const lines = bolsterLinesByVariant.medium;
+    if (!lines.length) return 0;
+    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
+    return counts.length ? Math.max(0, Math.min(...counts)) : 0;
+  }, [balances, bolsterLinesByVariant]);
+  const buildableBolsterLong = useMemo(() => {
+    const lines = bolsterLinesByVariant.long;
+    if (!lines.length) return 0;
+    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
+    return counts.length ? Math.max(0, Math.min(...counts)) : 0;
+  }, [balances, bolsterLinesByVariant]);
 
   const incrementPartSelection = (itemId: number) => {
     setCart(prev => ({ ...prev, parts: { ...prev.parts, [itemId]: (prev.parts[itemId] ?? 0) + 1 } }));
@@ -149,8 +168,10 @@ export default function InventoryPage() {
     try {
       // Process pillows
       for (const [size, qty] of pillowEntries) {
-        if (size === 'Bolster') {
-          if (qty > 0) await sellBolster({ quantity: qty as number });
+        if (size === 'Bolster' || String(size).startsWith('Bolster')) {
+          const s = String(size);
+          const variant = s.includes('Short') ? 'short' : s.includes('Long') ? 'long' : 'medium';
+          if (qty > 0) await sellBolster({ quantity: qty as number, variant });
           continue;
         }
         const product = products.find(p => p.size === size);
@@ -215,6 +236,37 @@ export default function InventoryPage() {
             <div className="text-2xl font-semibold">{buildableBolster}</div>
             <div className="mt-2 flex gap-2">
               <Button size="sm" onClick={() => incrementPillowSelection('Bolster')}>Select</Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Bolster variants */}
+      <section className="space-y-2">
+        <div className="text-sm text-muted-foreground">Select bolsters</div>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="rounded border p-3">
+            <div className="text-xs text-muted-foreground">Bolster</div>
+            <div className="text-2xl font-semibold">{buildableBolsterShort}</div>
+            <div className="mt-1 text-xs text-muted-foreground">Short (0.8m)</div>
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" onClick={() => incrementPillowSelection('Bolster Short (0.8m)')}>Select</Button>
+            </div>
+          </div>
+          <div className="rounded border p-3">
+            <div className="text-xs text-muted-foreground">Bolster</div>
+            <div className="text-2xl font-semibold">{buildableBolsterMedium}</div>
+            <div className="mt-1 text-xs text-muted-foreground">Medium (1m)</div>
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" onClick={() => incrementPillowSelection('Bolster Medium (1m)')}>Select</Button>
+            </div>
+          </div>
+          <div className="rounded border p-3">
+            <div className="text-xs text-muted-foreground">Bolster</div>
+            <div className="text-2xl font-semibold">{buildableBolsterLong}</div>
+            <div className="mt-1 text-xs text-muted-foreground">Long (1.2m)</div>
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" onClick={() => incrementPillowSelection('Bolster Long (1.2m)')}>Select</Button>
             </div>
           </div>
         </div>

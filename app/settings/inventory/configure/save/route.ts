@@ -9,6 +9,7 @@ const BodySchema = z.object({
 
 const BolsterBodySchema = z.object({
   kind: z.literal('bolster'),
+  variant: z.enum(['short','medium','long']).default('medium'),
   lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() }))
 })
 
@@ -17,14 +18,14 @@ export async function POST(req: NextRequest) {
   // Two modes: standard pillow product BOM, or bolster pseudo-product using size='Bolster'
   const bolsterParsed = BolsterBodySchema.safeParse(json)
   if (bolsterParsed.success) {
-    const { lines } = bolsterParsed.data
+    const { lines, variant } = bolsterParsed.data
     const admin = supabaseAdmin()
-    // Replace all bolster lines
-    const { error: delErr } = await admin.from('bolster_bom_lines').delete().neq('id', 0)
+    // Replace lines for this variant only
+    const { error: delErr } = await admin.from('bolster_bom_lines').delete().eq('variant', variant)
     if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
     if (lines.length) {
-      const upserts = lines.map(l => ({ item_id: l.item_id, quantity: l.quantity }))
-      const { error: upErr } = await admin.from('bolster_bom_lines').upsert(upserts, { onConflict: 'item_id' })
+      const upserts = lines.map(l => ({ variant, item_id: l.item_id, quantity: l.quantity }))
+      const { error: upErr } = await admin.from('bolster_bom_lines').upsert(upserts, { onConflict: 'variant,item_id' })
       if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
     }
     return NextResponse.json({ ok: true })

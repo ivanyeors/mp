@@ -7,6 +7,7 @@ const SellPillowSchema = z.object({ productId: z.number().int().positive(), quan
 const ItemQtySchema = z.object({ itemId: z.number().int().positive(), quantity: z.number().int().positive() })
 const SellBolsterSchema = z.object({
   quantity: z.number().int().positive(),
+  variant: z.enum(['short','medium','long']).default('medium'),
   components: z.object({
     caseQty: z.number().int().positive().default(1),
     protectorQty: z.number().int().positive().default(1),
@@ -63,6 +64,7 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
   const { data: lines, error: blErr } = await admin
     .from('bolster_bom_lines')
     .select('item_id,quantity')
+    .eq('variant', parsed.variant)
   if (blErr) throw new Error(blErr.message)
 
   let effectiveLines = (lines ?? []).map(l => ({ item_id: l.item_id, quantity: Number(l.quantity) }))
