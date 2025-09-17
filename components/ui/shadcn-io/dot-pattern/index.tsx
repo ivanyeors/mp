@@ -191,17 +191,17 @@ export const DotPattern = forwardRef<HTMLDivElement, DotPatternProps>(({
   useEffect(() => {
     buildGrid();
     let ro: ResizeObserver | null = null;
-    if ("ResizeObserver" in window) {
+    if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver(buildGrid);
       if (wrapperRef.current) {
         ro.observe(wrapperRef.current);
       }
-    } else {
+    } else if (typeof window !== "undefined") {
       window.addEventListener("resize", buildGrid);
     }
     return () => {
       if (ro) ro.disconnect();
-      else window.removeEventListener("resize", buildGrid);
+      else if (typeof window !== "undefined") window.removeEventListener("resize", buildGrid);
     };
   }, [buildGrid]);
 
