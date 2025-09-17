@@ -6,16 +6,15 @@ import { cn } from '@/lib/utils';
 
 gsap.registerPlugin(InertiaPlugin);
 
-function throttle<T extends (...args: unknown[]) => void>(func: T, limit: number): T {
+function throttle<A extends unknown[]>(func: (...args: A) => void, limit: number): (...args: A) => void {
   let lastCall = 0;
-  const throttled = function (this: ThisParameterType<T>, ...args: Parameters<T>) {
+  return function (this: unknown, ...args: A) {
     const now = performance.now();
     if (now - lastCall >= limit) {
       lastCall = now;
       func.apply(this, args);
     }
-  } as T;
-  return throttled;
+  };
 }
 
 interface Dot {
