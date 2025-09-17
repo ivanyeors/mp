@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { sellPillow, sellPart, receiveStock, sellBolster } from "./actions";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -32,6 +33,10 @@ export default function InventoryPage() {
   const [customBolsterVariant, setCustomBolsterVariant] = useState<'short'|'medium'|'long'>('medium');
   const [customBolsterQty, setCustomBolsterQty] = useState<string>('');
   const [savingCustomBolster, setSavingCustomBolster] = useState(false);
+  const [customPillowDrawerOpen, setCustomPillowDrawerOpen] = useState(false);
+  const [customBolsterDrawerOpen, setCustomBolsterDrawerOpen] = useState(false);
+  const [customPillowLines, setCustomPillowLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [customBolsterLines, setCustomBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
 
   const load = async () => {
     setLoading(true);
@@ -78,6 +83,33 @@ export default function InventoryPage() {
     };
     loadBolster();
   }, []);
+
+  useEffect(() => {
+    const loadCustomPillowLines = async () => {
+      if (!customPillowDrawerOpen) return;
+      const product = products.find(p => p.size === customPillowSize);
+      if (!product) { setCustomPillowLines([]); return; }
+      type BomRow = { item_id: number; quantity: number | string };
+      const { data } = await supabaseClient.from('bom_lines').select('item_id,quantity').eq('product_id', product.id);
+      const rows = (data ?? []).map((r: BomRow) => ({ item_id: r.item_id, quantity: Number(r.quantity) }));
+      setCustomPillowLines(rows);
+    };
+    loadCustomPillowLines();
+  }, [customPillowDrawerOpen, customPillowSize, products]);
+
+  useEffect(() => {
+    const loadCustomBolsterLines = async () => {
+      if (!customBolsterDrawerOpen) return;
+      type LineRow = { item_id: number; quantity: number | string };
+      const { data } = await supabaseClient
+        .from('bolster_bom_lines')
+        .select('item_id,quantity')
+        .eq('variant', customBolsterVariant);
+      const rows = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
+      setCustomBolsterLines(rows);
+    };
+    loadCustomBolsterLines();
+  }, [customBolsterDrawerOpen, customBolsterVariant]);
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -207,40 +239,88 @@ export default function InventoryPage() {
     toast.success(`Received ${qty} unit(s)`);
   };
 
-  const sellCustomPillow = async () => {
+  // removed old inline custom pillow sell
+
+  // removed old inline custom bolster sell
+
+  const sellCustomPillowFromDrawer = async () => {
     const qty = parseInt((customPillowQty || '0'), 10);
     if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
-    const product = products.find(p => p.size === customPillowSize);
-    if (!product) { toast.error('Invalid size'); return; }
+    const entries = (customPillowLines ?? []).filter(l => (l.quantity ?? 0) > 0);
+    if (entries.length === 0) { toast.message('No parts configured'); return; }
     setSavingCustomPillow(true);
     try {
-      await sellPillow({ productId: product.id, quantity: qty });
+      for (const l of entries) {
+        const total = Math.max(0, Number(l.quantity) * qty);
+        if (total > 0) await sellPart({ itemId: l.item_id, quantity: total });
+      }
       setCustomPillowQty('');
       await load();
       toast.success('Custom pillow sold');
+      setCustomPillowDrawerOpen(false);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to sell pillow';
+      const message = e instanceof Error ? e.message : 'Failed to sell custom pillow';
       toast.error(message);
     } finally {
       setSavingCustomPillow(false);
     }
   };
 
-  const sellCustomBolster = async () => {
+  const sellCustomBolsterFromDrawer = async () => {
     const qty = parseInt((customBolsterQty || '0'), 10);
     if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    const entries = (customBolsterLines ?? []).filter(l => (l.quantity ?? 0) > 0);
+    if (entries.length === 0) { toast.message('No parts configured'); return; }
     setSavingCustomBolster(true);
     try {
-      await sellBolster({ quantity: qty, variant: customBolsterVariant });
+      for (const l of entries) {
+        const total = Math.max(0, Number(l.quantity) * qty);
+        if (total > 0) await sellPart({ itemId: l.item_id, quantity: total });
+      }
       setCustomBolsterQty('');
       await load();
       toast.success('Custom bolster sold');
+      setCustomBolsterDrawerOpen(false);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed to sell bolster';
+      const message = e instanceof Error ? e.message : 'Failed to sell custom bolster';
       toast.error(message);
     } finally {
       setSavingCustomBolster(false);
     }
+  };
+
+  const addCustomPillowToCart = async () => {
+    const qty = parseInt((customPillowQty || '0'), 10);
+    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    const entries = (customPillowLines ?? []).filter(l => (l.quantity ?? 0) > 0);
+    if (entries.length === 0) { toast.message('No parts configured'); return; }
+    setCart(prev => {
+      const nextParts = { ...prev.parts };
+      for (const l of entries) {
+        const total = Math.max(0, Number(l.quantity) * qty);
+        if (total > 0) nextParts[l.item_id] = (nextParts[l.item_id] ?? 0) + total;
+      }
+      return { ...prev, parts: nextParts };
+    });
+    toast.success('Added to cart');
+    setCustomPillowDrawerOpen(false);
+  };
+
+  const addCustomBolsterToCart = async () => {
+    const qty = parseInt((customBolsterQty || '0'), 10);
+    if (!qty || qty <= 0) { toast.message('Enter a quantity > 0'); return; }
+    const entries = (customBolsterLines ?? []).filter(l => (l.quantity ?? 0) > 0);
+    if (entries.length === 0) { toast.message('No parts configured'); return; }
+    setCart(prev => {
+      const nextParts = { ...prev.parts };
+      for (const l of entries) {
+        const total = Math.max(0, Number(l.quantity) * qty);
+        if (total > 0) nextParts[l.item_id] = (nextParts[l.item_id] ?? 0) + total;
+      }
+      return { ...prev, parts: nextParts };
+    });
+    toast.success('Added to cart');
+    setCustomBolsterDrawerOpen(false);
   };
 
   if (loading) return <div className="p-4">Loading…</div>;
@@ -287,32 +367,16 @@ export default function InventoryPage() {
             <div className="text-xs text-muted-foreground">Bolster</div>
             <div className="text-2xl font-semibold">{buildableBolsterMedium}</div>
           </div>
-          {/* Custom Pillow */}
-          <div className="rounded border p-3">
+          {/* Custom Pillow - opens drawer */}
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onClick={() => setCustomPillowDrawerOpen(true)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setCustomPillowDrawerOpen(true); }}
+          >
             <div className="text-xs text-muted-foreground">Custom</div>
-            <div className="mt-2 flex items-center gap-2">
-              <select
-                aria-label="Custom pillow size"
-                className="rounded border px-2 py-1 text-sm"
-                value={customPillowSize}
-                onChange={(e) => setCustomPillowSize(e.target.value)}
-              >
-                {['XS','S','M','L','XL'].map(s => (<option key={s} value={s}>{s}</option>))}
-              </select>
-              <Input
-                type="number"
-                min={0}
-                placeholder="Qty"
-                value={customPillowQty}
-                onChange={(e) => setCustomPillowQty(e.target.value)}
-                className="w-24"
-              />
-            </div>
-            <div className="mt-2">
-              <Button size="sm" className="w-full" onClick={sellCustomPillow} disabled={savingCustomPillow}>
-                {savingCustomPillow ? 'Selling…' : 'Sell'}
-              </Button>
-            </div>
+            <div className="text-2xl font-semibold mt-1">Configure…</div>
           </div>
         </div>
       </section>
@@ -354,34 +418,16 @@ export default function InventoryPage() {
             <div className="text-2xl font-semibold">{buildableBolsterLong}</div>
             <div className="mt-1 text-xs text-muted-foreground">Long (1.2m)</div>
           </div>
-          {/* Custom Bolster */}
-          <div className="rounded border p-3">
+          {/* Custom Bolster - opens drawer */}
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
+            role="button"
+            tabIndex={0}
+            onClick={() => setCustomBolsterDrawerOpen(true)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setCustomBolsterDrawerOpen(true); }}
+          >
             <div className="text-xs text-muted-foreground">Custom bolster</div>
-            <div className="mt-2 flex items-center gap-2">
-              <select
-                aria-label="Custom bolster variant"
-                className="rounded border px-2 py-1 text-sm"
-                value={customBolsterVariant}
-                onChange={(e) => setCustomBolsterVariant((e.target.value as 'short'|'medium'|'long'))}
-              >
-                <option value="short">Short (0.8m)</option>
-                <option value="medium">Medium (1m)</option>
-                <option value="long">Long (1.2m)</option>
-              </select>
-              <Input
-                type="number"
-                min={0}
-                placeholder="Qty"
-                value={customBolsterQty}
-                onChange={(e) => setCustomBolsterQty(e.target.value)}
-                className="w-24"
-              />
-            </div>
-            <div className="mt-2">
-              <Button size="sm" className="w-full" onClick={sellCustomBolster} disabled={savingCustomBolster}>
-                {savingCustomBolster ? 'Selling…' : 'Sell'}
-              </Button>
-            </div>
+            <div className="text-2xl font-semibold mt-1">Configure…</div>
           </div>
         </div>
       </section>
@@ -506,6 +552,38 @@ export default function InventoryPage() {
         onReceive={onReceive}
         onSelectVariant={(id) => incrementPartSelection(id)}
       />
+
+      {/* Custom Pillow Drawer */}
+      <CustomPillowDrawer
+        open={customPillowDrawerOpen}
+        onOpenChange={setCustomPillowDrawerOpen}
+        size={customPillowSize}
+        setSize={setCustomPillowSize}
+        items={items}
+        lines={customPillowLines}
+        setLines={setCustomPillowLines}
+        qty={customPillowQty}
+        setQty={setCustomPillowQty}
+        saving={savingCustomPillow}
+        onSell={async () => { await sellCustomPillowFromDrawer(); }}
+        onAdd={addCustomPillowToCart}
+      />
+
+      {/* Custom Bolster Drawer */}
+      <CustomBolsterDrawer
+        open={customBolsterDrawerOpen}
+        onOpenChange={setCustomBolsterDrawerOpen}
+        variant={customBolsterVariant}
+        setVariant={setCustomBolsterVariant}
+        items={items}
+        lines={customBolsterLines}
+        setLines={setCustomBolsterLines}
+        qty={customBolsterQty}
+        setQty={setCustomBolsterQty}
+        saving={savingCustomBolster}
+        onSell={async () => { await sellCustomBolsterFromDrawer(); }}
+        onAdd={addCustomBolsterToCart}
+      />
     </div>
   );
 }
@@ -616,6 +694,380 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
             <Button onClick={onSaveAndAnother} disabled={!hasPositive || saving} variant="secondary" className="flex-1">
               {saving ? 'Saving…' : 'Add another'}
             </Button>
+          </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, setLines, qty, setQty, saving, onSell, onAdd }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  size: string;
+  setSize: (s: string) => void;
+  items: Item[];
+  lines: Array<{ item_id: number; quantity: number }>;
+  setLines: Dispatch<SetStateAction<Array<{ item_id: number; quantity: number }>>>;
+  qty: string;
+  setQty: (v: string) => void;
+  saving: boolean;
+  onSell: () => Promise<void>;
+  onAdd: () => Promise<void> | void;
+}) {
+  const sized = (category: string) => items.filter(i => i.category===category && i.size===size);
+  const fillings = items.filter(i => i.category==='filling');
+  const packaging = items.filter(i => i.category==='packaging' && ((size==='XS'||size==='S'||size==='M') ? i.size==='S' : i.size==='L'));
+
+  const upsert = (item_id: number, quantity: number) => {
+    setLines((prev: Array<{ item_id: number; quantity: number }>) => {
+      const idx = prev.findIndex(l => l.item_id===item_id);
+      if (idx === -1) return [...prev, { item_id, quantity }];
+      return prev.map((l) => l.item_id===item_id ? { ...l, quantity } : l);
+    });
+  };
+
+  const remove = (item_id: number) => {
+    setLines((prev: Array<{ item_id: number; quantity: number }>) => prev.filter(l => l.item_id!==item_id));
+  };
+
+  const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetHeader>
+          <SheetTitle>Custom pillow</SheetTitle>
+          <SheetDescription>Choose size, adjust parts and packaging, then sell.</SheetDescription>
+        </SheetHeader>
+        <div className="mt-4 space-y-4 px-2">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground" htmlFor="custom-pillow-size">Size</label>
+            <select
+              id="custom-pillow-size"
+              aria-label="Custom pillow size"
+              className="rounded border px-2 py-1 text-sm"
+              value={size}
+              onChange={(e) => setSize(e.target.value)}
+            >
+              {['XS','S','M','L','XL'].map(s => (<option key={s} value={s}>{s}</option>))}
+            </select>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Qty</span>
+              <Input type="number" min={0} placeholder="Qty" value={qty} onChange={(e)=> setQty(e.target.value)} className="w-24" />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Cover (1)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Part</TableHead>
+                  <TableHead>Variant</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sized('cover').map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">Cover</TableCell>
+                    <TableCell>{size}</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Case (1)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Part</TableHead>
+                  <TableHead>Variant</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sized('case').map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">Case</TableCell>
+                    <TableCell>{size}</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Protector (1)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Part</TableHead>
+                  <TableHead>Variant</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sized('protector').map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">Protector</TableCell>
+                    <TableCell>{size}</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Fillings</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Subtype</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fillings.map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
+                        const v = Math.max(0, parseInt(e.target.value||'0',10));
+                        if (v===0) remove(it.id); else upsert(it.id, v);
+                      }} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Packaging (1 vacuum + 1 net)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {packaging.map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">{it.name}</TableCell>
+                    <TableCell>{it.size}</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+        <SheetFooter>
+          <div className="flex w-full gap-2">
+            <Button onClick={onSell} disabled={saving} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
+            <Button onClick={onAdd} variant="secondary" className="w-20" aria-label="Add to cart">Add</Button>
+          </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, lines, setLines, qty, setQty, saving, onSell, onAdd }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  variant: 'short'|'medium'|'long';
+  setVariant: (v: 'short'|'medium'|'long') => void;
+  items: Item[];
+  lines: Array<{ item_id: number; quantity: number }>;
+  setLines: Dispatch<SetStateAction<Array<{ item_id: number; quantity: number }>>>;
+  qty: string;
+  setQty: (v: string) => void;
+  saving: boolean;
+  onSell: () => Promise<void>;
+  onAdd: () => Promise<void> | void;
+}) {
+  const sized = (category: string) => items.filter(i => i.category===category && i.size==='Bolster');
+  const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D-L');
+  const packaging = items.filter(i => i.category==='packaging' && i.size==='S');
+
+  const upsert = (item_id: number, quantity: number) => {
+    setLines((prev: Array<{ item_id: number; quantity: number }>) => {
+      const idx = prev.findIndex(l => l.item_id===item_id);
+      if (idx === -1) return [...prev, { item_id, quantity }];
+      return prev.map((l) => l.item_id===item_id ? { ...l, quantity } : l);
+    });
+  };
+
+  const remove = (item_id: number) => {
+    setLines((prev: Array<{ item_id: number; quantity: number }>) => prev.filter(l => l.item_id!==item_id));
+  };
+
+  const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetHeader>
+          <SheetTitle>Custom bolster</SheetTitle>
+          <SheetDescription>Choose variant, adjust parts and packaging, then sell.</SheetDescription>
+        </SheetHeader>
+        <div className="mt-4 space-y-4 px-2">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-muted-foreground" htmlFor="custom-bolster-variant">Variant</label>
+            <select
+              id="custom-bolster-variant"
+              aria-label="Custom bolster variant"
+              className="rounded border px-2 py-1 text-sm"
+              value={variant}
+              onChange={(e) => setVariant((e.target.value as 'short'|'medium'|'long'))}
+            >
+              <option value="short">Short (0.8m)</option>
+              <option value="medium">Medium (1m)</option>
+              <option value="long">Long (1.2m)</option>
+            </select>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Qty</span>
+              <Input type="number" min={0} placeholder="Qty" value={qty} onChange={(e)=> setQty(e.target.value)} className="w-24" />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Case (Bolster)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Part</TableHead>
+                  <TableHead>Variant</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sized('case').map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">Case</TableCell>
+                    <TableCell>Bolster</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Protector (Bolster)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Part</TableHead>
+                  <TableHead>Variant</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sized('protector').map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">Protector</TableCell>
+                    <TableCell>Bolster</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Fillings (6D-L)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Subtype</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {fillings.map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
+                        const v = Math.max(0, parseInt(e.target.value||'0',10));
+                        if (v===0) remove(it.id); else upsert(it.id, v);
+                      }} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-sm font-medium text-muted-foreground">Packaging (1 vacuum + 1 net typical)</div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {packaging.map(it => (
+                  <TableRow key={it.id}>
+                    <TableCell className="font-medium">{it.name}</TableCell>
+                    <TableCell>{it.size}</TableCell>
+                    <TableCell className="w-[140px]">
+                      <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
+                    </TableCell>
+                    <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+        <SheetFooter>
+          <div className="flex w-full gap-2">
+            <Button onClick={onSell} disabled={saving} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
+            <Button onClick={onAdd} variant="secondary" className="w-20" aria-label="Add to cart">Add</Button>
           </div>
         </SheetFooter>
       </SheetContent>

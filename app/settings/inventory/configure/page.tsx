@@ -190,7 +190,7 @@ export default function ConfigureInventoryPage() {
 
       <Separator />
       <div className="space-y-2">
-        <div className="text-sm text-muted-foreground">Configure Mbolster</div>
+        <div className="text-2xl font-semibold">Configure Mbolster</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { key: 'Short (0.8m)' as const, label: 'Short (0.8m)' },
