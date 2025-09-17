@@ -6,8 +6,7 @@ import { cn } from '@/lib/utils';
 
 gsap.registerPlugin(InertiaPlugin);
 
-type AnyFunction = (...args: unknown[]) => void;
-function throttle<T extends (...args: any[]) => void>(func: T, limit: number): T {
+function throttle<T extends (...args: unknown[]) => void>(func: T, limit: number): T {
   let lastCall = 0;
   const throttled = function (this: ThisParameterType<T>, ...args: Parameters<T>) {
     const now = performance.now();

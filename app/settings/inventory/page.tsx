@@ -344,9 +344,8 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
   const [qtyByItem, setQtyByItem] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const variants: Item[] = group?.variants ?? [];
   const sortedVariants = useMemo(() => {
-    const list = group?.variants ?? [];
+    const list: Item[] = group?.variants ?? [];
     if (!group) return list;
     if (group.title !== 'Fillings') return list;
     const typeOrder = (t: string) => (t === '3D' ? 0 : t === '6D' ? 1 : 2);
