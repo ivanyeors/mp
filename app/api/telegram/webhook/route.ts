@@ -237,9 +237,10 @@ async function handleCommand(chatId: number, text: string) {
     // Only /stock, /in, /out are supported
 
     await sendTelegramMessage(chatId, 'Unknown command. Send /help for usage.')
-  } catch (err: any) {
+  } catch (err) {
     console.error('Command error:', err)
-    await sendTelegramMessage(chatId, `Error: ${err?.message || 'unexpected error'}`)
+    const message = err instanceof Error ? err.message : 'unexpected error'
+    await sendTelegramMessage(chatId, `Error: ${message}`)
   }
 }
 

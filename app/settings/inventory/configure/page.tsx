@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

@@ -20,7 +20,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
   const [partDrawerOpen, setPartDrawerOpen] = useState(false);
-  const [partDrawerGroup, setPartDrawerGroup] = useState<{ title: string; variants: any[] } | null>(null);
+  const [partDrawerGroup, setPartDrawerGroup] = useState<{ title: string; variants: Item[] } | null>(null);
   const [cart, setCart] = useState<{
     pillows: Record<string, number>;
     parts: Record<number, number>;
@@ -167,8 +167,9 @@ export default function InventoryPage() {
       await load();
       toast.success("Sale completed");
       setCartOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed to sell");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to sell';
+      toast.error(message);
     }
   };
 
