@@ -9,10 +9,13 @@ import { sellPillow, sellPart, receiveStock, sellBolster } from "./actions";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
+type Item = { id: number; category: string; subtype: string | null; name: string; size: string | null };
+type Product = { id: number; size: string };
+
 export default function InventoryPage() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [balances, setBalances] = useState<Record<number, number>>({});
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [buildable, setBuildable] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
@@ -32,10 +35,12 @@ export default function InventoryPage() {
       supabaseClient.from("pillow_products").select("id,size"),
       supabaseClient.from("product_buildable").select("product_id,size,buildable"),
     ]);
-    setItems(itemsData ?? []);
-    setBalances(Object.fromEntries((balancesData ?? []).map((r: any)=> [r.item_id, Number(r.on_hand)] )));
-    setProducts(productsData ?? []);
-    const build = Object.fromEntries((buildableData ?? []).map((r: any)=> [r.size, Number(r.buildable)] ));
+    setItems((itemsData ?? []) as Item[]);
+    type BalanceRow = { item_id: number; on_hand: number | string };
+    setBalances(Object.fromEntries((balancesData ?? []).map((r: BalanceRow)=> [r.item_id, Number(r.on_hand)] )));
+    setProducts((productsData ?? []) as Product[]);
+    type BuildableRow = { size: string; buildable: number | string };
+    const build = Object.fromEntries((buildableData ?? []).map((r: BuildableRow)=> [r.size, Number(r.buildable)] ));
     setBuildable(build);
     setLoading(false);
   };
@@ -44,13 +49,14 @@ export default function InventoryPage() {
 
   useEffect(() => {
     const loadBolster = async () => {
+      type LineRow = { item_id: number; quantity: number | string };
       const { data } = await supabaseClient.from('bolster_bom_lines').select('item_id,quantity');
-      const lines = (data ?? []).map((l: any) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
+      const lines = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
       if (!lines.length) {
         try {
           const raw = typeof window !== 'undefined' ? window.localStorage.getItem('bolster_bom_lines') : null;
           if (raw) {
-            const parsed = JSON.parse(raw);
+            const parsed = JSON.parse(raw) as Array<{ item_id: number; quantity: number }>;
             if (Array.isArray(parsed)) setBolsterLines(parsed);
           }
         } catch {}
@@ -63,8 +69,9 @@ export default function InventoryPage() {
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  type Group = { key: string; title: string; items: Item[] };
   const partGroups = useMemo(() => {
-    const groups: { key: string; title: string; items: any[] }[] = [];
+    const groups: Group[] = [];
     // Bolster-only parts
     const bolsterCase = items.filter(i => i.category === 'case' && i.size === 'Bolster');
     if (bolsterCase.length) groups.push({ key: 'bolster:case', title: 'Bolster case', items: bolsterCase });
@@ -83,7 +90,7 @@ export default function InventoryPage() {
     }
     // Packaging grouped by name
     const pkgs = items.filter(i => i.category === 'packaging');
-    const pkgMap = new Map<string, any[]>();
+    const pkgMap = new Map<string, Item[]>();
     for (const it of pkgs) {
       const key = it.name;
       const arr = pkgMap.get(key) ?? [];
@@ -328,7 +335,7 @@ export default function InventoryPage() {
 function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVariant }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  group: { title: string; variants: any[] } | null;
+  group: { title: string; variants: Item[] } | null;
   balances: Record<number, number>;
   onReceive: (itemId: number, qty: number) => Promise<void>;
   onSelectVariant: (itemId: number) => void;
@@ -336,13 +343,13 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
   const [qtyByItem, setQtyByItem] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
 
-  const variants = group?.variants ?? [];
+  const variants: Item[] = group?.variants ?? [];
   const sortedVariants = useMemo(() => {
     if (!group) return variants;
     if (group.title !== 'Fillings') return variants;
     const typeOrder = (t: string) => (t === '3D' ? 0 : t === '6D' ? 1 : 2);
     const sizeOrder = (s: string) => (s === 'S' ? 0 : s === 'L' ? 1 : s === 'L+' ? 2 : 3);
-    return [...variants].sort((a: any, b: any) => {
+    return [...variants].sort((a, b) => {
       const ta = String(a.subtype ?? a.name ?? '');
       const tb = String(b.subtype ?? b.name ?? '');
       const sa = String(a.size ?? '');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,10 +45,12 @@ export default function ConfigureInventoryPage() {
         supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
       ]);
       setItems(itemsData ?? []);
-      setProducts((productsData as any) ?? []);
+      setProducts((productsData ?? []) as Product[]);
       const next: BomState = { XS: [], S: [], M: [], L: [], XL: [] };
-      (bomData ?? []).forEach((row: any) => {
-        const product = (productsData as any)?.find((p: any) => p.id === row.product_id);
+      type BomRow = { product_id: number; item_id: number; quantity: number | string };
+      const prods = (productsData ?? []) as Product[];
+      (bomData ?? []).forEach((row: BomRow) => {
+        const product = prods.find((p) => p.id === row.product_id);
         if (!product) return;
         next[product.size as Product["size"]].push({ item_id: row.item_id, quantity: Number(row.quantity) });
       });
@@ -68,15 +70,7 @@ export default function ConfigureInventoryPage() {
     } catch {}
   }, []);
 
-  const itemsBy = useMemo(() => {
-    const by: Record<string, Item[]> = {};
-    for (const it of items) {
-      const key = `${it.category}:${it.size ?? it.subtype ?? "_"}`;
-      if (!by[key]) by[key] = [];
-      by[key].push(it);
-    }
-    return by;
-  }, [items]);
+  // removed unused itemsBy
 
   const save = async () => {
     setSaving(true);
@@ -106,8 +100,9 @@ export default function ConfigureInventoryPage() {
       }
       toast.success('Bolster configuration saved');
       setBolsterOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? 'Failed to save bolster');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Failed to save bolster';
+      toast.error(message);
     }
   };
 
@@ -221,7 +216,7 @@ export default function ConfigureInventoryPage() {
   );
 }
 
-function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items: Item[]; bom: BomState; setBom: (updater: any) => void }) {
+function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items: Item[]; bom: BomState; setBom: Dispatch<SetStateAction<BomState>> }) {
   const sized = (category: Item["category"]) => items.filter(i => i.category===category && i.size===size);
   const fillings = items.filter(i => i.category==='filling');
   const packaging = items.filter(i => i.category==='packaging' && ((size==='XS'||size==='S'||size==='M') ? i.size==='S' : i.size==='L'));
@@ -330,23 +325,11 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
   );
 }
 
-function Section({ title, children }: { title: string; children: any }) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium text-muted-foreground">{title}</div>
       <div className="space-y-2">{children}</div>
-    </div>
-  );
-}
-
-function QtyRow({ label, value, onChange }: { label: string; value: number; onChange: (v:number)=>void }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1">{label}</div>
-      <Input type="number" min={0} value={value}
-        onChange={(e)=> onChange(Math.max(0, parseInt(e.target.value||'0',10)))}
-        className="w-24" />
-      <Button variant="secondary" onClick={()=> onChange(0)}>Clear</Button>
     </div>
   );
 }
@@ -368,7 +351,7 @@ function ConfigureTable({ headers, children }: { headers: string[]; children: Re
   );
 }
 
-function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLine[]; setLines: (updater: any) => void }) {
+function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLine[]; setLines: Dispatch<SetStateAction<BomLine[]>> }) {
   const sized = (category: Item["category"]) => items.filter(i => i.category===category && (i.size==='Bolster'));
   const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D-L');
   const packaging = items.filter(i => i.category==='packaging' && i.size==='S');

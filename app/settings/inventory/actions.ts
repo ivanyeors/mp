@@ -69,10 +69,12 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
 
   if (!effectiveLines.length) {
     // Fallback to legacy implicit mapping if DB not configured yet
+    type IdRow = { id: number }
     const { data: caseItem } = await admin.from('items').select('id').eq('category', 'case').eq('size', 'Bolster').limit(1).maybeSingle()
     const { data: protectorItem } = await admin.from('items').select('id').eq('category', 'protector').eq('size', 'Bolster').limit(1).maybeSingle()
     const { data: fillingItem } = await admin.from('items').select('id').eq('category', 'filling').eq('subtype', '6D-L').limit(1).maybeSingle()
-    effectiveLines = [caseItem, protectorItem, fillingItem].filter(Boolean).map((r: any) => ({ item_id: r.id, quantity: 1 }))
+    const prelim = [caseItem, protectorItem, fillingItem].filter((r): r is IdRow => !!r)
+    effectiveLines = prelim.map((r) => ({ item_id: r.id, quantity: 1 }))
   }
 
   const txns = effectiveLines.map(l => ({ item_id: l.item_id, quantity_signed: -1 * parsed.quantity * Number(l.quantity), reason: 'sale' as const }))

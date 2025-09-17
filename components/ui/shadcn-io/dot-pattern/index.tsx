@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 
 gsap.registerPlugin(InertiaPlugin);
 
-const throttle = (func: (...args: any[]) => void, limit: number) => {
+type AnyFunction = (...args: unknown[]) => void;
+const throttle = (func: AnyFunction, limit: number) => {
   let lastCall = 0;
-  return function (this: any, ...args: any[]) {
+  return function (this: unknown, ...args: unknown[]) {
     const now = performance.now();
     if (now - lastCall >= limit) {
       lastCall = now;
@@ -64,7 +65,7 @@ export const DotPattern = forwardRef<HTMLDivElement, DotPatternProps>(({
   returnDuration = 1.5,
   ...props
 }, ref) => {
-  const domProps = { ...props } as any;
+  const domProps: Record<string, unknown> = { ...props };
   delete domProps.dotSize;
   delete domProps.gap;
   delete domProps.baseColor;
@@ -176,7 +177,7 @@ export const DotPattern = forwardRef<HTMLDivElement, DotPatternProps>(({
         ctx.save();
         ctx.translate(ox, oy);
         ctx.fillStyle = style;
-        ctx.fill(circlePath);
+        if (circlePath) ctx.fill(circlePath);
         ctx.restore();
       }
 
@@ -194,7 +195,7 @@ export const DotPattern = forwardRef<HTMLDivElement, DotPatternProps>(({
       ro = new ResizeObserver(buildGrid);
       wrapperRef.current && ro.observe(wrapperRef.current);
     } else {
-      (window as Window).addEventListener("resize", buildGrid);
+      window.addEventListener("resize", buildGrid);
     }
     return () => {
       if (ro) ro.disconnect();
