@@ -346,11 +346,12 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
 
   const variants: Item[] = group?.variants ?? [];
   const sortedVariants = useMemo(() => {
-    if (!group) return variants;
-    if (group.title !== 'Fillings') return variants;
+    const list = group?.variants ?? [];
+    if (!group) return list;
+    if (group.title !== 'Fillings') return list;
     const typeOrder = (t: string) => (t === '3D' ? 0 : t === '6D' ? 1 : 2);
     const sizeOrder = (s: string) => (s === 'S' ? 0 : s === 'L' ? 1 : s === 'L+' ? 2 : 3);
-    return [...variants].sort((a, b) => {
+    return [...list].sort((a, b) => {
       const ta = String(a.subtype ?? a.name ?? '');
       const tb = String(b.subtype ?? b.name ?? '');
       const sa = String(a.size ?? '');
@@ -359,7 +360,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSelectVa
       if (to !== 0) return to;
       return sizeOrder(sa) - sizeOrder(sb);
     });
-  }, [group, variants]);
+  }, [group]);
 
   const onSaveAll = async () => {
     const entries = Object.entries(qtyByItem)

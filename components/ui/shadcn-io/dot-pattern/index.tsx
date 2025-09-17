@@ -7,16 +7,17 @@ import { cn } from '@/lib/utils';
 gsap.registerPlugin(InertiaPlugin);
 
 type AnyFunction = (...args: unknown[]) => void;
-const throttle = (func: AnyFunction, limit: number) => {
+function throttle<T extends (...args: any[]) => void>(func: T, limit: number): T {
   let lastCall = 0;
-  return function (this: unknown, ...args: unknown[]) {
+  const throttled = function (this: ThisParameterType<T>, ...args: Parameters<T>) {
     const now = performance.now();
     if (now - lastCall >= limit) {
       lastCall = now;
       func.apply(this, args);
     }
-  };
-};
+  } as T;
+  return throttled;
+}
 
 interface Dot {
   cx: number;
