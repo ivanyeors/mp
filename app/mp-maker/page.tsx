@@ -10,6 +10,11 @@ import {
   MenubarTrigger,
 } from "@/components/ui/menubar";
 import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
+import MpMakerSidebar from "./components/Sidebar";
+import DesignCanvas from "./components/DesignCanvas";
+import { DesignProvider } from "./components/DesignProvider";
+import DesignControls from "./components/DesignControls";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   FileText,
   Palette,
@@ -21,11 +26,12 @@ import {
   Eye,
   Share,
 } from "lucide-react";
-import dynamic from "next/dynamic";
-const ClothRoundedSquare = dynamic(() => import("@/components/cloth-rounded-square"), { ssr: false });
+ 
 
 export default function MpMakerPage() {
   return (
+    <SidebarProvider>
+    <DesignProvider>
     <div className="min-h-screen bg-background relative">
       {/* Subtle Dot Pattern Background */}
       <DotPattern
@@ -127,9 +133,9 @@ export default function MpMakerPage() {
             </MenubarMenu>
           </Menubar>
         </div>
-
+      <MpMakerSidebar />
       {/* Main Content */}
-      <main className="flex-1 p-0">
+      <SidebarInset className="p-0">
         <div className="fixed inset-0 z-0">
           {/* Full-screen ballpit masked to pillow shape */}
           <div
@@ -150,7 +156,9 @@ export default function MpMakerPage() {
                 maskSize: 'contain',
               }}
             >
-              <ClothRoundedSquare className="absolute inset-0" />
+              {/* Design canvas for draggable SVGs, rotates with the group */}
+              <DesignCanvas />
+              
               {/* Inner shadow overlay */}
               <svg
                 className="absolute inset-0 pointer-events-none"
@@ -208,8 +216,14 @@ export default function MpMakerPage() {
             </div>
           </div>
         </div>
-      </main>
+      </SidebarInset>
+      {/* Controls outside the SVG/mask group, over page UI */}
+      <div className="fixed right-4 bottom-4 z-20">
+        <DesignControls />
+      </div>
       </div>
     </div>
+    </DesignProvider>
+    </SidebarProvider>
   );
 }
