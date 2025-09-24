@@ -34,10 +34,12 @@ type DesignContextValue = {
   setSelectedId: React.Dispatch<React.SetStateAction<string | null>>
   groupRotation: number
   setGroupRotation: React.Dispatch<React.SetStateAction<number>>
+  rotateGroupBy: (deltaDegrees: number) => void
   bringForward: () => void
   sendBackward: () => void
-  savePreset: () => void
+  savePreset: (name?: string) => void
   resetPreset: () => void
+  applyPresetFromServer: (name: string) => void
 }
 
 const DesignContext = React.createContext<DesignContextValue | null>(null)
@@ -52,6 +54,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<DesignItem[]>(DEFAULT_ITEMS)
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const [groupRotation, setGroupRotation] = React.useState<number>(0)
+
+  const normalizeAngle = React.useCallback((angle: number) => {
+    const wrapped = ((angle % 360) + 360) % 360
+    return wrapped > 180 ? wrapped - 360 : wrapped
+  }, [])
 
   React.useEffect(() => {
     try {
@@ -88,10 +95,42 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     })
   }, [selectedId])
 
-  const savePreset = React.useCallback(() => {
+  const rotateGroupBy = React.useCallback((deltaDegrees: number) => {
+    setGroupRotation((prev) => normalizeAngle(prev + deltaDegrees))
+  }, [normalizeAngle])
+
+  const savePreset = React.useCallback((name?: string) => {
     const preset: Preset = { items, groupRotation }
-    localStorage.setItem(PRESET_KEY, JSON.stringify(preset))
+    try {
+      localStorage.setItem(PRESET_KEY, JSON.stringify(preset))
+    } catch {}
+    if (name && typeof window !== "undefined") {
+      // Fire-and-forget sync to server
+      fetch("/api/mp-maker/configs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, data: preset }),
+      }).catch(() => {})
+    }
   }, [items, groupRotation])
+
+  const applyPresetFromServer = React.useCallback((name: string) => {
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/mp-maker/configs/${encodeURIComponent(name)}`, { cache: "no-store" })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || "Failed to load config")
+        const data = json.config?.data as Preset | undefined
+        if (data && Array.isArray(data.items)) {
+          const migrated = data.items.map((it: any) => ({ r: 0, s: 1, ...it })) as DesignItem[]
+          setItems(migrated)
+          if (typeof data.groupRotation === "number") setGroupRotation(data.groupRotation)
+          setSelectedId(null)
+          try { localStorage.setItem(PRESET_KEY, JSON.stringify({ items: migrated, groupRotation: data.groupRotation ?? 0 })) } catch {}
+        }
+      } catch {}
+    })()
+  }, [])
 
   const resetPreset = React.useCallback(() => {
     setItems(DEFAULT_ITEMS)
@@ -107,12 +146,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
       setSelectedId,
       groupRotation,
       setGroupRotation,
+      rotateGroupBy,
       bringForward,
       sendBackward,
       savePreset,
       resetPreset,
+      applyPresetFromServer,
     }),
-    [items, selectedId, groupRotation, bringForward, sendBackward, savePreset, resetPreset],
+    [items, selectedId, groupRotation, bringForward, sendBackward, savePreset, resetPreset, applyPresetFromServer, rotateGroupBy],
   )
 
   return <DesignContext.Provider value={value}>{children}</DesignContext.Provider>

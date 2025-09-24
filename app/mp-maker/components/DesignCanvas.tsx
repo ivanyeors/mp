@@ -5,8 +5,14 @@ import { cn } from "@/lib/utils"
 import { useDesign } from "./DesignProvider"
 
 export function DesignCanvas() {
+  // outerRef is the full responsive area (masked by the pillow)
+  const outerRef = React.useRef<HTMLDivElement | null>(null)
+  // containerRef is the base design coordinate system (664x374) that we scale uniformly
   const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const { items, setItems, selectedId, setSelectedId, groupRotation } = useDesign()
+  const { items, setItems, selectedId, setSelectedId } = useDesign()
+  const BASE_WIDTH = 664
+  const BASE_HEIGHT = 374
+  const [canvasScale, setCanvasScale] = React.useState<number>(1)
   const [draggingId, setDraggingId] = React.useState<string | null>(null)
   const dragOffsetRef = React.useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const [rotatingId, setRotatingId] = React.useState<string | null>(null)
@@ -14,21 +20,40 @@ export function DesignCanvas() {
   const [scalingId, setScalingId] = React.useState<string | null>(null)
   const scaleStartRef = React.useRef<{ cx: number; cy: number; startDist: number; initialScale: number } | null>(null)
 
+  // Measure the available space and compute uniform scale for the base canvas
+  React.useEffect(() => {
+    if (!outerRef.current) return
+    const el = outerRef.current
+    const updateScale = () => {
+      const rect = el.getBoundingClientRect()
+      const scale = Math.max(0.0001, Math.min(rect.width / BASE_WIDTH, rect.height / BASE_HEIGHT))
+      setCanvasScale(scale)
+    }
+    updateScale()
+    const ro = new ResizeObserver(updateScale)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+    }
+  }, [])
+
   const onPointerDownItem = (
     e: React.PointerEvent<HTMLDivElement>,
     id: string,
   ) => {
     e.stopPropagation()
-    const container = containerRef.current
-    if (!container) return
-    const containerRect = container.getBoundingClientRect()
+    const base = containerRef.current
+    if (!base) return
+    const baseRect = base.getBoundingClientRect()
     const item = items.find((i) => i.id === id)
     if (!item) return
     setSelectedId(id)
     setDraggingId(id)
     // Convert pointer to container space
-    const px = e.clientX - containerRect.left
-    const py = e.clientY - containerRect.top
+    const pxScaled = e.clientX - baseRect.left
+    const pyScaled = e.clientY - baseRect.top
+    const px = pxScaled / canvasScale
+    const py = pyScaled / canvasScale
     dragOffsetRef.current = { x: px - item.x, y: py - item.y }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
@@ -38,15 +63,17 @@ export function DesignCanvas() {
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const container = containerRef.current
-    if (!container) return
-    const containerRect = container.getBoundingClientRect()
+    const base = containerRef.current
+    if (!base) return
+    const baseRect = base.getBoundingClientRect()
 
     // Handle rotation if active
     if (rotatingId && rotateStartRef.current) {
       const { cx, cy, startAngle, initialRotation } = rotateStartRef.current
-      const px = e.clientX - containerRect.left
-      const py = e.clientY - containerRect.top
+      const pxScaled = e.clientX - baseRect.left
+      const pyScaled = e.clientY - baseRect.top
+      const px = pxScaled / canvasScale
+      const py = pyScaled / canvasScale
       const angle = Math.atan2(py - cy, px - cx) * (180 / Math.PI)
       const delta = angle - startAngle
       const newRotation = initialRotation + delta
@@ -57,8 +84,10 @@ export function DesignCanvas() {
     // Handle uniform scaling if active
     if (scalingId && scaleStartRef.current) {
       const { cx, cy, startDist, initialScale } = scaleStartRef.current
-      const px = e.clientX - containerRect.left
-      const py = e.clientY - containerRect.top
+      const pxScaled = e.clientX - baseRect.left
+      const pyScaled = e.clientY - baseRect.top
+      const px = pxScaled / canvasScale
+      const py = pyScaled / canvasScale
       const dist = Math.hypot(px - cx, py - cy)
       const ratio = dist / (startDist || 1)
       const nextScale = Math.max(0.1, Math.min(5, initialScale * ratio))
@@ -67,8 +96,10 @@ export function DesignCanvas() {
     }
 
     if (!draggingId) return
-    const px = e.clientX - containerRect.left
-    const py = e.clientY - containerRect.top
+    const pxScaled = e.clientX - baseRect.left
+    const pyScaled = e.clientY - baseRect.top
+    const px = pxScaled / canvasScale
+    const py = pyScaled / canvasScale
     const { x: ox, y: oy } = dragOffsetRef.current
     const nx = px - ox
     const ny = py - oy
@@ -96,12 +127,16 @@ export function DesignCanvas() {
     boundsEl: HTMLDivElement | null,
   ) => {
     if (!boundsEl || !containerRef.current) return
-    const containerRect = containerRef.current.getBoundingClientRect()
+    const baseRect = containerRef.current.getBoundingClientRect()
     const rect = boundsEl.getBoundingClientRect()
-    const cx = rect.left - containerRect.left + rect.width / 2
-    const cy = rect.top - containerRect.top + rect.height / 2
-    const px = e.clientX - containerRect.left
-    const py = e.clientY - containerRect.top
+    const cxScaled = rect.left - baseRect.left + rect.width / 2
+    const cyScaled = rect.top - baseRect.top + rect.height / 2
+    const cx = cxScaled / canvasScale
+    const cy = cyScaled / canvasScale
+    const pxScaled = e.clientX - baseRect.left
+    const pyScaled = e.clientY - baseRect.top
+    const px = pxScaled / canvasScale
+    const py = pyScaled / canvasScale
     const startAngle = Math.atan2(py - cy, px - cx) * (180 / Math.PI)
     const item = items.find((i) => i.id === id)
     const initialRotation = item?.r ?? 0
@@ -117,12 +152,16 @@ export function DesignCanvas() {
     boundsEl: HTMLDivElement | null,
   ) => {
     if (!boundsEl || !containerRef.current) return
-    const containerRect = containerRef.current.getBoundingClientRect()
+    const baseRect = containerRef.current.getBoundingClientRect()
     const rect = boundsEl.getBoundingClientRect()
-    const cx = rect.left - containerRect.left + rect.width / 2
-    const cy = rect.top - containerRect.top + rect.height / 2
-    const px = e.clientX - containerRect.left
-    const py = e.clientY - containerRect.top
+    const cxScaled = rect.left - baseRect.left + rect.width / 2
+    const cyScaled = rect.top - baseRect.top + rect.height / 2
+    const cx = cxScaled / canvasScale
+    const cy = cyScaled / canvasScale
+    const pxScaled = e.clientX - baseRect.left
+    const pyScaled = e.clientY - baseRect.top
+    const px = pxScaled / canvasScale
+    const py = pyScaled / canvasScale
     const startDist = Math.hypot(px - cx, py - cy)
     const item = items.find((i) => i.id === id)
     const initialScale = item?.s ?? 1
@@ -133,19 +172,24 @@ export function DesignCanvas() {
   }
 
   return (
-    <div className="absolute inset-0" onPointerUp={onPointerUp}>
+    <div className="absolute inset-0" ref={outerRef} onPointerUp={onPointerUp} onPointerMove={onPointerMove}>
+      {/* Center the base coordinate canvas and scale it uniformly */}
       <div
         ref={containerRef}
-        className="absolute inset-0"
-        onPointerMove={onPointerMove}
+        className="absolute"
         onPointerDown={onBackgroundPointerDown}
         role="application"
         aria-label="Design canvas"
+        style={{
+          left: "50%",
+          top: "50%",
+          width: BASE_WIDTH,
+          height: BASE_HEIGHT,
+          transform: `translate(-50%, -50%) scale(${canvasScale})`,
+          transformOrigin: "50% 50%",
+        }}
       >
-        <div
-          className="relative w-full h-full"
-          style={{ transform: `rotate(${groupRotation}deg)`, transformOrigin: "50% 50%" }}
-        >
+        <div className="relative w-full h-full">
           {items
             .slice()
             .sort((a, b) => a.z - b.z)

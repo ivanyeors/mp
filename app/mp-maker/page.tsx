@@ -12,8 +12,9 @@ import {
 import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 import MpMakerSidebar from "./components/Sidebar";
 import DesignCanvas from "./components/DesignCanvas";
-import { DesignProvider } from "./components/DesignProvider";
+import { DesignProvider, useDesign } from "./components/DesignProvider";
 import DesignControls from "./components/DesignControls";
+import SavedDesignsMenu from "./components/SavedDesignsMenu";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import {
   FileText,
@@ -27,11 +28,9 @@ import {
   Share,
 } from "lucide-react";
  
-
-export default function MpMakerPage() {
+function MakerContent() {
+  const { groupRotation } = useDesign();
   return (
-    <SidebarProvider>
-    <DesignProvider>
     <div className="min-h-screen bg-background relative">
       {/* Subtle Dot Pattern Background */}
       <DotPattern
@@ -47,7 +46,7 @@ export default function MpMakerPage() {
       {/* Content */}
       <div className="relative z-10">
         {/* Header */}
-        <div className="flex h-14 items-center px-4">
+        <div className="flex h-14 items-center px-4 relative z-50">
         {/* Menu Bar */}
         <Menubar>
             <MenubarMenu>
@@ -85,6 +84,7 @@ export default function MpMakerPage() {
             <MenubarMenu>
               <MenubarTrigger>Design</MenubarTrigger>
               <MenubarContent>
+                <SavedDesignsMenu />
                 <MenubarItem>
                   <Palette className="mr-2 h-4 w-4" />
                   Color Picker
@@ -154,6 +154,8 @@ export default function MpMakerPage() {
                 maskPosition: 'center',
                 WebkitMaskSize: 'contain',
                 maskSize: 'contain',
+                transform: `rotate(${groupRotation}deg)`,
+                transformOrigin: '50% 50%'
               }}
             >
               {/* Design canvas for draggable SVGs, rotates with the group */}
@@ -223,7 +225,15 @@ export default function MpMakerPage() {
       </div>
       </div>
     </div>
-    </DesignProvider>
+  );
+}
+
+export default function MpMakerPage() {
+  return (
+    <SidebarProvider>
+      <DesignProvider>
+        <MakerContent />
+      </DesignProvider>
     </SidebarProvider>
   );
 }
