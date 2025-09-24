@@ -18,6 +18,7 @@ export function DesignCanvas() {
     e: React.PointerEvent<HTMLDivElement>,
     id: string,
   ) => {
+    e.stopPropagation()
     const container = containerRef.current
     if (!container) return
     const containerRect = container.getBoundingClientRect()
@@ -30,6 +31,10 @@ export function DesignCanvas() {
     const py = e.clientY - containerRect.top
     dragOffsetRef.current = { x: px - item.x, y: py - item.y }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const onBackgroundPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setSelectedId(null)
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -133,6 +138,7 @@ export function DesignCanvas() {
         ref={containerRef}
         className="absolute inset-0"
         onPointerMove={onPointerMove}
+        onPointerDown={onBackgroundPointerDown}
         role="application"
         aria-label="Design canvas"
       >
@@ -197,9 +203,36 @@ function ItemBoundingBox({
   return (
     <div ref={boundsRef} className="absolute inset-0 pointer-events-none">
       <div className="absolute inset-0 border border-sky-500/70 rounded-sm" />
-      {/* Corner rotation handles with generous hit areas */}
+
+      {/* Edge uniform scale overlays (span full edge) */}
       <div
-        className="absolute -top-3 -left-3 w-6 h-6 pointer-events-auto flex items-center justify-center"
+        className="absolute -top-2 left-0 right-0 h-4 pointer-events-auto z-0"
+        style={{ cursor: "ns-resize" }}
+        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
+        title="Scale"
+      />
+      <div
+        className="absolute -bottom-2 left-0 right-0 h-4 pointer-events-auto z-0"
+        style={{ cursor: "ns-resize" }}
+        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
+        title="Scale"
+      />
+      <div
+        className="absolute top-0 bottom-0 -left-2 w-4 pointer-events-auto z-0"
+        style={{ cursor: "ew-resize" }}
+        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
+        title="Scale"
+      />
+      <div
+        className="absolute top-0 bottom-0 -right-2 w-4 pointer-events-auto z-0"
+        style={{ cursor: "ew-resize" }}
+        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
+        title="Scale"
+      />
+
+      {/* Corner rotation handles with generous hit areas (above edges) */}
+      <div
+        className="absolute -top-3 -left-3 w-6 h-6 pointer-events-auto flex items-center justify-center z-10"
         style={{ cursor: "url(/cursor-rotate-nw.svg) 12 12, nwse-resize" }}
         onPointerDown={(e) => onPointerDownRotate(e, id, boundsRef.current)}
         title="Rotate"
@@ -207,7 +240,7 @@ function ItemBoundingBox({
         <div className="w-2.5 h-2.5 rounded-full bg-sky-500 shadow" />
       </div>
       <div
-        className="absolute -top-3 -right-3 w-6 h-6 pointer-events-auto flex items-center justify-center"
+        className="absolute -top-3 -right-3 w-6 h-6 pointer-events-auto flex items-center justify-center z-10"
         style={{ cursor: "url(/cursor-rotate-ne.svg) 12 12, nesw-resize" }}
         onPointerDown={(e) => onPointerDownRotate(e, id, boundsRef.current)}
         title="Rotate"
@@ -215,7 +248,7 @@ function ItemBoundingBox({
         <div className="w-2.5 h-2.5 rounded-full bg-sky-500 shadow" />
       </div>
       <div
-        className="absolute -bottom-3 -right-3 w-6 h-6 pointer-events-auto flex items-center justify-center"
+        className="absolute -bottom-3 -right-3 w-6 h-6 pointer-events-auto flex items-center justify-center z-10"
         style={{ cursor: "url(/cursor-rotate-se.svg) 12 12, nwse-resize" }}
         onPointerDown={(e) => onPointerDownRotate(e, id, boundsRef.current)}
         title="Rotate"
@@ -223,39 +256,13 @@ function ItemBoundingBox({
         <div className="w-2.5 h-2.5 rounded-full bg-sky-500 shadow" />
       </div>
       <div
-        className="absolute -bottom-3 -left-3 w-6 h-6 pointer-events-auto flex items-center justify-center"
+        className="absolute -bottom-3 -left-3 w-6 h-6 pointer-events-auto flex items-center justify-center z-10"
         style={{ cursor: "url(/cursor-rotate-sw.svg) 12 12, nesw-resize" }}
         onPointerDown={(e) => onPointerDownRotate(e, id, boundsRef.current)}
         title="Rotate"
       >
         <div className="w-2.5 h-2.5 rounded-full bg-sky-500 shadow" />
       </div>
-
-      {/* Edge uniform scale handles */}
-      <div
-        className="absolute -top-2 left-1/2 -translate-x-1/2 w-6 h-4 pointer-events-auto"
-        style={{ cursor: "ns-resize" }}
-        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
-        title="Scale"
-      />
-      <div
-        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-6 h-4 pointer-events-auto"
-        style={{ cursor: "ns-resize" }}
-        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
-        title="Scale"
-      />
-      <div
-        className="absolute top-1/2 -translate-y-1/2 -left-2 w-4 h-6 pointer-events-auto"
-        style={{ cursor: "ew-resize" }}
-        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
-        title="Scale"
-      />
-      <div
-        className="absolute top-1/2 -translate-y-1/2 -right-2 w-4 h-6 pointer-events-auto"
-        style={{ cursor: "ew-resize" }}
-        onPointerDown={(e) => onPointerDownScale(e, id, boundsRef.current)}
-        title="Scale"
-      />
     </div>
   )
 }
