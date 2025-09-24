@@ -27,7 +27,7 @@ const DEFAULT_ITEMS: DesignItem[] = [
 
 const PRESET_KEY = "mp-maker:preset:v1"
 
-type DesignContextValue = {
+export type DesignContextValue = {
   items: DesignItem[]
   setItems: React.Dispatch<React.SetStateAction<DesignItem[]>>
   selectedId: string | null
@@ -67,11 +67,14 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         const parsed: Preset = JSON.parse(raw)
         if (Array.isArray(parsed.items)) {
           // Migrate older presets by adding missing rotation
-          const migrated = parsed.items.map((it: any) => ({
-            r: 0,
-            s: 1,
-            ...it,
-          })) as DesignItem[]
+          const migrated = parsed.items.map((it) => {
+            const base: Partial<DesignItem> = typeof it === "object" && it !== null ? it as Partial<DesignItem> : {}
+            return {
+              r: 0,
+              s: 1,
+              ...base,
+            } as DesignItem
+          })
           setItems(migrated)
         }
         if (typeof parsed.groupRotation === "number") setGroupRotation(parsed.groupRotation)
@@ -122,7 +125,10 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(json.error || "Failed to load config")
         const data = json.config?.data as Preset | undefined
         if (data && Array.isArray(data.items)) {
-          const migrated = data.items.map((it: any) => ({ r: 0, s: 1, ...it })) as DesignItem[]
+          const migrated = data.items.map((it) => {
+            const base: Partial<DesignItem> = typeof it === "object" && it !== null ? it as Partial<DesignItem> : {}
+            return { r: 0, s: 1, ...base } as DesignItem
+          })
           setItems(migrated)
           if (typeof data.groupRotation === "number") setGroupRotation(data.groupRotation)
           setSelectedId(null)

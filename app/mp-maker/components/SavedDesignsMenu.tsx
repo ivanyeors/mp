@@ -5,7 +5,7 @@ import { MenubarItem, MenubarLabel, MenubarSeparator, MenubarSub, MenubarSubCont
 import { useDesign } from "./DesignProvider"
 
 export default function SavedDesignsMenu() {
-  const { applyPresetFromServer } = useDesign() as any
+  const { applyPresetFromServer } = useDesign()
   const [configs, setConfigs] = React.useState<Array<{ id: string; name: string }>>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -17,9 +17,9 @@ export default function SavedDesignsMenu() {
       const res = await fetch("/api/mp-maker/configs", { cache: "no-store" })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || "Failed to load configs")
-      setConfigs((json.configs ?? []).map((c: any) => ({ id: c.id, name: c.name })))
-    } catch (e: any) {
-      setError(e.message)
+      setConfigs((json.configs ?? []).map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error")
     } finally {
       setLoading(false)
     }
