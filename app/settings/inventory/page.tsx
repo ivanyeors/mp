@@ -41,7 +41,7 @@ export default function InventoryPage() {
   const load = async () => {
     setLoading(true);
     const [{ data: itemsData }, { data: balancesData }, { data: productsData }, { data: buildableData }] = await Promise.all([
-      supabaseClient.from("items").select("id,category,subtype,name,size"),
+      supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
       supabaseClient.from("inventory_balances").select("item_id,on_hand"),
       supabaseClient.from("pillow_products").select("id,size"),
       supabaseClient.from("product_buildable").select("product_id,size,buildable"),
@@ -413,7 +413,7 @@ export default function InventoryPage() {
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setCustomPillowDrawerOpen(true); }}
           >
             <div className="text-xs text-muted-foreground">Custom</div>
-            <div className="text-2xl font-semibold mt-1">Configure…</div>
+            <div className="text-2xl font-semibold mt-1 truncate">Configure…</div>
           </div>
         </div>
       </section>
@@ -485,7 +485,7 @@ export default function InventoryPage() {
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setCustomBolsterDrawerOpen(true); }}
           >
             <div className="text-xs text-muted-foreground">Custom bolster</div>
-            <div className="text-2xl font-semibold mt-1">Configure…</div>
+            <div className="text-2xl font-semibold mt-1 truncate">Configure…</div>
           </div>
         </div>
       </section>
@@ -556,7 +556,7 @@ export default function InventoryPage() {
             <SheetDescription>Review selected pillows and parts, undo, and sell.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4">
-            <div>
+            <div className="mx-4">
               <div className="text-sm font-medium mb-2">Pillows</div>
               {Object.keys(cart.pillows).length === 0 && (
                 <div className="text-sm text-muted-foreground">No pillows selected</div>
@@ -574,7 +574,7 @@ export default function InventoryPage() {
               </div>
             </div>
             <Separator />
-            <div>
+            <div className="px-4">
               <div className="text-sm font-medium mb-2">Parts</div>
               {Object.keys(cart.parts).length === 0 && (
                 <div className="text-sm text-muted-foreground">No parts selected</div>
@@ -669,16 +669,45 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     const list: Item[] = group?.variants ?? [];
     if (!group) return list;
     if (group.title !== 'Fillings') return list;
-    const typeOrder = (t: string) => (t === '3D' ? 0 : t === '6D' ? 1 : 2);
-    const sizeOrder = (s: string) => (s === 'S' ? 0 : s === 'L' ? 1 : s === 'L+' ? 2 : 3);
+
+    const parseGrade = (subtype: string): string => {
+      const s = String(subtype || '').trim();
+      const m = s.match(/^(3D|6D\+|6D)\s*\(/);
+      return m ? m[1] : s;
+    };
+    const parseSuffix = (subtype: string): string => {
+      const s = String(subtype || '').trim();
+      const m = s.match(/^.*\(([^)]+)\)\s*$/);
+      return m ? m[1] : '';
+    };
+
+    const gradeOrder = (g: string) => {
+      if (g === '3D') return 0;
+      if (g === '6D') return 1;
+      if (g === '6D+') return 2;
+      return 9;
+    };
+    const suffixOrder = (s: string) => {
+      if (s === 'S') return 0;
+      if (s === 'M') return 1;
+      if (s === 'L') return 2;
+      if (s === 'L+') return 3;
+      if (s === 'XL') return 4;
+      if (s === 'Round') return 5;
+      if (s === 'Folded') return 6;
+      return 9;
+    };
+
     return [...list].sort((a, b) => {
-      const ta = String(a.subtype ?? a.name ?? '');
-      const tb = String(b.subtype ?? b.name ?? '');
-      const sa = String(a.size ?? '');
-      const sb = String(b.size ?? '');
-      const to = typeOrder(ta) - typeOrder(tb);
-      if (to !== 0) return to;
-      return sizeOrder(sa) - sizeOrder(sb);
+      const as = String(a.subtype ?? a.name ?? '');
+      const bs = String(b.subtype ?? b.name ?? '');
+      const ga = parseGrade(as);
+      const gb = parseGrade(bs);
+      const go = gradeOrder(ga) - gradeOrder(gb);
+      if (go !== 0) return go;
+      const sa = parseSuffix(as);
+      const sb = parseSuffix(bs);
+      return suffixOrder(sa) - suffixOrder(sb);
     });
   }, [group]);
 
@@ -978,7 +1007,7 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
   onAdd: () => Promise<void> | void;
 }) {
   const sized = (category: string) => items.filter(i => i.category===category && i.size==='Bolster');
-  const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D-L');
+  const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D (L)');
   const packaging = items.filter(i => i.category==='packaging' && i.size==='S');
 
   const upsert = (item_id: number, quantity: number) => {

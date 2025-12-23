@@ -207,7 +207,7 @@ export default function ConfigureInventoryPage() {
             >
               <div className="text-xs text-muted-foreground">Bolster</div>
               <div className="text-2xl font-semibold">{v.label}</div>
-              <div className="mt-2 text-xs text-muted-foreground">Case, Protector, 6D-L</div>
+              <div className="mt-2 text-xs text-muted-foreground">Case, Protector, 6D (L)</div>
               <div className="mt-3">
                 <Button size="sm" variant="secondary">Configure</Button>
               </div>
@@ -396,7 +396,7 @@ function ConfigureTable({ headers, children }: { headers: string[]; children: Re
 
 function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLine[]; setLines: Dispatch<SetStateAction<BomLine[]>> }) {
   const sized = (category: Item["category"]) => items.filter(i => i.category===category && (i.size==='Bolster'));
-  const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D-L');
+  const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D (L)');
   const packaging = items.filter(i => i.category==='packaging' && i.size==='S');
 
   const upsert = (item_id: number, quantity: number) => {
@@ -447,7 +447,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
         </ConfigureTable>
       </Section>
 
-      <Section title="Fillings (6D-L)">
+      <Section title="Fillings – 6D (L)">
         <ConfigureTable headers={["Subtype", "Qty", "Actions"]}>
           {fillings.map(it => (
             <TableRow key={it.id}>

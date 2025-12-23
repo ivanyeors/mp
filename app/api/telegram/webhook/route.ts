@@ -134,15 +134,28 @@ function mapCategoryToken(tok: string): 'cover' | 'case' | 'protector' | 'fillin
 }
 
 function mapFillingSubtype(two: string, three?: string): string | null {
-  const a = two?.toLowerCase() || ''
-  const b = (three || '').toUpperCase()
+  const a = (two || '').trim().toLowerCase()
+  const rawB = (three || '').trim()
   if (!a) return null
-  if (!/^\d+d$/.test(a)) return null
-  const grade = a.toUpperCase() // e.g. 3D or 6D
+  // Accept grades like 3d, 6d, 6d+
+  const gradeBaseMatch = a.match(/^(\d+d)(\+)?$/)
+  if (!gradeBaseMatch) return null
+  const grade = (gradeBaseMatch[1].toUpperCase() + (gradeBaseMatch[2] ? '+' : '')) as '3D' | '6D' | '3D+' | '6D+'
+
+  const b = rawB.toUpperCase()
   if (!b) return null
-  if (b === 'S') return `${grade}-S`
-  if (b === 'L') return `${grade}-L`
-  if (b === 'L+' || b === 'LPLUS' || b === 'L-PLUS' || b === 'L_PLUS') return `${grade}-L+`
+
+  // Keyword styles -> exact new names with parentheses
+  if (b === 'ROUND' || b === 'RND') return `${grade} (Round)`
+  if (b === 'FOLDED' || b === 'FOLD') return `${grade} (Folded)`
+
+  // Size styles -> exact new names with parentheses
+  if (b === 'S') return `${grade} (S)`
+  if (b === 'M') return `${grade} (M)`
+  if (b === 'L') return `${grade} (L)`
+  if (b === 'XL') return `${grade} (XL)`
+  if (b === 'L+' || b === 'LPLUS' || b === 'L-PLUS' || b === 'L_PLUS') return `${grade} (L)`
+
   return null
 }
 

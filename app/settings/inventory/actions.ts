@@ -74,7 +74,7 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
     type IdRow = { id: number }
     const { data: caseItem } = await admin.from('items').select('id').eq('category', 'case').eq('size', 'Bolster').limit(1).maybeSingle()
     const { data: protectorItem } = await admin.from('items').select('id').eq('category', 'protector').eq('size', 'Bolster').limit(1).maybeSingle()
-    const { data: fillingItem } = await admin.from('items').select('id').eq('category', 'filling').eq('subtype', '6D-L').limit(1).maybeSingle()
+    const { data: fillingItem } = await admin.from('items').select('id').eq('category', 'filling').eq('subtype', '6D (L)').limit(1).maybeSingle()
     const prelim = [caseItem, protectorItem, fillingItem].filter((r): r is IdRow => !!r)
     effectiveLines = prelim.map((r) => ({ item_id: r.id, quantity: 1 }))
   }
