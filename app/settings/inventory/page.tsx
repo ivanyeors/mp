@@ -1,17 +1,91 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { sellPillow, sellPart, receiveStock, sellBolster } from "./actions";
+import { Trash2 } from "lucide-react";
+import {
+  sellPillow,
+  sellPart,
+  receiveStock,
+  sellBolster,
+  addInventoryItem,
+  deleteInventoryItem,
+  renameInventoryItem,
+} from "./actions";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-type Item = { id: number; category: string; subtype: string | null; name: string; size: string | null };
+const ITEM_CATEGORIES = ['cover','case','protector','filling','packaging','accessories','other'] as const;
+type ItemCategory = (typeof ITEM_CATEGORIES)[number];
+const CATEGORY_TITLES: Record<ItemCategory, string> = {
+  cover: 'Covers',
+  case: 'Cases',
+  protector: 'Protectors',
+  filling: 'Fillings',
+  packaging: 'Packaging',
+  accessories: 'Accessories',
+  other: 'Other',
+};
+const SIZED_CATEGORIES: ItemCategory[] = ['cover','case','protector'];
+const SIZE_OPTIONS = ['-','XS','S','M','L','XL'] as const;
+
+type Item = { id: number; category: ItemCategory; subtype: string | null; name: string; size: string | null };
 type Product = { id: number; size: string };
+type AddInventoryDraft = {
+  category: ItemCategory;
+  name: string;
+  size?: string;
+  subtype?: string;
+  initialStock: number;
+  costPrice?: number;
+  msrp?: number;
+};
+type Group = { key: string; title: string; items: Item[] };
+
+const humanizeText = (value: string) =>
+  value
+    .split(/[\s_-]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const normalizeNameOrFallback = (value: string | null | undefined, fallbackCategory?: string): string => {
+  if (!value) {
+    return fallbackCategory ? humanizeText(fallbackCategory) : "Item";
+  }
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return fallbackCategory ? humanizeText(fallbackCategory) : "Item";
+  }
+  if (/[_-]/.test(trimmed)) {
+    return humanizeText(trimmed);
+  }
+  if (trimmed === trimmed.toLowerCase()) {
+    return humanizeText(trimmed);
+  }
+  return trimmed;
+};
+
+const getItemBaseName = (item: Item): string => normalizeNameOrFallback(item.name, item.category);
+
+const getItemDisplayLabel = (item: Item): string => {
+  if (item.category === "filling") {
+    const base = item.subtype ? normalizeNameOrFallback(item.subtype, "filling") : getItemBaseName(item);
+    return item.size ? `${base} — ${item.size}` : base;
+  }
+  const base = getItemBaseName(item);
+  if (item.size) {
+    return `${base} — ${item.size}`;
+  }
+  if (item.subtype) {
+    return `${base} — ${normalizeNameOrFallback(item.subtype)}`;
+  }
+  return base;
+};
 
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -21,7 +95,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
   const [partDrawerOpen, setPartDrawerOpen] = useState(false);
-  const [partDrawerGroup, setPartDrawerGroup] = useState<{ title: string; variants: Item[] } | null>(null);
+  const [partDrawerGroup, setPartDrawerGroup] = useState<Group | null>(null);
   const [cart, setCart] = useState<{
     pillows: Record<string, number>;
     parts: Record<number, number>;
@@ -37,8 +111,9 @@ export default function InventoryPage() {
   const [customBolsterDrawerOpen, setCustomBolsterDrawerOpen] = useState(false);
   const [customPillowLines, setCustomPillowLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [customBolsterLines, setCustomBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [addDrawerOpen, setAddDrawerOpen] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const [{ data: itemsData }, { data: balancesData }, { data: productsData }, { data: buildableData }] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
@@ -54,9 +129,55 @@ export default function InventoryPage() {
     const build = Object.fromEntries((buildableData ?? []).map((r: BuildableRow)=> [r.size, Number(r.buildable)] ));
     setBuildable(build);
     setLoading(false);
+  }, []);
+
+  const notifyInventoryChange = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event('inventory:changed'));
+    try {
+      if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel('inventory:changed');
+        channel.postMessage('refresh');
+        channel.close();
+      }
+    } catch {
+      // ignore broadcast failures in unsupported browsers
+    }
+  }, []);
+
+  const handleCreateItem = async (draft: AddInventoryDraft) => {
+    try {
+      await addInventoryItem({
+        category: draft.category,
+        name: draft.name,
+        size: draft.size,
+        subtype: draft.subtype,
+        initialStock: draft.initialStock,
+        costPrice: draft.costPrice,
+        msrp: draft.msrp,
+      });
+      toast.success("Inventory item added");
+      await load();
+      notifyInventoryChange();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to add inventory item";
+      throw new Error(message);
+    }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const channel = supabaseClient
+      .channel('inventory-items')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => {
+        load();
+      })
+      .subscribe();
+    return () => {
+      supabaseClient.removeChannel(channel);
+    };
+  }, [load]);
 
   useEffect(() => {
     const loadBolster = async () => {
@@ -111,50 +232,48 @@ export default function InventoryPage() {
     loadCustomBolsterLines();
   }, [customBolsterDrawerOpen, customBolsterVariant]);
 
-  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-  type Group = { key: string; title: string; items: Item[] };
   const partGroups = useMemo(() => {
-    const groups: Group[] = [];
-    // Bolster-only parts
-    const bolsterCase = items.filter(i => i.category === 'case' && i.size === 'Bolster');
-    if (bolsterCase.length) groups.push({ key: 'bolster:case', title: 'Bolster case', items: bolsterCase });
-    const bolsterProtector = items.filter(i => i.category === 'protector' && i.size === 'Bolster');
-    if (bolsterProtector.length) groups.push({ key: 'bolster:protector', title: 'Bolster protector', items: bolsterProtector });
-    // Sized categories grouped by category
-    const sizedCats = ["cover", "case", "protector"] as const;
-    for (const cat of sizedCats) {
-      let groupItems = items.filter(i => i.category === cat);
-      let title = capitalize(cat);
-      if (cat === 'case') {
-        // Exclude bolster cases from the Pillow Case group; they have their own card
-        groupItems = groupItems.filter(i => i.size !== 'Bolster');
-        title = 'Pillow Case';
-      } else if (cat === 'protector') {
-        // Exclude bolster protectors from the Pillow protector group; they have their own card
-        groupItems = groupItems.filter(i => i.size !== 'Bolster');
-        title = 'Pillow protector';
-      }
-      if (groupItems.length) groups.push({ key: `cat:${cat}`, title, items: groupItems });
+    const grouped = new Map<Item['category'], Item[]>();
+    for (const item of items) {
+      const bucket = grouped.get(item.category) ?? [];
+      bucket.push(item);
+      grouped.set(item.category, bucket);
     }
-    // Fillings consolidated into a single card
-    const fillings = items.filter(i => i.category === 'filling');
-    if (fillings.length) {
-      groups.push({ key: 'filling:all', title: 'Fillings', items: fillings });
-    }
-    // Packaging grouped by name
-    const pkgs = items.filter(i => i.category === 'packaging');
-    const pkgMap = new Map<string, Item[]>();
-    for (const it of pkgs) {
-      const key = it.name;
-      const arr = pkgMap.get(key) ?? [];
-      arr.push(it); pkgMap.set(key, arr);
-    }
-    for (const [k, arr] of pkgMap.entries()) {
-      groups.push({ key: `pack:${k}`, title: k, items: arr });
-    }
-    return groups;
+    const categoryOrder = new Map<ItemCategory, number>(ITEM_CATEGORIES.map((category, index) => [category, index]));
+    return Array.from(grouped.entries())
+      .sort(([categoryA], [categoryB]) => {
+        const orderA = categoryOrder.get(categoryA) ?? Number.MAX_SAFE_INTEGER;
+        const orderB = categoryOrder.get(categoryB) ?? Number.MAX_SAFE_INTEGER;
+        if (orderA !== orderB) return orderA - orderB;
+        return categoryA.localeCompare(categoryB);
+      })
+      .map(([category, groupItems]) => ({
+        key: `category:${category}`,
+        title: CATEGORY_TITLES[category] ?? category,
+        items: groupItems,
+      }));
   }, [items]);
+
+  useEffect(() => {
+    if (!partDrawerOpen || !partDrawerGroup) return;
+    if (partDrawerGroup.key === 'custom') {
+      setPartDrawerGroup((prev) => {
+        if (!prev) return prev;
+        if (prev.items === items) return prev;
+        return { ...prev, items };
+      });
+      return;
+    }
+    const updated = partGroups.find((group) => group.key === partDrawerGroup.key);
+    if (!updated) {
+      setPartDrawerGroup(null);
+      setPartDrawerOpen(false);
+      return;
+    }
+    if (partDrawerGroup.items !== updated.items) {
+      setPartDrawerGroup(updated);
+    }
+  }, [items, partDrawerGroup, partDrawerOpen, partGroups]);
 
   const lowStock = useMemo(() => {
     return items.filter(i => (balances[i.id] ?? 0) <= 0);
@@ -264,6 +383,31 @@ export default function InventoryPage() {
     toast.success(`Received ${qty} unit(s)`);
   };
 
+const handleDeleteItem = useCallback(async (itemId: number) => {
+    try {
+      await deleteInventoryItem({ itemId });
+      toast.success("Item removed");
+      await load();
+      notifyInventoryChange();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete item";
+      toast.error(message);
+    }
+}, [load, notifyInventoryChange]);
+
+  const handleRenameItem = useCallback(
+    async (itemId: number, nextName: string) => {
+      const trimmed = nextName.trim();
+      if (!trimmed) {
+        throw new Error("Name is required");
+      }
+      await renameInventoryItem({ itemId, name: trimmed });
+      setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, name: trimmed } : item)));
+      notifyInventoryChange();
+    },
+    [notifyInventoryChange],
+  );
+
   // removed old inline custom pillow sell
 
   // removed old inline custom bolster sell
@@ -356,6 +500,9 @@ export default function InventoryPage() {
         <h1 className="text-2xl font-semibold">Inventory</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={load}>Refresh</Button>
+          <Button onClick={() => setAddDrawerOpen(true)} aria-label="Add inventory item">
+            Add inventory
+          </Button>
           <Button onClick={() => setCartOpen(true)} aria-label="Open cart">
             <span className="mr-2" aria-hidden>🛒</span>
             Cart ({
@@ -498,10 +645,10 @@ export default function InventoryPage() {
           {/* Custom parts card */}
           <div
             className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
-            onClick={() => { setPartDrawerGroup({ title: 'Custom parts', variants: items }); setPartDrawerOpen(true); }}
+            onClick={() => { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); }}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ title: 'Custom parts', variants: items }); setPartDrawerOpen(true); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); } }}
           >
             <div className="flex-1">
               <div className="font-medium">Custom</div>
@@ -515,10 +662,10 @@ export default function InventoryPage() {
               <div
                 key={group.key}
                 className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
-                onClick={() => { setPartDrawerGroup({ title: group.title, variants: group.items }); setPartDrawerOpen(true); }}
+                onClick={() => { setPartDrawerGroup(group); setPartDrawerOpen(true); }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ title: group.title, variants: group.items }); setPartDrawerOpen(true); } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup(group); setPartDrawerOpen(true); } }}
               >
                 <div className="flex-1">
                   <div className="font-medium">{group.title}</div>
@@ -585,7 +732,7 @@ export default function InventoryPage() {
                   return (
                     <div key={itemIdStr} className="flex items-center justify-between rounded border p-2">
                       <div>
-                        <div className="font-medium">{it?.category} {it?.size ?? it?.subtype ?? ''}</div>
+                        <div className="font-medium">{it ? getItemDisplayLabel(it) : `Item ${itemIdStr}`}</div>
                         <div className="text-xs text-muted-foreground">Qty: {qty}</div>
                       </div>
                       <Button size="sm" variant="secondary" onClick={() => undoCartLine("part", Number(itemIdStr))}>Undo</Button>
@@ -601,6 +748,12 @@ export default function InventoryPage() {
         </SheetContent>
       </Sheet>
 
+      <AddInventoryDrawer
+        open={addDrawerOpen}
+        onOpenChange={setAddDrawerOpen}
+        onCreate={handleCreateItem}
+      />
+
       {/* Part Drawer */}
       <PartDrawer
         open={partDrawerOpen}
@@ -615,6 +768,8 @@ export default function InventoryPage() {
           toast.success(`Stocked out ${qty} unit(s)`);
         }}
         onSelectVariant={(id) => incrementPartSelection(id)}
+        onDelete={handleDeleteItem}
+        onRename={handleRenameItem}
       />
 
       {/* Custom Pillow Drawer */}
@@ -652,21 +807,297 @@ export default function InventoryPage() {
   );
 }
 
-function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, onSelectVariant }: {
+function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  group: { title: string; variants: Item[] } | null;
+  onCreate: (draft: AddInventoryDraft) => Promise<void>;
+}) {
+  const [category, setCategory] = useState<ItemCategory>('cover');
+  const [name, setName] = useState('');
+  const [size, setSize] = useState('');
+  const [subtype, setSubtype] = useState('');
+  const [initialStock, setInitialStock] = useState('');
+  const [costPrice, setCostPrice] = useState('');
+  const [msrp, setMsrp] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setCategory('cover');
+    setName('cover');
+    setSize('M');
+    setSubtype('');
+    setInitialStock('');
+    setCostPrice('');
+    setMsrp('');
+    setErrorMessage(null);
+    setSaving(false);
+  }, [open]);
+
+  useEffect(() => {
+    setName((prev) => {
+      if (prev.trim() !== '') return prev;
+      if (category === 'packaging') return '';
+      if (category === 'filling') return 'filling';
+      return category;
+    });
+    if (SIZED_CATEGORIES.includes(category)) {
+      setSize((prev) => {
+        const normalized = prev.trim().toUpperCase();
+        const isValid =
+          SIZE_OPTIONS.includes(normalized as typeof SIZE_OPTIONS[number]) && normalized !== '-';
+        return isValid ? normalized : 'M';
+      });
+    } else {
+      setSize('-');
+    }
+    if (category !== 'filling') {
+      setSubtype('');
+    }
+    setErrorMessage(null);
+  }, [category]);
+
+  const selectClass =
+    "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]";
+
+  const parseCurrency = (raw: string): number | undefined | null => {
+    const trimmed = raw.trim();
+    if (trimmed === '') return undefined;
+    const num = Number.parseFloat(trimmed);
+    if (!Number.isFinite(num) || num < 0) return null;
+    return num;
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setErrorMessage('Name is required');
+      return;
+    }
+    const trimmedSize = size.trim();
+    const normalizedSizeInput = trimmedSize === '-' ? '' : trimmedSize;
+    if (SIZED_CATEGORIES.includes(category) && !normalizedSizeInput) {
+      setErrorMessage('Size is required for this category');
+      return;
+    }
+    const trimmedSubtype = subtype.trim();
+    if (category === 'filling' && !trimmedSubtype) {
+      setErrorMessage('Subtype is required for fillings');
+      return;
+    }
+    const stockValue = initialStock.trim();
+    const stock = stockValue === '' ? 0 : Number.parseInt(stockValue, 10);
+    if (!Number.isFinite(stock) || stock < 0) {
+      setErrorMessage('Initial stock must be a whole number of 0 or greater');
+      return;
+    }
+    const parsedCost = parseCurrency(costPrice);
+    if (parsedCost === null) {
+      setErrorMessage('Cost price must be a valid number >= 0');
+      return;
+    }
+    const parsedMsrp = parseCurrency(msrp);
+    if (parsedMsrp === null) {
+      setErrorMessage('MSRP must be a valid number >= 0');
+      return;
+    }
+
+    const payload: AddInventoryDraft = {
+      category,
+      name: trimmedName,
+      initialStock: stock,
+    };
+    const normalizedSize =
+      normalizedSizeInput
+        ? (SIZED_CATEGORIES.includes(category) ? normalizedSizeInput.toUpperCase() : normalizedSizeInput)
+        : undefined;
+    if (normalizedSize) payload.size = normalizedSize;
+    const normalizedSubtype = trimmedSubtype || undefined;
+    if (normalizedSubtype) payload.subtype = normalizedSubtype;
+    if (parsedCost !== undefined) payload.costPrice = parsedCost;
+    if (parsedMsrp !== undefined) payload.msrp = parsedMsrp;
+
+    setSaving(true);
+    setErrorMessage(null);
+    try {
+      await onCreate(payload);
+      onOpenChange(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to add inventory item';
+      setErrorMessage(message);
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>Add inventory item</SheetTitle>
+          <SheetDescription>Create a new component so it can be tracked in stock and costings.</SheetDescription>
+        </SheetHeader>
+        <form className="mt-4 flex h-full flex-col" onSubmit={handleSubmit}>
+          <div className="flex-1 space-y-4 overflow-y-auto px-2 pb-6">
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="add-item-category">Category</label>
+              <select
+                id="add-item-category"
+                className={selectClass}
+                value={category}
+                onChange={(event) => setCategory(event.target.value as ItemCategory)}
+              >
+                {ITEM_CATEGORIES.map((option) => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="add-item-name">Name</label>
+                <Input
+                  id="add-item-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder={category === 'packaging' ? 'e.g. tote bag' : category}
+                  autoComplete="off"
+                />
+              </div>
+              {SIZED_CATEGORIES.includes(category) ? (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium" htmlFor="add-item-size">Size</label>
+                  <select
+                    id="add-item-size"
+                    className={selectClass}
+                    value={size}
+                    onChange={(event) => setSize(event.target.value.toUpperCase())}
+                  >
+                    {SIZE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium" htmlFor="add-item-size">
+                    Size <span className="text-xs text-muted-foreground">(optional)</span>
+                  </label>
+                  <Input
+                    id="add-item-size"
+                    value={size}
+                    onChange={(event) => setSize(event.target.value)}
+                    placeholder={category === 'packaging' ? 'e.g. S, L, Bolster' : 'Leave blank or "-" if not applicable'}
+                    autoComplete="off"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="add-item-subtype">
+                {category === 'filling' ? 'Subtype *' : 'Subtype (optional)'}
+              </label>
+              <Input
+                id="add-item-subtype"
+                value={subtype}
+                onChange={(event) => setSubtype(event.target.value)}
+                placeholder={category === 'filling' ? 'e.g. 6D (L)' : 'Variant or descriptor'}
+                autoComplete="off"
+              />
+            </div>
+            <Separator />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="add-item-initial-stock">
+                  Initial stock <span className="text-xs text-muted-foreground">(optional)</span>
+                </label>
+                <Input
+                  id="add-item-initial-stock"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={initialStock}
+                  onChange={(event) => setInitialStock(event.target.value)}
+                  placeholder="0"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="add-item-cost">
+                  Cost price <span className="text-xs text-muted-foreground">(USD)</span>
+                </label>
+                <Input
+                  id="add-item-cost"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  inputMode="decimal"
+                  value={costPrice}
+                  onChange={(event) => setCostPrice(event.target.value)}
+                  placeholder="0.00"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="add-item-msrp">
+                  MSRP <span className="text-xs text-muted-foreground">(optional)</span>
+                </label>
+                <Input
+                  id="add-item-msrp"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  inputMode="decimal"
+                  value={msrp}
+                  onChange={(event) => setMsrp(event.target.value)}
+                  placeholder="0.00"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            {errorMessage && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {errorMessage}
+              </div>
+            )}
+          </div>
+          <SheetFooter>
+            <Button type="submit" disabled={saving} className="w-full">
+              {saving ? "Saving…" : "Create item"}
+            </Button>
+          </SheetFooter>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+const describeVariant = (item: Item): string => getItemDisplayLabel(item);
+
+function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, onSelectVariant, onDelete, onRename }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  group: Group | null;
   balances: Record<number, number>;
   onReceive: (itemId: number, qty: number) => Promise<void>;
   onSell: (itemId: number, qty: number) => Promise<void>;
   onSelectVariant: (itemId: number) => void;
+  onDelete: (itemId: number) => Promise<void>;
+  onRename: (itemId: number, name: string) => Promise<void>;
 }) {
   const [qtyByItem, setQtyByItem] = useState<Record<number, string>>({});
   const [outQtyByItem, setOutQtyByItem] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
 
   const sortedVariants = useMemo(() => {
-    const list: Item[] = group?.variants ?? [];
+    const list: Item[] = group?.items ?? [];
     if (!group) return list;
     if (group.title !== 'Fillings') return list;
 
@@ -711,6 +1142,51 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     });
   }, [group]);
 
+  useEffect(() => {
+    if (renamingId === null) return;
+    if (!sortedVariants.some((variant) => variant.id === renamingId)) {
+      setRenamingId(null);
+      setRenameValue("");
+      setRenameError(null);
+    }
+  }, [sortedVariants, renamingId]);
+
+  const saveRename = async (itemId: number) => {
+    const variant = sortedVariants.find((entry) => entry.id === itemId);
+    if (!variant) {
+      setRenamingId(null);
+      setRenameValue("");
+      setRenameError(null);
+      return;
+    }
+    const nextName = renameValue.trim();
+    if (nextName === "") {
+      setRenameError("Name is required");
+      return;
+    }
+    const currentName = (variant.name?.trim() ?? "") || getItemBaseName(variant);
+    if (nextName === currentName) {
+      setRenamingId(null);
+      setRenameValue("");
+      setRenameError(null);
+      return;
+    }
+    setRenameSaving(true);
+    try {
+      await onRename(itemId, nextName);
+      toast.success("Item renamed");
+      setRenamingId(null);
+      setRenameValue("");
+      setRenameError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to rename item";
+      setRenameError(message);
+      toast.error(message);
+    } finally {
+      setRenameSaving(false);
+    }
+  };
+
   const onSaveAll = async () => {
     const entriesIn = Object.entries(qtyByItem)
       .map(([id, raw]) => ({ id: Number(id), qty: parseInt((raw || '0'), 10) }))
@@ -743,43 +1219,123 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
           <SheetDescription>Enter stock in/out quantities per variant.</SheetDescription>
         </SheetHeader>
         <div className="mt-4 space-y-3 px-2">
-          {sortedVariants.map(v => (
-            <div key={v.id} className="rounded border p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{
-                    v.category === 'filling'
-                      ? `${(v.subtype ?? v.name ?? 'Filling')}${v.size ? `-${v.size}` : ''}`
-                      : v.category === 'case'
-                        ? `Pillow Case${v.size ? ` — ${v.size}` : ''}`
-                        : v.category === 'protector'
-                          ? `Pillow protector${v.size ? ` — ${v.size}` : ''}`
-                          : `${(v.name ?? v.category)}${v.size ? ` — ${v.size}` : ''}`
-                  }</div>
-                  <div className="text-xs text-muted-foreground">On hand: {balances[v.id] ?? 0}</div>
+          {sortedVariants.map((variant) => {
+            const description = describeVariant(variant);
+            const baseName = getItemBaseName(variant);
+            const defaultRenameValue = variant.name?.trim() ? variant.name.trim() : baseName;
+            const onHand = balances[variant.id] ?? 0;
+            const isRenaming = renamingId === variant.id;
+            return (
+              <div key={variant.id} className="group relative rounded border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    {isRenaming ? (
+                      <>
+                        <Input
+                          value={renameValue}
+                          onChange={(event) => {
+                            setRenameValue(event.target.value);
+                            if (renameError) setRenameError(null);
+                          }}
+                          placeholder={baseName}
+                          autoFocus
+                        />
+                        <div className="mt-1 text-xs text-muted-foreground">Current: {description}</div>
+                        {renameError && (
+                          <div className="mt-1 text-xs text-destructive">{renameError}</div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="font-medium truncate">{description}</div>
+                    )}
+                    <div className="mt-1 text-xs text-muted-foreground">On hand: {onHand}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isRenaming ? (
+                      <>
+                        <Button size="sm" onClick={() => saveRename(variant.id)} disabled={renameSaving}>
+                          {renameSaving ? "Saving…" : "Save"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setRenamingId(null);
+                            setRenameValue("");
+                            setRenameError(null);
+                          }}
+                          disabled={renameSaving}
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setRenamingId(variant.id);
+                            setRenameValue(defaultRenameValue);
+                            setRenameError(null);
+                          }}
+                          disabled={renameSaving}
+                        >
+                          Rename
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => onSelectVariant(variant.id)}
+                          disabled={renameSaving}
+                        >
+                          Add
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <Button size="sm" variant="secondary" onClick={() => onSelectVariant(v.id)}>Add</Button>
+                <div className="mt-3 flex items-center gap-3 pr-10">
+                  <Input
+                    type="number"
+                    placeholder="In"
+                    min={0}
+                    value={qtyByItem[variant.id] ?? ''}
+                    onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                    className="w-28"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Out"
+                    min={0}
+                    value={outQtyByItem[variant.id] ?? ''}
+                    onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                    className="w-28"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="pointer-events-none absolute bottom-3 right-3 rounded-full border border-border bg-background/90 p-1 text-muted-foreground opacity-0 shadow-sm transition hover:text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:pointer-events-auto group-hover:opacity-100 disabled:opacity-50"
+                  aria-label={`Delete ${description}`}
+                  disabled={deletingId === variant.id}
+                  onClick={async (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const confirmed = typeof window === 'undefined' ? true : window.confirm(`Delete ${description}? This cannot be undone.`);
+                    if (!confirmed) return;
+                    setDeletingId(variant.id);
+                    try {
+                      await onDelete(variant.id);
+                    } finally {
+                      setDeletingId(null);
+                    }
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <div className="mt-3 flex items-center gap-3">
-                <Input
-                  type="number"
-                  placeholder="In"
-                  min={0}
-                  value={qtyByItem[v.id] ?? ''}
-                  onChange={(e) => setQtyByItem(prev => ({ ...prev, [v.id]: e.target.value }))}
-                  className="w-28"
-                />
-                <Input
-                  type="number"
-                  placeholder="Out"
-                  min={0}
-                  value={outQtyByItem[v.id] ?? ''}
-                  onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [v.id]: e.target.value }))}
-                  className="w-28"
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <SheetFooter>
           <div className="flex w-full gap-2">
@@ -864,7 +1420,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
               <TableBody>
                 {sized('cover').map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">Cover</TableCell>
+                    <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
                     <TableCell>{size}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -890,7 +1446,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
               <TableBody>
                 {sized('case').map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">Pillow Case</TableCell>
+                    <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
                     <TableCell>{size}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -916,7 +1472,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
               <TableBody>
                 {sized('protector').map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">Pillow protector</TableCell>
+                    <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
                     <TableCell>{size}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -941,7 +1497,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
               <TableBody>
                 {fillings.map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+                    <TableCell className="font-medium">{normalizeNameOrFallback(it.subtype ?? it.name, "filling")}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
                         const v = Math.max(0, parseInt(e.target.value||'0',10));
@@ -969,7 +1525,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
               <TableBody>
                 {packaging.map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">{it.name}</TableCell>
+                    <TableCell className="font-medium">{normalizeNameOrFallback(it.name, "packaging")}</TableCell>
                     <TableCell>{it.size}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -1065,8 +1621,8 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
               <TableBody>
                 {sized('case').map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">Bolster Case</TableCell>
-                    <TableCell>Bolster</TableCell>
+                    <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
+                    <TableCell>{it.size ?? 'Bolster'}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
                     </TableCell>
@@ -1091,8 +1647,8 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
               <TableBody>
                 {sized('protector').map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">Bolster protector</TableCell>
-                    <TableCell>Bolster</TableCell>
+                    <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
+                    <TableCell>{it.size ?? 'Bolster'}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
                     </TableCell>
@@ -1116,7 +1672,7 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
               <TableBody>
                 {fillings.map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+                    <TableCell className="font-medium">{normalizeNameOrFallback(it.subtype ?? it.name, "filling")}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> {
                         const v = Math.max(0, parseInt(e.target.value||'0',10));
@@ -1144,7 +1700,7 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
               <TableBody>
                 {packaging.map(it => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-medium">{it.name}</TableCell>
+                    <TableCell className="font-medium">{normalizeNameOrFallback(it.name, "packaging")}</TableCell>
                     <TableCell>{it.size}</TableCell>
                     <TableCell className="w-[140px]">
                       <Input type="number" min={0} value={getQty(it.id)} onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />

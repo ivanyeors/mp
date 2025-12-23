@@ -5,6 +5,11 @@ import { z } from 'zod'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({ itemId: z.number().int().positive(), quantity: z.number().int().positive() })
+const DeleteItemSchema = z.object({ itemId: z.number().int().positive() })
+const RenameItemSchema = z.object({
+  itemId: z.number().int().positive(),
+  name: z.string().trim().min(1, 'Name is required').max(120),
+})
 const SellBolsterSchema = z.object({
   quantity: z.number().int().positive(),
   variant: z.enum(['short','medium','long']).default('medium'),
@@ -13,6 +18,35 @@ const SellBolsterSchema = z.object({
     protectorQty: z.number().int().positive().default(1),
     fillingQty: z.number().int().positive().default(1),
   }).optional(),
+})
+
+const ITEM_CATEGORIES = ['cover','case','protector','filling','packaging','accessories','other'] as const
+const CategoryEnum = z.enum(ITEM_CATEGORIES)
+
+const AddItemSchema = z.object({
+  category: CategoryEnum,
+  name: z.string().trim().min(1, 'Name is required').max(120),
+  size: z.string().trim().min(1, 'Size must not be empty').max(60).optional(),
+  subtype: z.string().trim().min(1, 'Subtype must not be empty').max(120).optional(),
+  initialStock: z.number().int().min(0).default(0),
+  costPrice: z.number().min(0).optional(),
+  msrp: z.number().min(0).optional(),
+}).superRefine((value, ctx) => {
+  const normalizedSize = value.size?.trim()
+  if (['cover', 'case', 'protector'].includes(value.category) && (!normalizedSize || normalizedSize === '-')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Size is required for covers, cases, and protectors',
+      path: ['size'],
+    })
+  }
+  if (value.category === 'filling' && !value.subtype) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Subtype is required for fillings',
+      path: ['subtype'],
+    })
+  }
 })
 
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
@@ -84,4 +118,111 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
   const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
   if (insErr) throw new Error(insErr.message)
   return { ok: true }
+}
+
+export async function deleteInventoryItem(input: z.infer<typeof DeleteItemSchema>) {
+  const parsed = DeleteItemSchema.parse(input)
+  const admin = supabaseAdmin()
+
+  const { data, error } = await admin
+    .from('items')
+    .update({ is_active: false })
+    .eq('id', parsed.itemId)
+    .eq('is_active', true)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Item not found or already inactive')
+
+  await admin.from('item_prices').delete().eq('item_id', parsed.itemId)
+
+  return { ok: true }
+}
+
+export async function renameInventoryItem(input: z.infer<typeof RenameItemSchema>) {
+  const parsed = RenameItemSchema.parse(input)
+  const admin = supabaseAdmin()
+  const normalizedName = parsed.name.trim()
+
+  const { data, error } = await admin
+    .from('items')
+    .update({ name: normalizedName })
+    .eq('id', parsed.itemId)
+    .eq('is_active', true)
+    .select('id')
+    .maybeSingle()
+
+  if (error) {
+    if (error.code === '23505') {
+      throw new Error('An item with the same category, size, subtype, and name already exists.')
+    }
+    throw new Error(error.message)
+  }
+
+  if (!data) {
+    throw new Error('Item not found or already inactive')
+  }
+
+  return { ok: true }
+}
+
+export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
+  const parsed = AddItemSchema.parse(input)
+  const admin = supabaseAdmin()
+
+  const rawSize = parsed.size?.trim()
+  const normalizedSize =
+    rawSize && rawSize !== '-'
+      ? (['cover', 'case', 'protector'].includes(parsed.category) ? rawSize.toUpperCase() : rawSize)
+      : null
+  const normalizedSubtype = parsed.subtype ?? null
+  const normalizedName = parsed.name
+
+  const toCurrencyString = (value: number | undefined) => {
+    if (value === undefined) return null
+    const cents = Math.round(value * 100)
+    return (cents / 100).toFixed(2)
+  }
+
+  const { data: item, error: insertErr } = await admin
+    .from('items')
+    .insert({
+      category: parsed.category,
+      name: normalizedName,
+      size: normalizedSize,
+      subtype: normalizedSubtype,
+      is_active: true,
+    })
+    .select('id,category,name,size,subtype')
+    .single()
+
+  if (insertErr) {
+    if (insertErr.code === '23505') {
+      throw new Error('An item with the same category, size, subtype, and name already exists.')
+    }
+    throw new Error(insertErr.message)
+  }
+
+  const priceRow = {
+    item_id: item.id,
+    cost_price: toCurrencyString(parsed.costPrice),
+    msrp: toCurrencyString(parsed.msrp),
+  }
+
+  if (priceRow.cost_price !== null || priceRow.msrp !== null) {
+    const { error: priceErr } = await admin.from('item_prices').upsert(priceRow)
+    if (priceErr) throw new Error(priceErr.message)
+  }
+
+  if (parsed.initialStock > 0) {
+    const { error: stockErr } = await admin.from('inventory_transactions').insert({
+      item_id: item.id,
+      quantity_signed: parsed.initialStock,
+      reason: 'receive',
+    })
+    if (stockErr) throw new Error(stockErr.message)
+  }
+
+  return { ok: true, item }
 }

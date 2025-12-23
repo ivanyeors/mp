@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Boxes, Wrench, Settings2, CircleDollarSign } from "lucide-react";
+import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp } from "lucide-react";
 import {
   SidebarProvider,
   Sidebar,
@@ -72,6 +72,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                     <a href="/settings/costings">
                       <CircleDollarSign />
                       <span>Costings</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Analytics">
+                    <a href="/settings/analytics">
+                      <TrendingUp />
+                      <span>Analytics</span>
                     </a>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

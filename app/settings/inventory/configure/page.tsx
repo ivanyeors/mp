@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 type Item = {
   id: number;
-  category: "cover" | "case" | "protector" | "filling" | "packaging";
+  category: "cover" | "case" | "protector" | "filling" | "packaging" | "accessories" | "other";
   subtype: string | null;
   name: string;
   size: string | null;
@@ -24,6 +24,29 @@ type BomLine = { item_id: number; quantity: number };
 type BomState = Record<Product["size"], BomLine[]>;
 
 const SIZES: Product["size"][] = ["XS", "S", "M", "L", "XL"];
+
+const humanizeText = (value: string) =>
+  value
+    .split(/[\s_-]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const normalizeNameOrFallback = (value: string | null | undefined, fallback?: string): string => {
+  if (!value) {
+    return fallback ? humanizeText(fallback) : "Item";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fallback ? humanizeText(fallback) : "Item";
+  }
+  if (/[_-]/.test(trimmed) || trimmed === trimmed.toLowerCase()) {
+    return humanizeText(trimmed);
+  }
+  return trimmed;
+};
+
+const getItemBaseName = (item: Item): string => normalizeNameOrFallback(item.name, item.category);
 
 export default function ConfigureInventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -288,8 +311,8 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
         <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
           {sized('cover').map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">Cover</TableCell>
-              <TableCell>{size}</TableCell>
+              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
+              <TableCell>{it.size ?? size}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -303,8 +326,8 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
         <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
           {sized('case').map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">Case</TableCell>
-              <TableCell>{size}</TableCell>
+              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
+              <TableCell>{it.size ?? size}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -318,8 +341,8 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
         <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
           {sized('protector').map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">Protector</TableCell>
-              <TableCell>{size}</TableCell>
+              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
+              <TableCell>{it.size ?? size}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -334,7 +357,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
         <ConfigureTable headers={["Subtype", "Qty", "Actions"]}>
           {fillings.map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+              <TableCell className="font-medium">{normalizeNameOrFallback(it.subtype ?? it.name, "filling")}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> {
@@ -352,7 +375,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
         <ConfigureTable headers={["Item", "Size", "Qty", "Actions"]}>
           {packaging.map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">{it.name}</TableCell>
+              <TableCell className="font-medium">{normalizeNameOrFallback(it.name, "packaging")}</TableCell>
               <TableCell>{it.size}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
@@ -419,8 +442,8 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
         <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
           {sized('case').map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">Case</TableCell>
-              <TableCell>Bolster</TableCell>
+              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
+              <TableCell>{it.size ?? 'Bolster'}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -435,8 +458,8 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
         <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
           {sized('protector').map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">Protector</TableCell>
-              <TableCell>Bolster</TableCell>
+              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
+              <TableCell>{it.size ?? 'Bolster'}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
@@ -451,7 +474,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
         <ConfigureTable headers={["Subtype", "Qty", "Actions"]}>
           {fillings.map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">{it.subtype ?? it.name}</TableCell>
+              <TableCell className="font-medium">{normalizeNameOrFallback(it.subtype ?? it.name, "filling")}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> {
@@ -469,7 +492,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
         <ConfigureTable headers={["Item", "Size", "Qty", "Actions"]}>
           {packaging.map(it => (
             <TableRow key={it.id}>
-              <TableCell className="font-medium">{it.name}</TableCell>
+              <TableCell className="font-medium">{normalizeNameOrFallback(it.name, "packaging")}</TableCell>
               <TableCell>{it.size}</TableCell>
               <TableCell className="w-[140px]">
                 <Input type="number" min={0} value={getQty(it.id)}
