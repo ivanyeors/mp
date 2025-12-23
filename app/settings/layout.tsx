@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   SidebarProvider,
   Sidebar,
@@ -25,6 +26,21 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Toaster } from "sonner";
 
+type NavItem = {
+  href: string;
+  label: string;
+  tooltip: string;
+  Icon: LucideIcon;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/settings", label: "General", tooltip: "General Settings", Icon: Settings2 },
+  { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes },
+  { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
+  { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
+  { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
+];
+
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -43,46 +59,16 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             <SidebarGroup>
               <SidebarGroupLabel>Settings</SidebarGroupLabel>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="General Settings">
-                    <a href="/settings">
-                      <Settings2 />
-                      <span>General</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Configure BOM">
-                    <a href="/settings/inventory/configure">
-                      <Wrench />
-                      <span>Configure</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Inventory">
-                    <a href="/settings/inventory">
-                      <Boxes />
-                      <span>Inventory</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Costings">
-                    <a href="/settings/costings">
-                      <CircleDollarSign />
-                      <span>Costings</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Analytics">
-                    <a href="/settings/analytics">
-                      <TrendingUp />
-                      <span>Analytics</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {NAV_ITEMS.map(({ href, label, tooltip, Icon }) => (
+                  <SidebarMenuItem key={href}>
+                    <SidebarMenuButton asChild tooltip={tooltip}>
+                      <a href={href}>
+                        <Icon />
+                        <span>{label}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroup>
           </SidebarContent>

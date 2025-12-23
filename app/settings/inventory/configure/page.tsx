@@ -128,32 +128,68 @@ export default function ConfigureInventoryPage() {
 
   // removed unused itemsBy
 
-  const save = async () => {
-    setSaving(true);
-    const { data: productsData } = await supabaseClient.from("pillow_products").select("id,size");
-    for (const p of (productsData ?? []) as Product[]) {
-      const lines = bom[p.size];
-      await fetch("/settings/inventory/configure/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId: p.id, lines }),
-      });
+  const buildPayloadLines = (lines: BomLine[]) =>
+    lines
+      .map((line) => {
+        const quantity = Number.isFinite(line.quantity) ? Math.max(0, Math.round(line.quantity)) : 0;
+        return { item_id: line.item_id, quantity };
+      })
+      .filter((line) => line.quantity > 0);
+
+  const persistProductBom = async (productId: number, lines: BomLine[]) => {
+    const payloadLines = buildPayloadLines(lines);
+    const response = await fetch("/settings/inventory/configure/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId, lines: payloadLines }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      const message = payload?.error ?? "Failed to save configuration";
+      throw new Error(message);
     }
-    setSaving(false);
-    toast.success("Configuration saved for all sizes");
+  };
+
+  const save = async () => {
+    if (products.length === 0) {
+      toast.message("No active pillow products to save");
+      return;
+    }
+    setSaving(true);
+    try {
+      for (const product of products) {
+        await persistProductBom(product.id, bom[product.size]);
+      }
+      toast.success("Configuration saved for all sizes");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save configuration";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const saveBolster = async () => {
+    if (!bolsterVariant) {
+      toast.message("Select a bolster variant to save");
+      return;
+    }
+    setSaving(true);
     try {
-      const lines = (bolsterLines ?? []).filter(l => (l.quantity ?? 0) > 0);
       const variant = bolsterVariant === 'Short (0.8m)'
         ? 'short' : bolsterVariant === 'Long (1.2m)'
         ? 'long' : 'medium';
-      await fetch('/settings/inventory/configure/save', {
+      const lines = buildPayloadLines(bolsterLines ?? []);
+      const response = await fetch('/settings/inventory/configure/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind: 'bolster', variant, lines }),
       });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const message = payload?.error ?? 'Failed to save bolster';
+        throw new Error(message);
+      }
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(`bolster_bom_lines:${variant}`, JSON.stringify(lines));
       }
@@ -162,21 +198,26 @@ export default function ConfigureInventoryPage() {
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to save bolster';
       toast.error(message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const saveSize = async (size: Product["size"]) => {
     setSaving(true);
-    const product = products.find(p => p.size === size);
-    if (!product) { setSaving(false); return; }
-    const lines = bom[size];
-    await fetch("/settings/inventory/configure/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId: product.id, lines }),
-    });
-    setSaving(false);
-    toast.success(`Configuration saved for size ${size}`);
+    try {
+      const product = products.find((p) => p.size === size);
+      if (!product) {
+        throw new Error(`No active pillow product found for size ${size}`);
+      }
+      await persistProductBom(product.id, bom[size]);
+      toast.success(`Configuration saved for size ${size}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save configuration";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <div className="p-4">Loading…</div>;
@@ -289,17 +330,25 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
   const lines = bom[size];
 
   const upsert = (item_id: number, quantity: number) => {
+    const normalized = Number.isFinite(quantity) ? Math.max(0, Math.round(quantity)) : 0;
     setBom((prev: BomState) => {
-      const copy = { ...prev } as BomState;
-      const idx = copy[size].findIndex(l => l.item_id===item_id);
-      if (idx === -1) copy[size] = [...copy[size], { item_id, quantity }];
-      else copy[size] = copy[size].map((l) => l.item_id===item_id ? { ...l, quantity } : l);
-      return copy;
+      const next: BomState = { ...prev };
+      if (normalized === 0) {
+        next[size] = prev[size].filter((l) => l.item_id !== item_id);
+        return next;
+      }
+      const idx = prev[size].findIndex((l) => l.item_id === item_id);
+      if (idx === -1) {
+        next[size] = [...prev[size], { item_id, quantity: normalized }];
+      } else {
+        next[size] = prev[size].map((l) => (l.item_id === item_id ? { ...l, quantity: normalized } : l));
+      }
+      return next;
     });
   };
 
   const remove = (item_id: number) => {
-    setBom((prev: BomState) => ({ ...prev, [size]: prev[size].filter(l => l.item_id!==item_id) }));
+    setBom((prev: BomState) => ({ ...prev, [size]: prev[size].filter((l) => l.item_id !== item_id) }));
   };
 
   const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
@@ -317,7 +366,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
               </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
             </TableRow>
           ))}
         </ConfigureTable>
@@ -332,7 +381,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
               </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
             </TableRow>
           ))}
         </ConfigureTable>
@@ -347,7 +396,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
               </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
             </TableRow>
           ))}
         </ConfigureTable>
@@ -381,7 +430,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
               </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
             </TableRow>
           ))}
         </ConfigureTable>
@@ -423,10 +472,14 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
   const packaging = items.filter(i => i.category==='packaging' && i.size==='S');
 
   const upsert = (item_id: number, quantity: number) => {
+    const normalized = Number.isFinite(quantity) ? Math.max(0, Math.round(quantity)) : 0;
     setLines((prev: BomLine[]) => {
-      const idx = prev.findIndex(l => l.item_id===item_id);
-      if (idx === -1) return [...prev, { item_id, quantity }];
-      return prev.map((l) => l.item_id===item_id ? { ...l, quantity } : l);
+      if (normalized === 0) {
+        return prev.filter((l) => l.item_id !== item_id);
+      }
+      const idx = prev.findIndex((l) => l.item_id === item_id);
+      if (idx === -1) return [...prev, { item_id, quantity: normalized }];
+      return prev.map((l) => (l.item_id === item_id ? { ...l, quantity: normalized } : l));
     });
   };
 
@@ -448,7 +501,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
               </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
             </TableRow>
           ))}
         </ConfigureTable>
@@ -464,7 +517,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
               </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
             </TableRow>
           ))}
         </ConfigureTable>
@@ -498,7 +551,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
                 <Input type="number" min={0} value={getQty(it.id)}
                   onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
               </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> upsert(it.id, 0)}>Clear</Button></TableCell>
+              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
             </TableRow>
           ))}
         </ConfigureTable>

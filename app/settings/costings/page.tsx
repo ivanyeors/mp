@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
 
@@ -26,6 +27,21 @@ type BaselineState = Record<string, { cost: number | null; msrp: number | null }
 
 type BolsterVariant = "short" | "medium" | "long";
 
+type ProductComponent = { itemId: number; quantity: number };
+
+type ProductComponentDetail = {
+  item: ItemRow;
+  quantity: number;
+  costEach: number | null;
+  totalCost: number | null;
+};
+
+type ProductComponentGroup = {
+  key: string;
+  title: string;
+  rows: ProductComponentDetail[];
+};
+
 type ProductRow = {
   key: string;
   kind: "pillow" | "bolster";
@@ -34,6 +50,7 @@ type ProductRow = {
   variant?: BolsterVariant;
   costCents: number | null;
   msrpCents: number | null;
+  components: ProductComponent[];
 };
 
 type ProductSaveRow = {
@@ -56,49 +73,7 @@ const itemKey = (id: number) => `item:${id}`;
 const pillowKey = (productId: number) => `product:pillow:${productId}`;
 const bolsterKey = (variant: BolsterVariant) => `product:bolster:${variant}`;
 
-const CATEGORY_TITLES: Record<string, string> = {
-  cover: "Covers",
-  case: "Pillow Cases",
-  protector: "Protectors",
-  filling: "Fillings",
-  packaging: "Packaging",
-  accessories: "Accessories",
-  other: "Other",
-};
-
 const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
-
-const humanize = (value: string) =>
-  value
-    .split(/[_-]/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-
-const normalizeNameOrFallback = (value: string | null | undefined, fallback: string): string => {
-  if (!value) return humanize(fallback);
-  const trimmed = value.trim();
-  if (trimmed === "") return humanize(fallback);
-  if (/[_-]/.test(trimmed) || trimmed === trimmed.toLowerCase()) {
-    return humanize(trimmed);
-  }
-  return trimmed;
-};
-
-const describeItem = (item: ItemRow): string => {
-  if (item.category === "filling") {
-    const base = normalizeNameOrFallback(item.subtype ?? item.name, "filling");
-    return item.size ? `${base} — ${item.size}` : base;
-  }
-  const base = normalizeNameOrFallback(item.name, item.category);
-  if (item.size) {
-    return `${base} — ${item.size}`;
-  }
-  if (item.subtype) {
-    return `${base} — ${normalizeNameOrFallback(item.subtype, item.category)}`;
-  }
-  return base;
-};
 
 const toCents = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
@@ -110,6 +85,16 @@ const toCents = (value: unknown): number | null => {
 const formatFromCents = (cents: number | null): string => {
   if (cents === null) return "";
   return (cents / 100).toFixed(2);
+};
+
+const formatCentsLabel = (cents: number | null): string => {
+  if (cents === null) return "—";
+  return `$${formatFromCents(cents)}`;
+};
+
+const formatDraftCurrencyLabel = (value: string | undefined): string => {
+  if (!value || value.trim() === "") return "—";
+  return `$${value}`;
 };
 
 const sanitizeCurrencyInput = (raw: string): string => {
@@ -143,7 +128,8 @@ export default function CostingsPage() {
   const [baseline, setBaseline] = useState<BaselineState>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [productSheetKey, setProductSheetKey] = useState<string | null>(null);
+  const [productSheetOpen, setProductSheetOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -221,7 +207,7 @@ export default function CostingsPage() {
       const pillowProducts = (pillowData ?? []) as RawPillowRow[];
       const productPrices = (productPricesData ?? []) as RawProductPrice[];
 
-      const bomByProduct = new Map<number, Array<{ item_id: number; quantity: number }>>();
+      const bomByProduct = new Map<number, ProductComponent[]>();
       bomLines.forEach((line) => {
         const productId = Number(line.product_id);
         const itemId = Number(line.item_id);
@@ -230,11 +216,11 @@ export default function CostingsPage() {
           return;
         }
         const list = bomByProduct.get(productId) ?? [];
-        list.push({ item_id: itemId, quantity });
+        list.push({ itemId, quantity });
         bomByProduct.set(productId, list);
       });
 
-      const bolsterByVariant: Record<BolsterVariant, Array<{ item_id: number; quantity: number }>> = {
+      const bolsterByVariant: Record<BolsterVariant, ProductComponent[]> = {
         short: [],
         medium: [],
         long: [],
@@ -245,7 +231,7 @@ export default function CostingsPage() {
         const itemId = Number(line.item_id);
         const quantity = Number(line.quantity);
         if (!Number.isFinite(itemId) || !Number.isFinite(quantity)) return;
-        bolsterByVariant[variant].push({ item_id: itemId, quantity });
+        bolsterByVariant[variant].push({ itemId, quantity });
       });
 
       const priceByProductId = new Map<number, RawProductPrice>();
@@ -259,17 +245,17 @@ export default function CostingsPage() {
         }
       });
 
-      const costForLines = (lines: Array<{ item_id: number; quantity: number }>): number | null => {
-        if (lines.length === 0) return null;
+      const costForComponents = (components: ProductComponent[]): number | null => {
+        if (components.length === 0) return 0;
         let total = 0;
-        for (const line of lines) {
-          const cost = itemCostById.get(line.item_id);
+        for (const component of components) {
+          const cost = itemCostById.get(component.itemId);
           if (cost === undefined || cost === null) {
             return null;
           }
-          total += Math.round(cost * line.quantity);
+          total += cost * component.quantity;
         }
-        return total;
+        return Math.round(total);
       };
 
       const productDraft: DraftState = {};
@@ -290,8 +276,8 @@ export default function CostingsPage() {
         })
         .forEach((product) => {
           const key = pillowKey(product.id);
-          const lines = bomByProduct.get(product.id) ?? [];
-          const costCents = costForLines(lines);
+          const components = bomByProduct.get(product.id) ?? [];
+          const costCents = costForComponents(components);
           const price = priceByProductId.get(product.id);
           const msrpCents = toCents(price?.msrp ?? null);
           productDraft[key] = {
@@ -306,13 +292,14 @@ export default function CostingsPage() {
             productId: product.id,
             costCents,
             msrpCents,
+            components,
           });
         });
 
       BOLSTER_VARIANTS.forEach((variant) => {
         const key = bolsterKey(variant);
-        const lines = bolsterByVariant[variant];
-        const costCents = costForLines(lines);
+        const components = bolsterByVariant[variant];
+        const costCents = costForComponents(components);
         const price = priceByVariant.get(variant);
         const msrpCents = toCents(price?.msrp ?? null);
         productDraft[key] = {
@@ -327,6 +314,7 @@ export default function CostingsPage() {
           variant,
           costCents,
           msrpCents,
+          components,
         });
       });
 
@@ -413,48 +401,139 @@ export default function CostingsPage() {
       })
       .map(([category, list]) => ({
         category,
-        title: CATEGORY_TITLES[category] ?? humanize(category),
-        items: list.sort((left, right) => describeItem(left).localeCompare(describeItem(right))),
+        title: getInventoryCategoryTitle(category),
+        items: list.sort((left, right) =>
+          getInventoryItemDisplayLabel(left).localeCompare(getInventoryItemDisplayLabel(right)),
+        ),
       }));
   }, [items]);
 
-  useEffect(() => {
-    setCollapsedCategories((prev) => {
-      const desiredKeys = new Set<string>();
-      if (products.length > 0) {
-        desiredKeys.add("products");
+  const itemMap = useMemo(() => {
+    const map = new Map<number, ItemRow>();
+    items.forEach((item) => {
+      map.set(item.id, item);
+    });
+    return map;
+  }, [items]);
+
+  const itemCostByIdFromDraft = useMemo(() => {
+    const map = new Map<number, number | null>();
+    items.forEach((item) => {
+      const key = itemKey(item.id);
+      const entry = draft[key];
+      const cents = parseToCents(entry?.costPrice ?? "");
+      map.set(item.id, cents);
+    });
+    return map;
+  }, [items, draft]);
+
+  const productCostDisplay = useMemo(() => {
+    const map = new Map<string, string>();
+    products.forEach((product) => {
+      if (product.components.length === 0) {
+        map.set(product.key, "0.00");
+        return;
       }
-      for (const { category } of grouped) {
-        desiredKeys.add(category);
-      }
-
-      const next: Record<string, boolean> = {};
-      let changed = false;
-
-      desiredKeys.forEach((key) => {
-        next[key] = prev[key] ?? false;
-        if (next[key] !== prev[key]) {
-          changed = true;
-        }
-      });
-
-      for (const key of Object.keys(prev)) {
-        if (!desiredKeys.has(key)) {
-          changed = true;
+      let total = 0;
+      let missing = false;
+      for (const component of product.components) {
+        const cost = itemCostByIdFromDraft.get(component.itemId);
+        if (cost === undefined || cost === null) {
+          missing = true;
           break;
         }
+        total += cost * component.quantity;
       }
-
-      return changed ? next : prev;
+      if (missing) {
+        map.set(product.key, "");
+      } else {
+        map.set(product.key, formatFromCents(Math.round(total)));
+      }
     });
-  }, [grouped, products]);
+    return map;
+  }, [products, itemCostByIdFromDraft]);
 
-  const toggleCategory = (category: string) => {
-    setCollapsedCategories((prev) => ({
-      ...prev,
-      [category]: !prev[category],
-    }));
-  };
+  const activeProduct = useMemo(() => {
+    if (!productSheetKey) return null;
+    return products.find((product) => product.key === productSheetKey) ?? null;
+  }, [productSheetKey, products]);
+
+  const activeProductDraft = useMemo(() => {
+    if (!activeProduct) return null;
+    return draft[activeProduct.key] ?? { costPrice: "", msrp: "" };
+  }, [activeProduct, draft]);
+
+  const activeProductCostDisplay = useMemo(() => {
+    if (!activeProduct) return "";
+    const display = productCostDisplay.get(activeProduct.key);
+    if (display && display !== "") {
+      return display;
+    }
+    return formatFromCents(activeProduct.costCents ?? null);
+  }, [activeProduct, productCostDisplay]);
+
+  const activeProductComponents = useMemo(() => {
+    if (!activeProduct) return [];
+    const groups = new Map<string, ProductComponentGroup>();
+    activeProduct.components.forEach((component) => {
+      if (!component || component.quantity <= 0) return;
+      const item = itemMap.get(component.itemId);
+      if (!item) return;
+      const category = item.category;
+      const group = groups.get(category) ?? {
+        key: category,
+        title: getInventoryCategoryTitle(category),
+        rows: [],
+      };
+      const costEach = itemCostByIdFromDraft.get(item.id) ?? null;
+      const totalCost = costEach !== null ? costEach * component.quantity : null;
+      group.rows.push({
+        item,
+        quantity: component.quantity,
+        costEach,
+        totalCost,
+      });
+      groups.set(category, group);
+    });
+    const sortIndex = (category: string) => {
+      const index = CATEGORY_ORDER.indexOf(category);
+      return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+    };
+    return Array.from(groups.values())
+      .sort((left, right) => {
+        const leftIndex = sortIndex(left.key);
+        const rightIndex = sortIndex(right.key);
+        if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+        return left.title.localeCompare(right.title);
+      })
+      .map((group) => ({
+        ...group,
+        rows: group.rows.sort((a, b) =>
+          getInventoryItemDisplayLabel(a.item).localeCompare(getInventoryItemDisplayLabel(b.item)),
+        ),
+      }));
+  }, [activeProduct, itemCostByIdFromDraft, itemMap]);
+
+  const openProductSheet = useCallback((productKey: string) => {
+    setProductSheetKey(productKey);
+    setProductSheetOpen(true);
+  }, []);
+
+  const closeProductSheet = useCallback(() => {
+    setProductSheetOpen(false);
+    setProductSheetKey(null);
+  }, []);
+
+  const handleSheetOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        closeProductSheet();
+      } else if (productSheetKey) {
+        setProductSheetOpen(true);
+      }
+    },
+    [closeProductSheet, productSheetKey],
+  );
 
   const handleInputChange = (rowKey: string, field: keyof DraftRow, raw: string) => {
     const sanitized = sanitizeCurrencyInput(raw);
@@ -564,10 +643,33 @@ export default function CostingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rows, products: productPayload }),
       });
+      const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        const payload = await response.json().catch(() => null);
         const message = payload?.error ?? "Failed to save costings";
         throw new Error(message);
+      }
+      if (payload?.products && Array.isArray(payload.products)) {
+        const byKey = new Map<string, { costCents: number | null; msrpCents: number | null }>();
+        payload.products.forEach((product: { key?: unknown; costCents?: unknown; msrpCents?: unknown }) => {
+          if (typeof product?.key === "string") {
+            const costCents = typeof product.costCents === "number" ? product.costCents : null;
+            const msrpCents = typeof product.msrpCents === "number" ? product.msrpCents : null;
+            byKey.set(product.key, { costCents, msrpCents });
+          }
+        });
+        if (byKey.size > 0) {
+          setProducts((prev) =>
+            prev.map((product) => {
+              const summary = byKey.get(product.key);
+              if (!summary) return product;
+              return {
+                ...product,
+                costCents: summary.costCents,
+                msrpCents: summary.msrpCents,
+              };
+            }),
+          );
+        }
       }
       toast.success("Costings saved");
       await load();
@@ -616,165 +718,241 @@ export default function CostingsPage() {
 
       <Separator />
 
-      <div className="space-y-8">
+      <div className="space-y-10">
         {products.length > 0 && (
           <section className="space-y-4">
-            <button
-              type="button"
-              onClick={() => toggleCategory("products")}
-              className="flex w-full items-start justify-between gap-3 text-left"
-              aria-expanded={!(collapsedCategories.products ?? false)}
-            >
-              <div>
-                <h2 className="text-lg font-medium">Products</h2>
-                <p className="text-sm text-muted-foreground">
-                  Cost price is calculated from configured components. Enter MSRP to set retail pricing.
-                </p>
-              </div>
-              <ChevronDown
-                className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
-                  collapsedCategories.products ? "-rotate-90" : ""
-                }`}
-              />
-            </button>
-            {!(collapsedCategories.products ?? false) && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-2/5">Product</TableHead>
-                    <TableHead className="w-1/5">Cost Price</TableHead>
-                    <TableHead className="w-1/5">MSRP</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {products.map((product) => {
-                    const current = draft[product.key] ?? { costPrice: "", msrp: "" };
-                    return (
-                      <TableRow key={product.key}>
-                        <TableCell className="font-medium">{product.label}</TableCell>
-                        <TableCell>
-                          <div className="relative">
-                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                              $
-                            </span>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={current.costPrice}
-                              placeholder="0.00"
-                              disabled
-                              className="pl-6"
-                              aria-label={`Cost price for ${product.label}`}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="relative">
-                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                              $
-                            </span>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={current.msrp}
-                              placeholder="0.00"
-                              onChange={(event) => handleInputChange(product.key, "msrp", event.target.value)}
-                              onBlur={() => handleBlur(product.key, "msrp")}
-                              className="pl-6"
-                              aria-label={`MSRP for ${product.label}`}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
+            <div>
+              <h2 className="text-lg font-medium">Products</h2>
+              <p className="text-sm text-muted-foreground">
+                Cost price is calculated from configured components. Enter MSRP to set retail pricing.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => {
+                const current = draft[product.key] ?? { costPrice: "", msrp: "" };
+                const costDisplay = productCostDisplay.get(product.key) ?? current.costPrice;
+                const partsCount = product.components.filter((component) => component.quantity > 0).length;
+                const primaryLabel =
+                  product.kind === "pillow"
+                    ? product.label.replace(/^Pillow —\s*/, "")
+                    : product.variant
+                    ? BOLSTER_VARIANT_TITLES[product.variant]
+                    : product.label;
+                const secondaryLabel = product.kind === "pillow" ? "Pillow Size" : "Bolster Variant";
+                return (
+                  <div
+                    key={product.key}
+                    role="button"
+                    tabIndex={0}
+                    className="space-y-3 rounded-lg border p-4 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none"
+                    onClick={() => openProductSheet(product.key)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openProductSheet(product.key);
+                      }
+                    }}
+                  >
+                    <div>
+                      <div className="text-xs text-muted-foreground">{secondaryLabel}</div>
+                      <div className="text-2xl font-semibold">{primaryLabel}</div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">{partsCount} parts configured</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Cost</div>
+                        <div className="font-medium">{formatDraftCurrencyLabel(costDisplay)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">MSRP</div>
+                        <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <Button size="sm" variant="secondary">
+                        View details
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
-        {grouped.map((group) => (
-          <section key={group.category} className="space-y-4">
-            <button
-              type="button"
-              onClick={() => toggleCategory(group.category)}
-              className="flex w-full items-start justify-between gap-3 text-left"
-              aria-expanded={!(collapsedCategories[group.category] ?? false)}
-            >
-              <div>
-                <h2 className="text-lg font-medium">{group.title}</h2>
-                <p className="text-sm text-muted-foreground">
-                  Enter values as dollars. Leave blank to clear existing pricing for a part.
-                </p>
-              </div>
-              <ChevronDown
-                className={`mt-1 h-5 w-5 shrink-0 transition-transform ${
-                  collapsedCategories[group.category] ? "-rotate-90" : ""
-                }`}
-              />
-            </button>
-            {!(collapsedCategories[group.category] ?? false) && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-2/5">Part</TableHead>
-                    <TableHead className="w-1/5">Cost Price</TableHead>
-                    <TableHead className="w-1/5">MSRP</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {group.items.map((item) => {
-                    const rowKey = itemKey(item.id);
-                    const current = draft[rowKey] ?? { costPrice: "", msrp: "" };
-                    const itemLabel = describeItem(item);
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{itemLabel}</TableCell>
-                        <TableCell>
-                          <div className="relative">
-                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                              $
-                            </span>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={current.costPrice}
-                              placeholder="0.00"
-                              onChange={(event) => handleInputChange(rowKey, "costPrice", event.target.value)}
-                              onBlur={() => handleBlur(rowKey, "costPrice")}
-                              className="pl-6"
-                              aria-label={`Cost price for ${itemLabel}`}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="relative">
-                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                              $
-                            </span>
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={current.msrp}
-                              placeholder="0.00"
-                              onChange={(event) => handleInputChange(rowKey, "msrp", event.target.value)}
-                              onBlur={() => handleBlur(rowKey, "msrp")}
-                              className="pl-6"
-                              aria-label={`MSRP for ${itemLabel}`}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </section>
-        ))}
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-medium">Parts</h2>
+            <p className="text-sm text-muted-foreground">
+              Enter values as dollars. Leave blank to clear existing pricing for a part.
+            </p>
+          </div>
+          <div className="space-y-6">
+            {grouped.map((group) => (
+              <Section key={group.category} title={group.title}>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-2/5">Part</TableHead>
+                      <TableHead className="w-1/5">Cost Price</TableHead>
+                      <TableHead className="w-1/5">MSRP</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {group.items.map((item) => {
+                      const rowKey = itemKey(item.id);
+                      const current = draft[rowKey] ?? { costPrice: "", msrp: "" };
+                      const itemLabel = getInventoryItemDisplayLabel(item);
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="align-middle">
+                            <InventoryItemLabel item={item} />
+                          </TableCell>
+                          <TableCell>
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                $
+                              </span>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={current.costPrice}
+                                placeholder="0.00"
+                                onChange={(event) => handleInputChange(rowKey, "costPrice", event.target.value)}
+                                onBlur={() => handleBlur(rowKey, "costPrice")}
+                                className="pl-6"
+                                aria-label={`Cost price for ${itemLabel}`}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                $
+                              </span>
+                              <Input
+                                type="text"
+                                inputMode="decimal"
+                                value={current.msrp}
+                                placeholder="0.00"
+                                onChange={(event) => handleInputChange(rowKey, "msrp", event.target.value)}
+                                onBlur={() => handleBlur(rowKey, "msrp")}
+                                className="pl-6"
+                                aria-label={`MSRP for ${itemLabel}`}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Section>
+            ))}
+          </div>
+        </section>
       </div>
+
+      <Sheet open={productSheetOpen && Boolean(activeProduct)} onOpenChange={handleSheetOpenChange}>
+        <SheetContent side="right" className="w-full sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>{activeProduct?.label ?? "Product details"}</SheetTitle>
+            <SheetDescription>Review configured parts and adjust pricing.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-6 px-2">
+            {activeProduct ? (
+              <>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Cost price</div>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={activeProductCostDisplay}
+                        placeholder="0.00"
+                        disabled
+                        className="pl-6"
+                        aria-label={`Cost price for ${activeProduct.label}`}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">MSRP</div>
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        $
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={activeProductDraft?.msrp ?? ""}
+                        placeholder="0.00"
+                        onChange={(event) => handleInputChange(activeProduct.key, "msrp", event.target.value)}
+                        onBlur={() => handleBlur(activeProduct.key, "msrp")}
+                        className="pl-6"
+                        aria-label={`MSRP for ${activeProduct.label}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <Separator />
+                {activeProductComponents.length > 0 ? (
+                  <div className="space-y-4">
+                    {activeProductComponents.map((group) => (
+                      <Section key={group.key} title={group.title}>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-2/5">Part</TableHead>
+                              <TableHead className="w-[70px]">Qty</TableHead>
+                              <TableHead className="w-1/5">Cost Each</TableHead>
+                              <TableHead className="w-1/5">Total Cost</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.rows.map((detail) => (
+                              <TableRow key={detail.item.id}>
+                                <TableCell className="align-middle">
+                                  <InventoryItemLabel item={detail.item} />
+                                </TableCell>
+                                <TableCell>{detail.quantity}</TableCell>
+                                <TableCell>{formatCentsLabel(detail.costEach)}</TableCell>
+                                <TableCell>{formatCentsLabel(detail.totalCost)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </Section>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No parts configured for this product.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Select a product to view details.</p>
+            )}
+          </div>
+          <SheetFooter>
+            <Button variant="secondary" onClick={closeProductSheet}>
+              Close
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
-
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium text-muted-foreground">{title}</div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
