@@ -1,5 +1,40 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Shopify inventory sync (buildable → Shopify)
+
+This repo can keep Shopify variant inventory in sync with the platform’s computed availability:
+- **Shopify → Platform**: Shopify order webhook decrements component inventory via existing inventory actions.
+- **Platform → Shopify**: The platform computes “buildable” counts and sets Shopify variant inventory to match.
+
+### Required environment variables
+
+Set these in **Vercel** (and optionally in `.env.local` for local dev):
+- `SHOPIFY_SHOP_DOMAIN` (e.g. `your-store.myshopify.com`)
+- `SHOPIFY_ADMIN_ACCESS_TOKEN` (Admin API access token, typically starts with `shpat_...`)
+- `SHOPIFY_WEBHOOK_SECRET` (webhook signing secret)
+- `SHOPIFY_API_VERSION` (optional, default `2025-07`)
+- `SHOPIFY_LOCATION_ID` (optional; if omitted we auto-pick the first active location)
+- `SHOPIFY_SYNC_TOKEN` (optional; if set, `/api/shopify/sync` requires `Authorization: Bearer <token>`)
+
+### Webhook
+
+Create a Shopify webhook for `orders/paid` and point it to:
+- `POST /api/shopify/webhook`
+
+### Mapping (no SKU dependency)
+
+To avoid breaking changes while SKUs are being renamed, mapping is done by **Shopify Variant ID**.
+
+Create rows in Supabase table `shopify_variant_mappings`:
+- `kind='pillow'` with `pillow_size` in `XS|S|M|L|XL`
+- `kind='bolster'` with `bolster_variant` in `short|medium|long`
+- `kind='part'` with `item_id` pointing to `items.id` (optional)
+
+### Manual sync endpoint
+
+Trigger a sync (buildable → Shopify inventory):
+- `POST /api/shopify/sync`
+
 ## Getting Started
 
 First, run the development server:
