@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { getShopifyEnv } from '@/lib/shopify/env'
+import { getShopifyWebhookSecret } from '@/lib/shopify/env'
 import { verifyShopifyWebhookHmac } from '@/lib/shopify/verify'
 import { sellBolster, sellPillow, sellPart } from '@/app/settings/inventory/actions'
 import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
@@ -33,11 +33,11 @@ function isShopifyOrder(value: unknown): value is ShopifyOrder {
 }
 
 export async function POST(req: NextRequest) {
-  const env = getShopifyEnv()
+  const webhookSecret = getShopifyWebhookSecret()
 
   const rawBody = await req.text()
   const hmacHeader = req.headers.get('x-shopify-hmac-sha256')
-  const ok = verifyShopifyWebhookHmac({ rawBody, webhookSecret: env.webhookSecret, hmacHeader })
+  const ok = verifyShopifyWebhookHmac({ rawBody, webhookSecret, hmacHeader })
   if (!ok) {
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 })
   }

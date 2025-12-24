@@ -1,7 +1,7 @@
 export type ShopifyEnv = {
   shopDomain: string
   adminAccessToken: string
-  webhookSecret: string
+  webhookSecret?: string
   apiVersion: string
   locationId?: string
   syncToken?: string
@@ -17,11 +17,15 @@ export function getShopifyEnv(): ShopifyEnv {
   return {
     shopDomain: requireEnv('SHOPIFY_SHOP_DOMAIN'),
     adminAccessToken: requireEnv('SHOPIFY_ADMIN_ACCESS_TOKEN'),
-    webhookSecret: requireEnv('SHOPIFY_WEBHOOK_SECRET'),
+    webhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET,
     apiVersion: process.env.SHOPIFY_API_VERSION || '2025-07',
     locationId: process.env.SHOPIFY_LOCATION_ID,
     syncToken: process.env.SHOPIFY_SYNC_TOKEN,
   }
+}
+
+export function getShopifyWebhookSecret(): string {
+  return requireEnv('SHOPIFY_WEBHOOK_SECRET')
 }
 
 

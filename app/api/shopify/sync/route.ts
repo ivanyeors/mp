@@ -9,15 +9,14 @@ function unauthorized() {
 }
 
 export async function POST(req: NextRequest) {
-  const env = getShopifyEnv()
-  const required = env.syncToken
-  if (required) {
-    const auth = req.headers.get('authorization') || ''
-    const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length).trim() : ''
-    if (!token || token !== required) return unauthorized()
-  }
-
   try {
+    const env = getShopifyEnv()
+    const required = env.syncToken
+    if (required) {
+      const auth = req.headers.get('authorization') || ''
+      const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length).trim() : ''
+      if (!token || token !== required) return unauthorized()
+    }
     const result = await syncShopifyInventoryFromBuildable()
     return NextResponse.json({ ok: true, ...result })
   } catch (e) {
