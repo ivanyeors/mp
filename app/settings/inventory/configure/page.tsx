@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ type BomLine = { item_id: number; quantity: number };
 type BomState = Record<Product["size"], BomLine[]>;
 
 const SIZES: Product["size"][] = ["XS", "S", "M", "L", "XL"];
+const KNOWN_CATEGORIES: Item["category"][] = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
 
 const humanizeText = (value: string) =>
   value
@@ -324,9 +325,19 @@ export default function ConfigureInventoryPage() {
 }
 
 function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items: Item[]; bom: BomState; setBom: Dispatch<SetStateAction<BomState>> }) {
-  const sized = (category: Item["category"]) => items.filter(i => i.category===category && i.size===size);
-  const fillings = items.filter(i => i.category==='filling');
-  const packaging = items.filter(i => i.category==='packaging' && ((size==='XS'||size==='S'||size==='M') ? i.size==='S' : i.size==='L'));
+  const itemsById = useMemo(() => {
+    const map = new Map<number, Item>();
+    items.forEach((item) => map.set(item.id, item));
+    return map;
+  }, [items]);
+
+  const sized = (category: Item["category"]) => items.filter((i) => i.category === category && i.size === size);
+  const fillings = items.filter((i) => i.category === "filling");
+  const packaging = items.filter(
+    (i) => i.category === "packaging" && ((size === "XS" || size === "S" || size === "M") ? i.size === "S" : i.size === "L"),
+  );
+  const accessories = items.filter((i) => i.category === "accessories" && (!i.size || i.size === size));
+  const other = items.filter((i) => i.category === "other" && (!i.size || i.size === size));
   const lines = bom[size];
 
   const upsert = (item_id: number, quantity: number) => {
@@ -351,90 +362,100 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
     setBom((prev: BomState) => ({ ...prev, [size]: prev[size].filter((l) => l.item_id !== item_id) }));
   };
 
-  const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
+  const linesForCategory = (category: Item["category"]) =>
+    lines.filter((l) => itemsById.get(l.item_id)?.category === category);
+
+  const uncategorizedLines = lines.filter((l) => {
+    const cat = itemsById.get(l.item_id)?.category;
+    return !cat || !KNOWN_CATEGORIES.includes(cat);
+  });
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-medium">Size {size}</h2>
-      <Section title="Cover (1)">
-        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
-          {sized('cover').map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
-              <TableCell>{it.size ?? size}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
-      <Section title="Case (1)">
-        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
-          {sized('case').map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
-              <TableCell>{it.size ?? size}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
-      <Section title="Protector (1)">
-        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
-          {sized('protector').map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
-              <TableCell>{it.size ?? size}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
 
-      <Section title="Fillings">
-        <ConfigureTable headers={["Subtype", "Qty", "Actions"]}>
-          {fillings.map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{normalizeNameOrFallback(it.subtype ?? it.name, "filling")}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> {
-                    const v = Math.max(0, parseInt(e.target.value||'0',10));
-                    if (v===0) remove(it.id); else upsert(it.id, v);
-                  }} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
+      <DynamicPartSection
+        title="Cover"
+        sizeLabel={size}
+        lines={linesForCategory("cover")}
+        availableItems={sized("cover")}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
 
-      <Section title="Packaging (1 vacuum + 1 net)">
-        <ConfigureTable headers={["Item", "Size", "Qty", "Actions"]}>
-          {packaging.map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{normalizeNameOrFallback(it.name, "packaging")}</TableCell>
-              <TableCell>{it.size}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
+      <DynamicPartSection
+        title="Case"
+        sizeLabel={size}
+        lines={linesForCategory("case")}
+        availableItems={sized("case")}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      <DynamicPartSection
+        title="Protector"
+        sizeLabel={size}
+        lines={linesForCategory("protector")}
+        availableItems={sized("protector")}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      <DynamicPartSection
+        title="Fillings"
+        sizeLabel={size}
+        lines={linesForCategory("filling")}
+        availableItems={fillings}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+        variantResolver={(item) => normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
+      />
+
+      <DynamicPartSection
+        title="Packaging"
+        sizeLabel={size}
+        lines={linesForCategory("packaging")}
+        availableItems={packaging}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      <DynamicPartSection
+        title="Accessories"
+        sizeLabel={size}
+        lines={linesForCategory("accessories")}
+        availableItems={accessories}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      <DynamicPartSection
+        title="Other"
+        sizeLabel={size}
+        lines={linesForCategory("other")}
+        availableItems={other}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      {uncategorizedLines.length > 0 && (
+        <DynamicPartSection
+          title="Uncategorized"
+          sizeLabel={size}
+          lines={uncategorizedLines}
+          availableItems={[]}
+          getItem={(id) => itemsById.get(id)}
+          upsert={upsert}
+          remove={remove}
+        />
+      )}
       <Separator />
     </div>
   );
@@ -466,10 +487,139 @@ function ConfigureTable({ headers, children }: { headers: string[]; children: Re
   );
 }
 
+type DynamicPartSectionProps = {
+  title: string;
+  sizeLabel?: string;
+  lines: BomLine[];
+  availableItems: Item[];
+  getItem: (id: number) => Item | undefined;
+  upsert: (itemId: number, quantity: number) => void;
+  remove: (itemId: number) => void;
+  variantResolver?: (item: Item, fallbackSize?: string) => string;
+};
+
+function DynamicPartSection({
+  title,
+  sizeLabel,
+  lines,
+  availableItems,
+  getItem,
+  upsert,
+  remove,
+  variantResolver,
+}: DynamicPartSectionProps) {
+  const [selectedId, setSelectedId] = useState<number | "">("");
+  const [quantity, setQuantity] = useState<number>(1);
+
+  const existingIds = useMemo(() => new Set(lines.map((l) => l.item_id)), [lines]);
+  const addable = availableItems.filter((i) => !existingIds.has(i.id));
+
+  const renderVariant = (item?: Item) => {
+    if (!item) return sizeLabel ?? "—";
+    if (variantResolver) return variantResolver(item, sizeLabel);
+    return item.size ?? sizeLabel ?? "—";
+  };
+
+  const handleAdd = () => {
+    if (selectedId === "" || quantity <= 0) return;
+    upsert(Number(selectedId), quantity);
+    setSelectedId("");
+    setQuantity(1);
+  };
+
+  const handleQtyChange = (itemId: number, value: string) => {
+    const parsed = Number.parseInt(value || "0", 10);
+    upsert(itemId, Number.isFinite(parsed) ? parsed : 0);
+  };
+
+  return (
+    <Section title={title}>
+      <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
+        {lines.map((l) => {
+          const item = getItem(l.item_id);
+          return (
+            <TableRow key={l.item_id}>
+              <TableCell className="font-medium">{item ? getItemBaseName(item) : `Item #${l.item_id}`}</TableCell>
+              <TableCell>{renderVariant(item)}</TableCell>
+              <TableCell className="w-[140px]">
+                <Input
+                  type="number"
+                  min={0}
+                  value={l.quantity}
+                  onChange={(e) => handleQtyChange(l.item_id, e.target.value)}
+                />
+              </TableCell>
+              <TableCell className="w-[140px]">
+                <Button size="sm" variant="secondary" onClick={() => remove(l.item_id)}>
+                  Remove
+                </Button>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+        {lines.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={4} className="text-sm text-muted-foreground">
+              No parts added yet.
+            </TableCell>
+          </TableRow>
+        )}
+        <TableRow>
+          <TableCell colSpan={2}>
+            <div className="flex items-center gap-2">
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={selectedId === "" ? "" : String(selectedId)}
+                onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : "")}
+                disabled={addable.length === 0}
+              >
+                <option value="">{addable.length ? "Select part to add" : "All available parts added"}</option>
+                {addable.map((it) => (
+                  <option key={it.id} value={it.id}>
+                    {getItemBaseName(it)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </TableCell>
+          <TableCell className="w-[140px]">
+            <Input
+              type="number"
+              min={0}
+              value={quantity}
+              onChange={(e) => {
+                const parsed = Number.parseInt(e.target.value || "0", 10);
+                setQuantity(Number.isFinite(parsed) ? parsed : 0);
+              }}
+            />
+          </TableCell>
+          <TableCell className="w-[140px]">
+            <Button
+              size="sm"
+              onClick={handleAdd}
+              disabled={selectedId === "" || quantity <= 0 || !Number.isFinite(quantity)}
+            >
+              Add part
+            </Button>
+          </TableCell>
+        </TableRow>
+      </ConfigureTable>
+    </Section>
+  );
+}
+
 function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLine[]; setLines: Dispatch<SetStateAction<BomLine[]>> }) {
-  const sized = (category: Item["category"]) => items.filter(i => i.category===category && (i.size==='Bolster'));
-  const fillings = items.filter(i => i.category==='filling' && i.subtype==='6D (L)');
-  const packaging = items.filter(i => i.category==='packaging' && i.size==='S');
+  const itemsById = useMemo(() => {
+    const map = new Map<number, Item>();
+    items.forEach((item) => map.set(item.id, item));
+    return map;
+  }, [items]);
+
+  const sized = (category: Item["category"]) => items.filter((i) => i.category === category && i.size === "Bolster");
+  const fillings = items.filter((i) => i.category === "filling" && i.subtype === "6D (L)");
+  const packaging = items.filter((i) => i.category === "packaging" && i.size === "S");
+  const accessories = items.filter((i) => i.category === "accessories" && (!i.size || i.size === "Bolster"));
+  const other = items.filter((i) => i.category === "other" && (!i.size || i.size === "Bolster"));
 
   const upsert = (item_id: number, quantity: number) => {
     const normalized = Number.isFinite(quantity) ? Math.max(0, Math.round(quantity)) : 0;
@@ -484,78 +634,91 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
   };
 
   const remove = (item_id: number) => {
-    setLines((prev: BomLine[]) => prev.filter(l => l.item_id!==item_id));
+    setLines((prev: BomLine[]) => prev.filter((l) => l.item_id !== item_id));
   };
 
-  const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
+  const linesForCategory = (category: Item["category"]) =>
+    lines.filter((l) => itemsById.get(l.item_id)?.category === category);
+
+  const uncategorizedLines = lines.filter((l) => {
+    const cat = itemsById.get(l.item_id)?.category;
+    return !cat || !KNOWN_CATEGORIES.includes(cat);
+  });
 
   return (
     <div className="space-y-4">
-      <Section title="Case (Bolster)">
-        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
-          {sized('case').map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
-              <TableCell>{it.size ?? 'Bolster'}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
+      <DynamicPartSection
+        title="Case (Bolster)"
+        sizeLabel="Bolster"
+        lines={linesForCategory("case")}
+        availableItems={sized("case")}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
 
-      <Section title="Protector (Bolster)">
-        <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
-          {sized('protector').map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{getItemBaseName(it)}</TableCell>
-              <TableCell>{it.size ?? 'Bolster'}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
+      <DynamicPartSection
+        title="Protector (Bolster)"
+        sizeLabel="Bolster"
+        lines={linesForCategory("protector")}
+        availableItems={sized("protector")}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
 
-      <Section title="Fillings – 6D (L)">
-        <ConfigureTable headers={["Subtype", "Qty", "Actions"]}>
-          {fillings.map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{normalizeNameOrFallback(it.subtype ?? it.name, "filling")}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> {
-                    const v = Math.max(0, parseInt(e.target.value||'0',10));
-                    if (v===0) remove(it.id); else upsert(it.id, v);
-                  }} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
+      <DynamicPartSection
+        title="Fillings – 6D (L)"
+        sizeLabel="Bolster"
+        lines={linesForCategory("filling")}
+        availableItems={fillings}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+        variantResolver={(item) => normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
+      />
 
-      <Section title="Packaging (1 vacuum + 1 net typical)">
-        <ConfigureTable headers={["Item", "Size", "Qty", "Actions"]}>
-          {packaging.map(it => (
-            <TableRow key={it.id}>
-              <TableCell className="font-medium">{normalizeNameOrFallback(it.name, "packaging")}</TableCell>
-              <TableCell>{it.size}</TableCell>
-              <TableCell className="w-[140px]">
-                <Input type="number" min={0} value={getQty(it.id)}
-                  onChange={(e)=> upsert(it.id, Math.max(0, parseInt(e.target.value||'0',10)))} />
-              </TableCell>
-              <TableCell className="w-[110px]"><Button size="sm" variant="secondary" onClick={()=> remove(it.id)}>Clear</Button></TableCell>
-            </TableRow>
-          ))}
-        </ConfigureTable>
-      </Section>
+      <DynamicPartSection
+        title="Packaging (typical)"
+        sizeLabel="Bolster"
+        lines={linesForCategory("packaging")}
+        availableItems={packaging}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      <DynamicPartSection
+        title="Accessories"
+        sizeLabel="Bolster"
+        lines={linesForCategory("accessories")}
+        availableItems={accessories}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      <DynamicPartSection
+        title="Other"
+        sizeLabel="Bolster"
+        lines={linesForCategory("other")}
+        availableItems={other}
+        getItem={(id) => itemsById.get(id)}
+        upsert={upsert}
+        remove={remove}
+      />
+
+      {uncategorizedLines.length > 0 && (
+        <DynamicPartSection
+          title="Uncategorized"
+          sizeLabel="Bolster"
+          lines={uncategorizedLines}
+          availableItems={[]}
+          getItem={(id) => itemsById.get(id)}
+          upsert={upsert}
+          remove={remove}
+        />
+      )}
       <Separator />
     </div>
   );
