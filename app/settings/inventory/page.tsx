@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2 } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
 import {
   sellPillow,
   sellPart,
@@ -18,6 +18,7 @@ import {
 } from "./actions";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   InventoryItemLabel,
   getInventoryItemDisplayLabel,
@@ -1282,6 +1283,26 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     });
   }, [group]);
 
+  const variantsGroupedByName = useMemo(() => {
+    const list = sortedVariants;
+    const groupsMap = new Map<string, Item[]>();
+    const order: string[] = [];
+
+    for (const variant of list) {
+      const nameKey = getInventoryVariantName(variant).trim() || "Item";
+      if (!groupsMap.has(nameKey)) order.push(nameKey);
+      const bucket = groupsMap.get(nameKey) ?? [];
+      bucket.push(variant);
+      groupsMap.set(nameKey, bucket);
+    }
+
+    return order.map((name) => {
+      const variants = groupsMap.get(name) ?? [];
+      const totalOnHand = variants.reduce((sum, v) => sum + (balances[v.id] ?? 0), 0);
+      return { name, variants, totalOnHand };
+    });
+  }, [sortedVariants, balances]);
+
   useEffect(() => {
     if (renamingId === null) return;
     if (!sortedVariants.some((variant) => variant.id === renamingId)) {
@@ -1358,125 +1379,149 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
           <SheetTitle>{group?.title ?? 'Part'}</SheetTitle>
           <SheetDescription>Enter stock in/out quantities per variant.</SheetDescription>
         </SheetHeader>
-        <div className="mt-4 space-y-3 px-2">
-          {sortedVariants.map((variant) => {
-            const labelParts = getInventoryItemLabelParts(variant);
-            const description = getInventoryItemDisplayLabel(variant);
-            const defaultRenameValue = variant.name?.trim() ? variant.name.trim() : labelParts.variant;
-            const onHand = balances[variant.id] ?? 0;
-            const isRenaming = renamingId === variant.id;
-            return (
-              <div key={variant.id} className="group relative rounded border p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    {isRenaming ? (
-                      <>
-                        <Input
-                          value={renameValue}
-                          onChange={(event) => {
-                            setRenameValue(event.target.value);
-                            if (renameError) setRenameError(null);
-                          }}
-                          placeholder={labelParts.variant}
-                          autoFocus
-                        />
-                        <div className="mt-1 text-xs text-muted-foreground">Current display</div>
-                        <InventoryItemLabel item={variant} className="mt-1" />
-                        {renameError && (
-                          <div className="mt-1 text-xs text-destructive">{renameError}</div>
-                        )}
-                      </>
-                    ) : (
-                      <InventoryItemLabel item={variant} />
-                    )}
-                    <div className="mt-1 text-xs text-muted-foreground">On hand: {onHand}</div>
+        <div className="mt-4 space-y-4 px-2">
+          {variantsGroupedByName.map(({ name, variants, totalOnHand }) => (
+            <Collapsible key={`${group?.key ?? "group"}:${name}`} defaultOpen>
+              <div className="rounded border">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="group flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{name}</div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">
+                        {variants.length} item{variants.length === 1 ? "" : "s"} • On hand: {totalOnHand}
+                      </div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="space-y-3 border-t p-3">
+                    {variants.map((variant) => {
+                      const labelParts = getInventoryItemLabelParts(variant);
+                      const description = getInventoryItemDisplayLabel(variant);
+                      const defaultRenameValue = variant.name?.trim() ? variant.name.trim() : labelParts.variant;
+                      const onHand = balances[variant.id] ?? 0;
+                      const isRenaming = renamingId === variant.id;
+                      return (
+                        <div key={variant.id} className="group relative rounded border p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              {isRenaming ? (
+                                <>
+                                  <Input
+                                    value={renameValue}
+                                    onChange={(event) => {
+                                      setRenameValue(event.target.value);
+                                      if (renameError) setRenameError(null);
+                                    }}
+                                    placeholder={labelParts.variant}
+                                    autoFocus
+                                  />
+                                  <div className="mt-1 text-xs text-muted-foreground">Current display</div>
+                                  <InventoryItemLabel item={variant} className="mt-1" />
+                                  {renameError && (
+                                    <div className="mt-1 text-xs text-destructive">{renameError}</div>
+                                  )}
+                                </>
+                              ) : (
+                                <InventoryItemLabel item={variant} />
+                              )}
+                              <div className="mt-1 text-xs text-muted-foreground">On hand: {onHand}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {isRenaming ? (
+                                <>
+                                  <Button size="sm" onClick={() => saveRename(variant.id)} disabled={renameSaving}>
+                                    {renameSaving ? "Saving…" : "Save"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setRenamingId(null);
+                                      setRenameValue("");
+                                      setRenameError(null);
+                                    }}
+                                    disabled={renameSaving}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setRenamingId(variant.id);
+                                      setRenameValue(defaultRenameValue);
+                                      setRenameError(null);
+                                    }}
+                                    disabled={renameSaving}
+                                  >
+                                    Rename
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => onSelectVariant(variant.id)}
+                                    disabled={renameSaving}
+                                  >
+                                    Add
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-center gap-3 pr-10">
+                            <Input
+                              type="number"
+                              placeholder="In"
+                              min={0}
+                              value={qtyByItem[variant.id] ?? ''}
+                              onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                              className="w-28"
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Out"
+                              min={0}
+                              value={outQtyByItem[variant.id] ?? ''}
+                              onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                              className="w-28"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="pointer-events-none absolute bottom-3 right-3 rounded-full border border-border bg-background/90 p-1 text-muted-foreground opacity-0 shadow-sm transition hover:text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:pointer-events-auto group-hover:opacity-100 disabled:opacity-50"
+                            aria-label={`Delete ${description}`}
+                            disabled={deletingId === variant.id}
+                            onClick={async (event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              const confirmed = typeof window === 'undefined' ? true : window.confirm(`Delete ${description}? This cannot be undone.`);
+                              if (!confirmed) return;
+                              setDeletingId(variant.id);
+                              try {
+                                await onDelete(variant.id);
+                              } finally {
+                                setDeletingId(null);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isRenaming ? (
-                      <>
-                        <Button size="sm" onClick={() => saveRename(variant.id)} disabled={renameSaving}>
-                          {renameSaving ? "Saving…" : "Save"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setRenamingId(null);
-                            setRenameValue("");
-                            setRenameError(null);
-                          }}
-                          disabled={renameSaving}
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setRenamingId(variant.id);
-                            setRenameValue(defaultRenameValue);
-                            setRenameError(null);
-                          }}
-                          disabled={renameSaving}
-                        >
-                          Rename
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => onSelectVariant(variant.id)}
-                          disabled={renameSaving}
-                        >
-                          Add
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center gap-3 pr-10">
-                  <Input
-                    type="number"
-                    placeholder="In"
-                    min={0}
-                    value={qtyByItem[variant.id] ?? ''}
-                    onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                    className="w-28"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Out"
-                    min={0}
-                    value={outQtyByItem[variant.id] ?? ''}
-                    onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                    className="w-28"
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="pointer-events-none absolute bottom-3 right-3 rounded-full border border-border bg-background/90 p-1 text-muted-foreground opacity-0 shadow-sm transition hover:text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:pointer-events-auto group-hover:opacity-100 disabled:opacity-50"
-                  aria-label={`Delete ${description}`}
-                  disabled={deletingId === variant.id}
-                  onClick={async (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const confirmed = typeof window === 'undefined' ? true : window.confirm(`Delete ${description}? This cannot be undone.`);
-                    if (!confirmed) return;
-                    setDeletingId(variant.id);
-                    try {
-                      await onDelete(variant.id);
-                    } finally {
-                      setDeletingId(null);
-                    }
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                </CollapsibleContent>
               </div>
-            );
-          })}
+            </Collapsible>
+          ))}
         </div>
         <SheetFooter>
           <div className="flex w-full gap-2">
