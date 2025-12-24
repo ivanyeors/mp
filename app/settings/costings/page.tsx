@@ -1,12 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { toast } from "sonner";
 import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
 
@@ -75,6 +85,8 @@ const bolsterKey = (variant: BolsterVariant) => `product:bolster:${variant}`;
 
 const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
 
+const FILTER_TAG_COLLAPSED_ROW_LIMIT = 3;
+
 const toCents = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
   const numeric = typeof value === "number" ? value : Number.parseFloat(String(value));
@@ -142,10 +154,16 @@ export default function CostingsPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [draft, setDraft] = useState<DraftState>({});
   const [baseline, setBaseline] = useState<BaselineState>({});
+  const [partFilters, setPartFilters] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productSheetKey, setProductSheetKey] = useState<string | null>(null);
   const [productSheetOpen, setProductSheetOpen] = useState(false);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const [collapsedVisibleFilterCount, setCollapsedVisibleFilterCount] = useState<number | null>(null);
+  const [filterMeasureVersion, setFilterMeasureVersion] = useState(0);
+  const filterMeasureRef = useRef<HTMLDivElement>(null);
+  const filterContainerRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -432,6 +450,103 @@ export default function CostingsPage() {
     return map;
   }, [items]);
 
+  useEffect(() => {
+    setPartFilters((prev) => prev.filter((id) => itemMap.has(id)));
+  }, [itemMap]);
+
+  const hasActiveFilters = partFilters.length > 0;
+
+  const availableFilterItems = useMemo(() => {
+    const selected = new Set(partFilters);
+    return items
+      .filter((item) => !selected.has(item.id))
+      .sort((left, right) => getInventoryItemDisplayLabel(left).localeCompare(getInventoryItemDisplayLabel(right)));
+  }, [items, partFilters]);
+
+  const activeFilterItems = useMemo(
+    () =>
+      partFilters
+        .map((id) => itemMap.get(id))
+        .filter((item): item is ItemRow => Boolean(item)),
+    [itemMap, partFilters],
+  );
+
+  const visibleFilterItems = useMemo(() => {
+    if (filtersExpanded) return activeFilterItems;
+    if (collapsedVisibleFilterCount === null) return activeFilterItems;
+    return activeFilterItems.slice(0, collapsedVisibleFilterCount);
+  }, [activeFilterItems, collapsedVisibleFilterCount, filtersExpanded]);
+
+  const hiddenFilterCount = useMemo(() => {
+    if (filtersExpanded) return 0;
+    if (collapsedVisibleFilterCount === null) return 0;
+    return Math.max(0, activeFilterItems.length - collapsedVisibleFilterCount);
+  }, [activeFilterItems.length, collapsedVisibleFilterCount, filtersExpanded]);
+
+  useLayoutEffect(() => {
+    if (filtersExpanded) return;
+    setCollapsedVisibleFilterCount(null);
+  }, [activeFilterItems, filtersExpanded]);
+
+  useLayoutEffect(() => {
+    if (filtersExpanded) return;
+    const container = filterMeasureRef.current;
+    if (!container) return;
+
+    const measure = () => {
+      const children = Array.from(container.children) as HTMLElement[];
+      if (children.length === 0) {
+        setCollapsedVisibleFilterCount(0);
+        return;
+      }
+
+      const rowOffsets = new Set<number>();
+      let visibleCount = children.length;
+
+      for (let index = 0; index < children.length; index += 1) {
+        const child = children[index];
+        const offsetTop = Math.round(child.offsetTop);
+
+        if (!rowOffsets.has(offsetTop)) {
+          rowOffsets.add(offsetTop);
+        }
+
+        if (rowOffsets.size > FILTER_TAG_COLLAPSED_ROW_LIMIT) {
+          visibleCount = index;
+          break;
+        }
+      }
+
+      setCollapsedVisibleFilterCount(visibleCount);
+    };
+
+    const frame = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(frame);
+  }, [activeFilterItems, filtersExpanded, filterMeasureVersion]);
+
+  useEffect(() => {
+    const container = filterContainerRef.current;
+    if (!hasActiveFilters || !container || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      setFilterMeasureVersion((prev) => prev + 1);
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [hasActiveFilters]);
+
+  const filteredGroups = useMemo(() => {
+    if (partFilters.length === 0) return grouped;
+    const selected = new Set(partFilters);
+    return grouped
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => selected.has(item.id)),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [grouped, partFilters]);
+
   const itemCostByIdFromDraft = useMemo(() => {
     const map = new Map<number, number | null>();
     items.forEach((item) => {
@@ -565,6 +680,20 @@ export default function CostingsPage() {
       };
     });
   };
+
+  const handleAddFilter = useCallback((value: string) => {
+    const id = Number(value);
+    if (!Number.isFinite(id)) return;
+    setPartFilters((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
+  const handleRemoveFilter = useCallback((id: number) => {
+    setPartFilters((prev) => prev.filter((entry) => entry !== id));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setPartFilters([]);
+  }, []);
 
   const isDirty = useMemo(() => {
     const itemChanged = items.some((item) => {
@@ -791,67 +920,178 @@ export default function CostingsPage() {
             </p>
           </div>
           <div className="space-y-6">
-            {grouped.map((group) => (
-              <Section key={group.category} title={group.title}>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-2/5">Part</TableHead>
-                      <TableHead className="w-1/5">Cost Price</TableHead>
-                      <TableHead className="w-1/5">MSRP</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {group.items.map((item) => {
-                      const rowKey = itemKey(item.id);
-                      const current = draft[rowKey] ?? { costPrice: "", msrp: "" };
-                      const itemLabel = getInventoryItemDisplayLabel(item);
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="align-middle">
-                            <InventoryItemLabel item={item} />
-                          </TableCell>
-                          <TableCell>
-                            <div className="relative">
-                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
-                              </span>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                value={current.costPrice}
-                                placeholder="0.00"
-                                onChange={(event) => handleInputChange(rowKey, "costPrice", event.target.value)}
-                                onBlur={() => handleBlur(rowKey, "costPrice")}
-                                className="pl-6"
-                                aria-label={`Cost price for ${itemLabel}`}
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="relative">
-                              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
-                              </span>
-                              <Input
-                                type="text"
-                                inputMode="decimal"
-                                value={current.msrp}
-                                placeholder="0.00"
-                                onChange={(event) => handleInputChange(rowKey, "msrp", event.target.value)}
-                                onBlur={() => handleBlur(rowKey, "msrp")}
-                                className="pl-6"
-                                aria-label={`MSRP for ${itemLabel}`}
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </Section>
-            ))}
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Select closeOnSelect={false} onValueChange={handleAddFilter}>
+                    <SelectTrigger className="w-[280px]" aria-label="Filter parts" disabled={availableFilterItems.length === 0}>
+                      <SelectValue
+                        placeholder={
+                          availableFilterItems.length === 0
+                            ? "All parts are already filtered"
+                            : "Select parts to filter"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent align="start" className="w-[280px]">
+                      <ScrollArea className="h-60">
+                        <div className="p-1">
+                          {availableFilterItems.map((item) => (
+                            <SelectItem
+                              key={item.id}
+                              value={String(item.id)}
+                              textValue={getInventoryItemDisplayLabel(item)}
+                            >
+                              {getInventoryItemDisplayLabel(item)}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="sm" onClick={clearFilters} disabled={!hasActiveFilters}>
+                    Clear filters
+                  </Button>
+                </div>
+                {hasActiveFilters && (
+                  <div className="text-xs text-muted-foreground">
+                    Filtering {activeFilterItems.length} part{activeFilterItems.length === 1 ? "" : "s"}
+                  </div>
+                )}
+              </div>
+              {hasActiveFilters && (
+                <div className="space-y-2">
+                  <div ref={filterContainerRef} className="relative">
+                    {!filtersExpanded && (
+                      <div
+                        aria-hidden
+                        className="absolute left-0 top-0 w-full pointer-events-none"
+                        style={{ visibility: "hidden" }}
+                      >
+                        <div className="w-full rounded-md border bg-muted/30 p-2">
+                          <div ref={filterMeasureRef} className="flex flex-wrap gap-2 min-w-0">
+                            {activeFilterItems.map((item) => (
+                              <Button key={`measure-${item.id}`} variant="secondary" size="sm" className="gap-2 max-w-full">
+                                <span className="truncate">{getInventoryItemDisplayLabel(item)}</span>
+                                <X className="size-4 shrink-0" />
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="w-full rounded-md border bg-muted/30 p-2">
+                      <div className="flex flex-wrap gap-2 min-w-0">
+                        {visibleFilterItems.map((item) => (
+                          <Button
+                            key={item.id}
+                            variant="secondary"
+                            size="sm"
+                            className="gap-2 max-w-full"
+                            onClick={() => handleRemoveFilter(item.id)}
+                          >
+                            <span className="truncate">{getInventoryItemDisplayLabel(item)}</span>
+                            <X className="size-4 shrink-0" />
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(hiddenFilterCount > 0 || filtersExpanded) && (
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFiltersExpanded((prev) => !prev)}
+                        aria-expanded={filtersExpanded}
+                        className="gap-2"
+                      >
+                        {filtersExpanded ? (
+                          <>
+                            Show less
+                            <ChevronUp className="size-4 shrink-0" />
+                          </>
+                        ) : (
+                          <>
+                            Show {hiddenFilterCount} more
+                            <ChevronDown className="size-4 shrink-0" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {filteredGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No parts match the current filters.</p>
+            ) : (
+              filteredGroups.map((group) => (
+                <Section key={group.category} title={group.title}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-2/5">Part</TableHead>
+                        <TableHead className="w-1/5">Cost Price</TableHead>
+                        <TableHead className="w-1/5">MSRP</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.items.map((item) => {
+                        const rowKey = itemKey(item.id);
+                        const current = draft[rowKey] ?? { costPrice: "", msrp: "" };
+                        const itemLabel = getInventoryItemDisplayLabel(item);
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="align-middle">
+                              <InventoryItemLabel item={item} />
+                            </TableCell>
+                            <TableCell>
+                              <div className="relative">
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                  $
+                                </span>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={current.costPrice}
+                                  placeholder="0.00"
+                                  onChange={(event) => handleInputChange(rowKey, "costPrice", event.target.value)}
+                                  onBlur={() => handleBlur(rowKey, "costPrice")}
+                                  className="pl-6"
+                                  aria-label={`Cost price for ${itemLabel}`}
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="relative">
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                  $
+                                </span>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={current.msrp}
+                                  placeholder="0.00"
+                                  onChange={(event) => handleInputChange(rowKey, "msrp", event.target.value)}
+                                  onBlur={() => handleBlur(rowKey, "msrp")}
+                                  className="pl-6"
+                                  aria-label={`MSRP for ${itemLabel}`}
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </Section>
+              ))
+            )}
           </div>
         </section>
       </div>
