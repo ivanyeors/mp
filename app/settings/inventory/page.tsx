@@ -518,23 +518,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
               </div>
             );
           })}
-          {(() => {
-            const available = Number(buildableBolsterMedium ?? 0);
-            const disabled = available <= 0;
-            return (
-              <div
-                className={`rounded border p-3 transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}`}
-                role="button"
-                aria-disabled={disabled}
-                tabIndex={0}
-                onClick={() => { if (!disabled) incrementPillowSelection('Bolster'); }}
-                onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) incrementPillowSelection('Bolster'); }}
-              >
-                <div className="text-xs text-muted-foreground">Bolster</div>
-                <div className="text-2xl font-semibold">{available}</div>
-              </div>
-            );
-          })()}
           {/* Custom Pillow - opens drawer */}
           <div
             className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer"
@@ -635,7 +618,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); } }}
           >
             <div className="flex-1">
-              <div className="font-medium">Custom</div>
+              <div className="font-medium">All Parts</div>
               <div className="text-xs text-muted-foreground">Open drawer for all parts</div>
             </div>
           </div>
@@ -836,6 +819,8 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
           const isValid =
             SIZE_OPTIONS.includes(normalized as typeof SIZE_OPTIONS[number]) && normalized !== "-";
           nextSize = isValid ? normalized : "M";
+        } else if (nextCategory === "filling") {
+          nextSize = entry.size.trim();
         } else {
           nextSize = "-";
         }
@@ -876,16 +861,13 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
 
       const trimmedSize = entry.size.trim();
       const normalizedSizeInput = trimmedSize === "-" ? "" : trimmedSize;
-      if (SIZED_CATEGORIES.includes(entry.category) && !normalizedSizeInput) {
+      const sizeRequired = SIZED_CATEGORIES.includes(entry.category) || entry.category === "filling";
+      if (sizeRequired && !normalizedSizeInput) {
         setErrorMessage(`Item ${index + 1}: Size is required for this category`);
         return;
       }
 
       const trimmedSubtype = entry.subtype.trim();
-      if (entry.category === "filling" && !trimmedSubtype) {
-        setErrorMessage(`Item ${index + 1}: Subtype is required for fillings`);
-        return;
-      }
 
       const stockValue = entry.initialStock.trim();
       const stock = stockValue === "" ? 0 : Number.parseInt(stockValue, 10);
@@ -913,9 +895,8 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
       };
 
       if (normalizedSizeInput) {
-        payload.size = SIZED_CATEGORIES.includes(entry.category)
-          ? normalizedSizeInput.toUpperCase()
-          : normalizedSizeInput;
+        const shouldUppercase = SIZED_CATEGORIES.includes(entry.category) || entry.category === "filling";
+        payload.size = shouldUppercase ? normalizedSizeInput.toUpperCase() : normalizedSizeInput;
       }
 
       if (trimmedSubtype) {
@@ -1052,7 +1033,10 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                   ) : (
                     <div className="space-y-1">
                       <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
-                        Size <span className="text-xs text-muted-foreground">(optional)</span>
+                        Size{" "}
+                        <span className="text-xs text-muted-foreground">
+                          {entry.category === "filling" ? "(required)" : "(optional)"}
+                        </span>
                       </label>
                       <Input
                         id={`add-item-size-${index}`}
@@ -1074,42 +1058,42 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                         placeholder={
                           entry.category === "packaging"
                             ? "e.g. S, L, Bolster"
-                            : 'Leave blank or "-" if not applicable'
+                            : entry.category === "filling"
+                              ? "e.g. S, M, L"
+                              : 'Leave blank or "-" if not applicable'
                         }
                         autoComplete="off"
                       />
                     </div>
                   )}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium" htmlFor={`add-item-subtype-${index}`}>
-                    {entry.category === "filling" ? "Subtype *" : "Subtype (optional)"}
-                  </label>
-                  <Input
-                    id={`add-item-subtype-${index}`}
-                    value={entry.subtype}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setEntries((prev) =>
-                        prev.map((item, idx) =>
-                          idx === index
-                            ? {
-                                ...item,
-                                subtype: value,
-                              }
-                            : item,
-                        ),
-                      );
-                      setErrorMessage(null);
-                    }}
-                    placeholder={
-                      entry.category === "filling"
-                        ? "e.g. 6D (L)"
-                        : "Variant or descriptor"
-                    }
-                    autoComplete="off"
-                  />
-                </div>
+                {entry.category !== "filling" ? (
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor={`add-item-subtype-${index}`}>
+                      Subtype (optional)
+                    </label>
+                    <Input
+                      id={`add-item-subtype-${index}`}
+                      value={entry.subtype}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setEntries((prev) =>
+                          prev.map((item, idx) =>
+                            idx === index
+                              ? {
+                                  ...item,
+                                  subtype: value,
+                                }
+                              : item,
+                          ),
+                        );
+                        setErrorMessage(null);
+                      }}
+                      placeholder="Variant or descriptor"
+                      autoComplete="off"
+                    />
+                  </div>
+                ) : null}
                 <Separator />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">

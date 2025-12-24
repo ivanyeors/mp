@@ -121,6 +121,22 @@ const parseToCents = (value: string): number | null => {
   return Math.round(num * 100);
 };
 
+const computeProductComponentsCostCents = (
+  components: ProductComponent[],
+  costMap: Map<number, number | null>,
+): number | null => {
+  if (components.length === 0) return 0;
+  let total = 0;
+  for (const component of components) {
+    const cost = costMap.get(component.itemId);
+    if (cost === undefined || cost === null) {
+      continue; // skip components without cost so we still show partial totals
+    }
+    total += cost * component.quantity;
+  }
+  return Math.round(total);
+};
+
 export default function CostingsPage() {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -430,25 +446,8 @@ export default function CostingsPage() {
   const productCostDisplay = useMemo(() => {
     const map = new Map<string, string>();
     products.forEach((product) => {
-      if (product.components.length === 0) {
-        map.set(product.key, "0.00");
-        return;
-      }
-      let total = 0;
-      let missing = false;
-      for (const component of product.components) {
-        const cost = itemCostByIdFromDraft.get(component.itemId);
-        if (cost === undefined || cost === null) {
-          missing = true;
-          break;
-        }
-        total += cost * component.quantity;
-      }
-      if (missing) {
-        map.set(product.key, "");
-      } else {
-        map.set(product.key, formatFromCents(Math.round(total)));
-      }
+      const totalCents = computeProductComponentsCostCents(product.components, itemCostByIdFromDraft);
+      map.set(product.key, totalCents === null ? "" : formatFromCents(totalCents));
     });
     return map;
   }, [products, itemCostByIdFromDraft]);
@@ -465,12 +464,16 @@ export default function CostingsPage() {
 
   const activeProductCostDisplay = useMemo(() => {
     if (!activeProduct) return "";
+    const fromComponents = computeProductComponentsCostCents(activeProduct.components, itemCostByIdFromDraft);
+    if (fromComponents !== null) {
+      return formatFromCents(fromComponents);
+    }
     const display = productCostDisplay.get(activeProduct.key);
     if (display && display !== "") {
       return display;
     }
     return formatFromCents(activeProduct.costCents ?? null);
-  }, [activeProduct, productCostDisplay]);
+  }, [activeProduct, productCostDisplay, itemCostByIdFromDraft]);
 
   const activeProductComponents = useMemo(() => {
     if (!activeProduct) return [];

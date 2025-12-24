@@ -33,18 +33,11 @@ const AddItemSchema = z.object({
   msrp: z.number().min(0).optional(),
 }).superRefine((value, ctx) => {
   const normalizedSize = value.size?.trim()
-  if (['cover', 'case', 'protector'].includes(value.category) && (!normalizedSize || normalizedSize === '-')) {
+  if (['cover', 'case', 'protector', 'filling'].includes(value.category) && (!normalizedSize || normalizedSize === '-')) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Size is required for covers, cases, and protectors',
+      message: 'Size is required for covers, cases, protectors, and fillings',
       path: ['size'],
-    })
-  }
-  if (value.category === 'filling' && !value.subtype) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Subtype is required for fillings',
-      path: ['subtype'],
     })
   }
 })
@@ -174,9 +167,9 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
   const rawSize = parsed.size?.trim()
   const normalizedSize =
     rawSize && rawSize !== '-'
-      ? (['cover', 'case', 'protector'].includes(parsed.category) ? rawSize.toUpperCase() : rawSize)
+      ? (['cover', 'case', 'protector', 'filling'].includes(parsed.category) ? rawSize.toUpperCase() : rawSize)
       : null
-  const normalizedSubtype = parsed.subtype ?? null
+  const normalizedSubtype = parsed.subtype?.trim() ? parsed.subtype.trim() : null
   const normalizedName = parsed.name
 
   const toCurrencyString = (value: number | undefined) => {

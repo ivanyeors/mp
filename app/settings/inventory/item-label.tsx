@@ -43,8 +43,12 @@ export const getInventoryCategoryTitle = (category: string): string =>
   CATEGORY_TITLES[category as keyof typeof CATEGORY_TITLES] ?? humanizeText(category);
 
 export const getInventoryVariantName = (item: InventoryItemLike): string => {
-  if (item.category === "filling" && item.subtype) {
-    return normalizeNameOrFallback(item.subtype, "filling");
+  const trimmedSubtype = item.subtype?.trim();
+  if (item.category === "filling") {
+    const nameLabel = normalizeNameOrFallback(item.name, "filling");
+    if (nameLabel) return nameLabel;
+    if (trimmedSubtype) return normalizeNameOrFallback(trimmedSubtype, "filling");
+    return "Filling";
   }
   return normalizeNameOrFallback(item.name, item.category);
 };
@@ -92,5 +96,6 @@ export function InventoryItemLabel<T extends InventoryItemLike>({ item, classNam
 }
 
 export type { InventoryItemLike };
+
 
 
