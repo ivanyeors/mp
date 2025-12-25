@@ -27,13 +27,24 @@ To avoid breaking changes while SKUs are being renamed, mapping is done by **Sho
 
 Create rows in Supabase table `shopify_variant_mappings`:
 - `kind='pillow'` with `pillow_size` in `XS|S|M|L|XL`
-- `kind='bolster'` with `bolster_variant` in `short|medium|long`
+- `kind='bolster'` with `bolster_variant` in `short|medium|long` (recommended Shopify option values: `S|M|L` → maps to `short|medium|long`)
 - `kind='part'` with `item_id` pointing to `items.id` (optional)
 
 ### Manual sync endpoint
 
 Trigger a sync (buildable → Shopify inventory):
 - `POST /api/shopify/sync`
+
+### Optional helper endpoints
+
+- List variants for all **active** Shopify products (helps you find variant IDs):
+  - `GET /api/shopify/variants`
+- Create/update canonical products and return variant IDs + mapping SQL:
+  - `POST /api/shopify/catalog/sync`
+- Suggest mappings for multi-option products (e.g. **Size × Case Type**) and return mapping SQL:
+  - `GET /api/shopify/mapping/suggest`
+- Apply mappings directly (optional; protected by `SHOPIFY_SYNC_TOKEN` if set):
+  - `POST /api/shopify/mapping/apply`
 
 ## Getting Started
 
