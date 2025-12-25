@@ -161,10 +161,32 @@ export async function listShopifySalesQueue() {
   const { data, error } = await admin
     .from('shopify_sales_queue')
     .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
-    .eq('status', 'pending')
+    .neq('status', 'archived')
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return { ok: true, rows: data ?? [] }
+}
+
+export async function listShopifySalesQueueArchived() {
+  const admin = supabaseAdmin()
+  const { data, error } = await admin
+    .from('shopify_sales_queue')
+    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
+    .eq('status', 'archived')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return { ok: true, rows: data ?? [] }
+}
+
+export async function archiveShopifySaleQueueRow(queueId: number) {
+  const admin = supabaseAdmin()
+  const { error } = await admin
+    .from('shopify_sales_queue')
+    .update({ status: 'archived' })
+    .eq('id', queueId)
+    .neq('status', 'committed')
+  if (error) throw new Error(error.message)
+  return { ok: true }
 }
 
 export async function listTemplates(kind: 'pillow' | 'bolster', key: string) {

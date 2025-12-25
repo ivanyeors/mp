@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronDown, Trash2 } from "lucide-react";
 import {
   sellPillow,
@@ -14,6 +15,8 @@ import {
   sellBolster,
   sellFromTemplate,
   listShopifySalesQueue,
+  listShopifySalesQueueArchived,
+  archiveShopifySaleQueueRow,
   listTemplates,
   commitShopifySales,
   addInventoryItem,
@@ -191,10 +194,12 @@ export default function InventoryPage() {
     chosen_template_id: number | null;
   };
   const [shopifyQueue, setShopifyQueue] = useState<ShopifyQueueRow[]>([]);
+  const [shopifyQueueArchived, setShopifyQueueArchived] = useState<ShopifyQueueRow[]>([]);
   const [shopifyTemplatesByKey, setShopifyTemplatesByKey] = useState<Record<string, Array<{ id: number; name: string }>>>({});
   const [shopifyTemplateChoice, setShopifyTemplateChoice] = useState<Record<number, number | "">>({});
   const [loadingShopifySales, setLoadingShopifySales] = useState(false);
   const [savingShopifySales, setSavingShopifySales] = useState(false);
+  const [shopifySalesTab, setShopifySalesTab] = useState<'active' | 'archived'>('active');
 
   const computeBuildableFromLines = useCallback((lines: Array<{ item_id: number; quantity: number }>) => {
     if (!lines.length) return 0;
@@ -284,6 +289,34 @@ export default function InventoryPage() {
       });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load Shopify sales');
+    } finally {
+      setLoadingShopifySales(false);
+    }
+  }, []);
+
+  const loadShopifySalesQueueArchived = useCallback(async () => {
+    setLoadingShopifySales(true);
+    try {
+      const payload = await listShopifySalesQueueArchived();
+      const rows = (payload.rows ?? []) as ShopifyQueueRow[];
+      const normalized = rows.map((r) => ({
+        id: Number(r.id),
+        shopify_order_id: Number(r.shopify_order_id),
+        shopify_line_item_id: r.shopify_line_item_id === null ? null : Number(r.shopify_line_item_id),
+        shopify_variant_id: r.shopify_variant_id === null ? null : Number(r.shopify_variant_id),
+        kind: r.kind as ShopifyQueueRow["kind"],
+        pillow_size: r.pillow_size ?? null,
+        bolster_variant: r.bolster_variant ?? null,
+        item_id: r.item_id === null ? null : Number(r.item_id),
+        quantity: Number(r.quantity),
+        variant_title: r.variant_title ?? null,
+        sku: r.sku ?? null,
+        created_at: String(r.created_at),
+        chosen_template_id: r.chosen_template_id === null ? null : Number(r.chosen_template_id),
+      })) as ShopifyQueueRow[];
+      setShopifyQueueArchived(normalized);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load archived Shopify sales');
     } finally {
       setLoadingShopifySales(false);
     }
@@ -488,7 +521,7 @@ export default function InventoryPage() {
         continue
       }
       const chosen = shopifyTemplateChoice[row.id]
-      if (!chosen || chosen === '') continue
+      if (chosen === undefined || chosen === '') continue
       commits.push({ queueId: row.id, templateId: Number(chosen) })
     }
 
@@ -517,6 +550,111 @@ export default function InventoryPage() {
       setSavingShopifySales(false)
     }
   }
+
+  const archiveQueueRow = async (id: number) => {
+    try {
+      await archiveShopifySaleQueueRow(id);
+      toast.success('Archived');
+      await loadShopifySalesQueue();
+      if (shopifySalesTab === 'archived') await loadShopifySalesQueueArchived();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to archive');
+    }
+  }
+
+  const renderShopifySalesTable = (rows: ShopifyQueueRow[], mode: 'active' | 'archived') => {
+    if (rows.length === 0) {
+      return (
+        <div className="rounded border p-3 text-sm text-muted-foreground">
+          {mode === 'active' ? 'No pending Shopify sales.' : 'No archived Shopify sales.'}
+        </div>
+      );
+    }
+
+    return (
+      <div className="rounded border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order</TableHead>
+              <TableHead>Item</TableHead>
+              <TableHead className="w-[90px]">Qty</TableHead>
+              <TableHead className="w-[260px]">Template</TableHead>
+              <TableHead className="w-[120px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => {
+              const key =
+                row.kind === 'pillow'
+                  ? `pillow:${row.pillow_size ?? ''}`
+                  : row.kind === 'bolster'
+                    ? `bolster:${row.bolster_variant ?? ''}`
+                    : null;
+              const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
+              const needsTemplate = row.kind === 'pillow' || row.kind === 'bolster';
+              const label =
+                row.kind === 'pillow'
+                  ? `Pillow ${row.pillow_size ?? ''}`
+                  : row.kind === 'bolster'
+                    ? `Bolster ${row.bolster_variant ?? ''}`
+                    : `Part ${row.item_id ?? ''}`;
+              return (
+                <TableRow key={row.id}>
+                  <TableCell className="text-sm">
+                    <div className="font-medium">#{row.shopify_order_id}</div>
+                    <div className="text-xs text-muted-foreground">{row.sku ?? ''}</div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    <div className="font-medium">{label}</div>
+                    <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
+                  </TableCell>
+                  <TableCell className="text-sm">{row.quantity}</TableCell>
+                  <TableCell>
+                    {needsTemplate ? (
+                      <select
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                        value={
+                          mode === 'archived'
+                            ? String(row.chosen_template_id ?? '')
+                            : (shopifyTemplateChoice[row.id] === undefined ? '' : String(shopifyTemplateChoice[row.id] ?? ''))
+                        }
+                        onChange={(e) =>
+                          setShopifyTemplateChoice((prev) => ({
+                            ...prev,
+                            [row.id]: e.target.value ? Number(e.target.value) : '',
+                          }))
+                        }
+                        disabled={mode === 'archived'}
+                      >
+                        <option value="">Select template…</option>
+                        {options.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">—</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {mode === 'active' ? (
+                      <Button size="sm" variant="secondary" onClick={() => archiveQueueRow(row.id)}>
+                        Archive
+                      </Button>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">—</div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  };
 
   const buildableBolsterShort = useMemo(() => {
     const lines = bolsterLinesByVariant.short;
@@ -726,7 +864,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           <Button onClick={() => setCartOpen(true)} aria-label="Open cart">
             <span className="mr-2" aria-hidden>🛒</span>
             Cart ({
-              Object.values(cart.pillows).reduce((a, b) => a + b, 0) +
+              cart.pillows.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0) +
               Object.values(cart.parts).reduce((a, b) => a + b, 0)
             })
           </Button>
@@ -776,85 +914,39 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             <div className="text-xs text-muted-foreground">Review new paid orders and choose templates before committing inventory.</div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={loadShopifySalesQueue} disabled={loadingShopifySales || savingShopifySales}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (shopifySalesTab === 'archived') loadShopifySalesQueueArchived();
+                else loadShopifySalesQueue();
+              }}
+              disabled={loadingShopifySales || savingShopifySales}
+            >
               {loadingShopifySales ? 'Refreshing…' : 'Refresh'}
             </Button>
-            <Button onClick={commitQueuedShopifySales} disabled={savingShopifySales || shopifyQueue.length === 0}>
+            <Button onClick={commitQueuedShopifySales} disabled={savingShopifySales || shopifyQueue.length === 0 || shopifySalesTab !== 'active'}>
               {savingShopifySales ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </div>
 
-        {shopifyQueue.length === 0 ? (
-          <div className="rounded border p-3 text-sm text-muted-foreground">No pending Shopify sales.</div>
-        ) : (
-          <div className="rounded border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="w-[90px]">Qty</TableHead>
-                  <TableHead className="w-[260px]">Template</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shopifyQueue.map((row) => {
-                  const key =
-                    row.kind === 'pillow'
-                      ? `pillow:${row.pillow_size ?? ''}`
-                      : row.kind === 'bolster'
-                        ? `bolster:${row.bolster_variant ?? ''}`
-                        : null;
-                  const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
-                  const needsTemplate = row.kind === 'pillow' || row.kind === 'bolster';
-                  const label =
-                    row.kind === 'pillow'
-                      ? `Pillow ${row.pillow_size ?? ''}`
-                      : row.kind === 'bolster'
-                        ? `Bolster ${row.bolster_variant ?? ''}`
-                        : `Part ${row.item_id ?? ''}`;
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell className="text-sm">
-                        <div className="font-medium">#{row.shopify_order_id}</div>
-                        <div className="text-xs text-muted-foreground">{row.sku ?? ''}</div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        <div className="font-medium">{label}</div>
-                        <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
-                      </TableCell>
-                      <TableCell className="text-sm">{row.quantity}</TableCell>
-                      <TableCell>
-                        {needsTemplate ? (
-                          <select
-                            className="w-full rounded-md border px-3 py-2 text-sm"
-                            value={shopifyTemplateChoice[row.id] === undefined ? '' : String(shopifyTemplateChoice[row.id] ?? '')}
-                            onChange={(e) =>
-                              setShopifyTemplateChoice((prev) => ({
-                                ...prev,
-                                [row.id]: e.target.value ? Number(e.target.value) : '',
-                              }))
-                            }
-                          >
-                            <option value="">Select template…</option>
-                            {options.map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <div className="text-sm text-muted-foreground">—</div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <Tabs
+          value={shopifySalesTab}
+          onValueChange={(v) => {
+            const next = v === "archived" ? "archived" : "active";
+            setShopifySalesTab(next);
+            if (next === "archived" && shopifyQueueArchived.length === 0) {
+              loadShopifySalesQueueArchived();
+            }
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="active">Active ({shopifyQueue.length})</TabsTrigger>
+            <TabsTrigger value="archived">Archived ({shopifyQueueArchived.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="active">{renderShopifySalesTable(shopifyQueue, 'active')}</TabsContent>
+          <TabsContent value="archived">{renderShopifySalesTable(shopifyQueueArchived, 'archived')}</TabsContent>
+        </Tabs>
       </section>
 
       {/* Bolster variants */}
