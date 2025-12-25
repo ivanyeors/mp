@@ -12,6 +12,10 @@ import {
   sellPart,
   receiveStock,
   sellBolster,
+  sellFromTemplate,
+  listShopifySalesQueue,
+  listTemplates,
+  commitShopifySales,
   addInventoryItem,
   deleteInventoryItem,
   renameInventoryItem,
@@ -81,10 +85,20 @@ export default function InventoryPage() {
   const [cartOpen, setCartOpen] = useState(false);
   const [partDrawerOpen, setPartDrawerOpen] = useState(false);
   const [partDrawerGroup, setPartDrawerGroup] = useState<Group | null>(null);
+  type CartPillowLine = {
+    id: string;
+    kind: "pillow" | "bolster";
+    label: string;
+    templateId: number | null;
+    templateName: string | null;
+    quantity: number;
+    pillowSize?: string;
+    bolsterVariant?: "short" | "medium" | "long";
+  };
   const [cart, setCart] = useState<{
-    pillows: Record<string, number>;
+    pillows: CartPillowLine[];
     parts: Record<number, number>;
-  }>({ pillows: {}, parts: {} });
+  }>({ pillows: [], parts: {} });
   const [bolsterLinesByVariant, setBolsterLinesByVariant] = useState<Record<'short'|'medium'|'long', Array<{ item_id: number; quantity: number }>>>({ short: [], medium: [], long: [] });
   const [customPillowSize, setCustomPillowSize] = useState<string>('M');
   const [customPillowQty, setCustomPillowQty] = useState<string>('');
@@ -129,6 +143,182 @@ export default function InventoryPage() {
       // ignore broadcast failures in unsupported browsers
     }
   }, []);
+
+  // Listen for inventory changes broadcast from other pages (e.g. Configure).
+  useEffect(() => {
+    const onChanged = () => { load(); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('inventory:changed', onChanged);
+      let bc: BroadcastChannel | null = null;
+      try {
+        if ('BroadcastChannel' in window) {
+          bc = new BroadcastChannel('inventory:changed');
+          bc.onmessage = () => onChanged();
+        }
+      } catch {}
+      return () => {
+        window.removeEventListener('inventory:changed', onChanged);
+        try { bc?.close(); } catch {}
+      };
+    }
+    return;
+  }, [load]);
+
+  const [sellDrawerOpen, setSellDrawerOpen] = useState(false);
+  const [sellDrawerKind, setSellDrawerKind] = useState<"pillow" | "bolster">("pillow");
+  const [sellDrawerSize, setSellDrawerSize] = useState<string>("M");
+  const [sellDrawerBolsterVariant, setSellDrawerBolsterVariant] = useState<"short" | "medium" | "long">("medium");
+  const [sellDrawerTemplates, setSellDrawerTemplates] = useState<Array<{ id: number; name: string }>>([]);
+  const [sellDrawerTemplateId, setSellDrawerTemplateId] = useState<number | "">("");
+  const [sellDrawerTemplateName, setSellDrawerTemplateName] = useState<string | null>(null);
+  const [sellDrawerLines, setSellDrawerLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [sellDrawerQty, setSellDrawerQty] = useState<string>("1");
+
+  // Shopify sales queue
+  type ShopifyQueueRow = {
+    id: number;
+    shopify_order_id: number;
+    shopify_line_item_id: number | null;
+    shopify_variant_id: number | null;
+    kind: "pillow" | "bolster" | "part";
+    pillow_size: string | null;
+    bolster_variant: "short" | "medium" | "long" | null;
+    item_id: number | null;
+    quantity: number;
+    variant_title: string | null;
+    sku: string | null;
+    created_at: string;
+    chosen_template_id: number | null;
+  };
+  const [shopifyQueue, setShopifyQueue] = useState<ShopifyQueueRow[]>([]);
+  const [shopifyTemplatesByKey, setShopifyTemplatesByKey] = useState<Record<string, Array<{ id: number; name: string }>>>({});
+  const [shopifyTemplateChoice, setShopifyTemplateChoice] = useState<Record<number, number | "">>({});
+  const [loadingShopifySales, setLoadingShopifySales] = useState(false);
+  const [savingShopifySales, setSavingShopifySales] = useState(false);
+
+  const computeBuildableFromLines = useCallback((lines: Array<{ item_id: number; quantity: number }>) => {
+    if (!lines.length) return 0;
+    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
+    return counts.length ? Math.max(0, Math.min(...counts)) : 0;
+  }, [balances]);
+
+  const openSellDrawerForPillow = async (size: string) => {
+    setSellDrawerKind("pillow");
+    setSellDrawerSize(size);
+    setSellDrawerTemplateId("");
+    setSellDrawerTemplateName(null);
+    setSellDrawerQty("1");
+    setSellDrawerLines([]);
+    setSellDrawerTemplates([]);
+    setSellDrawerOpen(true);
+    try {
+      const payload = await listTemplates('pillow', size);
+      type TemplateRow = { id: number; name: string };
+      const list = (payload.templates ?? []) as TemplateRow[];
+      setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load templates");
+    }
+  };
+
+  const openSellDrawerForBolster = async (variant: "short" | "medium" | "long") => {
+    setSellDrawerKind("bolster");
+    setSellDrawerBolsterVariant(variant);
+    setSellDrawerTemplateId("");
+    setSellDrawerTemplateName(null);
+    setSellDrawerQty("1");
+    setSellDrawerLines([]);
+    setSellDrawerTemplates([]);
+    setSellDrawerOpen(true);
+    try {
+      const payload = await listTemplates('bolster', variant);
+      type TemplateRow = { id: number; name: string };
+      const list = (payload.templates ?? []) as TemplateRow[];
+      setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load templates");
+    }
+  };
+
+  const loadSelectedTemplateLines = useCallback(async (templateId: number) => {
+    const res = await fetch(`/settings/inventory/configure/templates/${templateId}`);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(payload?.error ?? "Failed to load template");
+    type LineRow = { item_id: number | string; quantity: number | string };
+    const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }));
+    setSellDrawerLines(lines);
+    const name = payload?.template?.name ? String(payload.template.name) : null;
+    setSellDrawerTemplateName(name);
+  }, []);
+
+  const loadShopifySalesQueue = useCallback(async () => {
+    setLoadingShopifySales(true);
+    try {
+      const payload = await listShopifySalesQueue();
+      const rows = (payload.rows ?? []) as ShopifyQueueRow[];
+      const normalized = rows.map((r) => ({
+        id: Number(r.id),
+        shopify_order_id: Number(r.shopify_order_id),
+        shopify_line_item_id: r.shopify_line_item_id === null ? null : Number(r.shopify_line_item_id),
+        shopify_variant_id: r.shopify_variant_id === null ? null : Number(r.shopify_variant_id),
+        kind: r.kind as ShopifyQueueRow["kind"],
+        pillow_size: r.pillow_size ?? null,
+        bolster_variant: r.bolster_variant ?? null,
+        item_id: r.item_id === null ? null : Number(r.item_id),
+        quantity: Number(r.quantity),
+        variant_title: r.variant_title ?? null,
+        sku: r.sku ?? null,
+        created_at: String(r.created_at),
+        chosen_template_id: r.chosen_template_id === null ? null : Number(r.chosen_template_id),
+      })) as ShopifyQueueRow[];
+      setShopifyQueue(normalized);
+      // initialize template choice state
+      setShopifyTemplateChoice((prev) => {
+        const next = { ...prev };
+        normalized.forEach((row) => {
+          if (row.kind === 'pillow' || row.kind === 'bolster') {
+            if (next[row.id] === undefined) next[row.id] = row.chosen_template_id ?? '';
+          }
+        });
+        return next;
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load Shopify sales');
+    } finally {
+      setLoadingShopifySales(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadShopifySalesQueue();
+  }, [loadShopifySalesQueue]);
+
+  // Load templates for keys present in queue (pillow sizes + bolster variants)
+  useEffect(() => {
+    const load = async () => {
+      const needed: Array<{ kind: 'pillow' | 'bolster'; key: string }> = [];
+      shopifyQueue.forEach((row) => {
+        if (row.kind === 'pillow' && row.pillow_size) needed.push({ kind: 'pillow', key: row.pillow_size });
+        if (row.kind === 'bolster' && row.bolster_variant) needed.push({ kind: 'bolster', key: row.bolster_variant });
+      });
+      const unique = new Map<string, { kind: 'pillow' | 'bolster'; key: string }>();
+      needed.forEach((n) => unique.set(`${n.kind}:${n.key}`, n));
+      for (const entry of unique.values()) {
+        const cacheKey = `${entry.kind}:${entry.key}`;
+        if (shopifyTemplatesByKey[cacheKey]) continue;
+        try {
+          const payload = await listTemplates(entry.kind, entry.key);
+          setShopifyTemplatesByKey((prev) => ({
+            ...prev,
+            [cacheKey]: ((payload.templates ?? []) as Array<{ id: number; name: string }>).map((t) => ({ id: Number(t.id), name: String(t.name) })),
+          }));
+        } catch {
+          // ignore; will show empty dropdown
+        }
+      }
+    };
+    load();
+  }, [shopifyQueue, shopifyTemplatesByKey]);
 
   const handleCreateItem = async (draft: AddInventoryDraft) => {
     try {
@@ -280,9 +470,53 @@ export default function InventoryPage() {
       toast.message('Out of stock');
       return;
     }
-    setCart(prev => ({ ...prev, pillows: { ...prev.pillows, [size]: (prev.pillows[size] ?? 0) + 1 } }));
-    toast.message(`Selected 1 pillow size ${size}`);
+    // New flow: open drawer to choose template then add to cart
+    if (String(size).includes('Bolster')) {
+      const s = String(size);
+      const v = s.includes('Short') ? 'short' : s.includes('Long') ? 'long' : 'medium';
+      openSellDrawerForBolster(v);
+      return;
+    }
+    openSellDrawerForPillow(size);
   };
+
+  const commitQueuedShopifySales = async () => {
+    const commits: Array<{ queueId: number; templateId: number | null }> = []
+    for (const row of shopifyQueue) {
+      if (row.kind === 'part') {
+        commits.push({ queueId: row.id, templateId: null })
+        continue
+      }
+      const chosen = shopifyTemplateChoice[row.id]
+      if (!chosen || chosen === '') continue
+      commits.push({ queueId: row.id, templateId: Number(chosen) })
+    }
+
+    // Ensure all pillow/bolster rows have a template selected
+    const missing = shopifyQueue.filter(r => (r.kind === 'pillow' || r.kind === 'bolster') && (!shopifyTemplateChoice[r.id] || shopifyTemplateChoice[r.id] === ''))
+    if (missing.length) {
+      toast.error('Select a template for every pillow/bolster sale line before saving')
+      return
+    }
+
+    if (!commits.length) {
+      toast.message('No Shopify sales to commit')
+      return
+    }
+
+    setSavingShopifySales(true)
+    try {
+      await commitShopifySales({ commits })
+      toast.success('Shopify sales committed')
+      await load()
+      await loadShopifySalesQueue()
+      notifyInventoryChange()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to commit Shopify sales')
+    } finally {
+      setSavingShopifySales(false)
+    }
+  }
 
   const buildableBolsterShort = useMemo(() => {
     const lines = bolsterLinesByVariant.short;
@@ -310,11 +544,8 @@ export default function InventoryPage() {
   const undoCartLine = (type: "pillow" | "part", key: string | number) => {
     setCart(prev => {
       if (type === "pillow") {
-        const size = String(key);
-        const nextQty = Math.max(0, (prev.pillows[size] ?? 0) - 1);
-        const next = { ...prev.pillows };
-        if (nextQty === 0) delete next[size]; else next[size] = nextQty;
-        return { ...prev, pillows: next };
+        const id = String(key);
+        return { ...prev, pillows: prev.pillows.filter((l) => l.id !== id) };
       } else {
         const id = Number(key);
         const nextQty = Math.max(0, (prev.parts[id] ?? 0) - 1);
@@ -326,23 +557,27 @@ export default function InventoryPage() {
   };
 
   const sellFromCart = async () => {
-    const pillowEntries = Object.entries(cart.pillows);
+    const pillowLines = cart.pillows;
     const partEntries = Object.entries(cart.parts);
-    if (pillowEntries.length === 0 && partEntries.length === 0) {
+    if (pillowLines.length === 0 && partEntries.length === 0) {
       toast.message("Cart is empty");
       return;
     }
     try {
       // Process pillows
-      for (const [size, qty] of pillowEntries) {
-        if (size === 'Bolster' || String(size).startsWith('Bolster')) {
-          const s = String(size);
-          const variant = s.includes('Short') ? 'short' : s.includes('Long') ? 'long' : 'medium';
-          if (qty > 0) await sellBolster({ quantity: qty as number, variant });
+      for (const line of pillowLines) {
+        if (line.quantity <= 0) continue;
+        if (line.templateId) {
+          await sellFromTemplate({ templateId: line.templateId, quantity: line.quantity });
           continue;
         }
+        if (line.kind === 'bolster') {
+          await sellBolster({ quantity: line.quantity, variant: line.bolsterVariant ?? 'medium' });
+          continue;
+        }
+        const size = String(line.pillowSize ?? line.label);
         const product = products.find(p => p.size === size);
-        if (product && qty > 0) await sellPillow({ productId: product.id, quantity: qty as number });
+        if (product) await sellPillow({ productId: product.id, quantity: line.quantity });
       }
       // Process parts
       for (const [itemIdStr, qty] of partEntries) {
@@ -351,7 +586,7 @@ export default function InventoryPage() {
           await sellPart({ itemId, quantity: qty as number });
         }
       }
-      setCart({ pillows: {}, parts: {} });
+      setCart({ pillows: [], parts: {} });
       await load();
       toast.success("Sale completed");
       setCartOpen(false);
@@ -533,6 +768,95 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         </div>
       </section>
 
+      {/* Shopify Sales queue */}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium">Shopify Sales</div>
+            <div className="text-xs text-muted-foreground">Review new paid orders and choose templates before committing inventory.</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={loadShopifySalesQueue} disabled={loadingShopifySales || savingShopifySales}>
+              {loadingShopifySales ? 'Refreshing…' : 'Refresh'}
+            </Button>
+            <Button onClick={commitQueuedShopifySales} disabled={savingShopifySales || shopifyQueue.length === 0}>
+              {savingShopifySales ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+
+        {shopifyQueue.length === 0 ? (
+          <div className="rounded border p-3 text-sm text-muted-foreground">No pending Shopify sales.</div>
+        ) : (
+          <div className="rounded border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead className="w-[90px]">Qty</TableHead>
+                  <TableHead className="w-[260px]">Template</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shopifyQueue.map((row) => {
+                  const key =
+                    row.kind === 'pillow'
+                      ? `pillow:${row.pillow_size ?? ''}`
+                      : row.kind === 'bolster'
+                        ? `bolster:${row.bolster_variant ?? ''}`
+                        : null;
+                  const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
+                  const needsTemplate = row.kind === 'pillow' || row.kind === 'bolster';
+                  const label =
+                    row.kind === 'pillow'
+                      ? `Pillow ${row.pillow_size ?? ''}`
+                      : row.kind === 'bolster'
+                        ? `Bolster ${row.bolster_variant ?? ''}`
+                        : `Part ${row.item_id ?? ''}`;
+                  return (
+                    <TableRow key={row.id}>
+                      <TableCell className="text-sm">
+                        <div className="font-medium">#{row.shopify_order_id}</div>
+                        <div className="text-xs text-muted-foreground">{row.sku ?? ''}</div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div className="font-medium">{label}</div>
+                        <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
+                      </TableCell>
+                      <TableCell className="text-sm">{row.quantity}</TableCell>
+                      <TableCell>
+                        {needsTemplate ? (
+                          <select
+                            className="w-full rounded-md border px-3 py-2 text-sm"
+                            value={shopifyTemplateChoice[row.id] === undefined ? '' : String(shopifyTemplateChoice[row.id] ?? '')}
+                            onChange={(e) =>
+                              setShopifyTemplateChoice((prev) => ({
+                                ...prev,
+                                [row.id]: e.target.value ? Number(e.target.value) : '',
+                              }))
+                            }
+                          >
+                            <option value="">Select template…</option>
+                            {options.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">—</div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+
       {/* Bolster variants */}
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select bolsters</div>
@@ -673,17 +997,17 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           <div className="mt-4 space-y-4">
             <div className="mx-4">
               <div className="text-sm font-medium mb-2">Pillows</div>
-              {Object.keys(cart.pillows).length === 0 && (
+              {cart.pillows.length === 0 && (
                 <div className="text-sm text-muted-foreground">No pillows selected</div>
               )}
               <div className="space-y-2">
-                {Object.entries(cart.pillows).map(([size, qty]) => (
-                  <div key={size} className="flex items-center justify-between rounded border p-2">
+                {cart.pillows.map((line) => (
+                  <div key={line.id} className="flex items-center justify-between rounded border p-2">
                     <div>
-                      <div className="font-medium">Size {size}</div>
-                      <div className="text-xs text-muted-foreground">Qty: {qty}</div>
+                      <div className="font-medium">{line.label}</div>
+                      <div className="text-xs text-muted-foreground">Qty: {line.quantity}{line.templateName ? ` · Template: ${line.templateName}` : ''}</div>
                     </div>
-                    <Button size="sm" variant="secondary" onClick={() => undoCartLine("pillow", size)}>Undo</Button>
+                    <Button size="sm" variant="secondary" onClick={() => undoCartLine("pillow", line.id)}>Remove</Button>
                   </div>
                 ))}
               </div>
@@ -712,6 +1036,87 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           </div>
           <SheetFooter>
             <Button onClick={sellFromCart} className="w-full">Sell</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Sell With Template Drawer */}
+      <Sheet open={sellDrawerOpen} onOpenChange={setSellDrawerOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>
+              {sellDrawerKind === 'pillow' ? `Sell pillow — ${sellDrawerSize}` : `Sell bolster — ${sellDrawerBolsterVariant}`}
+            </SheetTitle>
+            <SheetDescription>Select a template (optional) and add to cart.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-4 px-2">
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">Template</div>
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm"
+                value={sellDrawerTemplateId === '' ? '' : String(sellDrawerTemplateId)}
+                onChange={(e) => {
+                  const next: number | '' = e.target.value ? Number(e.target.value) : '';
+                  setSellDrawerTemplateId(next);
+                  if (next === '') { setSellDrawerLines([]); setSellDrawerTemplateName(null); return; }
+                  loadSelectedTemplateLines(next).catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load template'));
+                }}
+              >
+                <option value="">Select template…</option>
+                {sellDrawerTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <div className="text-xs text-muted-foreground">
+                Available: {(() => {
+                  if (sellDrawerTemplateId === '') {
+                    if (sellDrawerKind === 'pillow') return Number(buildable[sellDrawerSize] ?? 0);
+                    const v = sellDrawerBolsterVariant;
+                    return v === 'short' ? Number(buildableBolsterShort ?? 0) : v === 'long' ? Number(buildableBolsterLong ?? 0) : Number(buildableBolsterMedium ?? 0);
+                  }
+                  return computeBuildableFromLines(sellDrawerLines);
+                })()}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground">Qty</div>
+              <Input type="number" min={1} value={sellDrawerQty} onChange={(e) => setSellDrawerQty(e.target.value)} className="w-24" />
+              <div className="ml-auto" />
+            </div>
+          </div>
+          <SheetFooter>
+            <Button
+              onClick={() => {
+                const qty = Math.max(1, parseInt((sellDrawerQty || '1'), 10));
+                const templateId = sellDrawerTemplateId === '' ? null : Number(sellDrawerTemplateId);
+                if (!templateId) { toast.error('Select a template'); return; }
+                const templateName = (sellDrawerTemplateName ?? null);
+                const id = `${sellDrawerKind}:${sellDrawerKind === 'pillow' ? sellDrawerSize : sellDrawerBolsterVariant}:${templateId ?? 'active'}:${Date.now()}`;
+                const label = sellDrawerKind === 'pillow'
+                  ? `Pillow ${sellDrawerSize}`
+                  : `Bolster ${sellDrawerBolsterVariant === 'short' ? 'S (0.8m)' : sellDrawerBolsterVariant === 'long' ? 'L (1.2m)' : 'M (1m)'}`;
+                setCart((prev) => ({
+                  ...prev,
+                  pillows: [
+                    ...prev.pillows,
+                    {
+                      id,
+                      kind: sellDrawerKind,
+                      label,
+                      templateId,
+                      templateName,
+                      quantity: qty,
+                      pillowSize: sellDrawerKind === 'pillow' ? sellDrawerSize : undefined,
+                      bolsterVariant: sellDrawerKind === 'bolster' ? sellDrawerBolsterVariant : undefined,
+                    },
+                  ],
+                }));
+                toast.success('Added to cart');
+                setSellDrawerOpen(false);
+              }}
+            >
+              Add to cart
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>

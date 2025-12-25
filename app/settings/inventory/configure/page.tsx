@@ -60,6 +60,14 @@ export default function ConfigureInventoryPage() {
   const [bolsterOpen, setBolsterOpen] = useState(false);
   const [bolsterVariant, setBolsterVariant] = useState<'Short (0.8m)' | 'Medium (1m)' | 'Long (1.2m)' | null>(null);
   const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
+  const [pillowTemplates, setPillowTemplates] = useState<Array<{ id: number; name: string; notes: string | null }>>([]);
+  const [pillowSelectedTemplateId, setPillowSelectedTemplateId] = useState<number | ''>('');
+  const [pillowTemplateName, setPillowTemplateName] = useState('');
+  const [pillowTemplateNotes, setPillowTemplateNotes] = useState('');
+  const [bolsterTemplates, setBolsterTemplates] = useState<Array<{ id: number; name: string; notes: string | null }>>([]);
+  const [bolsterSelectedTemplateId, setBolsterSelectedTemplateId] = useState<number | ''>('');
+  const [bolsterTemplateName, setBolsterTemplateName] = useState('');
+  const [bolsterTemplateNotes, setBolsterTemplateNotes] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -127,6 +135,33 @@ export default function ConfigureInventoryPage() {
     loadVariant();
   }, [bolsterOpen, bolsterVariant]);
 
+  useEffect(() => {
+    const load = async () => {
+      if (!open || !selectedSize) return;
+      try {
+        const list = await loadTemplates('pillow', selectedSize);
+        setPillowTemplates(list);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to load templates');
+      }
+    };
+    load();
+  }, [open, selectedSize]);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!bolsterOpen || !bolsterVariant) return;
+      const key = bolsterVariant === 'Short (0.8m)' ? 'short' : bolsterVariant === 'Long (1.2m)' ? 'long' : 'medium';
+      try {
+        const list = await loadTemplates('bolster', key);
+        setBolsterTemplates(list);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to load templates');
+      }
+    };
+    load();
+  }, [bolsterOpen, bolsterVariant]);
+
   // removed unused itemsBy
 
   const buildPayloadLines = (lines: BomLine[]) =>
@@ -136,6 +171,20 @@ export default function ConfigureInventoryPage() {
         return { item_id: line.item_id, quantity };
       })
       .filter((line) => line.quantity > 0);
+
+  const notifyInventoryChange = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new Event('inventory:changed'));
+    try {
+      if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel('inventory:changed');
+        channel.postMessage('refresh');
+        channel.close();
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const persistProductBom = async (productId: number, lines: BomLine[]) => {
     const payloadLines = buildPayloadLines(lines);
@@ -150,6 +199,29 @@ export default function ConfigureInventoryPage() {
       throw new Error(message);
     }
   };
+
+  const loadTemplates = async (kind: 'pillow' | 'bolster', key: string) => {
+    const url = `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`
+    const res = await fetch(url, { method: 'GET' })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      const message = payload?.error ?? 'Failed to load templates'
+      throw new Error(typeof message === 'string' ? message : 'Failed to load templates')
+    }
+    const payload = await res.json().catch(() => null)
+    return (payload?.templates ?? []) as Array<{ id: number; name: string; notes: string | null }>
+  }
+
+  const loadTemplateLines = async (templateId: number) => {
+    const res = await fetch(`/settings/inventory/configure/templates/${templateId}`, { method: 'GET' })
+    const payload = await res.json().catch(() => null)
+    if (!res.ok) {
+      const message = payload?.error ?? 'Failed to load template'
+      throw new Error(typeof message === 'string' ? message : 'Failed to load template')
+    }
+    type LineRow = { item_id: number | string; quantity: number | string }
+    return ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }))
+  }
 
   const save = async () => {
     if (products.length === 0) {
@@ -195,6 +267,7 @@ export default function ConfigureInventoryPage() {
         window.localStorage.setItem(`bolster_bom_lines:${variant}`, JSON.stringify(lines));
       }
       toast.success('Bolster configuration saved');
+      notifyInventoryChange();
       setBolsterOpen(false);
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to save bolster';
@@ -213,6 +286,7 @@ export default function ConfigureInventoryPage() {
       }
       await persistProductBom(product.id, bom[size]);
       toast.success(`Configuration saved for size ${size}`);
+      notifyInventoryChange();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save configuration";
       toast.error(message);
@@ -287,6 +361,83 @@ export default function ConfigureInventoryPage() {
             <SheetTitle>Configure Size {selectedSize ?? ''}</SheetTitle>
             <SheetDescription>Adjust BOM quantities and save for this pillow size.</SheetDescription>
           </SheetHeader>
+          {selectedSize && (
+            <div className="mt-4 space-y-3 px-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Template</div>
+                  <select
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    value={pillowSelectedTemplateId === '' ? '' : String(pillowSelectedTemplateId)}
+                    onChange={async (e) => {
+                      const next: number | '' = e.target.value ? Number(e.target.value) : '';
+                      setPillowSelectedTemplateId(next);
+                      if (next === '') return;
+                      try {
+                        const lines = await loadTemplateLines(next);
+                        setBom((prev) => ({ ...prev, [selectedSize]: lines }));
+                        toast.success('Template loaded into editor');
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to load template');
+                      }
+                    }}
+                  >
+                    <option value="">Select template…</option>
+                    {pillowTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Save as template</div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Template name"
+                      value={pillowTemplateName}
+                      onChange={(e) => setPillowTemplateName(e.target.value)}
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        const name = pillowTemplateName.trim();
+                        if (!name) { toast.message('Enter a template name'); return; }
+                        try {
+                          const res = await fetch('/settings/inventory/configure/templates', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              kind: 'pillow',
+                              key: selectedSize,
+                              name,
+                              notes: pillowTemplateNotes.trim() || undefined,
+                              lines: buildPayloadLines(bom[selectedSize] ?? []),
+                            }),
+                          });
+                          const payload = await res.json().catch(() => null);
+                          if (!res.ok) throw new Error(payload?.error ?? 'Failed to save template');
+                          const list = await loadTemplates('pillow', selectedSize);
+                          setPillowTemplates(list);
+                          setPillowTemplateName('');
+                          setPillowTemplateNotes('');
+                          toast.success('Template saved');
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : 'Failed to save template');
+                        }
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <Input
+                placeholder="Template notes (optional)"
+                value={pillowTemplateNotes}
+                onChange={(e) => setPillowTemplateNotes(e.target.value)}
+              />
+              <Separator />
+            </div>
+          )}
           <div className="mt-4 space-y-4 px-2">
             {selectedSize && (
               <SizeEditor
@@ -312,6 +463,84 @@ export default function ConfigureInventoryPage() {
             <SheetTitle>Configure Bolster{bolsterVariant ? ` — ${bolsterVariant}` : ''}</SheetTitle>
             <SheetDescription>Adjust components and quantities for the single-size bolster, including packaging.</SheetDescription>
           </SheetHeader>
+          {bolsterVariant && (
+            <div className="mt-4 space-y-3 px-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Template</div>
+                  <select
+                    className="w-full rounded-md border px-3 py-2 text-sm"
+                    value={bolsterSelectedTemplateId === '' ? '' : String(bolsterSelectedTemplateId)}
+                    onChange={async (e) => {
+                      const next: number | '' = e.target.value ? Number(e.target.value) : '';
+                      setBolsterSelectedTemplateId(next);
+                      if (next === '') return;
+                      try {
+                        const lines = await loadTemplateLines(next);
+                        setBolsterLines(lines);
+                        toast.success('Template loaded into editor');
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : 'Failed to load template');
+                      }
+                    }}
+                  >
+                    <option value="">Select template…</option>
+                    {bolsterTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Save as template</div>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Template name"
+                      value={bolsterTemplateName}
+                      onChange={(e) => setBolsterTemplateName(e.target.value)}
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={async () => {
+                        const name = bolsterTemplateName.trim();
+                        if (!name) { toast.message('Enter a template name'); return; }
+                        const key = bolsterVariant === 'Short (0.8m)' ? 'short' : bolsterVariant === 'Long (1.2m)' ? 'long' : 'medium';
+                        try {
+                          const res = await fetch('/settings/inventory/configure/templates', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              kind: 'bolster',
+                              key,
+                              name,
+                              notes: bolsterTemplateNotes.trim() || undefined,
+                              lines: buildPayloadLines(bolsterLines ?? []),
+                            }),
+                          });
+                          const payload = await res.json().catch(() => null);
+                          if (!res.ok) throw new Error(payload?.error ?? 'Failed to save template');
+                          const list = await loadTemplates('bolster', key);
+                          setBolsterTemplates(list);
+                          setBolsterTemplateName('');
+                          setBolsterTemplateNotes('');
+                          toast.success('Template saved');
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : 'Failed to save template');
+                        }
+                      }}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <Input
+                placeholder="Template notes (optional)"
+                value={bolsterTemplateNotes}
+                onChange={(e) => setBolsterTemplateNotes(e.target.value)}
+              />
+              <Separator />
+            </div>
+          )}
           <div className="mt-4 space-y-4 px-2">
             <BolsterEditor items={items} lines={bolsterLines} setLines={setBolsterLines} />
           </div>

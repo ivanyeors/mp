@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyWebhookSecret } from '@/lib/shopify/env'
 import { verifyShopifyWebhookHmac } from '@/lib/shopify/verify'
-import { sellBolster, sellPillow, sellPart } from '@/app/settings/inventory/actions'
 import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
 
 export const runtime = 'nodejs'
@@ -11,6 +10,7 @@ type ShopifyOrder = {
   id: number
   line_items?: Array<{
     id: number
+    title?: string | null
     sku: string | null
     quantity: number
     variant_id: number | null
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Build actions based on mappings; ignore unmapped items (but record them for visibility).
-  const mappedLines: Array<{ mapping: MappingRow; qty: number }> = []
+  const mappedLines: Array<{ mapping: MappingRow; qty: number; sku: string | null; variantTitle: string | null; lineItemId: number | null }> = []
   const unmappedLines: Array<{ variant_id: number | null; sku: string | null; quantity: number }> = []
 
   for (const li of order.line_items ?? []) {
@@ -109,28 +109,34 @@ export async function POST(req: NextRequest) {
       unmappedLines.push({ variant_id: variantId, sku: li.sku ?? null, quantity: qty })
       continue
     }
-    mappedLines.push({ mapping, qty })
+    mappedLines.push({ mapping, qty, sku: li.sku ?? null, variantTitle: li.title ?? null, lineItemId: li.id ?? null })
   }
 
-  // Apply inventory decrements for mapped lines.
+  // Enqueue mapped lines for manual template selection / commit in the platform UI.
   try {
-    for (const line of mappedLines) {
-      const { mapping, qty } = line
-      if (mapping.kind === 'pillow' && mapping.pillow_size) {
-        const { data: product, error } = await admin
-          .from('pillow_products')
-          .select('id,size')
-          .eq('size', mapping.pillow_size)
-          .eq('is_active', true)
-          .maybeSingle()
-        if (error) throw new Error(error.message)
-        if (!product?.id) throw new Error(`Missing pillow_products row for size ${mapping.pillow_size}`)
-        await sellPillow({ productId: Number(product.id), quantity: qty })
-      } else if (mapping.kind === 'bolster' && mapping.bolster_variant) {
-        await sellBolster({ quantity: qty, variant: mapping.bolster_variant })
-      } else if (mapping.kind === 'part' && mapping.item_id) {
-        await sellPart({ itemId: mapping.item_id, quantity: qty })
+    const queueRows = mappedLines.map((line) => {
+      const m = line.mapping
+      return {
+        shopify_order_id: order.id,
+        shopify_line_item_id: line.lineItemId,
+        shopify_variant_id: Number(m.shopify_variant_id),
+        kind: m.kind,
+        pillow_size: m.kind === 'pillow' ? m.pillow_size : null,
+        bolster_variant: m.kind === 'bolster' ? m.bolster_variant : null,
+        item_id: m.kind === 'part' ? m.item_id : null,
+        quantity: line.qty,
+        product_title: null,
+        variant_title: line.variantTitle,
+        sku: line.sku,
+        status: 'pending',
+        metadata: { shopify_topic: topic, shop_domain: shopDomain, webhook_id: webhookId },
       }
+    })
+    if (queueRows.length) {
+      const { error: qErr } = await admin.from('shopify_sales_queue').upsert(queueRows, {
+        onConflict: 'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind',
+      })
+      if (qErr) throw new Error(qErr.message)
     }
 
     // Mark processed after successful application.
@@ -143,7 +149,8 @@ export async function POST(req: NextRequest) {
     })
     if (insErr) throw new Error(insErr.message)
 
-    // Best-effort: sync buildable -> Shopify after processing an order.
+    // Best-effort: keep Shopify in sync for non-template parts and overall availability.
+    // Note: inventory will only change after the queued sales are committed in the UI, so this is mainly a no-op here.
     try {
       await syncShopifyInventoryFromBuildable()
     } catch (e) {

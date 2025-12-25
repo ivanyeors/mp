@@ -2,6 +2,7 @@
 
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({ itemId: z.number().int().positive(), quantity: z.number().int().positive() })
@@ -18,6 +19,18 @@ const SellBolsterSchema = z.object({
     protectorQty: z.number().int().positive().default(1),
     fillingQty: z.number().int().positive().default(1),
   }).optional(),
+})
+
+const SellFromTemplateSchema = z.object({
+  templateId: z.number().int().positive(),
+  quantity: z.number().int().positive(),
+})
+
+const CommitShopifySalesSchema = z.object({
+  commits: z.array(z.object({
+    queueId: z.number().int().positive(),
+    templateId: z.number().int().positive().nullable(),
+  })).min(1),
 })
 
 const ITEM_CATEGORIES = ['cover','case','protector','filling','packaging','accessories','other'] as const
@@ -110,6 +123,114 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
 
   const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
   if (insErr) throw new Error(insErr.message)
+  return { ok: true }
+}
+
+export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSchema>) {
+  const parsed = SellFromTemplateSchema.parse(input)
+  const admin = supabaseAdmin()
+
+  const { data: template, error: tErr } = await admin
+    .from('bom_templates')
+    .select('id,kind,key,name')
+    .eq('id', parsed.templateId)
+    .maybeSingle()
+  if (tErr) throw new Error(tErr.message)
+  if (!template) throw new Error('Template not found')
+
+  const { data: lines, error: lErr } = await admin
+    .from('bom_template_lines')
+    .select('item_id,quantity')
+    .eq('template_id', parsed.templateId)
+  if (lErr) throw new Error(lErr.message)
+  if (!lines?.length) throw new Error('Template has no lines')
+
+  const txns = lines.map((l) => ({
+    item_id: Number(l.item_id),
+    quantity_signed: -1 * Number(l.quantity) * parsed.quantity,
+    reason: 'sale' as const,
+    metadata: { template_id: parsed.templateId, template_kind: template.kind, template_key: template.key, template_name: template.name },
+  }))
+  const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
+  if (insErr) throw new Error(insErr.message)
+  return { ok: true }
+}
+
+export async function listShopifySalesQueue() {
+  const admin = supabaseAdmin()
+  const { data, error } = await admin
+    .from('shopify_sales_queue')
+    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return { ok: true, rows: data ?? [] }
+}
+
+export async function listTemplates(kind: 'pillow' | 'bolster', key: string) {
+  const admin = supabaseAdmin()
+  const { data, error } = await admin
+    .from('bom_templates')
+    .select('id,name,kind,key')
+    .eq('kind', kind)
+    .eq('key', key)
+    .order('updated_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return { ok: true, templates: data ?? [] }
+}
+
+export async function commitShopifySales(input: z.infer<typeof CommitShopifySalesSchema>) {
+  const parsed = CommitShopifySalesSchema.parse(input)
+  const admin = supabaseAdmin()
+
+  // Load queue rows
+  const ids = parsed.commits.map(c => c.queueId)
+  const { data: rows, error: qErr } = await admin
+    .from('shopify_sales_queue')
+    .select('id,kind,pillow_size,bolster_variant,item_id,quantity,status')
+    .in('id', ids)
+  if (qErr) throw new Error(qErr.message)
+
+  type QueueRow = {
+    id: number
+    kind: 'pillow' | 'bolster' | 'part'
+    pillow_size: string | null
+    bolster_variant: string | null
+    item_id: number | null
+    quantity: number | string
+    status: 'pending' | 'committed' | 'cancelled' | string
+  }
+  const byId = new Map<number, QueueRow>(((rows ?? []) as QueueRow[]).map(r => [Number(r.id), r]))
+
+  // Commit each line (template required for pillow/bolster)
+  for (const c of parsed.commits) {
+    const row = byId.get(c.queueId)
+    if (!row) throw new Error(`Queue row not found: ${c.queueId}`)
+    if (row.status !== 'pending') continue
+
+    if (row.kind === 'part') {
+      if (!row.item_id) throw new Error(`Missing item_id for part row ${c.queueId}`)
+      await sellPart({ itemId: Number(row.item_id), quantity: Number(row.quantity) })
+    } else {
+      if (!c.templateId) throw new Error(`Template is required for ${row.kind} row ${c.queueId}`)
+      await sellFromTemplate({ templateId: c.templateId, quantity: Number(row.quantity) })
+    }
+
+    const { error: upErr } = await admin
+      .from('shopify_sales_queue')
+      .update({ status: 'committed', chosen_template_id: c.templateId, committed_at: new Date().toISOString() })
+      .eq('id', c.queueId)
+      .eq('status', 'pending')
+    if (upErr) throw new Error(upErr.message)
+  }
+
+  // After committing, sync Shopify inventory to reflect new balances/buildable.
+  try {
+    await syncShopifyInventoryFromBuildable()
+  } catch {
+    // non-fatal; user can run manual sync
+  }
+
   return { ok: true }
 }
 
