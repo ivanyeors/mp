@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { shopifyGetPrimaryLocationId, shopifyGetVariantInventoryItemId, shopifySetInventoryLevel } from './client'
+import { shopifyListActiveProductsWithVariants } from './products'
 
 type MappingRow = {
   shopify_variant_id: number | string
@@ -9,16 +10,21 @@ type MappingRow = {
   item_id: number | null
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: number }> {
   const admin = supabaseAdmin()
 
-  const [{ data: mappings }, { data: pillowBuildableRows }, { data: balancesRows }, { data: bolsterBomRows }] = await Promise.all([
+  const [{ data: mappings }, { data: pillowBuildableRows }, { data: balancesRows }, { data: bolsterBomRows }, activeProducts] = await Promise.all([
     admin
       .from('shopify_variant_mappings')
       .select('shopify_variant_id,kind,pillow_size,bolster_variant,item_id'),
     admin.from('product_buildable').select('size,buildable'),
     admin.from('inventory_balances').select('item_id,on_hand'),
     admin.from('bolster_bom_lines').select('variant,item_id,quantity'),
+    shopifyListActiveProductsWithVariants({ limit: 250 }),
   ])
 
   const pillowBuildable: Record<string, number> = {}
@@ -57,6 +63,15 @@ export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: nu
   const locationId = await shopifyGetPrimaryLocationId()
   const inventoryItemIdCache = new Map<string, string>()
 
+  // Prefetch variant_id -> inventory_item_id from active products to reduce API calls.
+  for (const p of activeProducts ?? []) {
+    for (const v of p.variants ?? []) {
+      const vid = v.id
+      const iid = (v as { inventory_item_id?: number }).inventory_item_id
+      if (vid && iid) inventoryItemIdCache.set(String(vid), String(iid))
+    }
+  }
+
   let updated = 0
   for (const m of (mappings ?? []) as unknown as MappingRow[]) {
     const variantId = String(m.shopify_variant_id)
@@ -72,6 +87,8 @@ export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: nu
       inventoryItemIdCache.set(variantId, inventoryItemId)
     }
 
+    // Shopify REST rate limit: keep this under ~2 req/sec to avoid 429.
+    await sleep(650)
     await shopifySetInventoryLevel({ locationId, inventoryItemId, available })
     updated += 1
   }

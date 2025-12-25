@@ -55,8 +55,24 @@ function detectPillowSize(opts: Array<string | null>): PillowSize | null {
 
 function detectBolsterSize(opts: Array<string | null>): BolsterSize | null {
   const normalized = opts.map(o => (o ? o.trim().toUpperCase() : null))
+  // Direct match (ideal: option is exactly "S" | "M" | "L")
   for (const sz of BOLSTER_SIZES) {
     if (normalized.includes(sz)) return sz
+  }
+  // Fuzzy match: option might be "Size S (0.8m)" / "Size M (1.0m)" / "Size L (1.2m)"
+  for (const o of normalized) {
+    if (!o) continue
+    const m = o.match(/\bSIZE\s*([SML])\b/)
+    if (m?.[1] && m[1] !== undefined) {
+      const candidate = m[1] as string
+      if (candidate === 'S' || candidate === 'M' || candidate === 'L') return candidate as BolsterSize
+    }
+    // fallback: look for standalone S/M/L token
+    const t = o.match(/\b([SML])\b/)
+    if (t?.[1] && t[1] !== undefined) {
+      const candidate = t[1] as string
+      if (candidate === 'S' || candidate === 'M' || candidate === 'L') return candidate as BolsterSize
+    }
   }
   return null
 }

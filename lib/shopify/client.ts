@@ -3,28 +3,49 @@ import { getShopifyEnv } from './env'
 type ShopifyJson = Record<string, unknown> | Array<unknown>
 type ShopifyErrorResponse = { errors?: unknown }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function shopifyFetch(path: string, init?: RequestInit) {
   const env = getShopifyEnv()
   const url = `https://${env.shopDomain}/admin/api/${env.apiVersion}${path}`
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      'X-Shopify-Access-Token': env.adminAccessToken,
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    cache: 'no-store',
-  })
-  const text = await res.text()
-  const json = text ? (JSON.parse(text) as ShopifyJson) : null
-  if (!res.ok) {
-    const msg =
-      typeof json === 'object' && json && 'errors' in (json as ShopifyErrorResponse)
-        ? String((json as ShopifyErrorResponse).errors)
-        : text
-    throw new Error(`Shopify API ${res.status} ${res.statusText}: ${msg}`)
+  const maxAttempts = 6
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const res = await fetch(url, {
+      ...init,
+      headers: {
+        'X-Shopify-Access-Token': env.adminAccessToken,
+        'Content-Type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+      cache: 'no-store',
+    })
+
+    // Rate limit handling
+    if (res.status === 429) {
+      const retryAfterRaw = res.headers.get('retry-after')
+      const retryAfterSeconds = retryAfterRaw ? Number.parseFloat(retryAfterRaw) : NaN
+      const baseDelayMs = Number.isFinite(retryAfterSeconds) ? Math.ceil(retryAfterSeconds * 1000) : 750
+      const jitterMs = Math.floor(Math.random() * 150)
+      const backoffMs = baseDelayMs + jitterMs + (attempt - 1) * 250
+      await sleep(backoffMs)
+      continue
+    }
+
+    const text = await res.text()
+    const json = text ? (JSON.parse(text) as ShopifyJson) : null
+    if (!res.ok) {
+      const msg =
+        typeof json === 'object' && json && 'errors' in (json as ShopifyErrorResponse)
+          ? String((json as ShopifyErrorResponse).errors)
+          : text
+      throw new Error(`Shopify API ${res.status} ${res.statusText}: ${msg}`)
+    }
+    return json
   }
-  return json
+
+  throw new Error('Shopify API 429 Too Many Requests: Exceeded retry attempts')
 }
 
 export async function shopifyGetPrimaryLocationId(): Promise<string> {
