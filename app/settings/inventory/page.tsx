@@ -906,49 +906,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         </div>
       </section>
 
-      {/* Shopify Sales queue */}
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-medium">Shopify Sales</div>
-            <div className="text-xs text-muted-foreground">Review new paid orders and choose templates before committing inventory.</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                if (shopifySalesTab === 'archived') loadShopifySalesQueueArchived();
-                else loadShopifySalesQueue();
-              }}
-              disabled={loadingShopifySales || savingShopifySales}
-            >
-              {loadingShopifySales ? 'Refreshing…' : 'Refresh'}
-            </Button>
-            <Button onClick={commitQueuedShopifySales} disabled={savingShopifySales || shopifyQueue.length === 0 || shopifySalesTab !== 'active'}>
-              {savingShopifySales ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </div>
-
-        <Tabs
-          value={shopifySalesTab}
-          onValueChange={(v) => {
-            const next = v === "archived" ? "archived" : "active";
-            setShopifySalesTab(next);
-            if (next === "archived" && shopifyQueueArchived.length === 0) {
-              loadShopifySalesQueueArchived();
-            }
-          }}
-        >
-          <TabsList>
-            <TabsTrigger value="active">Active ({shopifyQueue.length})</TabsTrigger>
-            <TabsTrigger value="archived">Archived ({shopifyQueueArchived.length})</TabsTrigger>
-          </TabsList>
-          <TabsContent value="active">{renderShopifySalesTable(shopifyQueue, 'active')}</TabsContent>
-          <TabsContent value="archived">{renderShopifySalesTable(shopifyQueueArchived, 'archived')}</TabsContent>
-        </Tabs>
-      </section>
-
       {/* Bolster variants */}
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select bolsters</div>
@@ -1019,6 +976,49 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             <div className="text-2xl font-semibold mt-1 truncate">Configure…</div>
           </div>
         </div>
+      </section>
+
+      {/* Shopify Sales queue */}
+      <section className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium">Shopify Sales</div>
+            <div className="text-xs text-muted-foreground">Review new paid orders and choose templates before committing inventory.</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (shopifySalesTab === 'archived') loadShopifySalesQueueArchived();
+                else loadShopifySalesQueue();
+              }}
+              disabled={loadingShopifySales || savingShopifySales}
+            >
+              {loadingShopifySales ? 'Refreshing…' : 'Refresh'}
+            </Button>
+            <Button onClick={commitQueuedShopifySales} disabled={savingShopifySales || shopifyQueue.length === 0 || shopifySalesTab !== 'active'}>
+              {savingShopifySales ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+
+        <Tabs
+          value={shopifySalesTab}
+          onValueChange={(v) => {
+            const next = v === "archived" ? "archived" : "active";
+            setShopifySalesTab(next);
+            if (next === "archived" && shopifyQueueArchived.length === 0) {
+              loadShopifySalesQueueArchived();
+            }
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="active">Active ({shopifyQueue.length})</TabsTrigger>
+            <TabsTrigger value="archived">Archived ({shopifyQueueArchived.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="active">{renderShopifySalesTable(shopifyQueue, 'active')}</TabsContent>
+          <TabsContent value="archived">{renderShopifySalesTable(shopifyQueueArchived, 'archived')}</TabsContent>
+        </Tabs>
       </section>
 
       <Separator />
