@@ -100,6 +100,7 @@ function helpText(): string {
   return [
     'Commands:',
     '/help – show this help',
+    '/otp – generate OTP for work.mpillow.com',
     '/stock – interactive stock and actions',
     '/in – interactive stock-in (parts)',
     '/out – interactive stock-out/sell',

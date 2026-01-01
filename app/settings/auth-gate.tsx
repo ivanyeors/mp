@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { ShieldCheck, Loader2, AlertCircle, CheckCircle2, Clock3 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { Loader2, AlertCircle, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp"
 
@@ -17,24 +18,15 @@ type SessionResponse = {
 }
 
 export default function SettingsAuthGate({ children }: Props) {
+  const router = useRouter()
   const [status, setStatus] = useState<"checking" | "authed" | "unauth">("checking")
   const [otp, setOtp] = useState("")
   const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [sessionExpiry, setSessionExpiry] = useState<number | null>(null)
 
   useEffect(() => {
     checkSession()
   }, [])
-
-  const formattedExpiry = useMemo(() => {
-    if (!sessionExpiry) return null
-    try {
-      return new Date(sessionExpiry).toLocaleString()
-    } catch {
-      return null
-    }
-  }, [sessionExpiry])
 
   async function checkSession() {
     try {
@@ -42,10 +34,8 @@ export default function SettingsAuthGate({ children }: Props) {
       const data = (await res.json()) as SessionResponse
       if (data.authenticated) {
         setStatus("authed")
-        setSessionExpiry(data.expiresAt ?? null)
       } else {
         setStatus("unauth")
-        setSessionExpiry(null)
       }
     } catch (e) {
       console.error(e)
@@ -72,7 +62,6 @@ export default function SettingsAuthGate({ children }: Props) {
         return
       }
       setStatus("authed")
-      setSessionExpiry(data?.expiresAt ?? null)
       setOtp("")
     } catch (e) {
       console.error(e)
@@ -87,19 +76,22 @@ export default function SettingsAuthGate({ children }: Props) {
   }
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <Card className="w-full max-w-xl border-border/60 shadow-md">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ShieldCheck className="h-5 w-5 text-emerald-500" />
-            Secure access
-          </CardTitle>
-          <CardDescription>
-            Authenticate with Telegram OTP to open Settings. Login stays active for 3 days on this device.
-          </CardDescription>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50">
+      <Card className="relative w-fit border-border/60 shadow-md">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Close"
+          onClick={() => router.push("/")}
+          className="absolute right-2 top-2 h-8 w-8 text-muted-foreground"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <CardHeader className="pb-2 items-center text-center">
+          <CardTitle className="text-lg">Login</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-5 px-6 text-center">
           {status === "checking" ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -115,16 +107,14 @@ export default function SettingsAuthGate({ children }: Props) {
           ) : null}
 
           <div className="space-y-3">
-            <label className="text-sm font-medium" htmlFor="settings-otp-input">
-              Enter code
-            </label>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col items-center gap-4">
               <InputOTP
                 id="settings-otp-input"
                 maxLength={6}
                 value={otp}
                 onChange={setOtp}
                 disabled={verifying || status === "checking"}
+                className="justify-center"
               >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} className="h-10 w-10 text-base" />
@@ -149,17 +139,6 @@ export default function SettingsAuthGate({ children }: Props) {
             </div>
           </div>
         </CardContent>
-
-        <CardFooter className="flex flex-col items-start gap-2 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            <span>Request the code in Telegram by sending /otp to the bot.</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Clock3 className="h-4 w-4 text-muted-foreground" />
-            <span>Your login is remembered for 3 days per device.</span>
-          </div>
-        </CardFooter>
       </Card>
     </div>
   )
