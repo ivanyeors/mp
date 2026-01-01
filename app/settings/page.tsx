@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor, LogOut, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -83,6 +85,30 @@ export default function SettingsPage() {
             </div>
           </label>
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-medium">Session</h2>
+        <p className="text-muted-foreground text-sm">
+          Logged in via Telegram OTP. Sessions stay active for 3 days per device.
+        </p>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              setLoggingOut(true);
+              await fetch("/api/auth/settings-otp/logout", { method: "POST" });
+              window.location.reload();
+            } finally {
+              setLoggingOut(false);
+            }
+          }}
+          disabled={loggingOut}
+          className="w-full sm:w-auto"
+        >
+          {loggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+          Logout
+        </Button>
       </div>
     </div>
   );

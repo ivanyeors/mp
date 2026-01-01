@@ -25,6 +25,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Toaster } from "sonner";
+import SettingsAuthGate from "./auth-gate";
 
 type NavItem = {
   href: string;
@@ -92,7 +93,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             </div>
           </header>
           <div className="p-6">
-            {children}
+            <SettingsAuthGate>{children}</SettingsAuthGate>
             <Toaster richColors position="top-right" />
           </div>
         </SidebarInset>

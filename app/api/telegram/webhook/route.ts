@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { currentOtp } from '@/lib/settings-auth'
 import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/settings/inventory/actions'
 
 export const runtime = 'nodejs'
@@ -213,6 +214,13 @@ async function handleCommand(chatId: number, text: string) {
   try {
     if (name === '/help' || name === '/start') {
       await sendTelegramMessage(chatId, helpText())
+      return
+    }
+
+    if (name === '/otp') {
+      const { code, expiresAt } = currentOtp()
+      const seconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
+      await sendTelegramMessage(chatId, `Settings OTP: ${code}\nValid for ~${seconds}s`)
       return
     }
 
