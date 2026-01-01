@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetState
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -612,28 +613,31 @@ export default function InventoryPage() {
                   <TableCell className="text-sm">{row.quantity}</TableCell>
                   <TableCell>
                     {needsTemplate ? (
-                      <select
-                        className="w-full rounded-md border px-3 py-2 text-sm"
+                      <Select
                         value={
                           mode === 'archived'
                             ? String(row.chosen_template_id ?? '')
                             : (shopifyTemplateChoice[row.id] === undefined ? '' : String(shopifyTemplateChoice[row.id] ?? ''))
                         }
-                        onChange={(e) =>
+                        onValueChange={(value) =>
                           setShopifyTemplateChoice((prev) => ({
                             ...prev,
-                            [row.id]: e.target.value ? Number(e.target.value) : '',
+                            [row.id]: value ? Number(value) : '',
                           }))
                         }
-                        disabled={mode === 'archived'}
                       >
-                        <option value="">Select template…</option>
-                        {options.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="w-full" disabled={mode === 'archived'}>
+                          <SelectValue placeholder="Select template…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Select template…</SelectItem>
+                          {options.map((t) => (
+                            <SelectItem key={t.id} value={String(t.id)}>
+                              {t.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <div className="text-sm text-muted-foreground">—</div>
                     )}
@@ -1144,21 +1148,27 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           <div className="mt-4 space-y-4 px-2">
             <div className="space-y-2">
               <div className="text-sm font-medium text-muted-foreground">Template</div>
-              <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
+              <Select
                 value={sellDrawerTemplateId === '' ? '' : String(sellDrawerTemplateId)}
-                onChange={(e) => {
-                  const next: number | '' = e.target.value ? Number(e.target.value) : '';
+                onValueChange={(value) => {
+                  const next: number | '' = value ? Number(value) : '';
                   setSellDrawerTemplateId(next);
                   if (next === '') { setSellDrawerLines([]); setSellDrawerTemplateName(null); return; }
                   loadSelectedTemplateLines(next).catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load template'));
                 }}
               >
-                <option value="">Select template…</option>
-                {sellDrawerTemplates.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select template…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Select template…</SelectItem>
+                  {sellDrawerTemplates.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="text-xs text-muted-foreground">
                 Available: {(() => {
                   if (sellDrawerTemplateId === '') {
@@ -1287,9 +1297,6 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
     setErrorMessage(null);
     setSaving(false);
   }, [open]);
-
-  const selectClass =
-    "flex h-9 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]";
 
   const parseCurrency = (raw: string): number | undefined | null => {
     const trimmed = raw.trim();
@@ -1449,20 +1456,21 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                   <label className="text-sm font-medium" htmlFor={`add-item-category-${index}`}>
                     Category
                   </label>
-                  <select
-                    id={`add-item-category-${index}`}
-                    className={selectClass}
+                  <Select
                     value={entry.category}
-                    onChange={(event) =>
-                      handleCategoryChange(index, event.target.value as ItemCategory)
-                    }
+                    onValueChange={(value) => handleCategoryChange(index, value as ItemCategory)}
                   >
-                    {ITEM_CATEGORIES.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger id={`add-item-category-${index}`} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ITEM_CATEGORIES.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
@@ -1502,18 +1510,16 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                       <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
                         Size
                       </label>
-                      <select
-                        id={`add-item-size-${index}`}
-                        className={selectClass}
+                      <Select
                         value={entry.size}
-                        onChange={(event) => {
-                          const value = event.target.value.toUpperCase();
+                        onValueChange={(value) => {
+                          const upper = value.toUpperCase();
                           setEntries((prev) =>
                             prev.map((item, idx) =>
                               idx === index
                                 ? {
                                     ...item,
-                                    size: value,
+                                    size: upper,
                                   }
                                 : item,
                             ),
@@ -1521,12 +1527,17 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                           setErrorMessage(null);
                         }}
                       >
-                        {SIZE_OPTIONS.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger id={`add-item-size-${index}`} className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SIZE_OPTIONS.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   ) : (
                     <div className="space-y-1">
@@ -2074,15 +2085,18 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
         <div className="mt-4 space-y-4 px-2">
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground" htmlFor="custom-pillow-size">Size</label>
-            <select
-              id="custom-pillow-size"
-              aria-label="Custom pillow size"
-              className="rounded border px-2 py-1 text-sm"
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-            >
-              {['XS','S','M','L','XL'].map(s => (<option key={s} value={s}>{s}</option>))}
-            </select>
+            <Select value={size} onValueChange={setSize}>
+              <SelectTrigger id="custom-pillow-size" aria-label="Custom pillow size" className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {['XS','S','M','L','XL'].map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="ml-auto flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Qty</span>
               <Input type="number" min={0} placeholder="Qty" value={qty} onChange={(e)=> setQty(e.target.value)} className="w-24" />
@@ -2265,17 +2279,16 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
         <div className="mt-4 space-y-4 px-2">
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground" htmlFor="custom-bolster-variant">Variant</label>
-            <select
-              id="custom-bolster-variant"
-              aria-label="Custom bolster variant"
-              className="rounded border px-2 py-1 text-sm"
-              value={variant}
-              onChange={(e) => setVariant((e.target.value as 'short'|'medium'|'long'))}
-            >
-              <option value="short">Short (0.8m)</option>
-              <option value="medium">Medium (1m)</option>
-              <option value="long">Long (1.2m)</option>
-            </select>
+            <Select value={variant} onValueChange={(value) => setVariant(value as 'short' | 'medium' | 'long')}>
+              <SelectTrigger id="custom-bolster-variant" aria-label="Custom bolster variant" className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="short">Short (0.8m)</SelectItem>
+                <SelectItem value="medium">Medium (1m)</SelectItem>
+                <SelectItem value="long">Long (1.2m)</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="ml-auto flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Qty</span>
               <Input type="number" min={0} placeholder="Qty" value={qty} onChange={(e)=> setQty(e.target.value)} className="w-24" />

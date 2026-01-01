@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction, type 
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -48,6 +49,12 @@ const normalizeNameOrFallback = (value: string | null | undefined, fallback?: st
 };
 
 const getItemBaseName = (item: Item): string => normalizeNameOrFallback(item.name, item.category);
+
+const getFillingDisplayLabel = (item: Item, fallbackSize?: string): string => {
+  const variant = normalizeNameOrFallback(item.subtype ?? item.name, "filling");
+  const sizeLabel = item.size ?? fallbackSize;
+  return sizeLabel ? `${variant} ${sizeLabel}` : variant;
+};
 
 export default function ConfigureInventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -300,36 +307,67 @@ export default function ConfigureInventoryPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Configure Mpillow</h1>
+        <h1 className="text-2xl font-semibold">Configure Products</h1>
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
       </div>
       <Separator />
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {SIZES.map((size) => {
-          const partsCount = bom[size].filter(l => (l.quantity ?? 0) > 0).length;
-          return (
-            <div
-              key={size}
-              role="button"
-              tabIndex={0}
-              onClick={()=> { setSelectedSize(size); setOpen(true); }}
-              onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedSize(size); setOpen(true); } }}
-              className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
-            >
-              <div className="text-xs text-muted-foreground">Size</div>
-              <div className="text-2xl font-semibold">{size}</div>
-              <div className="mt-2 text-xs text-muted-foreground">{partsCount} parts configured</div>
-              <div className="mt-3">
-                <Button size="sm" variant="secondary">Configure</Button>
+      <div className="space-y-4">
+        <div className="text-2xl font-semibold">Basic Mpillow</div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {SIZES.map((size) => {
+            const partsCount = bom[size].filter(l => (l.quantity ?? 0) > 0).length;
+            return (
+              <div
+                key={`basic-${size}`}
+                role="button"
+                tabIndex={0}
+                onClick={()=> { setSelectedSize(size); setOpen(true); }}
+                onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedSize(size); setOpen(true); } }}
+                className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
+              >
+                <div className="text-xs text-muted-foreground">Size</div>
+                <div className="text-2xl font-semibold">{size}</div>
+                <div className="mt-2 text-xs text-muted-foreground">{partsCount} parts configured</div>
+                <div className="mt-3">
+                  <Button size="sm" variant="secondary">Configure</Button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+      </div>
+
+      <Separator />
+
+      <div className="space-y-4">
+        <div className="text-2xl font-semibold">Premium Mpillow</div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {SIZES.map((size) => {
+            const partsCount = bom[size].filter(l => (l.quantity ?? 0) > 0).length;
+            return (
+              <div
+                key={`premium-${size}`}
+                role="button"
+                tabIndex={0}
+                onClick={()=> { setSelectedSize(size); setOpen(true); }}
+                onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedSize(size); setOpen(true); } }}
+                className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
+              >
+                <div className="text-xs text-muted-foreground">Size</div>
+                <div className="text-2xl font-semibold">{size}</div>
+                <div className="mt-2 text-xs text-muted-foreground">{partsCount} parts configured</div>
+                <div className="mt-3">
+                  <Button size="sm" variant="secondary">Configure</Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <Separator />
       <div className="space-y-2">
-        <div className="text-2xl font-semibold">Configure Mbolster</div>
+        <div className="text-2xl font-semibold">Mbolster</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { key: 'Short (0.8m)' as const, label: 'Short (0.8m)' },
@@ -366,11 +404,10 @@ export default function ConfigureInventoryPage() {
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Template</div>
-                  <select
-                    className="w-full rounded-md border px-3 py-2 text-sm"
+                  <Select
                     value={pillowSelectedTemplateId === '' ? '' : String(pillowSelectedTemplateId)}
-                    onChange={async (e) => {
-                      const next: number | '' = e.target.value ? Number(e.target.value) : '';
+                    onValueChange={async (value) => {
+                      const next: number | '' = value ? Number(value) : '';
                       setPillowSelectedTemplateId(next);
                       if (next === '') return;
                       try {
@@ -382,11 +419,18 @@ export default function ConfigureInventoryPage() {
                       }
                     }}
                   >
-                    <option value="">Select template…</option>
-                    {pillowTemplates.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select template…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Select template…</SelectItem>
+                      {pillowTemplates.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Save as template</div>
@@ -468,11 +512,10 @@ export default function ConfigureInventoryPage() {
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Template</div>
-                  <select
-                    className="w-full rounded-md border px-3 py-2 text-sm"
+                  <Select
                     value={bolsterSelectedTemplateId === '' ? '' : String(bolsterSelectedTemplateId)}
-                    onChange={async (e) => {
-                      const next: number | '' = e.target.value ? Number(e.target.value) : '';
+                    onValueChange={async (value) => {
+                      const next: number | '' = value ? Number(value) : '';
                       setBolsterSelectedTemplateId(next);
                       if (next === '') return;
                       try {
@@ -484,11 +527,18 @@ export default function ConfigureInventoryPage() {
                       }
                     }}
                   >
-                    <option value="">Select template…</option>
-                    {bolsterTemplates.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select template…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Select template…</SelectItem>
+                      {bolsterTemplates.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Save as template</div>
@@ -641,7 +691,8 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
-        variantResolver={(item) => normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
+        variantResolver={(item, fallbackSize) => item.size ?? fallbackSize ?? normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
+        optionLabelResolver={(item) => getFillingDisplayLabel(item, size)}
       />
 
       <DynamicPartSection
@@ -725,6 +776,7 @@ type DynamicPartSectionProps = {
   upsert: (itemId: number, quantity: number) => void;
   remove: (itemId: number) => void;
   variantResolver?: (item: Item, fallbackSize?: string) => string;
+  optionLabelResolver?: (item: Item) => string;
 };
 
 function DynamicPartSection({
@@ -736,12 +788,18 @@ function DynamicPartSection({
   upsert,
   remove,
   variantResolver,
+  optionLabelResolver,
 }: DynamicPartSectionProps) {
   const [selectedId, setSelectedId] = useState<number | "">("");
   const [quantity, setQuantity] = useState<number>(1);
 
   const existingIds = useMemo(() => new Set(lines.map((l) => l.item_id)), [lines]);
   const addable = availableItems.filter((i) => !existingIds.has(i.id));
+
+  const renderOptionLabel = (item: Item) => {
+    if (optionLabelResolver) return optionLabelResolver(item);
+    return getItemBaseName(item);
+  };
 
   const renderVariant = (item?: Item) => {
     if (!item) return sizeLabel ?? "—";
@@ -795,21 +853,26 @@ function DynamicPartSection({
         )}
         <TableRow>
           <TableCell colSpan={2}>
-            <div className="flex items-center gap-2">
-              <select
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                value={selectedId === "" ? "" : String(selectedId)}
-                onChange={(e) => setSelectedId(e.target.value ? Number(e.target.value) : "")}
-                disabled={addable.length === 0}
-              >
-                <option value="">{addable.length ? "Select part to add" : "All available parts added"}</option>
-                {addable.map((it) => (
-                  <option key={it.id} value={it.id}>
-                    {getItemBaseName(it)}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={selectedId === "" ? "" : String(selectedId)}
+                  onValueChange={(value) => setSelectedId(value ? Number(value) : "")}
+                >
+                  <SelectTrigger className="w-full" disabled={addable.length === 0}>
+                    <SelectValue placeholder={addable.length ? "Select part to add" : "All available parts added"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="" disabled={addable.length === 0}>
+                      {addable.length ? "Select part to add" : "All available parts added"}
+                    </SelectItem>
+                    {addable.map((it) => (
+                      <SelectItem key={it.id} value={String(it.id)}>
+                        {renderOptionLabel(it)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
           </TableCell>
           <TableCell className="w-[140px]">
             <Input
@@ -904,7 +967,8 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
-        variantResolver={(item) => normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
+        variantResolver={(item, fallbackSize) => item.size ?? fallbackSize ?? normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
+        optionLabelResolver={(item) => getFillingDisplayLabel(item, "Bolster")}
       />
 
       <DynamicPartSection

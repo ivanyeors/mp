@@ -17,10 +17,13 @@ import {
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
+
+type PillowSize = "XS" | "S" | "M" | "L" | "XL";
 
 type ItemRow = {
   id: number;
@@ -56,6 +59,7 @@ type ProductRow = {
   key: string;
   kind: "pillow" | "bolster";
   label: string;
+  size?: PillowSize;
   productId?: number;
   variant?: BolsterVariant;
   costCents: number | null;
@@ -78,6 +82,78 @@ const BOLSTER_VARIANT_TITLES: Record<BolsterVariant, string> = {
   medium: "Medium (1m)",
   long: "Long (1.2m)",
 };
+
+const BASIC_PILLOW_SIZES: PillowSize[] = ["XS", "S", "M", "L", "XL"];
+
+const PILLOW_SIZE_ORDER = new Map<PillowSize, number>(
+  BASIC_PILLOW_SIZES.map((size, index) => [size, index]),
+);
+
+const BOLSTER_VARIANT_ORDER = new Map<BolsterVariant, number>(
+  BOLSTER_VARIANTS.map((variant, index) => [variant, index]),
+);
+
+type ProductGroupKey = "basic" | "premium" | "bolster";
+
+type ProductGroupDefinition = {
+  key: ProductGroupKey;
+  title: string;
+  description: string;
+  filter: (product: ProductRow) => boolean;
+  countLabel?: string;
+  defaultOpen?: boolean;
+  emptyState?: string;
+};
+
+const PREMIUM_PRODUCT_KEYS = new Set<string>([]);
+
+const PRODUCT_GROUP_DEFINITIONS: ProductGroupDefinition[] = [
+  {
+    key: "basic",
+    title: "Basic Mpillow",
+    description: "Basic Mpillow sizes (XS–XL) share the same cost build.",
+    filter: (product) => product.kind === "pillow" && !PREMIUM_PRODUCT_KEYS.has(product.key),
+    countLabel: "sizes",
+    defaultOpen: true,
+  },
+  {
+    key: "premium",
+    title: "Premium Mpillow",
+    description: "Premium fabrics get their own pricing when configured.",
+    filter: (product) => PREMIUM_PRODUCT_KEYS.has(product.key),
+    countLabel: "sizes",
+    emptyState: "No premium Mpillow variants have been configured yet.",
+  },
+  {
+    key: "bolster",
+    title: "Mbolster",
+    description: "Bolster variants (short/medium/long) are listed here.",
+    filter: (product) => product.kind === "bolster",
+    countLabel: "variants",
+    emptyState: "No bolster variants configured yet.",
+  },
+];
+
+const getPillowSizeIndex = (value?: PillowSize): number =>
+  value ? PILLOW_SIZE_ORDER.get(value) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+
+const getBolsterVariantIndex = (value?: BolsterVariant): number =>
+  value ? BOLSTER_VARIANT_ORDER.get(value) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
+
+const sortProductRows = (items: ProductRow[]): ProductRow[] =>
+  [...items].sort((left, right) => {
+    if (left.kind === "pillow" && right.kind === "pillow") {
+      const leftIndex = getPillowSizeIndex(left.size);
+      const rightIndex = getPillowSizeIndex(right.size);
+      if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+    }
+    if (left.kind === "bolster" && right.kind === "bolster") {
+      const leftIndex = getBolsterVariantIndex(left.variant);
+      const rightIndex = getBolsterVariantIndex(right.variant);
+      if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+    }
+    return left.label.localeCompare(right.label);
+  });
 
 const itemKey = (id: number) => `item:${id}`;
 const pillowKey = (productId: number) => `product:pillow:${productId}`;
@@ -164,6 +240,11 @@ export default function CostingsPage() {
   const [filterMeasureVersion, setFilterMeasureVersion] = useState(0);
   const filterMeasureRef = useRef<HTMLDivElement>(null);
   const filterContainerRef = useRef<HTMLDivElement>(null);
+  const [groupOpenStates, setGroupOpenStates] = useState<Record<ProductGroupKey, boolean>>(() =>
+    Object.fromEntries(
+      PRODUCT_GROUP_DEFINITIONS.map((group) => [group.key, Boolean(group.defaultOpen)]),
+    ) as Record<ProductGroupKey, boolean>,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -323,6 +404,7 @@ export default function CostingsPage() {
             key,
             kind: "pillow",
             label: `Pillow — ${product.size}`,
+            size: product.size as PillowSize,
             productId: product.id,
             costCents,
             msrpCents,
@@ -566,6 +648,72 @@ export default function CostingsPage() {
     });
     return map;
   }, [products, itemCostByIdFromDraft]);
+
+  const groupedProducts = useMemo(() => {
+    const assigned = new Set<string>();
+    return PRODUCT_GROUP_DEFINITIONS.map((group) => {
+      const groupProducts = products.filter((product) => {
+        if (assigned.has(product.key)) return false;
+        if (!group.filter(product)) return false;
+        assigned.add(product.key);
+        return true;
+      });
+      return { ...group, products: sortProductRows(groupProducts) };
+    });
+  }, [products]);
+
+  const handleGroupOpenChange = useCallback((groupKey: ProductGroupKey, open: boolean) => {
+    setGroupOpenStates((prev) => ({ ...prev, [groupKey]: open }));
+  }, []);
+
+  const renderProductCard = (product: ProductRow) => {
+    const current = draft[product.key] ?? { costPrice: "", msrp: "" };
+    const costDisplay = productCostDisplay.get(product.key) ?? current.costPrice;
+    const partsCount = product.components.filter((component) => component.quantity > 0).length;
+    const primaryLabel =
+      product.kind === "pillow"
+        ? product.label.replace(/^Pillow —\s*/, "")
+        : product.variant
+        ? BOLSTER_VARIANT_TITLES[product.variant]
+        : product.label;
+    const secondaryLabel = product.kind === "pillow" ? "Pillow Size" : "Bolster Variant";
+    return (
+      <div
+        key={product.key}
+        role="button"
+        tabIndex={0}
+        className="space-y-3 rounded-lg border p-4 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none"
+        onClick={() => openProductSheet(product.key)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openProductSheet(product.key);
+          }
+        }}
+      >
+        <div>
+          <div className="text-xs text-muted-foreground">{secondaryLabel}</div>
+          <div className="text-2xl font-semibold">{primaryLabel}</div>
+        </div>
+        <div className="text-xs text-muted-foreground">{partsCount} parts configured</div>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <div className="text-xs text-muted-foreground">Cost</div>
+            <div className="font-medium">{formatDraftCurrencyLabel(costDisplay)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">MSRP</div>
+            <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
+          </div>
+        </div>
+        <div>
+          <Button size="sm" variant="secondary">
+            View details
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   const activeProduct = useMemo(() => {
     if (!productSheetKey) return null;
@@ -859,55 +1007,17 @@ export default function CostingsPage() {
                 Cost price is calculated from configured components. Enter MSRP to set retail pricing.
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => {
-                const current = draft[product.key] ?? { costPrice: "", msrp: "" };
-                const costDisplay = productCostDisplay.get(product.key) ?? current.costPrice;
-                const partsCount = product.components.filter((component) => component.quantity > 0).length;
-                const primaryLabel =
-                  product.kind === "pillow"
-                    ? product.label.replace(/^Pillow —\s*/, "")
-                    : product.variant
-                    ? BOLSTER_VARIANT_TITLES[product.variant]
-                    : product.label;
-                const secondaryLabel = product.kind === "pillow" ? "Pillow Size" : "Bolster Variant";
-                return (
-                  <div
-                    key={product.key}
-                    role="button"
-                    tabIndex={0}
-                    className="space-y-3 rounded-lg border p-4 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none"
-                    onClick={() => openProductSheet(product.key)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        openProductSheet(product.key);
-                      }
-                    }}
-                  >
-                    <div>
-                      <div className="text-xs text-muted-foreground">{secondaryLabel}</div>
-                      <div className="text-2xl font-semibold">{primaryLabel}</div>
-                    </div>
-                    <div className="text-xs text-muted-foreground">{partsCount} parts configured</div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <div className="text-xs text-muted-foreground">Cost</div>
-                        <div className="font-medium">{formatDraftCurrencyLabel(costDisplay)}</div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">MSRP</div>
-                        <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <Button size="sm" variant="secondary">
-                        View details
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-4">
+              {groupedProducts.map((group) => (
+                <ProductGroupSection
+                  key={group.key}
+                  group={group}
+                  products={group.products}
+                  isOpen={Boolean(groupOpenStates[group.key])}
+                  onOpenChange={(open) => handleGroupOpenChange(group.key, open)}
+                  renderProductCard={renderProductCard}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -1188,6 +1298,59 @@ export default function CostingsPage() {
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+type ProductGroupSectionProps = {
+  group: ProductGroupDefinition;
+  products: ProductRow[];
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  renderProductCard: (product: ProductRow) => ReactNode;
+};
+
+function ProductGroupSection({
+  group,
+  products,
+  isOpen,
+  onOpenChange,
+  renderProductCard,
+}: ProductGroupSectionProps) {
+  const summaryLabel = `${products.length} ${group.countLabel ?? "variants"} configured`;
+  return (
+    <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+      <div className="overflow-hidden rounded-2xl border bg-background">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
+            aria-expanded={isOpen}
+          >
+            <div>
+              <div className="text-sm font-medium">{group.title}</div>
+              <p className="text-xs text-muted-foreground">{group.description}</p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{summaryLabel}</span>
+              <ChevronDown
+                className={`size-4 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
+              />
+            </div>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-t px-4 pb-4 pt-2">
+          {products.length === 0 ? (
+            <p className="px-2 text-sm text-muted-foreground">
+              {group.emptyState ?? `No ${group.title} products configured yet.`}
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => renderProductCard(product))}
+            </div>
+          )}
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
   );
 }
 
