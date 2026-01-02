@@ -2,6 +2,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
 import { Button } from "@/components/ui/button";
 import { Wrench, Heart, Sparkles } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 
@@ -17,6 +18,14 @@ export default function Home() {
       <main className="flex-1 flex items-center justify-center p-8 relative">
         <div className="text-center space-y-8 max-w-4xl mx-auto relative z-10">
           <div className="space-y-4">
+            <Image
+              src="/mpillow_logo_2026.png"
+              alt="Mpillow logo"
+              width={150}
+              height={150}
+              className="mx-auto h-auto w-[150px]"
+              priority
+            />
             <h1 className="text-6xl md:text-7xl font-bold text-foreground tracking-tight">
               Create Your Perfect
               <span className="block text-primary">Custom Pillow</span>
