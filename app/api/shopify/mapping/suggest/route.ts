@@ -15,6 +15,7 @@ type SuggestedMapping =
       variantTitle: string | null
       sku: string | null
       size: PillowSize
+      pillowKind: 'basic' | 'premium'
       options: { option1: string | null; option2: string | null; option3: string | null }
     }
   | {
@@ -88,6 +89,11 @@ function isBasicOrPremiumPillowProduct(title: string): boolean {
   return t.includes('basic mpillow') || t.includes('premium mpillow')
 }
 
+function detectPillowKind(title: string): 'basic' | 'premium' {
+  const t = title.toLowerCase()
+  return t.includes('premium mpillow') ? 'premium' : 'basic'
+}
+
 function isBolsterProduct(title: string): boolean {
   const t = title.toLowerCase()
   return t.includes('mbolster')
@@ -132,6 +138,7 @@ export async function GET(_req: NextRequest) {
             variantTitle: v.title ?? null,
             sku: v.sku ?? null,
             size,
+            pillowKind: detectPillowKind(productTitle),
             options: { option1, option2, option3 },
           })
           continue
@@ -167,7 +174,7 @@ export async function GET(_req: NextRequest) {
     // Provide SQL you can paste into Supabase to apply mappings.
     const pillowValues = suggestions
       .filter((s): s is Extract<SuggestedMapping, { kind: 'pillow' }> => s.kind === 'pillow')
-      .map(s => `(${s.shopifyVariantId}, 'pillow', '${s.size}')`)
+      .map(s => `(${s.shopifyVariantId}, 'pillow', '${s.size}', '${s.pillowKind}')`)
       .join(',\n  ')
     const bolsterValues = suggestions
       .filter((s): s is Extract<SuggestedMapping, { kind: 'bolster' }> => s.kind === 'bolster')
@@ -178,10 +185,10 @@ export async function GET(_req: NextRequest) {
     if (pillowValues) {
       sqlParts.push(
         [
-          'insert into shopify_variant_mappings (shopify_variant_id, kind, pillow_size)',
+          'insert into shopify_variant_mappings (shopify_variant_id, kind, pillow_size, pillow_kind)',
           'values',
           `  ${pillowValues}`,
-          'on conflict (shopify_variant_id) do update set kind=excluded.kind, pillow_size=excluded.pillow_size;',
+          'on conflict (shopify_variant_id) do update set kind=excluded.kind, pillow_size=excluded.pillow_size, pillow_kind=excluded.pillow_kind;',
           '',
         ].join('\n'),
       )

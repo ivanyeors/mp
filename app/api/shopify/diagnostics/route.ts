@@ -5,7 +5,7 @@ import { shopifyGetPrimaryLocationId } from '@/lib/shopify/client'
 
 export const runtime = 'nodejs'
 
-type BuildableRow = { size: string; buildable: number | string }
+type BuildableRow = { kind: string; size: string; buildable: number | string }
 
 export async function GET(_req: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest) {
 
     const [{ count: mappingsCount }, { data: buildableRows }] = await Promise.all([
       admin.from('shopify_variant_mappings').select('*', { count: 'exact', head: true }),
-      admin.from('product_buildable').select('size,buildable'),
+      admin.from('product_buildable').select('kind,size,buildable'),
     ])
 
     const locationId = await shopifyGetPrimaryLocationId()
@@ -26,7 +26,9 @@ export async function GET(_req: NextRequest) {
       locationId,
       mappingsCount: mappingsCount ?? 0,
       pillowBuildable: (buildableRows ?? []).reduce<Record<string, number>>((acc, r: BuildableRow) => {
-        acc[String(r.size)] = Number(r.buildable)
+        const k = String(r.kind || 'basic')
+        const s = String(r.size)
+        acc[`${k}:${s}`] = Number(r.buildable)
         return acc
       }, {}),
     })

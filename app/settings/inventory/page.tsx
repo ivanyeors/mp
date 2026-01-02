@@ -121,14 +121,15 @@ export default function InventoryPage() {
     const [{ data: itemsData }, { data: balancesData }, { data: productsData }, { data: buildableData }] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
       supabaseClient.from("inventory_balances").select("item_id,on_hand"),
-      supabaseClient.from("pillow_products").select("id,size"),
-      supabaseClient.from("product_buildable").select("product_id,size,buildable"),
+      // Keep the main inventory UI on "basic" pillows by default.
+      supabaseClient.from("pillow_products").select("id,size").eq("kind", "basic"),
+      supabaseClient.from("product_buildable").select("product_id,kind,size,buildable").eq("kind", "basic"),
     ]);
     setItems((itemsData ?? []) as Item[]);
     type BalanceRow = { item_id: number; on_hand: number | string };
     setBalances(Object.fromEntries((balancesData ?? []).map((r: BalanceRow)=> [r.item_id, Number(r.on_hand)] )));
     setProducts((productsData ?? []) as Product[]);
-    type BuildableRow = { size: string; buildable: number | string };
+    type BuildableRow = { kind: string; size: string; buildable: number | string };
     const build = Object.fromEntries((buildableData ?? []).map((r: BuildableRow)=> [r.size, Number(r.buildable)] ));
     setBuildable(build);
     setLoading(false);
@@ -186,6 +187,7 @@ export default function InventoryPage() {
     shopify_variant_id: number | null;
     kind: "pillow" | "bolster" | "part";
     pillow_size: string | null;
+    pillow_kind: "basic" | "premium" | null;
     bolster_variant: "short" | "medium" | "long" | null;
     item_id: number | null;
     quantity: number;
@@ -218,7 +220,7 @@ export default function InventoryPage() {
     setSellDrawerTemplates([]);
     setSellDrawerOpen(true);
     try {
-      const payload = await listTemplates('pillow', size);
+      const payload = await listTemplates('pillow', size, 'basic');
       type TemplateRow = { id: number; name: string };
       const list = (payload.templates ?? []) as TemplateRow[];
       setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
@@ -269,6 +271,7 @@ export default function InventoryPage() {
         shopify_variant_id: r.shopify_variant_id === null ? null : Number(r.shopify_variant_id),
         kind: r.kind as ShopifyQueueRow["kind"],
         pillow_size: r.pillow_size ?? null,
+        pillow_kind: (r as unknown as { pillow_kind?: string | null }).pillow_kind === 'premium' ? 'premium' : ((r as unknown as { pillow_kind?: string | null }).pillow_kind === 'basic' ? 'basic' : null),
         bolster_variant: r.bolster_variant ?? null,
         item_id: r.item_id === null ? null : Number(r.item_id),
         quantity: Number(r.quantity),
@@ -307,6 +310,7 @@ export default function InventoryPage() {
         shopify_variant_id: r.shopify_variant_id === null ? null : Number(r.shopify_variant_id),
         kind: r.kind as ShopifyQueueRow["kind"],
         pillow_size: r.pillow_size ?? null,
+        pillow_kind: (r as unknown as { pillow_kind?: string | null }).pillow_kind === 'premium' ? 'premium' : ((r as unknown as { pillow_kind?: string | null }).pillow_kind === 'basic' ? 'basic' : null),
         bolster_variant: r.bolster_variant ?? null,
         item_id: r.item_id === null ? null : Number(r.item_id),
         quantity: Number(r.quantity),
@@ -330,18 +334,18 @@ export default function InventoryPage() {
   // Load templates for keys present in queue (pillow sizes + bolster variants)
   useEffect(() => {
     const load = async () => {
-      const needed: Array<{ kind: 'pillow' | 'bolster'; key: string }> = [];
+      const needed: Array<{ kind: 'pillow' | 'bolster'; key: string; pillowKind?: 'basic' | 'premium' }> = [];
       shopifyQueue.forEach((row) => {
-        if (row.kind === 'pillow' && row.pillow_size) needed.push({ kind: 'pillow', key: row.pillow_size });
+        if (row.kind === 'pillow' && row.pillow_size) needed.push({ kind: 'pillow', key: row.pillow_size, pillowKind: row.pillow_kind ?? 'basic' });
         if (row.kind === 'bolster' && row.bolster_variant) needed.push({ kind: 'bolster', key: row.bolster_variant });
       });
-      const unique = new Map<string, { kind: 'pillow' | 'bolster'; key: string }>();
-      needed.forEach((n) => unique.set(`${n.kind}:${n.key}`, n));
+      const unique = new Map<string, { kind: 'pillow' | 'bolster'; key: string; pillowKind?: 'basic' | 'premium' }>();
+      needed.forEach((n) => unique.set(`${n.kind}:${n.kind === 'pillow' ? (n.pillowKind ?? 'basic') : ''}:${n.key}`, n));
       for (const entry of unique.values()) {
-        const cacheKey = `${entry.kind}:${entry.key}`;
+        const cacheKey = entry.kind === 'pillow' ? `pillow:${entry.pillowKind ?? 'basic'}:${entry.key}` : `bolster:${entry.key}`;
         if (shopifyTemplatesByKey[cacheKey]) continue;
         try {
-          const payload = await listTemplates(entry.kind, entry.key);
+          const payload = await listTemplates(entry.kind, entry.key, entry.kind === 'pillow' ? (entry.pillowKind ?? 'basic') : undefined);
           setShopifyTemplatesByKey((prev) => ({
             ...prev,
             [cacheKey]: ((payload.templates ?? []) as Array<{ id: number; name: string }>).map((t) => ({ id: Number(t.id), name: String(t.name) })),
@@ -588,7 +592,7 @@ export default function InventoryPage() {
             {rows.map((row) => {
               const key =
                 row.kind === 'pillow'
-                  ? `pillow:${row.pillow_size ?? ''}`
+                  ? `pillow:${row.pillow_kind ?? 'basic'}:${row.pillow_size ?? ''}`
                   : row.kind === 'bolster'
                     ? `bolster:${row.bolster_variant ?? ''}`
                     : null;
@@ -596,7 +600,7 @@ export default function InventoryPage() {
               const needsTemplate = row.kind === 'pillow' || row.kind === 'bolster';
               const label =
                 row.kind === 'pillow'
-                  ? `Pillow ${row.pillow_size ?? ''}`
+                  ? `${row.pillow_kind === 'premium' ? 'Premium' : 'Basic'} Pillow ${row.pillow_size ?? ''}`
                   : row.kind === 'bolster'
                     ? `Bolster ${row.bolster_variant ?? ''}`
                     : `Part ${row.item_id ?? ''}`;

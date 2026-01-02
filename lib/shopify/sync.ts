@@ -6,6 +6,7 @@ type MappingRow = {
   shopify_variant_id: number | string
   kind: 'pillow' | 'bolster' | 'part'
   pillow_size: 'XS' | 'S' | 'M' | 'L' | 'XL' | null
+  pillow_kind: 'basic' | 'premium' | null
   bolster_variant: 'short' | 'medium' | 'long' | null
   item_id: number | null
 }
@@ -20,16 +21,18 @@ export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: nu
   const [{ data: mappings }, { data: pillowBuildableRows }, { data: balancesRows }, { data: bolsterBomRows }, activeProducts] = await Promise.all([
     admin
       .from('shopify_variant_mappings')
-      .select('shopify_variant_id,kind,pillow_size,bolster_variant,item_id'),
-    admin.from('product_buildable').select('size,buildable'),
+      .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id'),
+    admin.from('product_buildable').select('kind,size,buildable'),
     admin.from('inventory_balances').select('item_id,on_hand'),
     admin.from('bolster_bom_lines').select('variant,item_id,quantity'),
     shopifyListActiveProductsWithVariants({ limit: 250 }),
   ])
 
   const pillowBuildable: Record<string, number> = {}
-  ;(pillowBuildableRows ?? []).forEach((r: { size: string; buildable: number | string }) => {
-    pillowBuildable[String(r.size)] = Number(r.buildable)
+  ;(pillowBuildableRows ?? []).forEach((r: { kind: string; size: string; buildable: number | string }) => {
+    const k = String(r.kind || 'basic')
+    const s = String(r.size)
+    pillowBuildable[`${k}:${s}`] = Number(r.buildable)
   })
 
   const balances: Record<number, number> = {}
@@ -77,7 +80,10 @@ export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: nu
     const variantId = String(m.shopify_variant_id)
 
     let available = 0
-    if (m.kind === 'pillow' && m.pillow_size) available = pillowBuildable[m.pillow_size] ?? 0
+    if (m.kind === 'pillow' && m.pillow_size) {
+      const pk = (m.pillow_kind ?? 'basic') as 'basic' | 'premium'
+      available = pillowBuildable[`${pk}:${m.pillow_size}`] ?? 0
+    }
     else if (m.kind === 'bolster' && m.bolster_variant) available = bolsterBuildable[m.bolster_variant] ?? 0
     else if (m.kind === 'part' && m.item_id) available = balances[m.item_id] ?? 0
 

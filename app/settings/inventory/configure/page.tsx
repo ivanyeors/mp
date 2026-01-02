@@ -18,14 +18,19 @@ type Item = {
   size: string | null;
 };
 
-type Product = { id: number; size: "XS" | "S" | "M" | "L" | "XL" };
+type PillowKind = "basic" | "premium";
+
+type Product = { id: number; size: "XS" | "S" | "M" | "L" | "XL"; kind: PillowKind };
 
 type BomLine = { item_id: number; quantity: number };
 
 type BomState = Record<Product["size"], BomLine[]>;
+type BomByKind = Record<PillowKind, BomState>;
 
 const SIZES: Product["size"][] = ["XS", "S", "M", "L", "XL"];
 const KNOWN_CATEGORIES: Item["category"][] = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
+const EMPTY_BOM: BomState = { XS: [], S: [], M: [], L: [], XL: [] };
+const EMPTY_BOM_BY_KIND: BomByKind = { basic: { ...EMPTY_BOM }, premium: { ...EMPTY_BOM } };
 
 const humanizeText = (value: string) =>
   value
@@ -59,11 +64,12 @@ const getFillingDisplayLabel = (item: Item, fallbackSize?: string): string => {
 export default function ConfigureInventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [bom, setBom] = useState<BomState>({ XS: [], S: [], M: [], L: [], XL: [] });
+  const [bomByKind, setBomByKind] = useState<BomByKind>(EMPTY_BOM_BY_KIND);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<Product["size"] | null>(null);
+  const [selectedPillowKind, setSelectedPillowKind] = useState<PillowKind | null>(null);
   const [bolsterOpen, setBolsterOpen] = useState(false);
   const [bolsterVariant, setBolsterVariant] = useState<'Short (0.8m)' | 'Medium (1m)' | 'Long (1.2m)' | null>(null);
   const [bolsterLines, setBolsterLines] = useState<BomLine[]>([]);
@@ -81,20 +87,23 @@ export default function ConfigureInventoryPage() {
       setLoading(true);
       const [{ data: itemsData }, { data: productsData }, { data: bomData }] = await Promise.all([
         supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
-        supabaseClient.from("pillow_products").select("id,size").eq("is_active", true),
+        supabaseClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
         supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
       ]);
       setItems(itemsData ?? []);
       setProducts((productsData ?? []) as Product[]);
-      const next: BomState = { XS: [], S: [], M: [], L: [], XL: [] };
+      const next: BomByKind = { basic: { ...EMPTY_BOM }, premium: { ...EMPTY_BOM } };
       type BomRow = { product_id: number; item_id: number; quantity: number | string };
       const prods = (productsData ?? []) as Product[];
       (bomData ?? []).forEach((row: BomRow) => {
         const product = prods.find((p) => p.id === row.product_id);
         if (!product) return;
-        next[product.size as Product["size"]].push({ item_id: row.item_id, quantity: Number(row.quantity) });
+        const kind = product.kind as PillowKind;
+        const size = product.size as Product["size"];
+        if (kind !== "basic" && kind !== "premium") return;
+        next[kind][size].push({ item_id: row.item_id, quantity: Number(row.quantity) });
       });
-      setBom(next);
+      setBomByKind(next);
       setLoading(false);
     };
     load();
@@ -144,16 +153,16 @@ export default function ConfigureInventoryPage() {
 
   useEffect(() => {
     const load = async () => {
-      if (!open || !selectedSize) return;
+      if (!open || !selectedSize || !selectedPillowKind) return;
       try {
-        const list = await loadTemplates('pillow', selectedSize);
+        const list = await loadTemplates('pillow', selectedSize, selectedPillowKind);
         setPillowTemplates(list);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Failed to load templates');
       }
     };
     load();
-  }, [open, selectedSize]);
+  }, [open, selectedSize, selectedPillowKind]);
 
   useEffect(() => {
     const load = async () => {
@@ -207,8 +216,9 @@ export default function ConfigureInventoryPage() {
     }
   };
 
-  const loadTemplates = async (kind: 'pillow' | 'bolster', key: string) => {
-    const url = `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}`
+  const loadTemplates = async (kind: 'pillow' | 'bolster', key: string, pillowKind?: PillowKind) => {
+    const pillowKindParam = kind === 'pillow' && pillowKind ? `&pillowKind=${encodeURIComponent(pillowKind)}` : ''
+    const url = `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}${pillowKindParam}`
     const res = await fetch(url, { method: 'GET' })
     if (!res.ok) {
       const payload = await res.json().catch(() => null)
@@ -238,7 +248,9 @@ export default function ConfigureInventoryPage() {
     setSaving(true);
     try {
       for (const product of products) {
-        await persistProductBom(product.id, bom[product.size]);
+        const kind = product.kind as PillowKind;
+        if (kind !== "basic" && kind !== "premium") continue;
+        await persistProductBom(product.id, bomByKind[kind][product.size]);
       }
       toast.success("Configuration saved for all sizes");
     } catch (err) {
@@ -284,15 +296,15 @@ export default function ConfigureInventoryPage() {
     }
   };
 
-  const saveSize = async (size: Product["size"]) => {
+  const saveSelected = async (kind: PillowKind, size: Product["size"]) => {
     setSaving(true);
     try {
-      const product = products.find((p) => p.size === size);
+      const product = products.find((p) => p.size === size && p.kind === kind);
       if (!product) {
-        throw new Error(`No active pillow product found for size ${size}`);
+        throw new Error(`No active ${kind} pillow product found for size ${size}`);
       }
-      await persistProductBom(product.id, bom[size]);
-      toast.success(`Configuration saved for size ${size}`);
+      await persistProductBom(product.id, bomByKind[kind][size]);
+      toast.success(`${kind === 'basic' ? 'Basic' : 'Premium'} configuration saved for size ${size}`);
       notifyInventoryChange();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save configuration";
@@ -315,14 +327,14 @@ export default function ConfigureInventoryPage() {
         <div className="text-2xl font-semibold">Basic Mpillow</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {SIZES.map((size) => {
-            const partsCount = bom[size].filter(l => (l.quantity ?? 0) > 0).length;
+            const partsCount = bomByKind.basic[size].filter(l => (l.quantity ?? 0) > 0).length;
             return (
               <div
                 key={`basic-${size}`}
                 role="button"
                 tabIndex={0}
-                onClick={()=> { setSelectedSize(size); setOpen(true); }}
-                onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedSize(size); setOpen(true); } }}
+                onClick={()=> { setSelectedPillowKind('basic'); setSelectedSize(size); setOpen(true); }}
+                onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedPillowKind('basic'); setSelectedSize(size); setOpen(true); } }}
                 className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
               >
                 <div className="text-xs text-muted-foreground">Size</div>
@@ -343,14 +355,14 @@ export default function ConfigureInventoryPage() {
         <div className="text-2xl font-semibold">Premium Mpillow</div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {SIZES.map((size) => {
-            const partsCount = bom[size].filter(l => (l.quantity ?? 0) > 0).length;
+            const partsCount = bomByKind.premium[size].filter(l => (l.quantity ?? 0) > 0).length;
             return (
               <div
                 key={`premium-${size}`}
                 role="button"
                 tabIndex={0}
-                onClick={()=> { setSelectedSize(size); setOpen(true); }}
-                onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedSize(size); setOpen(true); } }}
+                onClick={()=> { setSelectedPillowKind('premium'); setSelectedSize(size); setOpen(true); }}
+                onKeyDown={(e)=> { if (e.key==='Enter' || e.key===' ') { setSelectedPillowKind('premium'); setSelectedSize(size); setOpen(true); } }}
                 className="rounded-lg border p-4 hover:bg-muted/50 cursor-pointer select-none"
               >
                 <div className="text-xs text-muted-foreground">Size</div>
@@ -396,10 +408,12 @@ export default function ConfigureInventoryPage() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
           <SheetHeader>
-            <SheetTitle>Configure Size {selectedSize ?? ''}</SheetTitle>
+            <SheetTitle>
+              Configure {selectedPillowKind === 'premium' ? 'Premium' : 'Basic'} — Size {selectedSize ?? ''}
+            </SheetTitle>
             <SheetDescription>Adjust BOM quantities and save for this pillow size.</SheetDescription>
           </SheetHeader>
-          {selectedSize && (
+          {selectedSize && selectedPillowKind && (
             <div className="mt-4 space-y-3 px-2">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
@@ -412,7 +426,10 @@ export default function ConfigureInventoryPage() {
                       if (next === '') return;
                       try {
                         const lines = await loadTemplateLines(next);
-                        setBom((prev) => ({ ...prev, [selectedSize]: lines }));
+                        setBomByKind((prev) => ({
+                          ...prev,
+                          [selectedPillowKind]: { ...prev[selectedPillowKind], [selectedSize]: lines },
+                        }));
                         toast.success('Template loaded into editor');
                       } catch (err) {
                         toast.error(err instanceof Error ? err.message : 'Failed to load template');
@@ -452,14 +469,15 @@ export default function ConfigureInventoryPage() {
                             body: JSON.stringify({
                               kind: 'pillow',
                               key: selectedSize,
+                              pillowKind: selectedPillowKind,
                               name,
                               notes: pillowTemplateNotes.trim() || undefined,
-                              lines: buildPayloadLines(bom[selectedSize] ?? []),
+                              lines: buildPayloadLines(bomByKind[selectedPillowKind][selectedSize] ?? []),
                             }),
                           });
                           const payload = await res.json().catch(() => null);
                           if (!res.ok) throw new Error(payload?.error ?? 'Failed to save template');
-                          const list = await loadTemplates('pillow', selectedSize);
+                          const list = await loadTemplates('pillow', selectedSize, selectedPillowKind);
                           setPillowTemplates(list);
                           setPillowTemplateName('');
                           setPillowTemplateNotes('');
@@ -483,17 +501,28 @@ export default function ConfigureInventoryPage() {
             </div>
           )}
           <div className="mt-4 space-y-4 px-2">
-            {selectedSize && (
+            {selectedSize && selectedPillowKind && (
               <SizeEditor
                 size={selectedSize}
                 items={items}
-                bom={bom}
-                setBom={setBom}
+                bom={bomByKind[selectedPillowKind]}
+                setBom={(next) => {
+                  setBomByKind((prev) => ({
+                    ...prev,
+                    [selectedPillowKind]: typeof next === 'function' ? (next as (p: BomState) => BomState)(prev[selectedPillowKind]) : next,
+                  }))
+                }}
               />
             )}
           </div>
           <SheetFooter>
-            <Button onClick={() => { if (selectedSize) saveSize(selectedSize); }} disabled={saving}>
+            <Button
+              onClick={() => {
+                if (!selectedPillowKind || !selectedSize) return;
+                saveSelected(selectedPillowKind, selectedSize);
+              }}
+              disabled={saving}
+            >
               {saving ? 'Saving…' : 'Save changes'}
             </Button>
           </SheetFooter>

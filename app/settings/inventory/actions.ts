@@ -160,7 +160,7 @@ export async function listShopifySalesQueue() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
+    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
     .neq('status', 'archived')
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
@@ -171,7 +171,7 @@ export async function listShopifySalesQueueArchived() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
+    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
     .eq('status', 'archived')
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
@@ -189,14 +189,21 @@ export async function archiveShopifySaleQueueRow(queueId: number) {
   return { ok: true }
 }
 
-export async function listTemplates(kind: 'pillow' | 'bolster', key: string) {
+export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pillowKind?: 'basic' | 'premium') {
   const admin = supabaseAdmin()
-  const { data, error } = await admin
+  const effectivePillowKind = kind === 'pillow' ? (pillowKind ?? 'basic') : null
+
+  let q = admin
     .from('bom_templates')
-    .select('id,name,kind,key')
+    .select('id,name,kind,key,pillow_kind')
     .eq('kind', kind)
     .eq('key', key)
     .order('updated_at', { ascending: false })
+
+  if (kind === 'pillow') q = q.eq('pillow_kind', effectivePillowKind)
+  else q = q.is('pillow_kind', null)
+
+  const { data, error } = await q
   if (error) throw new Error(error.message)
   return { ok: true, templates: data ?? [] }
 }

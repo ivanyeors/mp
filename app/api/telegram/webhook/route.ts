@@ -258,7 +258,12 @@ async function handleCommand(chatId: number, text: string) {
       if (!ident) return sendTelegramMessage(chatId, 'Usage: /stock')
 
       if (ident.kind === 'product') {
-        const { data: product, error: pErr } = await admin.from('pillow_products').select('id,size').eq('size', ident.size).maybeSingle()
+        const { data: product, error: pErr } = await admin
+          .from('pillow_products')
+          .select('id,size')
+          .eq('size', ident.size)
+          .eq('kind', 'basic')
+          .maybeSingle()
         if (pErr) throw new Error(pErr.message)
         if (!product) return sendTelegramMessage(chatId, `Unknown pillow size: ${ident.size}`)
         const { data: build, error: bErr } = await admin
@@ -325,6 +330,7 @@ async function handleCommand(chatId: number, text: string) {
           .from('pillow_products')
           .select('id,size')
           .eq('size', ident.size)
+          .eq('kind', 'basic')
           .maybeSingle()
         if (error) throw new Error(error.message)
         if (!product) return sendTelegramMessage(chatId, `Unknown pillow size: ${ident.size}`)
@@ -390,7 +396,12 @@ async function handleCallback(update: TelegramUpdate) {
 
     if (data.startsWith('pill:')) {
       const size = data.split(':')[1] as 'XS'|'S'|'M'|'L'|'XL'
-      const { data: product } = await admin.from('pillow_products').select('id,size').eq('size', size).maybeSingle()
+      const { data: product } = await admin
+        .from('pillow_products')
+        .select('id,size')
+        .eq('size', size)
+        .eq('kind', 'basic')
+        .maybeSingle()
       let buildable = 0
       if (product) {
         const { data: buildRec } = await admin
@@ -619,7 +630,12 @@ export async function POST(req: NextRequest) {
         const admin = supabaseAdmin()
         if (target.startsWith('product:')) {
           const size = target.split(':')[1] as 'XS'|'S'|'M'|'L'|'XL'
-          const { data: product } = await admin.from('pillow_products').select('id,size').eq('size', size).maybeSingle()
+          const { data: product } = await admin
+            .from('pillow_products')
+            .select('id,size')
+            .eq('size', size)
+            .eq('kind', 'basic')
+            .maybeSingle()
           if (product && action === 'out') {
             await sellPillow({ productId: Number(product.id), quantity: qty })
             await sendTelegramMessage(effectiveChatId, `Sold ${qty} pillow(s) of size ${product.size}`)

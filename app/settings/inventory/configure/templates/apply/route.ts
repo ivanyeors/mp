@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   const { data: tpl, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,kind,key')
+    .select('id,kind,key,pillow_kind')
     .eq('id', parsed.data.templateId)
     .maybeSingle()
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       .from('pillow_products')
       .select('id,size')
       .eq('size', tpl.key)
+      .eq('kind', tpl.pillow_kind ?? 'basic')
       .eq('is_active', true)
       .maybeSingle()
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })

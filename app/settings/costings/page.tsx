@@ -24,6 +24,7 @@ import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayL
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
 
 type PillowSize = "XS" | "S" | "M" | "L" | "XL";
+type PillowKind = "basic" | "premium";
 
 type ItemRow = {
   id: number;
@@ -61,6 +62,7 @@ type ProductRow = {
   label: string;
   size?: PillowSize;
   productId?: number;
+  pillowKind?: PillowKind;
   variant?: BolsterVariant;
   costCents: number | null;
   msrpCents: number | null;
@@ -105,14 +107,12 @@ type ProductGroupDefinition = {
   emptyState?: string;
 };
 
-const PREMIUM_PRODUCT_KEYS = new Set<string>([]);
-
 const PRODUCT_GROUP_DEFINITIONS: ProductGroupDefinition[] = [
   {
     key: "basic",
     title: "Basic Mpillow",
     description: "Basic Mpillow sizes (XS–XL) share the same cost build.",
-    filter: (product) => product.kind === "pillow" && !PREMIUM_PRODUCT_KEYS.has(product.key),
+    filter: (product) => product.kind === "pillow" && product.pillowKind === "basic",
     countLabel: "sizes",
     defaultOpen: true,
   },
@@ -120,7 +120,7 @@ const PRODUCT_GROUP_DEFINITIONS: ProductGroupDefinition[] = [
     key: "premium",
     title: "Premium Mpillow",
     description: "Premium fabrics get their own pricing when configured.",
-    filter: (product) => PREMIUM_PRODUCT_KEYS.has(product.key),
+    filter: (product) => product.kind === "pillow" && product.pillowKind === "premium",
     countLabel: "sizes",
     emptyState: "No premium Mpillow variants have been configured yet.",
   },
@@ -250,7 +250,7 @@ export default function CostingsPage() {
     setLoading(true);
     try {
       type RawItemRow = ItemRow & { pricing?: PriceRecord | PriceRecord[] | null };
-      type RawPillowRow = { id: number; size: string };
+      type RawPillowRow = { id: number; size: string; kind: PillowKind | string | null };
       type RawBomLine = { product_id: number; item_id: number; quantity: number | string };
       type RawBolsterLine = { variant: string; item_id: number; quantity: number | string };
       type RawProductPrice = {
@@ -278,7 +278,7 @@ export default function CostingsPage() {
           .order("subtype", { ascending: true, nullsFirst: false }),
         supabaseClient
           .from("pillow_products")
-          .select("id,size")
+          .select("id,size,kind")
           .eq("is_active", true)
           .order("size", { ascending: true }),
         supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
@@ -387,6 +387,10 @@ export default function CostingsPage() {
           const left = pillowOrder.get(a.size) ?? Number.MAX_SAFE_INTEGER;
           const right = pillowOrder.get(b.size) ?? Number.MAX_SAFE_INTEGER;
           if (left !== right) return left - right;
+          // Keep basic before premium when sizes match.
+          const ak = String(a.kind || "basic");
+          const bk = String(b.kind || "basic");
+          if (ak !== bk) return ak.localeCompare(bk);
           return a.size.localeCompare(b.size);
         })
         .forEach((product) => {
@@ -395,6 +399,7 @@ export default function CostingsPage() {
           const costCents = costForComponents(components);
           const price = priceByProductId.get(product.id);
           const msrpCents = toCents(price?.msrp ?? null);
+          const pillowKind: PillowKind = String(product.kind) === "premium" ? "premium" : "basic";
           productDraft[key] = {
             costPrice: formatFromCents(costCents),
             msrp: formatFromCents(msrpCents),
@@ -403,9 +408,10 @@ export default function CostingsPage() {
           productRows.push({
             key,
             kind: "pillow",
-            label: `Pillow — ${product.size}`,
+            label: `${pillowKind === "premium" ? "Premium" : "Basic"} Pillow — ${product.size}`,
             size: product.size as PillowSize,
             productId: product.id,
+            pillowKind,
             costCents,
             msrpCents,
             components,

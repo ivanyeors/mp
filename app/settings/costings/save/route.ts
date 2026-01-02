@@ -87,7 +87,7 @@ const toDecimalString = (value: number | null) => (value === null ? null : (valu
 
 async function fetchProductSummaries(adminClient: ReturnType<typeof supabaseAdmin>): Promise<ProductSummary[]> {
   type RawItemRow = { id: number; pricing?: { cost_price: string | number | null } | Array<{ cost_price: string | number | null }> | null };
-  type RawPillowRow = { id: number; size: string };
+  type RawPillowRow = { id: number; size: string; kind: string | null };
   type RawBomLine = { product_id: number; item_id: number; quantity: number | string };
   type RawBolsterLine = { variant: string; item_id: number; quantity: number | string };
   type RawProductPrice = {
@@ -109,7 +109,7 @@ async function fetchProductSummaries(adminClient: ReturnType<typeof supabaseAdmi
       .from("items")
       .select("id,pricing:item_prices!left(cost_price)")
       .eq("is_active", true),
-    adminClient.from("pillow_products").select("id,size").eq("is_active", true),
+    adminClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
     adminClient.from("bom_lines").select("product_id,item_id,quantity"),
     adminClient.from("bolster_bom_lines").select("variant,item_id,quantity"),
     adminClient.from("product_prices").select("key,kind,product_id,variant,msrp"),

@@ -21,6 +21,7 @@ type MappingRow = {
   shopify_variant_id: number
   kind: 'pillow' | 'bolster' | 'part'
   pillow_size: 'XS' | 'S' | 'M' | 'L' | 'XL' | null
+  pillow_kind: 'basic' | 'premium' | null
   bolster_variant: 'short' | 'medium' | 'long' | null
   item_id: number | null
 }
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
   if (variantIds.length) {
     const { data: mappings } = await admin
       .from('shopify_variant_mappings')
-      .select('shopify_variant_id,kind,pillow_size,bolster_variant,item_id')
+      .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id')
       .in('shopify_variant_id', variantIds)
     ;(mappings ?? []).forEach((m: MappingRow) => {
       mappingByVariantId.set(Number(m.shopify_variant_id), m)
@@ -122,6 +123,7 @@ export async function POST(req: NextRequest) {
         shopify_variant_id: Number(m.shopify_variant_id),
         kind: m.kind,
         pillow_size: m.kind === 'pillow' ? m.pillow_size : null,
+        pillow_kind: m.kind === 'pillow' ? (m.pillow_kind ?? 'basic') : null,
         bolster_variant: m.kind === 'bolster' ? m.bolster_variant : null,
         item_id: m.kind === 'part' ? m.item_id : null,
         quantity: line.qty,
