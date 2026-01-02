@@ -33,7 +33,17 @@ const CommitShopifySalesSchema = z.object({
   })).min(1),
 })
 
-const ITEM_CATEGORIES = ['cover','case','protector','filling','packaging','accessories','other'] as const
+const ITEM_CATEGORIES = [
+  'cover',
+  'pillow_case',
+  'pillow_protector',
+  'bolster_case',
+  'bolster_protector',
+  'filling',
+  'packaging',
+  'accessories',
+  'other',
+] as const
 const CategoryEnum = z.enum(ITEM_CATEGORIES)
 
 const AddItemSchema = z.object({
@@ -46,10 +56,14 @@ const AddItemSchema = z.object({
   msrp: z.number().min(0).optional(),
 }).superRefine((value, ctx) => {
   const normalizedSize = value.size?.trim()
-  if (['cover', 'case', 'protector', 'filling'].includes(value.category) && (!normalizedSize || normalizedSize === '-')) {
+  // Fillings are product-agnostic (size optional). Covers/cases/protectors are sized.
+  if (
+    ['cover', 'pillow_case', 'pillow_protector', 'bolster_case', 'bolster_protector'].includes(value.category)
+    && (!normalizedSize || normalizedSize === '-')
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'Size is required for covers, cases, protectors, and fillings',
+      message: 'Size is required for covers, cases, and protectors',
       path: ['size'],
     })
   }
@@ -112,8 +126,8 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
   if (!effectiveLines.length) {
     // Fallback to legacy implicit mapping if DB not configured yet
     type IdRow = { id: number }
-    const { data: caseItem } = await admin.from('items').select('id').eq('category', 'case').eq('size', 'Bolster').limit(1).maybeSingle()
-    const { data: protectorItem } = await admin.from('items').select('id').eq('category', 'protector').eq('size', 'Bolster').limit(1).maybeSingle()
+    const { data: caseItem } = await admin.from('items').select('id').eq('category', 'bolster_case').eq('size', 'BOLSTER').limit(1).maybeSingle()
+    const { data: protectorItem } = await admin.from('items').select('id').eq('category', 'bolster_protector').eq('size', 'BOLSTER').limit(1).maybeSingle()
     const { data: fillingItem } = await admin.from('items').select('id').eq('category', 'filling').eq('subtype', '6D (L)').limit(1).maybeSingle()
     const prelim = [caseItem, protectorItem, fillingItem].filter((r): r is IdRow => !!r)
     effectiveLines = prelim.map((r) => ({ item_id: r.id, quantity: 1 }))
@@ -317,7 +331,11 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
   const rawSize = parsed.size?.trim()
   const normalizedSize =
     rawSize && rawSize !== '-'
-      ? (['cover', 'case', 'protector', 'filling'].includes(parsed.category) ? rawSize.toUpperCase() : rawSize)
+      ? (
+        ['cover', 'pillow_case', 'pillow_protector', 'bolster_case', 'bolster_protector'].includes(parsed.category)
+          ? rawSize.toUpperCase()
+          : rawSize
+      )
       : null
   const normalizedSubtype = parsed.subtype?.trim() ? parsed.subtype.trim() : null
   const normalizedName = parsed.name

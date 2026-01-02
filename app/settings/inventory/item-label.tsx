@@ -7,8 +7,10 @@ type InventoryItemLike = {
 
 const CATEGORY_TITLES: Record<string, string> = {
   cover: "Covers",
-  case: "Cases",
-  protector: "Protectors",
+  pillow_case: "Pillow Cases",
+  pillow_protector: "Pillow Protectors",
+  bolster_case: "Bolster Cases",
+  bolster_protector: "Bolster Protectors",
   filling: "Fillings",
   packaging: "Packaging",
   accessories: "Accessories",

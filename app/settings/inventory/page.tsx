@@ -34,19 +34,31 @@ import {
   getInventoryVariantName,
 } from "./item-label";
 
-const ITEM_CATEGORIES = ['cover','case','protector','filling','packaging','accessories','other'] as const;
+const ITEM_CATEGORIES = [
+  'cover',
+  'pillow_case',
+  'pillow_protector',
+  'bolster_case',
+  'bolster_protector',
+  'filling',
+  'packaging',
+  'accessories',
+  'other',
+] as const;
 type ItemCategory = (typeof ITEM_CATEGORIES)[number];
 const CATEGORY_TITLES: Record<ItemCategory, string> = {
   cover: 'Covers',
-  case: 'Cases',
-  protector: 'Protectors',
+  pillow_case: 'Pillow Cases',
+  pillow_protector: 'Pillow Protectors',
+  bolster_case: 'Bolster Cases',
+  bolster_protector: 'Bolster Protectors',
   filling: 'Fillings',
   packaging: 'Packaging',
   accessories: 'Accessories',
   other: 'Other',
 };
-const SIZED_CATEGORIES: ItemCategory[] = ['cover','case','protector'];
-const SIZE_OPTIONS = ['-','XS','S','M','L','XL'] as const;
+const SIZED_CATEGORIES: ItemCategory[] = ['cover','pillow_case','pillow_protector','bolster_case','bolster_protector'];
+const SIZE_OPTIONS = ['-','XS','S','M','L','XL','BOLSTER'] as const;
 
 type Item = { id: number; category: ItemCategory; subtype: string | null; name: string; size: string | null };
 type Product = { id: number; size: string };
@@ -1548,7 +1560,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                       <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
                         Size{" "}
                         <span className="text-xs text-muted-foreground">
-                          {entry.category === "filling" ? "(required)" : "(optional)"}
+                          {entry.category === "filling" ? "(optional)" : "(optional)"}
                         </span>
                       </label>
                       <Input

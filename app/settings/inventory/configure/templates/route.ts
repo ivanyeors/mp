@@ -26,10 +26,12 @@ const DeleteSchema = z.object({ templateId: z.number().int().positive() })
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
+  // URLSearchParams.get() returns `null` for missing keys; Zod optional() expects undefined, not null.
+  const pillowKindParam = searchParams.get('pillowKind') ?? undefined
   const parsed = ListSchema.safeParse({
     kind: searchParams.get('kind'),
     key: searchParams.get('key'),
-    pillowKind: searchParams.get('pillowKind'),
+    pillowKind: pillowKindParam,
   })
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 

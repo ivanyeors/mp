@@ -12,7 +12,16 @@ import { toast } from "sonner";
 
 type Item = {
   id: number;
-  category: "cover" | "case" | "protector" | "filling" | "packaging" | "accessories" | "other";
+  category:
+    | "cover"
+    | "pillow_case"
+    | "pillow_protector"
+    | "bolster_case"
+    | "bolster_protector"
+    | "filling"
+    | "packaging"
+    | "accessories"
+    | "other";
   subtype: string | null;
   name: string;
   size: string | null;
@@ -28,9 +37,20 @@ type BomState = Record<Product["size"], BomLine[]>;
 type BomByKind = Record<PillowKind, BomState>;
 
 const SIZES: Product["size"][] = ["XS", "S", "M", "L", "XL"];
-const KNOWN_CATEGORIES: Item["category"][] = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
-const EMPTY_BOM: BomState = { XS: [], S: [], M: [], L: [], XL: [] };
-const EMPTY_BOM_BY_KIND: BomByKind = { basic: { ...EMPTY_BOM }, premium: { ...EMPTY_BOM } };
+const KNOWN_CATEGORIES: Item["category"][] = [
+  "cover",
+  "pillow_case",
+  "pillow_protector",
+  "bolster_case",
+  "bolster_protector",
+  "filling",
+  "packaging",
+  "accessories",
+  "other",
+];
+
+const makeEmptyBom = (): BomState => ({ XS: [], S: [], M: [], L: [], XL: [] });
+const makeEmptyBomByKind = (): BomByKind => ({ basic: makeEmptyBom(), premium: makeEmptyBom() });
 
 const humanizeText = (value: string) =>
   value
@@ -61,10 +81,59 @@ const getFillingDisplayLabel = (item: Item, fallbackSize?: string): string => {
   return sizeLabel ? `${variant} ${sizeLabel}` : variant;
 };
 
+const sizeEquals = (itemSize: string | null | undefined, expected: string): boolean => {
+  if (!itemSize) return false;
+  return itemSize.trim().toUpperCase() === expected.trim().toUpperCase();
+};
+
+type DbItem = {
+  id: number;
+  category: string;
+  subtype: string | null;
+  name: string;
+  size: string | null;
+};
+
+const normalizeDbItemCategory = (row: DbItem): Item["category"] | null => {
+  const rawCategory = row.category?.trim().toLowerCase();
+  const rawSize = row.size?.trim();
+  const upperSize = rawSize ? rawSize.toUpperCase() : null;
+
+  // Back-compat: older rows used `case` / `protector` and relied on size to differentiate.
+  if (rawCategory === "case") {
+    return upperSize === "BOLSTER" ? "bolster_case" : "pillow_case";
+  }
+  if (rawCategory === "protector") {
+    return upperSize === "BOLSTER" ? "bolster_protector" : "pillow_protector";
+  }
+
+  // Current categories (already split).
+  if (KNOWN_CATEGORIES.includes(rawCategory as Item["category"])) {
+    return rawCategory as Item["category"];
+  }
+
+  return null;
+};
+
+const normalizeDbItems = (rows: DbItem[]): Item[] =>
+  rows
+    .map((row) => {
+      const category = normalizeDbItemCategory(row);
+      if (!category) return null;
+      return {
+        id: Number(row.id),
+        category,
+        subtype: row.subtype ?? null,
+        name: row.name ?? "",
+        size: row.size ?? null,
+      } satisfies Item;
+    })
+    .filter((row): row is Item => !!row);
+
 export default function ConfigureInventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [bomByKind, setBomByKind] = useState<BomByKind>(EMPTY_BOM_BY_KIND);
+  const [bomByKind, setBomByKind] = useState<BomByKind>(() => makeEmptyBomByKind());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
@@ -90,9 +159,9 @@ export default function ConfigureInventoryPage() {
         supabaseClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
         supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
       ]);
-      setItems(itemsData ?? []);
+      setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
       setProducts((productsData ?? []) as Product[]);
-      const next: BomByKind = { basic: { ...EMPTY_BOM }, premium: { ...EMPTY_BOM } };
+      const next: BomByKind = makeEmptyBomByKind();
       type BomRow = { product_id: number; item_id: number; quantity: number | string };
       const prods = (productsData ?? []) as Product[];
       (bomData ?? []).forEach((row: BomRow) => {
@@ -101,7 +170,12 @@ export default function ConfigureInventoryPage() {
         const kind = product.kind as PillowKind;
         const size = product.size as Product["size"];
         if (kind !== "basic" && kind !== "premium") return;
-        next[kind][size].push({ item_id: row.item_id, quantity: Number(row.quantity) });
+        // Defensive de-dupe: never allow the same item_id twice for one (kind,size).
+        const itemId = Number(row.item_id);
+        const quantity = Number(row.quantity);
+        const existingIdx = next[kind][size].findIndex((l) => l.item_id === itemId);
+        if (existingIdx === -1) next[kind][size].push({ item_id: itemId, quantity });
+        else next[kind][size][existingIdx] = { item_id: itemId, quantity };
       });
       setBomByKind(next);
       setLoading(false);
@@ -621,7 +695,12 @@ export default function ConfigureInventoryPage() {
             </div>
           )}
           <div className="mt-4 space-y-4 px-2">
-            <BolsterEditor items={items} lines={bolsterLines} setLines={setBolsterLines} />
+            <BolsterEditor
+              items={items}
+              lines={bolsterLines}
+              setLines={setBolsterLines}
+              variant={bolsterVariant}
+            />
           </div>
           <SheetFooter>
             <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
@@ -693,20 +772,20 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
       />
 
       <DynamicPartSection
-        title="Case"
+        title="Pillow Case"
         sizeLabel={size}
-        lines={linesForCategory("case")}
-        availableItems={sized("case")}
+        lines={linesForCategory("pillow_case")}
+        availableItems={sized("pillow_case")}
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
       />
 
       <DynamicPartSection
-        title="Protector"
+        title="Pillow Protector"
         sizeLabel={size}
-        lines={linesForCategory("protector")}
-        availableItems={sized("protector")}
+        lines={linesForCategory("pillow_protector")}
+        availableItems={sized("pillow_protector")}
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
@@ -929,18 +1008,58 @@ function DynamicPartSection({
   );
 }
 
-function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLine[]; setLines: Dispatch<SetStateAction<BomLine[]>> }) {
+function BolsterEditor({
+  items,
+  lines,
+  setLines,
+  variant,
+}: {
+  items: Item[];
+  lines: BomLine[];
+  setLines: Dispatch<SetStateAction<BomLine[]>>;
+  variant: 'Short (0.8m)' | 'Medium (1m)' | 'Long (1.2m)' | null;
+}) {
   const itemsById = useMemo(() => {
     const map = new Map<number, Item>();
     items.forEach((item) => map.set(item.id, item));
     return map;
   }, [items]);
 
-  const sized = (category: Item["category"]) => items.filter((i) => i.category === category && i.size === "Bolster");
-  const fillings = items.filter((i) => i.category === "filling" && i.subtype === "6D (L)");
+  // Variant size mapping:
+  // short -> S, medium -> M, long -> L
+  // We keep a fallback to legacy BOLSTER-sized items if no S/M/L items exist yet.
+  const variantSize = useMemo(() => {
+    if (!variant) return null;
+    if (variant.startsWith("Short")) return "S";
+    if (variant.startsWith("Long")) return "L";
+    return "M";
+  }, [variant]);
+
+  const sized = (category: Item["category"]) => {
+    const byVariantSize =
+      variantSize
+        ? items.filter((i) => i.category === category && sizeEquals(i.size, variantSize))
+        : [];
+    if (byVariantSize.length) return byVariantSize;
+    return items.filter((i) => i.category === category && sizeEquals(i.size, "BOLSTER"));
+  };
+  // Fillings are product-agnostic: available for all products (including bolster).
+  const fillings = items.filter((i) => i.category === "filling");
   const packaging = items.filter((i) => i.category === "packaging" && i.size === "S");
-  const accessories = items.filter((i) => i.category === "accessories" && (!i.size || i.size === "Bolster"));
-  const other = items.filter((i) => i.category === "other" && (!i.size || i.size === "Bolster"));
+  const accessories = items.filter(
+    (i) =>
+      i.category === "accessories" &&
+      (!i.size ||
+        (variantSize ? sizeEquals(i.size, variantSize) : false) ||
+        sizeEquals(i.size, "BOLSTER")),
+  );
+  const other = items.filter(
+    (i) =>
+      i.category === "other" &&
+      (!i.size ||
+        (variantSize ? sizeEquals(i.size, variantSize) : false) ||
+        sizeEquals(i.size, "BOLSTER")),
+  );
 
   const upsert = (item_id: number, quantity: number) => {
     const normalized = Number.isFinite(quantity) ? Math.max(0, Math.round(quantity)) : 0;
@@ -969,40 +1088,40 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
   return (
     <div className="space-y-4">
       <DynamicPartSection
-        title="Case (Bolster)"
-        sizeLabel="Bolster"
-        lines={linesForCategory("case")}
-        availableItems={sized("case")}
+        title="Bolster Case"
+        sizeLabel={variantSize ?? "Bolster"}
+        lines={linesForCategory("bolster_case")}
+        availableItems={sized("bolster_case")}
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
       />
 
       <DynamicPartSection
-        title="Protector (Bolster)"
-        sizeLabel="Bolster"
-        lines={linesForCategory("protector")}
-        availableItems={sized("protector")}
+        title="Bolster Protector"
+        sizeLabel={variantSize ?? "Bolster"}
+        lines={linesForCategory("bolster_protector")}
+        availableItems={sized("bolster_protector")}
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
       />
 
       <DynamicPartSection
-        title="Fillings – 6D (L)"
-        sizeLabel="Bolster"
+        title="Fillings"
+        sizeLabel={variantSize ?? "Bolster"}
         lines={linesForCategory("filling")}
         availableItems={fillings}
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
         variantResolver={(item, fallbackSize) => item.size ?? fallbackSize ?? normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
-        optionLabelResolver={(item) => getFillingDisplayLabel(item, "Bolster")}
+        optionLabelResolver={(item) => getFillingDisplayLabel(item, variantSize ?? "Bolster")}
       />
 
       <DynamicPartSection
         title="Packaging (typical)"
-        sizeLabel="Bolster"
+        sizeLabel={variantSize ?? "Bolster"}
         lines={linesForCategory("packaging")}
         availableItems={packaging}
         getItem={(id) => itemsById.get(id)}
@@ -1012,7 +1131,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
 
       <DynamicPartSection
         title="Accessories"
-        sizeLabel="Bolster"
+        sizeLabel={variantSize ?? "Bolster"}
         lines={linesForCategory("accessories")}
         availableItems={accessories}
         getItem={(id) => itemsById.get(id)}
@@ -1022,7 +1141,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
 
       <DynamicPartSection
         title="Other"
-        sizeLabel="Bolster"
+        sizeLabel={variantSize ?? "Bolster"}
         lines={linesForCategory("other")}
         availableItems={other}
         getItem={(id) => itemsById.get(id)}
@@ -1033,7 +1152,7 @@ function BolsterEditor({ items, lines, setLines }: { items: Item[]; lines: BomLi
       {uncategorizedLines.length > 0 && (
         <DynamicPartSection
           title="Uncategorized"
-          sizeLabel="Bolster"
+          sizeLabel={variantSize ?? "Bolster"}
           lines={uncategorizedLines}
           availableItems={[]}
           getItem={(id) => itemsById.get(id)}
