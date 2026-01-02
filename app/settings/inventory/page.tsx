@@ -873,7 +873,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
   if (loading) return <div className="p-4">Loading…</div>;
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-2 space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Inventory</h1>
         <div className="flex items-center gap-2">

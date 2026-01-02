@@ -391,7 +391,7 @@ export default function ConfigureInventoryPage() {
   if (loading) return <div className="p-4">Loading…</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-2 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Configure Products</h1>
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>

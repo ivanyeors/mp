@@ -92,7 +92,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               </Breadcrumb>
             </div>
           </header>
-          <div className="p-6">
+          <div className="p-2">
             <SettingsAuthGate>{children}</SettingsAuthGate>
             <Toaster richColors position="top-right" />
           </div>
