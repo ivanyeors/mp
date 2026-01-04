@@ -28,6 +28,7 @@ type Item = {
 };
 
 type PillowKind = "basic" | "premium";
+type PremiumVariant = "linen" | "fibrecool";
 
 type Product = { id: number; size: "XS" | "S" | "M" | "L" | "XL"; kind: PillowKind };
 
@@ -146,6 +147,7 @@ export default function ConfigureInventoryPage() {
   const [pillowSelectedTemplateId, setPillowSelectedTemplateId] = useState<number | ''>('');
   const [pillowTemplateName, setPillowTemplateName] = useState('');
   const [pillowTemplateNotes, setPillowTemplateNotes] = useState('');
+  const [premiumVariant, setPremiumVariant] = useState<PremiumVariant>('linen');
   const [bolsterTemplates, setBolsterTemplates] = useState<Array<{ id: number; name: string; notes: string | null }>>([]);
   const [bolsterSelectedTemplateId, setBolsterSelectedTemplateId] = useState<number | ''>('');
   const [bolsterTemplateName, setBolsterTemplateName] = useState('');
@@ -229,14 +231,19 @@ export default function ConfigureInventoryPage() {
     const load = async () => {
       if (!open || !selectedSize || !selectedPillowKind) return;
       try {
-        const list = await loadTemplates('pillow', selectedSize, selectedPillowKind);
+        const list = await loadTemplates(
+          'pillow',
+          selectedSize,
+          selectedPillowKind,
+          selectedPillowKind === 'premium' ? premiumVariant : undefined,
+        );
         setPillowTemplates(list);
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Failed to load templates');
       }
     };
     load();
-  }, [open, selectedSize, selectedPillowKind]);
+  }, [open, selectedSize, selectedPillowKind, premiumVariant]);
 
   useEffect(() => {
     const load = async () => {
@@ -290,9 +297,13 @@ export default function ConfigureInventoryPage() {
     }
   };
 
-  const loadTemplates = async (kind: 'pillow' | 'bolster', key: string, pillowKind?: PillowKind) => {
+  const loadTemplates = async (kind: 'pillow' | 'bolster', key: string, pillowKind?: PillowKind, pillowVariant?: PremiumVariant) => {
     const pillowKindParam = kind === 'pillow' && pillowKind ? `&pillowKind=${encodeURIComponent(pillowKind)}` : ''
-    const url = `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}${pillowKindParam}`
+    const pillowVariantParam =
+      kind === 'pillow' && pillowKind === 'premium' && pillowVariant
+        ? `&pillowVariant=${encodeURIComponent(pillowVariant)}`
+        : '';
+    const url = `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}${pillowKindParam}${pillowVariantParam}`
     const res = await fetch(url, { method: 'GET' })
     if (!res.ok) {
       const payload = await res.json().catch(() => null)
@@ -489,6 +500,28 @@ export default function ConfigureInventoryPage() {
           </SheetHeader>
           {selectedSize && selectedPillowKind && (
             <div className="mt-4 space-y-3 px-2">
+              {selectedPillowKind === 'premium' && (
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Premium variant</div>
+                  <Select
+                    value={premiumVariant}
+                    onValueChange={(value) => {
+                      if (value === 'linen' || value === 'fibrecool') {
+                        setPremiumVariant(value);
+                        setPillowSelectedTemplateId('');
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select variant…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linen">Linen</SelectItem>
+                      <SelectItem value="fibrecool">Fibrecool</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Template</div>
@@ -544,6 +577,7 @@ export default function ConfigureInventoryPage() {
                               kind: 'pillow',
                               key: selectedSize,
                               pillowKind: selectedPillowKind,
+                              pillowVariant: selectedPillowKind === 'premium' ? premiumVariant : undefined,
                               name,
                               notes: pillowTemplateNotes.trim() || undefined,
                               lines: buildPayloadLines(bomByKind[selectedPillowKind][selectedSize] ?? []),
@@ -551,7 +585,12 @@ export default function ConfigureInventoryPage() {
                           });
                           const payload = await res.json().catch(() => null);
                           if (!res.ok) throw new Error(payload?.error ?? 'Failed to save template');
-                          const list = await loadTemplates('pillow', selectedSize, selectedPillowKind);
+                          const list = await loadTemplates(
+                            'pillow',
+                            selectedSize,
+                            selectedPillowKind,
+                            selectedPillowKind === 'premium' ? premiumVariant : undefined,
+                          );
                           setPillowTemplates(list);
                           setPillowTemplateName('');
                           setPillowTemplateNotes('');

@@ -11,7 +11,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
   const admin = supabaseAdmin()
   const { data: tpl, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,kind,key,pillow_kind,name,notes,created_at,updated_at')
+    .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
     .eq('id', id)
     .maybeSingle()
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })

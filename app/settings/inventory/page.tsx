@@ -62,6 +62,8 @@ const SIZE_OPTIONS = ['-','XS','S','M','L','XL','BOLSTER'] as const;
 
 type Item = { id: number; category: ItemCategory; subtype: string | null; name: string; size: string | null };
 type Product = { id: number; size: string };
+type PillowKind = "basic" | "premium";
+type PremiumVariant = "linen" | "fibrecool";
 type AddInventoryDraft = {
   category: ItemCategory;
   name: string;
@@ -97,6 +99,7 @@ export default function InventoryPage() {
   const [balances, setBalances] = useState<Record<number, number>>({});
   const [products, setProducts] = useState<Product[]>([]);
   const [buildable, setBuildable] = useState<Record<string, number>>({});
+  const [premiumBuildable, setPremiumBuildable] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [cartOpen, setCartOpen] = useState(false);
   const [partDrawerOpen, setPartDrawerOpen] = useState(false);
@@ -130,12 +133,14 @@ export default function InventoryPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: itemsData }, { data: balancesData }, { data: productsData }, { data: buildableData }] = await Promise.all([
+    const [{ data: itemsData }, { data: balancesData }, { data: productsData }, { data: buildableData }, { data: premiumBuildableData }] =
+      await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
       supabaseClient.from("inventory_balances").select("item_id,on_hand"),
       // Keep the main inventory UI on "basic" pillows by default.
       supabaseClient.from("pillow_products").select("id,size").eq("kind", "basic"),
       supabaseClient.from("product_buildable").select("product_id,kind,size,buildable").eq("kind", "basic"),
+      supabaseClient.from("product_buildable").select("product_id,kind,size,buildable").eq("kind", "premium"),
     ]);
     setItems((itemsData ?? []) as Item[]);
     type BalanceRow = { item_id: number; on_hand: number | string };
@@ -144,6 +149,8 @@ export default function InventoryPage() {
     type BuildableRow = { kind: string; size: string; buildable: number | string };
     const build = Object.fromEntries((buildableData ?? []).map((r: BuildableRow)=> [r.size, Number(r.buildable)] ));
     setBuildable(build);
+    const premium = Object.fromEntries((premiumBuildableData ?? []).map((r: BuildableRow)=> [r.size, Number(r.buildable)] ));
+    setPremiumBuildable(premium);
     setLoading(false);
   }, []);
 
@@ -185,6 +192,8 @@ export default function InventoryPage() {
   const [sellDrawerKind, setSellDrawerKind] = useState<"pillow" | "bolster">("pillow");
   const [sellDrawerSize, setSellDrawerSize] = useState<string>("M");
   const [sellDrawerBolsterVariant, setSellDrawerBolsterVariant] = useState<"short" | "medium" | "long">("medium");
+  const [sellDrawerPillowKind, setSellDrawerPillowKind] = useState<PillowKind>("basic");
+  const [sellDrawerPremiumVariant, setSellDrawerPremiumVariant] = useState<PremiumVariant>("linen");
   const [sellDrawerTemplates, setSellDrawerTemplates] = useState<Array<{ id: number; name: string }>>([]);
   const [sellDrawerTemplateId, setSellDrawerTemplateId] = useState<number | "">("");
   const [sellDrawerTemplateName, setSellDrawerTemplateName] = useState<string | null>(null);
@@ -222,9 +231,11 @@ export default function InventoryPage() {
     return counts.length ? Math.max(0, Math.min(...counts)) : 0;
   }, [balances]);
 
-  const openSellDrawerForPillow = async (size: string) => {
+  const openSellDrawerForPillow = async (size: string, pillowKind: PillowKind = "basic", premiumVariant: PremiumVariant = "linen") => {
     setSellDrawerKind("pillow");
     setSellDrawerSize(size);
+    setSellDrawerPillowKind(pillowKind);
+    setSellDrawerPremiumVariant(premiumVariant);
     setSellDrawerTemplateId("");
     setSellDrawerTemplateName(null);
     setSellDrawerQty("1");
@@ -232,7 +243,7 @@ export default function InventoryPage() {
     setSellDrawerTemplates([]);
     setSellDrawerOpen(true);
     try {
-      const payload = await listTemplates('pillow', size, 'basic');
+      const payload = await listTemplates('pillow', size, pillowKind, pillowKind === "premium" ? premiumVariant : undefined);
       type TemplateRow = { id: number; name: string };
       const list = (payload.templates ?? []) as TemplateRow[];
       setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
@@ -527,7 +538,7 @@ export default function InventoryPage() {
       openSellDrawerForBolster(v);
       return;
     }
-    openSellDrawerForPillow(size);
+    openSellDrawerForPillow(size, "basic");
   };
 
   const commitQueuedShopifySales = async () => {
@@ -926,6 +937,54 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         </div>
       </section>
 
+      <section className="space-y-2">
+        <div className="text-sm text-muted-foreground">Select premium pillows</div>
+        <div className="flex items-center gap-2">
+          <div className="text-xs text-muted-foreground">Variant</div>
+          <Select
+            value={sellDrawerPremiumVariant}
+            onValueChange={(value) => {
+              if (value === "linen" || value === "fibrecool") setSellDrawerPremiumVariant(value);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[160px]">
+              <SelectValue placeholder="Select variant…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="linen">Linen</SelectItem>
+              <SelectItem value="fibrecool">Fibrecool</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          {['XS','S','M','L','XL'].map(sz => {
+            const available = Number(premiumBuildable[sz] ?? 0);
+            const disabled = available <= 0;
+            return (
+              <div
+                key={`premium-${sz}`}
+                className={`rounded border p-3 transition ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/40 cursor-pointer'}`}
+                role="button"
+                aria-disabled={disabled}
+                tabIndex={0}
+                onClick={() => { if (!disabled) openSellDrawerForPillow(sz, "premium", sellDrawerPremiumVariant); }}
+                onKeyDown={(e) => {
+                  if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+                    openSellDrawerForPillow(sz, "premium", sellDrawerPremiumVariant);
+                  }
+                }}
+              >
+                <div className="text-xs text-muted-foreground">{sz}</div>
+                <div className="text-2xl font-semibold">{available}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {sellDrawerPremiumVariant === "fibrecool" ? "Fibrecool" : "Linen"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Bolster variants */}
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select bolsters</div>
@@ -1157,12 +1216,47 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         <SheetContent side="right" className="w-full sm:max-w-md">
           <SheetHeader>
             <SheetTitle>
-              {sellDrawerKind === 'pillow' ? `Sell pillow — ${sellDrawerSize}` : `Sell bolster — ${sellDrawerBolsterVariant}`}
+              {sellDrawerKind === 'pillow'
+                ? `Sell ${sellDrawerPillowKind === 'premium' ? 'premium ' : ''}pillow — ${
+                    sellDrawerPillowKind === 'premium' ? `${sellDrawerPremiumVariant} — ` : ''
+                  }${sellDrawerSize}`
+                : `Sell bolster — ${sellDrawerBolsterVariant}`}
             </SheetTitle>
             <SheetDescription>Select a template (optional) and add to cart.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4 px-2">
             <div className="space-y-2">
+              {sellDrawerKind === 'pillow' && sellDrawerPillowKind === 'premium' && (
+                <div className="space-y-1">
+                  <div className="text-sm font-medium text-muted-foreground">Premium variant</div>
+                  <Select
+                    value={sellDrawerPremiumVariant}
+                    onValueChange={async (value) => {
+                      if (value !== 'linen' && value !== 'fibrecool') return;
+                      setSellDrawerPremiumVariant(value);
+                      setSellDrawerTemplateId('');
+                      setSellDrawerLines([]);
+                      setSellDrawerTemplateName(null);
+                      try {
+                        const payload = await listTemplates('pillow', sellDrawerSize, 'premium', value);
+                        type TemplateRow = { id: number; name: string };
+                        const list = (payload.templates ?? []) as TemplateRow[];
+                        setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : 'Failed to load templates');
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select variant…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linen">Linen</SelectItem>
+                      <SelectItem value="fibrecool">Fibrecool</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="text-sm font-medium text-muted-foreground">Template</div>
               <Select
                 value={sellDrawerTemplateId === '' ? '' : String(sellDrawerTemplateId)}

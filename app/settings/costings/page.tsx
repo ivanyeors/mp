@@ -25,6 +25,7 @@ type PriceRecord = { cost_price: string | number | null; msrp: string | number |
 
 type PillowSize = "XS" | "S" | "M" | "L" | "XL";
 type PillowKind = "basic" | "premium";
+type PremiumVariant = "linen" | "fibrecool";
 
 type ItemRow = {
   id: number;
@@ -157,7 +158,14 @@ const sortProductRows = (items: ProductRow[]): ProductRow[] =>
 
 const itemKey = (id: number) => `item:${id}`;
 const pillowKey = (productId: number) => `product:pillow:${productId}`;
+const premiumPillowKey = (productId: number, variant: PremiumVariant) => `product:pillow:${productId}:${variant}`;
 const bolsterKey = (variant: BolsterVariant) => `product:bolster:${variant}`;
+
+const PREMIUM_VARIANTS: PremiumVariant[] = ["linen", "fibrecool"];
+const PREMIUM_VARIANT_TITLES: Record<PremiumVariant, string> = {
+  linen: "Linen",
+  fibrecool: "Fibrecool",
+};
 
 const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
 
@@ -240,6 +248,7 @@ export default function CostingsPage() {
   const [filterMeasureVersion, setFilterMeasureVersion] = useState(0);
   const filterMeasureRef = useRef<HTMLDivElement>(null);
   const filterContainerRef = useRef<HTMLDivElement>(null);
+  const [premiumVariantSelection, setPremiumVariantSelection] = useState<PremiumVariant>("linen");
   const [groupOpenStates, setGroupOpenStates] = useState<Record<ProductGroupKey, boolean>>(() =>
     Object.fromEntries(
       PRODUCT_GROUP_DEFINITIONS.map((group) => [group.key, Boolean(group.defaultOpen)]),
@@ -351,7 +360,9 @@ export default function CostingsPage() {
 
       const priceByProductId = new Map<number, RawProductPrice>();
       const priceByVariant = new Map<BolsterVariant, RawProductPrice>();
+      const priceByKey = new Map<string, RawProductPrice>();
       productPrices.forEach((row) => {
+        priceByKey.set(row.key, row);
         if (row.kind === "pillow" && row.product_id !== null) {
           priceByProductId.set(row.product_id, row);
         } else if (row.kind === "bolster" && row.variant && (row.variant === "short" || row.variant === "medium" || row.variant === "long")) {
@@ -397,14 +408,32 @@ export default function CostingsPage() {
           const key = pillowKey(product.id);
           const components = bomByProduct.get(product.id) ?? [];
           const costCents = costForComponents(components);
-          const price = priceByProductId.get(product.id);
-          const msrpCents = toCents(price?.msrp ?? null);
           const pillowKind: PillowKind = String(product.kind) === "premium" ? "premium" : "basic";
-          productDraft[key] = {
-            costPrice: formatFromCents(costCents),
-            msrp: formatFromCents(msrpCents),
-          };
-          productBaseline[key] = { cost: costCents, msrp: msrpCents };
+          if (pillowKind === "premium") {
+            // Premium pillows store MSRP per fabric variant via keyed rows:
+            // `product:pillow:<productId>:linen` and `product:pillow:<productId>:fibrecool`.
+            PREMIUM_VARIANTS.forEach((variant) => {
+              const variantKey = premiumPillowKey(product.id, variant);
+              const price = priceByKey.get(variantKey) ?? priceByKey.get(key) ?? priceByProductId.get(product.id);
+              const msrpCents = toCents(price?.msrp ?? null);
+              productDraft[variantKey] = {
+                costPrice: formatFromCents(costCents),
+                msrp: formatFromCents(msrpCents),
+              };
+              productBaseline[variantKey] = { cost: costCents, msrp: msrpCents };
+            });
+            // Keep a stable base key entry for shared rendering; MSRP is variant-scoped.
+            productDraft[key] = { costPrice: formatFromCents(costCents), msrp: "" };
+            productBaseline[key] = { cost: costCents, msrp: null };
+          } else {
+            const price = priceByKey.get(key) ?? priceByProductId.get(product.id);
+            const msrpCents = toCents(price?.msrp ?? null);
+            productDraft[key] = {
+              costPrice: formatFromCents(costCents),
+              msrp: formatFromCents(msrpCents),
+            };
+            productBaseline[key] = { cost: costCents, msrp: msrpCents };
+          }
           productRows.push({
             key,
             kind: "pillow",
@@ -413,7 +442,7 @@ export default function CostingsPage() {
             productId: product.id,
             pillowKind,
             costCents,
-            msrpCents,
+            msrpCents: pillowKind === "premium" ? null : toCents((priceByKey.get(key) ?? priceByProductId.get(product.id))?.msrp ?? null),
             components,
           });
         });
@@ -718,7 +747,22 @@ export default function CostingsPage() {
           </div>
           <div>
             <div className="text-xs text-muted-foreground">MSRP</div>
-            <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
+            {product.kind === "pillow" && product.pillowKind === "premium" && product.productId ? (
+              <div className="space-y-0.5">
+                {PREMIUM_VARIANTS.map((variant) => {
+                  const key = premiumPillowKey(product.productId!, variant);
+                  const msrp = draft[key]?.msrp ?? "";
+                  return (
+                    <div key={variant} className="flex items-center justify-between gap-2">
+                      <div className="text-xs text-muted-foreground">{PREMIUM_VARIANT_TITLES[variant]}</div>
+                      <div className="font-medium">{formatDraftCurrencyLabel(msrp)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
+            )}
           </div>
         </div>
         <div>
@@ -870,6 +914,15 @@ export default function CostingsPage() {
     if (itemChanged) return true;
     return products.some((product) => {
       const key = product.key;
+      if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
+        return PREMIUM_VARIANTS.some((variant) => {
+          const variantKey = premiumPillowKey(product.productId!, variant);
+          const current = draft[variantKey] ?? { costPrice: "", msrp: "" };
+          const baselineRow = baseline[variantKey] ?? { cost: product.costCents ?? null, msrp: null };
+          const msrpCents = parseToCents(current.msrp);
+          return msrpCents !== baselineRow.msrp;
+        });
+      }
       const current = draft[key] ?? { costPrice: "", msrp: "" };
       const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null };
       const msrpCents = parseToCents(current.msrp);
@@ -897,13 +950,29 @@ export default function CostingsPage() {
       .filter((row): row is { itemId: number; costPriceCents: number | null; msrpCents: number | null } => row !== null);
 
     const productPayload = products
-      .map((product) => {
+      .flatMap((product) => {
+        if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
+          return PREMIUM_VARIANTS.map((variant) => {
+            const key = premiumPillowKey(product.productId!, variant);
+            const current = draft[key] ?? { costPrice: "", msrp: "" };
+            const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: null };
+            const msrpCents = parseToCents(current.msrp);
+            if (msrpCents === baselineRow.msrp) return null;
+            const payload: ProductSaveRow = {
+              key,
+              kind: "pillow",
+              productId: product.productId!,
+              msrpCents,
+            };
+            return payload;
+          }).filter((row): row is ProductSaveRow => row !== null);
+        }
         const key = product.key;
         const current = draft[key] ?? { costPrice: "", msrp: "" };
         const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null };
         const msrpCents = parseToCents(current.msrp);
         if (msrpCents === baselineRow.msrp) {
-          return null;
+          return [];
         }
         const payload: ProductSaveRow = {
           key,
@@ -912,19 +981,18 @@ export default function CostingsPage() {
         };
         if (product.kind === "pillow") {
           if (product.productId === undefined) {
-            return null;
+            return [];
           }
           payload.productId = product.productId;
         }
         if (product.kind === "bolster") {
           if (!product.variant) {
-            return null;
+            return [];
           }
           payload.variant = product.variant;
         }
-        return payload;
-      })
-      .filter((row): row is ProductSaveRow => row !== null);
+        return [payload];
+      });
 
     if (rows.length === 0 && productPayload.length === 0) {
       toast.message("No changes to save");
@@ -957,6 +1025,13 @@ export default function CostingsPage() {
             prev.map((product) => {
               const summary = byKey.get(product.key);
               if (!summary) return product;
+              // Premium pillow MSRP is stored per-variant key; ignore product-level msrpCents updates here.
+              if (product.kind === "pillow" && product.pillowKind === "premium") {
+                return {
+                  ...product,
+                  costCents: summary.costCents,
+                };
+              }
               return {
                 ...product,
                 costCents: summary.costCents,
@@ -1249,7 +1324,30 @@ export default function CostingsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <div className="text-sm font-medium">MSRP</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-sm font-medium">MSRP</div>
+                      {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
+                        <Select
+                          value={premiumVariantSelection}
+                          onValueChange={(value) => {
+                            if (value === "linen" || value === "fibrecool") {
+                              setPremiumVariantSelection(value);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-8 w-[150px]">
+                            <SelectValue placeholder="Select variant…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PREMIUM_VARIANTS.map((variant) => (
+                              <SelectItem key={variant} value={variant}>
+                                {PREMIUM_VARIANT_TITLES[variant]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : null}
+                    </div>
                     <div className="relative">
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                         $
@@ -1257,10 +1355,40 @@ export default function CostingsPage() {
                       <Input
                         type="text"
                         inputMode="decimal"
-                        value={activeProductDraft?.msrp ?? ""}
+                        value={
+                          activeProduct.kind === "pillow" &&
+                          activeProduct.pillowKind === "premium" &&
+                          activeProduct.productId
+                            ? (draft[premiumPillowKey(activeProduct.productId, premiumVariantSelection)]?.msrp ?? "")
+                            : (activeProductDraft?.msrp ?? "")
+                        }
                         placeholder="0.00"
-                        onChange={(event) => handleInputChange(activeProduct.key, "msrp", event.target.value)}
-                        onBlur={() => handleBlur(activeProduct.key, "msrp")}
+                        onChange={(event) => {
+                          if (
+                            activeProduct.kind === "pillow" &&
+                            activeProduct.pillowKind === "premium" &&
+                            activeProduct.productId
+                          ) {
+                            handleInputChange(
+                              premiumPillowKey(activeProduct.productId, premiumVariantSelection),
+                              "msrp",
+                              event.target.value,
+                            );
+                            return;
+                          }
+                          handleInputChange(activeProduct.key, "msrp", event.target.value);
+                        }}
+                        onBlur={() => {
+                          if (
+                            activeProduct.kind === "pillow" &&
+                            activeProduct.pillowKind === "premium" &&
+                            activeProduct.productId
+                          ) {
+                            handleBlur(premiumPillowKey(activeProduct.productId, premiumVariantSelection), "msrp");
+                            return;
+                          }
+                          handleBlur(activeProduct.key, "msrp");
+                        }}
                         className="pl-6"
                         aria-label={`MSRP for ${activeProduct.label}`}
                       />

@@ -203,9 +203,10 @@ export async function archiveShopifySaleQueueRow(queueId: number) {
   return { ok: true }
 }
 
-export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pillowKind?: 'basic' | 'premium') {
+export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pillowKind?: 'basic' | 'premium', pillowVariant?: 'linen' | 'fibrecool') {
   const admin = supabaseAdmin()
   const effectivePillowKind = kind === 'pillow' ? (pillowKind ?? 'basic') : null
+  const effectivePillowVariant = kind === 'pillow' && effectivePillowKind === 'premium' ? (pillowVariant ?? null) : null
 
   let q = admin
     .from('bom_templates')
@@ -214,7 +215,12 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
     .eq('key', key)
     .order('updated_at', { ascending: false })
 
-  if (kind === 'pillow') q = q.eq('pillow_kind', effectivePillowKind)
+  if (kind === 'pillow') {
+    q = q.eq('pillow_kind', effectivePillowKind)
+    if (effectivePillowKind === 'premium' && effectivePillowVariant) {
+      q = q.eq('pillow_variant', effectivePillowVariant)
+    }
+  }
   else q = q.is('pillow_kind', null)
 
   const { data, error } = await q
