@@ -672,13 +672,22 @@ export default function CostingsPage() {
     setGroupOpenStates((prev) => ({ ...prev, [groupKey]: open }));
   }, []);
 
+  const getPillowSizeLabel = (label: string) => {
+    const parts = label
+      .split(/[—–]/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length >= 2) return parts[parts.length - 1];
+    return label.trim();
+  };
+
   const renderProductCard = (product: ProductRow) => {
     const current = draft[product.key] ?? { costPrice: "", msrp: "" };
     const costDisplay = productCostDisplay.get(product.key) ?? current.costPrice;
     const partsCount = product.components.filter((component) => component.quantity > 0).length;
     const primaryLabel =
       product.kind === "pillow"
-        ? product.label.replace(/^Pillow —\s*/, "")
+        ? getPillowSizeLabel(product.label)
         : product.variant
         ? BOLSTER_VARIANT_TITLES[product.variant]
         : product.label;
