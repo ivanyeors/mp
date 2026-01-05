@@ -345,11 +345,11 @@
     - White Batik / S: 35.00 (compare_at: 35.00)
     - White Batik / M: 39.00 (compare_at: 39.00)
     - White Batik / L: 45.00 (compare_at: 39.00)
-    - Cotton / XS: 33.00 (compare_at: 19.00)
-    - Cotton / S: 35.00 (compare_at: 20.00)
-    - Cotton / M: 39.00 (compare_at: 23.00)
-    - Cotton / L: 45.00 (compare_at: 25.00)
-    - Cotton / XL: 35.00 (compare_at: 28.00)
+    - Satin White / XS: 33.00 (compare_at: 19.00)
+    - Satin White / S: 35.00 (compare_at: 20.00)
+    - Satin White / M: 39.00 (compare_at: 23.00)
+    - Satin White / L: 45.00 (compare_at: 25.00)
+    - Satin White / XL: 35.00 (compare_at: 28.00)
     - Wool / XS: 45.00 (compare_at: 50.00)
     - Wool / S: 48.00 (compare_at: 53.00)
     - Wool / M: 54.00 (compare_at: 59.00)
@@ -390,11 +390,11 @@
   - White Batik / S
   - White Batik / M
   - White Batik / L
-  - Cotton / XS
-  - Cotton / S
-  - Cotton / M
-  - Cotton / L
-  - Cotton / XL
+  - Satin White / XS
+  - Satin White / S
+  - Satin White / M
+  - Satin White / L
+  - Satin White / XL
   - Wool / XS
   - Wool / S
   - Wool / M
