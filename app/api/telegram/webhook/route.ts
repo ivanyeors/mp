@@ -111,6 +111,15 @@ function helpText(): string {
   ].join('\n')
 }
 
+function normalizeTelegramCommand(cmdRaw: string): string {
+  // In group chats Telegram can send commands like "/otp@MyBotName".
+  // We only care about the base command.
+  const cmd = (cmdRaw || '').trim().toLowerCase()
+  if (!cmd) return ''
+  const base = cmd.split('@')[0] || ''
+  return base
+}
+
 type ResolvedIdentifier =
   | { kind: 'item-id'; itemId: number }
   | { kind: 'item-code'; category: string; size?: string | null; subtype?: string | null }
@@ -210,7 +219,7 @@ async function resolveItemId(admin: ReturnType<typeof supabaseAdmin>, ident: Res
 
 async function handleCommand(chatId: number, text: string) {
   const [cmd, ...args] = text.trim().split(/\s+/)
-  const name = cmd.toLowerCase()
+  const name = normalizeTelegramCommand(cmd)
 
   try {
     if (name === '/help' || name === '/start') {
@@ -597,10 +606,17 @@ async function handleCallback(update: TelegramUpdate) {
 
 export async function POST(req: NextRequest) {
   try {
-    const secret = getEnv('TELEGRAM_WEBHOOK_SECRET')
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET
     const header = req.headers.get('x-telegram-bot-api-secret-token')
-    if (!header || header !== secret) {
-      return NextResponse.json({ ok: true }, { status: 200 })
+    if (secret) {
+      if (!header || header !== secret) {
+        // Always 200 to avoid Telegram retries, but log to make misconfig obvious.
+        console.warn('Telegram webhook rejected: invalid secret token header')
+        return NextResponse.json({ ok: true }, { status: 200 })
+      }
+    } else if (!secret && header) {
+      // If a header is being sent but we don't have a configured secret, log it to help setup.
+      console.warn('Telegram webhook: secret header received but TELEGRAM_WEBHOOK_SECRET is not set')
     }
 
     const allowed = parseAllowedChats()
@@ -613,6 +629,7 @@ export async function POST(req: NextRequest) {
     const effectiveChatId = typeof cbChatId === 'number' ? cbChatId : msgChatId
     if (!effectiveChatId) return NextResponse.json({ ok: true }, { status: 200 })
     if (allowed.size > 0 && !allowed.has(effectiveChatId)) {
+      console.warn('Telegram webhook rejected: chat not in TELEGRAM_ALLOWED_CHATS', effectiveChatId)
       return NextResponse.json({ ok: true }, { status: 200 })
     }
 

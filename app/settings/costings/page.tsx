@@ -238,7 +238,7 @@ export default function CostingsPage() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [draft, setDraft] = useState<DraftState>({});
   const [baseline, setBaseline] = useState<BaselineState>({});
-  const [partFilters, setPartFilters] = useState<number[]>([]);
+  const [partFilters, setPartFilters] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productSheetKey, setProductSheetKey] = useState<string | null>(null);
@@ -567,43 +567,50 @@ export default function CostingsPage() {
     return map;
   }, [items]);
 
+  const categoryTitleByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    grouped.forEach((group) => {
+      map.set(group.category, group.title);
+    });
+    return map;
+  }, [grouped]);
+
   useEffect(() => {
-    setPartFilters((prev) => prev.filter((id) => itemMap.has(id)));
-  }, [itemMap]);
+    setPartFilters((prev) => prev.filter((category) => categoryTitleByKey.has(category)));
+  }, [categoryTitleByKey]);
 
   const hasActiveFilters = partFilters.length > 0;
 
-  const availableFilterItems = useMemo(() => {
+  const availableFilterCategories = useMemo(() => {
     const selected = new Set(partFilters);
-    return items
-      .filter((item) => !selected.has(item.id))
-      .sort((left, right) => getInventoryItemDisplayLabel(left).localeCompare(getInventoryItemDisplayLabel(right)));
-  }, [items, partFilters]);
+    return grouped
+      .filter((group) => !selected.has(group.category))
+      .map((group) => ({ category: group.category, title: group.title }));
+  }, [grouped, partFilters]);
 
-  const activeFilterItems = useMemo(
-    () =>
-      partFilters
-        .map((id) => itemMap.get(id))
-        .filter((item): item is ItemRow => Boolean(item)),
-    [itemMap, partFilters],
-  );
+  const activeFilterCategories = useMemo(() => {
+    const selected = new Set(partFilters);
+    return grouped
+      .filter((group) => selected.has(group.category))
+      .map((group) => ({ category: group.category, title: group.title }));
+  }, [grouped, partFilters]);
 
-  const visibleFilterItems = useMemo(() => {
-    if (filtersExpanded) return activeFilterItems;
-    if (collapsedVisibleFilterCount === null) return activeFilterItems;
-    return activeFilterItems.slice(0, collapsedVisibleFilterCount);
-  }, [activeFilterItems, collapsedVisibleFilterCount, filtersExpanded]);
+  const visibleFilterCategories = useMemo(() => {
+    if (filtersExpanded) return activeFilterCategories;
+    if (collapsedVisibleFilterCount === null) return activeFilterCategories;
+    return activeFilterCategories.slice(0, collapsedVisibleFilterCount);
+  }, [activeFilterCategories, collapsedVisibleFilterCount, filtersExpanded]);
 
   const hiddenFilterCount = useMemo(() => {
     if (filtersExpanded) return 0;
     if (collapsedVisibleFilterCount === null) return 0;
-    return Math.max(0, activeFilterItems.length - collapsedVisibleFilterCount);
-  }, [activeFilterItems.length, collapsedVisibleFilterCount, filtersExpanded]);
+    return Math.max(0, activeFilterCategories.length - collapsedVisibleFilterCount);
+  }, [activeFilterCategories.length, collapsedVisibleFilterCount, filtersExpanded]);
 
   useLayoutEffect(() => {
     if (filtersExpanded) return;
     setCollapsedVisibleFilterCount(null);
-  }, [activeFilterItems, filtersExpanded]);
+  }, [activeFilterCategories, filtersExpanded]);
 
   useLayoutEffect(() => {
     if (filtersExpanded) return;
@@ -639,7 +646,7 @@ export default function CostingsPage() {
 
     const frame = requestAnimationFrame(measure);
     return () => cancelAnimationFrame(frame);
-  }, [activeFilterItems, filtersExpanded, filterMeasureVersion]);
+  }, [activeFilterCategories, filtersExpanded, filterMeasureVersion]);
 
   useEffect(() => {
     const container = filterContainerRef.current;
@@ -656,12 +663,7 @@ export default function CostingsPage() {
   const filteredGroups = useMemo(() => {
     if (partFilters.length === 0) return grouped;
     const selected = new Set(partFilters);
-    return grouped
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => selected.has(item.id)),
-      }))
-      .filter((group) => group.items.length > 0);
+    return grouped.filter((group) => selected.has(group.category));
   }, [grouped, partFilters]);
 
   const itemCostByIdFromDraft = useMemo(() => {
@@ -888,14 +890,13 @@ export default function CostingsPage() {
     });
   };
 
-  const handleAddFilter = useCallback((value: string) => {
-    const id = Number(value);
-    if (!Number.isFinite(id)) return;
-    setPartFilters((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  const handleAddFilter = useCallback((category: string) => {
+    if (!category) return;
+    setPartFilters((prev) => (prev.includes(category) ? prev : [...prev, category]));
   }, []);
 
-  const handleRemoveFilter = useCallback((id: number) => {
-    setPartFilters((prev) => prev.filter((entry) => entry !== id));
+  const handleRemoveFilter = useCallback((category: string) => {
+    setPartFilters((prev) => prev.filter((entry) => entry !== category));
   }, []);
 
   const clearFilters = useCallback(() => {
@@ -1124,25 +1125,29 @@ export default function CostingsPage() {
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Select closeOnSelect={false} onValueChange={handleAddFilter}>
-                    <SelectTrigger className="w-[280px]" aria-label="Filter parts" disabled={availableFilterItems.length === 0}>
+                    <SelectTrigger
+                      className="w-[280px]"
+                      aria-label="Filter parts by category"
+                      disabled={availableFilterCategories.length === 0}
+                    >
                       <SelectValue
                         placeholder={
-                          availableFilterItems.length === 0
-                            ? "All parts are already filtered"
-                            : "Select parts to filter"
+                          availableFilterCategories.length === 0
+                            ? "All categories are already filtered"
+                            : "Select categories to filter"
                         }
                       />
                     </SelectTrigger>
                     <SelectContent align="start" className="w-[280px]">
                       <ScrollArea className="h-60">
                         <div className="p-1">
-                          {availableFilterItems.map((item) => (
+                          {availableFilterCategories.map((category) => (
                             <SelectItem
-                              key={item.id}
-                              value={String(item.id)}
-                              textValue={getInventoryItemDisplayLabel(item)}
+                              key={category.category}
+                              value={category.category}
+                              textValue={category.title}
                             >
-                              {getInventoryItemDisplayLabel(item)}
+                              {category.title}
                             </SelectItem>
                           ))}
                         </div>
@@ -1155,7 +1160,7 @@ export default function CostingsPage() {
                 </div>
                 {hasActiveFilters && (
                   <div className="text-xs text-muted-foreground">
-                    Filtering {activeFilterItems.length} part{activeFilterItems.length === 1 ? "" : "s"}
+                    Filtering {activeFilterCategories.length} categor{activeFilterCategories.length === 1 ? "y" : "ies"}
                   </div>
                 )}
               </div>
@@ -1170,9 +1175,14 @@ export default function CostingsPage() {
                       >
                         <div className="w-full rounded-md border bg-muted/30 p-2">
                           <div ref={filterMeasureRef} className="flex flex-wrap gap-2 min-w-0">
-                            {activeFilterItems.map((item) => (
-                              <Button key={`measure-${item.id}`} variant="secondary" size="sm" className="gap-2 max-w-full">
-                                <span className="truncate">{getInventoryItemDisplayLabel(item)}</span>
+                            {activeFilterCategories.map((category) => (
+                              <Button
+                                key={`measure-${category.category}`}
+                                variant="secondary"
+                                size="sm"
+                                className="gap-2 max-w-full"
+                              >
+                                <span className="truncate">{category.title}</span>
                                 <X className="size-4 shrink-0" />
                               </Button>
                             ))}
@@ -1183,15 +1193,15 @@ export default function CostingsPage() {
 
                     <div className="w-full rounded-md border bg-muted/30 p-2">
                       <div className="flex flex-wrap gap-2 min-w-0">
-                        {visibleFilterItems.map((item) => (
+                        {visibleFilterCategories.map((category) => (
                           <Button
-                            key={item.id}
+                            key={category.category}
                             variant="secondary"
                             size="sm"
                             className="gap-2 max-w-full"
-                            onClick={() => handleRemoveFilter(item.id)}
+                            onClick={() => handleRemoveFilter(category.category)}
                           >
-                            <span className="truncate">{getInventoryItemDisplayLabel(item)}</span>
+                            <span className="truncate">{category.title}</span>
                             <X className="size-4 shrink-0" />
                           </Button>
                         ))}
@@ -1305,93 +1315,109 @@ export default function CostingsPage() {
           <div className="mt-4 space-y-6 px-2">
             {activeProduct ? (
               <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Cost price</div>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={activeProductCostDisplay}
-                        placeholder="0.00"
-                        disabled
-                        className="pl-6"
-                        aria-label={`Cost price for ${activeProduct.label}`}
-                      />
+                <div className="space-y-4">
+                  {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">MSRP Variant</div>
+                      <Select
+                        value={premiumVariantSelection}
+                        onValueChange={(value) => {
+                          if (value === "linen" || value === "fibrecool") {
+                            setPremiumVariantSelection(value);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full" aria-label="Select premium variant">
+                          <SelectValue placeholder="Select variant…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PREMIUM_VARIANTS.map((variant) => (
+                            <SelectItem key={variant} value={variant}>
+                              {PREMIUM_VARIANT_TITLES[variant]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-sm font-medium">MSRP</div>
-                      {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
-                        <Select
-                          value={premiumVariantSelection}
-                          onValueChange={(value) => {
-                            if (value === "linen" || value === "fibrecool") {
-                              setPremiumVariantSelection(value);
+                  ) : null}
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Cost price</div>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={activeProductCostDisplay}
+                          placeholder="0.00"
+                          disabled
+                          className="pl-6"
+                          aria-label={`Cost price for ${activeProduct.label}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-medium">MSRP</div>
+                        {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
+                          <div className="text-xs text-muted-foreground">
+                            {PREMIUM_VARIANT_TITLES[premiumVariantSelection]}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={
+                            activeProduct.kind === "pillow" &&
+                            activeProduct.pillowKind === "premium" &&
+                            activeProduct.productId
+                              ? (draft[premiumPillowKey(activeProduct.productId, premiumVariantSelection)]?.msrp ?? "")
+                              : (activeProductDraft?.msrp ?? "")
+                          }
+                          placeholder="0.00"
+                          onChange={(event) => {
+                            if (
+                              activeProduct.kind === "pillow" &&
+                              activeProduct.pillowKind === "premium" &&
+                              activeProduct.productId
+                            ) {
+                              handleInputChange(
+                                premiumPillowKey(activeProduct.productId, premiumVariantSelection),
+                                "msrp",
+                                event.target.value,
+                              );
+                              return;
                             }
+                            handleInputChange(activeProduct.key, "msrp", event.target.value);
                           }}
-                        >
-                          <SelectTrigger className="h-8 w-[150px]">
-                            <SelectValue placeholder="Select variant…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PREMIUM_VARIANTS.map((variant) => (
-                              <SelectItem key={variant} value={variant}>
-                                {PREMIUM_VARIANT_TITLES[variant]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : null}
-                    </div>
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        $
-                      </span>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        value={
-                          activeProduct.kind === "pillow" &&
-                          activeProduct.pillowKind === "premium" &&
-                          activeProduct.productId
-                            ? (draft[premiumPillowKey(activeProduct.productId, premiumVariantSelection)]?.msrp ?? "")
-                            : (activeProductDraft?.msrp ?? "")
-                        }
-                        placeholder="0.00"
-                        onChange={(event) => {
-                          if (
-                            activeProduct.kind === "pillow" &&
-                            activeProduct.pillowKind === "premium" &&
-                            activeProduct.productId
-                          ) {
-                            handleInputChange(
-                              premiumPillowKey(activeProduct.productId, premiumVariantSelection),
-                              "msrp",
-                              event.target.value,
-                            );
-                            return;
-                          }
-                          handleInputChange(activeProduct.key, "msrp", event.target.value);
-                        }}
-                        onBlur={() => {
-                          if (
-                            activeProduct.kind === "pillow" &&
-                            activeProduct.pillowKind === "premium" &&
-                            activeProduct.productId
-                          ) {
-                            handleBlur(premiumPillowKey(activeProduct.productId, premiumVariantSelection), "msrp");
-                            return;
-                          }
-                          handleBlur(activeProduct.key, "msrp");
-                        }}
-                        className="pl-6"
-                        aria-label={`MSRP for ${activeProduct.label}`}
-                      />
+                          onBlur={() => {
+                            if (
+                              activeProduct.kind === "pillow" &&
+                              activeProduct.pillowKind === "premium" &&
+                              activeProduct.productId
+                            ) {
+                              handleBlur(premiumPillowKey(activeProduct.productId, premiumVariantSelection), "msrp");
+                              return;
+                            }
+                            handleBlur(activeProduct.key, "msrp");
+                          }}
+                          className="pl-6"
+                          aria-label={`MSRP for ${activeProduct.label}${
+                            activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium"
+                              ? ` (${PREMIUM_VARIANT_TITLES[premiumVariantSelection]})`
+                              : ""
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

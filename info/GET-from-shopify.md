@@ -1,0 +1,926 @@
+# Shopify export (active products)
+
+- Generated at: 2026-01-04T14:03:26.477Z
+- Location ID used for inventory: 16844357728
+
+> Note: Prices shown are whatever is currently set in Shopify for each variant. Inventory is `available` at the chosen location.
+
+## Basic Mpillow (ID 4311778492512) — `basic-ergonomic-pillow`
+
+### (Currrent product / accessories)
+- product listing name: Basic Mpillow
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - XS / Natural White Linen: 99.00 (compare_at: 90.00)
+    - XS / Deep Blue Linen: 99.00 (compare_at: 90.00)
+    - S / Natural White Linen: 110.00 (compare_at: 110.00)
+    - S / Deep Blue Linen: 110.00 (compare_at: 110.00)
+    - M / Natural White Linen: 132.00 (compare_at: 132.00)
+    - M / Deep Blue Linen: 132.00 (compare_at: 132.00)
+    - L / Natural White Linen: 147.00 (compare_at: 147.00)
+    - L / Deep Blue Linen: 147.00 (compare_at: 147.00)
+    - XL / Natural White Linen: 170.00 (compare_at: 170.00)
+- variants:
+  - XS / Natural White Linen
+  - XS / Deep Blue Linen
+  - S / Natural White Linen
+  - S / Deep Blue Linen
+  - M / Natural White Linen
+  - M / Deep Blue Linen
+  - L / Natural White Linen
+  - L / Deep Blue Linen
+  - XL / Natural White Linen
+- SKUs:
+  - XS / Natural White Linen: XSCSELIN
+  - XS / Deep Blue Linen: XSCSELINDB
+  - S / Natural White Linen: SCSELIN
+  - S / Deep Blue Linen: SCSELINDVB
+  - M / Natural White Linen: MCSELIN
+  - M / Deep Blue Linen: MCSELINDB
+  - L / Natural White Linen: LCSELIN
+  - L / Deep Blue Linen: LCSELINDB
+  - XL / Natural White Linen: XLCSELIN
+- inventory:
+  - XS / Natural White Linen: 46
+  - XS / Deep Blue Linen: 46
+  - S / Natural White Linen: 33
+  - S / Deep Blue Linen: 33
+  - M / Natural White Linen: 46
+  - M / Deep Blue Linen: 46
+  - L / Natural White Linen: 33
+  - L / Deep Blue Linen: 33
+  - XL / Natural White Linen: 46
+
+### (Updated product / accessories)
+- product listing name: Basic Mpillow
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - XS / Natural White Linen: 170.00 (compare_at: 90.00)
+    - XS / Deep Blue Linen: 170.00 (compare_at: 90.00)
+    - S / Natural White Linen: 190.00 (compare_at: 110.00)
+    - S / Deep Blue Linen: 190.00 (compare_at: 110.00)
+    - M / Natural White Linen: 220.00 (compare_at: 132.00)
+    - M / Deep Blue Linen: 220.00 (compare_at: 132.00)
+    - L / Natural White Linen: 270.00 (compare_at: 147.00)
+    - L / Deep Blue Linen: 270.00 (compare_at: 147.00)
+    - XL / Natural White Linen: 360.00 (compare_at: 170.00)
+- variants:
+  - XS / Natural White Linen
+  - XS / Deep Blue Linen
+  - S / Natural White Linen
+  - S / Deep Blue Linen
+  - M / Natural White Linen
+  - M / Deep Blue Linen
+  - L / Natural White Linen
+  - L / Deep Blue Linen
+  - XL / Natural White Linen
+- SKUs:
+  - XS / Natural White Linen: MPI-BSC-XS-LIN-WHT
+  - XS / Deep Blue Linen: MPI-BSC-XS-LIN-BLU
+  - S / Natural White Linen: MPI-BSC-S-LIN-WHT
+  - S / Deep Blue Linen: MPI-BSC-S-LIN-BLU
+  - M / Natural White Linen: MPI-BSC-M-LIN-WHT
+  - M / Deep Blue Linen: MPI-BSC-M-LIN-BLU
+  - L / Natural White Linen: MPI-BSC-L-LIN-WHT
+  - L / Deep Blue Linen: MPI-BSC-L-LIN-BLU
+  - XL / Natural White Linen: MPI-BSC-XL-LIN-WHT
+- inventory:
+  - XS / Natural White Linen: 46
+  - XS / Deep Blue Linen: 46
+  - S / Natural White Linen: 33
+  - S / Deep Blue Linen: 33
+  - M / Natural White Linen: 46
+  - M / Deep Blue Linen: 46
+  - L / Natural White Linen: 33
+  - L / Deep Blue Linen: 33
+  - XL / Natural White Linen: 46
+
+## Cervical Neck Support (ID 4544437289056) — `cervical-neck-support`
+
+### (Currrent product / accessories)
+- product listing name: Cervical Neck Support
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - S (2 inch): 38.00
+    - M (2.5 inch): 38.00
+    - L (3 inch): 45.00
+    - XS: 35.00
+- variants:
+  - S (2 inch)
+  - M (2.5 inch)
+  - L (3 inch)
+  - XS
+- SKUs:
+  - S (2 inch): SCNSACC
+  - M (2.5 inch): —
+  - L (3 inch): LCNSACC
+  - XS: —
+- inventory:
+  - S (2 inch): 75
+  - M (2.5 inch): 40
+  - L (3 inch): 89
+  - XS: 0
+
+### (Updated product / accessories)
+- product listing name: Cervical Neck Support
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - XS: 35.00
+    - S: 38.00
+    - M (2.5 inch): 38.00
+    - L (3 inch): 45.00
+    
+- variants:
+  - XS
+  - S
+  - M
+  - L
+
+- SKUs:
+  - XS: CNS-XS
+  - S (2 inch): CNS-S-2IN
+  - M (2.5 inch): CNS-M-2P5IN
+  - L (3 inch): CNS-L-3IN
+- inventory:
+  - S (2 inch): 75
+  - M (2.5 inch): 40
+  - L (3 inch): 89
+  - XS: 0
+
+## Cover Sheets (ID 4257115013216) — `mpillow-cover-sheet`
+
+### (Currrent product / accessories)
+- product listing name: Cover Sheets
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - Deep Blue Batik / L: 45.00 (compare_at: 33.00)
+    - Deep Blue Batik / XS: 33.00 (compare_at: 33.00)
+    - Deep Blue Batik / S: 35.00 (compare_at: 33.00)
+    - Deep Blue Batik / M: 39.00 (compare_at: 33.00)
+    - White Batik / XS: 33.00 (compare_at: 33.00)
+    - White Batik / S: 35.00 (compare_at: 35.00)
+    - White Batik / M: 39.00 (compare_at: 39.00)
+    - White Batik / L: 45.00 (compare_at: 39.00)
+    - Cotton / XS: 33.00 (compare_at: 19.00)
+    - Cotton / S: 35.00 (compare_at: 20.00)
+    - Cotton / M: 39.00 (compare_at: 23.00)
+    - Cotton / L: 45.00 (compare_at: 25.00)
+    - Cotton / XL: 35.00 (compare_at: 28.00)
+    - Wool / XS: 45.00 (compare_at: 50.00)
+    - Wool / S: 48.00 (compare_at: 53.00)
+    - Wool / M: 54.00 (compare_at: 59.00)
+    - Green / XS: 33.00 (compare_at: 33.00)
+    - Green / S: 35.00 (compare_at: 33.00)
+    - Green / M: 39.00 (compare_at: 33.00)
+    - Green / L: 45.00 (compare_at: 33.00)
+    - Yellow / XS: 33.00 (compare_at: 33.00)
+    - Yellow / S: 35.00 (compare_at: 33.00)
+    - Yellow / M: 39.00 (compare_at: 33.00)
+    - Yellow / L: 45.00 (compare_at: 33.00)
+    - Beige / XS: 33.00 (compare_at: 33.00)
+    - Beige / S: 35.00 (compare_at: 33.00)
+    - Beige / M: 39.00 (compare_at: 33.00)
+    - Beige / L: 45.00 (compare_at: 33.00)
+    - Tan / XS: 33.00 (compare_at: 33.00)
+    - Tan / S: 35.00 (compare_at: 33.00)
+    - Tan / M: 39.00 (compare_at: 33.00)
+    - Tan / L: 45.00 (compare_at: 33.00)
+    - Bamboo / XS: 33.00 (compare_at: 33.00)
+    - Bamboo / S: 35.00 (compare_at: 33.00)
+    - Bamboo / M: 39.00 (compare_at: 33.00)
+    - Bamboo / L: 45.00 (compare_at: 33.00)
+    - White / XS: 33.00 (compare_at: 33.00)
+    - White / S: 35.00 (compare_at: 33.00)
+    - White / M: 39.00 (compare_at: 33.00)
+    - White / L: 45.00 (compare_at: 33.00)
+    - Dri Tec / XS: 33.00 (compare_at: 33.00)
+    - Dri Tec / S: 35.00 (compare_at: 33.00)
+    - Dri Tec / M: 39.00 (compare_at: 33.00)
+    - Dri Tec / L: 45.00 (compare_at: 33.00)
+- variants:
+  - Deep Blue Batik / L
+  - Deep Blue Batik / XS
+  - Deep Blue Batik / S
+  - Deep Blue Batik / M
+  - White Batik / XS
+  - White Batik / S
+  - White Batik / M
+  - White Batik / L
+  - Cotton / XS
+  - Cotton / S
+  - Cotton / M
+  - Cotton / L
+  - Cotton / XL
+  - Wool / XS
+  - Wool / S
+  - Wool / M
+  - Green / XS
+  - Green / S
+  - Green / M
+  - Green / L
+  - Yellow / XS
+  - Yellow / S
+  - Yellow / M
+  - Yellow / L
+  - Beige / XS
+  - Beige / S
+  - Beige / M
+  - Beige / L
+  - Tan / XS
+  - Tan / S
+  - Tan / M
+  - Tan / L
+  - Bamboo / XS
+  - Bamboo / S
+  - Bamboo / M
+  - Bamboo / L
+  - White / XS
+  - White / S
+  - White / M
+  - White / L
+  - Dri Tec / XS
+  - Dri Tec / S
+  - Dri Tec / M
+  - Dri Tec / L
+- SKUs:
+  - Deep Blue Batik / L: —
+  - Deep Blue Batik / XS: —
+  - Deep Blue Batik / S: —
+  - Deep Blue Batik / M: —
+  - White Batik / XS: XSCVRBTIKWHT
+  - White Batik / S: SCVRBTIKWHT
+  - White Batik / M: MCVRBTIKWHT
+  - White Batik / L: —
+  - Cotton / XS: XSCVRCWHT
+  - Cotton / S: SCVRCWHT
+  - Cotton / M: MCVRCWHT
+  - Cotton / L: LCVRCWHT
+  - Cotton / XL: XLCVRCWHT
+  - Wool / XS: —
+  - Wool / S: —
+  - Wool / M: —
+  - Green / XS: —
+  - Green / S: —
+  - Green / M: —
+  - Green / L: —
+  - Yellow / XS: —
+  - Yellow / S: —
+  - Yellow / M: —
+  - Yellow / L: —
+  - Beige / XS: —
+  - Beige / S: —
+  - Beige / M: —
+  - Beige / L: —
+  - Tan / XS: —
+  - Tan / S: —
+  - Tan / M: —
+  - Tan / L: —
+  - Bamboo / XS: —
+  - Bamboo / S: —
+  - Bamboo / M: —
+  - Bamboo / L: —
+  - White / XS: —
+  - White / S: —
+  - White / M: —
+  - White / L: —
+  - Dri Tec / XS: —
+  - Dri Tec / S: —
+  - Dri Tec / M: —
+  - Dri Tec / L: —
+- inventory:
+  - Deep Blue Batik / L: 0
+  - Deep Blue Batik / XS: 10
+  - Deep Blue Batik / S: 14
+  - Deep Blue Batik / M: -2
+  - White Batik / XS: 10
+  - White Batik / S: 15
+  - White Batik / M: 5
+  - White Batik / L: 0
+  - Cotton / XS: 320
+  - Cotton / S: 355
+  - Cotton / M: 75
+  - Cotton / L: 28
+  - Cotton / XL: 0
+  - Wool / XS: 0
+  - Wool / S: 0
+  - Wool / M: 0
+  - Green / XS: 0
+  - Green / S: 0
+  - Green / M: 0
+  - Green / L: 0
+  - Yellow / XS: 0
+  - Yellow / S: 0
+  - Yellow / M: 0
+  - Yellow / L: 0
+  - Beige / XS: 0
+  - Beige / S: 0
+  - Beige / M: 0
+  - Beige / L: 0
+  - Tan / XS: 0
+  - Tan / S: 0
+  - Tan / M: 0
+  - Tan / L: 0
+  - Bamboo / XS: 0
+  - Bamboo / S: 0
+  - Bamboo / M: 0
+  - Bamboo / L: 0
+  - White / XS: 0
+  - White / S: 0
+  - White / M: 0
+  - White / L: 0
+  - Dri Tec / XS: 0
+  - Dri Tec / S: 0
+  - Dri Tec / M: 0
+  - Dri Tec / L: 0
+
+### (Updated product / accessories)
+- product listing name: Cover Sheets
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - Deep Blue Batik / L: 45.00 (compare_at: 33.00)
+    - Deep Blue Batik / XS: 33.00 (compare_at: 33.00)
+    - Deep Blue Batik / S: 35.00 (compare_at: 33.00)
+    - Deep Blue Batik / M: 39.00 (compare_at: 33.00)
+    - White Batik / XS: 33.00 (compare_at: 33.00)
+    - White Batik / S: 35.00 (compare_at: 35.00)
+    - White Batik / M: 39.00 (compare_at: 39.00)
+    - White Batik / L: 45.00 (compare_at: 39.00)
+    - Cotton / XS: 33.00 (compare_at: 19.00)
+    - Cotton / S: 35.00 (compare_at: 20.00)
+    - Cotton / M: 39.00 (compare_at: 23.00)
+    - Cotton / L: 45.00 (compare_at: 25.00)
+    - Cotton / XL: 35.00 (compare_at: 28.00)
+    - Wool / XS: 45.00 (compare_at: 50.00)
+    - Wool / S: 48.00 (compare_at: 53.00)
+    - Wool / M: 54.00 (compare_at: 59.00)
+    - Green / XS: 33.00 (compare_at: 33.00)
+    - Green / S: 35.00 (compare_at: 33.00)
+    - Green / M: 39.00 (compare_at: 33.00)
+    - Green / L: 45.00 (compare_at: 33.00)
+    - Yellow / XS: 33.00 (compare_at: 33.00)
+    - Yellow / S: 35.00 (compare_at: 33.00)
+    - Yellow / M: 39.00 (compare_at: 33.00)
+    - Yellow / L: 45.00 (compare_at: 33.00)
+    - Beige / XS: 33.00 (compare_at: 33.00)
+    - Beige / S: 35.00 (compare_at: 33.00)
+    - Beige / M: 39.00 (compare_at: 33.00)
+    - Beige / L: 45.00 (compare_at: 33.00)
+    - Tan / XS: 33.00 (compare_at: 33.00)
+    - Tan / S: 35.00 (compare_at: 33.00)
+    - Tan / M: 39.00 (compare_at: 33.00)
+    - Tan / L: 45.00 (compare_at: 33.00)
+    - Bamboo / XS: 33.00 (compare_at: 33.00)
+    - Bamboo / S: 35.00 (compare_at: 33.00)
+    - Bamboo / M: 39.00 (compare_at: 33.00)
+    - Bamboo / L: 45.00 (compare_at: 33.00)
+    - White / XS: 33.00 (compare_at: 33.00)
+    - White / S: 35.00 (compare_at: 33.00)
+    - White / M: 39.00 (compare_at: 33.00)
+    - White / L: 45.00 (compare_at: 33.00)
+    - Dri Tec / XS: 33.00 (compare_at: 33.00)
+    - Dri Tec / S: 35.00 (compare_at: 33.00)
+    - Dri Tec / M: 39.00 (compare_at: 33.00)
+    - Dri Tec / L: 45.00 (compare_at: 33.00)
+- variants:
+  - Deep Blue Batik / L
+  - Deep Blue Batik / XS
+  - Deep Blue Batik / S
+  - Deep Blue Batik / M
+  - White Batik / XS
+  - White Batik / S
+  - White Batik / M
+  - White Batik / L
+  - Cotton / XS
+  - Cotton / S
+  - Cotton / M
+  - Cotton / L
+  - Cotton / XL
+  - Wool / XS
+  - Wool / S
+  - Wool / M
+  - Green / XS
+  - Green / S
+  - Green / M
+  - Green / L
+  - Yellow / XS
+  - Yellow / S
+  - Yellow / M
+  - Yellow / L
+  - Beige / XS
+  - Beige / S
+  - Beige / M
+  - Beige / L
+  - Tan / XS
+  - Tan / S
+  - Tan / M
+  - Tan / L
+  - Bamboo / XS
+  - Bamboo / S
+  - Bamboo / M
+  - Bamboo / L
+  - White / XS
+  - White / S
+  - White / M
+  - White / L
+  - Dri Tec / XS
+  - Dri Tec / S
+  - Dri Tec / M
+  - Dri Tec / L
+- SKUs:
+  - Deep Blue Batik / L: —
+  - Deep Blue Batik / XS: —
+  - Deep Blue Batik / S: —
+  - Deep Blue Batik / M: —
+  - White Batik / XS: XSCVRBTIKWHT
+  - White Batik / S: SCVRBTIKWHT
+  - White Batik / M: MCVRBTIKWHT
+  - White Batik / L: —
+  - Cotton / XS: XSCVRCWHT
+  - Cotton / S: SCVRCWHT
+  - Cotton / M: MCVRCWHT
+  - Cotton / L: LCVRCWHT
+  - Cotton / XL: XLCVRCWHT
+  - Wool / XS: —
+  - Wool / S: —
+  - Wool / M: —
+  - Green / XS: —
+  - Green / S: —
+  - Green / M: —
+  - Green / L: —
+  - Yellow / XS: —
+  - Yellow / S: —
+  - Yellow / M: —
+  - Yellow / L: —
+  - Beige / XS: —
+  - Beige / S: —
+  - Beige / M: —
+  - Beige / L: —
+  - Tan / XS: —
+  - Tan / S: —
+  - Tan / M: —
+  - Tan / L: —
+  - Bamboo / XS: —
+  - Bamboo / S: —
+  - Bamboo / M: —
+  - Bamboo / L: —
+  - White / XS: —
+  - White / S: —
+  - White / M: —
+  - White / L: —
+  - Dri Tec / XS: —
+  - Dri Tec / S: —
+  - Dri Tec / M: —
+  - Dri Tec / L: —
+- inventory:
+  - Deep Blue Batik / L: 0
+  - Deep Blue Batik / XS: 10
+  - Deep Blue Batik / S: 14
+  - Deep Blue Batik / M: -2
+  - White Batik / XS: 10
+  - White Batik / S: 15
+  - White Batik / M: 5
+  - White Batik / L: 0
+  - Cotton / XS: 320
+  - Cotton / S: 355
+  - Cotton / M: 75
+  - Cotton / L: 28
+  - Cotton / XL: 0
+  - Wool / XS: 0
+  - Wool / S: 0
+  - Wool / M: 0
+  - Green / XS: 0
+  - Green / S: 0
+  - Green / M: 0
+  - Green / L: 0
+  - Yellow / XS: 0
+  - Yellow / S: 0
+  - Yellow / M: 0
+  - Yellow / L: 0
+  - Beige / XS: 0
+  - Beige / S: 0
+  - Beige / M: 0
+  - Beige / L: 0
+  - Tan / XS: 0
+  - Tan / S: 0
+  - Tan / M: 0
+  - Tan / L: 0
+  - Bamboo / XS: 0
+  - Bamboo / S: 0
+  - Bamboo / M: 0
+  - Bamboo / L: 0
+  - White / XS: 0
+  - White / S: 0
+  - White / M: 0
+  - White / L: 0
+  - Dri Tec / XS: 0
+  - Dri Tec / S: 0
+  - Dri Tec / M: 0
+  - Dri Tec / L: 0
+
+## Customised Bolsters - Mbolster (ID 4544515866720) — `bolsters`
+
+### (Currrent product / accessories)
+- product listing name: Customised Bolsters - Mbolster
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - Size S (0.8m) / Bolster + Inner Protector: 113.00
+    - Size S (0.8m) / Camel Bolster Case: 27.00
+    - Size S (0.8m) / Inner Protector: 8.00
+    - Size M (1.0m) / Bolster + Inner Protector: 123.00
+    - Size M (1.0m) / Camel Bolster Case: 27.00
+    - Size M (1.0m) / Light Green Case: 27.00
+    - Size M (1.0m) / Light Blue Bolster Case: 27.00
+    - Size M (1.0m) / Inner Protector: 12.00
+    - Size L (1.2m) / Bolster + Inner Protector: 145.00
+    - Size L (1.2m) / Camel Bolster Case: 37.00
+    - Size L (1.2m) / Light Green Case: 37.00
+    - Size L (1.2m) / Light Blue Bolster Case: 37.00
+    - Size L (1.2m) / Inner Protector: 15.00
+- variants:
+  - Size S (0.8m) / Bolster + Inner Protector
+  - Size S (0.8m) / Camel Bolster Case
+  - Size S (0.8m) / Inner Protector
+  - Size M (1.0m) / Bolster + Inner Protector
+  - Size M (1.0m) / Camel Bolster Case
+  - Size M (1.0m) / Light Green Case
+  - Size M (1.0m) / Light Blue Bolster Case
+  - Size M (1.0m) / Inner Protector
+  - Size L (1.2m) / Bolster + Inner Protector
+  - Size L (1.2m) / Camel Bolster Case
+  - Size L (1.2m) / Light Green Case
+  - Size L (1.2m) / Light Blue Bolster Case
+  - Size L (1.2m) / Inner Protector
+- SKUs:
+  - Size S (0.8m) / Bolster + Inner Protector: —
+  - Size S (0.8m) / Camel Bolster Case: —
+  - Size S (0.8m) / Inner Protector: —
+  - Size M (1.0m) / Bolster + Inner Protector: —
+  - Size M (1.0m) / Camel Bolster Case: S6DBOL
+  - Size M (1.0m) / Light Green Case: —
+  - Size M (1.0m) / Light Blue Bolster Case: —
+  - Size M (1.0m) / Inner Protector: —
+  - Size L (1.2m) / Bolster + Inner Protector: —
+  - Size L (1.2m) / Camel Bolster Case: L6DBOL
+  - Size L (1.2m) / Light Green Case: —
+  - Size L (1.2m) / Light Blue Bolster Case: —
+  - Size L (1.2m) / Inner Protector: —
+- inventory:
+  - Size S (0.8m) / Bolster + Inner Protector: 29
+  - Size S (0.8m) / Camel Bolster Case: 30
+  - Size S (0.8m) / Inner Protector: 30
+  - Size M (1.0m) / Bolster + Inner Protector: 26
+  - Size M (1.0m) / Camel Bolster Case: 26
+  - Size M (1.0m) / Light Green Case: 27
+  - Size M (1.0m) / Light Blue Bolster Case: 27
+  - Size M (1.0m) / Inner Protector: 27
+  - Size L (1.2m) / Bolster + Inner Protector: 19
+  - Size L (1.2m) / Camel Bolster Case: 20
+  - Size L (1.2m) / Light Green Case: 23
+  - Size L (1.2m) / Light Blue Bolster Case: 22
+  - Size L (1.2m) / Inner Protector: 23
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Dry Bag (ID 7227390754994) — `translucent-waterproof-bag`
+
+### (Currrent product / accessories)
+- product listing name: Dry Bag
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - Small (20L): 15.00
+    - Large (35L): 18.00
+- variants:
+  - Small (20L)
+  - Large (35L)
+- SKUs:
+  - Small (20L): MP-WPB-S
+  - Large (35L): MP-WPB-L
+- inventory:
+  - Small (20L): 50
+  - Large (35L): 49
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Ear Comfort Pad (ID 6647316938930) — `ear-comfort-pad`
+
+### (Currrent product / accessories)
+- product listing name: Ear Comfort Pad
+- list price (MSRP): 60.00
+- variants:
+  - Default Title
+- SKUs:
+  - Default Title: MP-ECP
+- inventory:
+  - Default Title: 66
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## FibreCool Case (ID 4311770497120) — `fibrecool-case`
+
+### (Currrent product / accessories)
+- product listing name: FibreCool Case
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - XS: 78.00 (compare_at: 78.00)
+    - S: 86.00 (compare_at: 86.00)
+    - M: 92.00 (compare_at: 92.00)
+    - L: 101.00 (compare_at: 101.00)
+- variants:
+  - XS
+  - S
+  - M
+  - L
+- SKUs:
+  - XS: XSCSEFIBC
+  - S: SCSEFIBC
+  - M: MCSEFIBC
+  - L: LCSEFIBC
+- inventory:
+  - XS: 3
+  - S: 279
+  - M: 263
+  - L: 75
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Linen Case (ID 7593904341170) — `linen-case`
+
+### (Currrent product / accessories)
+- product listing name: Linen Case
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - XS / Natural White: 58.00 (compare_at: 58.00)
+    - XS / Deep Blue: 58.00 (compare_at: 58.00)
+    - S / Natural White: 64.00 (compare_at: 64.00)
+    - S / Deep Blue: 64.00 (compare_at: 64.00)
+    - M / Natural White: 67.00 (compare_at: 67.00)
+    - M / Deep Blue: 67.00 (compare_at: 67.00)
+    - L / Natural White: 74.00 (compare_at: 74.00)
+    - L / Deep Blue: 74.00 (compare_at: 74.00)
+    - XL / Natural White: 82.00 (compare_at: 82.00)
+- variants:
+  - XS / Natural White
+  - XS / Deep Blue
+  - S / Natural White
+  - S / Deep Blue
+  - M / Natural White
+  - M / Deep Blue
+  - L / Natural White
+  - L / Deep Blue
+  - XL / Natural White
+- SKUs:
+  - XS / Natural White: XSCSELIN
+  - XS / Deep Blue: XSCSELINDB
+  - S / Natural White: SCSELIN
+  - S / Deep Blue: SCSELINDVB
+  - M / Natural White: MCSELIN
+  - M / Deep Blue: MCSELINDB
+  - L / Natural White: LCSELIN
+  - L / Deep Blue: LCSELINDB
+  - XL / Natural White: XLCSELIN
+- inventory:
+  - XS / Natural White: -1
+  - XS / Deep Blue: 60
+  - S / Natural White: 18
+  - S / Deep Blue: 29
+  - M / Natural White: 54
+  - M / Deep Blue: 0
+  - L / Natural White: 117
+  - L / Deep Blue: 50
+  - XL / Natural White: 75
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Measurement and Readjustment Services (ID 8344003215538) — `services`
+
+### (Currrent product / accessories)
+- product listing name: Measurement and Readjustment Services
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - Re-adjustment Service: 20.00
+    - Measurement Service (Premium): 40.00
+    - Measurement Service (Basic): 20.00
+- variants:
+  - Re-adjustment Service
+  - Measurement Service (Premium)
+  - Measurement Service (Basic)
+- SKUs:
+  - Re-adjustment Service: —
+  - Measurement Service (Premium): —
+  - Measurement Service (Basic): —
+- inventory:
+  - Re-adjustment Service: 930
+  - Measurement Service (Premium): 607
+  - Measurement Service (Basic): 992
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Microfibre Filling Cushion (ID 4504025235552) — `3d-soft-fillings`
+
+### (Currrent product / accessories)
+- product listing name: Microfibre Filling Cushion
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - S / 3D: 10.00
+    - S / S+ / 6D: 10.00
+    - M / 6D: 12.00
+    - L / L+ / 6D: 14.00
+    - Long / 6D: 14.00
+    - XL / 6D: 22.00
+- variants:
+  - S / 3D
+  - S / S+ / 6D
+  - M / 6D
+  - L / L+ / 6D
+  - Long / 6D
+  - XL / 6D
+- SKUs:
+  - S / 3D: S3DMFFIL
+  - S / S+ / 6D: L6DMFFIL
+  - M / 6D: —
+  - L / L+ / 6D: —
+  - Long / 6D: —
+  - XL / 6D: —
+- inventory:
+  - S / 3D: 322
+  - S / S+ / 6D: 480
+  - M / 6D: 0
+  - L / L+ / 6D: 0
+  - Long / 6D: 0
+  - XL / 6D: 0
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Mpillow Gift Voucher (ID 8267918704818) — `mpillow-gift-voucher`
+
+### (Currrent product / accessories)
+- product listing name: Mpillow Gift Voucher
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - $100: 100.00
+    - $200: 200.00
+- variants:
+  - $100
+  - $200
+- SKUs:
+  - $100: —
+  - $200: —
+- inventory:
+  - $100: 9
+  - $200: 3
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Premium Mpillow To Relieve Neck Pain (ID 4181995913312) — `cooling-fibre-mpillow-ergonomic-pillow-for-shoulder-neck-pain`
+
+### (Currrent product / accessories)
+- product listing name: Premium Mpillow To Relieve Neck Pain
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - XS / Natural White Linen: 300.00
+    - XS / Deep Blue Linen: 300.00
+    - XS / Fibrecool White: 330.00
+    - S / Natural White Linen: 320.00
+    - S / Deep Blue Linen: 320.00
+    - S / Fibrecool White: 360.00
+    - M / Natural White Linen: 360.00
+    - M / Deep Blue Linen: 360.00
+    - M / Fibrecool White: 400.00
+    - L / Natural White Linen: 420.00
+    - L / Deep Blue Linen: 420.00
+    - L / Fibrecool White: 480.00
+    - XL / Natural White Linen: 470.00
+    - XL / Deep Blue Linen: 470.00
+    - XL / Fibrecool White: 600.00
+- variants:
+  - XS / Natural White Linen
+  - XS / Deep Blue Linen
+  - XS / Fibrecool White
+  - S / Natural White Linen
+  - S / Deep Blue Linen
+  - S / Fibrecool White
+  - M / Natural White Linen
+  - M / Deep Blue Linen
+  - M / Fibrecool White
+  - L / Natural White Linen
+  - L / Deep Blue Linen
+  - L / Fibrecool White
+  - XL / Natural White Linen
+  - XL / Deep Blue Linen
+  - XL / Fibrecool White
+- SKUs:
+  - XS / Natural White Linen: XSMPFIBC
+  - XS / Deep Blue Linen: —
+  - XS / Fibrecool White: —
+  - S / Natural White Linen: SMPFIBC
+  - S / Deep Blue Linen: —
+  - S / Fibrecool White: —
+  - M / Natural White Linen: MMPFIBC
+  - M / Deep Blue Linen: —
+  - M / Fibrecool White: —
+  - L / Natural White Linen: LMPFIBC
+  - L / Deep Blue Linen: —
+  - L / Fibrecool White: —
+  - XL / Natural White Linen: —
+  - XL / Deep Blue Linen: —
+  - XL / Fibrecool White: —
+- inventory:
+  - XS / Natural White Linen: 45
+  - XS / Deep Blue Linen: 46
+  - XS / Fibrecool White: 46
+  - S / Natural White Linen: 31
+  - S / Deep Blue Linen: 32
+  - S / Fibrecool White: 31
+  - M / Natural White Linen: 42
+  - M / Deep Blue Linen: 46
+  - M / Fibrecool White: 43
+  - L / Natural White Linen: 33
+  - L / Deep Blue Linen: 32
+  - L / Fibrecool White: 32
+  - XL / Natural White Linen: 46
+  - XL / Deep Blue Linen: 46
+  - XL / Fibrecool White: 0
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
+
+## Waterproof Inner Protector (ID 4504059609184) — `terrywaterproof-inner-protector`
+
+### (Currrent product / accessories)
+- product listing name: Waterproof Inner Protector
+- list price (MSRP): Varies by variant (see below)
+  - per-variant prices:
+    - XS: 55.00 (compare_at: 55.00)
+    - S: 58.00 (compare_at: 58.00)
+    - M: 62.00 (compare_at: 62.00)
+    - L: 69.00 (compare_at: 69.00)
+    - XL: 75.00 (compare_at: 75.00)
+- variants:
+  - XS
+  - S
+  - M
+  - L
+  - XL
+- SKUs:
+  - XS: XSWPROT
+  - S: SWPROT
+  - M: MWPROT
+  - L: LWPROT
+  - XL: XLWPROT
+- inventory:
+  - XS: 318
+  - S: 571
+  - M: 233
+  - L: 169
+  - XL: 79
+
+### (Updated product / accessories)
+- product listing name:
+- list price (MSRP):
+- variants:
+- SKUs:
+- inventory:
