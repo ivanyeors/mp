@@ -80,4 +80,21 @@ export async function shopifySetInventoryLevel(args: {
   })
 }
 
+export async function shopifyUpdateVariant(args: {
+  variantId: string
+  price?: string | null
+  compareAtPrice?: string | null
+  sku?: string | null
+}): Promise<void> {
+  const patch: Record<string, unknown> = { id: Number(args.variantId) }
+  if (args.price !== undefined) patch.price = args.price
+  if (args.compareAtPrice !== undefined) patch.compare_at_price = args.compareAtPrice
+  if (args.sku !== undefined) patch.sku = args.sku
+
+  await shopifyFetch(`/variants/${args.variantId}.json`, {
+    method: 'PUT',
+    body: JSON.stringify({ variant: patch }),
+  })
+}
+
 

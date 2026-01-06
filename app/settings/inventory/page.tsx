@@ -23,6 +23,7 @@ import {
   addInventoryItem,
   deleteInventoryItem,
   renameInventoryItem,
+  fullShopifySync,
 } from "./actions";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -130,6 +131,7 @@ export default function InventoryPage() {
   const [customPillowLines, setCustomPillowLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [customBolsterLines, setCustomBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
+  const [syncingShopify, setSyncingShopify] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -889,6 +891,27 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         <h1 className="text-2xl font-semibold">Inventory</h1>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={load}>Refresh</Button>
+          <Button
+            variant="outline"
+            disabled={syncingShopify}
+            onClick={async () => {
+              if (syncingShopify) return;
+              setSyncingShopify(true);
+              try {
+                const res = await fullShopifySync();
+                if (!res?.ok) throw new Error('Sync failed');
+                const invUpdated = (res.inventory as { updated?: number } | undefined)?.updated ?? 0;
+                const priceUpdated = (res.prices as { updated?: number } | undefined)?.updated ?? 0;
+                toast.success(`Shopify synced (inventory ${invUpdated}, prices ${priceUpdated})`);
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : 'Shopify sync failed');
+              } finally {
+                setSyncingShopify(false);
+              }
+            }}
+          >
+            {syncingShopify ? "Syncing Shopify…" : "Sync Shopify"}
+          </Button>
           <Button onClick={() => setAddDrawerOpen(true)} aria-label="Add inventory item">
             Add inventory
           </Button>

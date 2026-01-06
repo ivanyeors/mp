@@ -159,7 +159,7 @@ function uniq(arr) {
   return Array.from(new Set(arr))
 }
 
-function productToMarkdown(product) {
+function buildCurrentSection(product) {
   const title = product?.title ?? '(Untitled)'
   const handle = product?.handle ?? null
   const pid = product?.id ?? null
@@ -182,10 +182,24 @@ function productToMarkdown(product) {
   const msrpSummary =
     prices.length === 0 ? '—' : prices.length === 1 ? `${prices[0]}` : 'Varies by variant (see below)'
 
-  const variantTitles = variantLines.map((v) => v.vTitle || [v.option1, v.option2, v.option3].filter(Boolean).join(' / ') || String(v.vid)).filter(Boolean)
+  const variantTitles = variantLines
+    .map((v) => {
+      const label = v.vTitle || [v.option1, v.option2, v.option3].filter(Boolean).join(' / ') || (v.vid ? String(v.vid) : 'Variant')
+      const idSuffix = v.vid ? ` (variantId ${v.vid})` : ''
+      return `${label}${idSuffix}`
+    })
+    .filter(Boolean)
 
-  const skus = variantLines.map((v) => (v.sku ? `${v.vTitle || v.vid}: ${v.sku}` : `${v.vTitle || v.vid}: —`))
-  const inv = variantLines.map((v) => `${v.vTitle || v.vid}: ${Number.isFinite(v.inventory) ? v.inventory : '—'}`)
+  const skus = variantLines.map((v) => {
+    const label = v.vTitle || (v.vid ? String(v.vid) : 'Variant')
+    const idSuffix = v.vid ? ` (variantId ${v.vid})` : ''
+    return v.sku ? `${label}${idSuffix}: ${v.sku}` : `${label}${idSuffix}: —`
+  })
+  const inv = variantLines.map((v) => {
+    const label = v.vTitle || (v.vid ? String(v.vid) : 'Variant')
+    const idSuffix = v.vid ? ` (variantId ${v.vid})` : ''
+    return `${label}${idSuffix}: ${Number.isFinite(v.inventory) ? v.inventory : '—'}`
+  })
 
   const priceByVariant =
     prices.length <= 1
@@ -193,14 +207,12 @@ function productToMarkdown(product) {
       : variantLines.map((v) => {
           const p = v.price ?? '—'
           const c = v.compareAt ? ` (compare_at: ${v.compareAt})` : ''
-          return `${v.vTitle || v.vid}: ${p}${c}`
+          const label = v.vTitle || (v.vid ? String(v.vid) : 'Variant')
+          const idSuffix = v.vid ? ` (variantId ${v.vid})` : ''
+          return `${label}${idSuffix}: ${p}${c}`
         })
 
-  const header = `## ${title}${pid ? ` (ID ${pid})` : ''}${handle ? ` — \`${handle}\`` : ''}`
-
   return [
-    header,
-    '',
     '### (Currrent product / accessories)',
     `- product listing name: ${title}`,
     `- list price (MSRP): ${msrpSummary}`,
@@ -212,8 +224,14 @@ function productToMarkdown(product) {
     '- inventory:',
     ...(inv.length ? inv.map((s) => `  - ${s}`) : ['  - —']),
     '',
+  ].join('\n')
+}
+
+function buildUpdatedPlaceholderSection(product) {
+  const title = product?.title ?? '(Untitled)'
+  return [
     '### (Updated product / accessories)',
-    '- product listing name:',
+    `- product listing name: ${title}`,
     '- list price (MSRP):',
     '- variants:',
     '- SKUs:',
@@ -222,10 +240,48 @@ function productToMarkdown(product) {
   ].join('\n')
 }
 
+function buildProductHeader(product) {
+  const title = product?.title ?? '(Untitled)'
+  const handle = product?.handle ?? null
+  const pid = product?.id ?? null
+  return `## ${title}${pid ? ` (ID ${pid})` : ''}${handle ? ` — \`${handle}\`` : ''}`
+}
+
+function keyForProduct(product) {
+  const handle = product?.handle ? String(product.handle) : ''
+  if (handle) return `handle:${handle.toLowerCase()}`
+  const pid = product?.id ? String(product.id) : ''
+  return pid ? `id:${pid}` : `title:${String(product?.title ?? '').toLowerCase()}`
+}
+
+function extractUpdatedSectionsByProduct(markdown) {
+  const text = String(markdown || '')
+  const blocks = text.split(/\n(?=##\s)/g)
+  const map = new Map()
+  for (const block of blocks) {
+    const headerLine = block.split('\n')[0] ?? ''
+    if (!headerLine.startsWith('## ')) continue
+    const handleMatch = headerLine.match(/—\s*`([^`]+)`\s*$/)
+    const idMatch = headerLine.match(/\(ID\s+(\d+)\)/)
+    const key = handleMatch?.[1]
+      ? `handle:${String(handleMatch[1]).toLowerCase()}`
+      : idMatch?.[1]
+        ? `id:${String(idMatch[1])}`
+        : `title:${headerLine.replace(/^##\s*/, '').toLowerCase()}`
+
+    const idx = block.indexOf('### (Updated product / accessories)')
+    if (idx >= 0) {
+      map.set(key, block.slice(idx).trimEnd() + '\n')
+    }
+  }
+  return map
+}
+
 async function main() {
   const args = process.argv.slice(2)
   const outIdx = args.indexOf('--out')
   const outPath = outIdx >= 0 ? args[outIdx + 1] : 'info/GET-from-shopify.md'
+  const merge = args.includes('--merge')
 
   const locationId = await getPrimaryLocationId()
   const products = await listAllActiveProducts()
@@ -250,22 +306,39 @@ async function main() {
   }
 
   const lines = []
+  const abs = path.isAbsolute(outPath) ? outPath : path.join(process.cwd(), outPath)
+  let updatedByProductKey = new Map()
+  if (merge) {
+    try {
+      const existing = await fs.readFile(abs, 'utf8')
+      updatedByProductKey = extractUpdatedSectionsByProduct(existing)
+    } catch {
+      // no existing file; fall back to overwrite behavior
+      updatedByProductKey = new Map()
+    }
+  }
+
   lines.push('# Shopify export (active products)')
   lines.push('')
   lines.push(`- Generated at: ${new Date().toISOString()}`)
   lines.push(`- Location ID used for inventory: ${locationId}`)
   lines.push('')
   lines.push('> Note: Prices shown are whatever is currently set in Shopify for each variant. Inventory is `available` at the chosen location.')
+  lines.push('> IDs: `(ID …)` in the header is the **Shopify product ID**; each variant line includes `(variantId …)`.')
   lines.push('')
 
   // Stable sort for readability
   const sorted = [...products].sort((a, b) => String(a?.title ?? '').localeCompare(String(b?.title ?? '')))
   for (const p of sorted) {
-    lines.push(productToMarkdown(p))
+    const header = buildProductHeader(p)
+    const currentSection = buildCurrentSection(p)
+    const key = keyForProduct(p)
+    const updatedSection = updatedByProductKey.get(key) ?? buildUpdatedPlaceholderSection(p)
+
+    lines.push([header, '', currentSection, updatedSection.trimEnd(), '',].join('\n'))
   }
 
   const final = lines.join('\n')
-  const abs = path.isAbsolute(outPath) ? outPath : path.join(process.cwd(), outPath)
   await fs.mkdir(path.dirname(abs), { recursive: true })
   await fs.writeFile(abs, final, 'utf8')
   process.stdout.write(`Wrote ${sorted.length} products to ${abs}\n`)
@@ -275,6 +348,8 @@ main().catch((err) => {
   console.error(err?.stack || String(err))
   process.exitCode = 1
 })
+
+
 
 
 

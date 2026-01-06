@@ -3,6 +3,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
+import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({ itemId: z.number().int().positive(), quantity: z.number().int().positive() })
@@ -392,4 +393,12 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
   }
 
   return { ok: true, item }
+}
+
+export async function fullShopifySync() {
+  const [inventory, prices] = await Promise.all([
+    syncShopifyInventoryFromBuildable(),
+    syncShopifyPricingFromSupabase(),
+  ])
+  return { ok: true, inventory, prices }
 }
