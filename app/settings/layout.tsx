@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp } from "lucide-react";
+import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarProvider,
@@ -37,6 +37,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "General", tooltip: "General Settings", Icon: Settings2 },
   { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes },
+  { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store },
   { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
   { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
   { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },

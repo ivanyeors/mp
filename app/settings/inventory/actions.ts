@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
+import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({ itemId: z.number().int().positive(), quantity: z.number().int().positive() })
@@ -68,6 +69,24 @@ const AddItemSchema = z.object({
       path: ['size'],
     })
   }
+})
+
+const ShopifyVariantIdSchema = z.union([z.string(), z.number()]).transform((v) => {
+  const n = typeof v === 'number' ? v : Number.parseInt(String(v).trim(), 10)
+  if (!Number.isFinite(n) || n <= 0) throw new Error('Invalid Shopify variant ID')
+  return n
+})
+
+const UpsertShopifyOverrideSchema = z.object({
+  shopifyVariantId: ShopifyVariantIdSchema,
+  sku: z.string().trim().max(120).nullable().optional(),
+  price: z.number().min(0).nullable().optional(),
+  compareAtPrice: z.number().min(0).nullable().optional(),
+})
+
+const LinkPartMappingSchema = z.object({
+  shopifyVariantId: ShopifyVariantIdSchema,
+  itemId: z.number().int().positive(),
 })
 
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
@@ -401,4 +420,142 @@ export async function fullShopifySync() {
     syncShopifyPricingFromSupabase(),
   ])
   return { ok: true, inventory, prices }
+}
+
+export async function listShopifyAdminState() {
+  const admin = supabaseAdmin()
+  const [{ data: mappings, error: mErr }, { data: overrides, error: oErr }, { data: items, error: iErr }, activeProducts] =
+    await Promise.all([
+      admin
+        .from('shopify_variant_mappings')
+        .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,notes,updated_at')
+        .order('kind', { ascending: true }),
+      admin
+        .from('shopify_variant_overrides')
+        .select('shopify_variant_id,sku,price,compare_at_price,currency,updated_at'),
+      admin.from('items').select('id,category,name,size,subtype').eq('is_active', true),
+      // Used to filter to "active SKUs only" in UI.
+      // If env vars are missing in a local shell, we fall back to showing all mappings.
+      shopifyListActiveProductsWithVariants({ limit: 250 }).catch(() => []),
+    ])
+
+  if (mErr) throw new Error(mErr.message)
+  if (oErr) throw new Error(oErr.message)
+  if (iErr) throw new Error(iErr.message)
+
+  const itemById = new Map<number, { id: number; category: string; name: string; size: string | null; subtype: string | null }>()
+  ;(items ?? []).forEach((it: { id: number; category: string; name: string; size: string | null; subtype: string | null }) => {
+    itemById.set(Number(it.id), { ...it, id: Number(it.id) })
+  })
+
+  const overrideByVariantId = new Map<number, { sku: string | null; price: string | number | null; compare_at_price: string | number | null; currency: string | null }>()
+  ;(overrides ?? []).forEach((o: { shopify_variant_id: number | string; sku: string | null; price: string | number | null; compare_at_price: string | number | null; currency: string | null }) => {
+    overrideByVariantId.set(Number(o.shopify_variant_id), {
+      sku: o.sku ?? null,
+      price: o.price ?? null,
+      compare_at_price: o.compare_at_price ?? null,
+      currency: o.currency ?? null,
+    })
+  })
+
+  const activeVariantIds = new Set<string>()
+  const variantNameById = new Map<number, string>()
+  for (const p of (activeProducts ?? []) as Array<{ title?: string; variants?: Array<{ id: number; title?: string }> }>) {
+    const productTitle = String(p.title ?? '').trim()
+    for (const v of p.variants ?? []) {
+      const id = Number(v.id)
+      activeVariantIds.add(String(id))
+      const variantTitle = String(v.title ?? '').trim()
+      const full = productTitle
+        ? (variantTitle && variantTitle !== 'Default Title' ? `${productTitle} — ${variantTitle}` : productTitle)
+        : (variantTitle || `Variant ${id}`)
+      variantNameById.set(id, full)
+    }
+  }
+
+  const rows = (mappings ?? [])
+    .map((m: {
+    shopify_variant_id: number | string
+    kind: 'pillow' | 'bolster' | 'part'
+    pillow_size: string | null
+    pillow_kind: string | null
+    bolster_variant: string | null
+    item_id: number | string | null
+    notes: string | null
+    updated_at: string
+  }) => {
+    const variantId = Number(m.shopify_variant_id)
+    const itemId = m.item_id === null ? null : Number(m.item_id)
+    return {
+      shopifyVariantId: variantId,
+      shopifyVariantName: variantNameById.get(variantId) ?? null,
+      isActiveInShopify: activeVariantIds.size ? activeVariantIds.has(String(variantId)) : true,
+      kind: m.kind,
+      pillowSize: m.pillow_size,
+      pillowKind: m.pillow_kind,
+      bolsterVariant: m.bolster_variant,
+      item: itemId ? (itemById.get(itemId) ?? null) : null,
+      notes: m.notes ?? null,
+      override: overrideByVariantId.get(variantId) ?? null,
+    }
+  })
+    // Default behavior: active variants only (user asked for this).
+    .filter((r: { isActiveInShopify: boolean }) => r.isActiveInShopify)
+
+  return { ok: true, rows }
+}
+
+export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertShopifyOverrideSchema>) {
+  const parsed = UpsertShopifyOverrideSchema.parse(input)
+  const admin = supabaseAdmin()
+
+  const toMoney = (v: number | null | undefined) => {
+    if (v === undefined) return undefined
+    if (v === null) return null
+    return v.toFixed(2)
+  }
+
+  const payload: Record<string, unknown> = {
+    shopify_variant_id: parsed.shopifyVariantId,
+  }
+  if (parsed.sku !== undefined) payload.sku = parsed.sku
+  if (parsed.price !== undefined) payload.price = toMoney(parsed.price)
+  if (parsed.compareAtPrice !== undefined) payload.compare_at_price = toMoney(parsed.compareAtPrice)
+  payload.currency = 'SGD'
+
+  const { error } = await admin.from('shopify_variant_overrides').upsert(payload, { onConflict: 'shopify_variant_id' })
+  if (error) throw new Error(error.message)
+  return { ok: true }
+}
+
+export async function deleteShopifyVariantOverride(shopifyVariantId: number) {
+  const id = ShopifyVariantIdSchema.parse(shopifyVariantId)
+  const admin = supabaseAdmin()
+  const { error } = await admin.from('shopify_variant_overrides').delete().eq('shopify_variant_id', id)
+  if (error) throw new Error(error.message)
+  return { ok: true }
+}
+
+export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMappingSchema>) {
+  const parsed = LinkPartMappingSchema.parse(input)
+  const admin = supabaseAdmin()
+  const payload = {
+    shopify_variant_id: parsed.shopifyVariantId,
+    kind: 'part' as const,
+    pillow_size: null,
+    pillow_kind: null,
+    bolster_variant: null,
+    item_id: parsed.itemId,
+  }
+  const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
+  if (error) throw new Error(error.message)
+  return { ok: true }
+}
+
+export async function deleteShopifyMapping(shopifyVariantId: number) {
+  const id = ShopifyVariantIdSchema.parse(shopifyVariantId)
+  const admin = supabaseAdmin()
+  const { error } = await admin.from('shopify_variant_mappings').delete().eq('shopify_variant_id', id)
+  if (error) throw new Error(error.message)
+  return { ok: true }
 }

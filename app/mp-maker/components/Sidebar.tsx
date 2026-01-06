@@ -83,6 +83,18 @@ export default function MpMakerSidebar() {
                 value={neckLength}
                 onChange={setNeckLength}
               />
+
+              <SidebarSeparator className="mx-0 mt-3" />
+              <SidebarMenu className="p-0">
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip="Inventory → Shopify Admin">
+                    <a href="/settings/inventory/shopify">
+                      <Settings />
+                      <span>Inventory · Shopify Admin</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
             </div>
 
             {/* Minimized single-gear icon to expand */}

@@ -55,7 +55,12 @@ function detectPremiumVariantFromTitle(title: string | null): 'linen' | 'fibreco
   return 'linen'
 }
 
-export async function syncShopifyPricingFromSupabase(): Promise<{ updated: number; skipped: number }> {
+export async function syncShopifyPricingFromSupabase(): Promise<{
+  updated: number
+  skipped: number
+  skipped_not_found: number
+  skipped_inactive: number
+}> {
   const admin = supabaseAdmin()
 
   const [
@@ -106,13 +111,22 @@ export async function syncShopifyPricingFromSupabase(): Promise<{ updated: numbe
       shopifyVariantTitleById.set(String(v.id), String(v.title ?? ''))
     }
   }
+  const activeVariantIds = new Set<string>(Array.from(shopifyVariantTitleById.keys()))
 
   let updated = 0
   let skipped = 0
+  let skipped_not_found = 0
+  let skipped_inactive = 0
 
   for (const m of (mappings ?? []) as unknown as MappingRow[]) {
     const variantId = String(m.shopify_variant_id)
     const ov = overrideByVariantId.get(variantId) ?? null
+
+    // User preference: manage only active Shopify SKUs.
+    if (activeVariantIds.size && !activeVariantIds.has(variantId)) {
+      skipped_inactive += 1
+      continue
+    }
 
     // Compute desired price if not overridden.
     let desiredPrice: string | null | undefined = undefined
@@ -120,7 +134,8 @@ export async function syncShopifyPricingFromSupabase(): Promise<{ updated: numbe
     let desiredSku: string | null | undefined = undefined
 
     if (ov) {
-      if (ov.price !== undefined) desiredPrice = toMoneyString(ov.price)
+      // price cannot be cleared on Shopify; treat null as "no override"
+      if (ov.price !== undefined && ov.price !== null) desiredPrice = toMoneyString(ov.price)
       if (ov.compare_at_price !== undefined) desiredCompareAt = toMoneyString(ov.compare_at_price)
       if (ov.sku !== undefined) desiredSku = ov.sku ? String(ov.sku) : null
     }
@@ -151,7 +166,7 @@ export async function syncShopifyPricingFromSupabase(): Promise<{ updated: numbe
     }
 
     const patch: { price?: string | null; compareAtPrice?: string | null; sku?: string | null } = {}
-    if (desiredPrice !== undefined) patch.price = desiredPrice
+    if (desiredPrice !== undefined && desiredPrice !== null) patch.price = desiredPrice
     if (desiredCompareAt !== undefined) patch.compareAtPrice = desiredCompareAt
     if (desiredSku !== undefined) patch.sku = desiredSku
 
@@ -160,13 +175,23 @@ export async function syncShopifyPricingFromSupabase(): Promise<{ updated: numbe
       continue
     }
 
-    // Shopify REST rate limit: keep this under ~2 req/sec to avoid 429.
-    await sleep(650)
-    await shopifyUpdateVariant({ variantId, ...patch })
-    updated += 1
+    try {
+      // Shopify REST rate limit: keep this under ~2 req/sec to avoid 429.
+      await sleep(650)
+      await shopifyUpdateVariant({ variantId, ...patch })
+      updated += 1
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('Shopify API 404')) {
+        skipped_not_found += 1
+        console.warn('[shopify-prices] skipping missing variant', { variantId, kind: m.kind })
+        continue
+      }
+      throw e
+    }
   }
 
-  return { updated, skipped }
+  return { updated, skipped, skipped_not_found, skipped_inactive }
 }
 
 

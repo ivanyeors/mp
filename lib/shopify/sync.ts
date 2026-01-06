@@ -15,7 +15,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: number }> {
+export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: number; skipped_not_found: number; skipped_inactive: number }> {
   const admin = supabaseAdmin()
 
   const [{ data: mappings }, { data: pillowBuildableRows }, { data: balancesRows }, { data: bolsterBomRows }, activeProducts] = await Promise.all([
@@ -65,19 +65,29 @@ export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: nu
 
   const locationId = await shopifyGetPrimaryLocationId()
   const inventoryItemIdCache = new Map<string, string>()
+  const activeVariantIds = new Set<string>()
 
   // Prefetch variant_id -> inventory_item_id from active products to reduce API calls.
   for (const p of activeProducts ?? []) {
     for (const v of p.variants ?? []) {
       const vid = v.id
       const iid = (v as { inventory_item_id?: number }).inventory_item_id
+      if (vid) activeVariantIds.add(String(vid))
       if (vid && iid) inventoryItemIdCache.set(String(vid), String(iid))
     }
   }
 
   let updated = 0
+  let skipped_not_found = 0
+  let skipped_inactive = 0
   for (const m of (mappings ?? []) as unknown as MappingRow[]) {
     const variantId = String(m.shopify_variant_id)
+
+    // User preference: manage only active Shopify SKUs.
+    if (activeVariantIds.size && !activeVariantIds.has(variantId)) {
+      skipped_inactive += 1
+      continue
+    }
 
     let available = 0
     if (m.kind === 'pillow' && m.pillow_size) {
@@ -87,19 +97,39 @@ export async function syncShopifyInventoryFromBuildable(): Promise<{ updated: nu
     else if (m.kind === 'bolster' && m.bolster_variant) available = bolsterBuildable[m.bolster_variant] ?? 0
     else if (m.kind === 'part' && m.item_id) available = balances[m.item_id] ?? 0
 
-    let inventoryItemId = inventoryItemIdCache.get(variantId)
-    if (!inventoryItemId) {
-      inventoryItemId = await shopifyGetVariantInventoryItemId(variantId)
-      inventoryItemIdCache.set(variantId, inventoryItemId)
-    }
+    try {
+      let inventoryItemId = inventoryItemIdCache.get(variantId)
+      if (!inventoryItemId) {
+        // If it's not in active product list, it's more likely to 404; still try once.
+        inventoryItemId = await shopifyGetVariantInventoryItemId(variantId)
+        inventoryItemIdCache.set(variantId, inventoryItemId)
+      }
 
-    // Shopify REST rate limit: keep this under ~2 req/sec to avoid 429.
-    await sleep(650)
-    await shopifySetInventoryLevel({ locationId, inventoryItemId, available })
-    updated += 1
+      // Shopify REST rate limit: keep this under ~2 req/sec to avoid 429.
+      await sleep(650)
+      await shopifySetInventoryLevel({ locationId, inventoryItemId, available })
+      updated += 1
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      if (msg.includes('Shopify API 404')) {
+        skipped_not_found += 1
+        // Helpful breadcrumb in server logs for cleanup
+        console.warn('[shopify-sync] skipping missing variant', {
+          variantId,
+          kind: m.kind,
+          pillow_size: m.pillow_size,
+          pillow_kind: m.pillow_kind,
+          bolster_variant: m.bolster_variant,
+          item_id: m.item_id,
+          inActiveList: activeVariantIds.has(variantId),
+        })
+        continue
+      }
+      throw e
+    }
   }
 
-  return { updated }
+  return { updated, skipped_not_found, skipped_inactive }
 }
 
 
