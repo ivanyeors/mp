@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Item = {
@@ -137,6 +139,7 @@ export default function ConfigureInventoryPage() {
   const [bomByKind, setBomByKind] = useState<BomByKind>(() => makeEmptyBomByKind());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingTemplate, setDeletingTemplate] = useState(false);
   const [open, setOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<Product["size"] | null>(null);
   const [selectedPillowKind, setSelectedPillowKind] = useState<PillowKind | null>(null);
@@ -152,6 +155,22 @@ export default function ConfigureInventoryPage() {
   const [bolsterSelectedTemplateId, setBolsterSelectedTemplateId] = useState<number | ''>('');
   const [bolsterTemplateName, setBolsterTemplateName] = useState('');
   const [bolsterTemplateNotes, setBolsterTemplateNotes] = useState('');
+  const [pillowDeleteOpen, setPillowDeleteOpen] = useState(false);
+  const [bolsterDeleteOpen, setBolsterDeleteOpen] = useState(false);
+
+  const getBolsterTemplateKey = useCallback((variant: NonNullable<typeof bolsterVariant>) => {
+    return variant === 'Short (0.8m)' ? 'short' : variant === 'Long (1.2m)' ? 'long' : 'medium';
+  }, []);
+
+  const pillowSelectedTemplate = useMemo(() => {
+    if (pillowSelectedTemplateId === '') return null;
+    return pillowTemplates.find((t) => t.id === pillowSelectedTemplateId) ?? null;
+  }, [pillowTemplates, pillowSelectedTemplateId]);
+
+  const bolsterSelectedTemplate = useMemo(() => {
+    if (bolsterSelectedTemplateId === '') return null;
+    return bolsterTemplates.find((t) => t.id === bolsterSelectedTemplateId) ?? null;
+  }, [bolsterTemplates, bolsterSelectedTemplateId]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -270,7 +289,7 @@ export default function ConfigureInventoryPage() {
   useEffect(() => {
     const load = async () => {
       if (!bolsterOpen || !bolsterVariant) return;
-      const key = bolsterVariant === 'Short (0.8m)' ? 'short' : bolsterVariant === 'Long (1.2m)' ? 'long' : 'medium';
+      const key = getBolsterTemplateKey(bolsterVariant);
       try {
         const list = await loadTemplates('bolster', key);
         setBolsterTemplates(list);
@@ -279,7 +298,7 @@ export default function ConfigureInventoryPage() {
       }
     };
     load();
-  }, [bolsterOpen, bolsterVariant]);
+  }, [bolsterOpen, bolsterVariant, getBolsterTemplateKey]);
 
   // removed unused itemsBy
 
@@ -346,6 +365,64 @@ export default function ConfigureInventoryPage() {
     type LineRow = { item_id: number | string; quantity: number | string }
     return ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }))
   }
+
+  const deleteTemplateById = async (templateId: number) => {
+    const res = await fetch('/settings/inventory/configure/templates', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ templateId }),
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(payload?.error ?? 'Failed to delete template');
+  };
+
+  const confirmDeletePillowTemplate = async () => {
+    if (pillowSelectedTemplateId === '') return;
+    if (!selectedSize || !selectedPillowKind) {
+      toast.error('Select a pillow size/kind first');
+      return;
+    }
+    setDeletingTemplate(true);
+    try {
+      await deleteTemplateById(pillowSelectedTemplateId);
+      const list = await loadTemplates(
+        'pillow',
+        selectedSize,
+        selectedPillowKind,
+        selectedPillowKind === 'premium' ? premiumVariant : undefined,
+      );
+      setPillowTemplates(list);
+      setPillowSelectedTemplateId('');
+      setPillowDeleteOpen(false);
+      toast.success('Template deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete template');
+    } finally {
+      setDeletingTemplate(false);
+    }
+  };
+
+  const confirmDeleteBolsterTemplate = async () => {
+    if (bolsterSelectedTemplateId === '') return;
+    if (!bolsterVariant) {
+      toast.error('Select a bolster variant first');
+      return;
+    }
+    setDeletingTemplate(true);
+    try {
+      await deleteTemplateById(bolsterSelectedTemplateId);
+      const key = getBolsterTemplateKey(bolsterVariant);
+      const list = await loadTemplates('bolster', key);
+      setBolsterTemplates(list);
+      setBolsterSelectedTemplateId('');
+      setBolsterDeleteOpen(false);
+      toast.success('Template deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete template');
+    } finally {
+      setDeletingTemplate(false);
+    }
+  };
 
   const save = async () => {
     if (products.length === 0) {
@@ -618,6 +695,16 @@ export default function ConfigureInventoryPage() {
                       onChange={(e) => setPillowTemplateName(e.target.value)}
                     />
                     <Button
+                      variant="destructive"
+                      size="icon"
+                      disabled={pillowSelectedTemplateId === '' || deletingTemplate}
+                      onClick={() => setPillowDeleteOpen(true)}
+                      title={pillowSelectedTemplateId === '' ? 'Select a template to delete' : 'Delete selected template'}
+                    >
+                      <Trash2 className="size-4" />
+                      <span className="sr-only">Delete template</span>
+                    </Button>
+                    <Button
                       variant="secondary"
                       onClick={async () => {
                         const name = pillowTemplateName.trim();
@@ -663,6 +750,30 @@ export default function ConfigureInventoryPage() {
                 value={pillowTemplateNotes}
                 onChange={(e) => setPillowTemplateNotes(e.target.value)}
               />
+              <Dialog open={pillowDeleteOpen} onOpenChange={setPillowDeleteOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete template?</DialogTitle>
+                    <DialogDescription>
+                      {pillowSelectedTemplate
+                        ? <>This will permanently delete <strong>{pillowSelectedTemplate.name}</strong>. This can’t be undone.</>
+                        : <>This will permanently delete the selected template. This can’t be undone.</>}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="secondary" onClick={() => setPillowDeleteOpen(false)} disabled={deletingTemplate}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={confirmDeletePillowTemplate}
+                      disabled={pillowSelectedTemplateId === '' || deletingTemplate}
+                    >
+                      {deletingTemplate ? 'Deleting…' : 'Delete'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Separator />
             </div>
           )}
@@ -744,11 +855,21 @@ export default function ConfigureInventoryPage() {
                       onChange={(e) => setBolsterTemplateName(e.target.value)}
                     />
                     <Button
+                      variant="destructive"
+                      size="icon"
+                      disabled={bolsterSelectedTemplateId === '' || deletingTemplate}
+                      onClick={() => setBolsterDeleteOpen(true)}
+                      title={bolsterSelectedTemplateId === '' ? 'Select a template to delete' : 'Delete selected template'}
+                    >
+                      <Trash2 className="size-4" />
+                      <span className="sr-only">Delete template</span>
+                    </Button>
+                    <Button
                       variant="secondary"
                       onClick={async () => {
                         const name = bolsterTemplateName.trim();
                         if (!name) { toast.message('Enter a template name'); return; }
-                        const key = bolsterVariant === 'Short (0.8m)' ? 'short' : bolsterVariant === 'Long (1.2m)' ? 'long' : 'medium';
+                        const key = bolsterVariant ? getBolsterTemplateKey(bolsterVariant) : 'medium';
                         try {
                           const res = await fetch('/settings/inventory/configure/templates', {
                             method: 'POST',
@@ -783,6 +904,30 @@ export default function ConfigureInventoryPage() {
                 value={bolsterTemplateNotes}
                 onChange={(e) => setBolsterTemplateNotes(e.target.value)}
               />
+              <Dialog open={bolsterDeleteOpen} onOpenChange={setBolsterDeleteOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete template?</DialogTitle>
+                    <DialogDescription>
+                      {bolsterSelectedTemplate
+                        ? <>This will permanently delete <strong>{bolsterSelectedTemplate.name}</strong>. This can’t be undone.</>
+                        : <>This will permanently delete the selected template. This can’t be undone.</>}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="secondary" onClick={() => setBolsterDeleteOpen(false)} disabled={deletingTemplate}>
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={confirmDeleteBolsterTemplate}
+                      disabled={bolsterSelectedTemplateId === '' || deletingTemplate}
+                    >
+                      {deletingTemplate ? 'Deleting…' : 'Delete'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Separator />
             </div>
           )}
@@ -1034,6 +1179,8 @@ function DynamicPartSection({
                   type="number"
                   min={0}
                   value={l.quantity}
+                  onFocus={(e) => requestAnimationFrame(() => e.currentTarget.select())}
+                  onClick={(e) => requestAnimationFrame(() => e.currentTarget.select())}
                   onChange={(e) => handleQtyChange(l.item_id, e.target.value)}
                 />
               </TableCell>
@@ -1080,6 +1227,8 @@ function DynamicPartSection({
               type="number"
               min={0}
               value={quantity}
+              onFocus={(e) => requestAnimationFrame(() => e.currentTarget.select())}
+              onClick={(e) => requestAnimationFrame(() => e.currentTarget.select())}
               onChange={(e) => {
                 const parsed = Number.parseInt(e.target.value || "0", 10);
                 setQuantity(Number.isFinite(parsed) ? parsed : 0);
