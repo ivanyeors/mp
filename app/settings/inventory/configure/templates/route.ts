@@ -27,6 +27,14 @@ const CreateSchema = z.object({
 
 const DeleteSchema = z.object({ templateId: z.number().int().positive() })
 
+function dedupeLines<T extends { item_id: number; quantity: number }>(
+  lines: T[],
+): Array<{ item_id: number; quantity: number }> {
+  const m = new Map<number, number>()
+  for (const l of lines) m.set(Number(l.item_id), Number(l.quantity))
+  return Array.from(m.entries()).map(([item_id, quantity]) => ({ item_id, quantity }))
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   // URLSearchParams.get() returns `null` for missing keys; Zod optional() expects undefined, not null.
@@ -81,20 +89,65 @@ export async function POST(req: NextRequest) {
   const pillowKind = kind === 'pillow' ? (parsed.data.pillowKind ?? 'basic') : null
   const pillowVariant = kind === 'pillow' && pillowKind === 'premium' ? (parsed.data.pillowVariant ?? null) : null
 
-  const { data: template, error: insErr } = await admin
+  // If a template already exists for the same (kind,key,pillow_kind,pillow_variant,name),
+  // update it in-place instead of failing the unique constraint or creating duplicates.
+  // This matches the UI expectation that re-saving with the same name "updates" the template.
+  let existingQuery = admin
+    .from('bom_templates')
+    .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
+    .eq('kind', kind)
+    .eq('key', key)
+    .eq('name', name)
+
+  if (kind === 'pillow') {
+    existingQuery = existingQuery.eq('pillow_kind', pillowKind)
+    if (pillowKind === 'premium' && pillowVariant) existingQuery = existingQuery.eq('pillow_variant', pillowVariant)
+    else existingQuery = existingQuery.is('pillow_variant', null)
+  } else {
+    existingQuery = existingQuery.is('pillow_kind', null).is('pillow_variant', null)
+  }
+
+  const { data: existing, error: exErr } = await existingQuery.maybeSingle()
+  if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
+
+  const safeLines = dedupeLines(lines)
+
+  const templateId = existing?.id
+  if (templateId) {
+    const { data: updated, error: upErr } = await admin
+      .from('bom_templates')
+      .update({ notes: notes ?? null })
+      .eq('id', templateId)
+      .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
+      .single()
+    if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
+
+    // Replace lines for this template.
+    const { error: delErr } = await admin.from('bom_template_lines').delete().eq('template_id', templateId)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+    if (safeLines.length) {
+      const payload = safeLines.map((l) => ({ template_id: templateId, item_id: l.item_id, quantity: l.quantity }))
+      const { error: linesErr } = await admin.from('bom_template_lines').upsert(payload, { onConflict: 'template_id,item_id' })
+      if (linesErr) return NextResponse.json({ error: linesErr.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, template: updated, updatedExisting: true })
+  }
+
+  const { data: created, error: insErr } = await admin
     .from('bom_templates')
     .insert({ kind, key, pillow_kind: pillowKind, pillow_variant: pillowVariant, name, notes: notes ?? null })
     .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
     .single()
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
 
-  if (lines.length) {
-    const payload = lines.map((l) => ({ template_id: template.id, item_id: l.item_id, quantity: l.quantity }))
+  if (safeLines.length) {
+    const payload = safeLines.map((l) => ({ template_id: created.id, item_id: l.item_id, quantity: l.quantity }))
     const { error: linesErr } = await admin.from('bom_template_lines').upsert(payload, { onConflict: 'template_id,item_id' })
     if (linesErr) return NextResponse.json({ error: linesErr.message }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, template })
+  return NextResponse.json({ ok: true, template: created, updatedExisting: false })
 }
 
 export async function DELETE(req: NextRequest) {

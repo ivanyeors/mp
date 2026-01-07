@@ -344,9 +344,8 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             <Select
               value={unmappedVariants.some((v) => String(v.id) === linkVariantId) ? linkVariantId : ""}
               onValueChange={(v) => setLinkVariantId(v)}
-              disabled={loading}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" disabled={loading}>
                 <SelectValue placeholder="Pick an unmapped Shopify variant…" />
               </SelectTrigger>
               <SelectContent className="max-h-[320px]">

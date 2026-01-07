@@ -714,7 +714,11 @@ export default function InventoryPage() {
     }
 
     // Ensure all pillow/bolster rows have a template selected
-    const missing = shopifyQueue.filter(r => (r.kind === 'pillow' || r.kind === 'bolster') && (!shopifyTemplateChoice[r.id] || shopifyTemplateChoice[r.id] === ''))
+    const missing = shopifyQueue.filter(
+      (r) =>
+        (r.kind === 'pillow' || r.kind === 'bolster') &&
+        (shopifyTemplateChoice[r.id] === undefined || shopifyTemplateChoice[r.id] === ''),
+    )
     if (missing.length) {
       toast.error('Select a template for every pillow/bolster sale line before saving')
       return
@@ -742,7 +746,7 @@ export default function InventoryPage() {
   const stockOutQueueRow = async (row: ShopifyQueueRow) => {
     if (row.kind === 'pillow' || row.kind === 'bolster') {
       const chosen = shopifyTemplateChoice[row.id];
-      if (!chosen || chosen === '') {
+      if (chosen === undefined || chosen === '') {
         toast.error('Select a template before stocking out');
         return;
       }

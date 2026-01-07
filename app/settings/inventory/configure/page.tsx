@@ -594,7 +594,7 @@ export default function ConfigureInventoryPage() {
                           setPillowTemplates(list);
                           setPillowTemplateName('');
                           setPillowTemplateNotes('');
-                          toast.success('Template saved');
+                          toast.success(payload?.updatedExisting ? 'Template updated' : 'Template saved');
                         } catch (err) {
                           toast.error(err instanceof Error ? err.message : 'Failed to save template');
                         }
@@ -714,7 +714,7 @@ export default function ConfigureInventoryPage() {
                           setBolsterTemplates(list);
                           setBolsterTemplateName('');
                           setBolsterTemplateNotes('');
-                          toast.success('Template saved');
+                          toast.success(payload?.updatedExisting ? 'Template updated' : 'Template saved');
                         } catch (err) {
                           toast.error(err instanceof Error ? err.message : 'Failed to save template');
                         }
