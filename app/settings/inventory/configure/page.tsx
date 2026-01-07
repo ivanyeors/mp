@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,37 +153,59 @@ export default function ConfigureInventoryPage() {
   const [bolsterTemplateName, setBolsterTemplateName] = useState('');
   const [bolsterTemplateNotes, setBolsterTemplateNotes] = useState('');
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const [{ data: itemsData }, { data: productsData }, { data: bomData }] = await Promise.all([
-        supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
-        supabaseClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
-        supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
-      ]);
-      setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
-      setProducts((productsData ?? []) as Product[]);
-      const next: BomByKind = makeEmptyBomByKind();
-      type BomRow = { product_id: number; item_id: number; quantity: number | string };
-      const prods = (productsData ?? []) as Product[];
-      (bomData ?? []).forEach((row: BomRow) => {
-        const product = prods.find((p) => p.id === row.product_id);
-        if (!product) return;
-        const kind = product.kind as PillowKind;
-        const size = product.size as Product["size"];
-        if (kind !== "basic" && kind !== "premium") return;
-        // Defensive de-dupe: never allow the same item_id twice for one (kind,size).
-        const itemId = Number(row.item_id);
-        const quantity = Number(row.quantity);
-        const existingIdx = next[kind][size].findIndex((l) => l.item_id === itemId);
-        if (existingIdx === -1) next[kind][size].push({ item_id: itemId, quantity });
-        else next[kind][size][existingIdx] = { item_id: itemId, quantity };
-      });
-      setBomByKind(next);
-      setLoading(false);
-    };
-    load();
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    const [{ data: itemsData }, { data: productsData }, { data: bomData }] = await Promise.all([
+      supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
+      supabaseClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
+      supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
+    ]);
+    setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
+    setProducts((productsData ?? []) as Product[]);
+    const next: BomByKind = makeEmptyBomByKind();
+    type BomRow = { product_id: number; item_id: number; quantity: number | string };
+    const prods = (productsData ?? []) as Product[];
+    (bomData ?? []).forEach((row: BomRow) => {
+      const product = prods.find((p) => p.id === row.product_id);
+      if (!product) return;
+      const kind = product.kind as PillowKind;
+      const size = product.size as Product["size"];
+      if (kind !== "basic" && kind !== "premium") return;
+      // Defensive de-dupe: never allow the same item_id twice for one (kind,size).
+      const itemId = Number(row.item_id);
+      const quantity = Number(row.quantity);
+      const existingIdx = next[kind][size].findIndex((l) => l.item_id === itemId);
+      if (existingIdx === -1) next[kind][size].push({ item_id: itemId, quantity });
+      else next[kind][size][existingIdx] = { item_id: itemId, quantity };
+    });
+    setBomByKind(next);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    // Initial load + keep data fresh if inventory changes in another tab/page.
+    loadAll();
+    const onChanged = () => {
+      loadAll();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("inventory:changed", onChanged);
+      let bc: BroadcastChannel | null = null;
+      try {
+        if ("BroadcastChannel" in window) {
+          bc = new BroadcastChannel("inventory:changed");
+          bc.onmessage = () => onChanged();
+        }
+      } catch {}
+      return () => {
+        window.removeEventListener("inventory:changed", onChanged);
+        try {
+          bc?.close();
+        } catch {}
+      };
+    }
+    return;
+  }, [loadAll]);
 
   useEffect(() => {
     try {
@@ -367,6 +389,21 @@ export default function ConfigureInventoryPage() {
         const message = payload?.error ?? 'Failed to save bolster';
         throw new Error(message);
       }
+      // If a bolster template is selected, keep it in sync with the edited lines.
+      if (bolsterSelectedTemplateId !== '') {
+        const res = await fetch(`/settings/inventory/configure/templates/${bolsterSelectedTemplateId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notes: bolsterTemplateNotes.trim() || undefined,
+            lines,
+          }),
+        })
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null)
+          throw new Error(payload?.error ?? 'Failed to update template')
+        }
+      }
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(`bolster_bom_lines:${variant}`, JSON.stringify(lines));
       }
@@ -387,6 +424,22 @@ export default function ConfigureInventoryPage() {
       const product = products.find((p) => p.size === size && p.kind === kind);
       if (!product) {
         throw new Error(`No active ${kind} pillow product found for size ${size}`);
+      }
+      // If the user is editing a saved template, persist the edits back into that template too.
+      // This matches the UX expectation that reloading the template reflects what was just saved.
+      if (pillowSelectedTemplateId !== '') {
+        const res = await fetch(`/settings/inventory/configure/templates/${pillowSelectedTemplateId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notes: pillowTemplateNotes.trim() || undefined,
+            lines: buildPayloadLines(bomByKind[kind][size] ?? []),
+          }),
+        })
+        if (!res.ok) {
+          const payload = await res.json().catch(() => null)
+          throw new Error(payload?.error ?? 'Failed to update template')
+        }
       }
       await persistProductBom(product.id, bomByKind[kind][size]);
       toast.success(`${kind === 'basic' ? 'Basic' : 'Premium'} configuration saved for size ${size}`);
@@ -758,6 +811,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
   }, [items]);
 
   const sized = (category: Item["category"]) => items.filter((i) => i.category === category && i.size === size);
+  // Fillings are universal: available for all products (no size filtering).
   const fillings = items.filter((i) => i.category === "filling");
   const packaging = items.filter(
     (i) => i.category === "packaging" && ((size === "XS" || size === "S" || size === "M") ? i.size === "S" : i.size === "L"),
@@ -1082,7 +1136,7 @@ function BolsterEditor({
     if (byVariantSize.length) return byVariantSize;
     return items.filter((i) => i.category === category && sizeEquals(i.size, "BOLSTER"));
   };
-  // Fillings are product-agnostic: available for all products (including bolster).
+  // Fillings are universal: available for all products (no size filtering).
   const fillings = items.filter((i) => i.category === "filling");
   const packaging = items.filter((i) => i.category === "packaging" && i.size === "S");
   const accessories = items.filter(
