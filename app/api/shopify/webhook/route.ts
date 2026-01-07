@@ -8,6 +8,7 @@ export const runtime = 'nodejs'
 
 type ShopifyOrder = {
   id: number
+  fulfillment_status?: string | null
   line_items?: Array<{
     id: number
     title?: string | null
@@ -133,6 +134,7 @@ export async function POST(req: NextRequest) {
         sku: line.sku,
         status: 'pending',
         chosen_template_id: (m.kind === 'pillow' || m.kind === 'bolster') ? (m.default_template_id ?? null) : null,
+        fulfillment_status: (order.fulfillment_status ?? null),
         metadata: { shopify_topic: topic, shop_domain: shopDomain, webhook_id: webhookId },
       }
     })

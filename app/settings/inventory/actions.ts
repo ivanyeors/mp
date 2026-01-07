@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
 import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
+import { shopifyListPaidOrders } from '@/lib/shopify/orders'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({ itemId: z.number().int().positive(), quantity: z.number().int().positive() })
@@ -207,8 +208,8 @@ export async function listShopifySalesQueue() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
-    .neq('status', 'archived')
+    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
+    .eq('status', 'pending')
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return { ok: true, rows: data ?? [] }
@@ -218,7 +219,7 @@ export async function listShopifySalesQueueArchived() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id')
+    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
     .eq('status', 'archived')
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
@@ -231,9 +232,112 @@ export async function archiveShopifySaleQueueRow(queueId: number) {
     .from('shopify_sales_queue')
     .update({ status: 'archived' })
     .eq('id', queueId)
-    .neq('status', 'committed')
+    .eq('status', 'pending')
   if (error) throw new Error(error.message)
   return { ok: true }
+}
+
+export async function refreshShopifySalesQueueFromShopify(input?: {
+  // Prefer explicit from/to (ISO strings). daysBack is kept for backward compatibility.
+  from?: string
+  to?: string
+  daysBack?: number
+  limit?: number
+}) {
+  const admin = supabaseAdmin()
+
+  const limit = Math.max(1, Math.min(250, Math.floor(input?.limit ?? 250)))
+  const createdAtMin =
+    input?.from?.trim()
+      ? input.from.trim()
+      : new Date(Date.now() - Math.max(1, Math.min(60, Math.floor(input?.daysBack ?? 30))) * 24 * 60 * 60 * 1000).toISOString()
+  const createdAtMax = input?.to?.trim() ? input.to.trim() : undefined
+
+  const orders = await shopifyListPaidOrders({ limit, createdAtMin, createdAtMax })
+  const orderMetaById = new Map<number, { fulfillment_status: string | null }>()
+  orders.forEach((o) => {
+    orderMetaById.set(Number(o.id), { fulfillment_status: o.fulfillment_status ?? null })
+  })
+
+  const lineItems = orders.flatMap((o) =>
+    (o.line_items ?? []).map((li) => ({
+      order_id: o.id,
+      line_item_id: li.id,
+      variant_id: li.variant_id,
+      sku: li.sku ?? null,
+      title: li.title ?? null,
+      quantity: Math.max(0, Math.floor(Number(li.quantity ?? 0))),
+    })),
+  )
+
+  const variantIds = Array.from(
+    new Set(lineItems.map((li) => li.variant_id).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))),
+  )
+
+  type MappingRow = {
+    shopify_variant_id: number
+    kind: 'pillow' | 'bolster' | 'part'
+    pillow_size: 'XS' | 'S' | 'M' | 'L' | 'XL' | null
+    pillow_kind: 'basic' | 'premium' | null
+    bolster_variant: 'short' | 'medium' | 'long' | null
+    item_id: number | null
+    default_template_id?: number | null
+  }
+
+  const mappingByVariantId = new Map<number, MappingRow>()
+  if (variantIds.length) {
+    const { data: mappings, error: mErr } = await admin
+      .from('shopify_variant_mappings')
+      .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,default_template_id')
+      .in('shopify_variant_id', variantIds)
+    if (mErr) throw new Error(mErr.message)
+    ;(mappings ?? []).forEach((m: MappingRow) => mappingByVariantId.set(Number(m.shopify_variant_id), m))
+  }
+
+  let mapped = 0
+  let unmapped = 0
+  const queueRows = []
+  for (const li of lineItems) {
+    if (!li.quantity) continue
+    if (!li.variant_id) {
+      unmapped += 1
+      continue
+    }
+    const mapping = mappingByVariantId.get(li.variant_id)
+    if (!mapping) {
+      unmapped += 1
+      continue
+    }
+    mapped += 1
+    const orderMeta = orderMetaById.get(Number(li.order_id)) ?? { fulfillment_status: null }
+    queueRows.push({
+      shopify_order_id: li.order_id,
+      shopify_line_item_id: li.line_item_id,
+      shopify_variant_id: Number(mapping.shopify_variant_id),
+      kind: mapping.kind,
+      pillow_size: mapping.kind === 'pillow' ? mapping.pillow_size : null,
+      pillow_kind: mapping.kind === 'pillow' ? (mapping.pillow_kind ?? 'basic') : null,
+      bolster_variant: mapping.kind === 'bolster' ? mapping.bolster_variant : null,
+      item_id: mapping.kind === 'part' ? mapping.item_id : null,
+      quantity: li.quantity,
+      product_title: null,
+      variant_title: li.title,
+      sku: li.sku,
+      status: 'pending',
+      chosen_template_id: mapping.kind === 'pillow' || mapping.kind === 'bolster' ? (mapping.default_template_id ?? null) : null,
+      fulfillment_status: orderMeta.fulfillment_status,
+      metadata: { source: 'manual_refresh', created_at_min: createdAtMin, created_at_max: createdAtMax ?? null },
+    })
+  }
+
+  if (queueRows.length) {
+    const { error: qErr } = await admin.from('shopify_sales_queue').upsert(queueRows, {
+      onConflict: 'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind',
+    })
+    if (qErr) throw new Error(qErr.message)
+  }
+
+  return { ok: true, scanned_orders: orders.length, scanned_lines: lineItems.length, mapped, unmapped, enqueued: queueRows.length }
 }
 
 export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pillowKind?: 'basic' | 'premium', pillowVariant?: 'linen' | 'fibrecool') {
@@ -284,7 +388,29 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
   }
   const byId = new Map<number, QueueRow>(((rows ?? []) as QueueRow[]).map(r => [Number(r.id), r]))
 
-  // Commit each line (template required for pillow/bolster)
+  // Guard: ensure part item_ids still exist + are active (helps catch wrong/outdated mappings early).
+  const partItemIds = Array.from(
+    new Set(
+      Array.from(byId.values())
+        .filter((r) => r.kind === 'part' && r.status === 'pending' && r.item_id)
+        .map((r) => Number(r.item_id)),
+    ),
+  )
+  if (partItemIds.length) {
+    const { data: activeItems, error: iErr } = await admin
+      .from('items')
+      .select('id')
+      .eq('is_active', true)
+      .in('id', partItemIds)
+    if (iErr) throw new Error(iErr.message)
+    const active = new Set<number>((activeItems ?? []).map((r: { id: number | string }) => Number(r.id)))
+    const missing = partItemIds.filter((id) => !active.has(id))
+    if (missing.length) {
+      throw new Error(`Cannot stock out: mapped inventory item(s) missing/inactive: ${missing.join(', ')}`)
+    }
+  }
+
+  // Commit each line (template required for pillow/bolster). After committing, move to archived.
   for (const c of parsed.commits) {
     const row = byId.get(c.queueId)
     if (!row) throw new Error(`Queue row not found: ${c.queueId}`)
@@ -300,7 +426,7 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
 
     const { error: upErr } = await admin
       .from('shopify_sales_queue')
-      .update({ status: 'committed', chosen_template_id: c.templateId, committed_at: new Date().toISOString() })
+      .update({ status: 'archived', chosen_template_id: c.templateId, committed_at: new Date().toISOString() })
       .eq('id', c.queueId)
       .eq('status', 'pending')
     if (upErr) throw new Error(upErr.message)
@@ -538,8 +664,7 @@ export async function listShopifyAdminState() {
     }
   }
 
-  const rows = (mappings ?? [])
-    .map((m: {
+  type Mapping = {
     shopify_variant_id: number | string
     kind: 'pillow' | 'bolster' | 'part'
     pillow_size: string | null
@@ -548,46 +673,82 @@ export async function listShopifyAdminState() {
     item_id: number | string | null
     notes: string | null
     updated_at: string
-  }) => {
-    const variantId = Number(m.shopify_variant_id)
-    const itemId = m.item_id === null ? null : Number(m.item_id)
+  }
 
-    // Compute MSRP (Price) from Costings as source of truth.
-    let msrp: string | null = null
+  const mappingByVariantId = new Map<number, Mapping>()
+  ;(mappings ?? []).forEach((m: Mapping) => {
+    const id = Number(m.shopify_variant_id)
+    if (Number.isFinite(id) && id > 0) mappingByVariantId.set(id, m)
+  })
+
+  const computeMsrp = (variantId: number, m: Mapping | null): string | null => {
+    if (!m) return null
+    const itemId = m.item_id === null ? null : Number(m.item_id)
     if (m.kind === 'part' && itemId) {
-      msrp = toMoneyString(itemMsrpByItemId.get(itemId)?.msrp ?? null)
-    } else if (m.kind === 'bolster' && m.bolster_variant) {
-      msrp = toMoneyString(productPriceByKey.get(`product:bolster:${m.bolster_variant}`)?.msrp ?? null)
-    } else if (m.kind === 'pillow' && m.pillow_size) {
+      return toMoneyString(itemMsrpByItemId.get(itemId)?.msrp ?? null)
+    }
+    if (m.kind === 'bolster' && m.bolster_variant) {
+      return toMoneyString(productPriceByKey.get(`product:bolster:${m.bolster_variant}`)?.msrp ?? null)
+    }
+    if (m.kind === 'pillow' && m.pillow_size) {
       const pk = (m.pillow_kind ?? 'basic') as 'basic' | 'premium'
       const pillowProductId = pillowProductIdByKindSize.get(`${pk}:${m.pillow_size}`) ?? null
-      if (pillowProductId) {
-        if (pk === 'premium') {
-          const title = shopifyVariantTitleById.get(variantId) ?? null
-          const premiumVariant = detectPremiumVariantFromTitle(title)
-          msrp = toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}:${premiumVariant}`)?.msrp ?? null)
-        } else {
-          msrp = toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}`)?.msrp ?? null)
-        }
+      if (!pillowProductId) return null
+      if (pk === 'premium') {
+        const title = shopifyVariantTitleById.get(variantId) ?? null
+        const premiumVariant = detectPremiumVariantFromTitle(title)
+        return toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}:${premiumVariant}`)?.msrp ?? null)
       }
+      return toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}`)?.msrp ?? null)
     }
+    return null
+  }
 
-    return {
-      shopifyVariantId: variantId,
-      shopifyVariantName: variantNameById.get(variantId) ?? null,
-      isActiveInShopify: activeVariantIds.size ? activeVariantIds.has(String(variantId)) : true,
-      kind: m.kind,
-      pillowSize: m.pillow_size,
-      pillowKind: m.pillow_kind,
-      bolsterVariant: m.bolster_variant,
-      item: itemId ? (itemById.get(itemId) ?? null) : null,
-      notes: m.notes ?? null,
-      override: overrideByVariantId.get(variantId) ?? null,
-      msrp,
-    }
-  })
-    // Default behavior: active variants only (user asked for this).
-    .filter((r: { isActiveInShopify: boolean }) => r.isActiveInShopify)
+  // If we can see active variants from Shopify, include unmapped variants in the table too.
+  if (activeVariantIds.size) {
+    const rows = Array.from(activeVariantIds)
+      .map((rawId) => Number(rawId))
+      .filter((id) => Number.isFinite(id) && id > 0)
+      .map((variantId) => {
+        const m = mappingByVariantId.get(variantId) ?? null
+        const itemId = m?.item_id === null || m?.item_id === undefined ? null : Number(m.item_id)
+        return {
+          shopifyVariantId: variantId,
+          shopifyVariantName: variantNameById.get(variantId) ?? null,
+          kind: m ? m.kind : ('unmapped' as const),
+          pillowSize: m?.pillow_size ?? null,
+          pillowKind: m?.pillow_kind ?? null,
+          bolsterVariant: m?.bolster_variant ?? null,
+          item: m?.kind === 'part' && itemId ? (itemById.get(itemId) ?? null) : null,
+          notes: m?.notes ?? null,
+          override: overrideByVariantId.get(variantId) ?? null,
+          msrp: computeMsrp(variantId, m),
+        }
+      })
+      .sort((a, b) => String(a.shopifyVariantName ?? '').localeCompare(String(b.shopifyVariantName ?? '')))
+
+    return { ok: true, rows }
+  }
+
+  // Fallback (no Shopify active variants available): show mappings only.
+  const rows = (mappings ?? [])
+    .map((m: Mapping) => {
+      const variantId = Number(m.shopify_variant_id)
+      const itemId = m.item_id === null ? null : Number(m.item_id)
+      return {
+        shopifyVariantId: variantId,
+        shopifyVariantName: variantNameById.get(variantId) ?? null,
+        kind: m.kind,
+        pillowSize: m.pillow_size,
+        pillowKind: m.pillow_kind,
+        bolsterVariant: m.bolster_variant,
+        item: itemId ? (itemById.get(itemId) ?? null) : null,
+        notes: m.notes ?? null,
+        override: overrideByVariantId.get(variantId) ?? null,
+        msrp: computeMsrp(variantId, m),
+      }
+    })
+    .filter((r) => Number.isFinite(Number(r.shopifyVariantId)) && Number(r.shopifyVariantId) > 0)
 
   return { ok: true, rows }
 }

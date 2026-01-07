@@ -27,7 +27,7 @@ type Item = { id: number; category: string; subtype: string | null; name: string
 type AdminRow = {
   shopifyVariantId: number;
   shopifyVariantName: string | null;
-  kind: "pillow" | "bolster" | "part";
+  kind: "pillow" | "bolster" | "part" | "unmapped";
   pillowSize: string | null;
   pillowKind: string | null;
   bolsterVariant: string | null;
@@ -227,7 +227,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
       <div className="rounded-md border p-3 space-y-3">
         <div className="text-sm font-medium">Link an unmapped Shopify variant</div>
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-5">
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground">Mapping type</div>
             <Select value={linkKind} onValueChange={(v) => setLinkKind(v as "part" | "pillow" | "bolster")}>
@@ -292,45 +292,49 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             ) : null}
           </div>
           <div className="space-y-1">
-            {linkKind === "pillow" ? (
-              <>
-                <div className="text-xs text-muted-foreground">Pillow size</div>
-                <Select value={linkPillowSize} onValueChange={(v) => setLinkPillowSize(v as "XS" | "S" | "M" | "L" | "XL")}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="XS">XS</SelectItem>
-                    <SelectItem value="S">S</SelectItem>
-                    <SelectItem value="M">M</SelectItem>
-                    <SelectItem value="L">L</SelectItem>
-                    <SelectItem value="XL">XL</SelectItem>
-                  </SelectContent>
-                </Select>
-              </>
-            ) : (
-               <>
-                 <div className="text-xs text-muted-foreground">Template</div>
-                 <Select value={linkTemplateId} onValueChange={setLinkTemplateId} disabled={loadingLinkTemplates || linkKind === "part"}>
-                   <SelectTrigger className="w-full">
-                     <SelectValue placeholder={loadingLinkTemplates ? "Loading…" : "Select template…"} />
-                   </SelectTrigger>
-                   <SelectContent>
-                     {linkTemplates.length === 0 ? (
-                       <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                         {linkKind === "part" ? "Not required" : "No templates found"}
-                       </div>
-                     ) : (
-                       linkTemplates.map((t) => (
-                         <SelectItem key={t.id} value={String(t.id)}>
-                           {t.name}
-                         </SelectItem>
-                       ))
-                     )}
-                   </SelectContent>
-                 </Select>
-               </>
-            )}
+            <div className="text-xs text-muted-foreground">Pillow size</div>
+            <Select
+              value={linkKind === "pillow" ? linkPillowSize : ""}
+              onValueChange={(v) => setLinkPillowSize(v as "XS" | "S" | "M" | "L" | "XL")}
+            >
+              <SelectTrigger className="w-full" disabled={linkKind !== "pillow"}>
+                <SelectValue placeholder={linkKind !== "pillow" ? "Not required" : undefined} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="XS">XS</SelectItem>
+                <SelectItem value="S">S</SelectItem>
+                <SelectItem value="M">M</SelectItem>
+                <SelectItem value="L">L</SelectItem>
+                <SelectItem value="XL">XL</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground">Template</div>
+            <Select value={linkKind === "part" ? "" : linkTemplateId} onValueChange={setLinkTemplateId}>
+              <SelectTrigger className="w-full" disabled={loadingLinkTemplates || linkKind === "part"}>
+                <SelectValue
+                  placeholder={
+                    linkKind === "part"
+                      ? "Not required"
+                      : (loadingLinkTemplates ? "Loading…" : "Select template…")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {linkTemplates.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    {linkKind === "part" ? "Not required" : "No templates found"}
+                  </div>
+                ) : (
+                  linkTemplates.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -436,6 +440,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Variant</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Mapping</TableHead>
               <TableHead>SKU</TableHead>
@@ -447,6 +452,13 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
           <TableBody>
             {visible.map((r) => {
               const d = draftByVariantId[r.shopifyVariantId] ?? { sku: "", compareAt: "" };
+              const status =
+                r.kind === "unmapped"
+                  ? "unmapped"
+                  : r.kind === "part" && !r.item
+                    ? "broken"
+                    : "mapped";
+
               const mappingLabel =
                 r.kind === "part"
                   ? r.item
@@ -454,11 +466,28 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                     : "part"
                   : r.kind === "pillow"
                     ? `${r.pillowKind ?? "basic"} / ${r.pillowSize ?? ""}`
-                    : `bolster / ${r.bolsterVariant ?? ""}`;
+                    : r.kind === "bolster"
+                      ? `bolster / ${r.bolsterVariant ?? ""}`
+                      : "—";
 
               return (
                 <TableRow key={r.shopifyVariantId}>
                   <TableCell className="font-mono text-xs">{r.shopifyVariantId}</TableCell>
+                  <TableCell>
+                    {status === "unmapped" ? (
+                      <span className="inline-flex items-center rounded border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                        Unmapped
+                      </span>
+                    ) : status === "broken" ? (
+                      <span className="inline-flex items-center rounded border border-red-300/60 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800">
+                        Broken
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Mapped
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs">{r.shopifyVariantName ?? "—"}</TableCell>
                   <TableCell className="text-xs">{mappingLabel}</TableCell>
                   <TableCell>
@@ -532,7 +561,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                       >
                         Clear
                       </Button>
-                      {r.kind === "part" ? (
+                      {r.kind !== "unmapped" ? (
                         <Button
                           size="sm"
                           variant="destructive"
@@ -548,23 +577,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                         >
                           Unlink
                         </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={async () => {
-                            try {
-                              await deleteShopifyMapping(r.shopifyVariantId);
-                              toast.success("Mapping deleted");
-                              await refresh();
-                            } catch (e) {
-                              toast.error(e instanceof Error ? e.message : "Failed to delete mapping");
-                            }
-                          }}
-                        >
-                          Unlink
-                        </Button>
-                      )}
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -572,7 +585,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             })}
             {visible.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="text-sm text-muted-foreground">
                   No rows
                 </TableCell>
               </TableRow>

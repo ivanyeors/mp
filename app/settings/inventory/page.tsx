@@ -8,6 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import { Slider } from "@/components/ui/slider";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ChevronDown, Trash2 } from "lucide-react";
 import {
   sellPillow,
@@ -17,16 +28,17 @@ import {
   sellFromTemplate,
   listShopifySalesQueue,
   listShopifySalesQueueArchived,
-  archiveShopifySaleQueueRow,
   listTemplates,
   commitShopifySales,
   addInventoryItem,
   deleteInventoryItem,
   renameInventoryItem,
+  refreshShopifySalesQueueFromShopify,
 } from "./actions";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import type { DateRange } from "react-day-picker";
 import {
   InventoryItemLabel,
   getInventoryItemDisplayLabel,
@@ -93,6 +105,29 @@ const createDefaultEntry = (): AddInventoryEntry => ({
   costPrice: "",
   msrp: "",
 });
+
+const PAGE_SIZE_SHOPIFY_SALES = 100;
+
+const formatQueueDate = (createdAt: string) => {
+  const d = new Date(createdAt);
+  if (!Number.isFinite(d.getTime())) return "";
+  const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"] as const;
+  const day = d.getDate();
+  const month = months[d.getMonth()] ?? "";
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`.trim();
+};
+
+const toStartOfDayIso = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x.toISOString();
+};
+const toEndOfDayIso = (d: Date) => {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x.toISOString();
+};
 
 export default function InventoryPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -200,6 +235,12 @@ export default function InventoryPage() {
   const [sellDrawerLines, setSellDrawerLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [sellDrawerQty, setSellDrawerQty] = useState<string>("1");
 
+  const itemsById = useMemo(() => {
+    const map = new Map<number, Item>();
+    items.forEach((it) => map.set(it.id, it));
+    return map;
+  }, [items]);
+
   // Shopify sales queue
   type ShopifyQueueRow = {
     id: number;
@@ -216,6 +257,7 @@ export default function InventoryPage() {
     sku: string | null;
     created_at: string;
     chosen_template_id: number | null;
+    fulfillment_status: string | null;
   };
   const [shopifyQueue, setShopifyQueue] = useState<ShopifyQueueRow[]>([]);
   const [shopifyQueueArchived, setShopifyQueueArchived] = useState<ShopifyQueueRow[]>([]);
@@ -224,6 +266,122 @@ export default function InventoryPage() {
   const [loadingShopifySales, setLoadingShopifySales] = useState(false);
   const [savingShopifySales, setSavingShopifySales] = useState(false);
   const [shopifySalesTab, setShopifySalesTab] = useState<'active' | 'archived'>('active');
+  const [shopifySalesSearch, setShopifySalesSearch] = useState<string>('');
+  const [shopifyRefreshRange, setShopifyRefreshRange] = useState<DateRange | undefined>(() => {
+    const to = new Date();
+    const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    return { from, to };
+  });
+  const [shopifyRefreshLimit, setShopifyRefreshLimit] = useState<number>(250);
+  const [shopifyActivePage, setShopifyActivePage] = useState(1);
+  const [shopifyArchivedPage, setShopifyArchivedPage] = useState(1);
+
+  const normalizedShopifySalesSearch = useMemo(() => shopifySalesSearch.replace(/\D/g, '').trim(), [shopifySalesSearch]);
+  const filteredShopifyQueue = useMemo(() => {
+    if (!normalizedShopifySalesSearch) return shopifyQueue;
+    return shopifyQueue.filter((r) => String(r.shopify_order_id).includes(normalizedShopifySalesSearch));
+  }, [normalizedShopifySalesSearch, shopifyQueue]);
+  const filteredShopifyQueueArchived = useMemo(() => {
+    if (!normalizedShopifySalesSearch) return shopifyQueueArchived;
+    return shopifyQueueArchived.filter((r) => String(r.shopify_order_id).includes(normalizedShopifySalesSearch));
+  }, [normalizedShopifySalesSearch, shopifyQueueArchived]);
+
+  useEffect(() => {
+    setShopifyActivePage(1);
+    setShopifyArchivedPage(1);
+  }, [normalizedShopifySalesSearch]);
+
+  const pagedShopifyQueue = useMemo(() => {
+    const start = (shopifyActivePage - 1) * PAGE_SIZE_SHOPIFY_SALES;
+    return filteredShopifyQueue.slice(start, start + PAGE_SIZE_SHOPIFY_SALES);
+  }, [filteredShopifyQueue, shopifyActivePage]);
+  const pagedShopifyQueueArchived = useMemo(() => {
+    const start = (shopifyArchivedPage - 1) * PAGE_SIZE_SHOPIFY_SALES;
+    return filteredShopifyQueueArchived.slice(start, start + PAGE_SIZE_SHOPIFY_SALES);
+  }, [filteredShopifyQueueArchived, shopifyArchivedPage]);
+
+  const renderPagination = (args: { total: number; page: number; setPage: (n: number) => void }) => {
+    const totalPages = Math.max(1, Math.ceil(args.total / PAGE_SIZE_SHOPIFY_SALES));
+    if (args.total <= PAGE_SIZE_SHOPIFY_SALES) return null;
+
+    const page = Math.min(Math.max(1, args.page), totalPages);
+    const go = (p: number) => args.setPage(Math.min(Math.max(1, p), totalPages));
+    const mkHref = (p: number) => `#shopify-sales-page-${p}`;
+
+    // Simple windowed pagination with ellipses.
+    const windowSize = 5;
+    const start = Math.max(1, page - Math.floor(windowSize / 2));
+    const end = Math.min(totalPages, start + windowSize - 1);
+    const pages = [];
+    for (let p = start; p <= end; p += 1) pages.push(p);
+
+    return (
+      <Pagination className="py-3">
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href={mkHref(page - 1)}
+              onClick={(e) => { e.preventDefault(); go(page - 1); }}
+              aria-disabled={page <= 1}
+              className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+            />
+          </PaginationItem>
+          {start > 1 ? (
+            <>
+              <PaginationItem>
+                <PaginationLink href={mkHref(1)} onClick={(e) => { e.preventDefault(); go(1); }} size="default">
+                  1
+                </PaginationLink>
+              </PaginationItem>
+              {start > 2 ? (
+                <PaginationItem>
+                  <span className="px-2 text-sm text-muted-foreground">…</span>
+                </PaginationItem>
+              ) : null}
+            </>
+          ) : null}
+          {pages.map((p) => (
+            <PaginationItem key={p}>
+              <PaginationLink
+                href={mkHref(p)}
+                onClick={(e) => { e.preventDefault(); go(p); }}
+                isActive={p === page}
+                size="default"
+              >
+                {p}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          {end < totalPages ? (
+            <>
+              {end < totalPages - 1 ? (
+                <PaginationItem>
+                  <span className="px-2 text-sm text-muted-foreground">…</span>
+                </PaginationItem>
+              ) : null}
+              <PaginationItem>
+                <PaginationLink
+                  href={mkHref(totalPages)}
+                  onClick={(e) => { e.preventDefault(); go(totalPages); }}
+                  size="default"
+                >
+                  {totalPages}
+                </PaginationLink>
+              </PaginationItem>
+            </>
+          ) : null}
+          <PaginationItem>
+            <PaginationNext
+              href={mkHref(page + 1)}
+              onClick={(e) => { e.preventDefault(); go(page + 1); }}
+              aria-disabled={page >= totalPages}
+              className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    );
+  };
 
   const computeBuildableFromLines = useCallback((lines: Array<{ item_id: number; quantity: number }>) => {
     if (!lines.length) return 0;
@@ -302,6 +460,7 @@ export default function InventoryPage() {
         sku: r.sku ?? null,
         created_at: String(r.created_at),
         chosen_template_id: r.chosen_template_id === null ? null : Number(r.chosen_template_id),
+        fulfillment_status: (r as unknown as { fulfillment_status?: string | null }).fulfillment_status ?? null,
       })) as ShopifyQueueRow[];
       setShopifyQueue(normalized);
       // initialize template choice state
@@ -341,6 +500,7 @@ export default function InventoryPage() {
         sku: r.sku ?? null,
         created_at: String(r.created_at),
         chosen_template_id: r.chosen_template_id === null ? null : Number(r.chosen_template_id),
+        fulfillment_status: (r as unknown as { fulfillment_status?: string | null }).fulfillment_status ?? null,
       })) as ShopifyQueueRow[];
       setShopifyQueueArchived(normalized);
     } catch (e) {
@@ -579,16 +739,33 @@ export default function InventoryPage() {
     }
   }
 
-  const archiveQueueRow = async (id: number) => {
+  const stockOutQueueRow = async (row: ShopifyQueueRow) => {
+    if (row.kind === 'pillow' || row.kind === 'bolster') {
+      const chosen = shopifyTemplateChoice[row.id];
+      if (!chosen || chosen === '') {
+        toast.error('Select a template before stocking out');
+        return;
+      }
+    }
+
+    setSavingShopifySales(true);
     try {
-      await archiveShopifySaleQueueRow(id);
-      toast.success('Archived');
+      const templateId =
+        row.kind === 'part'
+          ? null
+          : Number(shopifyTemplateChoice[row.id]);
+      await commitShopifySales({ commits: [{ queueId: row.id, templateId }] });
+      toast.success('Stocked out');
+      await load();
       await loadShopifySalesQueue();
       if (shopifySalesTab === 'archived') await loadShopifySalesQueueArchived();
+      notifyInventoryChange();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to archive');
+      toast.error(e instanceof Error ? e.message : 'Failed to stock out');
+    } finally {
+      setSavingShopifySales(false);
     }
-  }
+  };
 
   const renderShopifySalesTable = (rows: ShopifyQueueRow[], mode: 'active' | 'archived') => {
     if (rows.length === 0) {
@@ -604,7 +781,9 @@ export default function InventoryPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[120px]">Date</TableHead>
               <TableHead>Order</TableHead>
+              <TableHead className="w-[160px]">Fulfillment</TableHead>
               <TableHead>Item</TableHead>
               <TableHead className="w-[90px]">Qty</TableHead>
               <TableHead className="w-[260px]">Template</TableHead>
@@ -621,21 +800,50 @@ export default function InventoryPage() {
                     : null;
               const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
               const needsTemplate = row.kind === 'pillow' || row.kind === 'bolster';
+              const partItem = row.kind === 'part' && row.item_id ? (itemsById.get(row.item_id) ?? null) : null;
               const label =
                 row.kind === 'pillow'
                   ? `${row.pillow_kind === 'premium' ? 'Premium' : 'Basic'} Pillow ${row.pillow_size ?? ''}`
                   : row.kind === 'bolster'
                     ? `Bolster ${row.bolster_variant ?? ''}`
-                    : `Part ${row.item_id ?? ''}`;
+                    : partItem
+                      ? getInventoryItemDisplayLabel(partItem)
+                      : `Part ${row.item_id ?? ''}`;
               return (
                 <TableRow key={row.id}>
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {formatQueueDate(row.created_at)}
+                  </TableCell>
                   <TableCell className="text-sm">
                     <div className="font-medium">#{row.shopify_order_id}</div>
                     <div className="text-xs text-muted-foreground">{row.sku ?? ''}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {(row.variant_title ?? '').trim() ? `${String(row.variant_title).trim()} — ` : ''}
+                      {row.shopify_variant_id ?? '—'}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">
+                    {(row.fulfillment_status ?? 'unfulfilled').toString().toUpperCase()}
                   </TableCell>
                   <TableCell className="text-sm">
-                    <div className="font-medium">{label}</div>
-                    <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
+                    {row.kind === 'part' && partItem ? (
+                      <>
+                        <InventoryItemLabel item={partItem} />
+                        <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium">{label}</div>
+                          {row.kind === 'part' && row.item_id && !partItem ? (
+                            <span className="inline-flex items-center rounded border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                              Unmapped
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
+                      </>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm">{row.quantity}</TableCell>
                   <TableCell>
@@ -671,8 +879,8 @@ export default function InventoryPage() {
                   </TableCell>
                   <TableCell>
                     {mode === 'active' ? (
-                      <Button size="sm" variant="secondary" onClick={() => archiveQueueRow(row.id)}>
-                        Archive
+                      <Button size="sm" onClick={() => stockOutQueueRow(row)}>
+                        Stock out
                       </Button>
                     ) : (
                       <div className="text-sm text-muted-foreground">—</div>
@@ -1065,11 +1273,91 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             <div className="text-xs text-muted-foreground">Review new paid orders and choose templates before committing inventory.</div>
           </div>
           <div className="flex items-center gap-2">
+            <Input
+              value={shopifySalesSearch}
+              onChange={(e) => setShopifySalesSearch(e.target.value)}
+              placeholder="Search order #…"
+              className="w-[220px]"
+              disabled={loadingShopifySales || savingShopifySales}
+            />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" disabled={loadingShopifySales || savingShopifySales}>
+                  Date range
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="bottom"
+                align="start"
+                sideOffset={6}
+                className="p-0 w-auto"
+              >
+                <Calendar
+                  mode="range"
+                  defaultMonth={shopifyRefreshRange?.from}
+                  selected={shopifyRefreshRange}
+                  onSelect={setShopifyRefreshRange}
+                  numberOfMonths={2}
+                  className="rounded-lg border shadow-sm"
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" disabled={loadingShopifySales || savingShopifySales}>
+                  Limit: {shopifyRefreshLimit}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="bottom" align="end" sideOffset={6} className="p-3 w-[360px]">
+                <DropdownMenuLabel className="px-0">Limit</DropdownMenuLabel>
+                <div className="text-xs text-muted-foreground px-0 pb-2">
+                  Max number of paid orders to fetch from Shopify (1–250).
+                </div>
+                <DropdownMenuSeparator className="mx-0" />
+                <div className="pt-2 flex flex-col gap-2">
+                  <div className="text-sm font-medium">Limit: {shopifyRefreshLimit}</div>
+                  <Slider
+                    min={1}
+                    max={250}
+                    step={1}
+                    value={[shopifyRefreshLimit]}
+                    onValueChange={(v) =>
+                      setShopifyRefreshLimit(Math.max(1, Math.min(250, Math.floor(Number(v?.[0] ?? 250)))))
+                    }
+                  />
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               variant="secondary"
-              onClick={() => {
-                if (shopifySalesTab === 'archived') loadShopifySalesQueueArchived();
-                else loadShopifySalesQueue();
+              onClick={async () => {
+                if (shopifySalesTab === 'archived') {
+                  await loadShopifySalesQueueArchived();
+                  return;
+                }
+                const from = shopifyRefreshRange?.from;
+                const to = shopifyRefreshRange?.to ?? shopifyRefreshRange?.from ?? new Date();
+                if (!from) {
+                  toast.error("Select a start date");
+                  return;
+                }
+                setLoadingShopifySales(true);
+                try {
+                  await refreshShopifySalesQueueFromShopify({
+                    from: toStartOfDayIso(from),
+                    to: toEndOfDayIso(to),
+                    limit: shopifyRefreshLimit,
+                  });
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : 'Failed to fetch Shopify orders');
+                } finally {
+                  setLoadingShopifySales(false);
+                }
+                setShopifyActivePage(1);
+                await loadShopifySalesQueue();
               }}
               disabled={loadingShopifySales || savingShopifySales}
             >
@@ -1092,11 +1380,17 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           }}
         >
           <TabsList>
-            <TabsTrigger value="active">Active ({shopifyQueue.length})</TabsTrigger>
-            <TabsTrigger value="archived">Archived ({shopifyQueueArchived.length})</TabsTrigger>
+            <TabsTrigger value="active">Active ({filteredShopifyQueue.length})</TabsTrigger>
+            <TabsTrigger value="archived">Archived ({filteredShopifyQueueArchived.length})</TabsTrigger>
           </TabsList>
-          <TabsContent value="active">{renderShopifySalesTable(shopifyQueue, 'active')}</TabsContent>
-          <TabsContent value="archived">{renderShopifySalesTable(shopifyQueueArchived, 'archived')}</TabsContent>
+          <TabsContent value="active">
+            {renderShopifySalesTable(pagedShopifyQueue, 'active')}
+            {renderPagination({ total: filteredShopifyQueue.length, page: shopifyActivePage, setPage: setShopifyActivePage })}
+          </TabsContent>
+          <TabsContent value="archived">
+            {renderShopifySalesTable(pagedShopifyQueueArchived, 'archived')}
+            {renderPagination({ total: filteredShopifyQueueArchived.length, page: shopifyArchivedPage, setPage: setShopifyArchivedPage })}
+          </TabsContent>
         </Tabs>
       </section>
 
