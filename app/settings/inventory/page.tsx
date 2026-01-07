@@ -881,10 +881,10 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
     setCustomBolsterQty('');
   };
 
-  if (loading) return <div className="p-4">Loading…</div>;
+  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="p-2 space-y-8">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Inventory</h1>
         <div className="flex items-center gap-2">
@@ -1224,7 +1224,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             </SheetTitle>
             <SheetDescription>Select a template (optional) and add to cart.</SheetDescription>
           </SheetHeader>
-          <div className="mt-4 space-y-4 px-2">
+          <div className="mt-4 space-y-4 px-4">
             <div className="space-y-2">
               {sellDrawerKind === 'pillow' && sellDrawerPillowKind === 'premium' && (
                 <div className="space-y-1">
@@ -1554,7 +1554,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
           </SheetDescription>
         </SheetHeader>
         <form className="mt-4 flex h-full flex-col" onSubmit={handleSubmit}>
-          <div className="flex-1 space-y-6 overflow-y-auto px-2 pb-6">
+          <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-6">
             {entries.map((entry, index) => (
               <div key={`inventory-entry-${index}`} className="space-y-4">
                 {entries.length > 1 ? (
@@ -2309,7 +2309,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
           <SheetTitle>{group?.title ?? 'Part'}</SheetTitle>
           <SheetDescription>Enter stock in/out quantities per variant.</SheetDescription>
         </SheetHeader>
-        <div className="mt-4 space-y-4 px-2">
+        <div className="mt-4 space-y-4 px-4">
           {variantsGroupedByName.map(({ name, variants, totalOnHand }) => (
             <Collapsible key={`${group?.key ?? "group"}:${name}`} defaultOpen>
               <div className="rounded border">
@@ -2504,7 +2504,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
           <SheetTitle>Custom pillow</SheetTitle>
           <SheetDescription>Choose size, adjust parts and packaging, then sell.</SheetDescription>
         </SheetHeader>
-        <div className="mt-4 space-y-4 px-2">
+        <div className="mt-4 space-y-4 px-4">
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground" htmlFor="custom-pillow-size">Size</label>
             <Select value={size} onValueChange={setSize}>
@@ -2698,7 +2698,7 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
           <SheetTitle>Custom bolster</SheetTitle>
           <SheetDescription>Choose variant, adjust parts and packaging, then sell.</SheetDescription>
         </SheetHeader>
-        <div className="mt-4 space-y-4 px-2">
+        <div className="mt-4 space-y-4 px-4">
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground" htmlFor="custom-bolster-variant">Variant</label>
             <Select value={variant} onValueChange={(value) => setVariant(value as 'short' | 'medium' | 'long')}>

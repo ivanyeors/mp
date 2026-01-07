@@ -25,9 +25,9 @@ export default function ShopifyAdminPage() {
     load();
   }, [load]);
 
-  if (loading) return <div className="p-4">Loading…</div>;
+  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
   return (
-    <div className="p-2 space-y-3">
+    <div className="space-y-3">
       <div className="flex items-center justify-end">
         <Button
           variant="outline"

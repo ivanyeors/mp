@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { getInventoryItemDisplayLabel } from "./item-label";
 import {
   listShopifyAdminState,
+  listShopifyUnmappedVariants,
   upsertShopifyVariantOverride,
   deleteShopifyVariantOverride,
   linkPartToShopifyVariant,
@@ -40,13 +41,17 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [linkVariantId, setLinkVariantId] = useState<string>("");
   const [linking, setLinking] = useState(false);
 
+  const [unmappedVariants, setUnmappedVariants] = useState<Array<{ id: number; label: string; sku: string | null }>>([]);
+  const [unmappedFilter, setUnmappedFilter] = useState("");
+
   const [draftByVariantId, setDraftByVariantId] = useState<Record<number, { sku: string; price: string; compareAt: string }>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listShopifyAdminState();
+      const [res, unmapped] = await Promise.all([listShopifyAdminState(), listShopifyUnmappedVariants()]);
       if (!res?.ok) throw new Error("Failed to load Shopify admin state");
+      if (!unmapped?.ok) throw new Error("Failed to load unmapped Shopify variants");
       const next = (res.rows ?? []) as AdminRow[];
       setRows(next);
       setDraftByVariantId(() => {
@@ -63,6 +68,13 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
         });
         return out;
       });
+      setUnmappedVariants(
+        ((unmapped.variants ?? []) as Array<{ id: number; label: string; sku: string | null }>).map((v) => ({
+          id: Number(v.id),
+          label: String(v.label),
+          sku: v.sku ?? null,
+        })),
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load Shopify admin state");
     } finally {
@@ -97,9 +109,26 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   }, [rows, filter]);
 
   const itemOptions = useMemo(() => {
-    const sorted = [...items].sort((a, b) => getInventoryItemDisplayLabel(a).localeCompare(getInventoryItemDisplayLabel(b)));
+    const mappedPartItemIds = new Set(
+      rows
+        .filter((r) => r.kind === "part" && r.item?.id)
+        .map((r) => Number(r.item!.id)),
+    );
+
+    const selectedId = linkItemId ? Number(linkItemId) : null;
+
+    const sorted = [...items]
+      // Hide parts that are already mapped to a Shopify variant (but keep the currently selected item visible).
+      .filter((it) => !mappedPartItemIds.has(it.id) || (selectedId !== null && it.id === selectedId))
+      .sort((a, b) => getInventoryItemDisplayLabel(a).localeCompare(getInventoryItemDisplayLabel(b)));
     return sorted.map((it) => ({ id: it.id, label: getInventoryItemDisplayLabel(it) }));
-  }, [items]);
+  }, [items, rows, linkItemId]);
+
+  const visibleUnmapped = useMemo(() => {
+    const q = unmappedFilter.trim().toLowerCase();
+    if (!q) return unmappedVariants;
+    return unmappedVariants.filter((v) => `${v.label} ${v.sku ?? ""} ${v.id}`.toLowerCase().includes(q));
+  }, [unmappedVariants, unmappedFilter]);
 
   const parseMoney = (raw: string): number | null | undefined => {
     const t = raw.trim();
@@ -145,9 +174,46 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <div className="text-xs text-muted-foreground">Shopify variant ID</div>
-            <Input value={linkVariantId} onChange={(e) => setLinkVariantId(e.target.value)} placeholder="e.g. 31003477114976" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-muted-foreground">Shopify variant</div>
+              <div className="text-[11px] text-muted-foreground">Unmapped: {unmappedVariants.length}</div>
+            </div>
+            <Select
+              value={unmappedVariants.some((v) => String(v.id) === linkVariantId) ? linkVariantId : ""}
+              onValueChange={(v) => setLinkVariantId(v)}
+              disabled={loading}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Pick an unmapped Shopify variant…" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[320px]">
+                <div className="sticky top-0 z-10 bg-popover p-1">
+                  <Input
+                    value={unmappedFilter}
+                    onChange={(e) => setUnmappedFilter(e.target.value)}
+                    placeholder="Search variants…"
+                    aria-label="Search unmapped Shopify variants"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      // Keep typing/navigation inside the input without the menu stealing arrow keys.
+                      if (e.key !== "Escape") e.stopPropagation();
+                    }}
+                  />
+                </div>
+                {visibleUnmapped.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">No variants found</div>
+                ) : (
+                  visibleUnmapped.slice(0, 200).map((v) => (
+                    <SelectItem key={v.id} value={String(v.id)}>
+                      {v.label}
+                      {v.sku ? ` — ${v.sku}` : ""} #{v.id}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+            <Input value={linkVariantId} onChange={(e) => setLinkVariantId(e.target.value)} placeholder="Or paste a Shopify variant ID…" />
           </div>
           <div className="flex items-end">
             <Button
@@ -164,6 +230,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                   toast.success("Linked");
                   setLinkItemId("");
                   setLinkVariantId("");
+                  setUnmappedFilter("");
                   await refresh();
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Failed to link");

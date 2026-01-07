@@ -1053,12 +1053,12 @@ export default function CostingsPage() {
   };
 
   if (loading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading costings…</div>;
+    return <div className="text-sm text-muted-foreground">Loading costings…</div>;
   }
 
   if (items.length === 0 && products.length === 0) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="space-y-4">
         <div className="text-2xl font-semibold">Costings</div>
         <p className="text-sm text-muted-foreground">No parts are currently active. Add items to begin tracking pricing.</p>
         <Button variant="secondary" onClick={load} disabled={saving}>
@@ -1312,7 +1312,7 @@ export default function CostingsPage() {
             <SheetTitle>{activeProduct?.label ?? "Product details"}</SheetTitle>
             <SheetDescription>Review configured parts and adjust pricing.</SheetDescription>
           </SheetHeader>
-          <div className="mt-4 space-y-6 px-2">
+          <div className="mt-4 space-y-6 px-4">
             {activeProduct ? (
               <>
                 <div className="space-y-4">
@@ -1509,7 +1509,7 @@ function ProductGroupSection({
         </CollapsibleTrigger>
         <CollapsibleContent className="border-t px-4 pb-4 pt-2">
           {products.length === 0 ? (
-            <p className="px-2 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {group.emptyState ?? `No ${group.title} products configured yet.`}
             </p>
           ) : (

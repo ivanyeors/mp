@@ -77,7 +77,7 @@ export default function SettingsAuthGate({ children }: Props) {
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50">
-      <Card className="relative w-fit border-border/60 shadow-md">
+      <Card className="relative w-[min(92vw,28rem)] border-border/60 py-4 shadow-md sm:py-6">
         <Button
           variant="ghost"
           size="icon"
@@ -87,11 +87,11 @@ export default function SettingsAuthGate({ children }: Props) {
         >
           <X className="h-4 w-4" />
         </Button>
-        <CardHeader className="pb-2 items-center text-center">
+        <CardHeader className="items-center px-4 pb-2 text-center sm:px-6">
           <CardTitle className="text-lg">Login</CardTitle>
         </CardHeader>
 
-        <CardContent className="space-y-5 px-6 text-center">
+        <CardContent className="space-y-5 px-4 text-center sm:px-6">
           {status === "checking" ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />

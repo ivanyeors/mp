@@ -77,7 +77,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           <SidebarRail />
         </Sidebar>
         <SidebarInset>
-          <header className="flex h-14 items-center gap-2 border-b px-4">
+          <header className="flex h-14 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
             <SidebarTrigger />
             <div className="flex items-center gap-2">
               <Breadcrumb>
@@ -93,7 +93,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               </Breadcrumb>
             </div>
           </header>
-          <div className="p-2">
+          <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
             <SettingsAuthGate>{children}</SettingsAuthGate>
             <Toaster richColors position="top-right" />
           </div>

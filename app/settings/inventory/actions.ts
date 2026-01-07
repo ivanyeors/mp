@@ -505,6 +505,38 @@ export async function listShopifyAdminState() {
   return { ok: true, rows }
 }
 
+export async function listShopifyUnmappedVariants() {
+  const admin = supabaseAdmin()
+  const [{ data: mappings, error: mErr }, activeProducts] = await Promise.all([
+    admin.from('shopify_variant_mappings').select('shopify_variant_id'),
+    // If env vars are missing, gracefully return an empty list (can't discover Shopify variants).
+    shopifyListActiveProductsWithVariants({ limit: 250 }).catch(() => []),
+  ])
+  if (mErr) throw new Error(mErr.message)
+
+  const mapped = new Set<string>((mappings ?? []).map((m: { shopify_variant_id: number | string }) => String(m.shopify_variant_id)))
+  const variants: Array<{ id: number; label: string; sku: string | null }> = []
+
+  for (const p of (activeProducts ?? []) as Array<{ title?: string; variants?: Array<{ id: number; title?: string; sku?: string | null }> }>) {
+    const productTitle = String(p.title ?? '').trim()
+    for (const v of p.variants ?? []) {
+      const id = Number(v.id)
+      if (!Number.isFinite(id) || id <= 0) continue
+      if (mapped.has(String(id))) continue
+
+      const variantTitle = String(v.title ?? '').trim()
+      const full = productTitle
+        ? (variantTitle && variantTitle !== 'Default Title' ? `${productTitle} — ${variantTitle}` : productTitle)
+        : (variantTitle || `Variant ${id}`)
+
+      variants.push({ id, label: full, sku: v.sku ?? null })
+    }
+  }
+
+  variants.sort((a, b) => a.label.localeCompare(b.label))
+  return { ok: true, variants }
+}
+
 export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertShopifyOverrideSchema>) {
   const parsed = UpsertShopifyOverrideSchema.parse(input)
   const admin = supabaseAdmin()

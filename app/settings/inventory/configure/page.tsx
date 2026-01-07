@@ -399,10 +399,10 @@ export default function ConfigureInventoryPage() {
     }
   };
 
-  if (loading) return <div className="p-4">Loading…</div>;
+  if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="p-2 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Configure Products</h1>
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
@@ -499,7 +499,7 @@ export default function ConfigureInventoryPage() {
             <SheetDescription>Adjust BOM quantities and save for this pillow size.</SheetDescription>
           </SheetHeader>
           {selectedSize && selectedPillowKind && (
-            <div className="mt-4 space-y-3 px-2">
+            <div className="mt-4 space-y-3 px-4">
               {selectedPillowKind === 'premium' && (
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Premium variant</div>
@@ -613,7 +613,7 @@ export default function ConfigureInventoryPage() {
               <Separator />
             </div>
           )}
-          <div className="mt-4 space-y-4 px-2">
+          <div className="mt-4 space-y-4 px-4">
             {selectedSize && selectedPillowKind && (
               <SizeEditor
                 size={selectedSize}
@@ -650,7 +650,7 @@ export default function ConfigureInventoryPage() {
             <SheetDescription>Adjust components and quantities for the single-size bolster, including packaging.</SheetDescription>
           </SheetHeader>
           {bolsterVariant && (
-            <div className="mt-4 space-y-3 px-2">
+            <div className="mt-4 space-y-3 px-4">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Template</div>
@@ -733,7 +733,7 @@ export default function ConfigureInventoryPage() {
               <Separator />
             </div>
           )}
-          <div className="mt-4 space-y-4 px-2">
+          <div className="mt-4 space-y-4 px-4">
             <BolsterEditor
               items={items}
               lines={bolsterLines}
