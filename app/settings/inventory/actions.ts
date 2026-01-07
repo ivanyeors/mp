@@ -422,9 +422,22 @@ export async function fullShopifySync() {
   return { ok: true, inventory, prices }
 }
 
+export async function syncShopifyPricesOnly() {
+  const prices = await syncShopifyPricingFromSupabase()
+  return { ok: true, prices }
+}
+
 export async function listShopifyAdminState() {
   const admin = supabaseAdmin()
-  const [{ data: mappings, error: mErr }, { data: overrides, error: oErr }, { data: items, error: iErr }, activeProducts] =
+  const [
+    { data: mappings, error: mErr },
+    { data: overrides, error: oErr },
+    { data: items, error: iErr },
+    { data: productPrices, error: ppErr },
+    { data: itemPrices, error: ipErr },
+    { data: pillowProducts, error: pillowErr },
+    activeProducts,
+  ] =
     await Promise.all([
       admin
         .from('shopify_variant_mappings')
@@ -434,6 +447,9 @@ export async function listShopifyAdminState() {
         .from('shopify_variant_overrides')
         .select('shopify_variant_id,sku,price,compare_at_price,currency,updated_at'),
       admin.from('items').select('id,category,name,size,subtype').eq('is_active', true),
+      admin.from('product_prices').select('key,msrp,currency'),
+      admin.from('item_prices').select('item_id,msrp,currency'),
+      admin.from('pillow_products').select('id,kind,size'),
       // Used to filter to "active SKUs only" in UI.
       // If env vars are missing in a local shell, we fall back to showing all mappings.
       shopifyListActiveProductsWithVariants({ limit: 250 }).catch(() => []),
@@ -442,6 +458,9 @@ export async function listShopifyAdminState() {
   if (mErr) throw new Error(mErr.message)
   if (oErr) throw new Error(oErr.message)
   if (iErr) throw new Error(iErr.message)
+  if (ppErr) throw new Error(ppErr.message)
+  if (ipErr) throw new Error(ipErr.message)
+  if (pillowErr) throw new Error(pillowErr.message)
 
   const itemById = new Map<number, { id: number; category: string; name: string; size: string | null; subtype: string | null }>()
   ;(items ?? []).forEach((it: { id: number; category: string; name: string; size: string | null; subtype: string | null }) => {
@@ -458,14 +477,47 @@ export async function listShopifyAdminState() {
     })
   })
 
+  const toMoneyString = (v: number | string | null | undefined): string | null => {
+    if (v === null || v === undefined) return null
+    const num = typeof v === 'number' ? v : Number.parseFloat(String(v))
+    if (!Number.isFinite(num) || num < 0) return null
+    return num.toFixed(2)
+  }
+
+  const detectPremiumVariantFromTitle = (title: string | null): 'linen' | 'fibrecool' => {
+    const t = String(title || '').toLowerCase()
+    if (t.includes('fibrecool')) return 'fibrecool'
+    return 'linen'
+  }
+
+  const productPriceByKey = new Map<string, { key: string; msrp: number | string | null; currency: string | null }>()
+  ;(productPrices ?? []).forEach((p: { key: string; msrp: number | string | null; currency: string | null }) => {
+    productPriceByKey.set(String(p.key), p)
+  })
+
+  const itemMsrpByItemId = new Map<number, { item_id: number | string; msrp: number | string | null; currency: string | null }>()
+  ;(itemPrices ?? []).forEach((r: { item_id: number | string; msrp: number | string | null; currency: string | null }) => {
+    itemMsrpByItemId.set(Number(r.item_id), r)
+  })
+
+  const pillowProductIdByKindSize = new Map<string, number>()
+  ;(pillowProducts ?? []).forEach((p: { id: number | string; kind: string | null; size: string }) => {
+    const k = String(p.kind || 'basic')
+    const size = String(p.size)
+    if (!k || !size) return
+    pillowProductIdByKindSize.set(`${k}:${size}`, Number(p.id))
+  })
+
   const activeVariantIds = new Set<string>()
   const variantNameById = new Map<number, string>()
+  const shopifyVariantTitleById = new Map<number, string>()
   for (const p of (activeProducts ?? []) as Array<{ title?: string; variants?: Array<{ id: number; title?: string }> }>) {
     const productTitle = String(p.title ?? '').trim()
     for (const v of p.variants ?? []) {
       const id = Number(v.id)
       activeVariantIds.add(String(id))
       const variantTitle = String(v.title ?? '').trim()
+      shopifyVariantTitleById.set(id, variantTitle)
       const full = productTitle
         ? (variantTitle && variantTitle !== 'Default Title' ? `${productTitle} — ${variantTitle}` : productTitle)
         : (variantTitle || `Variant ${id}`)
@@ -486,6 +538,27 @@ export async function listShopifyAdminState() {
   }) => {
     const variantId = Number(m.shopify_variant_id)
     const itemId = m.item_id === null ? null : Number(m.item_id)
+
+    // Compute MSRP (Price) from Costings as source of truth.
+    let msrp: string | null = null
+    if (m.kind === 'part' && itemId) {
+      msrp = toMoneyString(itemMsrpByItemId.get(itemId)?.msrp ?? null)
+    } else if (m.kind === 'bolster' && m.bolster_variant) {
+      msrp = toMoneyString(productPriceByKey.get(`product:bolster:${m.bolster_variant}`)?.msrp ?? null)
+    } else if (m.kind === 'pillow' && m.pillow_size) {
+      const pk = (m.pillow_kind ?? 'basic') as 'basic' | 'premium'
+      const pillowProductId = pillowProductIdByKindSize.get(`${pk}:${m.pillow_size}`) ?? null
+      if (pillowProductId) {
+        if (pk === 'premium') {
+          const title = shopifyVariantTitleById.get(variantId) ?? null
+          const premiumVariant = detectPremiumVariantFromTitle(title)
+          msrp = toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}:${premiumVariant}`)?.msrp ?? null)
+        } else {
+          msrp = toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}`)?.msrp ?? null)
+        }
+      }
+    }
+
     return {
       shopifyVariantId: variantId,
       shopifyVariantName: variantNameById.get(variantId) ?? null,
@@ -497,6 +570,7 @@ export async function listShopifyAdminState() {
       item: itemId ? (itemById.get(itemId) ?? null) : null,
       notes: m.notes ?? null,
       override: overrideByVariantId.get(variantId) ?? null,
+      msrp,
     }
   })
     // Default behavior: active variants only (user asked for this).

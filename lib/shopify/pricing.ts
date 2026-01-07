@@ -134,8 +134,8 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
     let desiredSku: string | null | undefined = undefined
 
     if (ov) {
-      // price cannot be cleared on Shopify; treat null as "no override"
-      if (ov.price !== undefined && ov.price !== null) desiredPrice = toMoneyString(ov.price)
+      // UX: "Price" is managed from Costings (product_prices/item_prices) as the single source of truth.
+      // Keep SKU + compare-at as editable overrides.
       if (ov.compare_at_price !== undefined) desiredCompareAt = toMoneyString(ov.compare_at_price)
       if (ov.sku !== undefined) desiredSku = ov.sku ? String(ov.sku) : null
     }
