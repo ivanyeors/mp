@@ -12,9 +12,12 @@ import { getInventoryItemDisplayLabel } from "./item-label";
 import {
   listShopifyAdminState,
   listShopifyUnmappedVariants,
+  listTemplates,
   upsertShopifyVariantOverride,
   deleteShopifyVariantOverride,
   linkPartToShopifyVariant,
+  linkPillowToShopifyVariant,
+  linkBolsterToShopifyVariant,
   deleteShopifyMapping,
   syncShopifyPricesOnly,
 } from "./actions";
@@ -40,9 +43,16 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [filter, setFilter] = useState("");
   const [syncingPrices, setSyncingPrices] = useState(false);
 
+  const [linkKind, setLinkKind] = useState<"part" | "pillow" | "bolster">("part");
   const [linkItemId, setLinkItemId] = useState<string>("");
   const [linkVariantId, setLinkVariantId] = useState<string>("");
   const [linking, setLinking] = useState(false);
+  const [linkPillowKind, setLinkPillowKind] = useState<"basic" | "premium">("basic");
+  const [linkPillowSize, setLinkPillowSize] = useState<"XS" | "S" | "M" | "L" | "XL">("M");
+  const [linkBolsterVariant, setLinkBolsterVariant] = useState<"short" | "medium" | "long">("medium");
+  const [linkTemplateId, setLinkTemplateId] = useState<string>("");
+  const [linkTemplates, setLinkTemplates] = useState<Array<{ id: number; name: string }>>([]);
+  const [loadingLinkTemplates, setLoadingLinkTemplates] = useState(false);
 
   const [unmappedVariants, setUnmappedVariants] = useState<Array<{ id: number; label: string; sku: string | null }>>([]);
   const [unmappedFilter, setUnmappedFilter] = useState("");
@@ -87,6 +97,39 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const load = async () => {
+      // Parts don't use BOM templates.
+      if (linkKind === "part") {
+        setLinkTemplates([]);
+        setLinkTemplateId("");
+        return;
+      }
+
+      setLoadingLinkTemplates(true);
+      try {
+        if (linkKind === "pillow") {
+          const payload = await listTemplates("pillow", linkPillowSize, linkPillowKind);
+          const list = (payload.templates ?? []) as Array<{ id: number; name: string }>;
+          setLinkTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
+        } else {
+          const payload = await listTemplates("bolster", linkBolsterVariant);
+          const list = (payload.templates ?? []) as Array<{ id: number; name: string }>;
+          setLinkTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
+        }
+      } catch (e) {
+        setLinkTemplates([]);
+        toast.error(e instanceof Error ? e.message : "Failed to load templates");
+      } finally {
+        setLoadingLinkTemplates(false);
+      }
+    };
+
+    load();
+    // Reset chosen template whenever the selection changes.
+    setLinkTemplateId("");
+  }, [linkKind, linkPillowKind, linkPillowSize, linkBolsterVariant]);
 
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
@@ -183,22 +226,111 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
       </div>
 
       <div className="rounded-md border p-3 space-y-3">
-        <div className="text-sm font-medium">Link a part item to a Shopify variant</div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="text-sm font-medium">Link an unmapped Shopify variant</div>
+        <div className="grid gap-3 sm:grid-cols-4">
           <div className="space-y-1">
-            <div className="text-xs text-muted-foreground">Inventory item</div>
-            <Select value={linkItemId} onValueChange={setLinkItemId}>
+            <div className="text-xs text-muted-foreground">Mapping type</div>
+            <Select value={linkKind} onValueChange={(v) => setLinkKind(v as "part" | "pillow" | "bolster")}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select item…" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {itemOptions.map((opt) => (
-                  <SelectItem key={opt.id} value={String(opt.id)}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
+                <SelectItem value="part">Part (inventory item)</SelectItem>
+                <SelectItem value="pillow">Pillow (kind + size)</SelectItem>
+                <SelectItem value="bolster">Bolster (length variant)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1">
+            {linkKind === "part" ? (
+              <>
+                <div className="text-xs text-muted-foreground">Inventory item</div>
+                <Select value={linkItemId} onValueChange={setLinkItemId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select item…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {itemOptions.map((opt) => (
+                      <SelectItem key={opt.id} value={String(opt.id)}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            ) : null}
+
+            {linkKind === "pillow" ? (
+              <>
+                <div className="text-xs text-muted-foreground">Pillow kind</div>
+                <Select value={linkPillowKind} onValueChange={(v) => setLinkPillowKind(v as "basic" | "premium")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="basic">basic</SelectItem>
+                    <SelectItem value="premium">premium</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            ) : null}
+
+            {linkKind === "bolster" ? (
+              <>
+                <div className="text-xs text-muted-foreground">Bolster variant</div>
+                <Select value={linkBolsterVariant} onValueChange={(v) => setLinkBolsterVariant(v as "short" | "medium" | "long")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="short">short</SelectItem>
+                    <SelectItem value="medium">medium</SelectItem>
+                    <SelectItem value="long">long</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            ) : null}
+          </div>
+          <div className="space-y-1">
+            {linkKind === "pillow" ? (
+              <>
+                <div className="text-xs text-muted-foreground">Pillow size</div>
+                <Select value={linkPillowSize} onValueChange={(v) => setLinkPillowSize(v as "XS" | "S" | "M" | "L" | "XL")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="XS">XS</SelectItem>
+                    <SelectItem value="S">S</SelectItem>
+                    <SelectItem value="M">M</SelectItem>
+                    <SelectItem value="L">L</SelectItem>
+                    <SelectItem value="XL">XL</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            ) : (
+               <>
+                 <div className="text-xs text-muted-foreground">Template</div>
+                 <Select value={linkTemplateId} onValueChange={setLinkTemplateId} disabled={loadingLinkTemplates || linkKind === "part"}>
+                   <SelectTrigger className="w-full">
+                     <SelectValue placeholder={loadingLinkTemplates ? "Loading…" : "Select template…"} />
+                   </SelectTrigger>
+                   <SelectContent>
+                     {linkTemplates.length === 0 ? (
+                       <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                         {linkKind === "part" ? "Not required" : "No templates found"}
+                       </div>
+                     ) : (
+                       linkTemplates.map((t) => (
+                         <SelectItem key={t.id} value={String(t.id)}>
+                           {t.name}
+                         </SelectItem>
+                       ))
+                     )}
+                   </SelectContent>
+                 </Select>
+               </>
+            )}
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
@@ -239,24 +371,52 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                 )}
               </SelectContent>
             </Select>
-            <Input value={linkVariantId} onChange={(e) => setLinkVariantId(e.target.value)} placeholder="Or paste a Shopify variant ID…" />
           </div>
           <div className="flex items-end">
             <Button
               className="w-full"
               disabled={linking}
               onClick={async () => {
-                if (!linkItemId || !linkVariantId) {
-                  toast.message("Select an item and enter a Shopify variant ID");
+                if (!linkVariantId) {
+                  toast.message("Pick an unmapped Shopify variant");
                   return;
                 }
                 setLinking(true);
                 try {
-                  await linkPartToShopifyVariant({ itemId: Number(linkItemId), shopifyVariantId: Number(linkVariantId) });
+                  const shopifyVariantId = Number(linkVariantId);
+                  if (linkKind === "part") {
+                    if (!linkItemId) {
+                      toast.message("Select an inventory item");
+                      return;
+                    }
+                    await linkPartToShopifyVariant({ itemId: Number(linkItemId), shopifyVariantId });
+                  } else if (linkKind === "pillow") {
+                    if (!linkTemplateId) {
+                      toast.message("Select a template");
+                      return;
+                    }
+                    await linkPillowToShopifyVariant({
+                      shopifyVariantId,
+                      pillowKind: linkPillowKind,
+                      pillowSize: linkPillowSize,
+                      templateId: Number(linkTemplateId),
+                    });
+                  } else {
+                    if (!linkTemplateId) {
+                      toast.message("Select a template");
+                      return;
+                    }
+                    await linkBolsterToShopifyVariant({
+                      shopifyVariantId,
+                      bolsterVariant: linkBolsterVariant,
+                      templateId: Number(linkTemplateId),
+                    });
+                  }
                   toast.success("Linked");
                   setLinkItemId("");
                   setLinkVariantId("");
                   setUnmappedFilter("");
+                  setLinkTemplateId("");
                   await refresh();
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Failed to link");
@@ -388,7 +548,23 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                         >
                           Unlink
                         </Button>
-                      ) : null}
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            try {
+                              await deleteShopifyMapping(r.shopifyVariantId);
+                              toast.success("Mapping deleted");
+                              await refresh();
+                            } catch (e) {
+                              toast.error(e instanceof Error ? e.message : "Failed to delete mapping");
+                            }
+                          }}
+                        >
+                          Unlink
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

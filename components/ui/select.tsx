@@ -134,7 +134,8 @@ const SelectContent = React.forwardRef<
   return (
     <DropdownMenuContent
       ref={ref}
-      className={cn("w-[var(--select-trigger-width,16rem)]", className)}
+      // Match the dropdown content width to the trigger width (Radix sets this CSS var).
+      className={cn("w-(--radix-dropdown-menu-trigger-width)", className)}
       {...props}
     />
   );

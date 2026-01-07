@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Settings } from "lucide-react"
+import { Boxes, Settings } from "lucide-react"
 
 import {
   Sidebar,
@@ -14,6 +14,9 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Input } from "@/components/ui/input"
@@ -87,12 +90,22 @@ export default function MpMakerSidebar() {
               <SidebarSeparator className="mx-0 mt-3" />
               <SidebarMenu className="p-0">
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild tooltip="Inventory → Shopify Admin">
-                    <a href="/settings/inventory/shopify">
-                      <Settings />
-                      <span>Inventory · Shopify Admin</span>
+                  <SidebarMenuButton asChild tooltip="Inventory">
+                    <a href="/settings/inventory" className="font-medium">
+                      <Boxes />
+                      <span>Inventory</span>
                     </a>
                   </SidebarMenuButton>
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild>
+                        <a href="/settings/inventory/shopify">
+                          <Settings />
+                          <span>Shopify Admin</span>
+                        </a>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
                 </SidebarMenuItem>
               </SidebarMenu>
             </div>

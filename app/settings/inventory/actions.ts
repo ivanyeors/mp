@@ -89,6 +89,19 @@ const LinkPartMappingSchema = z.object({
   itemId: z.number().int().positive(),
 })
 
+const LinkPillowMappingSchema = z.object({
+  shopifyVariantId: ShopifyVariantIdSchema,
+  pillowKind: z.enum(['basic', 'premium']).default('basic'),
+  pillowSize: z.enum(['XS', 'S', 'M', 'L', 'XL']),
+  templateId: z.number().int().positive().nullable().optional(),
+})
+
+const LinkBolsterMappingSchema = z.object({
+  shopifyVariantId: ShopifyVariantIdSchema,
+  bolsterVariant: z.enum(['short', 'medium', 'long']).default('medium'),
+  templateId: z.number().int().positive().nullable().optional(),
+})
+
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
   const parsed = SellPillowSchema.parse(input)
   const admin = supabaseAdmin()
@@ -652,6 +665,41 @@ export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMap
     pillow_kind: null,
     bolster_variant: null,
     item_id: parsed.itemId,
+    default_template_id: null,
+  }
+  const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
+  if (error) throw new Error(error.message)
+  return { ok: true }
+}
+
+export async function linkPillowToShopifyVariant(input: z.infer<typeof LinkPillowMappingSchema>) {
+  const parsed = LinkPillowMappingSchema.parse(input)
+  const admin = supabaseAdmin()
+  const payload = {
+    shopify_variant_id: parsed.shopifyVariantId,
+    kind: 'pillow' as const,
+    pillow_size: parsed.pillowSize,
+    pillow_kind: parsed.pillowKind,
+    bolster_variant: null,
+    item_id: null,
+    default_template_id: parsed.templateId ?? null,
+  }
+  const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
+  if (error) throw new Error(error.message)
+  return { ok: true }
+}
+
+export async function linkBolsterToShopifyVariant(input: z.infer<typeof LinkBolsterMappingSchema>) {
+  const parsed = LinkBolsterMappingSchema.parse(input)
+  const admin = supabaseAdmin()
+  const payload = {
+    shopify_variant_id: parsed.shopifyVariantId,
+    kind: 'bolster' as const,
+    pillow_size: null,
+    pillow_kind: null,
+    bolster_variant: parsed.bolsterVariant,
+    item_id: null,
+    default_template_id: parsed.templateId ?? null,
   }
   const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
   if (error) throw new Error(error.message)

@@ -12,6 +12,9 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarInset,
   SidebarTrigger,
   SidebarRail,
@@ -32,14 +35,22 @@ type NavItem = {
   label: string;
   tooltip: string;
   Icon: LucideIcon;
+  items?: NavItem[];
 };
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "General", tooltip: "General Settings", Icon: Settings2 },
-  { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes },
-  { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store },
+  {
+    href: "/settings/inventory",
+    label: "Inventory",
+    tooltip: "Inventory",
+    Icon: Boxes,
+    items: [
+      { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store },
+      { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
+    ],
+  },
   { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
-  { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
   { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
 ];
 
@@ -61,16 +72,41 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             <SidebarGroup>
               <SidebarGroupLabel>Settings</SidebarGroupLabel>
               <SidebarMenu>
-                {NAV_ITEMS.map(({ href, label, tooltip, Icon }) => (
-                  <SidebarMenuItem key={href}>
-                    <SidebarMenuButton asChild tooltip={tooltip}>
-                      <a href={href}>
-                        <Icon />
-                        <span>{label}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {NAV_ITEMS.map(({ href, label, tooltip, Icon, items }) => {
+                  const isActive =
+                    href === "/settings"
+                      ? pathname === "/settings"
+                      : pathname === href || pathname.startsWith(`${href}/`);
+
+                  return (
+                    <SidebarMenuItem key={href}>
+                      <SidebarMenuButton asChild tooltip={tooltip} isActive={isActive}>
+                        <a href={href}>
+                          <Icon />
+                          <span>{label}</span>
+                        </a>
+                      </SidebarMenuButton>
+
+                      {items?.length ? (
+                        <SidebarMenuSub>
+                          {items.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
+                            <SidebarMenuSubItem key={subHref}>
+                              <SidebarMenuSubButton
+                                asChild
+                                isActive={pathname === subHref}
+                              >
+                                <a href={subHref} title={subTooltip}>
+                                  <SubIcon />
+                                  <span>{subLabel}</span>
+                                </a>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      ) : null}
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroup>
           </SidebarContent>
