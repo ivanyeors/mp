@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Menubar,
   MenubarContent,
@@ -7,6 +11,16 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from "@/components/ui/menubar";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   FileText,
   Heart,
@@ -20,8 +34,45 @@ import {
 } from "lucide-react";
 
 export default function MpCarePage() {
+  const [comingSoonOpen, setComingSoonOpen] = useState(true);
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-background">
+      <Dialog
+        open={comingSoonOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            router.push("/");
+            return;
+          }
+          setComingSoonOpen(open);
+        }}
+      >
+        <DialogContent
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>MP Care is coming soon</DialogTitle>
+            <DialogDescription>
+              We’re still polishing this experience. Some content may be
+              incomplete.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="text-sm text-muted-foreground">
+            This area is still under construction.
+          </div>
+
+          <DialogFooter>
+            <Button asChild>
+              <Link href="/">Back home</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex h-14 items-center px-4">
         {/* Menu Bar */}

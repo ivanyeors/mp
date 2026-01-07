@@ -1,4 +1,6 @@
 "use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Menubar,
@@ -16,6 +18,16 @@ import { DesignProvider, useDesign } from "./components/DesignProvider";
 import DesignControls from "./components/DesignControls";
 import SavedDesignsMenu from "./components/SavedDesignsMenu";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   FileText,
   Palette,
@@ -30,8 +42,45 @@ import {
  
 function MakerContent() {
   const { groupRotation } = useDesign();
+  const [comingSoonOpen, setComingSoonOpen] = useState(true);
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-background relative">
+      <Dialog
+        open={comingSoonOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            router.push("/");
+            return;
+          }
+          setComingSoonOpen(open);
+        }}
+      >
+        <DialogContent
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>MP Maker is coming soon</DialogTitle>
+            <DialogDescription>
+              We’re still polishing this experience. Some tools may be incomplete
+              or disabled.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="text-sm text-muted-foreground">
+            This area is still under construction.
+          </div>
+
+          <DialogFooter>
+            <Button asChild>
+              <Link href="/">Back home</Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Subtle Dot Pattern Background */}
       <DotPattern
         dotSize={3}
