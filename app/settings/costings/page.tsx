@@ -20,8 +20,9 @@ import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
+import { syncShopifyPricesOnly } from "../inventory/actions";
 
-type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
+type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
 type PillowSize = "XS" | "S" | "M" | "L" | "XL";
 type PillowKind = "basic" | "premium";
@@ -36,9 +37,9 @@ type ItemRow = {
   pricing?: PriceRecord | PriceRecord[] | null;
 };
 
-type DraftRow = { costPrice: string; msrp: string };
+type DraftRow = { costPrice: string; msrp: string; compareAt: string };
 type DraftState = Record<string, DraftRow>;
-type BaselineState = Record<string, { cost: number | null; msrp: number | null }>;
+type BaselineState = Record<string, { cost: number | null; msrp: number | null; compareAt: number | null }>;
 
 type BolsterVariant = "short" | "medium" | "long";
 
@@ -76,6 +77,7 @@ type ProductSaveRow = {
   productId?: number;
   variant?: BolsterVariant;
   msrpCents: number | null;
+  compareAtCents?: number | null;
 };
 
 const BOLSTER_VARIANTS: BolsterVariant[] = ["short", "medium", "long"];
@@ -249,6 +251,7 @@ export default function CostingsPage() {
   const filterMeasureRef = useRef<HTMLDivElement>(null);
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [premiumVariantSelection, setPremiumVariantSelection] = useState<PremiumVariant>("linen");
+  const [syncingShopifyPrices, setSyncingShopifyPrices] = useState(false);
   const [groupOpenStates, setGroupOpenStates] = useState<Record<ProductGroupKey, boolean>>(() =>
     Object.fromEntries(
       PRODUCT_GROUP_DEFINITIONS.map((group) => [group.key, Boolean(group.defaultOpen)]),
@@ -268,6 +271,7 @@ export default function CostingsPage() {
         product_id: number | null;
         variant: string | null;
         msrp: string | number | null;
+        compare_at_price?: string | number | null;
       };
 
       const [
@@ -279,7 +283,7 @@ export default function CostingsPage() {
       ] = await Promise.all([
         supabaseClient
           .from("items")
-          .select("id,category,name,size,subtype,pricing:item_prices!left(cost_price,msrp)")
+          .select("id,category,name,size,subtype,pricing:item_prices!left(cost_price,msrp,compare_at_price)")
           .eq("is_active", true)
           .order("category", { ascending: true })
           .order("name", { ascending: true })
@@ -292,7 +296,7 @@ export default function CostingsPage() {
           .order("size", { ascending: true }),
         supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
         supabaseClient.from("bolster_bom_lines").select("variant,item_id,quantity"),
-        supabaseClient.from("product_prices").select("key,kind,product_id,variant,msrp"),
+        supabaseClient.from("product_prices").select("key,kind,product_id,variant,msrp,compare_at_price"),
       ]);
 
       if (itemsError) throw new Error(itemsError.message);
@@ -317,12 +321,14 @@ export default function CostingsPage() {
         const pricing = Array.isArray(row.pricing) ? row.pricing[0] : row.pricing;
         const costCents = toCents(pricing?.cost_price);
         const msrpCents = toCents(pricing?.msrp);
+        const compareAtCents = toCents(pricing?.compare_at_price ?? null);
         const key = itemKey(row.id);
         nextDraft[key] = {
           costPrice: formatFromCents(costCents),
           msrp: formatFromCents(msrpCents),
+          compareAt: formatFromCents(compareAtCents),
         };
-        nextBaseline[key] = { cost: costCents, msrp: msrpCents };
+        nextBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
         itemCostById.set(row.id, costCents);
       });
 
@@ -416,23 +422,27 @@ export default function CostingsPage() {
               const variantKey = premiumPillowKey(product.id, variant);
               const price = priceByKey.get(variantKey) ?? priceByKey.get(key) ?? priceByProductId.get(product.id);
               const msrpCents = toCents(price?.msrp ?? null);
+              const compareAtCents = toCents(price?.compare_at_price ?? null);
               productDraft[variantKey] = {
                 costPrice: formatFromCents(costCents),
                 msrp: formatFromCents(msrpCents),
+                compareAt: formatFromCents(compareAtCents),
               };
-              productBaseline[variantKey] = { cost: costCents, msrp: msrpCents };
+              productBaseline[variantKey] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
             });
             // Keep a stable base key entry for shared rendering; MSRP is variant-scoped.
-            productDraft[key] = { costPrice: formatFromCents(costCents), msrp: "" };
-            productBaseline[key] = { cost: costCents, msrp: null };
+            productDraft[key] = { costPrice: formatFromCents(costCents), msrp: "", compareAt: "" };
+            productBaseline[key] = { cost: costCents, msrp: null, compareAt: null };
           } else {
             const price = priceByKey.get(key) ?? priceByProductId.get(product.id);
             const msrpCents = toCents(price?.msrp ?? null);
+            const compareAtCents = toCents(price?.compare_at_price ?? null);
             productDraft[key] = {
               costPrice: formatFromCents(costCents),
               msrp: formatFromCents(msrpCents),
+              compareAt: formatFromCents(compareAtCents),
             };
-            productBaseline[key] = { cost: costCents, msrp: msrpCents };
+            productBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
           }
           productRows.push({
             key,
@@ -453,11 +463,13 @@ export default function CostingsPage() {
         const costCents = costForComponents(components);
         const price = priceByVariant.get(variant);
         const msrpCents = toCents(price?.msrp ?? null);
+        const compareAtCents = toCents(price?.compare_at_price ?? null);
         productDraft[key] = {
           costPrice: formatFromCents(costCents),
           msrp: formatFromCents(msrpCents),
+          compareAt: formatFromCents(compareAtCents),
         };
-        productBaseline[key] = { cost: costCents, msrp: msrpCents };
+        productBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
         productRows.push({
           key,
           kind: "bolster",
@@ -713,7 +725,7 @@ export default function CostingsPage() {
   };
 
   const renderProductCard = (product: ProductRow) => {
-    const current = draft[product.key] ?? { costPrice: "", msrp: "" };
+    const current = draft[product.key] ?? { costPrice: "", msrp: "", compareAt: "" };
     const costDisplay = productCostDisplay.get(product.key) ?? current.costPrice;
     const partsCount = product.components.filter((component) => component.quantity > 0).length;
     const primaryLabel =
@@ -783,7 +795,7 @@ export default function CostingsPage() {
 
   const activeProductDraft = useMemo(() => {
     if (!activeProduct) return null;
-    return draft[activeProduct.key] ?? { costPrice: "", msrp: "" };
+    return draft[activeProduct.key] ?? { costPrice: "", msrp: "", compareAt: "" };
   }, [activeProduct, draft]);
 
   const activeProductCostDisplay = useMemo(() => {
@@ -865,7 +877,7 @@ export default function CostingsPage() {
   const handleInputChange = (rowKey: string, field: keyof DraftRow, raw: string) => {
     const sanitized = sanitizeCurrencyInput(raw);
     setDraft((prev) => {
-      const current = prev[rowKey] ?? { costPrice: "", msrp: "" };
+      const current = prev[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
       return {
         ...prev,
         [rowKey]: { ...current, [field]: sanitized },
@@ -875,7 +887,7 @@ export default function CostingsPage() {
 
   const handleBlur = (rowKey: string, field: keyof DraftRow) => {
     setDraft((prev) => {
-      const current = prev[rowKey] ?? { costPrice: "", msrp: "" };
+      const current = prev[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
       const cents = parseToCents(current[field]);
       if (cents === null) {
         return {
@@ -906,11 +918,12 @@ export default function CostingsPage() {
   const isDirty = useMemo(() => {
     const itemChanged = items.some((item) => {
       const key = itemKey(item.id);
-      const current = draft[key] ?? { costPrice: "", msrp: "" };
-      const baselineRow = baseline[key] ?? { cost: null, msrp: null };
+      const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+      const baselineRow = baseline[key] ?? { cost: null, msrp: null, compareAt: null };
       const costCents = parseToCents(current.costPrice);
       const msrpCents = parseToCents(current.msrp);
-      return costCents !== baselineRow.cost || msrpCents !== baselineRow.msrp;
+      const compareAtCents = parseToCents(current.compareAt);
+      return costCents !== baselineRow.cost || msrpCents !== baselineRow.msrp || compareAtCents !== baselineRow.compareAt;
     });
     if (itemChanged) return true;
     return products.some((product) => {
@@ -918,16 +931,18 @@ export default function CostingsPage() {
       if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
         return PREMIUM_VARIANTS.some((variant) => {
           const variantKey = premiumPillowKey(product.productId!, variant);
-          const current = draft[variantKey] ?? { costPrice: "", msrp: "" };
-          const baselineRow = baseline[variantKey] ?? { cost: product.costCents ?? null, msrp: null };
+          const current = draft[variantKey] ?? { costPrice: "", msrp: "", compareAt: "" };
+          const baselineRow = baseline[variantKey] ?? { cost: product.costCents ?? null, msrp: null, compareAt: null };
           const msrpCents = parseToCents(current.msrp);
-          return msrpCents !== baselineRow.msrp;
+          const compareAtCents = parseToCents(current.compareAt);
+          return msrpCents !== baselineRow.msrp || compareAtCents !== baselineRow.compareAt;
         });
       }
-      const current = draft[key] ?? { costPrice: "", msrp: "" };
-      const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null };
+      const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+      const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
       const msrpCents = parseToCents(current.msrp);
-      return msrpCents !== baselineRow.msrp;
+      const compareAtCents = parseToCents(current.compareAt);
+      return msrpCents !== baselineRow.msrp || compareAtCents !== baselineRow.compareAt;
     });
   }, [items, products, draft, baseline]);
 
@@ -935,50 +950,56 @@ export default function CostingsPage() {
     const rows = items
       .map((item) => {
         const key = itemKey(item.id);
-        const current = draft[key] ?? { costPrice: "", msrp: "" };
-        const baselineRow = baseline[key] ?? { cost: null, msrp: null };
+        const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+        const baselineRow = baseline[key] ?? { cost: null, msrp: null, compareAt: null };
         const costCents = parseToCents(current.costPrice);
         const msrpCents = parseToCents(current.msrp);
-        if (costCents === baselineRow.cost && msrpCents === baselineRow.msrp) {
+        const compareAtCents = parseToCents(current.compareAt);
+        if (costCents === baselineRow.cost && msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) {
           return null;
         }
         return {
           itemId: item.id,
           costPriceCents: costCents,
           msrpCents: msrpCents,
+          compareAtCents,
         };
       })
-      .filter((row): row is { itemId: number; costPriceCents: number | null; msrpCents: number | null } => row !== null);
+      .filter((row): row is { itemId: number; costPriceCents: number | null; msrpCents: number | null; compareAtCents: number | null } => row !== null);
 
     const productPayload = products
       .flatMap((product) => {
         if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
           return PREMIUM_VARIANTS.map((variant) => {
             const key = premiumPillowKey(product.productId!, variant);
-            const current = draft[key] ?? { costPrice: "", msrp: "" };
-            const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: null };
+            const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+            const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: null, compareAt: null };
             const msrpCents = parseToCents(current.msrp);
-            if (msrpCents === baselineRow.msrp) return null;
+            const compareAtCents = parseToCents(current.compareAt);
+            if (msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) return null;
             const payload: ProductSaveRow = {
               key,
               kind: "pillow",
               productId: product.productId!,
               msrpCents,
+              compareAtCents,
             };
             return payload;
           }).filter((row): row is ProductSaveRow => row !== null);
         }
         const key = product.key;
-        const current = draft[key] ?? { costPrice: "", msrp: "" };
-        const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null };
+        const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+        const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
         const msrpCents = parseToCents(current.msrp);
-        if (msrpCents === baselineRow.msrp) {
+        const compareAtCents = parseToCents(current.compareAt);
+        if (msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) {
           return [];
         }
         const payload: ProductSaveRow = {
           key,
           kind: product.kind,
           msrpCents,
+          compareAtCents,
         };
         if (product.kind === "pillow") {
           if (product.productId === undefined) {
@@ -1078,6 +1099,28 @@ export default function CostingsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setSyncingShopifyPrices(true);
+              try {
+                const res = await syncShopifyPricesOnly();
+                const stats = res?.prices ?? null;
+                toast.success(
+                  stats
+                    ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
+                    : "Shopify prices synced",
+                );
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
+              } finally {
+                setSyncingShopifyPrices(false);
+              }
+            }}
+            disabled={saving || syncingShopifyPrices}
+          >
+            {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
+          </Button>
           <Button variant="secondary" onClick={load} disabled={saving}>
             Refresh
           </Button>
@@ -1095,7 +1138,7 @@ export default function CostingsPage() {
             <div>
               <h2 className="text-lg font-medium">Products</h2>
               <p className="text-sm text-muted-foreground">
-                Cost price is calculated from configured components. Enter MSRP to set retail pricing.
+                Cost price is calculated from configured components. Enter MSRP and (optionally) compare-at for Shopify strikethrough pricing.
               </p>
             </div>
             <div className="space-y-4">
@@ -1248,12 +1291,13 @@ export default function CostingsPage() {
                         <TableHead className="w-2/5">Part</TableHead>
                         <TableHead className="w-1/5">Cost Price</TableHead>
                         <TableHead className="w-1/5">MSRP</TableHead>
+                        <TableHead className="w-1/5">Compare-at</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {group.items.map((item) => {
                         const rowKey = itemKey(item.id);
-                        const current = draft[rowKey] ?? { costPrice: "", msrp: "" };
+                        const current = draft[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
                         const itemLabel = getInventoryItemDisplayLabel(item);
                         return (
                           <TableRow key={item.id}>
@@ -1291,6 +1335,23 @@ export default function CostingsPage() {
                                   onBlur={() => handleBlur(rowKey, "msrp")}
                                   className="pl-6"
                                   aria-label={`MSRP for ${itemLabel}`}
+                                />
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="relative">
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                  $
+                                </span>
+                                <Input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={current.compareAt}
+                                  placeholder="(optional)"
+                                  onChange={(event) => handleInputChange(rowKey, "compareAt", event.target.value)}
+                                  onBlur={() => handleBlur(rowKey, "compareAt")}
+                                  className="pl-6"
+                                  aria-label={`Compare-at price for ${itemLabel}`}
                                 />
                               </div>
                             </TableCell>
@@ -1341,7 +1402,7 @@ export default function CostingsPage() {
                     </div>
                   ) : null}
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div className="space-y-2">
                       <div className="text-sm font-medium">Cost price</div>
                       <div className="relative">
@@ -1412,6 +1473,66 @@ export default function CostingsPage() {
                           }}
                           className="pl-6"
                           aria-label={`MSRP for ${activeProduct.label}${
+                            activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium"
+                              ? ` (${PREMIUM_VARIANT_TITLES[premiumVariantSelection]})`
+                              : ""
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-medium">Compare-at</div>
+                        {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
+                          <div className="text-xs text-muted-foreground">
+                            {PREMIUM_VARIANT_TITLES[premiumVariantSelection]}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          value={
+                            activeProduct.kind === "pillow" &&
+                            activeProduct.pillowKind === "premium" &&
+                            activeProduct.productId
+                              ? (draft[premiumPillowKey(activeProduct.productId, premiumVariantSelection)]?.compareAt ?? "")
+                              : (activeProductDraft?.compareAt ?? "")
+                          }
+                          placeholder="(optional)"
+                          onChange={(event) => {
+                            if (
+                              activeProduct.kind === "pillow" &&
+                              activeProduct.pillowKind === "premium" &&
+                              activeProduct.productId
+                            ) {
+                              handleInputChange(
+                                premiumPillowKey(activeProduct.productId, premiumVariantSelection),
+                                "compareAt",
+                                event.target.value,
+                              );
+                              return;
+                            }
+                            handleInputChange(activeProduct.key, "compareAt", event.target.value);
+                          }}
+                          onBlur={() => {
+                            if (
+                              activeProduct.kind === "pillow" &&
+                              activeProduct.pillowKind === "premium" &&
+                              activeProduct.productId
+                            ) {
+                              handleBlur(premiumPillowKey(activeProduct.productId, premiumVariantSelection), "compareAt");
+                              return;
+                            }
+                            handleBlur(activeProduct.key, "compareAt");
+                          }}
+                          className="pl-6"
+                          aria-label={`Compare-at for ${activeProduct.label}${
                             activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium"
                               ? ` (${PREMIUM_VARIANT_TITLES[premiumVariantSelection]})`
                               : ""

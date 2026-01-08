@@ -35,6 +35,7 @@ const ProductPayloadSchema = z
     productId: z.number().int().positive().optional(),
     variant: z.enum(["short", "medium", "long"]).optional(),
     msrpCents: z.number().int().min(0).nullable(),
+    compareAtCents: z.number().int().min(0).nullable().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.kind === "pillow") {
@@ -76,6 +77,7 @@ const PayloadSchema = z.object({
       itemId: z.number().int().positive(),
       costPriceCents: z.number().int().min(0).nullable(),
       msrpCents: z.number().int().min(0).nullable(),
+      compareAtCents: z.number().int().min(0).nullable().optional(),
     }),
   ),
   products: z.array(ProductPayloadSchema).optional(),
@@ -237,15 +239,16 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
 
   const upsertRows = payload.rows
-    .filter((row) => row.costPriceCents !== null || row.msrpCents !== null)
+    .filter((row) => row.costPriceCents !== null || row.msrpCents !== null || row.compareAtCents !== null)
     .map((row) => ({
       item_id: row.itemId,
       cost_price: toDecimalString(row.costPriceCents),
       msrp: toDecimalString(row.msrpCents),
+      compare_at_price: toDecimalString(row.compareAtCents ?? null),
     }));
 
   const deleteIds = payload.rows
-    .filter((row) => row.costPriceCents === null && row.msrpCents === null)
+    .filter((row) => row.costPriceCents === null && row.msrpCents === null && (row.compareAtCents ?? null) === null)
     .map((row) => row.itemId);
 
   try {
@@ -259,20 +262,23 @@ export async function POST(req: Request) {
     }
     if (productRows.length > 0) {
       const productUpserts = productRows
-        .filter((row): row is ProductPayload & { msrpCents: number } => row.msrpCents !== null)
+        .filter((row): row is ProductPayload => row.msrpCents !== null || (row.compareAtCents ?? null) !== null)
         .map((row) => ({
           key: row.key,
           kind: row.kind,
           product_id: row.kind === "pillow" ? row.productId! : null,
           variant: row.kind === "bolster" ? row.variant! : null,
           msrp: toDecimalString(row.msrpCents),
+          compare_at_price: toDecimalString(row.compareAtCents ?? null),
           currency: "USD",
         }));
       if (productUpserts.length > 0) {
         const { error } = await admin.from("product_prices").upsert(productUpserts, { onConflict: "key" });
         if (error) throw new Error(error.message);
       }
-      const deleteKeys = productRows.filter((row) => row.msrpCents === null).map((row) => row.key);
+      const deleteKeys = productRows
+        .filter((row) => row.msrpCents === null && (row.compareAtCents ?? null) === null)
+        .map((row) => row.key);
       if (deleteKeys.length > 0) {
         const { error } = await admin.from("product_prices").delete().in("key", deleteKeys);
         if (error) throw new Error(error.message);

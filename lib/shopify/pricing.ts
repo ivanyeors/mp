@@ -22,12 +22,14 @@ type OverrideRow = {
 type ProductPriceRow = {
   key: string
   msrp: number | string | null
+  compare_at_price?: number | string | null
   currency: string | null
 }
 
 type ItemPriceRow = {
   item_id: number | string
   msrp: number | string | null
+  compare_at_price?: number | string | null
   currency: string | null
 }
 
@@ -75,8 +77,8 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
       .from('shopify_variant_mappings')
       .select('shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id'),
     admin.from('shopify_variant_overrides').select('shopify_variant_id,sku,price,compare_at_price,currency'),
-    admin.from('product_prices').select('key,msrp,currency'),
-    admin.from('item_prices').select('item_id,msrp,currency'),
+    admin.from('product_prices').select('key,msrp,compare_at_price,currency'),
+    admin.from('item_prices').select('item_id,msrp,compare_at_price,currency'),
     admin.from('pillow_products').select('id,kind,size'),
     shopifyListActiveProductsWithVariants({ limit: 250 }),
   ])
@@ -91,9 +93,9 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
     productPriceByKey.set(String(p.key), p)
   })
 
-  const itemMsrpByItemId = new Map<number, ItemPriceRow>()
+  const itemPriceByItemId = new Map<number, ItemPriceRow>()
   ;(itemPrices ?? []).forEach((r: ItemPriceRow) => {
-    itemMsrpByItemId.set(Number(r.item_id), r)
+    itemPriceByItemId.set(Number(r.item_id), r)
   })
 
   const pillowProductIdByKindSize = new Map<string, number>()
@@ -135,14 +137,13 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
 
     if (ov) {
       // UX: "Price" is managed from Costings (product_prices/item_prices) as the single source of truth.
-      // Keep SKU + compare-at as editable overrides.
-      if (ov.compare_at_price !== undefined) desiredCompareAt = toMoneyString(ov.compare_at_price)
+      // Keep SKU as an editable override (compare-at is managed from Costings).
       if (ov.sku !== undefined) desiredSku = ov.sku ? String(ov.sku) : null
     }
 
     if (desiredPrice === undefined) {
       if (m.kind === 'part' && m.item_id) {
-        desiredPrice = toMoneyString(itemMsrpByItemId.get(Number(m.item_id))?.msrp ?? null)
+        desiredPrice = toMoneyString(itemPriceByItemId.get(Number(m.item_id))?.msrp ?? null)
       } else if (m.kind === 'bolster' && m.bolster_variant) {
         const key = `product:bolster:${m.bolster_variant}`
         desiredPrice = toMoneyString(productPriceByKey.get(key)?.msrp ?? null)
@@ -163,6 +164,40 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
           desiredPrice = null
         }
       }
+    }
+
+    // Compare-at: sourced from Costings tables; if not set there, fall back to legacy per-variant override.
+    if (desiredCompareAt === undefined) {
+      if (m.kind === 'part' && m.item_id) {
+        desiredCompareAt = toMoneyString(itemPriceByItemId.get(Number(m.item_id))?.compare_at_price ?? null)
+      } else if (m.kind === 'bolster' && m.bolster_variant) {
+        const key = `product:bolster:${m.bolster_variant}`
+        desiredCompareAt = toMoneyString(productPriceByKey.get(key)?.compare_at_price ?? null)
+      } else if (m.kind === 'pillow' && m.pillow_size) {
+        const pk = (m.pillow_kind ?? 'basic') as 'basic' | 'premium'
+        const pillowProductId = pillowProductIdByKindSize.get(`${pk}:${m.pillow_size}`) ?? null
+        if (pillowProductId) {
+          if (pk === 'premium') {
+            const title = shopifyVariantTitleById.get(variantId) ?? ''
+            const premiumVariant = detectPremiumVariantFromTitle(title)
+            const key = `product:pillow:${pillowProductId}:${premiumVariant}`
+            desiredCompareAt = toMoneyString(productPriceByKey.get(key)?.compare_at_price ?? null)
+          } else {
+            const key = `product:pillow:${pillowProductId}`
+            desiredCompareAt = toMoneyString(productPriceByKey.get(key)?.compare_at_price ?? null)
+          }
+        } else {
+          desiredCompareAt = null
+        }
+      }
+    }
+    if (
+      (desiredCompareAt === undefined || desiredCompareAt === null)
+      && ov
+      && ov.compare_at_price !== undefined
+      && ov.compare_at_price !== null
+    ) {
+      desiredCompareAt = toMoneyString(ov.compare_at_price)
     }
 
     const patch: { price?: string | null; compareAtPrice?: string | null; sku?: string | null } = {}

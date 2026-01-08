@@ -19,7 +19,6 @@ import {
   linkPillowToShopifyVariant,
   linkBolsterToShopifyVariant,
   deleteShopifyMapping,
-  syncShopifyPricesOnly,
 } from "./actions";
 
 type Item = {
@@ -51,7 +50,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [filter, setFilter] = useState("");
-  const [syncingPrices, setSyncingPrices] = useState(false);
 
   const [linkKind, setLinkKind] = useState<"part" | "pillow" | "bolster">("part");
   const [linkItemId, setLinkItemId] = useState<string>("");
@@ -67,7 +65,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [unmappedVariants, setUnmappedVariants] = useState<Array<{ id: number; label: string; sku: string | null }>>([]);
   const [unmappedFilter, setUnmappedFilter] = useState("");
 
-  const [draftByVariantId, setDraftByVariantId] = useState<Record<number, { sku: string; compareAt: string }>>({});
+  const [draftByVariantId, setDraftByVariantId] = useState<Record<number, { sku: string }>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -78,14 +76,10 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
       const next = (res.rows ?? []) as AdminRow[];
       setRows(next);
       setDraftByVariantId(() => {
-        const out: Record<number, { sku: string; compareAt: string }> = {};
+        const out: Record<number, { sku: string }> = {};
         next.forEach((r) => {
           out[r.shopifyVariantId] = {
             sku: r.override?.sku ?? "",
-            compareAt:
-              r.override?.compare_at_price === null || r.override?.compare_at_price === undefined
-                ? ""
-                : String(r.override?.compare_at_price),
           };
         });
         return out;
@@ -245,48 +239,18 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     return unmappedVariants.filter((v) => `${v.label} ${v.sku ?? ""} ${v.id}`.toLowerCase().includes(q));
   }, [unmappedVariants, unmappedFilter]);
 
-  const parseMoney = (raw: string): number | null | undefined => {
-    const t = raw.trim();
-    if (t === "") return undefined;
-    const n = Number.parseFloat(t);
-    if (!Number.isFinite(n) || n < 0) return null;
-    return n;
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <div className="text-xl font-semibold">Shopify Admin</div>
           <div className="text-sm text-muted-foreground">
-            Active Shopify variants only. Price is synced from <span className="font-medium">Costings (MSRP)</span>; override SKU and compare-at here.
+            Active Shopify variants only. Price + compare-at are synced from <span className="font-medium">Costings</span>; override SKU here.
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={refresh} disabled={loading}>
             {loading ? "Loading…" : "Refresh"}
-          </Button>
-          <Button
-            onClick={async () => {
-              setSyncingPrices(true);
-              try {
-                const res = await syncShopifyPricesOnly();
-                const stats = res?.prices ?? null;
-                toast.success(
-                  stats
-                    ? `Prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
-                    : "Prices synced",
-                );
-                await refresh();
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Failed to sync prices");
-              } finally {
-                setSyncingPrices(false);
-              }
-            }}
-            disabled={syncingPrices}
-          >
-            {syncingPrices ? "Syncing…" : "Sync prices"}
           </Button>
         </div>
       </div>
@@ -536,13 +500,12 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
               <TableHead>Mapping</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead>Price (SGD)</TableHead>
-              <TableHead>Compare-at (SGD)</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {visible.map((r) => {
-              const d = draftByVariantId[r.shopifyVariantId] ?? { sku: "", compareAt: "" };
+              const d = draftByVariantId[r.shopifyVariantId] ?? { sku: "" };
               const status =
                 r.kind === "unmapped"
                   ? "unmapped"
@@ -601,31 +564,15 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                       inputMode="decimal"
                     />
                   </TableCell>
-                  <TableCell>
-                    <Input
-                      value={d.compareAt}
-                      onChange={(e) =>
-                        setDraftByVariantId((prev) => ({
-                          ...prev,
-                          [r.shopifyVariantId]: { ...d, compareAt: e.target.value },
-                        }))
-                      }
-                      placeholder="(optional)"
-                      inputMode="decimal"
-                    />
-                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
                         onClick={async () => {
-                          const compareAt = parseMoney(d.compareAt);
-                          if (compareAt === null) { toast.error("Invalid compare-at"); return; }
                           try {
                             await upsertShopifyVariantOverride({
                               shopifyVariantId: r.shopifyVariantId,
                               sku: d.sku.trim() ? d.sku.trim() : null,
-                              compareAtPrice: compareAt === undefined ? undefined : compareAt,
                             });
                             toast.success("Saved");
                             await refresh();
@@ -643,7 +590,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                           try {
                             await deleteShopifyVariantOverride(r.shopifyVariantId);
                             toast.success("Override cleared");
-                            setDraftByVariantId((prev) => ({ ...prev, [r.shopifyVariantId]: { sku: "", compareAt: "" } }));
+                            setDraftByVariantId((prev) => ({ ...prev, [r.shopifyVariantId]: { sku: "" } }));
                             await refresh();
                           } catch (e) {
                             toast.error(e instanceof Error ? e.message : "Failed to clear override");
@@ -676,7 +623,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             })}
             {visible.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-sm text-muted-foreground">
+                <TableCell colSpan={7} className="text-sm text-muted-foreground">
                   No rows
                 </TableCell>
               </TableRow>

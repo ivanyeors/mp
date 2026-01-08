@@ -1849,11 +1849,14 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
           ? `${baseItem.name}${entry.alterationName.trim() ? ` ${entry.alterationName.trim()}` : ""}`
           : "";
 
-      const trimmedName = entry.category === "filling" ? computedName.trim() : entry.name.trim();
+      const trimmedName =
+        entry.category === "filling"
+          ? (baseItem ? computedName.trim() : entry.name.trim())
+          : entry.name.trim();
       if (!trimmedName) {
         setErrorMessage(
           entry.category === "filling"
-            ? `Item ${index + 1}: Select an alteration base`
+            ? `Item ${index + 1}: Enter a variant name or select an alteration base`
             : `Item ${index + 1}: Name is required`,
         );
         return;
@@ -1992,12 +1995,23 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
                         setEntries((prev) =>
                           prev.map((item, idx) => {
                             if (idx !== index) return item;
+                            if (value === "__none__") {
+                              return {
+                                ...item,
+                                alterationBaseName: "",
+                                size: "",
+                                alterationOfItemId: "",
+                                alterationName: "",
+                                name: "",
+                              };
+                            }
                             if (!value) {
                               return {
                                 ...item,
                                 alterationBaseName: "",
                                 size: "",
                                 alterationOfItemId: "",
+                                alterationName: "",
                                 name: "",
                               };
                             }
@@ -2019,6 +2033,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">Select base variant…</SelectItem>
+                        <SelectItem value="__none__">No alteration</SelectItem>
                         {fillingBaseVariantNames.map((name) => (
                           <SelectItem key={name} value={name}>
                             {name}
@@ -2039,9 +2054,9 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
                     <Input
                       id={`add-item-name-${index}`}
                       value={entry.name}
-                      disabled={entry.category === "filling"}
+                      disabled={entry.category === "filling" && !!entry.alterationBaseName}
                       onChange={
-                        entry.category === "filling"
+                        entry.category === "filling" && !!entry.alterationBaseName
                           ? undefined
                           : (event) => {
                               const value = event.target.value;
@@ -2062,7 +2077,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
                         entry.category === "packaging"
                           ? "e.g. Tote bag (Premium)"
                           : entry.category === "filling"
-                            ? "Select base variant…"
+                            ? (entry.alterationBaseName ? "Alteration (computed)" : "e.g. 3D")
                           : "e.g. Linen Luxe"
                       }
                       autoComplete="off"
@@ -2112,71 +2127,92 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
                           <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
                             Size
                           </label>
-                          <Select
-                            value={entry.size}
-                            onValueChange={(value) => {
-                              setEntries((prev) =>
-                                prev.map((item, idx) => {
-                                  if (idx !== index) return item;
-                                  const baseName = item.alterationBaseName.trim();
-                                  const rows = baseName ? (fillingSizesByBaseName.get(baseName) ?? []) : [];
-                                  const match = rows.find((r) => r.size === value) ?? null;
-                                  const nextName = `${baseName}${item.alterationName.trim() ? ` ${item.alterationName.trim()}` : ""}`.trim();
-                                  return {
-                                    ...item,
-                                    size: value,
-                                    alterationOfItemId: match ? String(match.id) : "",
-                                    name: nextName,
-                                  };
-                                }),
-                              );
-                              setErrorMessage(null);
-                            }}
-                          >
-                            <SelectTrigger id={`add-item-size-${index}`} className="w-full" disabled={!entry.alterationBaseName}>
-                              <SelectValue placeholder={entry.alterationBaseName ? "Select size…" : "Select base variant first…"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(entry.alterationBaseName
-                                ? (fillingSizesByBaseName.get(entry.alterationBaseName) ?? [])
-                                : []
-                              ).map((row) => (
-                                <SelectItem key={row.size} value={row.size}>
-                                  {row.size}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          {entry.alterationBaseName ? (
+                            <Select
+                              value={entry.size}
+                              onValueChange={(value) => {
+                                setEntries((prev) =>
+                                  prev.map((item, idx) => {
+                                    if (idx !== index) return item;
+                                    const baseName = item.alterationBaseName.trim();
+                                    const rows = baseName ? (fillingSizesByBaseName.get(baseName) ?? []) : [];
+                                    const match = rows.find((r) => r.size === value) ?? null;
+                                    const nextName = `${baseName}${item.alterationName.trim() ? ` ${item.alterationName.trim()}` : ""}`.trim();
+                                    return {
+                                      ...item,
+                                      size: value,
+                                      alterationOfItemId: match ? String(match.id) : "",
+                                      name: nextName,
+                                    };
+                                  }),
+                                );
+                                setErrorMessage(null);
+                              }}
+                            >
+                              <SelectTrigger id={`add-item-size-${index}`} className="w-full">
+                                <SelectValue placeholder="Select size…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(fillingSizesByBaseName.get(entry.alterationBaseName) ?? []).map((row) => (
+                                  <SelectItem key={row.size} value={row.size}>
+                                    {row.size}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              id={`add-item-size-${index}`}
+                              value={entry.size}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setEntries((prev) =>
+                                  prev.map((item, idx) =>
+                                    idx === index
+                                      ? {
+                                          ...item,
+                                          size: value,
+                                        }
+                                      : item,
+                                  ),
+                                );
+                                setErrorMessage(null);
+                              }}
+                              placeholder="e.g. S, M, L"
+                              autoComplete="off"
+                            />
+                          )}
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-sm font-medium" htmlFor={`add-item-alteration-name-${index}`}>
-                            Alteration name
-                          </label>
-                          <Input
-                            id={`add-item-alteration-name-${index}`}
-                            value={entry.alterationName}
-                            disabled={!entry.alterationBaseName}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              setEntries((prev) =>
-                                prev.map((item, idx) => {
-                                  if (idx !== index) return item;
-                                  const baseName = item.alterationBaseName.trim();
-                                  const nextName = `${baseName}${value.trim() ? ` ${value.trim()}` : ""}`.trim();
-                                  return {
-                                    ...item,
-                                    alterationName: value,
-                                    name: nextName,
-                                  };
-                                }),
-                              );
-                              setErrorMessage(null);
-                            }}
-                            placeholder="e.g. Round"
-                            autoComplete="off"
-                          />
-                          <p className="text-xs text-muted-foreground">Appends to the base variant name.</p>
-                        </div>
+                        {entry.alterationBaseName ? (
+                          <div className="space-y-1">
+                            <label className="text-sm font-medium" htmlFor={`add-item-alteration-name-${index}`}>
+                              Alteration name
+                            </label>
+                            <Input
+                              id={`add-item-alteration-name-${index}`}
+                              value={entry.alterationName}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                setEntries((prev) =>
+                                  prev.map((item, idx) => {
+                                    if (idx !== index) return item;
+                                    const baseName = item.alterationBaseName.trim();
+                                    const nextName = `${baseName}${value.trim() ? ` ${value.trim()}` : ""}`.trim();
+                                    return {
+                                      ...item,
+                                      alterationName: value,
+                                      name: nextName,
+                                    };
+                                  }),
+                                );
+                                setErrorMessage(null);
+                              }}
+                              placeholder="e.g. Round"
+                              autoComplete="off"
+                            />
+                            <p className="text-xs text-muted-foreground">Appends to the base variant name.</p>
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <div className="space-y-1">
