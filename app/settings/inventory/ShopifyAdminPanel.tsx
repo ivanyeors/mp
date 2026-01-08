@@ -33,6 +33,7 @@ type Item = {
 type AdminRow = {
   shopifyVariantId: number;
   shopifyVariantName: string | null;
+  shopifyStatus: "active" | "inactive" | "unknown";
   kind: "pillow" | "bolster" | "part" | "unmapped";
   pillowSize: string | null;
   pillowKind: string | null;
@@ -50,6 +51,9 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "inactive" | "mapped" | "unmapped" | "broken" | "all"
+  >("active");
 
   const [linkKind, setLinkKind] = useState<"part" | "pillow" | "bolster">("part");
   const [linkItemId, setLinkItemId] = useState<string>("");
@@ -155,8 +159,24 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
   const visible = useMemo(() => {
     const q = filter.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => {
+    const mappingStatusOf = (r: AdminRow) =>
+      r.kind === "unmapped" ? "unmapped" : r.kind === "part" && !r.item ? "broken" : "mapped";
+
+    const byStatus =
+      statusFilter === "inactive"
+        ? rows.filter((r) => r.shopifyStatus === "inactive")
+        : statusFilter === "active"
+          ? rows.filter((r) => r.shopifyStatus !== "inactive")
+          : statusFilter === "mapped"
+            ? rows.filter((r) => mappingStatusOf(r) === "mapped")
+            : statusFilter === "unmapped"
+              ? rows.filter((r) => mappingStatusOf(r) === "unmapped")
+              : statusFilter === "broken"
+                ? rows.filter((r) => mappingStatusOf(r) === "broken")
+                : rows;
+
+    if (!q) return byStatus;
+    return byStatus.filter((r) => {
       const parts = [
         String(r.shopifyVariantId),
         r.kind,
@@ -173,7 +193,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
         .toLowerCase();
       return parts.includes(q);
     });
-  }, [rows, filter]);
+  }, [rows, filter, statusFilter]);
 
   const itemOptions = useMemo(() => {
     const mappedPartItemIds = new Set(
@@ -205,7 +225,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
         <div>
           <div className="text-xl font-semibold">Shopify Admin</div>
           <div className="text-sm text-muted-foreground">
-            Active Shopify variants only. Price + compare-at are synced from <span className="font-medium">Costings</span>; override SKU here.
+            Shopify variants (active + inactive). Price + compare-at are synced from <span className="font-medium">Costings</span>; override SKU here.
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -442,6 +462,22 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
       <div className="flex items-center gap-2">
         <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by variantId, SKU, item name…" />
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as "active" | "inactive" | "mapped" | "unmapped" | "broken" | "all")}
+        >
+          <SelectTrigger className="w-[140px] shrink-0">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="mapped">Mapped</SelectItem>
+            <SelectItem value="unmapped">Unmapped</SelectItem>
+            <SelectItem value="broken">Broken</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-md border">
@@ -460,12 +496,13 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
           <TableBody>
             {visible.map((r) => {
               const d = draftByVariantId[r.shopifyVariantId] ?? { sku: "" };
-              const status =
+              const mappingStatus =
                 r.kind === "unmapped"
                   ? "unmapped"
                   : r.kind === "part" && !r.item
                     ? "broken"
                     : "mapped";
+              const isInactive = r.shopifyStatus === "inactive";
 
               const mappingLabel =
                 r.kind === "part"
@@ -482,19 +519,26 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                 <TableRow key={r.shopifyVariantId}>
                   <TableCell className="font-mono text-xs">{r.shopifyVariantId}</TableCell>
                   <TableCell>
-                    {status === "unmapped" ? (
-                      <span className="inline-flex items-center rounded border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                        Unmapped
-                      </span>
-                    ) : status === "broken" ? (
-                      <span className="inline-flex items-center rounded border border-red-300/60 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800">
-                        Broken
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Mapped
-                      </span>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {isInactive && (
+                        <span className="inline-flex items-center rounded border border-dashed border-border bg-muted/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Inactive
+                        </span>
+                      )}
+                      {mappingStatus === "unmapped" ? (
+                        <span className="inline-flex items-center rounded border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                          Unmapped
+                        </span>
+                      ) : mappingStatus === "broken" ? (
+                        <span className="inline-flex items-center rounded border border-red-300/60 bg-red-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-800">
+                          Broken
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Mapped
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs">{r.shopifyVariantName ?? "—"}</TableCell>
                   <TableCell className="text-xs">{mappingLabel}</TableCell>

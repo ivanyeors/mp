@@ -1,75 +1,19 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Loader2, AlertCircle, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp"
+import { useSettingsOtpAuth } from "@/hooks/use-settings-otp-auth"
 
 type Props = {
   children: React.ReactNode
 }
 
-type SessionResponse = {
-  authenticated: boolean
-  expiresAt?: number | null
-  error?: string
-}
-
 export default function SettingsAuthGate({ children }: Props) {
   const router = useRouter()
-  const [status, setStatus] = useState<"checking" | "authed" | "unauth">("checking")
-  const [otp, setOtp] = useState("")
-  const [verifying, setVerifying] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    checkSession()
-  }, [])
-
-  async function checkSession() {
-    try {
-      const res = await fetch("/api/auth/settings-otp/session", { method: "GET", cache: "no-store" })
-      const data = (await res.json()) as SessionResponse
-      if (data.authenticated) {
-        setStatus("authed")
-      } else {
-        setStatus("unauth")
-      }
-    } catch (e) {
-      console.error(e)
-      setStatus("unauth")
-    }
-  }
-
-  async function verifyOtp() {
-    if (otp.length !== 6) {
-      setError("Enter the 6-digit code.")
-      return
-    }
-    try {
-      setVerifying(true)
-      setError(null)
-      const res = await fetch("/api/auth/settings-otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otp }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data?.ok) {
-        setError(data?.error || "Invalid code. Try again.")
-        return
-      }
-      setStatus("authed")
-      setOtp("")
-    } catch (e) {
-      console.error(e)
-      setError("Unable to verify the code. Try again.")
-    } finally {
-      setVerifying(false)
-    }
-  }
+  const { status, otp, setOtp, verifying, error, verifyOtp } = useSettingsOtpAuth()
 
   if (status === "authed") {
     return <>{children}</>
@@ -129,13 +73,13 @@ export default function SettingsAuthGate({ children }: Props) {
                 </InputOTPGroup>
               </InputOTP>
               <Button
-                onClick={verifyOtp}
-                disabled={verifying || status === "checking"}
-                className="w-full sm:w-auto"
-              >
-                {verifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Verify & continue
-              </Button>
+                  onClick={verifyOtp}
+                  disabled={verifying || status === "checking"}
+                  className="w-full sm:w-auto"
+                >
+                  {verifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Verify & continue
+                </Button>
             </div>
           </div>
         </CardContent>

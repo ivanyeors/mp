@@ -81,7 +81,7 @@ type Item = {
   alteration_of_item_id: number | null;
   alteration_name: string | null;
 };
-type Product = { id: number; size: string };
+type Product = { id: number; size: string; kind: PillowKind };
 type PillowKind = "basic" | "premium";
 type PremiumVariant = "linen" | "fibrecool";
 type AddInventoryDraft = {
@@ -162,6 +162,7 @@ export default function InventoryPage() {
     templateId: number | null;
     templateName: string | null;
     quantity: number;
+    pillowKind?: PillowKind;
     pillowSize?: string;
     bolsterVariant?: "short" | "medium" | "long";
   };
@@ -184,27 +185,110 @@ export default function InventoryPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: itemsData }, { data: balancesData }, { data: productsData }, { data: buildableData }, { data: premiumBuildableData }] =
-      await Promise.all([
+    const [
+      { data: itemsData },
+      { data: balancesData },
+      { data: productsData },
+      { data: bomLinesData },
+      { data: bolsterBomData },
+    ] = await Promise.all([
       supabaseClient
         .from("items")
         .select("id,category,subtype,name,size,alteration_of_item_id,alteration_name")
         .eq("is_active", true),
       supabaseClient.from("inventory_balances").select("item_id,on_hand"),
-      // Keep the main inventory UI on "basic" pillows by default.
-      supabaseClient.from("pillow_products").select("id,size").eq("kind", "basic"),
-      supabaseClient.from("product_buildable").select("product_id,kind,size,buildable").eq("kind", "basic"),
-      supabaseClient.from("product_buildable").select("product_id,kind,size,buildable").eq("kind", "premium"),
+      supabaseClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
+      supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
+      supabaseClient.from("bolster_bom_lines").select("variant,item_id,quantity"),
     ]);
-    setItems((itemsData ?? []) as Item[]);
+
+    const nextItems = (itemsData ?? []) as Item[];
+    setItems(nextItems);
+
     type BalanceRow = { item_id: number; on_hand: number | string };
-    setBalances(Object.fromEntries((balancesData ?? []).map((r: BalanceRow)=> [r.item_id, Number(r.on_hand)] )));
-    setProducts((productsData ?? []) as Product[]);
-    type BuildableRow = { kind: string; size: string; buildable: number | string };
-    const build = Object.fromEntries((buildableData ?? []).map((r: BuildableRow)=> [r.size, Number(r.buildable)] ));
-    setBuildable(build);
-    const premium = Object.fromEntries((premiumBuildableData ?? []).map((r: BuildableRow)=> [r.size, Number(r.buildable)] ));
-    setPremiumBuildable(premium);
+    const nextBalances = Object.fromEntries((balancesData ?? []).map((r: BalanceRow) => [r.item_id, Number(r.on_hand)]));
+    setBalances(nextBalances);
+
+    const nextProducts = (productsData ?? []) as Product[];
+    setProducts(nextProducts);
+
+    // Recompute buildable counts in-app so they match the *effective* stock rules:
+    // altered filling items stock out from their base filling item.
+    const itemById = new Map<number, Item>();
+    nextItems.forEach((it) => itemById.set(Number(it.id), it));
+    const getEffectiveOnHand = (itemId: number) => {
+      const it = itemById.get(Number(itemId));
+      if (it?.category === "filling" && it.alteration_of_item_id) {
+        return Number(nextBalances[Number(it.alteration_of_item_id)] ?? 0);
+      }
+      return Number(nextBalances[Number(itemId)] ?? 0);
+    };
+
+    type BomRow = { product_id: number | string; item_id: number | string; quantity: number | string };
+    const linesByProduct = new Map<number, Array<{ item_id: number; quantity: number }>>();
+    (bomLinesData ?? []).forEach((r: BomRow) => {
+      const productId = Number(r.product_id);
+      const itemId = Number(r.item_id);
+      const qty = Number(r.quantity);
+      if (!Number.isFinite(productId) || productId <= 0) return;
+      if (!Number.isFinite(itemId) || itemId <= 0) return;
+      if (!Number.isFinite(qty) || qty <= 0) return;
+      const bucket = linesByProduct.get(productId) ?? [];
+      bucket.push({ item_id: itemId, quantity: qty });
+      linesByProduct.set(productId, bucket);
+    });
+
+    const computeBuildable = (lines: Array<{ item_id: number; quantity: number }>) => {
+      if (!lines.length) return 0;
+      const counts = lines.map((l) => Math.floor(getEffectiveOnHand(l.item_id) / Math.max(1, Number(l.quantity))));
+      return counts.length ? Math.max(0, Math.min(...counts)) : 0;
+    };
+
+    const nextBuildable: Record<string, number> = {};
+    const nextPremiumBuildable: Record<string, number> = {};
+    nextProducts.forEach((p) => {
+      const kind = p.kind === "premium" ? "premium" : "basic";
+      const size = String(p.size);
+      const lines = linesByProduct.get(Number(p.id)) ?? [];
+      const b = computeBuildable(lines);
+      if (kind === "premium") nextPremiumBuildable[size] = b;
+      else nextBuildable[size] = b;
+    });
+    setBuildable(nextBuildable);
+    setPremiumBuildable(nextPremiumBuildable);
+
+    // Keep bolster buildable in sync with the configured bolster lines too.
+    type BolsterRow = { variant: "short" | "medium" | "long"; item_id: number | string; quantity: number | string };
+    const grouped: Record<"short" | "medium" | "long", Array<{ item_id: number; quantity: number }>> = {
+      short: [],
+      medium: [],
+      long: [],
+    };
+    (bolsterBomData ?? []).forEach((r: BolsterRow) => {
+      const v = r.variant;
+      const itemId = Number(r.item_id);
+      const qty = Number(r.quantity);
+      if (v !== "short" && v !== "medium" && v !== "long") return;
+      if (!Number.isFinite(itemId) || itemId <= 0) return;
+      if (!Number.isFinite(qty) || qty <= 0) return;
+      grouped[v].push({ item_id: itemId, quantity: qty });
+    });
+    // Back-compat: if bolster lines aren't in DB yet, fall back to the cached editor state.
+    if (typeof window !== "undefined") {
+      (["short", "medium", "long"] as const).forEach((v) => {
+        if (grouped[v].length > 0) return;
+        try {
+          const raw = window.localStorage.getItem(`bolster_bom_lines:${v}`);
+          if (!raw) return;
+          const parsed = JSON.parse(raw) as Array<{ item_id: number; quantity: number }>;
+          if (Array.isArray(parsed) && parsed.length) grouped[v] = parsed;
+        } catch {
+          // ignore
+        }
+      });
+    }
+    setBolsterLinesByVariant(grouped);
+
     setLoading(false);
   }, []);
 
@@ -402,11 +486,19 @@ export default function InventoryPage() {
     );
   };
 
+  const getEffectiveOnHand = useCallback((itemId: number) => {
+    const it = itemsById.get(Number(itemId));
+    if (it?.category === "filling" && it.alteration_of_item_id) {
+      return Number(balances[Number(it.alteration_of_item_id)] ?? 0);
+    }
+    return Number(balances[Number(itemId)] ?? 0);
+  }, [balances, itemsById]);
+
   const computeBuildableFromLines = useCallback((lines: Array<{ item_id: number; quantity: number }>) => {
     if (!lines.length) return 0;
-    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
+    const counts = lines.map((l) => Math.floor(getEffectiveOnHand(l.item_id) / Math.max(1, Number(l.quantity))));
     return counts.length ? Math.max(0, Math.min(...counts)) : 0;
-  }, [balances]);
+  }, [getEffectiveOnHand]);
 
   const openSellDrawerForPillow = async (size: string, pillowKind: PillowKind = "basic", premiumVariant: PremiumVariant = "linen") => {
     setSellDrawerKind("pillow");
@@ -597,35 +689,9 @@ export default function InventoryPage() {
   }, [load]);
 
   useEffect(() => {
-    const loadBolster = async () => {
-      type LineRow = { variant: 'short'|'medium'|'long'; item_id: number; quantity: number | string };
-      const { data } = await supabaseClient.from('bolster_bom_lines').select('variant,item_id,quantity');
-      const grouped: Record<'short'|'medium'|'long', Array<{ item_id: number; quantity: number }>> = { short: [], medium: [], long: [] };
-      (data ?? []).forEach((r: LineRow) => {
-        const q = Number(r.quantity);
-        grouped[r.variant].push({ item_id: r.item_id, quantity: q });
-      });
-      // Fallback from localStorage if any variant missing
-      (['short','medium','long'] as const).forEach((v) => {
-        if (grouped[v].length === 0) {
-          try {
-            const raw = typeof window !== 'undefined' ? window.localStorage.getItem(`bolster_bom_lines:${v}`) : null;
-            if (raw) {
-              const parsed = JSON.parse(raw) as Array<{ item_id: number; quantity: number }>;
-              if (Array.isArray(parsed)) grouped[v] = parsed;
-            }
-          } catch {}
-        }
-      });
-      setBolsterLinesByVariant(grouped);
-    };
-    loadBolster();
-  }, []);
-
-  useEffect(() => {
     const loadCustomPillowLines = async () => {
       if (!customPillowDrawerOpen) return;
-      const product = products.find(p => p.size === customPillowSize);
+      const product = products.find(p => p.size === customPillowSize && p.kind === 'basic');
       if (!product) { setCustomPillowLines([]); return; }
       type BomRow = { item_id: number; quantity: number | string };
       const { data } = await supabaseClient.from('bom_lines').select('item_id,quantity').eq('product_id', product.id);
@@ -923,24 +989,9 @@ export default function InventoryPage() {
     );
   };
 
-  const buildableBolsterShort = useMemo(() => {
-    const lines = bolsterLinesByVariant.short;
-    if (!lines.length) return 0;
-    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
-    return counts.length ? Math.max(0, Math.min(...counts)) : 0;
-  }, [balances, bolsterLinesByVariant]);
-  const buildableBolsterMedium = useMemo(() => {
-    const lines = bolsterLinesByVariant.medium;
-    if (!lines.length) return 0;
-    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
-    return counts.length ? Math.max(0, Math.min(...counts)) : 0;
-  }, [balances, bolsterLinesByVariant]);
-  const buildableBolsterLong = useMemo(() => {
-    const lines = bolsterLinesByVariant.long;
-    if (!lines.length) return 0;
-    const counts = lines.map(l => Math.floor((Number(balances[l.item_id] ?? 0)) / Math.max(1, Number(l.quantity))));
-    return counts.length ? Math.max(0, Math.min(...counts)) : 0;
-  }, [balances, bolsterLinesByVariant]);
+  const buildableBolsterShort = useMemo(() => computeBuildableFromLines(bolsterLinesByVariant.short), [bolsterLinesByVariant.short, computeBuildableFromLines]);
+  const buildableBolsterMedium = useMemo(() => computeBuildableFromLines(bolsterLinesByVariant.medium), [bolsterLinesByVariant.medium, computeBuildableFromLines]);
+  const buildableBolsterLong = useMemo(() => computeBuildableFromLines(bolsterLinesByVariant.long), [bolsterLinesByVariant.long, computeBuildableFromLines]);
 
   const incrementPartSelection = (itemId: number) => {
     setCart(prev => ({ ...prev, parts: { ...prev.parts, [itemId]: (prev.parts[itemId] ?? 0) + 1 } }));
@@ -981,7 +1032,8 @@ export default function InventoryPage() {
           continue;
         }
         const size = String(line.pillowSize ?? line.label);
-        const product = products.find(p => p.size === size);
+        const kind: PillowKind = line.pillowKind === 'premium' ? 'premium' : 'basic';
+        const product = products.find(p => p.size === size && p.kind === kind);
         if (product) await sellPillow({ productId: product.id, quantity: line.quantity });
       }
       // Process parts
@@ -1604,7 +1656,11 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
               <div className="text-xs text-muted-foreground">
                 Available: {(() => {
                   if (sellDrawerTemplateId === '') {
-                    if (sellDrawerKind === 'pillow') return Number(buildable[sellDrawerSize] ?? 0);
+                    if (sellDrawerKind === 'pillow') {
+                      return sellDrawerPillowKind === 'premium'
+                        ? Number(premiumBuildable[sellDrawerSize] ?? 0)
+                        : Number(buildable[sellDrawerSize] ?? 0);
+                    }
                     const v = sellDrawerBolsterVariant;
                     return v === 'short' ? Number(buildableBolsterShort ?? 0) : v === 'long' ? Number(buildableBolsterLong ?? 0) : Number(buildableBolsterMedium ?? 0);
                   }
@@ -1640,6 +1696,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                       templateId,
                       templateName,
                       quantity: qty,
+                      pillowKind: sellDrawerKind === 'pillow' ? sellDrawerPillowKind : undefined,
                       pillowSize: sellDrawerKind === 'pillow' ? sellDrawerSize : undefined,
                       bolsterVariant: sellDrawerKind === 'bolster' ? sellDrawerBolsterVariant : undefined,
                     },

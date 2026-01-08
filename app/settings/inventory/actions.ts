@@ -649,6 +649,58 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
 
   if (insertErr) {
     if (insertErr.code === '23505') {
+      // The unique index does not include is_active. This means a previously "deleted" (inactive) item
+      // can block re-creating the same item. In that case, revive it instead of throwing.
+      type ExistingItemRow = { id: number | string; is_active: boolean | null }
+      let q = admin
+        .from('items')
+        .select('id,is_active')
+        .eq('category', parsed.category)
+        .eq('name', normalizedName)
+
+      q = normalizedSize === null ? q.is('size', null) : q.eq('size', normalizedSize)
+      q = normalizedSubtype === null ? q.is('subtype', null) : q.eq('subtype', normalizedSubtype)
+
+      const { data: existing, error: existingErr } = await q.maybeSingle<ExistingItemRow>()
+      if (existingErr) throw new Error(existingErr.message)
+
+      if (existing && existing.is_active === false) {
+        const { data: revived, error: reviveErr } = await admin
+          .from('items')
+          .update({
+            is_active: true,
+            // Keep alteration metadata aligned with the requested payload.
+            alteration_of_item_id: parsed.alterationOfItemId ?? null,
+            alteration_name: normalizedAlterationName,
+          })
+          .eq('id', Number(existing.id))
+          .select('id,category,name,size,subtype')
+          .single()
+        if (reviveErr) throw new Error(reviveErr.message)
+
+        const priceRow = {
+          item_id: revived.id,
+          cost_price: toCurrencyString(parsed.costPrice),
+          msrp: toCurrencyString(parsed.msrp),
+        }
+
+        if (priceRow.cost_price !== null || priceRow.msrp !== null) {
+          const { error: priceErr } = await admin.from('item_prices').upsert(priceRow)
+          if (priceErr) throw new Error(priceErr.message)
+        }
+
+        if (parsed.initialStock > 0) {
+          const { error: stockErr } = await admin.from('inventory_transactions').insert({
+            item_id: revived.id,
+            quantity_signed: parsed.initialStock,
+            reason: 'receive',
+          })
+          if (stockErr) throw new Error(stockErr.message)
+        }
+
+        return { ok: true, item: revived }
+      }
+
       throw new Error('An item with the same category, size, subtype, and name already exists.')
     }
     throw new Error(insertErr.message)
@@ -830,17 +882,30 @@ export async function listShopifyAdminState() {
     return null
   }
 
-  // If we can see active variants from Shopify, include unmapped variants in the table too.
+  // If we can see active variants from Shopify, include "inactive" variants too
+  // (mappings/overrides that no longer exist in Shopify's active products list).
   if (activeVariantIds.size) {
-    const rows = Array.from(activeVariantIds)
-      .map((rawId) => Number(rawId))
+    const variantIdsToShow = new Set<number>()
+    for (const rawId of Array.from(activeVariantIds)) {
+      const n = Number(rawId)
+      if (Number.isFinite(n) && n > 0) variantIdsToShow.add(n)
+    }
+    for (const id of mappingByVariantId.keys()) variantIdsToShow.add(id)
+    for (const id of overrideByVariantId.keys()) variantIdsToShow.add(id)
+
+    const rows = Array.from(variantIdsToShow)
       .filter((id) => Number.isFinite(id) && id > 0)
       .map((variantId) => {
         const m = mappingByVariantId.get(variantId) ?? null
         const itemId = m?.item_id === null || m?.item_id === undefined ? null : Number(m.item_id)
+        const shopifyStatus = activeVariantIds.has(String(variantId)) ? ('active' as const) : ('inactive' as const)
+        const name =
+          variantNameById.get(variantId) ?? (shopifyStatus === 'inactive' ? `Variant ${variantId}` : null)
+
         return {
           shopifyVariantId: variantId,
-          shopifyVariantName: variantNameById.get(variantId) ?? null,
+          shopifyVariantName: name,
+          shopifyStatus,
           kind: m ? m.kind : ('unmapped' as const),
           pillowSize: m?.pillow_size ?? null,
           pillowKind: m?.pillow_kind ?? null,
@@ -851,7 +916,14 @@ export async function listShopifyAdminState() {
           msrp: computeMsrp(variantId, m),
         }
       })
-      .sort((a, b) => String(a.shopifyVariantName ?? '').localeCompare(String(b.shopifyVariantName ?? '')))
+      .sort((a, b) => {
+        const an = String(a.shopifyVariantName ?? '')
+        const bn = String(b.shopifyVariantName ?? '')
+        if (an && bn) return an.localeCompare(bn)
+        if (an) return -1
+        if (bn) return 1
+        return Number(a.shopifyVariantId) - Number(b.shopifyVariantId)
+      })
 
     return { ok: true, rows }
   }
@@ -864,6 +936,7 @@ export async function listShopifyAdminState() {
       return {
         shopifyVariantId: variantId,
         shopifyVariantName: variantNameById.get(variantId) ?? null,
+        shopifyStatus: 'unknown' as const,
         kind: m.kind,
         pillowSize: m.pillow_size,
         pillowKind: m.pillow_kind,
