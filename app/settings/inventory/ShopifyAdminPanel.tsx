@@ -22,7 +22,14 @@ import {
   syncShopifyPricesOnly,
 } from "./actions";
 
-type Item = { id: number; category: string; subtype: string | null; name: string; size: string | null };
+type Item = {
+  id: number;
+  category: string;
+  subtype: string | null;
+  name: string;
+  size: string | null;
+  alteration_of_item_id: number | null;
+};
 
 type AdminRow = {
   shopifyVariantId: number;
@@ -37,6 +44,9 @@ type AdminRow = {
   msrp: string | null;
 };
 
+const ALL_PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
+const ALL_BOLSTER_VARIANTS = ["short", "medium", "long"] as const;
+
 export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<AdminRow[]>([]);
@@ -48,8 +58,8 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [linkVariantId, setLinkVariantId] = useState<string>("");
   const [linking, setLinking] = useState(false);
   const [linkPillowKind, setLinkPillowKind] = useState<"basic" | "premium">("basic");
-  const [linkPillowSize, setLinkPillowSize] = useState<"XS" | "S" | "M" | "L" | "XL">("M");
-  const [linkBolsterVariant, setLinkBolsterVariant] = useState<"short" | "medium" | "long">("medium");
+  const [linkPillowSize, setLinkPillowSize] = useState<"" | "XS" | "S" | "M" | "L" | "XL">("M");
+  const [linkBolsterVariant, setLinkBolsterVariant] = useState<"" | "short" | "medium" | "long">("medium");
   const [linkTemplateId, setLinkTemplateId] = useState<string>("");
   const [linkTemplates, setLinkTemplates] = useState<Array<{ id: number; name: string }>>([]);
   const [loadingLinkTemplates, setLoadingLinkTemplates] = useState(false);
@@ -94,9 +104,59 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     }
   }, []);
 
+  const mappedPillowSizesByKind = useMemo(() => {
+    const basic = new Set<string>();
+    const premium = new Set<string>();
+    rows.forEach((r) => {
+      if (r.kind !== "pillow") return;
+      const k = (r.pillowKind ?? "basic") === "premium" ? "premium" : "basic";
+      const sz = r.pillowSize ? String(r.pillowSize) : "";
+      if (!sz) return;
+      if (k === "premium") premium.add(sz);
+      else basic.add(sz);
+    });
+    return { basic, premium };
+  }, [rows]);
+
+  const unmappedPillowSizesForSelection = useMemo(() => {
+    const mapped = linkPillowKind === "premium" ? mappedPillowSizesByKind.premium : mappedPillowSizesByKind.basic;
+    return ALL_PILLOW_SIZES.filter((sz) => !mapped.has(sz));
+  }, [linkPillowKind, mappedPillowSizesByKind]);
+
+  const mappedBolsterVariants = useMemo(() => {
+    const out = new Set<string>();
+    rows.forEach((r) => {
+      if (r.kind !== "bolster") return;
+      const v = r.bolsterVariant ? String(r.bolsterVariant) : "";
+      if (v) out.add(v);
+    });
+    return out;
+  }, [rows]);
+
+  const unmappedBolsterVariantsForSelection = useMemo(() => {
+    return ALL_BOLSTER_VARIANTS.filter((v) => !mappedBolsterVariants.has(v));
+  }, [mappedBolsterVariants]);
+
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    // After linking, already-mapped pillow sizes / bolster variants should no longer be selectable.
+    if (linkKind === "pillow") {
+      if (!linkPillowSize || !unmappedPillowSizesForSelection.includes(linkPillowSize as (typeof ALL_PILLOW_SIZES)[number])) {
+        setLinkPillowSize(unmappedPillowSizesForSelection[0] ?? "");
+      }
+    }
+    if (linkKind === "bolster") {
+      if (
+        !linkBolsterVariant ||
+        !unmappedBolsterVariantsForSelection.includes(linkBolsterVariant as (typeof ALL_BOLSTER_VARIANTS)[number])
+      ) {
+        setLinkBolsterVariant(unmappedBolsterVariantsForSelection[0] ?? "");
+      }
+    }
+  }, [linkKind, linkPillowSize, linkBolsterVariant, unmappedPillowSizesForSelection, unmappedBolsterVariantsForSelection]);
 
   useEffect(() => {
     const load = async () => {
@@ -110,10 +170,18 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
       setLoadingLinkTemplates(true);
       try {
         if (linkKind === "pillow") {
+          if (!linkPillowSize) {
+            setLinkTemplates([]);
+            return;
+          }
           const payload = await listTemplates("pillow", linkPillowSize, linkPillowKind);
           const list = (payload.templates ?? []) as Array<{ id: number; name: string }>;
           setLinkTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
         } else {
+          if (!linkBolsterVariant) {
+            setLinkTemplates([]);
+            return;
+          }
           const payload = await listTemplates("bolster", linkBolsterVariant);
           const list = (payload.templates ?? []) as Array<{ id: number; name: string }>;
           setLinkTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
@@ -165,6 +233,8 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     const sorted = [...items]
       // Hide parts that are already mapped to a Shopify variant (but keep the currently selected item visible).
       .filter((it) => !mappedPartItemIds.has(it.id) || (selectedId !== null && it.id === selectedId))
+      // Hide altered fillings from Shopify mapping UI (they should inherit mapping from their base item).
+      .filter((it) => !(it.category === "filling" && it.alteration_of_item_id))
       .sort((a, b) => getInventoryItemDisplayLabel(a).localeCompare(getInventoryItemDisplayLabel(b)));
     return sorted.map((it) => ({ id: it.id, label: getInventoryItemDisplayLabel(it) }));
   }, [items, rows, linkItemId]);
@@ -278,14 +348,20 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             {linkKind === "bolster" ? (
               <>
                 <div className="text-xs text-muted-foreground">Bolster variant</div>
-                <Select value={linkBolsterVariant} onValueChange={(v) => setLinkBolsterVariant(v as "short" | "medium" | "long")}>
+                <Select value={linkBolsterVariant} onValueChange={(v) => setLinkBolsterVariant(v as "" | "short" | "medium" | "long")}>
                   <SelectTrigger className="w-full">
-                    <SelectValue />
+                    <SelectValue placeholder={!linkBolsterVariant ? "Select bolster variant…" : undefined} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="short">short</SelectItem>
-                    <SelectItem value="medium">medium</SelectItem>
-                    <SelectItem value="long">long</SelectItem>
+                    {unmappedBolsterVariantsForSelection.length === 0 ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">All bolster variants already mapped</div>
+                    ) : (
+                      unmappedBolsterVariantsForSelection.map((v) => (
+                        <SelectItem key={v} value={v}>
+                          {v}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </>
@@ -295,17 +371,25 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             <div className="text-xs text-muted-foreground">Pillow size</div>
             <Select
               value={linkKind === "pillow" ? linkPillowSize : ""}
-              onValueChange={(v) => setLinkPillowSize(v as "XS" | "S" | "M" | "L" | "XL")}
+              onValueChange={(v) => setLinkPillowSize(v as "" | "XS" | "S" | "M" | "L" | "XL")}
             >
               <SelectTrigger className="w-full" disabled={linkKind !== "pillow"}>
-                <SelectValue placeholder={linkKind !== "pillow" ? "Not required" : undefined} />
+                <SelectValue
+                  placeholder={linkKind !== "pillow" ? "Not required" : (!linkPillowSize ? "Select pillow size…" : undefined)}
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="XS">XS</SelectItem>
-                <SelectItem value="S">S</SelectItem>
-                <SelectItem value="M">M</SelectItem>
-                <SelectItem value="L">L</SelectItem>
-                <SelectItem value="XL">XL</SelectItem>
+                {linkKind !== "pillow" ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">Not required</div>
+                ) : unmappedPillowSizesForSelection.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">All sizes already mapped</div>
+                ) : (
+                  unmappedPillowSizesForSelection.map((sz) => (
+                    <SelectItem key={sz} value={sz}>
+                      {sz}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -394,6 +478,10 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                     }
                     await linkPartToShopifyVariant({ itemId: Number(linkItemId), shopifyVariantId });
                   } else if (linkKind === "pillow") {
+                    if (!linkPillowSize) {
+                      toast.message("Select a pillow size");
+                      return;
+                    }
                     if (!linkTemplateId) {
                       toast.message("Select a template");
                       return;
@@ -405,6 +493,10 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                       templateId: Number(linkTemplateId),
                     });
                   } else {
+                    if (!linkBolsterVariant) {
+                      toast.message("Select a bolster variant");
+                      return;
+                    }
                     if (!linkTemplateId) {
                       toast.message("Select a template");
                       return;

@@ -72,7 +72,15 @@ const CATEGORY_TITLES: Record<ItemCategory, string> = {
 const SIZED_CATEGORIES: ItemCategory[] = ['cover','pillow_case','pillow_protector','bolster_case','bolster_protector'];
 const SIZE_OPTIONS = ['-','XS','S','M','L','XL','BOLSTER'] as const;
 
-type Item = { id: number; category: ItemCategory; subtype: string | null; name: string; size: string | null };
+type Item = {
+  id: number;
+  category: ItemCategory;
+  subtype: string | null;
+  name: string;
+  size: string | null;
+  alteration_of_item_id: number | null;
+  alteration_name: string | null;
+};
 type Product = { id: number; size: string };
 type PillowKind = "basic" | "premium";
 type PremiumVariant = "linen" | "fibrecool";
@@ -81,6 +89,8 @@ type AddInventoryDraft = {
   name: string;
   size?: string;
   subtype?: string;
+  alterationOfItemId?: number;
+  alterationName?: string;
   initialStock: number;
   costPrice?: number;
   msrp?: number;
@@ -90,6 +100,9 @@ type AddInventoryEntry = {
   name: string;
   size: string;
   subtype: string;
+  alterationBaseName: string;
+  alterationOfItemId: string;
+  alterationName: string;
   initialStock: string;
   costPrice: string;
   msrp: string;
@@ -101,6 +114,9 @@ const createDefaultEntry = (): AddInventoryEntry => ({
   name: "cover",
   size: "M",
   subtype: "",
+  alterationBaseName: "",
+  alterationOfItemId: "",
+  alterationName: "",
   initialStock: "",
   costPrice: "",
   msrp: "",
@@ -170,7 +186,10 @@ export default function InventoryPage() {
     setLoading(true);
     const [{ data: itemsData }, { data: balancesData }, { data: productsData }, { data: buildableData }, { data: premiumBuildableData }] =
       await Promise.all([
-      supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
+      supabaseClient
+        .from("items")
+        .select("id,category,subtype,name,size,alteration_of_item_id,alteration_name")
+        .eq("is_active", true),
       supabaseClient.from("inventory_balances").select("item_id,on_hand"),
       // Keep the main inventory UI on "basic" pillows by default.
       supabaseClient.from("pillow_products").select("id,size").eq("kind", "basic"),
@@ -548,6 +567,8 @@ export default function InventoryPage() {
         name: draft.name,
         size: draft.size,
         subtype: draft.subtype,
+        alterationOfItemId: draft.alterationOfItemId,
+        alterationName: draft.alterationName,
         initialStock: draft.initialStock,
         costPrice: draft.costPrice,
         msrp: draft.msrp,
@@ -1293,7 +1314,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 side="bottom"
-                align="start"
+                align="end"
                 sideOffset={6}
                 className="p-0 w-auto"
               >
@@ -1635,6 +1656,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         open={addDrawerOpen}
         onOpenChange={setAddDrawerOpen}
         onCreate={handleCreateItem}
+        items={items}
       />
 
       {/* Part Drawer */}
@@ -1690,14 +1712,65 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
   );
 }
 
-function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
+function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreate: (draft: AddInventoryDraft) => Promise<void>;
+  items: Item[];
 }) {
   const [entries, setEntries] = useState<AddInventoryEntry[]>([createDefaultEntry()]);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const itemsById = useMemo(() => {
+    const map = new Map<number, Item>();
+    items.forEach((it) => map.set(it.id, it));
+    return map;
+  }, [items]);
+
+  const fillingBaseItems = useMemo(() => {
+    return items
+      .filter((it) => it.category === "filling" && !it.alteration_of_item_id)
+      .slice()
+      .sort((a, b) => {
+        const aKey = `${a.name} ${a.size ?? ""}`.trim();
+        const bKey = `${b.name} ${b.size ?? ""}`.trim();
+        return aKey.localeCompare(bKey);
+      });
+  }, [items]);
+
+  const fillingBaseVariantNames = useMemo(() => {
+    const names = new Set<string>();
+    fillingBaseItems.forEach((it) => {
+      const n = String(it.name ?? "").trim();
+      if (n) names.add(n);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [fillingBaseItems]);
+
+  const fillingSizesByBaseName = useMemo(() => {
+    const map = new Map<string, Array<{ id: number; size: string }>>();
+    fillingBaseItems.forEach((it) => {
+      const base = String(it.name ?? "").trim();
+      if (!base) return;
+      const size = it.size ? String(it.size).trim().toUpperCase() : "";
+      if (!size) return;
+      const list = map.get(base) ?? [];
+      list.push({ id: it.id, size });
+      map.set(base, list);
+    });
+    for (const [k, list] of map.entries()) {
+      const dedup = new Map<string, { id: number; size: string }>();
+      list.forEach((row) => {
+        if (!dedup.has(row.size)) dedup.set(row.size, row);
+      });
+      map.set(
+        k,
+        Array.from(dedup.values()).sort((a, b) => a.size.localeCompare(b.size)),
+      );
+    }
+    return map;
+  }, [fillingBaseItems]);
 
   useEffect(() => {
     if (!open) return;
@@ -1723,7 +1796,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
           nextCategory === "packaging"
             ? ""
             : nextCategory === "filling"
-              ? "filling"
+              ? ""
               : nextCategory;
 
         let nextSize: string;
@@ -1733,12 +1806,12 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
             SIZE_OPTIONS.includes(normalized as typeof SIZE_OPTIONS[number]) && normalized !== "-";
           nextSize = isValid ? normalized : "M";
         } else if (nextCategory === "filling") {
-          nextSize = entry.size.trim();
+          nextSize = "";
         } else {
           nextSize = "-";
         }
 
-        const nextSubtype = nextCategory === "filling" ? entry.subtype : "";
+        const nextSubtype = nextCategory === "filling" ? "" : entry.subtype;
 
         return {
           ...entry,
@@ -1746,6 +1819,9 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
           name: trimmedName !== "" ? entry.name : defaultName,
           size: nextSize,
           subtype: nextSubtype,
+          alterationBaseName: "",
+          alterationOfItemId: "",
+          alterationName: "",
         };
       }),
     );
@@ -1766,9 +1842,20 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
 
     for (let index = 0; index < entries.length; index += 1) {
       const entry = entries[index];
-      const trimmedName = entry.name.trim();
+      const baseId = entry.alterationOfItemId.trim() ? Number(entry.alterationOfItemId) : null;
+      const baseItem = baseId ? (itemsById.get(baseId) ?? null) : null;
+      const computedName =
+        entry.category === "filling" && baseItem
+          ? `${baseItem.name}${entry.alterationName.trim() ? ` ${entry.alterationName.trim()}` : ""}`
+          : "";
+
+      const trimmedName = entry.category === "filling" ? computedName.trim() : entry.name.trim();
       if (!trimmedName) {
-        setErrorMessage(`Item ${index + 1}: Name is required`);
+        setErrorMessage(
+          entry.category === "filling"
+            ? `Item ${index + 1}: Select an alteration base`
+            : `Item ${index + 1}: Name is required`,
+        );
         return;
       }
 
@@ -1781,6 +1868,15 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
       }
 
       const trimmedSubtype = entry.subtype.trim();
+
+      if (entry.category === "filling" && baseItem) {
+        const baseSize = (baseItem.size ?? "").trim().toUpperCase();
+        const desiredSize = normalizedSizeInput.trim().toUpperCase();
+        if (baseSize && desiredSize && baseSize !== desiredSize) {
+          setErrorMessage(`Item ${index + 1}: Alteration base must have the same size`);
+          return;
+        }
+      }
 
       const stockValue = entry.initialStock.trim();
       const stock = stockValue === "" ? 0 : Number.parseInt(stockValue, 10);
@@ -1814,6 +1910,11 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
 
       if (trimmedSubtype) {
         payload.subtype = trimmedSubtype;
+      }
+
+      if (entry.category === "filling" && baseItem) {
+        payload.alterationOfItemId = baseItem.id;
+        if (entry.alterationName.trim()) payload.alterationName = entry.alterationName.trim();
       }
 
       if (parsedCost !== undefined) {
@@ -1880,6 +1981,56 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                     </SelectContent>
                   </Select>
                 </div>
+                {entry.category === "filling" ? (
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor={`add-item-alterations-${index}`}>
+                      Alterations
+                    </label>
+                    <Select
+                      value={entry.alterationBaseName}
+                      onValueChange={(value) => {
+                        setEntries((prev) =>
+                          prev.map((item, idx) => {
+                            if (idx !== index) return item;
+                            if (!value) {
+                              return {
+                                ...item,
+                                alterationBaseName: "",
+                                size: "",
+                                alterationOfItemId: "",
+                                name: "",
+                              };
+                            }
+                            const nextName = `${value}${item.alterationName.trim() ? ` ${item.alterationName.trim()}` : ""}`.trim();
+                            return {
+                              ...item,
+                              alterationBaseName: value,
+                              size: "",
+                              alterationOfItemId: "",
+                              name: nextName,
+                            };
+                          }),
+                        );
+                        setErrorMessage(null);
+                      }}
+                    >
+                      <SelectTrigger id={`add-item-alterations-${index}`} className="w-full">
+                        <SelectValue placeholder="Select base variant…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Select base variant…</SelectItem>
+                        {fillingBaseVariantNames.map((name) => (
+                          <SelectItem key={name} value={name}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Select an existing filling base variant, then choose an available size.
+                    </p>
+                  </div>
+                ) : null}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-sm font-medium" htmlFor={`add-item-name-${index}`}>
@@ -1888,23 +2039,30 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                     <Input
                       id={`add-item-name-${index}`}
                       value={entry.name}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setEntries((prev) =>
-                          prev.map((item, idx) =>
-                            idx === index
-                              ? {
-                                  ...item,
-                                  name: value,
-                                }
-                              : item,
-                          ),
-                        );
-                        setErrorMessage(null);
-                      }}
+                      disabled={entry.category === "filling"}
+                      onChange={
+                        entry.category === "filling"
+                          ? undefined
+                          : (event) => {
+                              const value = event.target.value;
+                              setEntries((prev) =>
+                                prev.map((item, idx) =>
+                                  idx === index
+                                    ? {
+                                        ...item,
+                                        name: value,
+                                      }
+                                    : item,
+                                ),
+                              );
+                              setErrorMessage(null);
+                            }
+                      }
                       placeholder={
                         entry.category === "packaging"
                           ? "e.g. Tote bag (Premium)"
+                          : entry.category === "filling"
+                            ? "Select base variant…"
                           : "e.g. Linen Luxe"
                       }
                       autoComplete="off"
@@ -1948,40 +2106,114 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                       </Select>
                     </div>
                   ) : (
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
-                        Size{" "}
-                        <span className="text-xs text-muted-foreground">
-                          {entry.category === "filling" ? "(optional)" : "(optional)"}
-                        </span>
-                      </label>
-                      <Input
-                        id={`add-item-size-${index}`}
-                        value={entry.size}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setEntries((prev) =>
-                            prev.map((item, idx) =>
-                              idx === index
-                                ? {
+                    entry.category === "filling" ? (
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
+                            Size
+                          </label>
+                          <Select
+                            value={entry.size}
+                            onValueChange={(value) => {
+                              setEntries((prev) =>
+                                prev.map((item, idx) => {
+                                  if (idx !== index) return item;
+                                  const baseName = item.alterationBaseName.trim();
+                                  const rows = baseName ? (fillingSizesByBaseName.get(baseName) ?? []) : [];
+                                  const match = rows.find((r) => r.size === value) ?? null;
+                                  const nextName = `${baseName}${item.alterationName.trim() ? ` ${item.alterationName.trim()}` : ""}`.trim();
+                                  return {
                                     ...item,
                                     size: value,
-                                  }
-                                : item,
-                            ),
-                          );
-                          setErrorMessage(null);
-                        }}
-                        placeholder={
-                          entry.category === "packaging"
-                            ? "e.g. S, L, Bolster"
-                            : entry.category === "filling"
-                              ? "e.g. S, M, L"
-                              : 'Leave blank or "-" if not applicable'
-                        }
-                        autoComplete="off"
-                      />
-                    </div>
+                                    alterationOfItemId: match ? String(match.id) : "",
+                                    name: nextName,
+                                  };
+                                }),
+                              );
+                              setErrorMessage(null);
+                            }}
+                          >
+                            <SelectTrigger id={`add-item-size-${index}`} className="w-full" disabled={!entry.alterationBaseName}>
+                              <SelectValue placeholder={entry.alterationBaseName ? "Select size…" : "Select base variant first…"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(entry.alterationBaseName
+                                ? (fillingSizesByBaseName.get(entry.alterationBaseName) ?? [])
+                                : []
+                              ).map((row) => (
+                                <SelectItem key={row.size} value={row.size}>
+                                  {row.size}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium" htmlFor={`add-item-alteration-name-${index}`}>
+                            Alteration name
+                          </label>
+                          <Input
+                            id={`add-item-alteration-name-${index}`}
+                            value={entry.alterationName}
+                            disabled={!entry.alterationBaseName}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setEntries((prev) =>
+                                prev.map((item, idx) => {
+                                  if (idx !== index) return item;
+                                  const baseName = item.alterationBaseName.trim();
+                                  const nextName = `${baseName}${value.trim() ? ` ${value.trim()}` : ""}`.trim();
+                                  return {
+                                    ...item,
+                                    alterationName: value,
+                                    name: nextName,
+                                  };
+                                }),
+                              );
+                              setErrorMessage(null);
+                            }}
+                            placeholder="e.g. Round"
+                            autoComplete="off"
+                          />
+                          <p className="text-xs text-muted-foreground">Appends to the base variant name.</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
+                          Size{" "}
+                          <span className="text-xs text-muted-foreground">
+                            {entry.category === "filling" ? "(optional)" : "(optional)"}
+                          </span>
+                        </label>
+                        <Input
+                          id={`add-item-size-${index}`}
+                          value={entry.size}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            setEntries((prev) =>
+                              prev.map((item, idx) =>
+                                idx === index
+                                  ? {
+                                      ...item,
+                                      size: value,
+                                    }
+                                  : item,
+                              ),
+                            );
+                            setErrorMessage(null);
+                          }}
+                          placeholder={
+                            entry.category === "packaging"
+                              ? "e.g. S, L, Bolster"
+                              : entry.category === "filling"
+                                ? "e.g. S, M, L"
+                                : 'Leave blank or "-" if not applicable'
+                          }
+                          autoComplete="off"
+                        />
+                      </div>
+                    )
                   )}
                 </div>
                 {entry.category !== "filling" ? (
@@ -2012,67 +2244,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                   </div>
                 ) : null}
                 <Separator />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <label
-                      className="text-sm font-medium"
-                      htmlFor={`add-item-initial-stock-${index}`}
-                    >
-                      Initial stock <span className="text-xs text-muted-foreground">(optional)</span>
-                    </label>
-                    <Input
-                      id={`add-item-initial-stock-${index}`}
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={entry.initialStock}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setEntries((prev) =>
-                          prev.map((item, idx) =>
-                            idx === index
-                              ? {
-                                  ...item,
-                                  initialStock: value,
-                                }
-                              : item,
-                          ),
-                        );
-                        setErrorMessage(null);
-                      }}
-                      placeholder="0"
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium" htmlFor={`add-item-cost-${index}`}>
-                      Cost price <span className="text-xs text-muted-foreground">(USD)</span>
-                    </label>
-                    <Input
-                      id={`add-item-cost-${index}`}
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      inputMode="decimal"
-                      value={entry.costPrice}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setEntries((prev) =>
-                          prev.map((item, idx) =>
-                            idx === index
-                              ? {
-                                  ...item,
-                                  costPrice: value,
-                                }
-                              : item,
-                          ),
-                        );
-                        setErrorMessage(null);
-                      }}
-                      placeholder="0.00"
-                      autoComplete="off"
-                    />
-                  </div>
+                {entry.category === "filling" ? (
                   <div className="space-y-1">
                     <label className="text-sm font-medium" htmlFor={`add-item-msrp-${index}`}>
                       MSRP <span className="text-xs text-muted-foreground">(optional)</span>
@@ -2102,7 +2274,99 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate }: {
                       autoComplete="off"
                     />
                   </div>
-                </div>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label
+                        className="text-sm font-medium"
+                        htmlFor={`add-item-initial-stock-${index}`}
+                      >
+                        Initial stock <span className="text-xs text-muted-foreground">(optional)</span>
+                      </label>
+                      <Input
+                        id={`add-item-initial-stock-${index}`}
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={entry.initialStock}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setEntries((prev) =>
+                            prev.map((item, idx) =>
+                              idx === index
+                                ? {
+                                    ...item,
+                                    initialStock: value,
+                                  }
+                                : item,
+                            ),
+                          );
+                          setErrorMessage(null);
+                        }}
+                        placeholder="0"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium" htmlFor={`add-item-cost-${index}`}>
+                        Cost price <span className="text-xs text-muted-foreground">(USD)</span>
+                      </label>
+                      <Input
+                        id={`add-item-cost-${index}`}
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        inputMode="decimal"
+                        value={entry.costPrice}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setEntries((prev) =>
+                            prev.map((item, idx) =>
+                              idx === index
+                                ? {
+                                    ...item,
+                                    costPrice: value,
+                                  }
+                                : item,
+                            ),
+                          );
+                          setErrorMessage(null);
+                        }}
+                        placeholder="0.00"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium" htmlFor={`add-item-msrp-${index}`}>
+                        MSRP <span className="text-xs text-muted-foreground">(optional)</span>
+                      </label>
+                      <Input
+                        id={`add-item-msrp-${index}`}
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        inputMode="decimal"
+                        value={entry.msrp}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setEntries((prev) =>
+                            prev.map((item, idx) =>
+                              idx === index
+                                ? {
+                                    ...item,
+                                    msrp: value,
+                                  }
+                                : item,
+                            ),
+                          );
+                          setErrorMessage(null);
+                        }}
+                        placeholder="0.00"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {errorMessage && (
@@ -2617,7 +2881,14 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                     className="group flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{name}</div>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="truncate text-sm font-semibold">{name}</div>
+                        {variants.some((variant) => Boolean(variant.alteration_of_item_id)) ? (
+                          <span className="shrink-0 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Alteration
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="mt-0.5 text-xs text-muted-foreground">
                         {variants.length} item{variants.length === 1 ? "" : "s"} • On hand: {totalOnHand}
                       </div>
@@ -2704,24 +2975,30 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                               )}
                             </div>
                           </div>
-                          <div className="mt-3 flex items-center gap-3 pr-10">
-                            <Input
-                              type="number"
-                              placeholder="In"
-                              min={0}
-                              value={qtyByItem[variant.id] ?? ''}
-                              onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                              className="w-28"
-                            />
-                            <Input
-                              type="number"
-                              placeholder="Out"
-                              min={0}
-                              value={outQtyByItem[variant.id] ?? ''}
-                              onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                              className="w-28"
-                            />
-                          </div>
+                          {variant.category === "filling" && variant.alteration_of_item_id ? (
+                            <div className="mt-3 text-xs text-muted-foreground">
+                              Stock is tracked on the base filling variant.
+                            </div>
+                          ) : (
+                            <div className="mt-3 flex items-center gap-3 pr-10">
+                              <Input
+                                type="number"
+                                placeholder="In"
+                                min={0}
+                                value={qtyByItem[variant.id] ?? ''}
+                                onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                                className="w-28"
+                              />
+                              <Input
+                                type="number"
+                                placeholder="Out"
+                                min={0}
+                                value={outQtyByItem[variant.id] ?? ''}
+                                onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                                className="w-28"
+                              />
+                            </div>
+                          )}
                           <button
                             type="button"
                             className="pointer-events-none absolute bottom-3 right-3 rounded-full border border-border bg-background/90 p-1 text-muted-foreground opacity-0 shadow-sm transition hover:text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:pointer-events-auto group-hover:opacity-100 disabled:opacity-50"

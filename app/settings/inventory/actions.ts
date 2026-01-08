@@ -54,6 +54,15 @@ const AddItemSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   size: z.string().trim().min(1, 'Size must not be empty').max(60).optional(),
   subtype: z.string().trim().min(1, 'Subtype must not be empty').max(120).optional(),
+  alterationOfItemId: z
+    .union([z.number(), z.string()])
+    .transform((v) => {
+      const n = typeof v === 'number' ? v : Number.parseInt(String(v).trim(), 10)
+      if (!Number.isFinite(n) || n <= 0) throw new Error('Invalid alteration item ID')
+      return n
+    })
+    .optional(),
+  alterationName: z.string().trim().max(120).optional(),
   initialStock: z.number().int().min(0).default(0),
   costPrice: z.number().min(0).optional(),
   msrp: z.number().min(0).optional(),
@@ -69,6 +78,23 @@ const AddItemSchema = z.object({
       message: 'Size is required for covers, cases, and protectors',
       path: ['size'],
     })
+  }
+
+  if (value.alterationOfItemId !== undefined) {
+    if (value.category !== 'filling') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Alterations are only supported for filling items',
+        path: ['alterationOfItemId'],
+      })
+    }
+    if (!normalizedSize || normalizedSize === '-') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Size is required when creating an altered filling',
+        path: ['size'],
+      })
+    }
   }
 })
 
@@ -103,6 +129,45 @@ const LinkBolsterMappingSchema = z.object({
   templateId: z.number().int().positive().nullable().optional(),
 })
 
+async function resolveEffectiveStockItemIds(admin: ReturnType<typeof supabaseAdmin>, itemIds: number[]) {
+  const unique = Array.from(new Set(itemIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)))
+  const out = new Map<number, number>()
+  if (!unique.length) return out
+
+  const { data, error } = await admin
+    .from('items')
+    .select('id,category,alteration_of_item_id')
+    .in('id', unique)
+  if (error) throw new Error(error.message)
+
+  ;(data ?? []).forEach((r: { id: number | string; category: string | null; alteration_of_item_id?: number | string | null }) => {
+    const id = Number(r.id)
+    if (!Number.isFinite(id) || id <= 0) return
+    const cat = String(r.category ?? '').trim().toLowerCase()
+    const baseRaw = r.alteration_of_item_id === null || r.alteration_of_item_id === undefined ? null : Number(r.alteration_of_item_id)
+    if (cat === 'filling' && baseRaw && Number.isFinite(baseRaw) && baseRaw > 0) out.set(id, baseRaw)
+    else out.set(id, id)
+  })
+
+  // Defensive default: identity mapping.
+  unique.forEach((id) => {
+    if (!out.has(id)) out.set(id, id)
+  })
+  return out
+}
+
+function aggregateSignedQuantities(rows: Array<{ item_id: number; quantity_signed: number }>) {
+  const byId = new Map<number, number>()
+  rows.forEach((r) => {
+    const id = Number(r.item_id)
+    const qty = Number(r.quantity_signed)
+    if (!Number.isFinite(id) || id <= 0) return
+    if (!Number.isFinite(qty) || qty === 0) return
+    byId.set(id, (byId.get(id) ?? 0) + qty)
+  })
+  return Array.from(byId.entries()).map(([item_id, quantity_signed]) => ({ item_id, quantity_signed }))
+}
+
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
   const parsed = SellPillowSchema.parse(input)
   const admin = supabaseAdmin()
@@ -115,7 +180,16 @@ export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
 
   if (!lines?.length) throw new Error('No BOM configured for product')
 
-  const txns = lines.map(l => ({ item_id: l.item_id, quantity_signed: -1 * Number(l.quantity) * parsed.quantity, reason: 'sale' as const }))
+  const ids = lines.map((l: { item_id: number | string }) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
+  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
+  const aggregated = aggregateSignedQuantities(
+    lines.map((l: { item_id: number | string; quantity: number | string }) => {
+      const originalId = Number(l.item_id)
+      const effectiveId = effectiveById.get(originalId) ?? originalId
+      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * parsed.quantity }
+    }),
+  )
+  const txns = aggregated.map((t) => ({ ...t, reason: 'sale' as const }))
   const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
   if (insErr) throw new Error(insErr.message)
   return { ok: true }
@@ -124,7 +198,13 @@ export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
 export async function sellPart(input: z.infer<typeof ItemQtySchema>) {
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
-  const { error } = await admin.from('inventory_transactions').insert({ item_id: parsed.itemId, quantity_signed: -parsed.quantity, reason: 'sale' })
+  const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
+  const effectiveId = effectiveById.get(parsed.itemId) ?? parsed.itemId
+  const { error } = await admin.from('inventory_transactions').insert({
+    item_id: effectiveId,
+    quantity_signed: -parsed.quantity,
+    reason: 'sale',
+  })
   if (error) throw new Error(error.message)
   return { ok: true }
 }
@@ -132,7 +212,13 @@ export async function sellPart(input: z.infer<typeof ItemQtySchema>) {
 export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
-  const { error } = await admin.from('inventory_transactions').insert({ item_id: parsed.itemId, quantity_signed: parsed.quantity, reason: 'receive' })
+  const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
+  const effectiveId = effectiveById.get(parsed.itemId) ?? parsed.itemId
+  const { error } = await admin.from('inventory_transactions').insert({
+    item_id: effectiveId,
+    quantity_signed: parsed.quantity,
+    reason: 'receive',
+  })
   if (error) throw new Error(error.message)
   return { ok: true }
 }
@@ -167,7 +253,16 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
     effectiveLines = prelim.map((r) => ({ item_id: r.id, quantity: 1 }))
   }
 
-  const txns = effectiveLines.map(l => ({ item_id: l.item_id, quantity_signed: -1 * parsed.quantity * Number(l.quantity), reason: 'sale' as const }))
+  const ids = effectiveLines.map((l) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
+  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
+  const aggregated = aggregateSignedQuantities(
+    effectiveLines.map((l) => {
+      const originalId = Number(l.item_id)
+      const effectiveId = effectiveById.get(originalId) ?? originalId
+      return { item_id: effectiveId, quantity_signed: -1 * parsed.quantity * Number(l.quantity) }
+    }),
+  )
+  const txns = aggregated.map((t) => ({ ...t, reason: 'sale' as const }))
 
   const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
   if (insErr) throw new Error(insErr.message)
@@ -193,9 +288,17 @@ export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSch
   if (lErr) throw new Error(lErr.message)
   if (!lines?.length) throw new Error('Template has no lines')
 
-  const txns = lines.map((l) => ({
-    item_id: Number(l.item_id),
-    quantity_signed: -1 * Number(l.quantity) * parsed.quantity,
+  const ids = lines.map((l: { item_id: number | string }) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
+  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
+  const aggregated = aggregateSignedQuantities(
+    lines.map((l: { item_id: number | string; quantity: number | string }) => {
+      const originalId = Number(l.item_id)
+      const effectiveId = effectiveById.get(originalId) ?? originalId
+      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * parsed.quantity }
+    }),
+  )
+  const txns = aggregated.map((t) => ({
+    ...t,
     reason: 'sale' as const,
     metadata: { template_id: parsed.templateId, template_kind: template.kind, template_key: template.key, template_name: template.name },
   }))
@@ -497,13 +600,32 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
   const normalizedSize =
     rawSize && rawSize !== '-'
       ? (
-        ['cover', 'pillow_case', 'pillow_protector', 'bolster_case', 'bolster_protector'].includes(parsed.category)
+        ['cover', 'pillow_case', 'pillow_protector', 'bolster_case', 'bolster_protector', 'filling'].includes(parsed.category)
           ? rawSize.toUpperCase()
           : rawSize
       )
       : null
   const normalizedSubtype = parsed.subtype?.trim() ? parsed.subtype.trim() : null
   const normalizedName = parsed.name
+  const normalizedAlterationName = parsed.alterationName?.trim() ? parsed.alterationName.trim() : null
+
+  if (parsed.alterationOfItemId !== undefined) {
+    const { data: base, error: baseErr } = await admin
+      .from('items')
+      .select('id,category,size')
+      .eq('id', parsed.alterationOfItemId)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (baseErr) throw new Error(baseErr.message)
+    if (!base) throw new Error('Alteration base item not found')
+    if (base.category !== 'filling') throw new Error('Alteration base must be a filling item')
+
+    const baseSize = base.size === null || base.size === undefined ? null : String(base.size).trim().toUpperCase()
+    const desiredSize = normalizedSize === null ? null : String(normalizedSize).trim().toUpperCase()
+    if (!baseSize || !desiredSize || baseSize !== desiredSize) {
+      throw new Error('Alteration base must have the same size')
+    }
+  }
 
   const toCurrencyString = (value: number | undefined) => {
     if (value === undefined) return null
@@ -518,6 +640,8 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
       name: normalizedName,
       size: normalizedSize,
       subtype: normalizedSubtype,
+      alteration_of_item_id: parsed.alterationOfItemId ?? null,
+      alteration_name: normalizedAlterationName,
       is_active: true,
     })
     .select('id,category,name,size,subtype')
@@ -819,6 +943,20 @@ export async function deleteShopifyVariantOverride(shopifyVariantId: number) {
 export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMappingSchema>) {
   const parsed = LinkPartMappingSchema.parse(input)
   const admin = supabaseAdmin()
+
+  // Alteration-derived items are internal-only; they should inherit Shopify behavior from their base item.
+  const { data: item, error: itemErr } = await admin
+    .from('items')
+    .select('id,category,alteration_of_item_id')
+    .eq('id', parsed.itemId)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (itemErr) throw new Error(itemErr.message)
+  if (!item) throw new Error('Item not found or inactive')
+  if (item.category === 'filling' && item.alteration_of_item_id) {
+    throw new Error('Altered filling items should not be linked to Shopify (they use the base variant mapping).')
+  }
+
   const payload = {
     shopify_variant_id: parsed.shopifyVariantId,
     kind: 'part' as const,

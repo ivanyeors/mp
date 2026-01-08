@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { fullShopifySync } from "../actions";
 
-type Item = { id: number; category: string; subtype: string | null; name: string; size: string | null };
+type Item = {
+  id: number;
+  category: string;
+  subtype: string | null;
+  name: string;
+  size: string | null;
+  alteration_of_item_id: number | null;
+};
 
 export default function ShopifyAdminPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -16,7 +23,10 @@ export default function ShopifyAdminPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true);
+    const { data } = await supabaseClient
+      .from("items")
+      .select("id,category,subtype,name,size,alteration_of_item_id")
+      .eq("is_active", true);
     setItems((data ?? []) as Item[]);
     setLoading(false);
   }, []);
