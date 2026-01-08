@@ -2222,7 +2222,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
                         <label className="text-sm font-medium" htmlFor={`add-item-size-${index}`}>
                           Size{" "}
                           <span className="text-xs text-muted-foreground">
-                            {entry.category === "filling" ? "(optional)" : "(optional)"}
+                            (optional)
                           </span>
                         </label>
                         <Input
@@ -2245,9 +2245,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
                           placeholder={
                             entry.category === "packaging"
                               ? "e.g. S, L, Bolster"
-                              : entry.category === "filling"
-                                ? "e.g. S, M, L"
-                                : 'Leave blank or "-" if not applicable'
+                              : 'Leave blank or "-" if not applicable'
                           }
                           autoComplete="off"
                         />
