@@ -693,7 +693,10 @@ export default function InventoryPage() {
   }, [items, partDrawerGroup, partDrawerOpen, partGroups]);
 
   const lowStock = useMemo(() => {
-    return items.filter(i => (balances[i.id] ?? 0) <= 0);
+    return items.filter((i) => {
+      const balanceId = i.category === "filling" && i.alteration_of_item_id ? i.alteration_of_item_id : i.id;
+      return (balances[balanceId] ?? 0) <= 0;
+    });
   }, [items, balances]);
 
   const incrementPillowSelection = (size: string) => {
@@ -2938,7 +2941,11 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                       const labelParts = getInventoryItemLabelParts(variant);
                       const description = getInventoryItemDisplayLabel(variant);
                       const defaultRenameValue = variant.name?.trim() ? variant.name.trim() : labelParts.variant;
-                      const onHand = balances[variant.id] ?? 0;
+                      const balanceId =
+                        variant.category === "filling" && variant.alteration_of_item_id
+                          ? variant.alteration_of_item_id
+                          : variant.id;
+                      const onHand = balances[balanceId] ?? 0;
                       const isRenaming = renamingId === variant.id;
                       return (
                         <div key={variant.id} className="group relative rounded border p-3">

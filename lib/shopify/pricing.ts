@@ -154,8 +154,13 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
           if (pk === 'premium') {
             const title = shopifyVariantTitleById.get(variantId) ?? ''
             const premiumVariant = detectPremiumVariantFromTitle(title)
-            const key = `product:pillow:${pillowProductId}:${premiumVariant}`
-            desiredPrice = toMoneyString(productPriceByKey.get(key)?.msrp ?? null)
+            const variantKey = `product:pillow:${pillowProductId}:${premiumVariant}`
+            const baseKey = `product:pillow:${pillowProductId}`
+            // Back-compat: some installs may not have per-variant `product_prices` rows yet.
+            // Fall back to the base pillow key if the per-variant key is missing.
+            desiredPrice = toMoneyString(
+              productPriceByKey.get(variantKey)?.msrp ?? productPriceByKey.get(baseKey)?.msrp ?? null,
+            )
           } else {
             const key = `product:pillow:${pillowProductId}`
             desiredPrice = toMoneyString(productPriceByKey.get(key)?.msrp ?? null)
@@ -180,8 +185,11 @@ export async function syncShopifyPricingFromSupabase(): Promise<{
           if (pk === 'premium') {
             const title = shopifyVariantTitleById.get(variantId) ?? ''
             const premiumVariant = detectPremiumVariantFromTitle(title)
-            const key = `product:pillow:${pillowProductId}:${premiumVariant}`
-            desiredCompareAt = toMoneyString(productPriceByKey.get(key)?.compare_at_price ?? null)
+            const variantKey = `product:pillow:${pillowProductId}:${premiumVariant}`
+            const baseKey = `product:pillow:${pillowProductId}`
+            desiredCompareAt = toMoneyString(
+              productPriceByKey.get(variantKey)?.compare_at_price ?? productPriceByKey.get(baseKey)?.compare_at_price ?? null,
+            )
           } else {
             const key = `product:pillow:${pillowProductId}`
             desiredCompareAt = toMoneyString(productPriceByKey.get(key)?.compare_at_price ?? null)

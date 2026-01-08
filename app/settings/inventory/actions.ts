@@ -821,7 +821,9 @@ export async function listShopifyAdminState() {
       if (pk === 'premium') {
         const title = shopifyVariantTitleById.get(variantId) ?? null
         const premiumVariant = detectPremiumVariantFromTitle(title)
-        return toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}:${premiumVariant}`)?.msrp ?? null)
+        const variantKey = `product:pillow:${pillowProductId}:${premiumVariant}`
+        const baseKey = `product:pillow:${pillowProductId}`
+        return toMoneyString(productPriceByKey.get(variantKey)?.msrp ?? productPriceByKey.get(baseKey)?.msrp ?? null)
       }
       return toMoneyString(productPriceByKey.get(`product:pillow:${pillowProductId}`)?.msrp ?? null)
     }

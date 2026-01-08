@@ -69,6 +69,10 @@ type ProductRow = {
   costCents: number | null;
   msrpCents: number | null;
   components: ProductComponent[];
+  // Premium pillows can vary by fabric variant (e.g. Linen vs Fibrecool).
+  // When available, we use the latest BOM template lines for that (size,variant)
+  // so parts + cost reflect the selected premium variant.
+  premiumComponentsByVariant?: Partial<Record<PremiumVariant, ProductComponent[]>>;
 };
 
 type ProductSaveRow = {
@@ -273,6 +277,13 @@ export default function CostingsPage() {
         msrp: string | number | null;
         compare_at_price?: string | number | null;
       };
+      type RawTemplate = {
+        id: number | string;
+        key: string;
+        pillow_variant: string | null;
+        updated_at: string;
+        lines?: Array<{ item_id: number | string; quantity: number | string }> | null;
+      };
 
       const [
         { data: itemsData, error: itemsError },
@@ -280,6 +291,7 @@ export default function CostingsPage() {
         { data: bomData, error: bomError },
         { data: bolsterData, error: bolsterError },
         { data: productPricesData, error: productPricesError },
+        { data: templateData, error: templateError },
       ] = await Promise.all([
         supabaseClient
           .from("items")
@@ -297,6 +309,13 @@ export default function CostingsPage() {
         supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
         supabaseClient.from("bolster_bom_lines").select("variant,item_id,quantity"),
         supabaseClient.from("product_prices").select("key,kind,product_id,variant,msrp,compare_at_price"),
+        supabaseClient
+          .from("bom_templates")
+          .select("id,key,pillow_variant,updated_at,lines:bom_template_lines(item_id,quantity)")
+          .eq("kind", "pillow")
+          .eq("pillow_kind", "premium")
+          .in("pillow_variant", PREMIUM_VARIANTS as unknown as string[])
+          .order("updated_at", { ascending: false }),
       ]);
 
       if (itemsError) throw new Error(itemsError.message);
@@ -304,6 +323,7 @@ export default function CostingsPage() {
       if (bomError) throw new Error(bomError.message);
       if (bolsterError) throw new Error(bolsterError.message);
       if (productPricesError) throw new Error(productPricesError.message);
+      if (templateError) throw new Error(templateError.message);
 
       const rows = (itemsData ?? []) as RawItemRow[];
       const nextItems = rows.map(({ id, category, name, size, subtype }) => ({
@@ -336,6 +356,7 @@ export default function CostingsPage() {
       const bolsterLines = (bolsterData ?? []) as RawBolsterLine[];
       const pillowProducts = (pillowData ?? []) as RawPillowRow[];
       const productPrices = (productPricesData ?? []) as RawProductPrice[];
+      const templates = (templateData ?? []) as RawTemplate[];
 
       const bomByProduct = new Map<number, ProductComponent[]>();
       bomLines.forEach((line) => {
@@ -349,6 +370,26 @@ export default function CostingsPage() {
         list.push({ itemId, quantity });
         bomByProduct.set(productId, list);
       });
+
+      // Premium variant BOM templates (optional): pick the latest template per (size,variant).
+      // We use these for displaying parts + computing cost for premium variant selection.
+      const premiumTemplateComponentsBySizeVariant = new Map<string, ProductComponent[]>();
+      for (const t of templates) {
+        const sizeKey = String(t.key);
+        const variant = String(t.pillow_variant ?? "").toLowerCase();
+        if (!sizeKey) continue;
+        if (variant !== "linen" && variant !== "fibrecool") continue;
+        const k = `${sizeKey}:${variant}`;
+        if (premiumTemplateComponentsBySizeVariant.has(k)) continue; // already have latest due to ordering
+        const rawLines = Array.isArray(t.lines) ? t.lines : [];
+        const components = rawLines
+          .map((l) => ({
+            itemId: Number(l.item_id),
+            quantity: Number(l.quantity),
+          }))
+          .filter((c) => Number.isFinite(c.itemId) && c.itemId > 0 && Number.isFinite(c.quantity) && c.quantity > 0);
+        premiumTemplateComponentsBySizeVariant.set(k, components);
+      }
 
       const bolsterByVariant: Record<BolsterVariant, ProductComponent[]> = {
         short: [],
@@ -454,6 +495,14 @@ export default function CostingsPage() {
             costCents,
             msrpCents: pillowKind === "premium" ? null : toCents((priceByKey.get(key) ?? priceByProductId.get(product.id))?.msrp ?? null),
             components,
+            ...(pillowKind === "premium"
+              ? {
+                  premiumComponentsByVariant: {
+                    linen: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:linen`) ?? components,
+                    fibrecool: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:fibrecool`) ?? components,
+                  },
+                }
+              : {}),
           });
         });
 
@@ -510,6 +559,12 @@ export default function CostingsPage() {
         load();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "bolster_bom_lines" }, () => {
+        load();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bom_templates" }, () => {
+        load();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bom_template_lines" }, () => {
         load();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "product_prices" }, () => {
@@ -798,9 +853,24 @@ export default function CostingsPage() {
     return draft[activeProduct.key] ?? { costPrice: "", msrp: "", compareAt: "" };
   }, [activeProduct, draft]);
 
+  const activeProductComponentsSource = useMemo(() => {
+    if (!activeProduct) return [];
+    if (
+      activeProduct.kind === "pillow" &&
+      activeProduct.pillowKind === "premium" &&
+      activeProduct.premiumComponentsByVariant
+    ) {
+      return (
+        activeProduct.premiumComponentsByVariant[premiumVariantSelection] ??
+        activeProduct.components
+      );
+    }
+    return activeProduct.components;
+  }, [activeProduct, premiumVariantSelection]);
+
   const activeProductCostDisplay = useMemo(() => {
     if (!activeProduct) return "";
-    const fromComponents = computeProductComponentsCostCents(activeProduct.components, itemCostByIdFromDraft);
+    const fromComponents = computeProductComponentsCostCents(activeProductComponentsSource, itemCostByIdFromDraft);
     if (fromComponents !== null) {
       return formatFromCents(fromComponents);
     }
@@ -809,12 +879,12 @@ export default function CostingsPage() {
       return display;
     }
     return formatFromCents(activeProduct.costCents ?? null);
-  }, [activeProduct, productCostDisplay, itemCostByIdFromDraft]);
+  }, [activeProduct, productCostDisplay, itemCostByIdFromDraft, activeProductComponentsSource]);
 
   const activeProductComponents = useMemo(() => {
     if (!activeProduct) return [];
     const groups = new Map<string, ProductComponentGroup>();
-    activeProduct.components.forEach((component) => {
+    activeProductComponentsSource.forEach((component) => {
       if (!component || component.quantity <= 0) return;
       const item = itemMap.get(component.itemId);
       if (!item) return;
@@ -851,7 +921,7 @@ export default function CostingsPage() {
           getInventoryItemDisplayLabel(a.item).localeCompare(getInventoryItemDisplayLabel(b.item)),
         ),
       }));
-  }, [activeProduct, itemCostByIdFromDraft, itemMap]);
+  }, [activeProduct, itemCostByIdFromDraft, itemMap, activeProductComponentsSource]);
 
   const openProductSheet = useCallback((productKey: string) => {
     setProductSheetKey(productKey);

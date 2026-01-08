@@ -98,59 +98,19 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     }
   }, []);
 
-  const mappedPillowSizesByKind = useMemo(() => {
-    const basic = new Set<string>();
-    const premium = new Set<string>();
-    rows.forEach((r) => {
-      if (r.kind !== "pillow") return;
-      const k = (r.pillowKind ?? "basic") === "premium" ? "premium" : "basic";
-      const sz = r.pillowSize ? String(r.pillowSize) : "";
-      if (!sz) return;
-      if (k === "premium") premium.add(sz);
-      else basic.add(sz);
-    });
-    return { basic, premium };
-  }, [rows]);
-
-  const unmappedPillowSizesForSelection = useMemo(() => {
-    const mapped = linkPillowKind === "premium" ? mappedPillowSizesByKind.premium : mappedPillowSizesByKind.basic;
-    return ALL_PILLOW_SIZES.filter((sz) => !mapped.has(sz));
-  }, [linkPillowKind, mappedPillowSizesByKind]);
-
-  const mappedBolsterVariants = useMemo(() => {
-    const out = new Set<string>();
-    rows.forEach((r) => {
-      if (r.kind !== "bolster") return;
-      const v = r.bolsterVariant ? String(r.bolsterVariant) : "";
-      if (v) out.add(v);
-    });
-    return out;
-  }, [rows]);
-
-  const unmappedBolsterVariantsForSelection = useMemo(() => {
-    return ALL_BOLSTER_VARIANTS.filter((v) => !mappedBolsterVariants.has(v));
-  }, [mappedBolsterVariants]);
-
   useEffect(() => {
     refresh();
   }, [refresh]);
 
   useEffect(() => {
-    // After linking, already-mapped pillow sizes / bolster variants should no longer be selectable.
+    // Keep selection valid when switching mapping types.
     if (linkKind === "pillow") {
-      if (!linkPillowSize || !unmappedPillowSizesForSelection.includes(linkPillowSize as (typeof ALL_PILLOW_SIZES)[number])) {
-        setLinkPillowSize(unmappedPillowSizesForSelection[0] ?? "");
-      }
+      if (!linkPillowSize) setLinkPillowSize("M");
     }
     if (linkKind === "bolster") {
-      if (
-        !linkBolsterVariant ||
-        !unmappedBolsterVariantsForSelection.includes(linkBolsterVariant as (typeof ALL_BOLSTER_VARIANTS)[number])
-      ) {
-        setLinkBolsterVariant(unmappedBolsterVariantsForSelection[0] ?? "");
-      }
+      if (!linkBolsterVariant) setLinkBolsterVariant("medium");
     }
-  }, [linkKind, linkPillowSize, linkBolsterVariant, unmappedPillowSizesForSelection, unmappedBolsterVariantsForSelection]);
+  }, [linkKind, linkPillowSize, linkBolsterVariant]);
 
   useEffect(() => {
     const load = async () => {
@@ -255,10 +215,6 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by variantId, SKU, item name…" />
-      </div>
-
       <div className="rounded-md border p-3 space-y-3">
         <div className="text-sm font-medium">Link an unmapped Shopify variant</div>
         <div className="grid gap-3 sm:grid-cols-5">
@@ -317,15 +273,11 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                     <SelectValue placeholder={!linkBolsterVariant ? "Select bolster variant…" : undefined} />
                   </SelectTrigger>
                   <SelectContent>
-                    {unmappedBolsterVariantsForSelection.length === 0 ? (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">All bolster variants already mapped</div>
-                    ) : (
-                      unmappedBolsterVariantsForSelection.map((v) => (
-                        <SelectItem key={v} value={v}>
-                          {v}
-                        </SelectItem>
-                      ))
-                    )}
+                    {ALL_BOLSTER_VARIANTS.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </>
@@ -345,10 +297,8 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
               <SelectContent>
                 {linkKind !== "pillow" ? (
                   <div className="px-2 py-1.5 text-sm text-muted-foreground">Not required</div>
-                ) : unmappedPillowSizesForSelection.length === 0 ? (
-                  <div className="px-2 py-1.5 text-sm text-muted-foreground">All sizes already mapped</div>
                 ) : (
-                  unmappedPillowSizesForSelection.map((sz) => (
+                  ALL_PILLOW_SIZES.map((sz) => (
                     <SelectItem key={sz} value={sz}>
                       {sz}
                     </SelectItem>
@@ -488,6 +438,10 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
             </Button>
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by variantId, SKU, item name…" />
       </div>
 
       <div className="rounded-md border">
