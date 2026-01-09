@@ -5,6 +5,7 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -12,6 +13,12 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { ProductConfigurationCard } from "./ProductConfigurationCard";
+import { MarginByCategoryVisx } from "./MarginByCategoryVisx";
+import { MarginByProductVisx } from "./MarginByProductVisx";
+import { PillowHeatmap } from "./PillowHeatmap";
+import { UnitMarginBySkuVisx } from "./UnitMarginBySkuVisx";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChartContainer,
   ChartLegend,
@@ -23,13 +30,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  LabelList,
-  ReferenceLine,
-  Scatter,
-  ScatterChart,
   XAxis,
   YAxis,
-  ZAxis,
 } from "recharts";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
@@ -87,11 +89,11 @@ const marginChartConfig = {
 
 const inventoryValueChartConfig = {
   costValue: { label: "Inventory at cost", color: "hsl(217 80% 45%)" },
-  msrpValue: { label: "Potential revenue", color: "hsl(217 92% 69%)" },
+  marginValue: { label: "MSRP − cost", color: "hsl(142 76% 36%)" },
 };
 
-const scatterChartConfig = {
-  marginOpportunity: { label: "Per-item gross margin", color: "hsl(217 85% 55%)" },
+const unitMarginChartConfig = {
+  unitMargin: { label: "MSRP − cost (unit)", color: "hsl(142 76% 36%)" },
 };
 
 const toNumber = (value: unknown): number | null => {
@@ -138,6 +140,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [marginView, setMarginView] = useState<"parts" | "products">("parts");
 
   const currencyFormatter = useMemo(
     () =>
@@ -307,13 +310,41 @@ export default function AnalyticsPage() {
       categorySummary
         .filter((entry) => entry.pricedItems > 0 && entry.weightedMarginPct !== null)
         .map((entry) => ({
+          category: entry.category,
           label: entry.label,
-          marginPct: entry.weightedMarginPct ?? 0,
-          marginValue: entry.marginValue,
+          costValue: entry.costValue,
+          msrpValue: entry.msrpValue,
           pricedItems: entry.pricedItems,
+          totalOnHand: entry.totalOnHand,
+          weightedMarginPct: entry.weightedMarginPct,
         })),
     [categorySummary]
   );
+  const partValueData = useMemo(
+    () =>
+      items
+        .filter((item) => item.cost !== null && item.msrp !== null)
+        .map((item) => {
+          const onHand = Math.max(item.onHand, 0);
+          const cost = item.cost ?? 0;
+          const msrp = item.msrp ?? 0;
+          const costValue = cost * onHand;
+          const msrpValue = msrp * onHand;
+          return {
+            id: item.id,
+            category: item.category,
+            label: describeItem(item),
+            onHand,
+            cost,
+            msrp,
+            costValue,
+            msrpValue,
+          };
+        }),
+    [items]
+  );
+
+  const itemCostsForProducts = useMemo(() => items.map((it) => ({ id: it.id, cost: it.cost })), [items]);
 
   const inventoryValueData = useMemo(
     () =>
@@ -322,7 +353,7 @@ export default function AnalyticsPage() {
         .map((entry) => ({
           label: entry.label,
           costValue: entry.costValue,
-          msrpValue: entry.msrpValue,
+          marginValue: entry.marginValue,
           onHand: entry.totalOnHand,
         })),
     [categorySummary]
@@ -352,92 +383,33 @@ export default function AnalyticsPage() {
     [items]
   );
 
-  const topOpportunities = useMemo(
-    () =>
-      [...itemOpportunityData]
-        .filter((item) => item.opportunityValue > 0)
-        .sort((a, b) => b.opportunityValue - a.opportunityValue)
-        .slice(0, 3),
-    [itemOpportunityData]
-  );
+  const unitMarginLeaderboardData = useMemo(() => {
+    const formatted = [...itemOpportunityData]
+      .map((item) => ({
+        id: item.id,
+        label: item.label,
+        unitMargin: item.unitMargin,
+        cost: item.cost,
+        msrp: item.msrp,
+        onHand: item.onHand,
+        opportunityValue: item.opportunityValue,
+      }))
+      .sort((a, b) => b.unitMargin - a.unitMargin)
+      .slice(0, 12);
 
-  const suggestions = useMemo(() => {
-    const signals: string[] = [];
-    const futureCharts: string[] = [
-      "Overlay BOM component costs (cover, case, filling, packaging) in a stacked bar per pillow size to see which inputs consume the most gross margin.",
-      "Chart cost inflation scenarios by applying ±5% sensitivity sliders to cost price and tracking the impact on category-level margin% in real time.",
-      "Combine sales velocity (inventory_transactions) with margin % in a scatter to highlight items that move fast but earn thin contribution.",
-      "Add a buildable-vs-on-hand timeline using product_buildable to forecast when high-margin SKUs risk stockouts.",
-    ];
+    return formatted.reverse();
+  }, [itemOpportunityData]);
 
-    if (totals.pricedItems === 0) {
-      signals.push("No items have both cost price and MSRP yet—populate the Costings tab to unlock margin analytics.");
-      return { signals, futureCharts };
-    }
-
-    const missingPricing = totals.totalItems - totals.pricedItems;
-    if (missingPricing > 0) {
-      signals.push(
-        `${missingPricing} of ${totals.totalItems} active parts still lack either cost or MSRP. Close these gaps to prevent blind spots in gross margin tracking.`
-      );
-    }
-
-    const rankedByMargin = categorySummary
-      .filter((entry) => entry.pricedItems > 0 && entry.weightedMarginPct !== null)
-      .sort((a, b) => (a.weightedMarginPct ?? 0) - (b.weightedMarginPct ?? 0));
-
-    if (rankedByMargin.length > 0) {
-      const weakest = rankedByMargin[0];
-      signals.push(
-        `${weakest.label} is delivering only ${formatPercent(weakest.weightedMarginPct)} margin on stocked units—double-check cost inputs and consider repricing before the next purchase cycle.`
-      );
-
-      const strongest = rankedByMargin[rankedByMargin.length - 1];
-      if (strongest.category !== weakest.category && strongest.weightedMarginPct !== null) {
-        signals.push(
-          `${strongest.label} leads with ${formatPercent(
-            strongest.weightedMarginPct
-          )} margin; keep allocations high here while the market will bear current pricing.`
-        );
-      }
-    }
-
-    const richestCategory = categorySummary
-      .filter((entry) => entry.marginValue > 0)
-      .sort((a, b) => b.marginValue - a.marginValue)[0];
-    if (richestCategory) {
-      signals.push(
-        `${richestCategory.label} holds ${currencyFormatter.format(
-          richestCategory.marginValue
-        )} of unrealized gross margin sitting in inventory today.`
-      );
-    }
-
-    if (topOpportunities.length > 0) {
-      const focus = topOpportunities[0];
-      signals.push(
-        `${focus.label} (${focus.category}) ties up ${currencyFormatter.format(
-          focus.opportunityValue
-        )} of gross margin across ${focus.onHand} units. Prioritize sell-through or a targeted promo to convert it.`
-      );
-    }
-
-    if (totals.pricingCoveragePct !== null) {
-      signals.push(
-        `Pricing visibility covers ${formatPercent(totals.pricingCoveragePct)} of active SKUs. Aim for >95% to make the analytics trustworthy.`
-      );
-    }
-
-    return { signals, futureCharts };
-  }, [
-    categorySummary,
-    currencyFormatter,
-    formatPercent,
-    topOpportunities,
-    totals.pricedItems,
-    totals.pricingCoveragePct,
-    totals.totalItems,
-  ]);
+  const unitMarginInsight = useMemo(() => {
+    if (unitMarginLeaderboardData.length === 0) return null;
+    const top = unitMarginLeaderboardData.reduce((best, row) => (row.unitMargin > best.unitMargin ? row : best), unitMarginLeaderboardData[0]);
+    const bottom = unitMarginLeaderboardData.reduce((worst, row) => (row.unitMargin < worst.unitMargin ? row : worst), unitMarginLeaderboardData[0]);
+    return {
+      top,
+      bottom,
+      shown: unitMarginLeaderboardData.length,
+    };
+  }, [unitMarginLeaderboardData]);
 
   if (loading) {
     return (
@@ -492,6 +464,8 @@ export default function AnalyticsPage() {
         </Card>
       )}
 
+      <ProductConfigurationCard />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="space-y-1">
@@ -534,62 +508,38 @@ export default function AnalyticsPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Margin by category</CardTitle>
-            <CardDescription>Weighted by current MSRP value; highlights where margin is thinnest.</CardDescription>
+            <CardTitle>{marginView === "products" ? "Margin by product" : "Margin by category"}</CardTitle>
+            <CardDescription>
+              {marginView === "products"
+                ? "Estimated from BOM costs and buildable units; shows cost vs margin value by pillow product."
+                : "Shows cost vs margin value by part category, with drill-down into items."}
+            </CardDescription>
+            <CardAction>
+              <Tabs value={marginView} onValueChange={(v) => setMarginView(v as "parts" | "products")}>
+                <TabsList>
+                  <TabsTrigger value="parts">Parts</TabsTrigger>
+                  <TabsTrigger value="products">Products</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardAction>
           </CardHeader>
           <CardContent>
-            {marginChartData.length === 0 ? (
+            {marginView === "parts" && marginChartData.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Add cost price and MSRP data in Costings to unlock category-level margin analysis.
               </p>
+            ) : marginView === "parts" ? (
+              <MarginByCategoryVisx categories={marginChartData as any} items={partValueData} />
             ) : (
-              <ChartContainer className="min-h-[320px] w-full" config={marginChartConfig}>
-                <BarChart data={marginChartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(value) => `${value.toFixed(0)}%`}
-                    domain={[0, (dataMax: number) => Math.max(60, Math.ceil(dataMax / 10) * 10)]}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        labelKey="label"
-                        formatter={(value, _name, item) => (
-                          <div className="flex flex-col gap-1">
-                            <span className="font-medium">{`${Number(value).toFixed(1)}% margin`}</span>
-                            <span className="text-xs text-muted-foreground">
-                              Gross margin pool: {currencyFormatter.format(item?.payload?.marginValue ?? 0)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              Priced SKUs: {item?.payload?.pricedItems ?? 0}
-                            </span>
-                          </div>
-                        )}
-                      />
-                    }
-                  />
-                  <ReferenceLine y={40} stroke="var(--border)" strokeDasharray="4 4" label={{ value: "40% target", position: "top" }} />
-                  <Bar dataKey="marginPct" radius={[6, 6, 0, 0]} fill="var(--color-marginPct)">
-                    <LabelList
-                      dataKey="marginPct"
-                      position="top"
-                      formatter={(value: number) => `${value.toFixed(0)}%`}
-                      className="text-xs font-medium"
-                    />
-                  </Bar>
-                </BarChart>
-              </ChartContainer>
+              <MarginByProductVisx itemCosts={itemCostsForProducts} />
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Inventory value vs. MSRP</CardTitle>
-            <CardDescription>Quantifies cost exposure and revenue upside by category.</CardDescription>
+            <CardTitle>Inventory value split</CardTitle>
+            <CardDescription>Shows cost basis and the MSRP − cost gap by category.</CardDescription>
           </CardHeader>
           <CardContent>
             {inventoryValueData.length === 0 ? (
@@ -620,8 +570,20 @@ export default function AnalyticsPage() {
                     }
                   />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <Bar dataKey="costValue" fill="var(--color-costValue)" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="msrpValue" fill="var(--color-msrpValue)" radius={[6, 6, 0, 0]} />
+                  <Bar
+                    dataKey="costValue"
+                    stackId="value"
+                    barSize={36}
+                    fill="var(--color-costValue)"
+                    radius={[0, 0, 6, 6]}
+                  />
+                  <Bar
+                    dataKey="marginValue"
+                    stackId="value"
+                    barSize={36}
+                    fill="var(--color-marginValue)"
+                    radius={[6, 6, 0, 0]}
+                  />
                 </BarChart>
               </ChartContainer>
             )}
@@ -629,114 +591,59 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Margin vs. price positioning</CardTitle>
-          <CardDescription>
-            Visualizes each stocked SKU by unit cost and MSRP; bubble size reflects stock on hand.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {itemOpportunityData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Capture cost and MSRP for individual items to spot outliers and mispriced SKUs.
-            </p>
-          ) : (
-            <ChartContainer className="min-h-[360px] w-full" config={scatterChartConfig}>
-              <ScatterChart>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="cost"
-                  name="Cost price"
-                  tickFormatter={(value) => compactCurrencyFormatter.format(value)}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  dataKey="msrp"
-                  name="MSRP"
-                  tickFormatter={(value) => compactCurrencyFormatter.format(value)}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <ZAxis dataKey="bubbleSize" range={[6, 32]} />
-                <ChartTooltip
-                  content={
-                    <ChartTooltipContent
-                      labelKey="label"
-                      formatter={(_, __, item) => {
-                        if (!item?.payload) return null;
-                        return (
-                          <div className="grid gap-1">
-                            <div className="font-medium">{item.payload.label}</div>
-                            <div className="text-xs text-muted-foreground">{item.payload.category}</div>
-                            <Separator className="my-1" />
-                            <div className="text-xs">
-                              Cost: <span className="font-medium">{currencyFormatter.format(item.payload.cost)}</span>
-                            </div>
-                            <div className="text-xs">
-                              MSRP: <span className="font-medium">{currencyFormatter.format(item.payload.msrp)}</span>
-                            </div>
-                            <div className="text-xs">
-                              Unit margin:{" "}
-                              <span className="font-medium">{currencyFormatter.format(item.payload.unitMargin)}</span>
-                            </div>
-                            <div className="text-xs">
-                              Stocked units: <span className="font-medium">{item.payload.onHand}</span>
-                            </div>
-                            <div className="text-xs">
-                              Margin %: <span className="font-medium">{formatPercent(item.payload.marginPct)}</span>
-                            </div>
-                            <div className="text-xs">
-                              Margin tied up:{" "}
-                              <span className="font-medium">
-                                {currencyFormatter.format(item.payload.opportunityValue)}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }}
-                    />
-                  }
-                />
-                <Scatter data={itemOpportunityData} fill="var(--color-marginOpportunity)" />
-              </ScatterChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Analyst recommendations</CardTitle>
-          <CardDescription>Focus areas and next analytical layers to deepen visibility.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Current signals</h3>
-            {suggestions.signals.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No margin signals yet—add inventory and pricing data.</p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>SKU metrics</CardTitle>
+            <CardDescription>
+              Shows cost, MSRP, and on-hand inventory per SKU. Sorted by biggest unit margin, positive margins only.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {unitMarginLeaderboardData.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Capture cost and MSRP for individual items to see the per-unit difference.
+              </p>
             ) : (
-              <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
-                {suggestions.signals.map((signal, index) => (
-                  <li key={`signal-${index}`}>{signal}</li>
-                ))}
-              </ul>
+              <div className="space-y-3">
+                {unitMarginInsight && (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">Top:</span> {unitMarginInsight.top.label}{" "}
+                    <span className="font-medium">({compactCurrencyFormatter.format(unitMarginInsight.top.unitMargin)})</span>{" "}
+                    <span className="mx-2">·</span>
+                    <span className="font-medium">Bottom:</span> {unitMarginInsight.bottom.label}{" "}
+                    <span className="font-medium">
+                      ({compactCurrencyFormatter.format(unitMarginInsight.bottom.unitMargin)})
+                    </span>
+                    <span className="mx-2">·</span>
+                    <span>Showing items with positive margins only. Hover bars for details.</span>
+                  </div>
+                )}
+                <UnitMarginBySkuVisx
+                  rows={unitMarginLeaderboardData}
+                  formatMoney={(v) => compactCurrencyFormatter.format(v)}
+                  formatMoneyLong={(v) => currencyFormatter.format(v)}
+                />
+              </div>
             )}
-          </div>
-          <Separator />
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Suggested next charts
-            </h3>
-            <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed">
-              {suggestions.futureCharts.map((idea, index) => (
-                <li key={`idea-${index}`}>{idea}</li>
-              ))}
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Heatmap</CardTitle>
+            <CardDescription>Pseudo intensity preview clipped to the pillow silhouette.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PillowHeatmap
+              title="Heatmap"
+              showTitle={false}
+              seed={1337}
+              palette={{ from: "hsl(221 83% 53%)", to: "hsl(188 94% 42%)" }}
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -109,17 +109,47 @@ function Dock({
           mouseX.set(Infinity);
         }}
         className={cn(
-          'mx-auto flex w-fit gap-4 rounded-2xl bg-gray-50 px-4 dark:bg-neutral-900',
+          'mx-auto flex w-fit gap-4 rounded-[35px] px-4 relative',
           className
         )}
-        style={{ height: panelHeight }}
+        style={{ 
+          height: panelHeight,
+        }}
         role='toolbar'
         aria-label='Application dock'
       >
+        {/* Light mode background */}
+        <div 
+          className="absolute inset-0 rounded-[35px] dark:hidden -z-10" 
+          style={{
+            backgroundImage: "linear-gradient(rgb(226, 232, 240) 0%, rgb(203, 213, 225) 100%), linear-gradient(90deg, rgb(241, 245, 249) 0%, rgb(241, 245, 249) 100%)"
+          }}
+        />
+        {/* Light mode inner shadow */}
+        <div 
+          className="absolute inset-0 pointer-events-none rounded-[35px] dark:hidden -z-10" 
+          style={{
+            boxShadow: "inset 1px 1px 1.8px 0px rgba(255, 255, 255, 0.8), inset -4px 13px 28.4px 0px rgba(148, 163, 184, 0.3)"
+          }}
+        />
+        {/* Dark mode background */}
+        <div 
+          className="absolute inset-0 rounded-[35px] hidden dark:block -z-10" 
+          style={{
+            backgroundImage: "linear-gradient(rgb(0, 23, 54) 0%, rgb(43, 105, 188) 100%), linear-gradient(90deg, rgb(7, 55, 120) 0%, rgb(7, 55, 120) 100%)"
+          }}
+        />
+        {/* Dark mode inner shadow */}
+        <div 
+          className="absolute inset-0 pointer-events-none rounded-[35px] hidden dark:block -z-10" 
+          style={{
+            boxShadow: "inset 1px 1px 1.8px 0px rgba(194, 220, 255, 0.5), inset -4px 13px 28.4px 0px rgba(102, 167, 255, 0.5)"
+          }}
+        />
         <DockProvider value={{ mouseX, spring, distance, magnification }}>
           {children}
         </DockProvider>
-      </motion.div>
+        </motion.div>
     </motion.div>
   );
 }

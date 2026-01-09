@@ -134,6 +134,45 @@
   .animate-ripple {
     animation: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s) infinite;
   }
+
+  @keyframes grid-slow {
+    0% {
+      transform: translateY(-2%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes grid-fast {
+    0% {
+      transform: translateY(-5%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes grid-reverse {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(5%);
+    }
+  }
+
+  .animate-grid-slow {
+    animation: grid-slow 20s linear infinite;
+  }
+
+  .animate-grid-fast {
+    animation: grid-fast 1s linear infinite;
+  }
+
+  .animate-grid-reverse {
+    animation: grid-reverse 1s linear infinite;
+  }
 }
 
 /* Thin, minimal scrollbars (WebKit + Firefox) */

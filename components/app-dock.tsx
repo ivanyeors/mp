@@ -1,7 +1,7 @@
 'use client';
 
 import { Dock, DockIcon, DockItem, DockLabel } from "@/components/ui/shadcn-io/dock";
-import { Home, Wrench, Heart, Settings } from "lucide-react";
+import { Home, Wrench, Heart, Settings, Ruler } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -15,6 +15,11 @@ const dockItems = [
     title: "Mpillow Maker",
     icon: Wrench,
     href: "/mp-maker",
+  },
+  {
+    title: "Mpillow Config",
+    icon: Ruler,
+    href: "/mp-config",
   },
   {
     title: "Mpillow Care",
@@ -40,12 +45,12 @@ export function AppDock() {
           return (
             <Link key={idx} href={item.href}>
               <DockItem
-                className="aspect-square rounded-full bg-gray-200 dark:bg-neutral-800"
+                className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm"
                 isActive={isActive}
               >
                 <DockLabel>{item.title}</DockLabel>
                 <DockIcon>
-                  <IconComponent className={`h-full w-full ${isActive ? 'text-white' : 'text-neutral-600 dark:text-neutral-300'}`} />
+                  <IconComponent className={`h-full w-full ${isActive ? 'text-white' : 'text-gray-200 dark:text-neutral-300'}`} />
                 </DockIcon>
               </DockItem>
             </Link>
