@@ -18,6 +18,7 @@ import { MarginByCategoryVisx } from "./MarginByCategoryVisx";
 import { MarginByProductVisx } from "./MarginByProductVisx";
 import { PillowHeatmap } from "./PillowHeatmap";
 import { UnitMarginBySkuVisx } from "./UnitMarginBySkuVisx";
+import { ProductTimelineVisx } from "./ProductTimelineVisx";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ChartContainer,
@@ -141,6 +142,7 @@ export default function AnalyticsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [marginView, setMarginView] = useState<"parts" | "products">("parts");
+  const [timelineView, setTimelineView] = useState<"parts" | "products">("parts");
 
   const currencyFormatter = useMemo(
     () =>
@@ -411,6 +413,71 @@ export default function AnalyticsPage() {
     };
   }, [unitMarginLeaderboardData]);
 
+  const timelineData = useMemo(() => {
+    // Generate mock timeline data for demonstration
+    // In production, this would fetch from shopify_sales_queue or a dedicated sales table
+    const now = new Date();
+    const months = 6;
+    
+    const CATEGORY_COLORS: Record<string, string> = {
+      cover: "hsl(217 91% 60%)",
+      case: "hsl(262 83% 58%)",
+      protector: "hsl(142 76% 36%)",
+      filling: "hsl(24 95% 53%)",
+      packaging: "hsl(43 96% 56%)",
+      accessories: "hsl(300 76% 42%)",
+      other: "hsl(0 0% 60%)",
+    };
+
+    if (timelineView === "parts") {
+      // Generate timeline for parts by category
+      return categorySummary.map((category) => ({
+        id: category.category,
+        name: category.label,
+        category: category.category,
+        color: CATEGORY_COLORS[category.category] || "hsl(0 0% 60%)",
+        data: Array.from({ length: months }, (_, i) => {
+          const date = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+          // Generate mock data with some randomness based on category value
+          const baseValue = category.costValue / months;
+          const variation = Math.sin(i) * 0.3 + 1;
+          return {
+            date,
+            value: Math.max(0, baseValue * variation * (0.7 + Math.random() * 0.6)),
+            quantity: Math.floor(category.totalOnHand / months * variation * (0.7 + Math.random() * 0.6)),
+          };
+        }),
+      }));
+    } else {
+      // Generate timeline for products
+      // Mock product data - in production this would come from BOM configurations
+      const products = [
+        { id: "pillow-standard", name: "Standard Pillow", category: "pillow", baseValue: 5000 },
+        { id: "pillow-premium", name: "Premium Pillow", category: "pillow", baseValue: 8000 },
+        { id: "bolster-medium", name: "Medium Bolster", category: "bolster", baseValue: 3000 },
+        { id: "bolster-large", name: "Large Bolster", category: "bolster", baseValue: 4500 },
+      ];
+
+      return products.map((product) => ({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        color: CATEGORY_COLORS[product.category] || "hsl(0 0% 60%)",
+        data: Array.from({ length: months }, (_, i) => {
+          const date = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
+          const variation = Math.sin(i + product.baseValue) * 0.3 + 1;
+          const value = Math.max(0, product.baseValue * variation * (0.6 + Math.random() * 0.8));
+          return {
+            date,
+            value,
+            quantity: Math.floor(value / 50),
+            avgPrice: value / Math.max(1, Math.floor(value / 50)),
+          };
+        }),
+      }));
+    }
+  }, [categorySummary, timelineView]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -538,54 +605,24 @@ export default function AnalyticsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Inventory value split</CardTitle>
-            <CardDescription>Shows cost basis and the MSRP − cost gap by category.</CardDescription>
+            <CardTitle>Product sales timeline</CardTitle>
+            <CardDescription>
+              {timelineView === "products"
+                ? "Timeline view of different products being sold over time."
+                : "Timeline view of parts sold by category over time."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {inventoryValueData.length === 0 ? (
+            {timelineData.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Receive stock and record pricing to populate inventory value analytics.
+                No sales data available for the selected period.
               </p>
             ) : (
-              <ChartContainer className="min-h-[320px] w-full" config={inventoryValueChartConfig}>
-                <BarChart data={inventoryValueData} barGap={12} barCategoryGap={24}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(value) => compactCurrencyFormatter.format(value)}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        labelKey="label"
-                        formatter={(value, name) => (
-                          <div className="flex flex-col">
-                            <span className="font-medium">{compactCurrencyFormatter.format(Number(value))}</span>
-                            <span className="text-xs text-muted-foreground">{name}</span>
-                          </div>
-                        )}
-                      />
-                    }
-                  />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar
-                    dataKey="costValue"
-                    stackId="value"
-                    barSize={36}
-                    fill="var(--color-costValue)"
-                    radius={[0, 0, 6, 6]}
-                  />
-                  <Bar
-                    dataKey="marginValue"
-                    stackId="value"
-                    barSize={36}
-                    fill="var(--color-marginValue)"
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
-              </ChartContainer>
+              <ProductTimelineVisx
+                products={timelineData}
+                viewMode={timelineView}
+                onViewModeChange={setTimelineView}
+              />
             )}
           </CardContent>
         </Card>
