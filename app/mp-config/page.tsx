@@ -6,10 +6,11 @@ import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { 
   ArrowRight, 
   ArrowLeft, 
-  Ruler, 
   User, 
   Sparkles,
   CheckCircle,
@@ -39,6 +40,10 @@ export default function MpConfigPage() {
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
+  const [shoulderLengthUnit, setShoulderLengthUnit] = useState<"cm" | "in">("cm");
+  const [neckToBackUnit, setNeckToBackUnit] = useState<"cm" | "in">("cm");
+  const [headToBackUnit, setHeadToBackUnit] = useState<"cm" | "in">("cm");
+  const [neckLengthUnit, setNeckLengthUnit] = useState<"cm" | "in">("cm");
   const [measurementData, setMeasurementData] = useState<MeasurementData>({
     name: "",
     shoulderLength: "",
@@ -101,6 +106,12 @@ export default function MpConfigPage() {
     setMeasurementData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const currentStepIndex = stepOrder.indexOf(currentStep);
+  const progressValue =
+    currentStepIndex <= 0
+      ? 0
+      : Math.round((currentStepIndex / (stepOrder.length - 1)) * 100);
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
       {/* Retro Grid Background */}
@@ -113,6 +124,17 @@ export default function MpConfigPage() {
             isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100"
           }`}
         >
+          {/* Progress Indicator */}
+          {currentStep !== "welcome" && (
+            <div className="mb-6 flex justify-center">
+              <Progress
+                value={progressValue}
+                aria-label="Configuration progress"
+                className="w-full max-w-2xl"
+              />
+            </div>
+          )}
+
           {/* Welcome Step */}
           {currentStep === "welcome" && (
             <div className="flex flex-col items-center justify-center space-y-8 text-center">
@@ -236,7 +258,14 @@ export default function MpConfigPage() {
           {currentStep === "shoulder-length" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
               <div className="text-center space-y-2">
-                <Ruler className="h-12 w-12 mx-auto text-primary" />
+                <Image
+                  src="/shoulder-length.svg"
+                  alt="Shoulder length measurement"
+                  width={200}
+                  height={200}
+                  className="mx-auto w-[200px] h-auto"
+                  style={{ height: "auto" }}
+                />
                 <h2 className="text-3xl font-bold">Shoulder Length</h2>
                 <p className="text-muted-foreground">
                   Measure from the left shoulder to the right shoulder
@@ -248,12 +277,50 @@ export default function MpConfigPage() {
                   <Input
                     type="number"
                     placeholder="Enter measurement"
-                    value={measurementData.shoulderLength}
-                    onChange={(e) => updateMeasurement("shoulderLength", e.target.value)}
+                    value={
+                      shoulderLengthUnit === "cm"
+                        ? measurementData.shoulderLength
+                        : (() => {
+                            const cm = Number(measurementData.shoulderLength);
+                            if (!measurementData.shoulderLength) return "";
+                            if (!Number.isFinite(cm)) return measurementData.shoulderLength;
+                            const inches = cm / 2.54;
+                            return String(Math.round(inches * 100) / 100);
+                          })()
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        updateMeasurement("shoulderLength", "");
+                        return;
+                      }
+
+                      const n = Number(raw);
+                      if (!Number.isFinite(n)) {
+                        updateMeasurement("shoulderLength", raw);
+                        return;
+                      }
+
+                      const cm =
+                        shoulderLengthUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
+                      updateMeasurement("shoulderLength", String(cm));
+                    }}
                     className="text-lg h-12"
                     autoFocus
                   />
-                  <span className="text-lg font-medium text-muted-foreground">cm</span>
+                  <Tabs
+                    value={shoulderLengthUnit}
+                    onValueChange={(v) => setShoulderLengthUnit(v as "cm" | "in")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="cm" className="px-3">
+                        cm
+                      </TabsTrigger>
+                      <TabsTrigger value="in" className="px-3">
+                        in
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: Have someone help you measure for accuracy
@@ -280,7 +347,14 @@ export default function MpConfigPage() {
           {currentStep === "neck-to-back" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
               <div className="text-center space-y-2">
-                <Ruler className="h-12 w-12 mx-auto text-primary" />
+                <Image
+                  src="/neck-to-back.svg"
+                  alt="Neck to back measurement"
+                  width={200}
+                  height={200}
+                  className="mx-auto w-[200px] h-auto"
+                  style={{ height: "auto" }}
+                />
                 <h2 className="text-3xl font-bold">Neck to Back</h2>
                 <p className="text-muted-foreground">
                   Measure from the base of your neck to your upper back
@@ -292,12 +366,50 @@ export default function MpConfigPage() {
                   <Input
                     type="number"
                     placeholder="Enter measurement"
-                    value={measurementData.neckToBack}
-                    onChange={(e) => updateMeasurement("neckToBack", e.target.value)}
+                    value={
+                      neckToBackUnit === "cm"
+                        ? measurementData.neckToBack
+                        : (() => {
+                            const cm = Number(measurementData.neckToBack);
+                            if (!measurementData.neckToBack) return "";
+                            if (!Number.isFinite(cm)) return measurementData.neckToBack;
+                            const inches = cm / 2.54;
+                            return String(Math.round(inches * 100) / 100);
+                          })()
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        updateMeasurement("neckToBack", "");
+                        return;
+                      }
+
+                      const n = Number(raw);
+                      if (!Number.isFinite(n)) {
+                        updateMeasurement("neckToBack", raw);
+                        return;
+                      }
+
+                      const cm =
+                        neckToBackUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
+                      updateMeasurement("neckToBack", String(cm));
+                    }}
                     className="text-lg h-12"
                     autoFocus
                   />
-                  <span className="text-lg font-medium text-muted-foreground">cm</span>
+                  <Tabs
+                    value={neckToBackUnit}
+                    onValueChange={(v) => setNeckToBackUnit(v as "cm" | "in")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="cm" className="px-3">
+                        cm
+                      </TabsTrigger>
+                      <TabsTrigger value="in" className="px-3">
+                        in
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: Measure while sitting in your typical sleeping position
@@ -324,7 +436,14 @@ export default function MpConfigPage() {
           {currentStep === "head-to-back" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
               <div className="text-center space-y-2">
-                <Ruler className="h-12 w-12 mx-auto text-primary" />
+                <Image
+                  src="/head-to-back.svg"
+                  alt="Head to back measurement"
+                  width={200}
+                  height={200}
+                  className="mx-auto w-[200px] h-auto"
+                  style={{ height: "auto" }}
+                />
                 <h2 className="text-3xl font-bold">Head to Back</h2>
                 <p className="text-muted-foreground">
                   Measure from the back of your head to your upper back
@@ -336,12 +455,50 @@ export default function MpConfigPage() {
                   <Input
                     type="number"
                     placeholder="Enter measurement"
-                    value={measurementData.headToBack}
-                    onChange={(e) => updateMeasurement("headToBack", e.target.value)}
+                    value={
+                      headToBackUnit === "cm"
+                        ? measurementData.headToBack
+                        : (() => {
+                            const cm = Number(measurementData.headToBack);
+                            if (!measurementData.headToBack) return "";
+                            if (!Number.isFinite(cm)) return measurementData.headToBack;
+                            const inches = cm / 2.54;
+                            return String(Math.round(inches * 100) / 100);
+                          })()
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        updateMeasurement("headToBack", "");
+                        return;
+                      }
+
+                      const n = Number(raw);
+                      if (!Number.isFinite(n)) {
+                        updateMeasurement("headToBack", raw);
+                        return;
+                      }
+
+                      const cm =
+                        headToBackUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
+                      updateMeasurement("headToBack", String(cm));
+                    }}
                     className="text-lg h-12"
                     autoFocus
                   />
-                  <span className="text-lg font-medium text-muted-foreground">cm</span>
+                  <Tabs
+                    value={headToBackUnit}
+                    onValueChange={(v) => setHeadToBackUnit(v as "cm" | "in")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="cm" className="px-3">
+                        cm
+                      </TabsTrigger>
+                      <TabsTrigger value="in" className="px-3">
+                        in
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: This helps us determine the ideal pillow height for you
@@ -368,10 +525,17 @@ export default function MpConfigPage() {
           {currentStep === "neck-length" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
               <div className="text-center space-y-2">
-                <Ruler className="h-12 w-12 mx-auto text-primary" />
+                <Image
+                  src="/neck-length.svg"
+                  alt="Neck length measurement"
+                  width={200}
+                  height={200}
+                  className="mx-auto w-[200px] h-auto"
+                  style={{ height: "auto" }}
+                />
                 <h2 className="text-3xl font-bold">Neck Length</h2>
                 <p className="text-muted-foreground">
-                  Measure the length of your neck from chin to shoulders
+                  Measure vertically the length of your neck from c1 and stop at the shoulders
                 </p>
               </div>
 
@@ -380,12 +544,50 @@ export default function MpConfigPage() {
                   <Input
                     type="number"
                     placeholder="Enter measurement"
-                    value={measurementData.neckLength}
-                    onChange={(e) => updateMeasurement("neckLength", e.target.value)}
+                    value={
+                      neckLengthUnit === "cm"
+                        ? measurementData.neckLength
+                        : (() => {
+                            const cm = Number(measurementData.neckLength);
+                            if (!measurementData.neckLength) return "";
+                            if (!Number.isFinite(cm)) return measurementData.neckLength;
+                            const inches = cm / 2.54;
+                            return String(Math.round(inches * 100) / 100);
+                          })()
+                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        updateMeasurement("neckLength", "");
+                        return;
+                      }
+
+                      const n = Number(raw);
+                      if (!Number.isFinite(n)) {
+                        updateMeasurement("neckLength", raw);
+                        return;
+                      }
+
+                      const cm =
+                        neckLengthUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
+                      updateMeasurement("neckLength", String(cm));
+                    }}
                     className="text-lg h-12"
                     autoFocus
                   />
-                  <span className="text-lg font-medium text-muted-foreground">cm</span>
+                  <Tabs
+                    value={neckLengthUnit}
+                    onValueChange={(v) => setNeckLengthUnit(v as "cm" | "in")}
+                  >
+                    <TabsList className="h-12">
+                      <TabsTrigger value="cm" className="px-3">
+                        cm
+                      </TabsTrigger>
+                      <TabsTrigger value="in" className="px-3">
+                        in
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: This is the final measurement - almost done!
@@ -448,7 +650,7 @@ export default function MpConfigPage() {
                 </Button>
                 <Button onClick={goToNextStep} size="lg" className="group">
                   <Sparkles className="mr-2 h-5 w-5" />
-                  Customize My Mpillow
+                  Generate Results
                   <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Button>
               </div>
@@ -493,20 +695,6 @@ export default function MpConfigPage() {
             </Card>
           )}
         </div>
-      </div>
-
-      {/* Progress Indicator */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 flex space-x-2">
-        {stepOrder.map((step, index) => (
-          <div
-            key={step}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              stepOrder.indexOf(currentStep) >= index
-                ? "bg-primary w-8"
-                : "bg-muted w-2"
-            }`}
-          />
-        ))}
       </div>
     </div>
   );

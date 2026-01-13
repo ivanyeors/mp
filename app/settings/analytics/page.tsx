@@ -15,11 +15,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { ProductConfigurationCard } from "./ProductConfigurationCard";
 import { MarginByCategoryVisx } from "./MarginByCategoryVisx";
+import type { CategoryStackDatum, ItemStackDatum } from "./MarginByCategoryVisx";
 import { MarginByProductVisx } from "./MarginByProductVisx";
 import { PillowHeatmap } from "./PillowHeatmap";
 import { UnitMarginBySkuVisx } from "./UnitMarginBySkuVisx";
 import { ProductTimelineVisx } from "./ProductTimelineVisx";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 import {
   ChartContainer,
   ChartLegend,
@@ -143,6 +148,11 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [marginView, setMarginView] = useState<"parts" | "products">("parts");
   const [timelineView, setTimelineView] = useState<"parts" | "products">("parts");
+  const [timelineDateRange, setTimelineDateRange] = useState<{ from: Date; to: Date }>({
+    from: startOfMonth(subMonths(new Date(), 5)),
+    to: endOfMonth(new Date()),
+  });
+  const [isTimelineCalendarOpen, setIsTimelineCalendarOpen] = useState(false);
 
   const currencyFormatter = useMemo(
     () =>
@@ -168,6 +178,16 @@ export default function AnalyticsPage() {
   const formatPercent = useCallback((value: number | null) => {
     if (value === null || Number.isNaN(value)) return "—";
     return `${value.toFixed(1)}%`;
+  }, []);
+
+  const handleTimelineDateRangeSelect = useCallback((range: { from?: Date; to?: Date } | undefined) => {
+    if (range?.from && range?.to) {
+      setTimelineDateRange({
+        from: startOfMonth(range.from),
+        to: endOfMonth(range.to),
+      });
+      setIsTimelineCalendarOpen(false);
+    }
   }, []);
 
   const load = useCallback(
@@ -307,7 +327,7 @@ export default function AnalyticsPage() {
       });
   }, [items]);
 
-  const marginChartData = useMemo(
+  const marginChartData = useMemo<CategoryStackDatum[]>(
     () =>
       categorySummary
         .filter((entry) => entry.pricedItems > 0 && entry.weightedMarginPct !== null)
@@ -322,7 +342,7 @@ export default function AnalyticsPage() {
         })),
     [categorySummary]
   );
-  const partValueData = useMemo(
+  const partValueData = useMemo<ItemStackDatum[]>(
     () =>
       items
         .filter((item) => item.cost !== null && item.msrp !== null)
@@ -478,6 +498,59 @@ export default function AnalyticsPage() {
     }
   }, [categorySummary, timelineView]);
 
+  const timelineCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Product sales timeline</CardTitle>
+        <CardDescription>
+          {timelineView === "products"
+            ? "Timeline view of different products being sold over time."
+            : "Timeline view of parts sold by category over time."}
+        </CardDescription>
+        <CardAction>
+          <div className="flex items-center gap-2">
+            <Tabs value={timelineView} onValueChange={(v) => setTimelineView(v as "parts" | "products")}>
+              <TabsList>
+                <TabsTrigger value="parts">Parts</TabsTrigger>
+                <TabsTrigger value="products">Products</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <Popover open={isTimelineCalendarOpen} onOpenChange={setIsTimelineCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(timelineDateRange.from, "MMM yyyy")} - {format(timelineDateRange.to, "MMM yyyy")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={{ from: timelineDateRange.from, to: timelineDateRange.to }}
+                  onSelect={handleTimelineDateRangeSelect}
+                  numberOfMonths={2}
+                  defaultMonth={timelineDateRange.from}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {timelineData.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No sales data available for the selected period.</p>
+        ) : (
+          <ProductTimelineVisx
+            products={timelineData}
+            viewMode={timelineView}
+            onViewModeChange={setTimelineView}
+            dateRange={timelineDateRange}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -572,7 +645,7 @@ export default function AnalyticsPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle>{marginView === "products" ? "Margin by product" : "Margin by category"}</CardTitle>
@@ -596,36 +669,14 @@ export default function AnalyticsPage() {
                 Add cost price and MSRP data in Costings to unlock category-level margin analysis.
               </p>
             ) : marginView === "parts" ? (
-              <MarginByCategoryVisx categories={marginChartData as any} items={partValueData} />
+              <MarginByCategoryVisx categories={marginChartData} items={partValueData} />
             ) : (
               <MarginByProductVisx itemCosts={itemCostsForProducts} />
             )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Product sales timeline</CardTitle>
-            <CardDescription>
-              {timelineView === "products"
-                ? "Timeline view of different products being sold over time."
-                : "Timeline view of parts sold by category over time."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {timelineData.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No sales data available for the selected period.
-              </p>
-            ) : (
-              <ProductTimelineVisx
-                products={timelineData}
-                viewMode={timelineView}
-                onViewModeChange={setTimelineView}
-              />
-            )}
-          </CardContent>
-        </Card>
+        {timelineCard}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

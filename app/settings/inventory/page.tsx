@@ -1345,6 +1345,46 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         </div>
       </section>
 
+      <section className="space-y-2">
+        <div className="text-sm text-muted-foreground">Select parts</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Custom parts card */}
+          <div
+            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
+            onClick={() => { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); }}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); } }}
+          >
+            <div className="flex-1">
+              <div className="font-medium">All Parts</div>
+              <div className="text-xs text-muted-foreground">Open drawer for all parts</div>
+            </div>
+          </div>
+
+          {partGroups.map(group => {
+            const totalOnHand = group.items.reduce((sum, it) => sum + (Number(balances[it.id] ?? 0)), 0);
+            return (
+              <div
+                key={group.key}
+                className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
+                onClick={() => { setPartDrawerGroup(group); setPartDrawerOpen(true); }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup(group); setPartDrawerOpen(true); } }}
+              >
+                <div className="flex-1">
+                  <div className="font-medium">{group.title}</div>
+                  <div className="text-xs text-muted-foreground">On hand: {totalOnHand}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <Separator />
+
       {/* Shopify Sales queue */}
       <section className="space-y-2">
         <div className="flex items-center justify-between">
@@ -1472,46 +1512,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
             {renderPagination({ total: filteredShopifyQueueArchived.length, page: shopifyArchivedPage, setPage: setShopifyArchivedPage })}
           </TabsContent>
         </Tabs>
-      </section>
-
-      <Separator />
-
-      <section className="space-y-2">
-        <div className="text-sm text-muted-foreground">Select parts</div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Custom parts card */}
-          <div
-            className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
-            onClick={() => { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); }}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup({ key: 'custom', title: 'Custom parts', items }); setPartDrawerOpen(true); } }}
-          >
-            <div className="flex-1">
-              <div className="font-medium">All Parts</div>
-              <div className="text-xs text-muted-foreground">Open drawer for all parts</div>
-            </div>
-          </div>
-
-          {partGroups.map(group => {
-            const totalOnHand = group.items.reduce((sum, it) => sum + (Number(balances[it.id] ?? 0)), 0);
-            return (
-              <div
-                key={group.key}
-                className="rounded border p-3 hover:bg-muted/40 transition cursor-pointer flex flex-col gap-3"
-                onClick={() => { setPartDrawerGroup(group); setPartDrawerOpen(true); }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup(group); setPartDrawerOpen(true); } }}
-              >
-                <div className="flex-1">
-                  <div className="font-medium">{group.title}</div>
-                  <div className="text-xs text-muted-foreground">On hand: {totalOnHand}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </section>
 
       <Separator />
