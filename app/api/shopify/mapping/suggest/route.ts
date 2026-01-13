@@ -101,6 +101,7 @@ function isBolsterProduct(title: string): boolean {
 
 export async function GET(_req: NextRequest) {
   try {
+    void _req
     const products = await shopifyListActiveProductsWithVariants({ limit: 250 })
 
     const suggestions: SuggestedMapping[] = []

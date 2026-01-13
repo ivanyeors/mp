@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Group } from "@visx/group";
 import { BarGroupHorizontal, Bar } from "@visx/shape";
 import { AxisBottom, AxisLeft } from "@visx/axis";

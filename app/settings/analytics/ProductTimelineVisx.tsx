@@ -147,7 +147,7 @@ function Chart({
 
     let closestProduct: ProductTimeline | null = null;
     let closestPoint: TimelineDataPoint | null = null;
-    let closestColor = palette[0];
+    let closestColor: (typeof palette)[number] = palette[0];
     let minDistance = Infinity;
 
     products.forEach((product, idx) => {
@@ -174,13 +174,16 @@ function Chart({
       return;
     }
 
+    const cp: TimelineDataPoint = closestPoint;
+    const cprod: ProductTimeline = closestProduct;
+
     showTooltip({
       tooltipData: {
-        product: closestProduct,
-        dataPoint: closestPoint,
+        product: cprod,
+        dataPoint: cp,
         color: closestColor,
         monthTotal: products.reduce((sum, p) => {
-          const month = startOfMonth(closestPoint.date);
+          const month = startOfMonth(cp.date);
           const match = p.data.find(
             (pt) => pt.date.getFullYear() === month.getFullYear() && pt.date.getMonth() === month.getMonth()
           );
@@ -188,7 +191,7 @@ function Chart({
         }, 0),
       },
       tooltipLeft: xScale(date) + margin.left,
-      tooltipTop: yScale(closestPoint.value) + margin.top,
+      tooltipTop: yScale(cp.value) + margin.top,
     });
   };
 
@@ -374,7 +377,6 @@ function Chart({
 export function ProductTimelineVisx({
   products,
   viewMode,
-  onViewModeChange,
   dateRange,
 }: ProductTimelineVisxProps) {
   const filteredProducts = useMemo(() => {

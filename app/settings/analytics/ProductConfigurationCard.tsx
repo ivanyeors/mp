@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Group } from "@visx/group";
 import { Cluster, hierarchy } from "@visx/hierarchy";
-import type { HierarchyPointLink, HierarchyPointNode } from "@visx/hierarchy";
+import type { HierarchyPointLink, HierarchyPointNode } from "d3-hierarchy";
 import { LinkVertical } from "@visx/shape";
 
 type NodeShape = {

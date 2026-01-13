@@ -78,7 +78,7 @@ function Select({
       registerLabel,
       closeOnSelect,
     }),
-    [closeOnSelect, labels, open, setValue, value],
+    [closeOnSelect, labels, open, registerLabel, setValue, value],
   );
 
   return (

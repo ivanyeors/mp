@@ -5,6 +5,7 @@ export const runtime = 'nodejs'
 
 export async function GET(_req: NextRequest) {
   try {
+    void _req
     const products = await shopifyListActiveProductsWithVariants({ limit: 250 })
     const flattened = products.flatMap((p) =>
       (p.variants ?? []).map((v) => ({

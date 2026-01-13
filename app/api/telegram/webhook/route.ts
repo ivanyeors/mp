@@ -229,9 +229,8 @@ async function handleCommand(chatId: number, text: string) {
     }
 
     if (name === '/otp') {
-      const { code, expiresAt } = currentOtp()
-      const seconds = Math.max(0, Math.floor((expiresAt - Date.now()) / 1000))
-      await sendTelegramMessage(chatId, `Settings OTP: ${code}\nValid for ~${seconds}s`)
+      const { code } = currentOtp()
+      await sendTelegramMessage(chatId, String(code))
       return
     }
 

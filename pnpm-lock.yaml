@@ -62,6 +62,33 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.57.4
         version: 2.89.0
+      '@visx/axis':
+        specifier: ^3.12.0
+        version: 3.12.0(react@19.1.0)
+      '@visx/event':
+        specifier: ^3.12.0
+        version: 3.12.0
+      '@visx/grid':
+        specifier: ^3.12.0
+        version: 3.12.0(react@19.1.0)
+      '@visx/group':
+        specifier: ^3.12.0
+        version: 3.12.0(react@19.1.0)
+      '@visx/hierarchy':
+        specifier: ^3.12.0
+        version: 3.12.0(react@19.1.0)
+      '@visx/responsive':
+        specifier: ^3.12.0
+        version: 3.12.0(react@19.1.0)
+      '@visx/scale':
+        specifier: ^3.12.0
+        version: 3.12.0
+      '@visx/shape':
+        specifier: ^3.12.0
+        version: 3.12.0(react@19.1.0)
+      '@visx/tooltip':
+        specifier: ^3.12.0
+        version: 3.12.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@visx/visx':
         specifier: ^3.12.0
         version: 3.12.0(@react-spring/web@9.7.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -71,6 +98,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      d3-hierarchy:
+        specifier: ^3.1.2
+        version: 3.1.2
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -129,6 +159,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.18
+      '@types/d3-hierarchy':
+        specifier: ^1.1.11
+        version: 1.1.11
       '@types/node':
         specifier: ^20
         version: 20.19.27
@@ -1845,6 +1878,10 @@ packages:
 
   d3-hierarchy@1.1.9:
     resolution: {integrity: sha512-j8tPxlqh1srJHAtxfvOUwKNYJkQuBFdM1+JAUfq6xqH5eAqf93L7oG1NVqDa4CpFZNvnNKtCYEUC8KY9yEn9lQ==}
+
+  d3-hierarchy@3.1.2:
+    resolution: {integrity: sha512-FX/9frcub54beBdugHjDCdikxThEqjnR93Qt7PvQTOHxyiNCAlvMrHhclk3cD5VeAaq9fxmfRp+CnWw9rEMBuA==}
+    engines: {node: '>=12'}
 
   d3-interpolate-path@2.2.1:
     resolution: {integrity: sha512-6qLLh/KJVzls0XtMsMpcxhqMhgVEN7VIbR/6YGZe2qlS8KDgyyVB20XcmGnDyB051HcefQXM/Tppa9vcANEA4Q==}
@@ -5176,6 +5213,8 @@ snapshots:
       d3-array: 3.2.4
 
   d3-hierarchy@1.1.9: {}
+
+  d3-hierarchy@3.1.2: {}
 
   d3-interpolate-path@2.2.1: {}
 

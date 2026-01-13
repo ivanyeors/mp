@@ -12,6 +12,32 @@ import { useTooltip } from "@visx/tooltip";
 
 type ItemCost = { id: number; cost: number | null };
 
+type PillowProductRowDb = {
+  id: number | string;
+  kind: string | null;
+  size: string | null;
+  is_active: boolean | number | null;
+};
+
+type ProductBuildableRowDb = {
+  product_id: number | string;
+  kind: string | null;
+  size: string | null;
+  buildable: number | string | null;
+};
+
+type BomLineRowDb = {
+  product_id: number | string;
+  item_id: number | string;
+  quantity: number | string | null;
+};
+
+type ProductPriceRowDb = {
+  product_id: number | string;
+  msrp: number | string | null;
+  currency: string | null;
+};
+
 type ProductRow = {
   productId: number;
   kind: string | null;
@@ -144,10 +170,10 @@ function Chart({ width, height, rows }: { width: number; height: number; rows: P
 
             return (
               <BarGroupHorizontal
-                data={rows as any}
+                data={rows}
                 keys={seriesKeys as unknown as string[]}
                 width={innerWidth}
-                y0={(d: any) => d.label}
+                y0={(d: ProductRow) => d.label}
                 y0Scale={y0Scale}
                 y1Scale={y1Scale}
                 xScale={xScale}
@@ -329,20 +355,26 @@ export function MarginByProductVisx({
         if (prErr) throw new Error(prErr.message);
 
         const buildableById = new Map<number, number>();
-        (buildableRows ?? []).forEach((r: any) => buildableById.set(Number(r.product_id), Math.max(0, Number(r.buildable ?? 0))));
+        (buildableRows ?? []).forEach((r: ProductBuildableRowDb) => {
+          const id = Number(r.product_id);
+          const buildable = r.buildable === null || r.buildable === undefined ? 0 : Number(r.buildable);
+          if (!Number.isFinite(id) || id <= 0) return;
+          buildableById.set(id, Math.max(0, Number.isFinite(buildable) ? buildable : 0));
+        });
 
         const msrpById = new Map<number, number | null>();
-        (prices ?? []).forEach((r: any) => {
+        (prices ?? []).forEach((r: ProductPriceRowDb) => {
           const id = Number(r.product_id);
           const msrp = r.msrp === null || r.msrp === undefined ? null : Number(r.msrp);
-          if (Number.isFinite(id) && id > 0) msrpById.set(id, Number.isFinite(msrp as number) ? (msrp as number) : null);
+          if (!Number.isFinite(id) || id <= 0) return;
+          msrpById.set(id, msrp !== null && Number.isFinite(msrp) ? msrp : null);
         });
 
         const linesByProductId = new Map<number, Array<{ item_id: number; quantity: number }>>();
-        (bomLines ?? []).forEach((l: any) => {
+        (bomLines ?? []).forEach((l: BomLineRowDb) => {
           const pid = Number(l.product_id);
           const iid = Number(l.item_id);
-          const qty = Number(l.quantity);
+          const qty = l.quantity === null || l.quantity === undefined ? NaN : Number(l.quantity);
           if (!Number.isFinite(pid) || pid <= 0) return;
           if (!Number.isFinite(iid) || iid <= 0) return;
           if (!Number.isFinite(qty) || qty <= 0) return;
@@ -351,7 +383,7 @@ export function MarginByProductVisx({
           linesByProductId.set(pid, arr);
         });
 
-        const next: ProductRow[] = (products ?? []).map((p: any) => {
+        const next: ProductRow[] = (products ?? []).map((p: PillowProductRowDb) => {
           const id = Number(p.id);
           const kind = (p.kind ?? "basic") as string;
           const size = (p.size ?? null) as string | null;

@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { ProductConfigurationCard } from "./ProductConfigurationCard";
 import { MarginByCategoryVisx } from "./MarginByCategoryVisx";
 import type { CategoryStackDatum, ItemStackDatum } from "./MarginByCategoryVisx";
@@ -25,20 +24,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
 
@@ -88,19 +73,6 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
-
-const marginChartConfig = {
-  marginPct: { label: "Weighted gross margin %", color: "hsl(217 91% 60%)" },
-};
-
-const inventoryValueChartConfig = {
-  costValue: { label: "Inventory at cost", color: "hsl(217 80% 45%)" },
-  marginValue: { label: "MSRP − cost", color: "hsl(142 76% 36%)" },
-};
-
-const unitMarginChartConfig = {
-  unitMargin: { label: "MSRP − cost (unit)", color: "hsl(142 76% 36%)" },
-};
 
 const toNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
@@ -367,19 +339,6 @@ export default function AnalyticsPage() {
   );
 
   const itemCostsForProducts = useMemo(() => items.map((it) => ({ id: it.id, cost: it.cost })), [items]);
-
-  const inventoryValueData = useMemo(
-    () =>
-      categorySummary
-        .filter((entry) => entry.costValue > 0 || entry.msrpValue > 0)
-        .map((entry) => ({
-          label: entry.label,
-          costValue: entry.costValue,
-          marginValue: entry.marginValue,
-          onHand: entry.totalOnHand,
-        })),
-    [categorySummary]
-  );
 
   const itemOpportunityData = useMemo(
     () =>

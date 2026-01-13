@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyEnv } from '@/lib/shopify/env'
 import { shopifyGetPrimaryLocationId } from '@/lib/shopify/client'
@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 
 type BuildableRow = { kind: string; size: string; buildable: number | string }
 
-export async function GET(_req: NextRequest) {
+export async function GET() {
   try {
     const env = getShopifyEnv()
     const admin = supabaseAdmin()

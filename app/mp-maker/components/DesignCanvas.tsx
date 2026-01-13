@@ -58,7 +58,7 @@ export function DesignCanvas() {
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
 
-  const onBackgroundPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const onBackgroundPointerDown = () => {
     setSelectedId(null)
   }
 
@@ -208,6 +208,7 @@ export function DesignCanvas() {
                   className="relative"
                   style={{ transform: `rotate(${item.r || 0}deg) scale(${item.s || 1})`, transformOrigin: "50% 50%" }}
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={item.src} alt={item.name} draggable={false} />
 
                   {selectedId === item.id && (
