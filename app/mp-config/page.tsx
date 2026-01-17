@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
+import { Particles } from "@/components/ui/particles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -116,6 +117,16 @@ export default function MpConfigPage() {
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
       {/* Retro Grid Background */}
       <RetroGrid className="z-0" opacity={0.3} speed={gridSpeed} />
+
+      {/* Interactive particles */}
+      <Particles
+        className="absolute inset-0 z-0"
+        quantity={100}
+        ease={80}
+        staticity={50}
+        color="#ffffff"
+        size={0.8}
+      />
 
       {/* Content Container */}
       <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
