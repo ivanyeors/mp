@@ -13,6 +13,25 @@ function getOptionalEnv(name: string): string | null {
   return v && v.trim() ? v.trim() : null;
 }
 
+function formatTelegramTimestamp(date = new Date()): string {
+  const dateStr = new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+
+  // Example output from Intl can be "3:45 pm" or "3:45 PM" depending on runtime.
+  // Normalize to "3:45PM" (no space).
+  const rawTime = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+  const timeStr = rawTime.replace(/\s?(AM|PM)$/i, (m) => m.toUpperCase().trim());
+
+  return `${dateStr} / ${timeStr}`;
+}
+
 function parseTelegramChatId(): number | null {
   // Only allow sending to the restricted group chat id.
   return MP_CONFIG_TELEGRAM_CHAT_ID;
@@ -127,14 +146,27 @@ export async function POST(req: Request) {
     if (chatId) {
       const origin = new URL(req.url).origin;
       const d = parsed.data.data;
+      const ts = formatTelegramTimestamp(new Date());
+
+      const yesNo = (v: string) => (v === "yes" ? "Yes" : v === "no" ? "No" : "—");
       const text = [
-        "✅ Mpillow config saved (final)",
+        `💤 Custom Mpillow created on ${ts}`,
         `Name: ${d.name || "—"}`,
         `Gender: ${d.gender || "—"}`,
         `Age group: ${d.ageGroup || "—"}`,
-        `Measurements (cm): shoulder ${d.shoulderLength || "—"}, neck→back ${d.neckToBack || "—"}, head→back ${d.headToBack || "—"}, neck ${d.neckLength || "—"}`,
-        `ID: ${id}`,
-        `View: ${origin}/settings/results/${id}`,
+        "",
+        "📏Measurements",
+        `- Shoulder Length: ${d.shoulderLength || "—"}`,
+        `- Neck to Back: ${d.neckToBack || "—"}`,
+        `- Head to Back: ${d.headToBack || "—"}`,
+        `- Neck Length: ${d.neckLength || "—"}`,
+        "",
+        `- Blood Pressure: ${d.bloodPressureLevel || "—"}`,
+        `- Ear discomfort: ${yesNo(String(d.earDiscomfortSideSleep ?? ""))}`,
+        `- Bed firmness: ${d.bedFirmness || "—"}`,
+        `- Acid Reflux: ${yesNo(String(d.acidReflux ?? ""))}`,
+        "",
+        `View more: ${origin}/settings/results/${id}`,
       ].join("\n");
 
       try {
