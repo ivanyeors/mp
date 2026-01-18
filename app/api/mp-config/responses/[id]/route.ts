@@ -125,3 +125,15 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   });
 }
 
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const parsedParams = ParamsSchema.safeParse({ id });
+  if (!parsedParams.success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
+
+  const admin = supabaseAdmin();
+  const { error } = await admin.from("mp_config_responses").delete().eq("id", parsedParams.data.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}
+

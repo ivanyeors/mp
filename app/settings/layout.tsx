@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store } from "lucide-react";
+import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarProvider,
@@ -40,6 +40,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "General", tooltip: "General Settings", Icon: Settings2 },
+  { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
   {
     href: "/settings/inventory",
     label: "Inventory",

@@ -325,7 +325,7 @@ export default function MpConfigPage() {
 
           {/* What to Expect Step */}
           {currentStep === "what-to-expect" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Sparkles className="h-12 w-12 mx-auto text-primary" />
                 <h2 className="text-3xl font-bold">What to Expect</h2>
@@ -394,7 +394,7 @@ export default function MpConfigPage() {
 
           {/* Name Input Step */}
           {currentStep === "name" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <User className="h-12 w-12 mx-auto text-primary" />
                 <h2 className="text-3xl font-bold">Tell us about yourself</h2>
@@ -462,7 +462,11 @@ export default function MpConfigPage() {
                   </Button>
                   <Button
                     onClick={goToNextStep}
-                    disabled={!measurementData.name.trim()}
+                    disabled={
+                      !measurementData.name.trim() ||
+                      !measurementData.gender.trim() ||
+                      !measurementData.ageGroup.trim()
+                    }
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -483,7 +487,7 @@ export default function MpConfigPage() {
 
           {/* Shoulder Length Measurement */}
           {currentStep === "shoulder-length" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Image
                   src="/shoulder-length.svg"
@@ -583,7 +587,7 @@ export default function MpConfigPage() {
 
           {/* Neck to Back Measurement */}
           {currentStep === "neck-to-back" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Image
                   src="/neck-to-back.svg"
@@ -683,7 +687,7 @@ export default function MpConfigPage() {
 
           {/* Head to Back Measurement */}
           {currentStep === "head-to-back" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Image
                   src="/head-to-back.svg"
@@ -783,7 +787,7 @@ export default function MpConfigPage() {
 
           {/* Neck Length Measurement */}
           {currentStep === "neck-length" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Image
                   src="/neck-length.svg"
@@ -883,7 +887,7 @@ export default function MpConfigPage() {
 
           {/* Customize Button Step */}
           {currentStep === "customize" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
                 <h2 className="text-3xl font-bold">Great job, {measurementData.name}!</h2>
@@ -892,9 +896,9 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="space-y-3 bg-muted/50 p-6 rounded-lg">
-                <h3 className="font-semibold text-lg mb-4">Your Measurements:</h3>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
+                <h3 className="font-semibold text-lg mb-2">Your Measurements:</h3>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-sm text-muted-foreground">Shoulder Length</p>
                     <p className="text-lg font-medium">{measurementData.shoulderLength} cm</p>
@@ -914,7 +918,7 @@ export default function MpConfigPage() {
                 </div>
               </div>
 
-              <div className="space-y-4 bg-muted/50 p-6 rounded-lg">
+              <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
                 <h4 className="font-semibold text-lg">A few more questions</h4>
 
                 <div className="space-y-4">
@@ -1031,7 +1035,7 @@ export default function MpConfigPage() {
 
           {/* Preview Step */}
           {currentStep === "preview" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <h2 className="text-3xl font-bold">Your Custom Mpillow</h2>
                 <p className="text-muted-foreground">
@@ -1039,7 +1043,7 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="bg-muted/50 rounded-lg p-4 border border-muted-foreground/10 space-y-2">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between gap-4">
                   <div className="text-sm font-medium">Recommendation (from your answers + current inventory config)</div>
                   <Button variant="secondary" size="sm" onClick={loadSuggestion} disabled={suggestionLoading}>
@@ -1118,12 +1122,6 @@ export default function MpConfigPage() {
                     ) : null}
                   </div>
                 )}
-              </div>
-
-              <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
-                <p className="text-sm text-center">
-                  ✨ Your pillow is optimized for your unique measurements and sleeping style
-                </p>
               </div>
 
               <div className="pt-4">
