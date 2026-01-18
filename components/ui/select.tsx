@@ -19,6 +19,7 @@ type SelectContextValue = {
   setValue: (value: string) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
+  isMobile: boolean;
   labels: Record<string, string>;
   registerLabel: (value: string, label: string) => void;
   closeOnSelect: boolean;
@@ -77,11 +78,12 @@ function Select({
       setValue,
       open,
       setOpen,
+      isMobile,
       labels,
       registerLabel,
       closeOnSelect,
     }),
-    [closeOnSelect, labels, open, registerLabel, setValue, value],
+    [closeOnSelect, isMobile, labels, open, registerLabel, setValue, value],
   );
 
   return (
@@ -103,8 +105,7 @@ type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof Button>;
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
   ({ className, children, ...props }, ref) => {
-    const { open } = useSelectContext();
-    const isMobile = useIsMobile();
+    const { open, isMobile } = useSelectContext();
     const Trigger = isMobile ? SheetTrigger : DropdownMenuTrigger;
     return (
       <Trigger asChild>
@@ -142,7 +143,7 @@ const SelectContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuContent>,
   SelectContentProps
 >(({ className, children, ...props }, ref) => {
-  const isMobile = useIsMobile();
+  const { isMobile } = useSelectContext();
 
   if (isMobile) {
     const { align, alignOffset, side, sideOffset, ...sheetProps } = props;
@@ -203,7 +204,7 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
   ) => {
     const { setValue, setOpen, registerLabel, closeOnSelect, value: selectedValue } =
       useSelectContext();
-    const isMobile = useIsMobile();
+    const { isMobile } = useSelectContext();
     const isSelected = selectedValue === value;
 
     const label = React.useMemo(() => {
