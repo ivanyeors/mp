@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
 import { Particles } from "@/components/ui/particles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -31,11 +38,29 @@ type Step =
 
 interface MeasurementData {
   name: string;
+  gender: string;
+  ageGroup: string;
+  bloodPressureLevel: string;
+  earDiscomfortSideSleep: "yes" | "no" | "";
+  bedFirmness: string;
+  acidReflux: "yes" | "no" | "";
   shoulderLength: string;
   neckToBack: string;
   headToBack: string;
   neckLength: string;
 }
+
+type SuggestedBomLine = {
+  quantity: number | string;
+  item: { id: number; category: string; name: string; size: string | null; subtype: string | null } | null;
+};
+
+type MpConfigSuggestion = {
+  recommended: { size: "XS" | "S" | "M" | "L" | "XL"; kind: "basic" | "premium" };
+  product: { id: number; size: "XS" | "S" | "M" | "L" | "XL"; kind: "basic" | "premium" } | null;
+  bom: SuggestedBomLine[];
+  reasons: string[];
+};
 
 export default function MpConfigPage() {
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
@@ -47,11 +72,23 @@ export default function MpConfigPage() {
   const [neckLengthUnit, setNeckLengthUnit] = useState<"cm" | "in">("cm");
   const [measurementData, setMeasurementData] = useState<MeasurementData>({
     name: "",
+    gender: "",
+    ageGroup: "",
+    bloodPressureLevel: "",
+    earDiscomfortSideSleep: "",
+    bedFirmness: "",
+    acidReflux: "",
     shoulderLength: "",
     neckToBack: "",
     headToBack: "",
     neckLength: "",
   });
+
+  const [responseId, setResponseId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const lastSavedRef = useRef<string>("");
 
   const stepOrder: Step[] = [
     "welcome",
@@ -103,15 +140,129 @@ export default function MpConfigPage() {
     }
   };
 
-  const updateMeasurement = (field: keyof MeasurementData, value: string) => {
+  const updateMeasurement = <K extends keyof MeasurementData>(
+    field: K,
+    value: MeasurementData[K],
+  ) => {
     setMeasurementData((prev) => ({ ...prev, [field]: value }));
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const key = "mp_config_response_id";
+    let id = window.localStorage.getItem(key);
+    if (!id) {
+      id = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      window.localStorage.setItem(key, id);
+    }
+    setResponseId(id);
+  }, []);
+
+  const hasAnyInput = useMemo(() => {
+    const d = measurementData;
+    return (
+      d.name.trim() ||
+      d.gender.trim() ||
+      d.ageGroup.trim() ||
+      d.bloodPressureLevel.trim() ||
+      d.earDiscomfortSideSleep !== "" ||
+      d.bedFirmness.trim() ||
+      d.acidReflux !== "" ||
+      d.shoulderLength.trim() ||
+      d.neckToBack.trim() ||
+      d.headToBack.trim() ||
+      d.neckLength.trim()
+    );
+  }, [measurementData]);
+
+  const upsertToDb = async (opts?: { isFinal?: boolean }) => {
+    if (!responseId) return null;
+    if (!hasAnyInput) return responseId;
+
+    const snapshot = JSON.stringify({ responseId, measurementData, isFinal: opts?.isFinal ?? null });
+    if (!opts?.isFinal && snapshot === lastSavedRef.current) return responseId;
+
+    setSaveStatus("saving");
+    try {
+      const res = await fetch("/api/mp-config/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: responseId,
+          data: measurementData,
+          ...(typeof opts?.isFinal === "boolean" ? { isFinal: opts.isFinal } : {}),
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to save");
+      lastSavedRef.current = snapshot;
+      setSaveStatus("saved");
+      return payload?.id ?? responseId;
+    } catch {
+      setSaveStatus("error");
+      return null;
+    }
+  };
+
+  const loadSuggestion = async () => {
+    if (!responseId) return;
+    setSuggestionLoading(true);
+    try {
+      const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(responseId)}`, {
+        method: "GET",
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to load suggestion");
+      setSuggestion(payload?.suggestion ?? null);
+    } catch {
+      setSuggestion(null);
+    } finally {
+      setSuggestionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!responseId) return;
+    if (!hasAnyInput) return;
+    const t = window.setTimeout(() => {
+      upsertToDb();
+    }, 650);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [responseId, hasAnyInput, measurementData]);
 
   const currentStepIndex = stepOrder.indexOf(currentStep);
   const progressValue =
     currentStepIndex <= 0
       ? 0
       : Math.round((currentStepIndex / (stepOrder.length - 1)) * 100);
+
+  const hasAnsweredAdditionalQuestions =
+    measurementData.bloodPressureLevel.trim() !== "" &&
+    measurementData.bedFirmness.trim() !== "" &&
+    measurementData.earDiscomfortSideSleep !== "" &&
+    measurementData.acidReflux !== "";
+
+  const saveLabel:
+    | { text: string; className: string }
+    | null =
+    saveStatus === "saving"
+      ? {
+          text: "Saving…",
+          className: "border-primary/20 bg-primary/10 text-primary",
+        }
+      : saveStatus === "saved"
+        ? {
+            text: "Saved",
+            className:
+              "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+          }
+        : saveStatus === "error"
+          ? {
+              text: "Save failed",
+              className: "border-destructive/20 bg-destructive/10 text-destructive",
+            }
+          : null;
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
@@ -159,7 +310,7 @@ export default function MpConfigPage() {
                   priority
                 />
                 <h1 className="text-6xl font-bold tracking-tight">
-                  Welcome to <span className="text-primary">Mpillow Config</span>
+                  Customise <span className="text-primary">Mpillow</span>
                 </h1>
                 <p className="text-xl text-muted-foreground">
                   Let&apos;s create your perfect pillow, customized just for you
@@ -188,7 +339,7 @@ export default function MpConfigPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold">Tell us about yourself</h3>
-                    <p className="text-sm text-muted-foreground">We&apos;ll start with your name</p>
+                    <p className="text-sm text-muted-foreground">Provide us helpful information for us to work with</p>
                   </div>
                 </div>
 
@@ -209,23 +360,34 @@ export default function MpConfigPage() {
                     3
                   </div>
                   <div>
-                    <h3 className="font-semibold">Customize your pillow</h3>
+                    <h3 className="font-semibold">See your results</h3>
                     <p className="text-sm text-muted-foreground">
-                      See your custom configuration come to life
+                      Get your personalized pillow recommendation
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button onClick={goToNextStep}>
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button onClick={goToNextStep}>
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -235,32 +397,86 @@ export default function MpConfigPage() {
             <Card className="bg-card/80 backdrop-blur-sm p-8 space-y-6">
               <div className="text-center space-y-2">
                 <User className="h-12 w-12 mx-auto text-primary" />
-                <h2 className="text-3xl font-bold">What&apos;s your name?</h2>
+                <h2 className="text-3xl font-bold">Tell us about yourself</h2>
                 <p className="text-muted-foreground">Let&apos;s personalize your experience</p>
               </div>
 
               <div className="space-y-4">
-                <Input
-                  placeholder="Enter your name"
-                  value={measurementData.name}
-                  onChange={(e) => updateMeasurement("name", e.target.value)}
-                  className="text-lg h-12"
-                  autoFocus
-                />
+                <div className="space-y-2">
+                  <label htmlFor="mp-name" className="text-sm font-medium">
+                    What&apos;s your name?
+                  </label>
+                  <Input
+                    id="mp-name"
+                    placeholder="Enter your name"
+                    value={measurementData.name}
+                    onChange={(e) => updateMeasurement("name", e.target.value)}
+                    className="text-lg h-12"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Gender</div>
+                  <Select
+                    value={measurementData.gender}
+                    onValueChange={(v) => updateMeasurement("gender", v)}
+                  >
+                    <SelectTrigger className="w-full justify-between text-lg h-12">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="male">Male</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Age group</div>
+                  <Select
+                    value={measurementData.ageGroup}
+                    onValueChange={(v) => updateMeasurement("ageGroup", v)}
+                  >
+                    <SelectTrigger className="w-full justify-between text-lg h-12">
+                      <SelectValue placeholder="Select age group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="under-18">Under 18</SelectItem>
+                      <SelectItem value="18-24">18–24</SelectItem>
+                      <SelectItem value="25-34">25–34</SelectItem>
+                      <SelectItem value="35-44">35–44</SelectItem>
+                      <SelectItem value="45-54">45–54</SelectItem>
+                      <SelectItem value="55-64">55–64</SelectItem>
+                      <SelectItem value="65-plus">65+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!measurementData.name.trim()}
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={goToNextStep}
+                    disabled={!measurementData.name.trim()}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -338,18 +554,29 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!measurementData.shoulderLength}
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={goToNextStep}
+                    disabled={!measurementData.shoulderLength}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -427,18 +654,29 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!measurementData.neckToBack}
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={goToNextStep}
+                    disabled={!measurementData.neckToBack}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -516,18 +754,29 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!measurementData.headToBack}
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={goToNextStep}
+                    disabled={!measurementData.headToBack}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -605,18 +854,29 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!measurementData.neckLength}
-                >
-                  Continue
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={goToNextStep}
+                    disabled={!measurementData.neckLength}
+                  >
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -654,16 +914,117 @@ export default function MpConfigPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button onClick={goToNextStep} size="lg" className="group">
-                  <Sparkles className="mr-2 h-5 w-5" />
-                  Generate Results
-                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </Button>
+              <div className="space-y-4 bg-muted/50 p-6 rounded-lg">
+                <h4 className="font-semibold text-lg">A few more questions</h4>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Blood Pressure levels</h3>
+                    <Select
+                      value={measurementData.bloodPressureLevel}
+                      onValueChange={(v) => updateMeasurement("bloodPressureLevel", v)}
+                    >
+                      <SelectTrigger className="w-full justify-between text-lg h-12">
+                        <SelectValue placeholder="Select blood pressure level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="low-blood">Low Blood</SelectItem>
+                        <SelectItem value="high-blood">High Blood</SelectItem>
+                        <SelectItem value="unsure">Unsure</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium">Ear discomfort during side sleep?</h3>
+                    </div>
+                    <Tabs
+                      value={measurementData.earDiscomfortSideSleep}
+                      onValueChange={(v) =>
+                        updateMeasurement("earDiscomfortSideSleep", v as "yes" | "no")
+                      }
+                    >
+                      <TabsList className="h-12">
+                        <TabsTrigger value="yes" className="px-4">
+                          Yes
+                        </TabsTrigger>
+                        <TabsTrigger value="no" className="px-4">
+                          No
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Bed firmness</h3>
+                    <Select
+                      value={measurementData.bedFirmness}
+                      onValueChange={(v) => updateMeasurement("bedFirmness", v)}
+                    >
+                      <SelectTrigger className="w-full justify-between text-lg h-12">
+                        <SelectValue placeholder="Select bed firmness" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="soft">Soft</SelectItem>
+                        <SelectItem value="medium-soft">Medium Soft</SelectItem>
+                        <SelectItem value="firm">Firm</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium">Acid Reflux?</h3>
+                    </div>
+                    <Tabs
+                      value={measurementData.acidReflux}
+                      onValueChange={(v) => updateMeasurement("acidReflux", v as "yes" | "no")}
+                    >
+                      <TabsList className="h-12">
+                        <TabsTrigger value="yes" className="px-4">
+                          Yes
+                        </TabsTrigger>
+                        <TabsTrigger value="no" className="px-4">
+                          No
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      await upsertToDb();
+                      await loadSuggestion();
+                      goToNextStep();
+                    }}
+                    disabled={!hasAnsweredAdditionalQuestions}
+                    size="lg"
+                    className="group"
+                  >
+                    <Sparkles className="mr-2 h-5 w-5" />
+                    Generate Results
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
@@ -678,14 +1039,85 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="aspect-video bg-muted/50 rounded-lg flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
-                <div className="text-center space-y-4">
-                  <ImageIcon className="h-24 w-24 mx-auto text-muted-foreground/50" />
-                  <p className="text-muted-foreground">Pillow Configuration Preview</p>
-                  <p className="text-sm text-muted-foreground/70">
-                    Customized for {measurementData.name}
-                  </p>
+              <div className="bg-muted/50 rounded-lg p-4 border border-muted-foreground/10 space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="text-sm font-medium">Recommendation (from your answers + current inventory config)</div>
+                  <Button variant="secondary" size="sm" onClick={loadSuggestion} disabled={suggestionLoading}>
+                    {suggestionLoading ? "Refreshing…" : "Refresh"}
+                  </Button>
                 </div>
+                {suggestionLoading && (
+                  <div className="text-sm text-muted-foreground">Generating suggestion…</div>
+                )}
+                {!suggestionLoading && !suggestion && (
+                  <div className="text-sm text-muted-foreground">
+                    No suggestion yet. Click Refresh (or go back and click Generate Results).
+                  </div>
+                )}
+                {!suggestionLoading && suggestion && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-md bg-background/60 p-3">
+                        <div className="text-xs text-muted-foreground">Recommended kind</div>
+                        <div className="text-lg font-semibold">{suggestion.recommended.kind}</div>
+                      </div>
+                      <div className="rounded-md bg-background/60 p-3">
+                        <div className="text-xs text-muted-foreground">Recommended size</div>
+                        <div className="text-lg font-semibold">{suggestion.recommended.size}</div>
+                      </div>
+                    </div>
+
+                    {suggestion.product ? (
+                      <div className="rounded-md bg-background/60 p-3">
+                        <div className="text-xs text-muted-foreground">Matched active product</div>
+                        <div className="text-sm">
+                          Product #{suggestion.product.id} ({suggestion.product.kind} · {suggestion.product.size})
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-md bg-background/60 p-3 text-sm text-muted-foreground">
+                        No active product found for this recommendation (check `app/settings/inventory/configure/`).
+                      </div>
+                    )}
+
+                    {suggestion.bom?.length ? (
+                      <div className="rounded-md bg-background/60 p-3">
+                        <div className="text-xs text-muted-foreground mb-2">Current BOM for recommended product</div>
+                        <div className="space-y-1">
+                          {suggestion.bom.map((line, idx) => {
+                            const item = line.item;
+                            const label = item
+                              ? `${item.category} · ${item.name}${item.subtype ? ` (${item.subtype})` : ""}${
+                                  item.size ? ` · ${item.size}` : ""
+                                }`
+                              : "Unknown item";
+                            return (
+                              <div key={idx} className="flex items-center justify-between text-sm">
+                                <div className="truncate">{label}</div>
+                                <div className="shrink-0 tabular-nums">x{line.quantity}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : suggestion.product ? (
+                      <div className="rounded-md bg-background/60 p-3 text-sm text-muted-foreground">
+                        No BOM lines configured yet for this product.
+                      </div>
+                    ) : null}
+
+                    {suggestion.reasons?.length ? (
+                      <div className="rounded-md bg-background/60 p-3">
+                        <div className="text-xs text-muted-foreground mb-2">Why this suggestion</div>
+                        <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                          {suggestion.reasons.map((r, idx) => (
+                            <li key={idx}>{r}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               <div className="bg-primary/10 p-4 rounded-lg border border-primary/20">
@@ -694,14 +1126,31 @@ export default function MpConfigPage() {
                 </p>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Button>
-                <Button size="lg">
-                  Save Configuration
-                </Button>
+              <div className="pt-4">
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={goToPreviousStep}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
+                  </Button>
+                  <Button
+                    size="lg"
+                    onClick={async () => {
+                      await upsertToDb({ isFinal: true });
+                    }}
+                    disabled={!responseId || !hasAnyInput}
+                  >
+                    Save Configuration
+                  </Button>
+                </div>
+                {saveLabel && (
+                  <div className="mt-2 flex items-center justify-start">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
+                    >
+                      {saveLabel.text}
+                    </span>
+                  </div>
+                )}
               </div>
             </Card>
           )}
