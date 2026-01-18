@@ -1,16 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppDock } from "@/components/app-dock";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const soraSans = Sora({
+  variable: "--font-sora",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const soraMono = JetBrains_Mono({
+  variable: "--font-sora-mono",
   subsets: ["latin"],
 });
 
@@ -55,7 +55,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${soraSans.variable} ${soraMono.variable} antialiased`}
       >
         <ThemeProvider
           attribute="class"

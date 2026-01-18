@@ -26,7 +26,7 @@ export default function Home() {
               className="mx-auto h-auto w-[150px]"
               priority
             />
-            <h1 className="text-6xl md:text-7xl font-bold text-foreground tracking-tight">
+            <h1 className="text-6xl md:text-7xl text-foreground">
               Create Your Perfect
               <span className="block text-primary">Custom Pillow</span>
             </h1>
@@ -53,21 +53,21 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
             <div className="bg-card/50 backdrop-blur-sm border rounded-lg p-6">
               <Wrench className="h-8 w-8 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Easy Customization</h3>
+              <h3 className="mb-2">Easy Customization</h3>
               <p className="text-sm text-muted-foreground">
                 Choose from hundreds of fabrics, sizes, and designs
               </p>
             </div>
             <div className="bg-card/50 backdrop-blur-sm border rounded-lg p-6">
               <Heart className="h-8 w-8 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Quality Materials</h3>
+              <h3 className="mb-2">Quality Materials</h3>
               <p className="text-sm text-muted-foreground">
                 Premium fabrics that last and feel amazing
               </p>
             </div>
             <div className="bg-card/50 backdrop-blur-sm border rounded-lg p-6">
               <Sparkles className="h-8 w-8 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Unique Designs</h3>
+              <h3 className="mb-2">Unique Designs</h3>
               <p className="text-sm text-muted-foreground">
                 Create one-of-a-kind pillows for your space
               </p>

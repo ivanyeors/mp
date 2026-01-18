@@ -534,7 +534,7 @@ export default function ConfigureInventoryPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Configure Products</h1>
+        <h1>Configure Products</h1>
         <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
       </div>
       <Separator />

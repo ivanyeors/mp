@@ -265,7 +265,7 @@ export default function MpCarePage() {
       <main className="flex-1 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-4">
+            <h1 className="text-4xl text-foreground mb-4">
               Mpillow Care
             </h1>
             <p className="text-lg text-muted-foreground">
@@ -277,7 +277,7 @@ export default function MpCarePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             <div className="bg-card border rounded-lg p-6 hover:shadow-md transition-shadow">
               <Droplets className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Washing & Cleaning</h3>
+              <h3 className="text-lg mb-2">Washing & Cleaning</h3>
               <p className="text-sm text-muted-foreground">
                 Proper washing techniques and stain removal methods for different fabric types.
               </p>
@@ -285,7 +285,7 @@ export default function MpCarePage() {
 
             <div className="bg-card border rounded-lg p-6 hover:shadow-md transition-shadow">
               <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Protection & Storage</h3>
+              <h3 className="text-lg mb-2">Protection & Storage</h3>
               <p className="text-sm text-muted-foreground">
                 How to protect your pillows from dust, moisture, and wear over time.
               </p>
@@ -293,7 +293,7 @@ export default function MpCarePage() {
 
             <div className="bg-card border rounded-lg p-6 hover:shadow-md transition-shadow">
               <Heart className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Maintenance Tips</h3>
+              <h3 className="text-lg mb-2">Maintenance Tips</h3>
               <p className="text-sm text-muted-foreground">
                 Regular care routines to keep your pillows looking and feeling great.
               </p>
@@ -302,7 +302,7 @@ export default function MpCarePage() {
 
           {/* Quick Care Tips */}
           <div className="bg-card/50 border rounded-lg p-6">
-            <h3 className="text-xl font-semibold mb-4 flex items-center">
+            <h3 className="text-xl mb-4 flex items-center">
               <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
               Quick Care Tips
             </h3>

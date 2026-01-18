@@ -1163,7 +1163,7 @@ export default function CostingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Costings</h1>
+          <h1>Costings</h1>
           <p className="text-sm text-muted-foreground">
             Track cost price and MSRP for each part to keep your pricing consistent.
           </p>
@@ -1206,7 +1206,7 @@ export default function CostingsPage() {
         {products.length > 0 && (
           <section className="space-y-4">
             <div>
-              <h2 className="text-lg font-medium">Products</h2>
+              <h2>Products</h2>
               <p className="text-sm text-muted-foreground">
                 Cost price is calculated from configured components. Enter MSRP and (optionally) compare-at for Shopify strikethrough pricing.
               </p>
@@ -1228,7 +1228,7 @@ export default function CostingsPage() {
 
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-medium">Parts</h2>
+            <h2>Parts</h2>
             <p className="text-sm text-muted-foreground">
               Enter values as dollars. Leave blank to clear existing pricing for a part.
             </p>
