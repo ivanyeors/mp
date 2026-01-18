@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
 
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 type SelectContextValue = {
   value?: string;
@@ -47,6 +49,7 @@ function Select({
   children,
   closeOnSelect = true,
 }: SelectProps) {
+  const isMobile = useIsMobile();
   const [open, setOpen] = React.useState(false);
   const [internalValue, setInternalValue] = React.useState<string | undefined>(defaultValue);
   const [labels, setLabels] = React.useState<Record<string, string>>({});
@@ -83,9 +86,15 @@ function Select({
 
   return (
     <SelectContext.Provider value={contextValue}>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
-        {children}
-      </DropdownMenu>
+      {isMobile ? (
+        <Sheet open={open} onOpenChange={setOpen}>
+          {children}
+        </Sheet>
+      ) : (
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+          {children}
+        </DropdownMenu>
+      )}
     </SelectContext.Provider>
   );
 }
@@ -95,8 +104,10 @@ type SelectTriggerProps = React.ComponentPropsWithoutRef<typeof Button>;
 const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
   ({ className, children, ...props }, ref) => {
     const { open } = useSelectContext();
+    const isMobile = useIsMobile();
+    const Trigger = isMobile ? SheetTrigger : DropdownMenuTrigger;
     return (
-      <DropdownMenuTrigger asChild>
+      <Trigger asChild>
         <Button
           ref={ref}
           variant="outline"
@@ -108,7 +119,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
           <span className="flex-1 truncate text-left">{children}</span>
           <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
-      </DropdownMenuTrigger>
+      </Trigger>
     );
   },
 );
@@ -130,14 +141,36 @@ type SelectContentProps = React.ComponentPropsWithoutRef<typeof DropdownMenuCont
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuContent>,
   SelectContentProps
->(({ className, ...props }, ref) => {
+>(({ className, children, ...props }, ref) => {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    const { align, alignOffset, side, sideOffset, ...sheetProps } = props;
+    return (
+      <SheetContent
+        side="bottom"
+        className={cn("w-full max-w-none p-0", className)}
+        {...sheetProps}
+      >
+        <div className="px-4 pt-3">
+          <div className="bg-muted mx-auto h-1.5 w-12 rounded-full" />
+        </div>
+        <div className="max-h-[70svh] overflow-auto px-2 pb-4 pt-2">
+          {children}
+        </div>
+      </SheetContent>
+    );
+  }
+
   return (
     <DropdownMenuContent
       ref={ref}
       // Match the dropdown content width to the trigger width (Radix sets this CSS var).
       className={cn("w-(--radix-dropdown-menu-trigger-width)", className)}
       {...props}
-    />
+    >
+      {children}
+    </DropdownMenuContent>
   );
 });
 SelectContent.displayName = "SelectContent";
@@ -148,8 +181,26 @@ type SelectItemProps = React.ComponentPropsWithoutRef<typeof DropdownMenuItem> &
 };
 
 const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, SelectItemProps>(
-  ({ children, value, className, disabled, textValue, ...props }, ref) => {
-    const { setValue, setOpen, registerLabel, closeOnSelect } = useSelectContext();
+  (
+    {
+      children,
+      value,
+      className,
+      disabled,
+      textValue,
+      inset: _inset,
+      variant: _variant,
+      asChild: _asChild,
+      onSelect,
+      onClick,
+      ...props
+    },
+    ref,
+  ) => {
+    const { setValue, setOpen, registerLabel, closeOnSelect, value: selectedValue } =
+      useSelectContext();
+    const isMobile = useIsMobile();
+    const isSelected = selectedValue === value;
 
     const label = React.useMemo(() => {
       if (typeof textValue === "string") return textValue;
@@ -161,6 +212,41 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
       registerLabel(value, String(label));
     }, [label, registerLabel, value]);
 
+    const handleSelect = (event: Event | React.SyntheticEvent) => {
+      event.preventDefault();
+      if (disabled) return;
+      setValue(value);
+      if (closeOnSelect) {
+        setOpen(false);
+      }
+    };
+
+    if (isMobile) {
+      return (
+        <button
+          ref={ref as React.Ref<HTMLButtonElement>}
+          type="button"
+          role="option"
+          aria-selected={isSelected}
+          aria-disabled={disabled}
+          data-selected={isSelected}
+          data-value={value}
+          disabled={disabled}
+          className={cn(
+            "hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground flex w-full items-center gap-2 rounded-md px-4 py-3 text-left text-base transition-colors disabled:pointer-events-none disabled:opacity-50",
+            className,
+          )}
+          onClick={(event) => {
+            handleSelect(event);
+            onClick?.(event);
+          }}
+          {...props}
+        >
+          {children}
+        </button>
+      );
+    }
+
     return (
       <DropdownMenuItem
         ref={ref}
@@ -168,12 +254,8 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
         disabled={disabled}
         className={cn("cursor-pointer", className)}
         onSelect={(event) => {
-          event.preventDefault();
-          if (disabled) return;
-          setValue(value);
-          if (closeOnSelect) {
-            setOpen(false);
-          }
+          handleSelect(event);
+          onSelect?.(event);
         }}
         {...props}
       >
