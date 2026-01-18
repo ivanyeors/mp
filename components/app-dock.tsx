@@ -37,7 +37,10 @@ export function AppDock() {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-2 left-1/2 max-w-full -translate-x-1/2 z-50">
+    <div
+      className="fixed left-1/2 max-w-full -translate-x-1/2 z-50"
+      style={{ bottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}
+    >
       <Dock className="items-end pb-3">
         {dockItems.map((item, idx) => {
           const isActive = pathname === item.href;
