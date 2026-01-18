@@ -175,9 +175,13 @@ const SelectContent = React.forwardRef<
 });
 SelectContent.displayName = "SelectContent";
 
-type SelectItemProps = React.ComponentPropsWithoutRef<typeof DropdownMenuItem> & {
+type SelectItemProps = Omit<
+  React.ComponentPropsWithoutRef<typeof DropdownMenuItem>,
+  "onClick"
+> & {
   value: string;
   textValue?: string;
+  onClick?: React.MouseEventHandler<HTMLElement>;
 };
 
 const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, SelectItemProps>(
@@ -222,6 +226,7 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
     };
 
     if (isMobile) {
+      const buttonProps = props as React.ButtonHTMLAttributes<HTMLButtonElement>;
       return (
         <button
           ref={ref as React.Ref<HTMLButtonElement>}
@@ -240,7 +245,7 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
             handleSelect(event);
             onClick?.(event);
           }}
-          {...props}
+          {...buttonProps}
         >
           {children}
         </button>
