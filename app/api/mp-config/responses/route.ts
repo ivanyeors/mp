@@ -20,7 +20,7 @@ function parseTelegramChatId(): number | null {
 
 async function sendTelegramMessage(chatId: number, text: string) {
   const token = getOptionalEnv("TELEGRAM_BOT_TOKEN");
-  if (!token) return;
+  if (!token) return { ok: false as const, reason: "missing_token" as const };
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
@@ -32,7 +32,9 @@ async function sendTelegramMessage(chatId: number, text: string) {
   if (!res.ok) {
     // Best-effort logging only. Never block the save path.
     console.error("Failed to send Telegram message", await res.text());
+    return { ok: false as const, reason: "api_error" as const };
   }
+  return { ok: true as const };
 }
 
 const ListQuerySchema = z.object({
@@ -119,6 +121,7 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Optional Telegram notify when a response is marked final (only on the first transition to final).
+  let telegramStatus: "sent" | "skipped" | "failed" = "skipped";
   if (isFinal && !wasFinal) {
     const chatId = parseTelegramChatId();
     if (chatId) {
@@ -135,13 +138,15 @@ export async function POST(req: Request) {
       ].join("\n");
 
       try {
-        await sendTelegramMessage(chatId, text);
+        const sent = await sendTelegramMessage(chatId, text);
+        telegramStatus = sent.ok ? "sent" : "failed";
       } catch (e) {
         console.error("Telegram notify failed", e);
+        telegramStatus = "failed";
       }
     }
   }
 
-  return NextResponse.json({ ok: true, id });
+  return NextResponse.json({ ok: true, id, telegramStatus });
 }
 

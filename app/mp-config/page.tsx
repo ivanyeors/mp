@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
 import { 
   ArrowRight, 
   ArrowLeft, 
@@ -175,12 +176,14 @@ export default function MpConfigPage() {
     );
   }, [measurementData]);
 
-  const upsertToDb = async (opts?: { isFinal?: boolean }) => {
+  const upsertToDb = async (
+    opts?: { isFinal?: boolean },
+  ): Promise<{ id: string; telegramStatus?: "sent" | "skipped" | "failed" } | null> => {
     if (!responseId) return null;
-    if (!hasAnyInput) return responseId;
+    if (!hasAnyInput) return { id: responseId };
 
     const snapshot = JSON.stringify({ responseId, measurementData, isFinal: opts?.isFinal ?? null });
-    if (!opts?.isFinal && snapshot === lastSavedRef.current) return responseId;
+    if (!opts?.isFinal && snapshot === lastSavedRef.current) return { id: responseId };
 
     setSaveStatus("saving");
     try {
@@ -197,7 +200,10 @@ export default function MpConfigPage() {
       if (!res.ok) throw new Error(payload?.error ?? "Failed to save");
       lastSavedRef.current = snapshot;
       setSaveStatus("saved");
-      return payload?.id ?? responseId;
+      return {
+        id: (payload?.id ?? responseId) as string,
+        telegramStatus: payload?.telegramStatus as "sent" | "skipped" | "failed" | undefined,
+      };
     } catch {
       setSaveStatus("error");
       return null;
@@ -1133,7 +1139,18 @@ export default function MpConfigPage() {
                   <Button
                     size="lg"
                     onClick={async () => {
-                      await upsertToDb({ isFinal: true });
+                      const result = await upsertToDb({ isFinal: true });
+                      if (!result?.id) {
+                        toast.error("Save failed");
+                        return;
+                      }
+
+                      toast.success("Saved to cloud");
+                      if (result.telegramStatus === "sent") {
+                        toast.success("Configuration sent to Mpillow Telegram group");
+                      } else if (result.telegramStatus === "failed") {
+                        toast.error("Saved, but failed to notify Telegram group");
+                      }
                     }}
                     disabled={!responseId || !hasAnyInput}
                   >

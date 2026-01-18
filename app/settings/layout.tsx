@@ -27,7 +27,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Toaster } from "sonner";
 import SettingsAuthGate from "./auth-gate";
 
 type NavItem = {
@@ -132,7 +131,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </header>
           <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
             <SettingsAuthGate>{children}</SettingsAuthGate>
-            <Toaster richColors position="top-right" />
           </div>
         </SidebarInset>
       </SidebarProvider>

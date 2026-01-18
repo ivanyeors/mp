@@ -3,6 +3,7 @@ import { JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppDock } from "@/components/app-dock";
+import { SonnerProvider } from "@/components/sonner-provider";
 
 const soraSans = Sora({
   variable: "--font-sora",
@@ -65,6 +66,7 @@ export default function RootLayout({
         >
           {children}
           <AppDock />
+          <SonnerProvider />
         </ThemeProvider>
       </body>
     </html>
