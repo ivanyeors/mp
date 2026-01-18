@@ -226,6 +226,7 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
     };
 
     if (isMobile) {
+      const buttonProps = props as React.ButtonHTMLAttributes<HTMLButtonElement>;
       return (
         <button
           ref={ref as React.Ref<HTMLButtonElement>}
@@ -244,7 +245,7 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
             handleSelect(event);
             onClick?.(event);
           }}
-          {...props}
+          {...buttonProps}
         >
           {children}
         </button>
