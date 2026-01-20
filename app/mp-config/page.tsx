@@ -23,7 +23,8 @@ import {
   User, 
   Sparkles,
   CheckCircle,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Camera
 } from "lucide-react";
 
 type Step = 
@@ -67,10 +68,8 @@ export default function MpConfigPage() {
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
-  const [shoulderLengthUnit, setShoulderLengthUnit] = useState<"cm" | "in">("cm");
-  const [neckToBackUnit, setNeckToBackUnit] = useState<"cm" | "in">("cm");
-  const [headToBackUnit, setHeadToBackUnit] = useState<"cm" | "in">("cm");
-  const [neckLengthUnit, setNeckLengthUnit] = useState<"cm" | "in">("cm");
+  // Single unit selector for the whole flow (default: inches)
+  const [measurementUnit, setMeasurementUnit] = useState<"cm" | "in">("in");
   const [measurementData, setMeasurementData] = useState<MeasurementData>({
     name: "",
     gender: "",
@@ -90,6 +89,18 @@ export default function MpConfigPage() {
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const lastSavedRef = useRef<string>("");
+
+  type PhotoView = "front" | "side";
+  const frontInputRef = useRef<HTMLInputElement | null>(null);
+  const sideInputRef = useRef<HTMLInputElement | null>(null);
+  const [photoDataUrls, setPhotoDataUrls] = useState<{ front: string | null; side: string | null }>({
+    front: null,
+    side: null,
+  });
+  const [photoUploading, setPhotoUploading] = useState<{ front: boolean; side: boolean }>({
+    front: false,
+    side: false,
+  });
 
   const stepOrder: Step[] = [
     "welcome",
@@ -146,6 +157,23 @@ export default function MpConfigPage() {
     value: MeasurementData[K],
   ) => {
     setMeasurementData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toDisplayValue = (cmValue: string) => {
+    if (measurementUnit === "cm") return cmValue;
+    const cm = Number(cmValue);
+    if (!cmValue) return "";
+    if (!Number.isFinite(cm)) return cmValue;
+    const inches = cm / 2.54;
+    return String(Math.round(inches * 100) / 100);
+  };
+
+  const toCmValue = (raw: string) => {
+    if (raw === "") return "";
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return raw;
+    const cm = measurementUnit === "cm" ? n : n * 2.54;
+    return String(Math.round(cm * 100) / 100);
   };
 
   useEffect(() => {
@@ -236,6 +264,52 @@ export default function MpConfigPage() {
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [responseId, hasAnyInput, measurementData]);
+
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.readAsDataURL(file);
+    });
+
+  const savePhoto = async (view: PhotoView, file: File) => {
+    if (!responseId) {
+      toast.error("Missing session id. Please refresh and try again.");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image");
+      return;
+    }
+
+    // Guardrail: keep uploads reasonable since we're storing a data URL temporarily.
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast.error("Image too large. Please use a smaller photo (max 5MB).");
+      return;
+    }
+
+    setPhotoUploading((p) => ({ ...p, [view]: true }));
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setPhotoDataUrls((p) => ({ ...p, [view]: dataUrl }));
+
+      const res = await fetch("/api/mp-config/photos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ responseId, view, dataUrl }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to save photo");
+      toast.success(view === "front" ? "Front view saved" : "Side view saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save photo");
+    } finally {
+      setPhotoUploading((p) => ({ ...p, [view]: false }));
+    }
+  };
 
   const currentStepIndex = stepOrder.indexOf(currentStep);
   const progressValue =
@@ -515,39 +589,17 @@ export default function MpConfigPage() {
                     type="number"
                     placeholder="Enter measurement"
                     value={
-                      shoulderLengthUnit === "cm"
-                        ? measurementData.shoulderLength
-                        : (() => {
-                            const cm = Number(measurementData.shoulderLength);
-                            if (!measurementData.shoulderLength) return "";
-                            if (!Number.isFinite(cm)) return measurementData.shoulderLength;
-                            const inches = cm / 2.54;
-                            return String(Math.round(inches * 100) / 100);
-                          })()
+                      toDisplayValue(measurementData.shoulderLength)
                     }
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") {
-                        updateMeasurement("shoulderLength", "");
-                        return;
-                      }
-
-                      const n = Number(raw);
-                      if (!Number.isFinite(n)) {
-                        updateMeasurement("shoulderLength", raw);
-                        return;
-                      }
-
-                      const cm =
-                        shoulderLengthUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
-                      updateMeasurement("shoulderLength", String(cm));
+                      updateMeasurement("shoulderLength", toCmValue(e.target.value));
                     }}
                     className="text-lg h-12"
                     autoFocus
                   />
                   <Tabs
-                    value={shoulderLengthUnit}
-                    onValueChange={(v) => setShoulderLengthUnit(v as "cm" | "in")}
+                    value={measurementUnit}
+                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -560,7 +612,7 @@ export default function MpConfigPage() {
                   </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  💡 Tip: Have someone help you measure for accuracy
+                  💡 Tip: Start from the shoulder bone and measure to the other shoulder bone
                 </p>
               </div>
 
@@ -605,7 +657,7 @@ export default function MpConfigPage() {
                 />
                 <h2 className="text-3xl font-bold">Neck to Back</h2>
                 <p className="text-muted-foreground">
-                  Measure from the base of your neck to your upper back
+                  Measure from the c1 bone of your spine from the neck area to the back against the wall
                 </p>
               </div>
 
@@ -615,39 +667,17 @@ export default function MpConfigPage() {
                     type="number"
                     placeholder="Enter measurement"
                     value={
-                      neckToBackUnit === "cm"
-                        ? measurementData.neckToBack
-                        : (() => {
-                            const cm = Number(measurementData.neckToBack);
-                            if (!measurementData.neckToBack) return "";
-                            if (!Number.isFinite(cm)) return measurementData.neckToBack;
-                            const inches = cm / 2.54;
-                            return String(Math.round(inches * 100) / 100);
-                          })()
+                      toDisplayValue(measurementData.neckToBack)
                     }
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") {
-                        updateMeasurement("neckToBack", "");
-                        return;
-                      }
-
-                      const n = Number(raw);
-                      if (!Number.isFinite(n)) {
-                        updateMeasurement("neckToBack", raw);
-                        return;
-                      }
-
-                      const cm =
-                        neckToBackUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
-                      updateMeasurement("neckToBack", String(cm));
+                      updateMeasurement("neckToBack", toCmValue(e.target.value));
                     }}
                     className="text-lg h-12"
                     autoFocus
                   />
                   <Tabs
-                    value={neckToBackUnit}
-                    onValueChange={(v) => setNeckToBackUnit(v as "cm" | "in")}
+                    value={measurementUnit}
+                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -660,7 +690,7 @@ export default function MpConfigPage() {
                   </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  💡 Tip: Measure while sitting in your typical sleeping position
+                  💡 Tip: Measure in your typical standing position
                 </p>
               </div>
 
@@ -705,7 +735,7 @@ export default function MpConfigPage() {
                 />
                 <h2 className="text-3xl font-bold">Head to Back</h2>
                 <p className="text-muted-foreground">
-                  Measure from the back of your head to your upper back
+                  Measure from the back of your head to your upper back against the wall 
                 </p>
               </div>
 
@@ -715,39 +745,17 @@ export default function MpConfigPage() {
                     type="number"
                     placeholder="Enter measurement"
                     value={
-                      headToBackUnit === "cm"
-                        ? measurementData.headToBack
-                        : (() => {
-                            const cm = Number(measurementData.headToBack);
-                            if (!measurementData.headToBack) return "";
-                            if (!Number.isFinite(cm)) return measurementData.headToBack;
-                            const inches = cm / 2.54;
-                            return String(Math.round(inches * 100) / 100);
-                          })()
+                      toDisplayValue(measurementData.headToBack)
                     }
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") {
-                        updateMeasurement("headToBack", "");
-                        return;
-                      }
-
-                      const n = Number(raw);
-                      if (!Number.isFinite(n)) {
-                        updateMeasurement("headToBack", raw);
-                        return;
-                      }
-
-                      const cm =
-                        headToBackUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
-                      updateMeasurement("headToBack", String(cm));
+                      updateMeasurement("headToBack", toCmValue(e.target.value));
                     }}
                     className="text-lg h-12"
                     autoFocus
                   />
                   <Tabs
-                    value={headToBackUnit}
-                    onValueChange={(v) => setHeadToBackUnit(v as "cm" | "in")}
+                    value={measurementUnit}
+                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -760,7 +768,7 @@ export default function MpConfigPage() {
                   </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  💡 Tip: This helps us determine the ideal pillow height for you
+                  💡 Tip: Measure in your typical standing position
                 </p>
               </div>
 
@@ -805,7 +813,7 @@ export default function MpConfigPage() {
                 />
                 <h2 className="text-3xl font-bold">Neck Length</h2>
                 <p className="text-muted-foreground">
-                  Measure vertically the length of your neck from c1 and stop at the shoulders
+                  Measure vertically the length of your neck from c1 and stop at the top of the shoulders
                 </p>
               </div>
 
@@ -815,39 +823,17 @@ export default function MpConfigPage() {
                     type="number"
                     placeholder="Enter measurement"
                     value={
-                      neckLengthUnit === "cm"
-                        ? measurementData.neckLength
-                        : (() => {
-                            const cm = Number(measurementData.neckLength);
-                            if (!measurementData.neckLength) return "";
-                            if (!Number.isFinite(cm)) return measurementData.neckLength;
-                            const inches = cm / 2.54;
-                            return String(Math.round(inches * 100) / 100);
-                          })()
+                      toDisplayValue(measurementData.neckLength)
                     }
                     onChange={(e) => {
-                      const raw = e.target.value;
-                      if (raw === "") {
-                        updateMeasurement("neckLength", "");
-                        return;
-                      }
-
-                      const n = Number(raw);
-                      if (!Number.isFinite(n)) {
-                        updateMeasurement("neckLength", raw);
-                        return;
-                      }
-
-                      const cm =
-                        neckLengthUnit === "cm" ? n : Math.round(n * 2.54 * 100) / 100;
-                      updateMeasurement("neckLength", String(cm));
+                      updateMeasurement("neckLength", toCmValue(e.target.value));
                     }}
                     className="text-lg h-12"
                     autoFocus
                   />
                   <Tabs
-                    value={neckLengthUnit}
-                    onValueChange={(v) => setNeckLengthUnit(v as "cm" | "in")}
+                    value={measurementUnit}
+                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -860,7 +846,7 @@ export default function MpConfigPage() {
                   </Tabs>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  💡 Tip: This is the final measurement - almost done!
+                  💡 Tip: Stop at the top of the shoulders, when seen on the side view
                 </p>
               </div>
 
@@ -907,19 +893,27 @@ export default function MpConfigPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-sm text-muted-foreground">Shoulder Length</p>
-                    <p className="text-lg font-medium">{measurementData.shoulderLength} cm</p>
+                    <p className="text-lg font-medium">
+                      {toDisplayValue(measurementData.shoulderLength)} {measurementUnit}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Neck to Back</p>
-                    <p className="text-lg font-medium">{measurementData.neckToBack} cm</p>
+                    <p className="text-lg font-medium">
+                      {toDisplayValue(measurementData.neckToBack)} {measurementUnit}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Head to Back</p>
-                    <p className="text-lg font-medium">{measurementData.headToBack} cm</p>
+                    <p className="text-lg font-medium">
+                      {toDisplayValue(measurementData.headToBack)} {measurementUnit}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Neck Length</p>
-                    <p className="text-lg font-medium">{measurementData.neckLength} cm</p>
+                    <p className="text-lg font-medium">
+                      {toDisplayValue(measurementData.neckLength)} {measurementUnit}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1005,6 +999,105 @@ export default function MpConfigPage() {
                 </div>
               </div>
 
+              <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-semibold text-lg">Photos (optional)</h4>
+                  <div className="text-xs text-muted-foreground">
+                    Saved temporarily and attached to Telegram
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="rounded-lg border bg-background/60 p-3 space-y-3">
+                    <div className="text-sm font-medium">Front view photo</div>
+
+                    <div className="relative overflow-hidden rounded-md border bg-background/40 aspect-[4/3]">
+                      {photoDataUrls.front ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photoDataUrls.front}
+                          alt="Front view"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                          No photo yet
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => frontInputRef.current?.click()}
+                        disabled={photoUploading.front}
+                        className="w-full"
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        {photoUploading.front ? "Saving…" : photoDataUrls.front ? "Retake" : "Take photo"}
+                      </Button>
+                      <input
+                        ref={frontInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="user"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void savePhoto("front", f);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border bg-background/60 p-3 space-y-3">
+                    <div className="text-sm font-medium">Side view photo</div>
+
+                    <div className="relative overflow-hidden rounded-md border bg-background/40 aspect-[4/3]">
+                      {photoDataUrls.side ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={photoDataUrls.side}
+                          alt="Side view"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                          No photo yet
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => sideInputRef.current?.click()}
+                        disabled={photoUploading.side}
+                        className="w-full"
+                      >
+                        <Camera className="mr-2 h-4 w-4" />
+                        {photoUploading.side ? "Saving…" : photoDataUrls.side ? "Retake" : "Take photo"}
+                      </Button>
+                      <input
+                        ref={sideInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="user"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) void savePhoto("side", f);
+                          e.currentTarget.value = "";
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="pt-4">
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={goToPreviousStep}>
@@ -1017,7 +1110,7 @@ export default function MpConfigPage() {
                       await loadSuggestion();
                       goToNextStep();
                     }}
-                    disabled={!hasAnsweredAdditionalQuestions}
+                    disabled={!hasAnsweredAdditionalQuestions || photoUploading.front || photoUploading.side}
                     size="lg"
                     className="group"
                   >

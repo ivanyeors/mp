@@ -56,6 +56,92 @@ async function sendTelegramMessage(chatId: number, text: string) {
   return { ok: true as const };
 }
 
+function dataUrlToBlob(dataUrl: string): { blob: Blob; ext: string } | null {
+  const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
+  if (!m) return null;
+  const mime = m[1];
+  const b64 = m[2];
+  const buf = Buffer.from(b64, "base64");
+  const subtype = mime.split("/")[1] || "jpg";
+  const ext = subtype.toLowerCase().includes("jpeg") ? "jpg" : subtype.toLowerCase();
+  return { blob: new Blob([buf], { type: mime }), ext };
+}
+
+function toTelegramCaption(text: string): string {
+  // Telegram photo captions are limited (media group uses per-item captions too).
+  const max = 1024;
+  if (text.length <= max) return text;
+  const trimmed = text.slice(0, Math.max(0, max - 2)).trimEnd();
+  return `${trimmed}…`;
+}
+
+async function sendTelegramMediaGroup(
+  chatId: number,
+  caption: string,
+  photos: { front?: string | null; side?: string | null },
+) {
+  const token = getOptionalEnv("TELEGRAM_BOT_TOKEN");
+  if (!token) return { ok: false as const, reason: "missing_token" as const };
+
+  const items: Array<{ key: "front" | "side"; dataUrl: string }> = [];
+  if (photos.front) items.push({ key: "front", dataUrl: photos.front });
+  if (photos.side) items.push({ key: "side", dataUrl: photos.side });
+  if (items.length === 0) return { ok: false as const, reason: "no_photos" as const };
+
+  // If we only have one photo, use sendPhoto so the caption is guaranteed on the message.
+  if (items.length === 1) {
+    const parsed = dataUrlToBlob(items[0].dataUrl);
+    if (!parsed) return { ok: false as const, reason: "bad_data_url" as const };
+
+    const form = new FormData();
+    form.append("chat_id", String(chatId));
+    form.append("caption", toTelegramCaption(caption));
+    form.append("photo", parsed.blob, `${items[0].key}.${parsed.ext}`);
+
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+      method: "POST",
+      body: form,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.error("Failed to send Telegram photo", await res.text());
+      return { ok: false as const, reason: "api_error" as const };
+    }
+    return { ok: true as const };
+  }
+
+  const parsedFront = items.find((i) => i.key === "front") ? dataUrlToBlob(items.find((i) => i.key === "front")!.dataUrl) : null;
+  const parsedSide = items.find((i) => i.key === "side") ? dataUrlToBlob(items.find((i) => i.key === "side")!.dataUrl) : null;
+
+  const form = new FormData();
+  form.append("chat_id", String(chatId));
+
+  const media: Array<{ type: "photo"; media: string; caption?: string }> = [];
+  if (parsedFront) {
+    media.push({ type: "photo", media: "attach://front", caption: toTelegramCaption(caption) });
+    form.append("front", parsedFront.blob, `front.${parsedFront.ext}`);
+  }
+  if (parsedSide) {
+    media.push({ type: "photo", media: "attach://side" });
+    form.append("side", parsedSide.blob, `side.${parsedSide.ext}`);
+  }
+
+  if (media.length === 0) return { ok: false as const, reason: "bad_data_url" as const };
+  form.append("media", JSON.stringify(media));
+
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMediaGroup`, {
+    method: "POST",
+    body: form,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    console.error("Failed to send Telegram media group", await res.text());
+    return { ok: false as const, reason: "api_error" as const };
+  }
+  return { ok: true as const };
+}
+
 const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
@@ -170,7 +256,20 @@ export async function POST(req: Request) {
       ].join("\n");
 
       try {
-        const sent = await sendTelegramMessage(chatId, text);
+        // Try attaching photos (front/side). Falls back to text-only message if missing.
+        const { data: photos, error: pErr } = await admin
+          .from("mp_config_response_photos")
+          .select("view,data_url")
+          .eq("response_id", id);
+        if (pErr) console.error("Failed to load mp-config photos", pErr.message);
+
+        const front = (photos ?? []).find((p) => p.view === "front")?.data_url ?? null;
+        const side = (photos ?? []).find((p) => p.view === "side")?.data_url ?? null;
+
+        const sent =
+          front || side
+            ? await sendTelegramMediaGroup(chatId, text, { front, side })
+            : await sendTelegramMessage(chatId, text);
         telegramStatus = sent.ok ? "sent" : "failed";
       } catch (e) {
         console.error("Telegram notify failed", e);
