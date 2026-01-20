@@ -37,6 +37,13 @@ function parseTelegramChatId(): number | null {
   return MP_CONFIG_TELEGRAM_CHAT_ID;
 }
 
+const ExistingMeasuredBySchema = z
+  .object({
+    measured_by_type: z.union([z.literal("by_user"), z.literal("staff")]).nullable().optional(),
+    measured_by_staff_id: z.string().nullable().optional(),
+  })
+  .passthrough();
+
 async function sendTelegramMessage(chatId: number, text: string) {
   const token = getOptionalEnv("TELEGRAM_BOT_TOKEN");
   if (!token) return { ok: false as const, reason: "missing_token" as const };
@@ -238,8 +245,11 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
     wasFinal = Boolean(existing?.is_final);
-    existingMeasuredByType = (existing as any)?.measured_by_type ?? null;
-    existingMeasuredByStaffId = (existing as any)?.measured_by_staff_id ?? null;
+    const existingMeasuredByParsed = ExistingMeasuredBySchema.safeParse(existing);
+    if (existingMeasuredByParsed.success) {
+      existingMeasuredByType = existingMeasuredByParsed.data.measured_by_type ?? null;
+      existingMeasuredByStaffId = existingMeasuredByParsed.data.measured_by_staff_id ?? null;
+    }
 
     // Enforce "Measured by" selection before Telegram send / finalization.
     // Default option is "by user" (stored as measured_by_type = 'by_user').
