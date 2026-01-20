@@ -2,11 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
 import { Particles } from "@/components/ui/particles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -65,6 +74,7 @@ type MpConfigSuggestion = {
 };
 
 export default function MpConfigPage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
@@ -89,6 +99,9 @@ export default function MpConfigPage() {
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const lastSavedRef = useRef<string>("");
+
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [completedResponseId, setCompletedResponseId] = useState<string | null>(null);
 
   type PhotoView = "front" | "side";
   const frontInputRef = useRef<HTMLInputElement | null>(null);
@@ -186,6 +199,40 @@ export default function MpConfigPage() {
     }
     setResponseId(id);
   }, []);
+
+  const startNewMeasurement = () => {
+    if (typeof window !== "undefined") {
+      const key = "mp_config_response_id";
+      const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      window.localStorage.setItem(key, newId);
+      setResponseId(newId);
+    } else {
+      setResponseId(null);
+    }
+
+    lastSavedRef.current = "";
+    setSaveStatus("idle");
+    setSuggestion(null);
+    setSuggestionLoading(false);
+    setPhotoDataUrls({ front: null, side: null });
+    setPhotoUploading({ front: false, side: false });
+    setMeasurementData({
+      name: "",
+      gender: "",
+      ageGroup: "",
+      bloodPressureLevel: "",
+      earDiscomfortSideSleep: "",
+      bedFirmness: "",
+      acidReflux: "",
+      shoulderLength: "",
+      neckToBack: "",
+      headToBack: "",
+      neckLength: "",
+    });
+    setCurrentStep("welcome");
+    setGridSpeed("slow");
+    setIsTransitioning(false);
+  };
 
   const hasAnyInput = useMemo(() => {
     const d = measurementData;
@@ -346,6 +393,41 @@ export default function MpConfigPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
+      <Dialog open={completionDialogOpen} onOpenChange={setCompletionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              Measurement complete
+            </DialogTitle>
+            <DialogDescription>
+              Your configuration has been saved. What would you like to do next?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setCompletionDialogOpen(false);
+                setCompletedResponseId(null);
+                startNewMeasurement();
+              }}
+            >
+              New measurement
+            </Button>
+            <Button
+              onClick={() => {
+                const id = completedResponseId ?? responseId;
+                if (!id) return;
+                setCompletionDialogOpen(false);
+                router.push(`/settings/results/${id}`);
+              }}
+            >
+              Results page
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {/* Retro Grid Background */}
       <RetroGrid className="z-0" opacity={0.3} speed={gridSpeed} />
 
@@ -1041,7 +1123,7 @@ export default function MpConfigPage() {
                         ref={frontInputRef}
                         type="file"
                         accept="image/*"
-                        capture="user"
+                        capture="environment"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
@@ -1085,7 +1167,7 @@ export default function MpConfigPage() {
                         ref={sideInputRef}
                         type="file"
                         accept="image/*"
-                        capture="user"
+                        capture="environment"
                         className="hidden"
                         onChange={(e) => {
                           const f = e.target.files?.[0];
@@ -1244,6 +1326,9 @@ export default function MpConfigPage() {
                       } else if (result.telegramStatus === "failed") {
                         toast.error("Saved, but failed to notify Telegram group");
                       }
+
+                      setCompletedResponseId(result.id);
+                      setCompletionDialogOpen(true);
                     }}
                     disabled={!responseId || !hasAnyInput}
                   >
