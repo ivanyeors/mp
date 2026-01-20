@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -28,8 +29,15 @@ type MpConfigResponseRow = {
   id: string;
   data: Partial<MeasurementData> | null;
   is_final: boolean;
+  measured_by_type?: string | null;
+  measured_by_staff_id?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type StaffRow = {
+  id: string;
+  name: string;
 };
 
 type ResultsTab = "active" | "released";
@@ -61,6 +69,8 @@ export default function ResultsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<ResultsTab>("active");
   const [sending, setSending] = useState<Record<string, boolean>>({});
+  const [staffRows, setStaffRows] = useState<StaffRow[]>([]);
+  const [staffLoading, setStaffLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,6 +90,107 @@ export default function ResultsPage() {
     load();
   }, [load]);
 
+  const loadStaff = useCallback(async () => {
+    setStaffLoading(true);
+    try {
+      const res = await fetch("/api/staff", { method: "GET" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to load staff");
+      setStaffRows((payload?.rows ?? []) as StaffRow[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load staff");
+      setStaffRows([]);
+    } finally {
+      setStaffLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadStaff();
+  }, [loadStaff]);
+
+  const staffNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of staffRows) m.set(s.id, s.name);
+    return m;
+  }, [staffRows]);
+
+  const measuredByValue = (row: MpConfigResponseRow): string => {
+    if (row.measured_by_type === "staff" && row.measured_by_staff_id) return `staff:${row.measured_by_staff_id}`;
+    return "by_user";
+  };
+
+  const measuredByLabel = (row: MpConfigResponseRow): string => {
+    if (row.measured_by_type === "staff" && row.measured_by_staff_id) {
+      return staffNameById.get(row.measured_by_staff_id) ?? "staff";
+    }
+    return "by user";
+  };
+
+  const isMeasuredByValid = (row: MpConfigResponseRow): boolean => {
+    if (row.measured_by_type === "by_user") return true;
+    if (row.measured_by_type === "staff" && !!row.measured_by_staff_id) return true;
+    // If the DB columns aren't present yet / null, treat as not ready.
+    return false;
+  };
+
+  const updateMeasuredBy = useCallback(
+    async (row: MpConfigResponseRow, value: string) => {
+      const measuredBy =
+        value === "by_user"
+          ? ({ type: "by_user" } as const)
+          : value.startsWith("staff:")
+            ? ({ type: "staff", staffId: value.slice("staff:".length) } as const)
+            : null;
+      if (!measuredBy) return;
+
+      const prev = { type: row.measured_by_type, staffId: row.measured_by_staff_id };
+
+      // Optimistic UI update.
+      setRows((p) =>
+        p.map((r) =>
+          r.id === row.id
+            ? {
+                ...r,
+                measured_by_type: measuredBy.type,
+                measured_by_staff_id: measuredBy.type === "staff" ? measuredBy.staffId : null,
+              }
+            : r,
+        ),
+      );
+
+      try {
+        const data = normalizeMeasurement(row.data ?? {});
+        const res = await fetch("/api/mp-config/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: row.id,
+            data,
+            measuredBy,
+          }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(payload?.error ?? "Failed to update measured by");
+      } catch (e) {
+        // Revert on failure.
+        setRows((p) =>
+          p.map((r) =>
+            r.id === row.id
+              ? {
+                  ...r,
+                  measured_by_type: prev.type ?? null,
+                  measured_by_staff_id: prev.staffId ?? null,
+                }
+              : r,
+          ),
+        );
+        toast.error(e instanceof Error ? e.message : "Failed to update measured by");
+      }
+    },
+    [],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const scope = tab === "active" ? rows.filter((r) => !r.is_final) : rows.filter((r) => r.is_final);
@@ -94,6 +205,10 @@ export default function ResultsPage() {
   const sendToTelegram = useCallback(
     async (row: MpConfigResponseRow) => {
       if (row.is_final) return;
+      if (!isMeasuredByValid(row)) {
+        toast.error("Measured by is required before sending to Telegram");
+        return;
+      }
       setSending((prev) => ({ ...prev, [row.id]: true }));
       try {
         const data = normalizeMeasurement(row.data ?? {});
@@ -173,6 +288,7 @@ export default function ResultsPage() {
               <TableHead className="w-[120px]">Gender</TableHead>
               <TableHead className="w-[140px]">Age group</TableHead>
               <TableHead className="w-[130px]">Shoulder (cm)</TableHead>
+              <TableHead className="w-[220px]">Measured by</TableHead>
               <TableHead className="w-[140px]">Group Updates</TableHead>
               <TableHead className="w-[260px]">ID</TableHead>
             </TableRow>
@@ -180,7 +296,7 @@ export default function ResultsPage() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
                   {tab === "active" ? "No active results yet." : "No released results yet."}
                 </TableCell>
               </TableRow>
@@ -193,6 +309,8 @@ export default function ResultsPage() {
                 const shoulder = safeString(d.shoulderLength) || "—";
                 const updated = row.updated_at ? new Date(row.updated_at).toLocaleString() : "—";
                 const busy = Boolean(sending[row.id]);
+                const measuredByText = measuredByLabel(row);
+                const measuredByOk = isMeasuredByValid(row);
 
                 return (
                   <TableRow
@@ -218,11 +336,44 @@ export default function ResultsPage() {
                         e.stopPropagation();
                       }}
                     >
+                      <Select
+                        value={measuredByValue(row)}
+                        onValueChange={(v) => {
+                          if (row.is_final || staffLoading) return;
+                          void updateMeasuredBy(row, v);
+                        }}
+                      >
+                        <SelectTrigger
+                          disabled={row.is_final || staffLoading}
+                          className={!measuredByOk ? "border-destructive" : undefined}
+                        >
+                          <SelectValue placeholder="Select…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="by_user">by user</SelectItem>
+                          {staffRows.map((s) => (
+                            <SelectItem key={s.id} value={`staff:${s.id}`}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {!measuredByOk ? (
+                        <div className="mt-1 text-[11px] text-destructive">Required</div>
+                      ) : (
+                        <div className="mt-1 text-[11px] text-muted-foreground">Selected: {measuredByText}</div>
+                      )}
+                    </TableCell>
+                    <TableCell
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
                       <Button
                         size="sm"
                         variant={row.is_final ? "secondary" : "default"}
                         onClick={() => sendToTelegram(row)}
-                        disabled={busy || row.is_final}
+                        disabled={busy || row.is_final || !measuredByOk}
                       >
                         {busy ? "Sending…" : row.is_final ? "Sent" : "Send"}
                       </Button>

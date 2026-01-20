@@ -163,10 +163,16 @@ const MeasurementSchema = z.object({
   neckLength: z.string().default(""),
 });
 
+const MeasuredBySchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("by_user") }),
+  z.object({ type: z.literal("staff"), staffId: z.string().uuid() }),
+]);
+
 const UpsertSchema = z.object({
   id: z.string().uuid().optional(),
   data: MeasurementSchema,
   isFinal: z.boolean().optional(),
+  measuredBy: MeasuredBySchema.optional(),
 });
 
 export async function GET(req: Request) {
@@ -183,7 +189,7 @@ export async function GET(req: Request) {
   const admin = supabaseAdmin();
   const { data, error, count } = await admin
     .from("mp_config_responses")
-    .select("id,data,is_final,created_at,updated_at", { count: "exact" })
+    .select("id,data,is_final,measured_by_type,measured_by_staff_id,created_at,updated_at", { count: "exact" })
     .order("updated_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -206,20 +212,47 @@ export async function POST(req: Request) {
   }
 
   const id = parsed.data.id ?? crypto.randomUUID();
-  const row: { id: string; data: unknown; is_final?: boolean } = { id, data: parsed.data.data };
+  const row: {
+    id: string;
+    data: unknown;
+    is_final?: boolean;
+    measured_by_type?: "by_user" | "staff";
+    measured_by_staff_id?: string | null;
+  } = { id, data: parsed.data.data };
   if (typeof parsed.data.isFinal === "boolean") row.is_final = parsed.data.isFinal;
+  if (parsed.data.measuredBy) {
+    row.measured_by_type = parsed.data.measuredBy.type;
+    row.measured_by_staff_id = parsed.data.measuredBy.type === "staff" ? parsed.data.measuredBy.staffId : null;
+  }
 
   const admin = supabaseAdmin();
   const isFinal = parsed.data.isFinal === true;
   let wasFinal = false;
+  let existingMeasuredByType: string | null = null;
+  let existingMeasuredByStaffId: string | null = null;
   if (isFinal) {
     const { data: existing, error: existingErr } = await admin
       .from("mp_config_responses")
-      .select("is_final")
+      .select("is_final,measured_by_type,measured_by_staff_id")
       .eq("id", id)
       .maybeSingle();
     if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
     wasFinal = Boolean(existing?.is_final);
+    existingMeasuredByType = (existing as any)?.measured_by_type ?? null;
+    existingMeasuredByStaffId = (existing as any)?.measured_by_staff_id ?? null;
+
+    // Enforce "Measured by" selection before Telegram send / finalization.
+    // Default option is "by user" (stored as measured_by_type = 'by_user').
+    const effectiveType = parsed.data.measuredBy?.type ?? existingMeasuredByType;
+    const effectiveStaffId =
+      parsed.data.measuredBy?.type === "staff" ? parsed.data.measuredBy.staffId : existingMeasuredByStaffId;
+
+    if (effectiveType !== "by_user" && effectiveType !== "staff") {
+      return NextResponse.json({ error: "Measured by is required" }, { status: 400 });
+    }
+    if (effectiveType === "staff" && !effectiveStaffId) {
+      return NextResponse.json({ error: "Measured by is required" }, { status: 400 });
+    }
   }
 
   const { error } = await admin.from("mp_config_responses").upsert(row, { onConflict: "id" });
@@ -235,11 +268,32 @@ export async function POST(req: Request) {
       const ts = formatTelegramTimestamp(new Date());
 
       const yesNo = (v: string) => (v === "yes" ? "Yes" : v === "no" ? "No" : "—");
+      let measuredByLabel = "by user";
+      try {
+        const effectiveType = parsed.data.measuredBy?.type ?? existingMeasuredByType;
+        const effectiveStaffId =
+          parsed.data.measuredBy?.type === "staff" ? parsed.data.measuredBy.staffId : existingMeasuredByStaffId;
+
+        if (effectiveType === "staff" && effectiveStaffId) {
+          const { data: staff, error: sErr } = await admin
+            .from("mp_staff")
+            .select("name")
+            .eq("id", effectiveStaffId)
+            .maybeSingle();
+          if (!sErr && staff?.name) measuredByLabel = staff.name;
+          else measuredByLabel = "staff";
+        }
+      } catch {
+        // Best-effort only; never block the save path.
+        measuredByLabel = "by user";
+      }
+
       const text = [
         `💤 Custom Mpillow created on ${ts}`,
         `Name: ${d.name || "—"}`,
         `Gender: ${d.gender || "—"}`,
         `Age group: ${d.ageGroup || "—"}`,
+        `Measured by: ${measuredByLabel}`,
         "",
         "📏Measurements",
         `- Shoulder Length: ${d.shoulderLength || "—"}`,

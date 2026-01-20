@@ -64,7 +64,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const admin = supabaseAdmin();
   const { data: responseRow, error: rErr } = await admin
     .from("mp_config_responses")
-    .select("id,data,is_final,created_at,updated_at")
+    .select("id,data,is_final,measured_by_type,measured_by_staff_id,created_at,updated_at")
     .eq("id", parsedParams.data.id)
     .maybeSingle();
 
