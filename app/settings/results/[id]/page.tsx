@@ -77,7 +77,6 @@ export default function ResultDetailPage() {
   const [suggestionLoading, setSuggestionLoading] = useState(false);
 
   const [draft, setDraft] = useState<MeasurementData>(() => normalizeMeasurement(null));
-  const [isFinal, setIsFinal] = useState<boolean>(false);
 
   const headerMeta = useMemo(() => {
     if (!row) return null;
@@ -98,7 +97,6 @@ export default function ResultDetailPage() {
       setRow(response);
       setSuggestion((payload?.suggestion ?? null) as MpConfigSuggestion | null);
       setDraft(normalizeMeasurement(response?.data ?? null));
-      setIsFinal(Boolean(response?.is_final));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load result");
       setRow(null);
@@ -139,7 +137,6 @@ export default function ResultDetailPage() {
         body: JSON.stringify({
           id,
           data: draft,
-          isFinal,
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -151,7 +148,7 @@ export default function ResultDetailPage() {
     } finally {
       setSaving(false);
     }
-  }, [draft, id, isFinal, load]);
+  }, [draft, id, load]);
 
   const deleteRow = useCallback(async () => {
     if (!id) return;
@@ -281,16 +278,8 @@ export default function ResultDetailPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Is final">
-              <Select value={isFinal ? "true" : "false"} onValueChange={(v) => setIsFinal(v === "true")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="false">Not final</SelectItem>
-                  <SelectItem value="true">Final</SelectItem>
-                </SelectContent>
-              </Select>
+            <Field label="Status">
+              <div className="text-sm text-muted-foreground">{row.is_final ? "Released" : "Active"}</div>
             </Field>
           </div>
 

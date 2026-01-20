@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // Safety guard: mp-config notifications are restricted to a single Telegram group chat.
 // This prevents accidental leakage to other chats even if env vars are misconfigured.
@@ -150,7 +151,7 @@ async function sendTelegramMediaGroup(
 }
 
 const ListQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).default(50),
+  limit: z.coerce.number().int().min(1).max(1000).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
 
@@ -202,13 +203,21 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({
-    ok: true,
-    rows: data ?? [],
-    count: typeof count === "number" ? count : null,
-    limit,
-    offset,
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      rows: data ?? [],
+      count: typeof count === "number" ? count : null,
+      limit,
+      offset,
+    },
+    {
+      headers: {
+        // Ensure the results list is never cached (helps avoid “stuck at N rows” issues).
+        "Cache-Control": "no-store",
+      },
+    },
+  );
 }
 
 export async function POST(req: Request) {

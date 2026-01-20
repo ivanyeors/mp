@@ -198,6 +198,26 @@ export default function MpConfigPage() {
       window.localStorage.setItem(key, id);
     }
     setResponseId(id);
+
+    // If the saved id is already "released" in the DB, start a fresh session id.
+    // This prevents new measurements from overwriting a released result and appearing directly in the Released tab.
+    (async () => {
+      try {
+        const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(id!)}`, { method: "GET", cache: "no-store" });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) return; // If it doesn't exist yet (or can't be read), keep the id for draft saving.
+        const isFinal = Boolean(payload?.response?.is_final);
+        if (!isFinal) return;
+
+        const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+        window.localStorage.setItem(key, newId);
+        setResponseId(newId);
+        lastSavedRef.current = "";
+        setSaveStatus("idle");
+      } catch {
+        // Best-effort only; never block the UI.
+      }
+    })();
   }, []);
 
   const startNewMeasurement = () => {
@@ -1314,18 +1334,13 @@ export default function MpConfigPage() {
                   <Button
                     size="lg"
                     onClick={async () => {
-                      const result = await upsertToDb({ isFinal: true });
+                      const result = await upsertToDb();
                       if (!result?.id) {
                         toast.error("Save failed");
                         return;
                       }
 
                       toast.success("Saved to cloud");
-                      if (result.telegramStatus === "sent") {
-                        toast.success("Configuration sent to Mpillow Telegram group");
-                      } else if (result.telegramStatus === "failed") {
-                        toast.error("Saved, but failed to notify Telegram group");
-                      }
 
                       setCompletedResponseId(result.id);
                       setCompletionDialogOpen(true);
