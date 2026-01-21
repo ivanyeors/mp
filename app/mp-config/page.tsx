@@ -8,6 +8,7 @@ import { Particles } from "@/components/ui/particles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -75,6 +76,7 @@ type MpConfigSuggestion = {
 
 export default function MpConfigPage() {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
@@ -688,7 +690,10 @@ export default function MpConfigPage() {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    type="number"
+                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
+                    type={isMobile ? "text" : "number"}
+                    inputMode={isMobile ? "numeric" : undefined}
+                    pattern={isMobile ? "[0-9]*" : undefined}
                     placeholder="Enter measurement"
                     value={
                       toDisplayValue(measurementData.shoulderLength)
@@ -766,7 +771,10 @@ export default function MpConfigPage() {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    type="number"
+                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
+                    type={isMobile ? "text" : "number"}
+                    inputMode={isMobile ? "numeric" : undefined}
+                    pattern={isMobile ? "[0-9]*" : undefined}
                     placeholder="Enter measurement"
                     value={
                       toDisplayValue(measurementData.neckToBack)
@@ -844,7 +852,10 @@ export default function MpConfigPage() {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    type="number"
+                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
+                    type={isMobile ? "text" : "number"}
+                    inputMode={isMobile ? "numeric" : undefined}
+                    pattern={isMobile ? "[0-9]*" : undefined}
                     placeholder="Enter measurement"
                     value={
                       toDisplayValue(measurementData.headToBack)
@@ -922,7 +933,10 @@ export default function MpConfigPage() {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    type="number"
+                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
+                    type={isMobile ? "text" : "number"}
+                    inputMode={isMobile ? "numeric" : undefined}
+                    pattern={isMobile ? "[0-9]*" : undefined}
                     placeholder="Enter measurement"
                     value={
                       toDisplayValue(measurementData.neckLength)
