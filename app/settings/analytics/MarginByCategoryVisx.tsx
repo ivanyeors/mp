@@ -2,10 +2,10 @@
 
 import React, { useMemo, useState } from "react";
 import { Group } from "@visx/group";
-import { BarGroupHorizontal, Bar } from "@visx/shape";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { Bar } from "@visx/shape";
+import { AxisBottom } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
-import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
+import { scaleLinear, scaleOrdinal } from "@visx/scale";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
 import { Button } from "@/components/ui/button";
@@ -98,7 +98,17 @@ function Chart({
 }) {
   const margin = defaultMargin;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
-  const innerHeight = Math.max(10, height - margin.top - margin.bottom);
+  const BAR_HEIGHT = 12;
+  const BAR_RADIUS = 2;
+  const INNER_BAR_GAP = 4;
+  const ROW_GAP = 10;
+  const groupHeight = BAR_HEIGHT * 2 + INNER_BAR_GAP;
+  const rowStep = groupHeight + ROW_GAP;
+  const contentInnerHeight =
+    rows.length > 0 ? Math.max(10, rows.length * rowStep - ROW_GAP) : Math.max(10, height - margin.top - margin.bottom);
+  const svgHeight = Math.max(height, contentInnerHeight + margin.top + margin.bottom);
+
+  const [hoveredTick, setHoveredTick] = useState<string | null>(null);
 
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } =
     useTooltip<TooltipDatum>();
@@ -107,26 +117,6 @@ function Chart({
     const max = Math.max(...rows.map((d) => Math.max(d.costValue ?? 0, d.msrpValue ?? 0)), 0);
     return Math.max(1, max * 1.08);
   }, [rows]);
-
-  const y0Scale = useMemo(
-    () =>
-      scaleBand<string>({
-        domain: rows.map((d) => d.label),
-        range: [0, innerHeight],
-        padding: 0.22,
-      }),
-    [innerHeight, rows]
-  );
-
-  const y1Scale = useMemo(
-    () =>
-      scaleBand<string>({
-        domain: seriesKeys as unknown as string[],
-        range: [0, y0Scale.bandwidth()],
-        padding: 0.18,
-      }),
-    [y0Scale]
-  );
 
   const xScale = useMemo(
     () =>
@@ -149,96 +139,111 @@ function Chart({
 
   return (
     <div className="relative" onMouseLeave={() => hideTooltip()}>
-      <svg width={width} height={height} style={{ width: "100%", height: "100%" }}>
+      <svg width={width} height={svgHeight} style={{ width: "100%", height: "100%" }}>
         <Group top={margin.top} left={margin.left}>
           <GridColumns
             scale={xScale}
-            height={innerHeight}
+            height={contentInnerHeight}
             stroke="var(--border)"
             strokeOpacity={0.6}
             strokeDasharray="3 3"
           />
 
-          <BarGroupHorizontal
-            data={rows}
-            keys={seriesKeys as unknown as string[]}
-            width={innerWidth}
-            y0={(d) => d.label}
-            y0Scale={y0Scale}
-            y1Scale={y1Scale}
-            xScale={xScale}
-            color={(key) => colorScale(key as SeriesKey)}
-          >
-            {(barGroups) =>
-              barGroups.map((barGroup) => (
-                <Group key={`bar-group-${barGroup.index}-${barGroup.y0}`} top={barGroup.y0}>
-                  {barGroup.bars.map((bar) => {
-                    const row = rows[barGroup.index];
-                    const segment = bar.key === "costValue" ? ("Cost value" as const) : ("MSRP value" as const);
-                    const costValue = Number(row.costValue ?? 0);
-                    const msrpValue = Number(row.msrpValue ?? 0);
-                    const impliedMarginValue = Math.max(0, msrpValue - costValue);
-                    const impliedMarginPct = msrpValue > 0 ? (impliedMarginValue / msrpValue) * 100 : null;
+          {rows.map((row, rowIndex) => {
+            const rowY = rowIndex * rowStep;
+            const costValue = Number(row.costValue ?? 0);
+            const msrpValue = Number(row.msrpValue ?? 0);
+            const values: Array<{ key: SeriesKey; label: TooltipDatum["segment"]; value: number }> = [
+              { key: "costValue", label: "Cost value", value: costValue },
+              { key: "msrpValue", label: "MSRP value", value: msrpValue },
+            ];
 
-                    return (
-                      <Bar
-                        key={`${barGroup.index}-${bar.index}-${bar.key}`}
-                        x={bar.x}
-                        y={bar.y}
-                        width={bar.width}
-                        height={bar.height}
-                        fill={bar.color}
-                        rx={8}
-                        style={{ cursor: onRowClick ? "pointer" : "default" }}
-                        onClick={() => onRowClick?.(row.label)}
-                        onMouseMove={(evt) => {
-                          const el = evt.currentTarget as unknown as Element;
-                          const bounds = el.getBoundingClientRect();
-                          const left = Math.min(window.innerWidth - 16, bounds.right + 12);
-                          const top = Math.min(window.innerHeight - 16, Math.max(16, bounds.top + bounds.height / 2));
+            return (
+              <Group key={`row-${rowIndex}-${row.label}`} top={rowY}>
+                {values.map((v, idx) => {
+                  const impliedMarginValue = Math.max(0, msrpValue - costValue);
+                  const impliedMarginPct = msrpValue > 0 ? (impliedMarginValue / msrpValue) * 100 : null;
+                  const barY = idx * (BAR_HEIGHT + INNER_BAR_GAP);
+                  return (
+                    <Bar
+                      key={`${rowIndex}-${v.key}`}
+                      x={0}
+                      y={barY}
+                      width={xScale(v.value)}
+                      height={BAR_HEIGHT}
+                      fill={colorScale(v.key)}
+                      rx={BAR_RADIUS}
+                      style={{ cursor: onRowClick ? "pointer" : "default" }}
+                      onClick={() => onRowClick?.(row.label)}
+                      onMouseMove={(evt) => {
+                        const el = evt.currentTarget as unknown as Element;
+                        const bounds = el.getBoundingClientRect();
+                        const left = Math.min(window.innerWidth - 16, bounds.right + 12);
+                        const top = Math.min(window.innerHeight - 16, Math.max(16, bounds.top + bounds.height / 2));
 
-                          showTooltip({
-                            tooltipData: {
-                              label: row.label,
-                              segment,
-                              costValue,
-                              msrpValue,
-                              impliedMarginValue,
-                              impliedMarginPct,
-                              insight: insightForMarginPct(impliedMarginPct),
-                              costLabel: asMoney(costValue),
-                              msrpLabel: asMoney(msrpValue),
-                              impliedMarginLabel: asMoney(impliedMarginValue),
-                            },
-                            tooltipLeft: left,
-                            tooltipTop: top,
-                          });
-                        }}
-                        onMouseLeave={() => hideTooltip()}
-                      />
-                    );
-                  })}
-                </Group>
-              ))
-            }
-          </BarGroupHorizontal>
+                        showTooltip({
+                          tooltipData: {
+                            label: row.label,
+                            segment: v.label,
+                            costValue,
+                            msrpValue,
+                            impliedMarginValue,
+                            impliedMarginPct,
+                            insight: insightForMarginPct(impliedMarginPct),
+                            costLabel: asMoney(costValue),
+                            msrpLabel: asMoney(msrpValue),
+                            impliedMarginLabel: asMoney(impliedMarginValue),
+                          },
+                          tooltipLeft: left,
+                          tooltipTop: top,
+                        });
+                      }}
+                      onMouseLeave={() => hideTooltip()}
+                    />
+                  );
+                })}
+              </Group>
+            );
+          })}
 
-          <AxisLeft
-            scale={y0Scale}
-            hideAxisLine
-            hideTicks
-            tickLabelProps={() => ({
-              fill: "var(--foreground)",
-              fontSize: 12,
-              fontFamily: "ui-sans-serif, system-ui",
-              textAnchor: "end",
-              dx: "-0.4em",
-              dy: "0.33em",
-            })}
-          />
+          {rows.map((row, rowIndex) => {
+            const label = row.label;
+            const isHovered = hoveredTick === label;
+            const clickable = Boolean(onRowClick);
+            const fill = isHovered ? "var(--foreground)" : "var(--muted-foreground)";
+            return (
+              <text
+                key={`tick-${rowIndex}-${label}`}
+                x={-8}
+                y={rowIndex * rowStep + groupHeight / 2}
+                dy="0.33em"
+                textAnchor="end"
+                fill={fill}
+                fontSize={12}
+                fontFamily="ui-sans-serif, system-ui"
+                style={{
+                  cursor: clickable ? "pointer" : "default",
+                  textDecoration: clickable && isHovered ? "underline" : "none",
+                  userSelect: "none",
+                }}
+                onMouseEnter={() => {
+                  if (!clickable) return;
+                  setHoveredTick(label);
+                }}
+                onMouseLeave={() => setHoveredTick(null)}
+                onClick={() => {
+                  if (!clickable) return;
+                  onRowClick?.(label);
+                }}
+              >
+                {label}
+              </text>
+            );
+          })}
+
           {showBottomAxis && (
             <AxisBottom
-              top={innerHeight}
+              top={contentInnerHeight}
               scale={xScale}
               hideAxisLine
               tickStroke="var(--border)"
@@ -359,7 +364,7 @@ export function MarginByCategoryVisx({
         label: it.label,
         costValue: it.costValue,
         msrpValue: it.msrpValue,
-        meta: { id: it.id, onHand: it.onHand },
+        meta: { id: it.id, units: it.onHand },
       }));
   }, [items, selectedCategory]);
 
@@ -376,7 +381,7 @@ export function MarginByCategoryVisx({
         )}
       </div>
 
-      <div className="h-[320px] w-full">
+      <div className="h-[320px] w-full overflow-y-auto">
         <ParentSize>
           {({ width }) =>
             width < 10 ? null : (
@@ -385,11 +390,14 @@ export function MarginByCategoryVisx({
                 height={height}
                 rows={selectedCategory ? drillRows : summaryRows}
                 showBottomAxis
-                onRowClick={(label) => {
-                  if (selectedCategory) return;
-                  const key = categoryByLabel.get(label) ?? null;
-                  if (key) setSelectedCategory(key);
-                }}
+                onRowClick={
+                  selectedCategory
+                    ? undefined
+                    : (label) => {
+                        const key = categoryByLabel.get(label) ?? null;
+                        if (key) setSelectedCategory(key);
+                      }
+                }
               />
             )
           }

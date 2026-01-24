@@ -3,12 +3,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Group } from "@visx/group";
-import { BarGroupHorizontal, Bar } from "@visx/shape";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { Bar } from "@visx/shape";
+import { AxisBottom } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
-import { scaleBand, scaleLinear, scaleOrdinal } from "@visx/scale";
+import { scaleLinear, scaleOrdinal } from "@visx/scale";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
+import { Button } from "@/components/ui/button";
 
 type ItemCost = { id: number; cost: number | null };
 
@@ -17,13 +18,6 @@ type PillowProductRowDb = {
   kind: string | null;
   size: string | null;
   is_active: boolean | number | null;
-};
-
-type ProductBuildableRowDb = {
-  product_id: number | string;
-  kind: string | null;
-  size: string | null;
-  buildable: number | string | null;
 };
 
 type BomLineRowDb = {
@@ -38,30 +32,51 @@ type ProductPriceRowDb = {
   currency: string | null;
 };
 
-type ProductRow = {
-  productId: number;
-  kind: string | null;
-  size: string | null;
-  buildable: number;
-  unitCost: number;
-  unitMsrp: number | null;
+type BomTemplateRowDb = {
+  id: number | string;
+  kind: "pillow" | "bolster" | string;
+  key: string | null;
+  name: string | null;
+  pillow_kind: "basic" | "premium" | null;
+  pillow_variant: string | null;
+};
+
+type BomTemplateLineRowDb = {
+  template_id: number | string;
+  item_id: number | string;
+  quantity: number | string | null;
+};
+
+type DrillKind = "basic" | "premium";
+type DrillLevel = "kind" | "size" | "template";
+
+type MetricRow = {
+  label: string;
   costValue: number;
   msrpValue: number;
-  label: string;
+  meta: {
+    level: DrillLevel;
+    kind?: DrillKind;
+    size?: string;
+    templateId?: number;
+    buildable?: number;
+    unitCost?: number;
+    unitMsrp?: number | null;
+  };
 };
 
 type TooltipDatum = {
   label: string;
   segment: "Cost value" | "MSRP value";
-  buildable: number;
-  unitCost: number;
-  unitMsrp: number | null;
   costValue: number;
   msrpValue: number;
   costLabel: string;
   msrpLabel: string;
   impliedMarginLabel: string;
   insight: string;
+  buildable?: number;
+  unitCost?: number;
+  unitMsrp?: number | null;
 };
 
 const seriesKeys = ["costValue", "msrpValue"] as const;
@@ -91,12 +106,12 @@ function asMoney(value: number) {
   return formatCompactCurrency ? formatCompactCurrency.format(n) : String(n.toFixed(0));
 }
 
-function insightFor(row: ProductRow) {
-  if (row.buildable <= 0) return "No buildable units from current inventory.";
-  if (row.unitMsrp === null) return "Missing MSRP for this product price.";
-  if (row.msrpValue <= 0) return "No priced value computed yet.";
+function insightFor(row: MetricRow) {
   const impliedMarginValue = Math.max(0, row.msrpValue - row.costValue);
   const marginPct = row.msrpValue > 0 ? (impliedMarginValue / row.msrpValue) * 100 : null;
+  if (row.meta.buildable !== undefined && row.meta.buildable <= 0) return "No units sold in the selected date range.";
+  if (row.meta.unitMsrp === null) return "Missing MSRP for this product price.";
+  if (row.msrpValue <= 0) return "No priced value computed yet.";
   if (marginPct === null) return "Missing pricing inputs.";
   if (marginPct < 25) return "Low product margin: review BOM costs and MSRP.";
   if (marginPct < 40) return "Below 40% target: cost or price adjustments needed.";
@@ -105,10 +120,30 @@ function insightFor(row: ProductRow) {
 
 const defaultMargin = { top: 16, right: 20, bottom: 32, left: 190 };
 
-function Chart({ width, height, rows }: { width: number; height: number; rows: ProductRow[] }) {
+function Chart({
+  width,
+  height,
+  rows,
+  onTickClick,
+}: {
+  width: number;
+  height: number;
+  rows: MetricRow[];
+  onTickClick?: (label: string) => void;
+}) {
   const margin = defaultMargin;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
-  const innerHeight = Math.max(10, height - margin.top - margin.bottom);
+  const BAR_HEIGHT = 12;
+  const BAR_RADIUS = 2;
+  const INNER_BAR_GAP = 4;
+  const ROW_GAP = 10;
+  const groupHeight = BAR_HEIGHT * 2 + INNER_BAR_GAP;
+  const rowStep = groupHeight + ROW_GAP;
+  const contentInnerHeight =
+    rows.length > 0 ? Math.max(10, rows.length * rowStep - ROW_GAP) : Math.max(10, height - margin.top - margin.bottom);
+  const svgHeight = Math.max(height, contentInnerHeight + margin.top + margin.bottom);
+
+  const [hoveredTick, setHoveredTick] = useState<string | null>(null);
 
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } =
     useTooltip<TooltipDatum>();
@@ -117,16 +152,6 @@ function Chart({ width, height, rows }: { width: number; height: number; rows: P
     const max = Math.max(...rows.map((d) => Math.max(d.costValue, d.msrpValue)), 0);
     return Math.max(1, max * 1.08);
   }, [rows]);
-
-  const yScale = useMemo(
-    () =>
-      scaleBand<string>({
-        domain: rows.map((d) => d.label),
-        range: [0, innerHeight],
-        padding: 0.2,
-      }),
-    [innerHeight, rows]
-  );
 
   const xScale = useMemo(
     () =>
@@ -149,103 +174,106 @@ function Chart({ width, height, rows }: { width: number; height: number; rows: P
 
   return (
     <div className="relative" onMouseLeave={() => hideTooltip()}>
-      <svg width={width} height={height} style={{ width: "100%", height: "100%" }}>
+      <svg width={width} height={svgHeight} style={{ width: "100%", height: "100%" }}>
         <Group top={margin.top} left={margin.left}>
           <GridColumns
             scale={xScale}
-            height={innerHeight}
+            height={contentInnerHeight}
             stroke="var(--border)"
             strokeOpacity={0.6}
             strokeDasharray="3 3"
           />
 
-          {/* 2 bars per product row: cost vs MSRP (stacked vertically within the row) */}
-          {(() => {
-            const y0Scale = yScale;
-            const y1Scale = scaleBand<string>({
-              domain: seriesKeys as unknown as string[],
-              range: [0, y0Scale.bandwidth()],
-              padding: 0.18,
-            });
+          {rows.map((row, rowIndex) => {
+            const rowY = rowIndex * rowStep;
+            const values: Array<{ key: SeriesKey; label: TooltipDatum["segment"]; value: number }> = [
+              { key: "costValue", label: "Cost value", value: row.costValue },
+              { key: "msrpValue", label: "MSRP value", value: row.msrpValue },
+            ];
 
             return (
-              <BarGroupHorizontal
-                data={rows}
-                keys={seriesKeys as unknown as string[]}
-                width={innerWidth}
-                y0={(d: ProductRow) => d.label}
-                y0Scale={y0Scale}
-                y1Scale={y1Scale}
-                xScale={xScale}
-                color={(key) => colorScale(key as SeriesKey)}
-              >
-                {(barGroups) =>
-                  barGroups.map((barGroup) => (
-                    <Group key={`bar-group-${barGroup.index}-${barGroup.y0}`} top={barGroup.y0}>
-                      {barGroup.bars.map((bar) => {
-                        const row = rows[barGroup.index];
-                        const segment = bar.key === "costValue" ? ("Cost value" as const) : ("MSRP value" as const);
-                        const impliedMarginValue = Math.max(0, row.msrpValue - row.costValue);
-                        return (
-                          <Bar
-                            key={`${barGroup.index}-${bar.index}-${bar.key}`}
-                            x={bar.x}
-                            y={bar.y}
-                            width={bar.width}
-                            height={bar.height}
-                            fill={bar.color}
-                            rx={8}
-                            onMouseMove={(evt) => {
-                              const el = evt.currentTarget as unknown as Element;
-                              const bounds = el.getBoundingClientRect();
-                              const left = Math.min(window.innerWidth - 16, bounds.right + 12);
-                              const top = Math.min(window.innerHeight - 16, Math.max(16, bounds.top + bounds.height / 2));
+              <Group key={`row-${rowIndex}-${row.label}`} top={rowY}>
+                {values.map((v, idx) => {
+                  const impliedMarginValue = Math.max(0, row.msrpValue - row.costValue);
+                  const barY = idx * (BAR_HEIGHT + INNER_BAR_GAP);
+                  return (
+                    <Bar
+                      key={`${rowIndex}-${v.key}`}
+                      x={0}
+                      y={barY}
+                      width={xScale(Math.max(0, v.value))}
+                      height={BAR_HEIGHT}
+                      fill={colorScale(v.key)}
+                      rx={BAR_RADIUS}
+                      onMouseMove={(evt) => {
+                        const el = evt.currentTarget as unknown as Element;
+                        const bounds = el.getBoundingClientRect();
+                        const left = Math.min(window.innerWidth - 16, bounds.right + 12);
+                        const top = Math.min(window.innerHeight - 16, Math.max(16, bounds.top + bounds.height / 2));
 
-                              showTooltip({
-                                tooltipData: {
-                                  label: row.label,
-                                  segment,
-                                  buildable: row.buildable,
-                                  unitCost: row.unitCost,
-                                  unitMsrp: row.unitMsrp,
-                                  costValue: row.costValue,
-                                  msrpValue: row.msrpValue,
-                                  costLabel: asMoney(row.costValue),
-                                  msrpLabel: asMoney(row.msrpValue),
-                                  impliedMarginLabel: asMoney(impliedMarginValue),
-                                  insight: insightFor(row),
-                                },
-                                tooltipLeft: left,
-                                tooltipTop: top,
-                              });
-                            }}
-                            onMouseLeave={() => hideTooltip()}
-                          />
-                        );
-                      })}
-                    </Group>
-                  ))
-                }
-              </BarGroupHorizontal>
+                        showTooltip({
+                          tooltipData: {
+                            label: row.label,
+                            segment: v.label,
+                            buildable: row.meta.buildable,
+                            unitCost: row.meta.unitCost,
+                            unitMsrp: row.meta.unitMsrp ?? null,
+                            costValue: row.costValue,
+                            msrpValue: row.msrpValue,
+                            costLabel: asMoney(row.costValue),
+                            msrpLabel: asMoney(row.msrpValue),
+                            impliedMarginLabel: asMoney(impliedMarginValue),
+                            insight: insightFor(row),
+                          },
+                          tooltipLeft: left,
+                          tooltipTop: top,
+                        });
+                      }}
+                      onMouseLeave={() => hideTooltip()}
+                    />
+                  );
+                })}
+              </Group>
             );
-          })()}
+          })}
 
-          <AxisLeft
-            scale={yScale}
-            hideAxisLine
-            hideTicks
-            tickLabelProps={() => ({
-              fill: "var(--foreground)",
-              fontSize: 12,
-              fontFamily: "ui-sans-serif, system-ui",
-              textAnchor: "end",
-              dx: "-0.4em",
-              dy: "0.33em",
-            })}
-          />
+          {rows.map((row, rowIndex) => {
+            const label = row.label;
+            const clickable = Boolean(onTickClick);
+            const isHovered = hoveredTick === label;
+            const fill = isHovered ? "var(--foreground)" : "var(--muted-foreground)";
+            return (
+              <text
+                key={`tick-${rowIndex}-${label}`}
+                x={-8}
+                y={rowIndex * rowStep + groupHeight / 2}
+                dy="0.33em"
+                textAnchor="end"
+                fill={fill}
+                fontSize={12}
+                fontFamily="ui-sans-serif, system-ui"
+                style={{
+                  cursor: clickable ? "pointer" : "default",
+                  textDecoration: clickable && isHovered ? "underline" : "none",
+                  userSelect: "none",
+                }}
+                onMouseEnter={() => {
+                  if (!clickable) return;
+                  setHoveredTick(label);
+                }}
+                onMouseLeave={() => setHoveredTick(null)}
+                onClick={() => {
+                  if (!clickable) return;
+                  onTickClick?.(label);
+                }}
+              >
+                {label}
+              </text>
+            );
+          })}
 
           <AxisBottom
-            top={innerHeight}
+            top={contentInnerHeight}
             scale={xScale}
             hideAxisLine
             tickStroke="var(--border)"
@@ -289,17 +317,19 @@ function Chart({ width, height, rows }: { width: number; height: number; rows: P
             <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{tooltipData.insight}</div>
             <div style={{ display: "grid", gap: 2, fontSize: 12 }}>
               <div>
-                <span style={{ color: "var(--muted-foreground)" }}>Buildable:</span>{" "}
-                <span style={{ fontWeight: 600 }}>{tooltipData.buildable}</span>
+                <span style={{ color: "var(--muted-foreground)" }}>Units:</span>{" "}
+                <span style={{ fontWeight: 600 }}>{tooltipData.buildable ?? "—"}</span>
               </div>
               <div>
                 <span style={{ color: "var(--muted-foreground)" }}>Unit cost:</span>{" "}
-                <span style={{ fontWeight: 600 }}>{asMoney(tooltipData.unitCost)}</span>
+                <span style={{ fontWeight: 600 }}>
+                  {tooltipData.unitCost === undefined ? "—" : asMoney(tooltipData.unitCost)}
+                </span>
               </div>
               <div>
                 <span style={{ color: "var(--muted-foreground)" }}>Unit MSRP:</span>{" "}
                 <span style={{ fontWeight: 600 }}>
-                  {tooltipData.unitMsrp === null ? "—" : asMoney(tooltipData.unitMsrp)}
+                  {tooltipData.unitMsrp == null ? "—" : asMoney(tooltipData.unitMsrp)}
                 </span>
               </div>
               <div>
@@ -325,16 +355,52 @@ function Chart({ width, height, rows }: { width: number; height: number; rows: P
 
 export function MarginByProductVisx({
   itemCosts,
+  pillowUnitsByKindSize,
+  pillowUnitsByTemplateId,
   height = 320,
 }: {
   itemCosts: ItemCost[];
+  pillowUnitsByKindSize: Record<string, number>;
+  pillowUnitsByTemplateId: Record<string, number>;
   height?: number;
 }) {
-  const [rows, setRows] = useState<ProductRow[]>([]);
+  const [baseProducts, setBaseProducts] = useState<
+    Array<{
+      productId: number;
+      kind: DrillKind;
+      size: string;
+      unitCost: number;
+      unitMsrp: number | null;
+    }>
+  >([]);
+  const [templates, setTemplates] = useState<BomTemplateRowDb[]>([]);
+  const [templateLines, setTemplateLines] = useState<BomTemplateLineRowDb[]>([]);
+  const [selectedKind, setSelectedKind] = useState<DrillKind | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const costByItemId = useMemo(() => new Map(itemCosts.map((i) => [i.id, i.cost])), [itemCosts]);
+  const unitsByKindSize = useMemo(() => {
+    const m = new Map<string, number>();
+    Object.entries(pillowUnitsByKindSize ?? {}).forEach(([k, v]) => {
+      const n = Number(v ?? 0);
+      if (!Number.isFinite(n) || n <= 0) return;
+      m.set(k, n);
+    });
+    return m;
+  }, [pillowUnitsByKindSize]);
+  const unitsByTemplateId = useMemo(() => {
+    const m = new Map<number, number>();
+    Object.entries(pillowUnitsByTemplateId ?? {}).forEach(([k, v]) => {
+      const id = Number(k);
+      const n = Number(v ?? 0);
+      if (!Number.isFinite(id) || id <= 0) return;
+      if (!Number.isFinite(n) || n <= 0) return;
+      m.set(id, n);
+    });
+    return m;
+  }, [pillowUnitsByTemplateId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -342,25 +408,27 @@ export function MarginByProductVisx({
       setLoading(true);
       setError(null);
       try {
-        const [{ data: products, error: pErr }, { data: buildableRows, error: bErr }, { data: bomLines, error: blErr }, { data: prices, error: prErr }] =
-          await Promise.all([
-            supabaseClient.from("pillow_products").select("id,kind,size,is_active").eq("is_active", true),
-            supabaseClient.from("product_buildable").select("product_id,kind,size,buildable"),
-            supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
-            supabaseClient.from("product_prices").select("product_id,msrp,currency").eq("kind", "pillow"),
-          ]);
+        const [
+          { data: products, error: pErr },
+          { data: bomLines, error: blErr },
+          { data: prices, error: prErr },
+          { data: templateRows, error: tErr },
+          { data: templateLineRows, error: tlErr },
+        ] = await Promise.all([
+          supabaseClient.from("pillow_products").select("id,kind,size,is_active").eq("is_active", true),
+          supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
+          supabaseClient.from("product_prices").select("product_id,msrp,currency").eq("kind", "pillow"),
+          supabaseClient
+            .from("bom_templates")
+            .select("id,kind,key,name,pillow_kind,pillow_variant")
+            .eq("kind", "pillow"),
+          supabaseClient.from("bom_template_lines").select("template_id,item_id,quantity"),
+        ]);
         if (pErr) throw new Error(pErr.message);
-        if (bErr) throw new Error(bErr.message);
         if (blErr) throw new Error(blErr.message);
         if (prErr) throw new Error(prErr.message);
-
-        const buildableById = new Map<number, number>();
-        (buildableRows ?? []).forEach((r: ProductBuildableRowDb) => {
-          const id = Number(r.product_id);
-          const buildable = r.buildable === null || r.buildable === undefined ? 0 : Number(r.buildable);
-          if (!Number.isFinite(id) || id <= 0) return;
-          buildableById.set(id, Math.max(0, Number.isFinite(buildable) ? buildable : 0));
-        });
+        if (tErr) throw new Error(tErr.message);
+        if (tlErr) throw new Error(tlErr.message);
 
         const msrpById = new Map<number, number | null>();
         (prices ?? []).forEach((r: ProductPriceRowDb) => {
@@ -383,11 +451,12 @@ export function MarginByProductVisx({
           linesByProductId.set(pid, arr);
         });
 
-        const next: ProductRow[] = (products ?? []).map((p: PillowProductRowDb) => {
+        const next = (products ?? []).flatMap((p: PillowProductRowDb) => {
           const id = Number(p.id);
-          const kind = (p.kind ?? "basic") as string;
+          const kindRaw = String(p.kind ?? "basic").toLowerCase();
+          const kind: DrillKind | null = kindRaw === "premium" ? "premium" : kindRaw === "basic" ? "basic" : null;
           const size = (p.size ?? null) as string | null;
-          const buildable = buildableById.get(id) ?? 0;
+          if (!kind || !size) return [];
           const unitMsrp = msrpById.get(id) ?? null;
           const lines = linesByProductId.get(id) ?? [];
           const unitCost = lines.reduce((sum, line) => {
@@ -395,26 +464,21 @@ export function MarginByProductVisx({
             const c = cost === null || cost === undefined ? 0 : Number(cost);
             return sum + (Number.isFinite(c) ? c : 0) * line.quantity;
           }, 0);
-          const costValue = unitCost * buildable;
-          const msrpValue = unitMsrp === null ? 0 : unitMsrp * buildable;
-          const label = `Pillow · ${kind.toUpperCase()} · ${size ?? "?"}`;
-          return {
+          return [{
             productId: id,
             kind,
             size,
-            buildable,
             unitCost,
             unitMsrp,
-            costValue,
-            msrpValue,
-            label,
-          };
+          }];
         });
 
-        // Show the most "material" products first.
-        next.sort((a, b) => b.msrpValue - a.msrpValue);
+        next.sort((a, b) => b.size.localeCompare(a.size));
 
-        if (!cancelled) setRows(next.slice(0, 10));
+        if (cancelled) return;
+        setBaseProducts(next);
+        setTemplates((templateRows ?? []) as unknown as BomTemplateRowDb[]);
+        setTemplateLines((templateLineRows ?? []) as unknown as BomTemplateLineRowDb[]);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load product analytics");
       } finally {
@@ -427,6 +491,161 @@ export function MarginByProductVisx({
     };
   }, [costByItemId]);
 
+  const unitMsrpByKindSize = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const row of baseProducts) {
+      m.set(`${row.kind}:${row.size}`, row.unitMsrp);
+    }
+    return m;
+  }, [baseProducts]);
+
+  const linesByTemplateId = useMemo(() => {
+    const m = new Map<number, Array<{ itemId: number; quantity: number }>>();
+    for (const row of templateLines) {
+      const tid = Number(row.template_id);
+      const iid = Number(row.item_id);
+      const qty = row.quantity === null || row.quantity === undefined ? NaN : Number(row.quantity);
+      if (!Number.isFinite(tid) || tid <= 0) continue;
+      if (!Number.isFinite(iid) || iid <= 0) continue;
+      if (!Number.isFinite(qty) || qty <= 0) continue;
+      const arr = m.get(tid) ?? [];
+      arr.push({ itemId: iid, quantity: qty });
+      m.set(tid, arr);
+    }
+    return m;
+  }, [templateLines]);
+
+  const productsWithValues = useMemo(() => {
+    return baseProducts.map((row) => {
+      const units = unitsByKindSize.get(`${row.kind}:${row.size}`) ?? 0;
+      const costValue = row.unitCost * units;
+      const msrpValue = row.unitMsrp === null ? 0 : row.unitMsrp * units;
+      return {
+        productId: row.productId,
+        kind: row.kind,
+        size: row.size,
+        units,
+        unitCost: row.unitCost,
+        unitMsrp: row.unitMsrp,
+        costValue,
+        msrpValue,
+      };
+    });
+  }, [baseProducts, unitsByKindSize]);
+
+  const kindRows = useMemo<MetricRow[]>(() => {
+    const byKind = new Map<DrillKind, { cost: number; msrp: number }>();
+    for (const row of productsWithValues) {
+      const current = byKind.get(row.kind) ?? { cost: 0, msrp: 0 };
+      current.cost += row.costValue;
+      current.msrp += row.msrpValue;
+      byKind.set(row.kind, current);
+    }
+    return (["basic", "premium"] as const)
+      .map((kind) => {
+        const agg = byKind.get(kind) ?? { cost: 0, msrp: 0 };
+        return {
+          label: kind === "basic" ? "Basic" : "Premium",
+          costValue: agg.cost,
+          msrpValue: agg.msrp,
+          meta: { level: "kind" as const, kind },
+        };
+      })
+      .filter((r) => r.costValue > 0 || r.msrpValue > 0);
+  }, [productsWithValues]);
+
+  const sizeRows = useMemo<MetricRow[]>(() => {
+    if (!selectedKind) return [];
+    const rows = productsWithValues
+      .filter((r) => r.kind === selectedKind)
+      .map((r) => ({
+        label: r.size,
+        costValue: r.costValue,
+        msrpValue: r.msrpValue,
+        meta: {
+          level: "size" as const,
+          kind: selectedKind,
+          size: r.size,
+          buildable: r.units,
+          unitCost: r.unitCost,
+          unitMsrp: r.unitMsrp,
+        },
+      }));
+    rows.sort((a, b) => b.msrpValue - a.msrpValue || a.label.localeCompare(b.label));
+    return rows;
+  }, [productsWithValues, selectedKind]);
+
+  const templateRows = useMemo<MetricRow[]>(() => {
+    if (!selectedKind || !selectedSize) return [];
+    const key = selectedSize;
+    const kind = selectedKind;
+    const msrp = unitMsrpByKindSize.get(`${kind}:${key}`) ?? null;
+
+    const relevantTemplates = templates
+      .filter((t) => String(t.kind) === "pillow")
+      .filter((t) => (t.pillow_kind ?? "basic") === kind)
+      .filter((t) => String(t.key ?? "") === key);
+
+    const out: MetricRow[] = relevantTemplates.map((t) => {
+      const templateId = Number(t.id);
+      const lines = linesByTemplateId.get(templateId) ?? [];
+
+      const unitCost = lines.reduce((sum, line) => {
+        const cost = costByItemId.get(line.itemId);
+        const c = cost === null || cost === undefined ? 0 : Number(cost);
+        return sum + (Number.isFinite(c) ? c : 0) * line.quantity;
+      }, 0);
+
+      const units =
+        (Number.isFinite(templateId) ? unitsByTemplateId.get(templateId) : undefined) ??
+        (unitsByKindSize.get(`${kind}:${key}`) ?? 0);
+
+      const costValue = unitCost * units;
+      const msrpValue = msrp === null ? 0 : msrp * units;
+
+      const variant = kind === "premium" && t.pillow_variant ? ` · ${t.pillow_variant}` : "";
+      const templateName = String(t.name ?? "Template");
+      const label = `Pillow · ${kind.toUpperCase()} · ${key}${variant} — ${templateName}`;
+
+      return {
+        label,
+        costValue,
+        msrpValue,
+        meta: {
+          level: "template" as const,
+          kind,
+          size: key,
+          templateId: Number.isFinite(templateId) ? templateId : undefined,
+          buildable: units,
+          unitCost,
+          unitMsrp: msrp,
+        },
+      };
+    });
+
+    out.sort((a, b) => b.msrpValue - a.msrpValue || a.label.localeCompare(b.label));
+    return out;
+  }, [
+    selectedKind,
+    selectedSize,
+    templates,
+    linesByTemplateId,
+    costByItemId,
+    unitMsrpByKindSize,
+    unitsByKindSize,
+    unitsByTemplateId,
+  ]);
+
+  const level: DrillLevel = selectedKind ? (selectedSize ? "template" : "size") : "kind";
+  const chartRows = level === "kind" ? kindRows : level === "size" ? sizeRows : templateRows;
+
+  const headerText =
+    level === "kind"
+      ? "Click Basic or Premium to drill down."
+      : level === "size"
+        ? `Click a size to view BOM templates for ${selectedKind?.toUpperCase() ?? ""}.`
+        : `Templates for ${selectedKind?.toUpperCase() ?? ""} · ${selectedSize ?? ""}`;
+
   if (loading) {
     return <div className="h-[320px] w-full animate-pulse rounded-xl bg-muted" />;
   }
@@ -435,16 +654,75 @@ export function MarginByProductVisx({
     return <div className="text-sm text-destructive">{error}</div>;
   }
 
-  if (rows.length === 0) {
+  if (baseProducts.length === 0) {
     return <div className="text-sm text-muted-foreground">No product rows found yet.</div>;
   }
 
   return (
     <div className="w-full space-y-3">
-      <div className="h-[320px] w-full">
-        <ParentSize>
-          {({ width }) => (width < 10 ? null : <Chart width={width} height={height} rows={rows} />)}
-        </ParentSize>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs text-muted-foreground">{headerText}</div>
+        <div className="flex items-center gap-2">
+          {selectedSize && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedSize(null);
+              }}
+            >
+              Back to sizes
+            </Button>
+          )}
+          {selectedKind && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSelectedSize(null);
+                setSelectedKind(null);
+              }}
+            >
+              Back to kind
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="h-[320px] w-full overflow-y-auto">
+        {chartRows.length === 0 ? (
+          <div className="flex h-full items-center justify-center rounded-xl border bg-card p-6 text-sm text-muted-foreground">
+            {level === "template"
+              ? "No BOM templates found for this kind and size yet."
+              : "No product margin data available yet."}
+          </div>
+        ) : (
+          <ParentSize>
+            {({ width }) =>
+              width < 10 ? null : (
+                <Chart
+                  width={width}
+                  height={height}
+                  rows={chartRows}
+                  onTickClick={
+                    level === "kind"
+                      ? (label) => {
+                          const normalized = label.trim().toLowerCase();
+                          if (normalized === "basic") setSelectedKind("basic");
+                          if (normalized === "premium") setSelectedKind("premium");
+                        }
+                      : level === "size"
+                        ? (label) => {
+                            setSelectedSize(label);
+                          }
+                        : undefined
+                  }
+                />
+              )
+            }
+          </ParentSize>
+        )}
       </div>
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground">

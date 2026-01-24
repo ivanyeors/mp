@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Group } from "@visx/group";
 import { scaleTime, scaleLinear } from "@visx/scale";
 import { LinePath } from "@visx/shape";
+import { curveMonotoneX } from "@visx/curve";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridRows, GridColumns } from "@visx/grid";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
@@ -13,9 +14,8 @@ import { addMonths, format, startOfMonth } from "date-fns";
 
 type TimelineDataPoint = {
   date: Date;
-  value: number;
-  quantity?: number;
-  avgPrice?: number;
+  units: number;
+  revenue: number;
 };
 
 type ProductTimeline = {
@@ -29,8 +29,9 @@ type ProductTimeline = {
 type ProductTimelineVisxProps = {
   products: ProductTimeline[];
   viewMode: "parts" | "products";
-  onViewModeChange: (mode: "parts" | "products") => void;
   dateRange: { from: Date; to: Date };
+  metric: "units" | "revenue";
+  currency?: string | null;
 };
 
 const palette = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"] as const;
@@ -52,12 +53,16 @@ function Chart({
   products,
   dateRange,
   viewMode,
+  metric,
+  currency,
 }: {
   width: number;
   height: number;
   products: ProductTimeline[];
   dateRange: { from: Date; to: Date };
   viewMode: "parts" | "products";
+  metric: "units" | "revenue";
+  currency?: string | null;
 }) {
   const margin = useMemo(
     () => ({
@@ -71,6 +76,8 @@ function Chart({
 
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const innerHeight = Math.max(10, height - margin.top - margin.bottom);
+
+  const valueForMetric = (d: TimelineDataPoint) => (metric === "revenue" ? d.revenue : d.units);
 
   const months = useMemo(() => {
     const start = startOfMonth(dateRange.from);
@@ -89,11 +96,11 @@ function Chart({
         const match = product.data.find(
           (pt) => pt.date.getFullYear() === month.getFullYear() && pt.date.getMonth() === month.getMonth()
         );
-        total += match?.value ?? 0;
+        total += match ? valueForMetric(match) : 0;
       }
       return total;
     });
-  }, [months, products]);
+  }, [months, products, metric]);
 
   const compactNumber = useMemo(
     () =>
@@ -128,14 +135,14 @@ function Chart({
   );
 
   const yScale = useMemo(() => {
-    const allValues = products.flatMap((p) => p.data.map((d) => d.value));
+    const allValues = products.flatMap((p) => p.data.map((d) => valueForMetric(d)));
     const maxValue = Math.max(...allValues, 0);
     return scaleLinear<number>({
       domain: [0, maxValue * 1.1],
       range: [innerHeight, 0],
       nice: true,
     });
-  }, [products, innerHeight]);
+  }, [products, innerHeight, metric]);
 
   const handleMouseMove = (event: React.MouseEvent<SVGRectElement>) => {
     const point = localPoint(event);
@@ -156,7 +163,7 @@ function Chart({
 
       product.data.forEach((dataPoint) => {
         const xPos = xScale(dataPoint.date);
-        const yPos = yScale(dataPoint.value);
+        const yPos = yScale(valueForMetric(dataPoint));
         const distance = Math.sqrt(Math.pow(x - xPos, 2) + Math.pow(y - yPos, 2));
 
         if (distance < minDistance) {
@@ -187,23 +194,30 @@ function Chart({
           const match = p.data.find(
             (pt) => pt.date.getFullYear() === month.getFullYear() && pt.date.getMonth() === month.getMonth()
           );
-          return sum + (match?.value ?? 0);
+          return sum + (match ? valueForMetric(match) : 0);
         }, 0),
       },
       tooltipLeft: xScale(date) + margin.left,
-      tooltipTop: yScale(cp.value) + margin.top,
+      tooltipTop: yScale(valueForMetric(cp)) + margin.top,
     });
   };
 
-  const currencyFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 0,
-      }),
-    []
-  );
+  const currencyFormatter = useMemo(() => {
+    const cur = (currency ?? "USD").toUpperCase();
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: cur,
+      maximumFractionDigits: 0,
+    });
+  }, [currency]);
+
+  const yTickFormatter = useMemo(() => {
+    if (metric === "revenue") {
+      return (value: unknown) => currencyFormatter.format(Number(value));
+    }
+    const fmt = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 0 });
+    return (value: unknown) => fmt.format(Number(value));
+  }, [currencyFormatter, metric]);
 
   return (
     <div className="w-full">
@@ -231,12 +245,13 @@ function Chart({
                 key={product.id}
                 data={product.data}
                 x={(d) => xScale(d.date)}
-                y={(d) => yScale(d.value)}
+                y={(d) => yScale(valueForMetric(d))}
                 stroke={color}
                 strokeWidth={2.5}
                 strokeOpacity={0.95}
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                curve={curveMonotoneX}
               />
             );
           })}
@@ -270,12 +285,7 @@ function Chart({
               dx: "-0.4em",
               dy: "0.33em",
             })}
-            tickFormat={(value) =>
-              new Intl.NumberFormat("en-US", {
-                notation: "compact",
-                maximumFractionDigits: 0,
-              }).format(value as number)
-            }
+            tickFormat={yTickFormatter}
           />
 
           <rect
@@ -308,7 +318,7 @@ function Chart({
                 textAnchor="middle"
                 style={{ pointerEvents: "none" }}
               >
-                {compactNumber.format(total)}
+                {metric === "revenue" ? currencyFormatter.format(total) : compactNumber.format(total)}
               </text>
             );
           });
@@ -348,24 +358,20 @@ function Chart({
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">Month total:</span>
-                <span className="font-medium">{currencyFormatter.format(tooltipData.monthTotal)}</span>
+                <span className="font-medium">
+                  {metric === "revenue"
+                    ? currencyFormatter.format(tooltipData.monthTotal)
+                    : compactNumber.format(tooltipData.monthTotal)}
+                </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Value:</span>
-                <span className="font-medium">{currencyFormatter.format(tooltipData.dataPoint.value)}</span>
+                <span className="text-muted-foreground">Units:</span>
+                <span className="font-medium">{compactNumber.format(tooltipData.dataPoint.units)}</span>
               </div>
-              {tooltipData.dataPoint.quantity !== undefined && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Quantity:</span>
-                  <span>{tooltipData.dataPoint.quantity} units</span>
-                </div>
-              )}
-              {tooltipData.dataPoint.avgPrice !== undefined && (
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Avg Price:</span>
-                  <span>{currencyFormatter.format(tooltipData.dataPoint.avgPrice)}</span>
-                </div>
-              )}
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Revenue:</span>
+                <span className="font-medium">{currencyFormatter.format(tooltipData.dataPoint.revenue)}</span>
+              </div>
             </div>
           </div>
         </TooltipWithBounds>
@@ -378,6 +384,8 @@ export function ProductTimelineVisx({
   products,
   viewMode,
   dateRange,
+  metric,
+  currency,
 }: ProductTimelineVisxProps) {
   const filteredProducts = useMemo(() => {
     return products.map((product) => ({
@@ -403,7 +411,15 @@ export function ProductTimelineVisx({
       <ParentSize>
         {({ width }) =>
           width < 10 ? null : (
-            <Chart width={width} height={320} products={filteredProducts} dateRange={dateRange} viewMode={viewMode} />
+            <Chart
+              width={width}
+              height={320}
+              products={filteredProducts}
+              dateRange={dateRange}
+              viewMode={viewMode}
+              metric={metric}
+              currency={currency}
+            />
           )
         }
       </ParentSize>

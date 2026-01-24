@@ -37,7 +37,7 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/mp-maker">
+            <Link href="/mp-config">
               <Button size="default" className="text-base px-6 py-4 h-auto">
                 <Sparkles className="mr-2 h-5 w-5" />
                 Start Designing

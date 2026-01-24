@@ -1,7 +1,7 @@
 'use client';
 
 import { Dock, DockIcon, DockItem, DockLabel } from "@/components/ui/shadcn-io/dock";
-import { Home, Wrench, Heart, Settings, Ruler } from "lucide-react";
+import { Home, Heart, Settings, Ruler } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -10,11 +10,6 @@ const dockItems = [
     title: "Home",
     icon: Home,
     href: "/",
-  },
-  {
-    title: "Mpillow Maker",
-    icon: Wrench,
-    href: "/mp-maker",
   },
   {
     title: "Mpillow Config",

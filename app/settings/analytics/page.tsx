@@ -16,13 +16,13 @@ import { ProductConfigurationCard } from "./ProductConfigurationCard";
 import { MarginByCategoryVisx } from "./MarginByCategoryVisx";
 import type { CategoryStackDatum, ItemStackDatum } from "./MarginByCategoryVisx";
 import { MarginByProductVisx } from "./MarginByProductVisx";
-import { PillowHeatmap } from "./PillowHeatmap";
-import { UnitMarginBySkuVisx } from "./UnitMarginBySkuVisx";
 import { ProductTimelineVisx } from "./ProductTimelineVisx";
+import { getInventoryMovementWaterfall, getShopifySalesTimeline, type InventoryMovementGroup, type InventoryMovementRow } from "./actions";
+import { InventoryMovementWaterfallVisx } from "./InventoryMovementWaterfallVisx";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { CalendarIcon, RefreshCw } from "lucide-react";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
@@ -64,15 +64,27 @@ type CategorySummary = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   cover: "Covers",
-  case: "Pillow Cases",
-  protector: "Protectors",
+  pillow_case: "Pillow Cases",
+  bolster_case: "Bolster Cases",
+  pillow_protector: "Pillow Protectors",
+  bolster_protector: "Bolster Protectors",
   filling: "Fillings",
   packaging: "Packaging",
   accessories: "Accessories",
   other: "Other",
 };
 
-const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "accessories", "other"];
+const CATEGORY_ORDER = [
+  "cover",
+  "pillow_case",
+  "pillow_protector",
+  "bolster_case",
+  "bolster_protector",
+  "filling",
+  "packaging",
+  "accessories",
+  "other",
+];
 
 const toNumber = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
@@ -120,11 +132,34 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null);
   const [marginView, setMarginView] = useState<"parts" | "products">("parts");
   const [timelineView, setTimelineView] = useState<"parts" | "products">("parts");
+  const [timelineMetric, setTimelineMetric] = useState<"units" | "revenue">("units");
   const [timelineDateRange, setTimelineDateRange] = useState<{ from: Date; to: Date }>({
     from: startOfMonth(subMonths(new Date(), 5)),
     to: endOfMonth(new Date()),
   });
   const [isTimelineCalendarOpen, setIsTimelineCalendarOpen] = useState(false);
+  const [activeTimelineDateEdge, setActiveTimelineDateEdge] = useState<"from" | "to">("to");
+  const [hoverTimelineDateEdge, setHoverTimelineDateEdge] = useState<"from" | "to" | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [timelineRefreshing, setTimelineRefreshing] = useState(false);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
+  const [timelineCurrency, setTimelineCurrency] = useState<string | null>(null);
+  const [soldPartUnitsByItemId, setSoldPartUnitsByItemId] = useState<Record<string, number>>({});
+  const [soldPillowUnitsByKindSize, setSoldPillowUnitsByKindSize] = useState<Record<string, number>>({});
+  const [soldPillowUnitsByTemplateId, setSoldPillowUnitsByTemplateId] = useState<Record<string, number>>({});
+  const [partsTimeline, setPartsTimeline] = useState<
+    Array<{ id: string; name: string; category: string; data: Array<{ date: Date; units: number; revenue: number }> }>
+  >([]);
+  const [productsTimeline, setProductsTimeline] = useState<
+    Array<{ id: string; name: string; category: string; data: Array<{ date: Date; units: number; revenue: number }> }>
+  >([]);
+
+  const [inventoryRows, setInventoryRows] = useState<InventoryMovementRow[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [inventoryGroup, setInventoryGroup] = useState<InventoryMovementGroup>("category");
+  const [inventoryCategory, setInventoryCategory] = useState<string | null>(null);
+  const [inventorySize, setInventorySize] = useState<string | null>(null);
 
   const currencyFormatter = useMemo(
     () =>
@@ -136,31 +171,75 @@ export default function AnalyticsPage() {
     []
   );
 
-  const compactCurrencyFormatter = useMemo(
-    () =>
-      new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        notation: "compact",
-        maximumFractionDigits: 1,
-      }),
-    []
-  );
-
   const formatPercent = useCallback((value: number | null) => {
     if (value === null || Number.isNaN(value)) return "—";
     return `${value.toFixed(1)}%`;
   }, []);
 
-  const handleTimelineDateRangeSelect = useCallback((range: { from?: Date; to?: Date } | undefined) => {
-    if (range?.from && range?.to) {
-      setTimelineDateRange({
-        from: startOfMonth(range.from),
-        to: endOfMonth(range.to),
+  const handleTimelineDateRangeSelect = useCallback(
+    (range: { from?: Date; to?: Date } | undefined) => {
+      if (!range?.from && !range?.to) return;
+
+      setTimelineDateRange((prev) => {
+        const prevFromMs = prev.from.getTime();
+        const prevToMs = prev.to.getTime();
+        const nextFromMs = range.from?.getTime() ?? null;
+        const nextToMs = range.to?.getTime() ?? null;
+
+        // DayPicker range mode may keep range.from stable while placing the newly clicked date into range.to.
+        // We choose whichever boundary actually changed compared to current state.
+        const picked = (() => {
+          if (activeTimelineDateEdge === "from") {
+            if (nextFromMs !== null && nextFromMs !== prevFromMs) return range.from;
+            if (nextToMs !== null && nextToMs !== prevToMs) return range.to;
+            return range.from ?? range.to;
+          }
+          // activeTimelineDateEdge === "to"
+          if (nextToMs !== null && nextToMs !== prevToMs) return range.to;
+          if (nextFromMs !== null && nextFromMs !== prevFromMs) return range.from;
+          return range.to ?? range.from;
+        })();
+        if (!picked) return prev;
+
+        let nextFrom = prev.from;
+        let nextTo = prev.to;
+
+        if (activeTimelineDateEdge === "from") {
+          nextFrom = startOfMonth(picked);
+          if (nextFrom > nextTo) nextTo = endOfMonth(nextFrom);
+        } else {
+          nextTo = endOfMonth(picked);
+          if (nextTo < nextFrom) nextFrom = startOfMonth(nextTo);
+        }
+
+        return { from: nextFrom, to: nextTo };
       });
+
       setIsTimelineCalendarOpen(false);
-    }
-  }, []);
+    },
+    [activeTimelineDateEdge]
+  );
+
+  useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7242/ingest/d787aaa1-a660-4d72-a0b3-a32ef9e8db35", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: "debug-session",
+        runId: "range-affects-1",
+        hypothesisId: "C",
+        location: "app/settings/analytics/page.tsx:useEffect[timelineDateRange]",
+        message: "timelineDateRange changed",
+        data: {
+          from: timelineDateRange.from.toISOString(),
+          to: timelineDateRange.to.toISOString(),
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion agent log
+  }, [timelineDateRange.from, timelineDateRange.to]);
 
   const load = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
@@ -228,6 +307,140 @@ export default function AnalyticsPage() {
     load("initial");
   }, [load]);
 
+  const soldUnitsByItemId = useMemo(() => {
+    const m = new Map<number, number>();
+    Object.entries(soldPartUnitsByItemId).forEach(([key, value]) => {
+      const id = Number(key);
+      const units = Number(value ?? 0);
+      if (!Number.isFinite(id) || id <= 0) return;
+      if (!Number.isFinite(units) || units <= 0) return;
+      m.set(id, units);
+    });
+    return m;
+  }, [soldPartUnitsByItemId]);
+
+  const loadTimeline = useCallback(
+    async (mode: "initial" | "refresh" = "initial") => {
+      if (mode === "initial") setTimelineLoading(true);
+      else setTimelineRefreshing(true);
+      setTimelineError(null);
+      try {
+        const res = await getShopifySalesTimeline({
+          from: timelineDateRange.from.toISOString(),
+          to: timelineDateRange.to.toISOString(),
+        });
+
+        if (!res.ok) throw new Error("Failed to load Shopify sales timeline");
+
+        const labelForCategory = (category: string) => CATEGORY_LABELS[category] ?? normalizeNameOrFallback(category, category);
+
+        const mapSeries = (series: typeof res.parts) =>
+          series.map((s) => ({
+            id: s.id,
+            name: labelForCategory(s.name),
+            category: s.category,
+            data: s.data.map((pt) => ({
+              date: new Date(pt.date),
+              units: Number(pt.units ?? 0),
+              revenue: Number(pt.revenue ?? 0),
+            })),
+          }));
+
+        setPartsTimeline(mapSeries(res.parts));
+        setProductsTimeline(
+          res.products.map((s) => ({
+            id: s.id,
+            name: s.name,
+            category: s.category,
+            data: s.data.map((pt) => ({
+              date: new Date(pt.date),
+              units: Number(pt.units ?? 0),
+              revenue: Number(pt.revenue ?? 0),
+            })),
+          }))
+        );
+        setTimelineCurrency(res.currency ?? null);
+        setSoldPartUnitsByItemId(res.totals?.partUnitsByItemId ?? {});
+        setSoldPillowUnitsByKindSize(res.totals?.pillowUnitsByKindSize ?? {});
+        setSoldPillowUnitsByTemplateId(res.totals?.pillowUnitsByTemplateId ?? {});
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load Shopify timeline";
+        setTimelineError(message);
+      } finally {
+        if (mode === "initial") setTimelineLoading(false);
+        else setTimelineRefreshing(false);
+      }
+    },
+    [timelineDateRange.from, timelineDateRange.to]
+  );
+
+  useEffect(() => {
+    loadTimeline("initial");
+  }, [loadTimeline]);
+
+  const loadInventoryMovement = useCallback(async () => {
+    setInventoryLoading(true);
+    setInventoryError(null);
+    try {
+      // #region agent log
+      fetch("http://127.0.0.1:7242/ingest/d787aaa1-a660-4d72-a0b3-a32ef9e8db35", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "debug-session",
+          runId: "range-affects-1",
+          hypothesisId: "D",
+          location: "app/settings/analytics/page.tsx:loadInventoryMovement",
+          message: "loadInventoryMovement start",
+          data: {
+            from: timelineDateRange.from.toISOString(),
+            to: timelineDateRange.to.toISOString(),
+            group: inventoryGroup,
+            category: inventoryCategory,
+            size: inventorySize,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion agent log
+
+      const res = await getInventoryMovementWaterfall({
+        from: timelineDateRange.from.toISOString(),
+        to: timelineDateRange.to.toISOString(),
+        group: inventoryGroup,
+        category: inventoryCategory,
+        size: inventorySize,
+      });
+      if (!res.ok) throw new Error("Failed to load inventory movements");
+      setInventoryRows(res.rows);
+
+      // #region agent log
+      fetch("http://127.0.0.1:7242/ingest/d787aaa1-a660-4d72-a0b3-a32ef9e8db35", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "debug-session",
+          runId: "range-affects-1",
+          hypothesisId: "D",
+          location: "app/settings/analytics/page.tsx:loadInventoryMovement",
+          message: "loadInventoryMovement success",
+          data: { rows: res.rows?.length ?? 0 },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion agent log
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load inventory movements";
+      setInventoryError(message);
+    } finally {
+      setInventoryLoading(false);
+    }
+  }, [timelineDateRange.from, timelineDateRange.to, inventoryGroup, inventoryCategory, inventorySize]);
+
+  useEffect(() => {
+    loadInventoryMovement();
+  }, [loadInventoryMovement]);
+
   const totals = useMemo(() => {
     const costValue = items.reduce((sum, item) => sum + (item.cost ?? 0) * Math.max(item.onHand, 0), 0);
     const msrpValue = items.reduce((sum, item) => sum + (item.msrp ?? 0) * Math.max(item.onHand, 0), 0);
@@ -252,6 +465,9 @@ export default function AnalyticsPage() {
   const categorySummary = useMemo<CategorySummary[]>(() => {
     const map = new Map<string, CategorySummary>();
     for (const item of items) {
+      const soldUnits = soldUnitsByItemId.get(item.id) ?? 0;
+      if (soldUnits <= 0) continue;
+
       const label = CATEGORY_LABELS[item.category] ?? humanize(item.category);
       const current = map.get(item.category) ?? {
         category: item.category,
@@ -267,9 +483,9 @@ export default function AnalyticsPage() {
       };
 
       current.totalItems += 1;
-      current.totalOnHand += Math.max(item.onHand, 0);
-      current.costValue += (item.cost ?? 0) * Math.max(item.onHand, 0);
-      current.msrpValue += (item.msrp ?? 0) * Math.max(item.onHand, 0);
+      current.totalOnHand += soldUnits;
+      current.costValue += (item.cost ?? 0) * soldUnits;
+      current.msrpValue += (item.msrp ?? 0) * soldUnits;
       if (item.cost !== null && item.msrp !== null) {
         current.pricedItems += 1;
       }
@@ -297,7 +513,7 @@ export default function AnalyticsPage() {
         if (orderB === -1) return -1;
         return orderA - orderB;
       });
-  }, [items]);
+  }, [items, soldUnitsByItemId]);
 
   const marginChartData = useMemo<CategoryStackDatum[]>(
     () =>
@@ -319,7 +535,8 @@ export default function AnalyticsPage() {
       items
         .filter((item) => item.cost !== null && item.msrp !== null)
         .map((item) => {
-          const onHand = Math.max(item.onHand, 0);
+          const onHand = soldUnitsByItemId.get(item.id) ?? 0;
+          if (onHand <= 0) return null;
           const cost = item.cost ?? 0;
           const msrp = item.msrp ?? 0;
           const costValue = cost * onHand;
@@ -334,128 +551,17 @@ export default function AnalyticsPage() {
             costValue,
             msrpValue,
           };
-        }),
-    [items]
+        })
+        .filter((row): row is ItemStackDatum => Boolean(row)),
+    [items, soldUnitsByItemId]
   );
 
   const itemCostsForProducts = useMemo(() => items.map((it) => ({ id: it.id, cost: it.cost })), [items]);
 
-  const itemOpportunityData = useMemo(
-    () =>
-      items
-        .filter((item) => item.cost !== null && item.msrp !== null)
-        .map((item) => {
-          const unitMargin = (item.msrp ?? 0) - (item.cost ?? 0);
-          const opportunityValue = unitMargin * Math.max(item.onHand, 0);
-          const marginPct = item.msrp && item.msrp > 0 ? (unitMargin / item.msrp) * 100 : null;
-          return {
-            id: item.id,
-            label: describeItem(item),
-            category: CATEGORY_LABELS[item.category] ?? humanize(item.category),
-            cost: item.cost ?? 0,
-            msrp: item.msrp ?? 0,
-            unitMargin,
-            opportunityValue,
-            marginPct,
-            onHand: Math.max(item.onHand, 0),
-            bubbleSize: Math.max(6, Math.sqrt(Math.max(item.onHand, 0)) * 3),
-          };
-        }),
-    [items]
+  const timelineData = useMemo(
+    () => (timelineView === "parts" ? partsTimeline : productsTimeline),
+    [partsTimeline, productsTimeline, timelineView]
   );
-
-  const unitMarginLeaderboardData = useMemo(() => {
-    const formatted = [...itemOpportunityData]
-      .map((item) => ({
-        id: item.id,
-        label: item.label,
-        unitMargin: item.unitMargin,
-        cost: item.cost,
-        msrp: item.msrp,
-        onHand: item.onHand,
-        opportunityValue: item.opportunityValue,
-      }))
-      .sort((a, b) => b.unitMargin - a.unitMargin)
-      .slice(0, 12);
-
-    return formatted.reverse();
-  }, [itemOpportunityData]);
-
-  const unitMarginInsight = useMemo(() => {
-    if (unitMarginLeaderboardData.length === 0) return null;
-    const top = unitMarginLeaderboardData.reduce((best, row) => (row.unitMargin > best.unitMargin ? row : best), unitMarginLeaderboardData[0]);
-    const bottom = unitMarginLeaderboardData.reduce((worst, row) => (row.unitMargin < worst.unitMargin ? row : worst), unitMarginLeaderboardData[0]);
-    return {
-      top,
-      bottom,
-      shown: unitMarginLeaderboardData.length,
-    };
-  }, [unitMarginLeaderboardData]);
-
-  const timelineData = useMemo(() => {
-    // Generate mock timeline data for demonstration
-    // In production, this would fetch from shopify_sales_queue or a dedicated sales table
-    const now = new Date();
-    const months = 6;
-    
-    const CATEGORY_COLORS: Record<string, string> = {
-      cover: "hsl(217 91% 60%)",
-      case: "hsl(262 83% 58%)",
-      protector: "hsl(142 76% 36%)",
-      filling: "hsl(24 95% 53%)",
-      packaging: "hsl(43 96% 56%)",
-      accessories: "hsl(300 76% 42%)",
-      other: "hsl(0 0% 60%)",
-    };
-
-    if (timelineView === "parts") {
-      // Generate timeline for parts by category
-      return categorySummary.map((category) => ({
-        id: category.category,
-        name: category.label,
-        category: category.category,
-        color: CATEGORY_COLORS[category.category] || "hsl(0 0% 60%)",
-        data: Array.from({ length: months }, (_, i) => {
-          const date = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
-          // Generate mock data with some randomness based on category value
-          const baseValue = category.costValue / months;
-          const variation = Math.sin(i) * 0.3 + 1;
-          return {
-            date,
-            value: Math.max(0, baseValue * variation * (0.7 + Math.random() * 0.6)),
-            quantity: Math.floor(category.totalOnHand / months * variation * (0.7 + Math.random() * 0.6)),
-          };
-        }),
-      }));
-    } else {
-      // Generate timeline for products
-      // Mock product data - in production this would come from BOM configurations
-      const products = [
-        { id: "pillow-standard", name: "Standard Pillow", category: "pillow", baseValue: 5000 },
-        { id: "pillow-premium", name: "Premium Pillow", category: "pillow", baseValue: 8000 },
-        { id: "bolster-medium", name: "Medium Bolster", category: "bolster", baseValue: 3000 },
-        { id: "bolster-large", name: "Large Bolster", category: "bolster", baseValue: 4500 },
-      ];
-
-      return products.map((product) => ({
-        id: product.id,
-        name: product.name,
-        category: product.category,
-        color: CATEGORY_COLORS[product.category] || "hsl(0 0% 60%)",
-        data: Array.from({ length: months }, (_, i) => {
-          const date = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
-          const variation = Math.sin(i + product.baseValue) * 0.3 + 1;
-          const value = Math.max(0, product.baseValue * variation * (0.6 + Math.random() * 0.8));
-          return {
-            date,
-            value,
-            quantity: Math.floor(value / 50),
-            avgPrice: value / Math.max(1, Math.floor(value / 50)),
-          };
-        }),
-      }));
-    }
-  }, [categorySummary, timelineView]);
 
   const timelineCard = (
     <Card>
@@ -475,35 +581,39 @@ export default function AnalyticsPage() {
               </TabsList>
             </Tabs>
 
-            <Popover open={isTimelineCalendarOpen} onOpenChange={setIsTimelineCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <CalendarIcon className="h-4 w-4" />
-                  {format(timelineDateRange.from, "MMM yyyy")} - {format(timelineDateRange.to, "MMM yyyy")}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={{ from: timelineDateRange.from, to: timelineDateRange.to }}
-                  onSelect={handleTimelineDateRangeSelect}
-                  numberOfMonths={2}
-                  defaultMonth={timelineDateRange.from}
-                />
-              </PopoverContent>
-            </Popover>
+            <Tabs value={timelineMetric} onValueChange={(v) => setTimelineMetric(v as "units" | "revenue")}>
+              <TabsList>
+                <TabsTrigger value="units">Units</TabsTrigger>
+                <TabsTrigger value="revenue">Revenue</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => loadTimeline("refresh")}
+              disabled={timelineRefreshing || timelineLoading}
+              title="Refresh Shopify sales"
+            >
+              <RefreshCw className={timelineRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            </Button>
           </div>
         </CardAction>
       </CardHeader>
       <CardContent>
-        {timelineData.length === 0 ? (
+        {timelineLoading ? (
+          <Skeleton className="h-[320px] w-full rounded-xl" />
+        ) : timelineError ? (
+          <p className="text-sm text-muted-foreground">{timelineError}</p>
+        ) : timelineData.length === 0 ? (
           <p className="text-sm text-muted-foreground">No sales data available for the selected period.</p>
         ) : (
           <ProductTimelineVisx
             products={timelineData}
             viewMode={timelineView}
-            onViewModeChange={setTimelineView}
             dateRange={timelineDateRange}
+            metric={timelineMetric}
+            currency={timelineCurrency}
           />
         )}
       </CardContent>
@@ -610,16 +720,79 @@ export default function AnalyticsPage() {
             <CardTitle>{marginView === "products" ? "Margin by product" : "Margin by category"}</CardTitle>
             <CardDescription>
               {marginView === "products"
-                ? "Estimated from BOM costs and buildable units; shows cost vs margin value by pillow product."
-                : "Shows cost vs margin value by part category, with drill-down into items."}
+                ? "Shows cost vs margin value by pillow product over the selected date range (units sold)."
+                : "Shows cost vs margin value by part category over the selected date range (units sold), with drill-down into items."}
             </CardDescription>
             <CardAction>
-              <Tabs value={marginView} onValueChange={(v) => setMarginView(v as "parts" | "products")}>
-                <TabsList>
-                  <TabsTrigger value="parts">Parts</TabsTrigger>
-                  <TabsTrigger value="products">Products</TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex items-center gap-2">
+                <Tabs value={marginView} onValueChange={(v) => setMarginView(v as "parts" | "products")}>
+                  <TabsList>
+                    <TabsTrigger value="parts">Parts</TabsTrigger>
+                    <TabsTrigger value="products">Products</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                <Popover
+                  open={isTimelineCalendarOpen}
+                  onOpenChange={(open) => {
+                    setIsTimelineCalendarOpen(open);
+                    if (!open) setHoverTimelineDateEdge(null);
+                  }}
+                >
+                  <PopoverAnchor asChild>
+                    <div className="inline-flex h-9 items-center gap-1 rounded-lg border bg-background p-1">
+                      <CalendarIcon className="ml-1 h-4 w-4 text-muted-foreground" />
+                      <button
+                        type="button"
+                        className={[
+                          "inline-flex h-7 items-center rounded-md px-2 text-xs font-medium transition-colors",
+                          (activeTimelineDateEdge === "from" && isTimelineCalendarOpen) || hoverTimelineDateEdge === "from"
+                            ? "bg-muted text-foreground"
+                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                        ].join(" ")}
+                        onMouseEnter={() => setHoverTimelineDateEdge("from")}
+                        onMouseLeave={() => setHoverTimelineDateEdge(null)}
+                        onClick={() => {
+                          setActiveTimelineDateEdge("from");
+                          setIsTimelineCalendarOpen(true);
+                        }}
+                      >
+                        {format(timelineDateRange.from, "MMM yyyy")}
+                      </button>
+                      <span className="px-1 text-muted-foreground">–</span>
+                      <button
+                        type="button"
+                        className={[
+                          "inline-flex h-7 items-center rounded-md px-2 text-xs font-medium transition-colors",
+                          (activeTimelineDateEdge === "to" && isTimelineCalendarOpen) || hoverTimelineDateEdge === "to"
+                            ? "bg-muted text-foreground"
+                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                        ].join(" ")}
+                        onMouseEnter={() => setHoverTimelineDateEdge("to")}
+                        onMouseLeave={() => setHoverTimelineDateEdge(null)}
+                        onClick={() => {
+                          setActiveTimelineDateEdge("to");
+                          setIsTimelineCalendarOpen(true);
+                        }}
+                      >
+                        {format(timelineDateRange.to, "MMM yyyy")}
+                      </button>
+                    </div>
+                  </PopoverAnchor>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <div className="border-b px-4 py-2 text-xs text-muted-foreground">
+                      Editing {activeTimelineDateEdge === "from" ? "start" : "end"} date
+                    </div>
+                    <Calendar
+                      mode="range"
+                      selected={{ from: timelineDateRange.from, to: timelineDateRange.to }}
+                      onSelect={handleTimelineDateRangeSelect}
+                      numberOfMonths={2}
+                      defaultMonth={activeTimelineDateEdge === "from" ? timelineDateRange.from : timelineDateRange.to}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
             </CardAction>
           </CardHeader>
           <CardContent>
@@ -630,7 +803,11 @@ export default function AnalyticsPage() {
             ) : marginView === "parts" ? (
               <MarginByCategoryVisx categories={marginChartData} items={partValueData} />
             ) : (
-              <MarginByProductVisx itemCosts={itemCostsForProducts} />
+              <MarginByProductVisx
+                itemCosts={itemCostsForProducts}
+                pillowUnitsByKindSize={soldPillowUnitsByKindSize}
+                pillowUnitsByTemplateId={soldPillowUnitsByTemplateId}
+              />
             )}
           </CardContent>
         </Card>
@@ -638,56 +815,71 @@ export default function AnalyticsPage() {
         {timelineCard}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>SKU metrics</CardTitle>
+            <CardTitle>Inventory movement waterfall</CardTitle>
             <CardDescription>
-              Shows cost, MSRP, and on-hand inventory per SKU. Sorted by biggest unit margin, positive margins only.
+              Net difference between stock-in and stock-out. Click a part to drill into size, then type.
             </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {unitMarginLeaderboardData.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Capture cost and MSRP for individual items to see the per-unit difference.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {unitMarginInsight && (
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-medium">Top:</span> {unitMarginInsight.top.label}{" "}
-                    <span className="font-medium">({compactCurrencyFormatter.format(unitMarginInsight.top.unitMargin)})</span>{" "}
-                    <span className="mx-2">·</span>
-                    <span className="font-medium">Bottom:</span> {unitMarginInsight.bottom.label}{" "}
-                    <span className="font-medium">
-                      ({compactCurrencyFormatter.format(unitMarginInsight.bottom.unitMargin)})
-                    </span>
-                    <span className="mx-2">·</span>
-                    <span>Showing items with positive margins only. Hover bars for details.</span>
-                  </div>
+            <CardAction>
+              <div className="flex items-center gap-2">
+                {(inventoryGroup === "size" || inventoryGroup === "type") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (inventoryGroup === "type") {
+                        setInventoryGroup("size");
+                        setInventorySize(null);
+                        return;
+                      }
+                      setInventoryGroup("category");
+                      setInventoryCategory(null);
+                      setInventorySize(null);
+                    }}
+                  >
+                    Back
+                  </Button>
                 )}
-                <UnitMarginBySkuVisx
-                  rows={unitMarginLeaderboardData}
-                  formatMoney={(v) => compactCurrencyFormatter.format(v)}
-                  formatMoneyLong={(v) => currencyFormatter.format(v)}
-                />
+                <div className="text-xs text-muted-foreground">
+                  {inventoryGroup === "category"
+                    ? "Parts"
+                    : inventoryGroup === "size"
+                      ? `Parts / ${CATEGORY_LABELS[inventoryCategory ?? ""] ?? humanize(inventoryCategory ?? "Category")}`
+                      : `Parts / ${CATEGORY_LABELS[inventoryCategory ?? ""] ?? humanize(inventoryCategory ?? "Category")} / ${
+                          inventorySize ?? "Size"
+                        }`}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Heatmap</CardTitle>
-            <CardDescription>Pseudo intensity preview clipped to the pillow silhouette.</CardDescription>
+            </CardAction>
           </CardHeader>
           <CardContent>
-            <PillowHeatmap
-              title="Heatmap"
-              showTitle={false}
-              seed={1337}
-              palette={{ from: "hsl(221 83% 53%)", to: "hsl(188 94% 42%)" }}
-            />
+            {inventoryLoading ? (
+              <Skeleton className="h-[380px] w-full rounded-xl" />
+            ) : inventoryError ? (
+              <p className="text-sm text-muted-foreground">{inventoryError}</p>
+            ) : inventoryRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No inventory movement data available for the selected period.</p>
+            ) : (
+              <InventoryMovementWaterfallVisx
+                rows={inventoryRows}
+                onLabelClick={(row) => {
+                  if (inventoryGroup === "category") {
+                    setInventoryGroup("size");
+                    setInventoryCategory(row.key);
+                    setInventorySize(null);
+                    return;
+                  }
+                  if (inventoryGroup === "size") {
+                    setInventoryGroup("type");
+                    setInventorySize(row.key);
+                    return;
+                  }
+                }}
+                isLabelClickable={() => inventoryGroup !== "type"}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
