@@ -97,6 +97,15 @@ function templateLabel(t: BomTemplateRow) {
   return `Bolster · ${t.key} — ${t.name}`;
 }
 
+function templateDisplay(t: BomTemplateRow) {
+  if (t.kind === "pillow") {
+    const pk = (t.pillow_kind ?? "basic").toUpperCase();
+    const variant = t.pillow_kind === "premium" && t.pillow_variant ? ` · ${humanize(t.pillow_variant)}` : "";
+    return { title: `Pillow · ${pk}${variant} · ${t.key}`, subtitle: t.name };
+  }
+  return { title: `Bolster · ${t.key}`, subtitle: t.name };
+}
+
 function useElementSize<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -461,6 +470,10 @@ export function ProductConfigurationCard() {
     return t ? templateLabel(t) : null;
   }, [selectedTemplateId, templates]);
 
+  const selectedTemplate = useMemo(() => {
+    return selectedTemplateId ? templates.find((x) => x.id === selectedTemplateId) ?? null : null;
+  }, [selectedTemplateId, templates]);
+
   const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
   const getSvgPointFromEvent = (event: { clientX: number; clientY: number }) => {
@@ -531,15 +544,50 @@ export function ProductConfigurationCard() {
             value={selectedTemplateId ? String(selectedTemplateId) : undefined}
             onValueChange={(v) => setSelectedTemplateId(v ? Number(v) : null)}
           >
-            <SelectTrigger className="max-w-[520px]">
-              <SelectValue placeholder={loadingTemplates ? "Loading…" : "Select template"} />
+            <SelectTrigger className="h-auto max-w-[520px] py-2">
+              {selectedTemplate ? (
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Template</div>
+                  <div className="truncate text-sm font-medium">{templateDisplay(selectedTemplate).title}</div>
+                  <div className="truncate text-xs text-muted-foreground">{templateDisplay(selectedTemplate).subtitle}</div>
+                </div>
+              ) : (
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Template</div>
+                  <div className="truncate text-sm text-muted-foreground">
+                    {loadingTemplates ? "Loading…" : "Select a template"}
+                  </div>
+                </div>
+              )}
             </SelectTrigger>
             <SelectContent align="end" side="bottom">
-              {templates.map((t) => (
-                <SelectItem key={t.id} value={String(t.id)} textValue={templateLabel(t)}>
-                  {templateLabel(t)}
-                </SelectItem>
-              ))}
+              {(() => {
+                const pillows = templates.filter((t) => t.kind === "pillow");
+                const bolsters = templates.filter((t) => t.kind === "bolster");
+                const renderGroup = (title: string, items: BomTemplateRow[]) => (
+                  <div key={title}>
+                    <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">{title}</div>
+                    {items.map((t) => {
+                      const d = templateDisplay(t);
+                      return (
+                        <SelectItem key={t.id} value={String(t.id)} textValue={templateLabel(t)} className="py-2">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">{d.title}</div>
+                            <div className="truncate text-xs text-muted-foreground">{d.subtitle}</div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </div>
+                );
+                return (
+                  <>
+                    {pillows.length ? renderGroup("Pillows", pillows) : null}
+                    {pillows.length && bolsters.length ? <div className="my-1 h-px bg-border" /> : null}
+                    {bolsters.length ? renderGroup("Bolsters", bolsters) : null}
+                  </>
+                );
+              })()}
             </SelectContent>
           </Select>
         </CardAction>

@@ -664,8 +664,8 @@ export default function AnalyticsPage() {
   const mpMetricsCard = (
     <Card>
       <CardHeader>
-        <CardTitle>Mp-config answer breakdown</CardTitle>
-        <CardDescription>Distributions from released results (final responses) in the selected date range.</CardDescription>
+        <CardTitle>Results</CardTitle>
+        <CardDescription>Mp-config answer breakdown from released results (final responses) in the selected date range.</CardDescription>
         <CardAction>
           <Button
             variant="ghost"
@@ -686,9 +686,7 @@ export default function AnalyticsPage() {
         ) : mpMetrics.length === 0 || mpMetrics.every((m) => (m.total ?? 0) <= 0) ? (
           <p className="text-sm text-muted-foreground">No released mp-config answers in the selected period.</p>
         ) : (
-          <div className="h-[320px] w-full">
-            <MpConfigMetricsStackedBarVisx metrics={mpMetrics} />
-          </div>
+          <MpConfigMetricsStackedBarVisx metrics={mpMetrics} />
         )}
       </CardContent>
     </Card>

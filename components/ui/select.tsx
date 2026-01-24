@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -114,10 +114,14 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("flex min-w-[12rem] items-center justify-between", className)}
+          data-state={open ? "open" : "closed"}
+          className={cn(
+            "flex min-w-[12rem] items-center justify-between gap-2 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
+            className,
+          )}
           {...props}
         >
-          <span className="flex-1 truncate text-left">{children}</span>
+          <span className="min-w-0 flex-1 text-left">{children}</span>
           <ChevronDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </Trigger>
@@ -239,7 +243,7 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
           data-value={value}
           disabled={disabled}
           className={cn(
-            "hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground flex w-full items-center gap-2 rounded-md px-4 py-3 text-left text-base transition-colors disabled:pointer-events-none disabled:opacity-50",
+            "hover:bg-accent hover:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground flex w-full items-start gap-2 rounded-md px-4 py-3 text-left text-base transition-colors disabled:pointer-events-none disabled:opacity-50",
             className,
           )}
           onClick={(event) => {
@@ -248,7 +252,10 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
           }}
           {...buttonProps}
         >
-          {children}
+          <span className="mt-0.5 inline-flex w-4 shrink-0 items-center justify-center">
+            {isSelected ? <Check className="size-4" /> : null}
+          </span>
+          <span className="min-w-0 flex-1">{children}</span>
         </button>
       );
     }
@@ -258,14 +265,17 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
         ref={ref}
         data-value={value}
         disabled={disabled}
-        className={cn("cursor-pointer", className)}
+        className={cn("cursor-pointer items-start gap-2", className)}
         onSelect={(event) => {
           handleSelect(event);
           onSelect?.(event);
         }}
         {...props}
       >
-        {children}
+        <span className="mt-0.5 inline-flex w-4 shrink-0 items-center justify-center">
+          {isSelected ? <Check className="size-4" /> : null}
+        </span>
+        <span className="min-w-0 flex-1">{children}</span>
       </DropdownMenuItem>
     );
   },

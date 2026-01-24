@@ -8,6 +8,7 @@ import { GridColumns } from "@visx/grid";
 import { scaleLinear, scaleOrdinal } from "@visx/scale";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
+import { localPoint } from "@visx/event";
 import { Button } from "@/components/ui/button";
 
 export type CategoryStackDatum = {
@@ -98,7 +99,7 @@ function Chart({
 }) {
   const margin = defaultMargin;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
-  const BAR_HEIGHT = 12;
+  const BAR_HEIGHT = 16;
   const BAR_RADIUS = 2;
   const INNER_BAR_GAP = 4;
   const ROW_GAP = 10;
@@ -112,6 +113,34 @@ function Chart({
 
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } =
     useTooltip<TooltipDatum>();
+
+  const showRowTooltip = (
+    evt: React.MouseEvent<SVGElement, MouseEvent>,
+    row: { label: string; costValue: number; msrpValue: number },
+    segment: TooltipDatum["segment"]
+  ) => {
+    const costValue = Number(row.costValue ?? 0);
+    const msrpValue = Number(row.msrpValue ?? 0);
+    const impliedMarginValue = Math.max(0, msrpValue - costValue);
+    const impliedMarginPct = msrpValue > 0 ? (impliedMarginValue / msrpValue) * 100 : null;
+
+    showTooltip({
+      tooltipData: {
+        label: row.label,
+        segment,
+        costValue,
+        msrpValue,
+        impliedMarginValue,
+        impliedMarginPct,
+        insight: insightForMarginPct(impliedMarginPct),
+        costLabel: asMoney(costValue),
+        msrpLabel: asMoney(msrpValue),
+        impliedMarginLabel: asMoney(impliedMarginValue),
+      },
+      tooltipLeft: evt.clientX + 12,
+      tooltipTop: evt.clientY + 12,
+    });
+  };
 
   const xDomainMax = useMemo(() => {
     const max = Math.max(...rows.map((d) => Math.max(d.costValue ?? 0, d.msrpValue ?? 0)), 0);
@@ -175,29 +204,7 @@ function Chart({
                       rx={BAR_RADIUS}
                       style={{ cursor: onRowClick ? "pointer" : "default" }}
                       onClick={() => onRowClick?.(row.label)}
-                      onMouseMove={(evt) => {
-                        const el = evt.currentTarget as unknown as Element;
-                        const bounds = el.getBoundingClientRect();
-                        const left = Math.min(window.innerWidth - 16, bounds.right + 12);
-                        const top = Math.min(window.innerHeight - 16, Math.max(16, bounds.top + bounds.height / 2));
-
-                        showTooltip({
-                          tooltipData: {
-                            label: row.label,
-                            segment: v.label,
-                            costValue,
-                            msrpValue,
-                            impliedMarginValue,
-                            impliedMarginPct,
-                            insight: insightForMarginPct(impliedMarginPct),
-                            costLabel: asMoney(costValue),
-                            msrpLabel: asMoney(msrpValue),
-                            impliedMarginLabel: asMoney(impliedMarginValue),
-                          },
-                          tooltipLeft: left,
-                          tooltipTop: top,
-                        });
-                      }}
+                      onMouseMove={(evt) => showRowTooltip(evt, row, v.label)}
                       onMouseLeave={() => hideTooltip()}
                     />
                   );
@@ -258,6 +265,41 @@ function Chart({
               })}
             />
           )}
+
+          {/* Hover capture for empty areas (row-level tooltips). */}
+          <rect
+            x={0}
+            y={0}
+            width={innerWidth}
+            height={contentInnerHeight}
+            fill="transparent"
+            onMouseLeave={() => hideTooltip()}
+            onMouseMove={(evt) => {
+              const p = localPoint(evt);
+              if (!p) return;
+              const x = p.x - margin.left;
+              const y = p.y - margin.top;
+              if (x < 0 || y < 0 || x > innerWidth || y > contentInnerHeight) {
+                hideTooltip();
+                return;
+              }
+
+              if (rows.length === 0) return;
+              const idx = Math.max(0, Math.min(rows.length - 1, Math.floor(y / rowStep)));
+              const row = rows[idx];
+              if (!row) return;
+              const yInRow = y - idx * rowStep;
+              if (yInRow < 0 || yInRow > groupHeight) {
+                hideTooltip();
+                return;
+              }
+
+              // Determine which bar the user is closer to (cost vs msrp).
+              const mid = BAR_HEIGHT + INNER_BAR_GAP / 2;
+              const segment: TooltipDatum["segment"] = yInRow < mid ? "Cost value" : "MSRP value";
+              showRowTooltip(evt, row, segment);
+            }}
+          />
         </Group>
       </svg>
 
@@ -321,7 +363,7 @@ function Chart({
 export function MarginByCategoryVisx({
   categories,
   items,
-  height = 320,
+  height = 0,
 }: {
   categories: CategoryStackDatum[];
   items: ItemStackDatum[];
@@ -368,6 +410,18 @@ export function MarginByCategoryVisx({
       }));
   }, [items, selectedCategory]);
 
+  const rows = selectedCategory ? drillRows : summaryRows;
+  const chartHeight = useMemo(() => {
+    const margin = defaultMargin;
+    const BAR_HEIGHT = 16;
+    const INNER_BAR_GAP = 4;
+    const ROW_GAP = 10;
+    const groupHeight = BAR_HEIGHT * 2 + INNER_BAR_GAP;
+    const rowStep = groupHeight + ROW_GAP;
+    const contentInnerHeight = rows.length > 0 ? Math.max(10, rows.length * rowStep - ROW_GAP) : 160;
+    return Math.max(height, contentInnerHeight + margin.top + margin.bottom);
+  }, [height, rows.length]);
+
   return (
     <div className="w-full space-y-3">
       <div className="flex items-center justify-between">
@@ -381,14 +435,14 @@ export function MarginByCategoryVisx({
         )}
       </div>
 
-      <div className="h-[320px] w-full overflow-y-auto">
+      <div className="w-full" style={{ height: chartHeight }}>
         <ParentSize>
           {({ width }) =>
             width < 10 ? null : (
               <Chart
                 width={width}
-                height={height}
-                rows={selectedCategory ? drillRows : summaryRows}
+                height={chartHeight}
+                rows={rows}
                 showBottomAxis
                 onRowClick={
                   selectedCategory

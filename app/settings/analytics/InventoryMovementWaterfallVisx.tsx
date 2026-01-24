@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ParentSize } from "@visx/responsive";
 import { Group } from "@visx/group";
 import { scaleBand, scaleLinear } from "@visx/scale";
@@ -31,6 +31,8 @@ const tooltipStyles = {
   padding: "10px 12px",
   borderRadius: "10px",
   fontSize: "12px",
+  position: "fixed",
+  zIndex: 1000,
 };
 
 function Chart({
@@ -49,7 +51,6 @@ function Chart({
   const margin = useMemo(() => ({ top: 12, right: 16, bottom: 44, left: 220 }), []);
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const innerHeight = Math.max(10, height - margin.top - margin.bottom);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [hoveredLabelKey, setHoveredLabelKey] = useState<string | null>(null);
 
   const wfRows = useMemo<WaterfallRow[]>(() => {
@@ -107,18 +108,16 @@ function Chart({
     row: WaterfallRow;
   }>();
 
-  const handleBarMove = (evt: React.MouseEvent<SVGRectElement>, row: WaterfallRow) => {
-    const wrapperRect = wrapperRef.current?.getBoundingClientRect();
-    if (!wrapperRect) return;
+  const showRowTooltip = (evt: React.MouseEvent<SVGElement, MouseEvent>, row: WaterfallRow) => {
     showTooltip({
       tooltipData: { row },
-      tooltipLeft: evt.clientX - wrapperRect.left,
-      tooltipTop: evt.clientY - wrapperRect.top,
+      tooltipLeft: evt.clientX + 12,
+      tooltipTop: evt.clientY + 12,
     });
   };
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div className="relative">
       <svg width={width} height={height} style={{ width: "100%", height: "100%" }} className="block">
         <Group left={margin.left} top={margin.top}>
           <GridColumns
@@ -207,7 +206,7 @@ function Chart({
                   rx={2}
                   fill={fill}
                   fillOpacity={0.9}
-                  onMouseMove={(evt) => handleBarMove(evt, r)}
+                  onMouseMove={(evt) => showRowTooltip(evt, r)}
                   onMouseLeave={() => hideTooltip()}
                 />
                 {/* Connector to next bar start */}
@@ -251,10 +250,22 @@ function Chart({
             fill="transparent"
             onMouseLeave={() => hideTooltip()}
             onMouseMove={(evt) => {
-              // If hovering background, hide tooltip to avoid stale popup.
               const p = localPoint(evt);
               if (!p) return;
-              if (p.x < 0 || p.y < 0 || p.x > innerWidth || p.y > innerHeight) hideTooltip();
+              const x = p.x - margin.left;
+              const y = p.y - margin.top;
+              if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) {
+                hideTooltip();
+                return;
+              }
+
+              if (wfRows.length === 0) return;
+              const step = yScale.step();
+              const idx = step > 0 ? Math.floor(y / step) : 0;
+              const clampedIdx = Math.max(0, Math.min(wfRows.length - 1, idx));
+              const row = wfRows[clampedIdx];
+              if (!row) return;
+              showRowTooltip(evt, row);
             }}
           />
         </Group>

@@ -45,6 +45,8 @@ const tooltipStyles = {
   padding: "12px 12px",
   borderRadius: "10px",
   fontSize: "12px",
+  position: "fixed",
+  zIndex: 1000,
 };
 
 function Chart({
@@ -119,10 +121,16 @@ function Chart({
     showTooltip,
     hideTooltip,
   } = useTooltip<{
-    product: ProductTimeline;
-    dataPoint: TimelineDataPoint;
-    color: string;
+    month: Date;
     monthTotal: number;
+    breakdown: Array<{
+      id: string;
+      name: string;
+      color: string;
+      value: number;
+      units: number;
+      revenue: number;
+    }>;
   }>();
 
   const xScale = useMemo(
@@ -149,56 +157,54 @@ function Chart({
     if (!point) return;
 
     const x = point.x - margin.left;
-    const y = point.y - margin.top;
     const date = xScale.invert(x);
 
-    let closestProduct: ProductTimeline | null = null;
-    let closestPoint: TimelineDataPoint | null = null;
-    let closestColor: (typeof palette)[number] = palette[0];
-    let minDistance = Infinity;
-
-    products.forEach((product, idx) => {
-      if (product.data.length === 0) return;
-      const color = palette[idx % palette.length];
-
-      product.data.forEach((dataPoint) => {
-        const xPos = xScale(dataPoint.date);
-        const yPos = yScale(valueForMetric(dataPoint));
-        const distance = Math.sqrt(Math.pow(x - xPos, 2) + Math.pow(y - yPos, 2));
-
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestProduct = product;
-          closestPoint = dataPoint;
-          closestColor = color;
-        }
-      });
-    });
-
-    // Don't show tooltip if we're far from any line.
-    if (!closestProduct || !closestPoint || minDistance > 44) {
+    // Find nearest month bucket and show a month-level tooltip (works anywhere in the plot area).
+    const nearestMonth = months.reduce<Date | null>((best, month) => {
+      if (!best) return month;
+      const dt = Math.abs(date.getTime() - month.getTime());
+      const bt = Math.abs(date.getTime() - best.getTime());
+      return dt < bt ? month : best;
+    }, null);
+    if (!nearestMonth) {
       hideTooltip();
       return;
     }
 
-    const cp: TimelineDataPoint = closestPoint;
-    const cprod: ProductTimeline = closestProduct;
+    const monthStart = startOfMonth(nearestMonth);
+    const monthIndex = months.findIndex(
+      (m) => m.getFullYear() === monthStart.getFullYear() && m.getMonth() === monthStart.getMonth()
+    );
+    const monthTotal = monthIndex >= 0 ? (monthTotals[monthIndex] ?? 0) : 0;
+
+    const breakdown = products
+      .map((product, idx) => {
+        const color = palette[idx % palette.length];
+        const match =
+          product.data.find(
+            (pt) =>
+              pt.date.getFullYear() === monthStart.getFullYear() && pt.date.getMonth() === monthStart.getMonth()
+          ) ?? null;
+        return {
+          id: product.id,
+          name: product.name,
+          color,
+          value: match ? valueForMetric(match) : 0,
+          units: match ? match.units : 0,
+          revenue: match ? match.revenue : 0,
+        };
+      })
+      .filter((row) => row.value > 0)
+      .sort((a, b) => b.value - a.value);
 
     showTooltip({
       tooltipData: {
-        product: cprod,
-        dataPoint: cp,
-        color: closestColor,
-        monthTotal: products.reduce((sum, p) => {
-          const month = startOfMonth(cp.date);
-          const match = p.data.find(
-            (pt) => pt.date.getFullYear() === month.getFullYear() && pt.date.getMonth() === month.getMonth()
-          );
-          return sum + (match ? valueForMetric(match) : 0);
-        }, 0),
+        month: monthStart,
+        monthTotal,
+        breakdown,
       },
-      tooltipLeft: xScale(date) + margin.left,
-      tooltipTop: yScale(valueForMetric(cp)) + margin.top,
+      tooltipLeft: event.clientX + 12,
+      tooltipTop: event.clientY + 12,
     });
   };
 
@@ -341,38 +347,47 @@ function Chart({
 
       {tooltipOpen && tooltipData && (
         <TooltipWithBounds
-          key={`${tooltipData.product.id}-${tooltipData.dataPoint.date.toISOString()}-${viewMode}`}
+          key={`${tooltipData.month.toISOString()}-${viewMode}-${metric}`}
           top={tooltipTop}
           left={tooltipLeft}
           style={tooltipStyles}
         >
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="font-semibold">{tooltipData.product.name}</div>
-              <div className="h-2 w-10 rounded" style={{ backgroundColor: tooltipData.color }} />
-            </div>
+            <div className="font-semibold">{format(tooltipData.month, "MMM yyyy")}</div>
             <div className="space-y-1">
               <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Date:</span>
-                <span>{format(tooltipData.dataPoint.date, "MMM yyyy")}</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Month total:</span>
+                <span className="text-muted-foreground">Total:</span>
                 <span className="font-medium">
                   {metric === "revenue"
                     ? currencyFormatter.format(tooltipData.monthTotal)
                     : compactNumber.format(tooltipData.monthTotal)}
                 </span>
               </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Units:</span>
-                <span className="font-medium">{compactNumber.format(tooltipData.dataPoint.units)}</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span className="text-muted-foreground">Revenue:</span>
-                <span className="font-medium">{currencyFormatter.format(tooltipData.dataPoint.revenue)}</span>
-              </div>
             </div>
+
+            {tooltipData.breakdown.length > 0 ? (
+              <div className="space-y-1">
+                <div className="text-[11px] text-muted-foreground">
+                  {viewMode === "products" ? "Products" : "Parts"} (top {Math.min(8, tooltipData.breakdown.length)})
+                </div>
+                {tooltipData.breakdown.slice(0, 8).map((row) => (
+                  <div key={row.id} className="flex items-center justify-between gap-3 text-[12px]">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="inline-block size-2 rounded-[3px]" style={{ backgroundColor: row.color }} />
+                      <span className="truncate text-muted-foreground">{row.name}</span>
+                    </div>
+                    <div className="shrink-0 font-medium tabular-nums">
+                      {metric === "revenue" ? currencyFormatter.format(row.value) : compactNumber.format(row.value)}
+                    </div>
+                  </div>
+                ))}
+                {tooltipData.breakdown.length > 8 ? (
+                  <div className="text-[11px] text-muted-foreground">+{tooltipData.breakdown.length - 8} more</div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="text-[11px] text-muted-foreground">No series values for this month.</div>
+            )}
           </div>
         </TooltipWithBounds>
       )}

@@ -8,14 +8,18 @@ import { AxisBottom } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
 import { scaleLinear, scaleOrdinal } from "@visx/scale";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
-import { localPoint } from "@visx/event";
 import type { MpConfigMetricBreakdown, MpConfigMetricSegment } from "./actions";
 
 type TooltipDatum = {
   metricLabel: string;
-  segmentLabel: string;
-  count: number;
   total: number;
+  hoveredSegmentKey?: string;
+  segments: Array<{
+    key: string;
+    label: string;
+    count: number;
+    color: string;
+  }>;
 };
 
 const tooltipStyles = {
@@ -27,9 +31,18 @@ const tooltipStyles = {
   boxShadow: "0 12px 30px rgba(0,0,0,0.18)",
   padding: "10px 12px",
   maxWidth: 260,
+  // Ensure the tooltip anchors to the viewport (not the svg coordinate system)
+  // and stays above card/scroll containers.
+  position: "fixed",
+  zIndex: 1000,
 } as const;
 
 const defaultMargin = { top: 16, right: 20, bottom: 34, left: 180 };
+
+const BAR_HEIGHT = 16;
+const BAR_RADIUS = 2;
+const ROW_GAP = 12;
+const ROW_STEP = BAR_HEIGHT + ROW_GAP;
 
 const palette = [
   "var(--chart-1)",
@@ -38,6 +51,22 @@ const palette = [
   "var(--chart-4)",
   "var(--chart-5)",
 ] as const;
+
+function sortSegmentsForTooltip(segments: MpConfigMetricSegment[]) {
+  return [...segments].sort((a, b) => {
+    const aCount = Number(a.count ?? 0);
+    const bCount = Number(b.count ?? 0);
+    if (bCount !== aCount) return bCount - aCount;
+    return String(a.label ?? "").localeCompare(String(b.label ?? ""));
+  });
+}
+
+function estimatedChartHeight(metrics: MpConfigMetricBreakdown[]) {
+  const margin = defaultMargin;
+  const contentInnerHeight =
+    metrics.length > 0 ? Math.max(10, metrics.length * ROW_STEP - ROW_GAP) : 10;
+  return contentInnerHeight + margin.top + margin.bottom;
+}
 
 function Chart({
   width,
@@ -51,10 +80,6 @@ function Chart({
   const margin = defaultMargin;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
 
-  const BAR_HEIGHT = 12;
-  const BAR_RADIUS = 2;
-  const ROW_GAP = 12;
-  const ROW_STEP = BAR_HEIGHT + ROW_GAP;
   const contentInnerHeight = metrics.length > 0 ? Math.max(10, metrics.length * ROW_STEP - ROW_GAP) : Math.max(10, height);
   const svgHeight = Math.max(height, contentInnerHeight + margin.top + margin.bottom);
 
@@ -91,17 +116,30 @@ function Chart({
   const onMove = (
     event: React.MouseEvent<SVGRectElement, MouseEvent>,
     metric: MpConfigMetricBreakdown,
-    segment: MpConfigMetricSegment
+    hoveredSegment?: MpConfigMetricSegment
   ) => {
-    const pt = localPoint(event) ?? { x: 0, y: 0 };
+    const rawSegments = (metric.segments ?? []).filter((s) => (s.count ?? 0) > 0);
+    const sorted = sortSegmentsForTooltip(rawSegments);
+    const segments = sorted.map((seg) => ({
+      key: seg.key,
+      label: seg.label,
+      count: seg.count,
+      color: colorScale(seg.key) ?? "var(--chart-1)",
+    }));
+
+    // Use viewport coordinates so the tooltip appears where the mouse is,
+    // even when the chart is scrolled within the page.
+    const clientX = event.clientX;
+    const clientY = event.clientY;
+
     showTooltip({
-      tooltipLeft: pt.x + 12,
-      tooltipTop: pt.y + 12,
+      tooltipLeft: clientX + 12,
+      tooltipTop: clientY + 12,
       tooltipData: {
         metricLabel: metric.label,
-        segmentLabel: segment.label,
-        count: segment.count,
         total: metric.total,
+        hoveredSegmentKey: hoveredSegment?.key,
+        segments,
       },
     });
   };
@@ -230,16 +268,36 @@ function Chart({
       {tooltipOpen && tooltipData ? (
         <TooltipWithBounds left={tooltipLeft} top={tooltipTop} style={tooltipStyles}>
           <div className="text-[12px] font-medium">{tooltipData.metricLabel}</div>
-          <div className="mt-1 text-[12px] text-muted-foreground">{tooltipData.segmentLabel}</div>
-          <div className="mt-2 text-[12px]">
-            <span className="font-medium">{tooltipData.count}</span>
-            <span className="text-muted-foreground">
-              {" "}
-              / {tooltipData.total}
-              {tooltipData.total > 0
-                ? ` (${Math.round((tooltipData.count / tooltipData.total) * 100)}%)`
-                : ""}
-            </span>
+          <div className="mt-2 space-y-1">
+            {tooltipData.segments.map((seg) => {
+              const pct =
+                tooltipData.total > 0 ? Math.round((seg.count / tooltipData.total) * 100) : null;
+              const isHovered = tooltipData.hoveredSegmentKey === seg.key;
+              return (
+                <div
+                  key={seg.key}
+                  className={[
+                    "flex items-center justify-between gap-3 text-[12px]",
+                    isHovered ? "text-foreground" : "text-muted-foreground",
+                  ].join(" ")}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="inline-block size-2 rounded-[3px]" style={{ background: seg.color }} />
+                    <span className={["truncate", isHovered ? "font-medium" : ""].join(" ")}>
+                      {seg.label}
+                    </span>
+                  </div>
+                  <div className={["shrink-0 tabular-nums", isHovered ? "font-medium" : ""].join(" ")}>
+                    {seg.count}
+                    {pct === null ? "" : ` (${pct}%)`}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-2 text-[12px] text-muted-foreground">
+            Total: <span className="font-medium text-foreground">{tooltipData.total}</span>
           </div>
         </TooltipWithBounds>
       ) : null}
@@ -248,10 +306,13 @@ function Chart({
 }
 
 export function MpConfigMetricsStackedBarVisx({ metrics }: { metrics: MpConfigMetricBreakdown[] }) {
+  const fixedHeight = Math.max(200, estimatedChartHeight(metrics));
   return (
-    <ParentSize>
-      {({ width, height }) => <Chart width={width} height={Math.max(220, height)} metrics={metrics} />}
-    </ParentSize>
+    <div className="w-full" style={{ height: fixedHeight }}>
+      <ParentSize>
+        {({ width }) => <Chart width={width} height={fixedHeight} metrics={metrics} />}
+      </ParentSize>
+    </div>
   );
 }
 

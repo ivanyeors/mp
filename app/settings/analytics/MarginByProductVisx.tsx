@@ -9,6 +9,7 @@ import { GridColumns } from "@visx/grid";
 import { scaleLinear, scaleOrdinal } from "@visx/scale";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
+import { localPoint } from "@visx/event";
 import { Button } from "@/components/ui/button";
 
 type ItemCost = { id: number; cost: number | null };
@@ -133,7 +134,7 @@ function Chart({
 }) {
   const margin = defaultMargin;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
-  const BAR_HEIGHT = 12;
+  const BAR_HEIGHT = 16;
   const BAR_RADIUS = 2;
   const INNER_BAR_GAP = 4;
   const ROW_GAP = 10;
@@ -147,6 +148,31 @@ function Chart({
 
   const { tooltipData, tooltipLeft, tooltipTop, tooltipOpen, showTooltip, hideTooltip } =
     useTooltip<TooltipDatum>();
+
+  const showRowTooltip = (
+    evt: React.MouseEvent<SVGElement, MouseEvent>,
+    row: MetricRow,
+    segment: TooltipDatum["segment"]
+  ) => {
+    const impliedMarginValue = Math.max(0, row.msrpValue - row.costValue);
+    showTooltip({
+      tooltipData: {
+        label: row.label,
+        segment,
+        buildable: row.meta.buildable,
+        unitCost: row.meta.unitCost,
+        unitMsrp: row.meta.unitMsrp ?? null,
+        costValue: row.costValue,
+        msrpValue: row.msrpValue,
+        costLabel: asMoney(row.costValue),
+        msrpLabel: asMoney(row.msrpValue),
+        impliedMarginLabel: asMoney(impliedMarginValue),
+        insight: insightFor(row),
+      },
+      tooltipLeft: evt.clientX + 12,
+      tooltipTop: evt.clientY + 12,
+    });
+  };
 
   const xDomainMax = useMemo(() => {
     const max = Math.max(...rows.map((d) => Math.max(d.costValue, d.msrpValue)), 0);
@@ -205,30 +231,7 @@ function Chart({
                       height={BAR_HEIGHT}
                       fill={colorScale(v.key)}
                       rx={BAR_RADIUS}
-                      onMouseMove={(evt) => {
-                        const el = evt.currentTarget as unknown as Element;
-                        const bounds = el.getBoundingClientRect();
-                        const left = Math.min(window.innerWidth - 16, bounds.right + 12);
-                        const top = Math.min(window.innerHeight - 16, Math.max(16, bounds.top + bounds.height / 2));
-
-                        showTooltip({
-                          tooltipData: {
-                            label: row.label,
-                            segment: v.label,
-                            buildable: row.meta.buildable,
-                            unitCost: row.meta.unitCost,
-                            unitMsrp: row.meta.unitMsrp ?? null,
-                            costValue: row.costValue,
-                            msrpValue: row.msrpValue,
-                            costLabel: asMoney(row.costValue),
-                            msrpLabel: asMoney(row.msrpValue),
-                            impliedMarginLabel: asMoney(impliedMarginValue),
-                            insight: insightFor(row),
-                          },
-                          tooltipLeft: left,
-                          tooltipTop: top,
-                        });
-                      }}
+                      onMouseMove={(evt) => showRowTooltip(evt, row, v.label)}
                       onMouseLeave={() => hideTooltip()}
                     />
                   );
@@ -286,6 +289,40 @@ function Chart({
               textAnchor: "middle",
               dy: "0.6em",
             })}
+          />
+
+          {/* Hover capture for empty areas (row-level tooltips). */}
+          <rect
+            x={0}
+            y={0}
+            width={innerWidth}
+            height={contentInnerHeight}
+            fill="transparent"
+            onMouseLeave={() => hideTooltip()}
+            onMouseMove={(evt) => {
+              const p = localPoint(evt);
+              if (!p) return;
+              const x = p.x - margin.left;
+              const y = p.y - margin.top;
+              if (x < 0 || y < 0 || x > innerWidth || y > contentInnerHeight) {
+                hideTooltip();
+                return;
+              }
+
+              if (rows.length === 0) return;
+              const idx = Math.max(0, Math.min(rows.length - 1, Math.floor(y / rowStep)));
+              const row = rows[idx];
+              if (!row) return;
+              const yInRow = y - idx * rowStep;
+              if (yInRow < 0 || yInRow > groupHeight) {
+                hideTooltip();
+                return;
+              }
+
+              const mid = BAR_HEIGHT + INNER_BAR_GAP / 2;
+              const segment: TooltipDatum["segment"] = yInRow < mid ? "Cost value" : "MSRP value";
+              showRowTooltip(evt, row, segment);
+            }}
           />
         </Group>
       </svg>
@@ -357,7 +394,7 @@ export function MarginByProductVisx({
   itemCosts,
   pillowUnitsByKindSize,
   pillowUnitsByTemplateId,
-  height = 320,
+  height = 0,
 }: {
   itemCosts: ItemCost[];
   pillowUnitsByKindSize: Record<string, number>;
@@ -658,6 +695,17 @@ export function MarginByProductVisx({
     return <div className="text-sm text-muted-foreground">No product rows found yet.</div>;
   }
 
+  const chartHeight = (() => {
+    const margin = defaultMargin;
+    const BAR_HEIGHT = 16;
+    const INNER_BAR_GAP = 4;
+    const ROW_GAP = 10;
+    const groupHeight = BAR_HEIGHT * 2 + INNER_BAR_GAP;
+    const rowStep = groupHeight + ROW_GAP;
+    const contentInnerHeight = chartRows.length > 0 ? Math.max(10, chartRows.length * rowStep - ROW_GAP) : 180;
+    return Math.max(height, contentInnerHeight + margin.top + margin.bottom);
+  })();
+
   return (
     <div className="w-full space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -690,7 +738,7 @@ export function MarginByProductVisx({
           )}
         </div>
       </div>
-      <div className="h-[320px] w-full overflow-y-auto">
+      <div className="w-full" style={{ height: chartHeight }}>
         {chartRows.length === 0 ? (
           <div className="flex h-full items-center justify-center rounded-xl border bg-card p-6 text-sm text-muted-foreground">
             {level === "template"
@@ -703,7 +751,7 @@ export function MarginByProductVisx({
               width < 10 ? null : (
                 <Chart
                   width={width}
-                  height={height}
+                  height={chartHeight}
                   rows={chartRows}
                   onTickClick={
                     level === "kind"
