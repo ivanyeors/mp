@@ -17,8 +17,16 @@ import { MarginByCategoryVisx } from "./MarginByCategoryVisx";
 import type { CategoryStackDatum, ItemStackDatum } from "./MarginByCategoryVisx";
 import { MarginByProductVisx } from "./MarginByProductVisx";
 import { ProductTimelineVisx } from "./ProductTimelineVisx";
-import { getInventoryMovementWaterfall, getShopifySalesTimeline, type InventoryMovementGroup, type InventoryMovementRow } from "./actions";
+import {
+  getInventoryMovementWaterfall,
+  getMpConfigMetricsBreakdown,
+  getShopifySalesTimeline,
+  type InventoryMovementGroup,
+  type InventoryMovementRow,
+  type MpConfigMetricBreakdown,
+} from "./actions";
 import { InventoryMovementWaterfallVisx } from "./InventoryMovementWaterfallVisx";
+import { MpConfigMetricsStackedBarVisx } from "./MpConfigMetricsStackedBarVisx";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -160,6 +168,11 @@ export default function AnalyticsPage() {
   const [inventoryGroup, setInventoryGroup] = useState<InventoryMovementGroup>("category");
   const [inventoryCategory, setInventoryCategory] = useState<string | null>(null);
   const [inventorySize, setInventorySize] = useState<string | null>(null);
+
+  const [mpMetrics, setMpMetrics] = useState<MpConfigMetricBreakdown[]>([]);
+  const [mpMetricsLoading, setMpMetricsLoading] = useState(false);
+  const [mpMetricsRefreshing, setMpMetricsRefreshing] = useState(false);
+  const [mpMetricsError, setMpMetricsError] = useState<string | null>(null);
 
   const currencyFormatter = useMemo(
     () =>
@@ -377,6 +390,34 @@ export default function AnalyticsPage() {
   useEffect(() => {
     loadTimeline("initial");
   }, [loadTimeline]);
+
+  const loadMpMetrics = useCallback(
+    async (mode: "initial" | "refresh" = "initial") => {
+      if (mode === "initial") setMpMetricsLoading(true);
+      else setMpMetricsRefreshing(true);
+      setMpMetricsError(null);
+      try {
+        const res = await getMpConfigMetricsBreakdown({
+          from: timelineDateRange.from.toISOString(),
+          to: timelineDateRange.to.toISOString(),
+        });
+        if (!res.ok) throw new Error("Failed to load mp-config metrics");
+        setMpMetrics(res.metrics ?? []);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load mp-config metrics";
+        setMpMetricsError(message);
+        setMpMetrics([]);
+      } finally {
+        if (mode === "initial") setMpMetricsLoading(false);
+        else setMpMetricsRefreshing(false);
+      }
+    },
+    [timelineDateRange.from, timelineDateRange.to]
+  );
+
+  useEffect(() => {
+    loadMpMetrics("initial");
+  }, [loadMpMetrics]);
 
   const loadInventoryMovement = useCallback(async () => {
     setInventoryLoading(true);
@@ -620,6 +661,39 @@ export default function AnalyticsPage() {
     </Card>
   );
 
+  const mpMetricsCard = (
+    <Card>
+      <CardHeader>
+        <CardTitle>Mp-config answer breakdown</CardTitle>
+        <CardDescription>Distributions from released results (final responses) in the selected date range.</CardDescription>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => loadMpMetrics("refresh")}
+            disabled={mpMetricsRefreshing || mpMetricsLoading}
+            title="Refresh mp-config metrics"
+          >
+            <RefreshCw className={mpMetricsRefreshing ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        {mpMetricsLoading ? (
+          <Skeleton className="h-[320px] w-full rounded-xl" />
+        ) : mpMetricsError ? (
+          <p className="text-sm text-muted-foreground">{mpMetricsError}</p>
+        ) : mpMetrics.length === 0 || mpMetrics.every((m) => (m.total ?? 0) <= 0) ? (
+          <p className="text-sm text-muted-foreground">No released mp-config answers in the selected period.</p>
+        ) : (
+          <div className="h-[320px] w-full">
+            <MpConfigMetricsStackedBarVisx metrics={mpMetrics} />
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -813,14 +887,15 @@ export default function AnalyticsPage() {
         </Card>
 
         {timelineCard}
+        {mpMetricsCard}
       </div>
 
       <div className="grid gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Inventory movement waterfall</CardTitle>
+            <CardTitle>Inventory movement</CardTitle>
             <CardDescription>
-              Net difference between stock-in and stock-out. Click a part to drill into size, then type.
+              Waterfall comparison between start vs end quantities. Click a part to drill into size, then type.
             </CardDescription>
             <CardAction>
               <div className="flex items-center gap-2">
@@ -865,6 +940,7 @@ export default function AnalyticsPage() {
               <InventoryMovementWaterfallVisx
                 rows={inventoryRows}
                 onLabelClick={(row) => {
+                  if (row.key === "__total_start__" || row.key === "__total_end__") return;
                   if (inventoryGroup === "category") {
                     setInventoryGroup("size");
                     setInventoryCategory(row.key);
@@ -877,7 +953,9 @@ export default function AnalyticsPage() {
                     return;
                   }
                 }}
-                isLabelClickable={() => inventoryGroup !== "type"}
+                isLabelClickable={(row) =>
+                  inventoryGroup !== "type" && row.key !== "__total_start__" && row.key !== "__total_end__"
+                }
               />
             )}
           </CardContent>

@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -69,6 +78,9 @@ export default function ResultsPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<ResultsTab>("active");
   const [sending, setSending] = useState<Record<string, boolean>>({});
+  const [deleting, setDeleting] = useState<Record<string, boolean>>({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MpConfigResponseRow | null>(null);
   const [staffRows, setStaffRows] = useState<StaffRow[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
   const [totalCount, setTotalCount] = useState<number | null>(null);
@@ -257,8 +269,72 @@ export default function ResultsPage() {
     [],
   );
 
+  const deleteRow = useCallback(async (row: MpConfigResponseRow) => {
+    setDeleting((prev) => ({ ...prev, [row.id]: true }));
+    try {
+      const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(row.id)}`, { method: "DELETE" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to delete");
+
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+      setTotalCount((prev) => (typeof prev === "number" ? Math.max(0, prev - 1) : prev));
+      toast.success("Deleted");
+      setDeleteDialogOpen(false);
+      setDeleteTarget(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting((prev) => {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      });
+    }
+  }, []);
+
   return (
     <div className="space-y-6">
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete result?</DialogTitle>
+            <DialogDescription>
+              {deleteTarget?.is_final
+                ? "This released result will be permanently deleted from the database. This action cannot be undone."
+                : "This result will be permanently deleted from the database. This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleteTarget ? Boolean(deleting[deleteTarget.id]) : false}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (!deleteTarget) return;
+                void deleteRow(deleteTarget);
+              }}
+              disabled={deleteTarget ? Boolean(deleting[deleteTarget.id]) : true}
+            >
+              {deleteTarget && deleting[deleteTarget.id] ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1>Results</h1>
@@ -311,12 +387,13 @@ export default function ResultsPage() {
                 <TableHead className="w-[220px]">Measured by</TableHead>
                 <TableHead className="w-[140px]">Group Updates</TableHead>
                 <TableHead className="w-[260px]">ID</TableHead>
+                <TableHead className="w-[52px] text-right" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
                     {tab === "active" ? "No active results yet." : "No released results yet."}
                   </TableCell>
                 </TableRow>
@@ -329,6 +406,7 @@ export default function ResultsPage() {
                   const shoulder = safeString(d.shoulderLength) || "—";
                   const updated = row.updated_at ? new Date(row.updated_at).toLocaleString() : "—";
                   const busy = Boolean(sending[row.id]);
+                  const isDeleting = Boolean(deleting[row.id]);
                   const measuredByText = measuredByLabel(row);
                   const measuredByOk = isMeasuredByValid(row);
 
@@ -337,7 +415,7 @@ export default function ResultsPage() {
                       key={row.id}
                       role="button"
                       tabIndex={0}
-                      className="cursor-pointer"
+                      className="group cursor-pointer"
                       onClick={() => router.push(`/settings/results/${row.id}`)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
@@ -399,6 +477,27 @@ export default function ResultsPage() {
                         </Button>
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{row.id}</TableCell>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                          onClick={() => {
+                            setDeleteTarget(row);
+                            setDeleteDialogOpen(true);
+                          }}
+                          disabled={isDeleting}
+                          aria-label="Delete result"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })

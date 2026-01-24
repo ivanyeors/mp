@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { ParentSize } from "@visx/responsive";
 import { Group } from "@visx/group";
 import { scaleBand, scaleLinear } from "@visx/scale";
@@ -12,9 +12,12 @@ import { localPoint } from "@visx/event";
 export type MovementRow = {
   key: string;
   label: string;
+  kind?: "total_start" | "total_end" | "delta";
   stockIn: number;
   stockOut: number;
   net: number;
+  startQty: number;
+  endQty: number;
 };
 
 type WaterfallRow = MovementRow & { start: number; end: number; cumulativeAfter: number };
@@ -47,12 +50,21 @@ function Chart({
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const innerHeight = Math.max(10, height - margin.top - margin.bottom);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [hoveredLabelKey, setHoveredLabelKey] = useState<string | null>(null);
 
   const wfRows = useMemo<WaterfallRow[]>(() => {
     let cum = 0;
     return rows.map((r) => {
+      if (r.kind === "total_start") {
+        cum = Number(r.startQty ?? 0);
+        return { ...r, start: 0, end: cum, cumulativeAfter: cum };
+      }
+      if (r.kind === "total_end") {
+        cum = Number(r.endQty ?? 0);
+        return { ...r, start: 0, end: cum, cumulativeAfter: cum };
+      }
       const start = cum;
-      const end = cum + r.net;
+      const end = cum + Number(r.net ?? 0);
       cum = end;
       return { ...r, start, end, cumulativeAfter: cum };
     });
@@ -132,6 +144,7 @@ function Chart({
             const y = yScale(r.key);
             if (y === undefined) return null;
             const clickable = isLabelClickable ? isLabelClickable(r) : false;
+            const hovered = clickable && hoveredLabelKey === r.key;
             return (
               <text
                 key={`label-${r.key}`}
@@ -142,7 +155,20 @@ function Chart({
                 fontSize={12}
                 fontFamily="ui-sans-serif, system-ui"
                 fill={clickable ? "var(--foreground)" : "var(--muted-foreground)"}
-                style={{ cursor: clickable ? "pointer" : "default", userSelect: "none" }}
+                style={{
+                  cursor: clickable ? "pointer" : "default",
+                  userSelect: "none",
+                  textDecoration: hovered ? "underline" : "none",
+                  textUnderlineOffset: hovered ? "4px" : undefined,
+                  textDecorationThickness: hovered ? "2px" : undefined,
+                }}
+                onMouseEnter={() => {
+                  if (!clickable) return;
+                  setHoveredLabelKey(r.key);
+                }}
+                onMouseLeave={() => {
+                  setHoveredLabelKey((prev) => (prev === r.key ? null : prev));
+                }}
                 onClick={() => {
                   if (!clickable || !onLabelClick) return;
                   onLabelClick(r);
@@ -158,14 +184,18 @@ function Chart({
             const y = yScale(r.key);
             if (y === undefined) return null;
             const barH = yScale.bandwidth();
-            const x0 = xScale(Math.min(r.start, r.end));
-            const x1 = xScale(Math.max(r.start, r.end));
+            const isTotal = r.kind === "total_start" || r.kind === "total_end";
+            const absValue = r.kind === "total_start" ? r.startQty : r.endQty;
+            const startValue = isTotal ? 0 : r.start;
+            const endValue = isTotal ? Number(absValue ?? 0) : r.end;
+            const x0 = xScale(Math.min(startValue, endValue));
+            const x1 = xScale(Math.max(startValue, endValue));
             const w = Math.max(1, x1 - x0);
-            const fill = r.net >= 0 ? "var(--chart-2)" : "var(--chart-5)";
+            const fill = isTotal ? "var(--muted-foreground)" : r.net >= 0 ? "var(--chart-2)" : "var(--chart-5)";
 
             const next = wfRows[idx + 1];
             const connectorY = y + barH / 2;
-            const connectorX = xScale(r.end);
+            const connectorX = xScale(isTotal ? endValue : r.end);
 
             return (
               <g key={`row-${r.key}`}>
@@ -184,7 +214,7 @@ function Chart({
                 {next && yScale(next.key) !== undefined && (
                   <line
                     x1={connectorX}
-                    x2={xScale(next.start)}
+                    x2={xScale(next.kind === "total_start" || next.kind === "total_end" ? 0 : next.start)}
                     y1={connectorY}
                     y2={(yScale(next.key) as number) + yScale.bandwidth() / 2}
                     stroke="var(--border)"
@@ -234,6 +264,14 @@ function Chart({
         <TooltipWithBounds top={tooltipTop} left={tooltipLeft} style={tooltipStyles}>
           <div className="space-y-1">
             <div className="font-semibold">{tooltipData.row.label}</div>
+            <div className="flex justify-between gap-6">
+              <span className="text-muted-foreground">Start qty:</span>
+              <span className="font-medium">{compactNumber.format(tooltipData.row.startQty)}</span>
+            </div>
+            <div className="flex justify-between gap-6">
+              <span className="text-muted-foreground">End qty:</span>
+              <span className="font-medium">{compactNumber.format(tooltipData.row.endQty)}</span>
+            </div>
             <div className="flex justify-between gap-6">
               <span className="text-muted-foreground">Stock in:</span>
               <span className="font-medium">{compactNumber.format(tooltipData.row.stockIn)}</span>
