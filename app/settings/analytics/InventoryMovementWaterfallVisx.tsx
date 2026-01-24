@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, type CSSProperties } from "react";
 import { ParentSize } from "@visx/responsive";
 import { Group } from "@visx/group";
 import { scaleBand, scaleLinear } from "@visx/scale";
@@ -22,8 +22,8 @@ export type MovementRow = {
 
 type WaterfallRow = MovementRow & { start: number; end: number; cumulativeAfter: number };
 
-const tooltipStyles = {
-  ...defaultStyles,
+const tooltipStyles: CSSProperties = {
+  ...(defaultStyles as CSSProperties),
   backgroundColor: "var(--popover)",
   color: "var(--popover-foreground)",
   border: "1px solid var(--border)",

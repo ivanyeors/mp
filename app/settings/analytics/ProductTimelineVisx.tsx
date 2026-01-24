@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { Group } from "@visx/group";
 import { scaleTime, scaleLinear } from "@visx/scale";
 import { LinePath } from "@visx/shape";
@@ -36,8 +36,8 @@ type ProductTimelineVisxProps = {
 
 const palette = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"] as const;
 
-const tooltipStyles = {
-  ...defaultStyles,
+const tooltipStyles: CSSProperties = {
+  ...(defaultStyles as CSSProperties),
   backgroundColor: "var(--popover)",
   color: "var(--popover-foreground)",
   border: "1px solid var(--border)",

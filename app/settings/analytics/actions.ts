@@ -594,7 +594,7 @@ export async function getInventoryMovementWaterfall(input: {
     g.stockOut = outByGroup.get(g.key) ?? 0;
   }
 
-  const rows: InventoryMovementRow[] = Array.from(groups.values()).map((g) => {
+  const rows: InventoryMovementRow[] = Array.from(groups.values()).map((g): InventoryMovementRow => {
     const startQty = Math.max(0, Math.round(g.startQty));
     const endQty = Math.max(0, Math.round(g.endQty));
     const stockIn = Math.max(0, Math.round(g.stockIn));
