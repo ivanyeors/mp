@@ -35,6 +35,14 @@ const tooltipStyles: CSSProperties = {
   zIndex: 1000,
 };
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const estimateLabelWidth = (labels: string[], fontSize: number) => {
+  if (labels.length === 0) return 0;
+  const longest = labels.reduce((max, label) => Math.max(max, label.length), 0);
+  return Math.ceil(longest * fontSize * 0.58);
+};
+
 function Chart({
   width,
   height,
@@ -48,14 +56,20 @@ function Chart({
   onLabelClick?: (row: MovementRow) => void;
   isLabelClickable?: (row: MovementRow) => boolean;
 }) {
-  const margin =
-    width < 420
-      ? { top: 10, right: 12, bottom: 36, left: 150 }
-      : width < 640
-        ? { top: 12, right: 16, bottom: 40, left: 190 }
-        : { top: 12, right: 16, bottom: 44, left: 220 };
   const labelFontSize = width < 420 ? 11 : 12;
   const axisFontSize = width < 420 ? 10 : 11;
+  const estimatedLabelWidth = estimateLabelWidth(
+    rows.map((row) => row.label),
+    labelFontSize
+  );
+  const leftMin = width < 420 ? 100 : width < 640 ? 120 : 140;
+  const leftMax = width < 420 ? 140 : width < 640 ? 170 : 200;
+  const margin = {
+    top: width < 420 ? 10 : 12,
+    right: width < 420 ? 12 : 16,
+    bottom: width < 420 ? 36 : width < 640 ? 40 : 44,
+    left: clamp(estimatedLabelWidth + 16, leftMin, leftMax),
+  };
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const innerHeight = Math.max(10, height - margin.top - margin.bottom);
   const [hoveredLabelKey, setHoveredLabelKey] = useState<string | null>(null);
@@ -325,8 +339,8 @@ export function InventoryMovementWaterfallVisx({
   isLabelClickable?: (row: MovementRow) => boolean;
 }) {
   return (
-    <div className="w-full overflow-x-auto sm:overflow-visible">
-      <div className="min-w-[440px] sm:min-w-0">
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[440px]">
         <ParentSize>
           {({ width }) =>
             width < 10 ? null : (
