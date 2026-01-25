@@ -66,15 +66,11 @@ function Chart({
   metric: "units" | "revenue";
   currency?: string | null;
 }) {
-  const margin = useMemo(
-    () => ({
-      top: 16,
-      right: 16,
-      bottom: 44,
-      left: 56,
-    }),
-    []
-  );
+  const margin =
+    width < 420
+      ? { top: 12, right: 12, bottom: 36, left: 44 }
+      : { top: 16, right: 16, bottom: 44, left: 56 };
+  const axisFontSize = width < 420 ? 10 : 11;
 
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const innerHeight = Math.max(10, height - margin.top - margin.bottom);
@@ -270,7 +266,7 @@ function Chart({
             numTicks={Math.max(2, Math.floor(innerWidth / 90))}
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
-              fontSize: 11,
+              fontSize: axisFontSize,
               fontFamily: "ui-sans-serif, system-ui",
               textAnchor: "middle",
               dy: "0.6em",
@@ -285,7 +281,7 @@ function Chart({
             numTicks={Math.max(2, Math.floor(innerHeight / 44))}
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
-              fontSize: 11,
+              fontSize: axisFontSize,
               fontFamily: "ui-sans-serif, system-ui",
               textAnchor: "end",
               dx: "-0.4em",
@@ -319,7 +315,7 @@ function Chart({
                 x={x}
                 y={y}
                 fill="var(--muted-foreground)"
-                fontSize={11}
+                fontSize={axisFontSize}
                 fontFamily="ui-sans-serif, system-ui"
                 textAnchor="middle"
                 style={{ pointerEvents: "none" }}
@@ -332,7 +328,7 @@ function Chart({
       </svg>
 
       {/* Legend (below chart) */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:gap-x-4 sm:text-xs">
         {products.slice(0, 5).map((product, idx) => {
           const color = palette[idx % palette.length];
           return (

@@ -97,7 +97,14 @@ function Chart({
   showBottomAxis?: boolean;
   onRowClick?: (label: string) => void;
 }) {
-  const margin = defaultMargin;
+  const margin =
+    width < 420
+      ? { ...defaultMargin, left: 120, right: 12, bottom: 28 }
+      : width < 640
+        ? { ...defaultMargin, left: 150, right: 16, bottom: 30 }
+        : defaultMargin;
+  const labelFontSize = width < 420 ? 11 : 12;
+  const axisFontSize = width < 420 ? 10 : 11;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const BAR_HEIGHT = 16;
   const BAR_RADIUS = 2;
@@ -226,7 +233,7 @@ function Chart({
                 dy="0.33em"
                 textAnchor="end"
                 fill={fill}
-                fontSize={12}
+                fontSize={labelFontSize}
                 fontFamily="ui-sans-serif, system-ui"
                 style={{
                   cursor: clickable ? "pointer" : "default",
@@ -258,7 +265,7 @@ function Chart({
               tickFormat={(v) => asMoney(Number(v))}
               tickLabelProps={() => ({
                 fill: "var(--muted-foreground)",
-                fontSize: 11,
+                fontSize: axisFontSize,
                 fontFamily: "ui-sans-serif, system-ui",
                 textAnchor: "middle",
                 dy: "0.6em",
@@ -423,42 +430,50 @@ export function MarginByCategoryVisx({
   }, [height, rows.length]);
 
   return (
-    <div className="w-full space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="w-full space-y-2 sm:space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-xs text-muted-foreground">
           {selectedCategory ? `Top parts in ${selectedLabel ?? "selected category"}` : "Click a category to drill down into parts."}
         </div>
         {selectedCategory && (
-          <Button type="button" variant="outline" size="sm" onClick={() => setSelectedCategory(null)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto"
+            onClick={() => setSelectedCategory(null)}
+          >
             Back to categories
           </Button>
         )}
       </div>
 
-      <div className="w-full" style={{ height: chartHeight }}>
-        <ParentSize>
-          {({ width }) =>
-            width < 10 ? null : (
-              <Chart
-                width={width}
-                height={chartHeight}
-                rows={rows}
-                showBottomAxis
-                onRowClick={
-                  selectedCategory
-                    ? undefined
-                    : (label) => {
-                        const key = categoryByLabel.get(label) ?? null;
-                        if (key) setSelectedCategory(key);
-                      }
-                }
-              />
-            )
-          }
-        </ParentSize>
+      <div className="w-full overflow-x-auto sm:overflow-visible">
+        <div className="min-w-[360px] sm:min-w-0" style={{ height: chartHeight }}>
+          <ParentSize>
+            {({ width }) =>
+              width < 10 ? null : (
+                <Chart
+                  width={width}
+                  height={chartHeight}
+                  rows={rows}
+                  showBottomAxis
+                  onRowClick={
+                    selectedCategory
+                      ? undefined
+                      : (label) => {
+                          const key = categoryByLabel.get(label) ?? null;
+                          if (key) setSelectedCategory(key);
+                        }
+                  }
+                />
+              )
+            }
+          </ParentSize>
+        </div>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground sm:text-xs">
         {legend.map((l) => (
           <div key={l.key} className="flex items-center gap-2">
             <span className="inline-block size-3 rounded-sm" style={{ background: l.color }} />

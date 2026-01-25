@@ -48,7 +48,14 @@ function Chart({
   onLabelClick?: (row: MovementRow) => void;
   isLabelClickable?: (row: MovementRow) => boolean;
 }) {
-  const margin = useMemo(() => ({ top: 12, right: 16, bottom: 44, left: 220 }), []);
+  const margin =
+    width < 420
+      ? { top: 10, right: 12, bottom: 36, left: 150 }
+      : width < 640
+        ? { top: 12, right: 16, bottom: 40, left: 190 }
+        : { top: 12, right: 16, bottom: 44, left: 220 };
+  const labelFontSize = width < 420 ? 11 : 12;
+  const axisFontSize = width < 420 ? 10 : 11;
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const innerHeight = Math.max(10, height - margin.top - margin.bottom);
   const [hoveredLabelKey, setHoveredLabelKey] = useState<string | null>(null);
@@ -151,7 +158,7 @@ function Chart({
                 y={y + yScale.bandwidth() / 2}
                 textAnchor="end"
                 dominantBaseline="middle"
-                fontSize={12}
+                fontSize={labelFontSize}
                 fontFamily="ui-sans-serif, system-ui"
                 fill={clickable ? "var(--foreground)" : "var(--muted-foreground)"}
                 style={{
@@ -233,7 +240,7 @@ function Chart({
             numTicks={Math.max(2, Math.floor(innerWidth / 100))}
             tickLabelProps={() => ({
               fill: "var(--muted-foreground)",
-              fontSize: 11,
+              fontSize: axisFontSize,
               fontFamily: "ui-sans-serif, system-ui",
               textAnchor: "middle",
               dy: "0.6em",
@@ -318,10 +325,22 @@ export function InventoryMovementWaterfallVisx({
   isLabelClickable?: (row: MovementRow) => boolean;
 }) {
   return (
-    <div className="w-full">
-      <ParentSize>
-        {({ width }) => (width < 10 ? null : <Chart width={width} height={height} rows={rows} onLabelClick={onLabelClick} isLabelClickable={isLabelClickable} />)}
-      </ParentSize>
+    <div className="w-full overflow-x-auto sm:overflow-visible">
+      <div className="min-w-[440px] sm:min-w-0">
+        <ParentSize>
+          {({ width }) =>
+            width < 10 ? null : (
+              <Chart
+                width={width}
+                height={height}
+                rows={rows}
+                onLabelClick={onLabelClick}
+                isLabelClickable={isLabelClickable}
+              />
+            )
+          }
+        </ParentSize>
+      </div>
     </div>
   );
 }

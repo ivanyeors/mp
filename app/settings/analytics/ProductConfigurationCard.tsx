@@ -534,17 +534,18 @@ export function ProductConfigurationCard() {
   };
 
   const viewportTransform = `translate(${view.x} ${view.y}) scale(${view.scale})`;
+  const dendrogramPadding = width < 480 ? 36 : 64;
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+      <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <CardTitle>Product Configuration</CardTitle>
-        <CardAction>
+        <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
           <Select
             value={selectedTemplateId ? String(selectedTemplateId) : undefined}
             onValueChange={(v) => setSelectedTemplateId(v ? Number(v) : null)}
           >
-            <SelectTrigger className="h-auto max-w-[520px] py-2">
+            <SelectTrigger className="h-auto w-full max-w-full py-2 sm:w-auto sm:max-w-[520px]">
               {selectedTemplate ? (
                 <div className="min-w-0">
                   <div className="text-xs font-medium text-muted-foreground">Template</div>
@@ -593,26 +594,26 @@ export function ProductConfigurationCard() {
         </CardAction>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 px-4 sm:px-6">
         {error && <div className="text-sm text-destructive">{error}</div>}
 
         <div ref={ref} className="relative h-[520px] w-full overflow-hidden rounded-xl border bg-card">
           {loadingTemplates ? (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <Skeleton className="h-[28px] w-[260px] rounded-lg" />
               <Skeleton className="mt-4 h-[440px] w-full rounded-xl" />
             </div>
           ) : templates.length === 0 ? (
-            <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+            <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground sm:p-6">
               No BOM templates found yet. Create one in Settings → Inventory → Configure → Templates.
             </div>
           ) : loadingTree ? (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <Skeleton className="h-[28px] w-[380px] rounded-lg" />
               <Skeleton className="mt-4 h-[440px] w-full rounded-xl" />
             </div>
           ) : !tree || width < 10 || height < 10 ? (
-            <div className="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
+            <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground sm:p-6">
               {selectedLabel ? "No parts found for this template." : "Select a template."}
             </div>
           ) : (
@@ -621,6 +622,7 @@ export function ProductConfigurationCard() {
                 width={Math.max(10, width)}
                 height={Math.max(10, height)}
                 data={tree}
+                padding={dendrogramPadding}
                 svgRef={svgRef}
                 viewportTransform={viewportTransform}
                 onWheel={onWheel}
@@ -629,11 +631,11 @@ export function ProductConfigurationCard() {
                 onPointerUp={onPointerUp}
               />
 
-              <div className="absolute bottom-3 right-3 flex items-center gap-2 rounded-lg border bg-background/80 p-1 backdrop-blur">
+              <div className="absolute bottom-3 right-3 flex flex-wrap items-center gap-1 rounded-lg border bg-background/80 p-1 backdrop-blur sm:flex-nowrap sm:gap-2">
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-8 px-2"
+                  className="h-7 px-2 sm:h-8"
                   onClick={() => zoomAt(view.scale * 1.15, { x: width / 2, y: height / 2 })}
                 >
                   +
@@ -641,7 +643,7 @@ export function ProductConfigurationCard() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-8 px-2"
+                  className="h-7 px-2 sm:h-8"
                   onClick={() => zoomAt(view.scale / 1.15, { x: width / 2, y: height / 2 })}
                 >
                   −
@@ -649,7 +651,7 @@ export function ProductConfigurationCard() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-8 px-2"
+                  className="h-7 px-2 sm:h-8"
                   onClick={() => setView({ x: 0, y: 0, scale: 1 })}
                 >
                   Reset
