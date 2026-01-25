@@ -88,6 +88,14 @@ const legend = [
   { key: "msrpValue" as const, label: "MSRP value", color: "var(--chart-1)" },
 ];
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const estimateLabelWidth = (labels: string[], fontSize: number) => {
+  if (labels.length === 0) return 0;
+  const longest = labels.reduce((max, label) => Math.max(max, label.length), 0);
+  return Math.ceil(longest * fontSize * 0.58);
+};
+
 const formatCompactCurrency = (() => {
   try {
     return new Intl.NumberFormat("en-US", {
@@ -132,14 +140,20 @@ function Chart({
   rows: MetricRow[];
   onTickClick?: (label: string) => void;
 }) {
-  const margin =
-    width < 420
-      ? { ...defaultMargin, left: 140, right: 12 }
-      : width < 640
-        ? { ...defaultMargin, left: 170, right: 16 }
-        : defaultMargin;
   const labelFontSize = width < 420 ? 11 : 12;
   const axisFontSize = width < 420 ? 10 : 11;
+  const estimatedLabelWidth = estimateLabelWidth(
+    rows.map((row) => row.label),
+    labelFontSize
+  );
+  const leftMin = width < 420 ? 100 : width < 640 ? 120 : 130;
+  const leftMax = width < 420 ? 140 : width < 640 ? 170 : 190;
+  const margin = {
+    top: defaultMargin.top,
+    right: width < 420 ? 12 : width < 640 ? 16 : defaultMargin.right,
+    bottom: defaultMargin.bottom,
+    left: clamp(estimatedLabelWidth + 16, leftMin, leftMax),
+  };
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const BAR_HEIGHT = 16;
   const BAR_RADIUS = 2;
@@ -745,8 +759,8 @@ export function MarginByProductVisx({
           )}
         </div>
       </div>
-      <div className="w-full overflow-x-auto sm:overflow-visible">
-        <div className="min-w-[520px] sm:min-w-0" style={{ height: chartHeight }}>
+      <div className="w-full overflow-x-auto">
+        <div className="min-w-[520px]" style={{ height: chartHeight }}>
           {chartRows.length === 0 ? (
             <div className="flex h-full items-center justify-center rounded-xl border bg-card p-4 text-sm text-muted-foreground sm:p-6">
               {level === "template"

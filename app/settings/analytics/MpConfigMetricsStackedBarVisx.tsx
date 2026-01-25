@@ -52,6 +52,14 @@ const palette = [
   "var(--chart-5)",
 ] as const;
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const estimateLabelWidth = (labels: string[], fontSize: number) => {
+  if (labels.length === 0) return 0;
+  const longest = labels.reduce((max, label) => Math.max(max, label.length), 0);
+  return Math.ceil(longest * fontSize * 0.58);
+};
+
 function sortSegmentsForTooltip(segments: MpConfigMetricSegment[]) {
   return [...segments].sort((a, b) => {
     const aCount = Number(a.count ?? 0);
@@ -77,15 +85,22 @@ function Chart({
   height: number;
   metrics: MpConfigMetricBreakdown[];
 }) {
-  const margin =
-    width < 420
-      ? { ...defaultMargin, left: 130, right: 12 }
-      : width < 640
-        ? { ...defaultMargin, left: 150, right: 16 }
-        : defaultMargin;
   const labelClassName = width < 420 ? "fill-foreground text-[11px]" : "fill-foreground text-[12px]";
   const mutedClassName = width < 420 ? "fill-muted-foreground text-[11px]" : "fill-muted-foreground text-[12px]";
   const mutedSmallClassName = width < 420 ? "fill-muted-foreground text-[10px]" : "fill-muted-foreground text-[11px]";
+  const labelFontSize = width < 420 ? 11 : 12;
+  const estimatedLabelWidth = estimateLabelWidth(
+    metrics.map((metric) => metric.label),
+    labelFontSize
+  );
+  const leftMin = width < 420 ? 100 : width < 640 ? 120 : 130;
+  const leftMax = width < 420 ? 140 : width < 640 ? 170 : 190;
+  const margin = {
+    top: defaultMargin.top,
+    right: width < 420 ? 12 : width < 640 ? 16 : defaultMargin.right,
+    bottom: defaultMargin.bottom,
+    left: clamp(estimatedLabelWidth + 16, leftMin, leftMax),
+  };
   const innerWidth = Math.max(10, width - margin.left - margin.right);
 
   const contentInnerHeight = metrics.length > 0 ? Math.max(10, metrics.length * ROW_STEP - ROW_GAP) : Math.max(10, height);
@@ -310,8 +325,8 @@ function Chart({
 export function MpConfigMetricsStackedBarVisx({ metrics }: { metrics: MpConfigMetricBreakdown[] }) {
   const fixedHeight = Math.max(200, estimatedChartHeight(metrics));
   return (
-    <div className="w-full overflow-x-auto sm:overflow-visible">
-      <div className="min-w-[420px] sm:min-w-0" style={{ height: fixedHeight }}>
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[420px]" style={{ height: fixedHeight }}>
         <ParentSize>
           {({ width }) => <Chart width={width} height={fixedHeight} metrics={metrics} />}
         </ParentSize>

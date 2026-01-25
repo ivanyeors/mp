@@ -407,6 +407,18 @@ export function ProductTimelineVisx({
     })).filter((product) => product.data.length > 0);
   }, [products, dateRange]);
 
+  const months = useMemo(() => {
+    const start = startOfMonth(dateRange.from);
+    const end = startOfMonth(dateRange.to);
+    const acc: Date[] = [];
+    for (let d = start; d <= end; d = addMonths(d, 1)) {
+      acc.push(d);
+    }
+    return acc;
+  }, [dateRange.from, dateRange.to]);
+
+  const minWidth = Math.max(520, months.length * 90);
+
   if (filteredProducts.length === 0) {
     return (
       <div className="flex h-[320px] items-center justify-center">
@@ -418,22 +430,24 @@ export function ProductTimelineVisx({
   }
 
   return (
-    <div className="w-full">
-      <ParentSize>
-        {({ width }) =>
-          width < 10 ? null : (
-            <Chart
-              width={width}
-              height={320}
-              products={filteredProducts}
-              dateRange={dateRange}
-              viewMode={viewMode}
-              metric={metric}
-              currency={currency}
-            />
-          )
-        }
-      </ParentSize>
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[520px]" style={{ minWidth }}>
+        <ParentSize>
+          {({ width }) =>
+            width < 10 ? null : (
+              <Chart
+                width={width}
+                height={320}
+                products={filteredProducts}
+                dateRange={dateRange}
+                viewMode={viewMode}
+                metric={metric}
+                currency={currency}
+              />
+            )
+          }
+        </ParentSize>
+      </div>
     </div>
   );
 }
