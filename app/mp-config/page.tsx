@@ -322,9 +322,7 @@ export default function MpConfigPage() {
           exitToStart();
         },
       },
-      cancel: {
-        label: "Stay",
-      },
+      cancel: "Stay",
       id: "mp-config-exit",
     });
   };
