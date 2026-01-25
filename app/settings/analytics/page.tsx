@@ -32,6 +32,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { CalendarIcon, RefreshCw } from "lucide-react";
 import { endOfMonth, format, startOfMonth, subMonths } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null };
 
@@ -145,6 +146,7 @@ export default function AnalyticsPage() {
     from: startOfMonth(subMonths(new Date(), 5)),
     to: endOfMonth(new Date()),
   });
+  const isMobile = useIsMobile();
   const [isTimelineCalendarOpen, setIsTimelineCalendarOpen] = useState(false);
   const [activeTimelineDateEdge, setActiveTimelineDateEdge] = useState<"from" | "to">("to");
   const [hoverTimelineDateEdge, setHoverTimelineDateEdge] = useState<"from" | "to" | null>(null);
@@ -605,25 +607,25 @@ export default function AnalyticsPage() {
   );
 
   const timelineCard = (
-    <Card>
-      <CardHeader>
+    <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+      <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <CardTitle>Product sales timeline</CardTitle>
         <CardDescription>
           {timelineView === "products"
             ? "Timeline view of different products being sold over time."
             : "Timeline view of parts sold by category over time."}
         </CardDescription>
-        <CardAction>
-          <div className="flex items-center gap-2">
-            <Tabs value={timelineView} onValueChange={(v) => setTimelineView(v as "parts" | "products")}>
-              <TabsList>
+        <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+            <Tabs value={timelineView} onValueChange={(v) => setTimelineView(v as "parts" | "products")} className="w-full sm:w-auto">
+              <TabsList className="w-full sm:w-fit">
                 <TabsTrigger value="parts">Parts</TabsTrigger>
                 <TabsTrigger value="products">Products</TabsTrigger>
               </TabsList>
             </Tabs>
 
-            <Tabs value={timelineMetric} onValueChange={(v) => setTimelineMetric(v as "units" | "revenue")}>
-              <TabsList>
+            <Tabs value={timelineMetric} onValueChange={(v) => setTimelineMetric(v as "units" | "revenue")} className="w-full sm:w-auto">
+              <TabsList className="w-full sm:w-fit">
                 <TabsTrigger value="units">Units</TabsTrigger>
                 <TabsTrigger value="revenue">Revenue</TabsTrigger>
               </TabsList>
@@ -641,7 +643,7 @@ export default function AnalyticsPage() {
           </div>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         {timelineLoading ? (
           <Skeleton className="h-[320px] w-full rounded-xl" />
         ) : timelineError ? (
@@ -662,11 +664,11 @@ export default function AnalyticsPage() {
   );
 
   const mpMetricsCard = (
-    <Card>
-      <CardHeader>
+    <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+      <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <CardTitle>Results</CardTitle>
         <CardDescription>Mp-config answer breakdown from released results (final responses) in the selected date range.</CardDescription>
-        <CardAction>
+        <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
           <Button
             variant="ghost"
             size="icon"
@@ -678,7 +680,7 @@ export default function AnalyticsPage() {
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         {mpMetricsLoading ? (
           <Skeleton className="h-[320px] w-full rounded-xl" />
         ) : mpMetricsError ? (
@@ -787,18 +789,18 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card>
-          <CardHeader>
+        <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+          <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
             <CardTitle>{marginView === "products" ? "Margin by product" : "Margin by category"}</CardTitle>
             <CardDescription>
               {marginView === "products"
                 ? "Shows cost vs margin value by pillow product over the selected date range (units sold)."
                 : "Shows cost vs margin value by part category over the selected date range (units sold), with drill-down into items."}
             </CardDescription>
-            <CardAction>
-              <div className="flex items-center gap-2">
-                <Tabs value={marginView} onValueChange={(v) => setMarginView(v as "parts" | "products")}>
-                  <TabsList>
+            <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
+                <Tabs value={marginView} onValueChange={(v) => setMarginView(v as "parts" | "products")} className="w-full sm:w-auto">
+                  <TabsList className="w-full sm:w-fit">
                     <TabsTrigger value="parts">Parts</TabsTrigger>
                     <TabsTrigger value="products">Products</TabsTrigger>
                   </TabsList>
@@ -812,7 +814,7 @@ export default function AnalyticsPage() {
                   }}
                 >
                   <PopoverAnchor asChild>
-                    <div className="inline-flex h-9 items-center gap-1 rounded-lg border bg-background p-1">
+                    <div className="inline-flex h-9 w-full items-center gap-1 rounded-lg border bg-background p-1 sm:w-auto">
                       <CalendarIcon className="ml-1 h-4 w-4 text-muted-foreground" />
                       <button
                         type="button"
@@ -851,7 +853,7 @@ export default function AnalyticsPage() {
                       </button>
                     </div>
                   </PopoverAnchor>
-                  <PopoverContent className="w-auto p-0" align="end">
+                  <PopoverContent className="w-auto p-0" align={isMobile ? "center" : "end"}>
                     <div className="border-b px-4 py-2 text-xs text-muted-foreground">
                       Editing {activeTimelineDateEdge === "from" ? "start" : "end"} date
                     </div>
@@ -859,7 +861,7 @@ export default function AnalyticsPage() {
                       mode="range"
                       selected={{ from: timelineDateRange.from, to: timelineDateRange.to }}
                       onSelect={handleTimelineDateRangeSelect}
-                      numberOfMonths={2}
+                      numberOfMonths={isMobile ? 1 : 2}
                       defaultMonth={activeTimelineDateEdge === "from" ? timelineDateRange.from : timelineDateRange.to}
                     />
                   </PopoverContent>
@@ -867,7 +869,7 @@ export default function AnalyticsPage() {
               </div>
             </CardAction>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             {marginView === "parts" && marginChartData.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Add cost price and MSRP data in Costings to unlock category-level margin analysis.
@@ -889,14 +891,14 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card>
-          <CardHeader>
+        <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
+          <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
             <CardTitle>Inventory movement</CardTitle>
             <CardDescription>
               Waterfall comparison between start vs end quantities. Click a part to drill into size, then type.
             </CardDescription>
-            <CardAction>
-              <div className="flex items-center gap-2">
+            <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
                 {(inventoryGroup === "size" || inventoryGroup === "type") && (
                   <Button
                     variant="outline"
@@ -915,7 +917,7 @@ export default function AnalyticsPage() {
                     Back
                   </Button>
                 )}
-                <div className="text-xs text-muted-foreground">
+                <div className="max-w-full text-xs text-muted-foreground">
                   {inventoryGroup === "category"
                     ? "Parts"
                     : inventoryGroup === "size"
@@ -927,7 +929,7 @@ export default function AnalyticsPage() {
               </div>
             </CardAction>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             {inventoryLoading ? (
               <Skeleton className="h-[380px] w-full rounded-xl" />
             ) : inventoryError ? (

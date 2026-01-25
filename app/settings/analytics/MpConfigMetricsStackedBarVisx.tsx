@@ -77,7 +77,15 @@ function Chart({
   height: number;
   metrics: MpConfigMetricBreakdown[];
 }) {
-  const margin = defaultMargin;
+  const margin =
+    width < 420
+      ? { ...defaultMargin, left: 130, right: 12 }
+      : width < 640
+        ? { ...defaultMargin, left: 150, right: 16 }
+        : defaultMargin;
+  const labelClassName = width < 420 ? "fill-foreground text-[11px]" : "fill-foreground text-[12px]";
+  const mutedClassName = width < 420 ? "fill-muted-foreground text-[11px]" : "fill-muted-foreground text-[12px]";
+  const mutedSmallClassName = width < 420 ? "fill-muted-foreground text-[10px]" : "fill-muted-foreground text-[11px]";
   const innerWidth = Math.max(10, width - margin.left - margin.right);
 
   const contentInnerHeight = metrics.length > 0 ? Math.max(10, metrics.length * ROW_STEP - ROW_GAP) : Math.max(10, height);
@@ -166,18 +174,12 @@ function Chart({
 
             return (
               <Group key={metric.key} top={y}>
-                <text
-                  x={-10}
-                  y={BAR_HEIGHT / 2}
-                  dy="0.35em"
-                  textAnchor="end"
-                  className="fill-foreground text-[12px]"
-                >
+                <text x={-10} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" className={labelClassName}>
                   {metric.label}
                 </text>
 
                 {total <= 0 || segments.length === 0 ? (
-                  <text x={0} y={BAR_HEIGHT / 2} dy="0.35em" className="fill-muted-foreground text-[12px]">
+                  <text x={0} y={BAR_HEIGHT / 2} dy="0.35em" className={mutedClassName}>
                     No answers
                   </text>
                 ) : (
@@ -240,7 +242,7 @@ function Chart({
                 )}
 
                 {/* Total label */}
-                <text x={innerWidth} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" className="fill-muted-foreground text-[11px]">
+                <text x={innerWidth} y={BAR_HEIGHT / 2} dy="0.35em" textAnchor="end" className={mutedSmallClassName}>
                   {metric.total}
                 </text>
               </Group>
@@ -252,13 +254,13 @@ function Chart({
               scale={xScale}
               top={12}
               tickLabelProps={() => ({
-                className: "fill-muted-foreground text-[11px]",
+                className: mutedSmallClassName,
                 textAnchor: "middle",
               })}
               stroke="var(--border)"
               tickStroke="var(--border)"
             />
-            <text x={0} y={32} className="fill-muted-foreground text-[11px]">
+            <text x={0} y={32} className={mutedSmallClassName}>
               Qty (final responses)
             </text>
           </Group>
@@ -308,10 +310,12 @@ function Chart({
 export function MpConfigMetricsStackedBarVisx({ metrics }: { metrics: MpConfigMetricBreakdown[] }) {
   const fixedHeight = Math.max(200, estimatedChartHeight(metrics));
   return (
-    <div className="w-full" style={{ height: fixedHeight }}>
-      <ParentSize>
-        {({ width }) => <Chart width={width} height={fixedHeight} metrics={metrics} />}
-      </ParentSize>
+    <div className="w-full overflow-x-auto sm:overflow-visible">
+      <div className="min-w-[420px] sm:min-w-0" style={{ height: fixedHeight }}>
+        <ParentSize>
+          {({ width }) => <Chart width={width} height={fixedHeight} metrics={metrics} />}
+        </ParentSize>
+      </div>
     </div>
   );
 }
