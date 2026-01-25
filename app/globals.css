@@ -138,7 +138,7 @@
   body {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow: visible;
     /* Default text (body, small text, UI text) */
     @apply bg-background text-foreground font-mono leading-snug;
     min-height: 100%;

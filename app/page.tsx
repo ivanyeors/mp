@@ -3,6 +3,13 @@ import { Ripple } from "@/components/ui/shadcn-io/ripple";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   Award,
   BadgeCheck,
   ChevronRight,
@@ -15,11 +22,14 @@ import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
+  const appointmentUrl =
+    "https://calendar.google.com/calendar/appointments/schedules/AcZssZ0bNnrc_0CeREyaoByx0GDhuif5fJFTCyAQTkEJH14vNs5XT_zzqgv47CJ-FrUACncTtYs8yeas?gv=true";
+
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative">
       <HomeHeader />
 
-      <main className="relative">
+      <main className="relative overflow-x-hidden">
         {/* Hero */}
         <section className="relative">
           <AspectRatio ratio={16 / 9} className="relative w-full overflow-hidden">
@@ -51,13 +61,36 @@ export default function Home() {
                     <Button asChild className="h-auto px-6 py-4 text-base">
                       <Link href="/mp-config">
                         <Sparkles className="mr-2 h-5 w-5" />
-                        Pick your Mpillow
+                        Customise
                         <ChevronRight className="ml-2 h-5 w-5" />
                       </Link>
                     </Button>
-                    <Button asChild variant="outline" className="h-auto px-6 py-4 text-base">
-                      <a href="#ambassadors">How it’s made</a>
-                    </Button>
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button variant="outline" className="h-auto px-6 py-4 text-base">
+                          Book an appointment
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent
+                        side="right"
+                        disableMobileBottom
+                        className="w-full md:w-[70vw] max-w-none sm:max-w-none p-0 overflow-hidden"
+                      >
+                        <SheetHeader className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur pr-12">
+                          <SheetTitle>Book an appointment</SheetTitle>
+                        </SheetHeader>
+                        <div className="flex-1 overflow-hidden">
+                          <iframe
+                            src={appointmentUrl}
+                            style={{ border: 0 }}
+                            width="100%"
+                            height="100%"
+                            frameBorder="0"
+                            title="Google Calendar Appointment Scheduling"
+                          />
+                        </div>
+                      </SheetContent>
+                    </Sheet>
                   </div>
                 </div>
               </div>
@@ -247,22 +280,17 @@ export default function Home() {
                 ratio={16 / 9}
                 className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm"
               >
-                <div className="h-full w-full bg-muted/40" />
-                <div className="absolute inset-0 grid place-items-center">
-                  <div className="rounded-full border bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-                    Review video placeholder (16:9)
-                  </div>
-                </div>
+                <iframe
+                  className="absolute inset-0 h-full w-full"
+                  src="https://www.youtube.com/embed/nvFI6woJD9g?list=TLGG3IiswPvmL5YyNTAxMjAyNg"
+                  title="Mpillow Review"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
               </AspectRatio>
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button variant="secondary" disabled>
-                  Watch review (CTA placeholder)
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/mp-config">Get recommended fit</Link>
-                </Button>
-              </div>
             </div>
           </div>
         </section>

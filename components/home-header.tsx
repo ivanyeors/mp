@@ -12,7 +12,7 @@ export function HomeHeader() {
 
   React.useEffect(() => {
     const onScroll = () => {
-      setIsCompact(window.scrollY > 8);
+      setIsCompact(window.scrollY > 0);
     };
 
     onScroll();
@@ -28,9 +28,9 @@ export function HomeHeader() {
             <Image
               src="/mpillow_logo_2026.png"
               alt="Mpillow"
-              width={120}
-              height={120}
-              className="h-10 w-10 object-contain"
+              width={60}
+              height={60}
+              className="h-[60px] w-[60px] object-contain"
               priority
             />
           </Link>

@@ -49,13 +49,17 @@ function SheetContent({
   className,
   children,
   side = "right",
+  disableMobileBottom = false,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
+  disableMobileBottom?: boolean
 }) {
   const isMobile = useIsMobile()
   const resolvedSide =
-    isMobile && (side === "left" || side === "right") ? "bottom" : side
+    !disableMobileBottom && isMobile && (side === "left" || side === "right")
+      ? "bottom"
+      : side
 
   return (
     <SheetPortal>
@@ -77,7 +81,7 @@ function SheetContent({
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 z-50 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>
