@@ -33,7 +33,7 @@ export function AppDock() {
 
   return (
     <div
-      className="fixed left-1/2 max-w-full -translate-x-1/2 z-50"
+      className="app-dock fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-opacity duration-200"
       style={{ bottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}
     >
       <Dock className="items-end pb-3">

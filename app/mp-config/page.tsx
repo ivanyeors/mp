@@ -27,14 +27,15 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { 
-  ArrowRight, 
-  ArrowLeft, 
-  User, 
+import {
+  ArrowRight,
+  ArrowLeft,
+  User,
   Sparkles,
   CheckCircle,
   Image as ImageIcon,
-  Camera
+  Camera,
+  X,
 } from "lucide-react";
 
 type Step = 
@@ -74,6 +75,8 @@ type MpConfigSuggestion = {
   reasons: string[];
 };
 
+const sessionStorageKey = "mp_config_response_id";
+
 export default function MpConfigPage() {
   const router = useRouter();
   const isMobile = useIsMobile();
@@ -101,6 +104,8 @@ export default function MpConfigPage() {
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
   const lastSavedRef = useRef<string>("");
+  const transitionTimeoutRef = useRef<number | null>(null);
+  const gridResetTimeoutRef = useRef<number | null>(null);
 
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completedResponseId, setCompletedResponseId] = useState<string | null>(null);
@@ -129,19 +134,31 @@ export default function MpConfigPage() {
     "preview",
   ];
 
+  const clearTransitionTimers = () => {
+    if (transitionTimeoutRef.current !== null) {
+      window.clearTimeout(transitionTimeoutRef.current);
+      transitionTimeoutRef.current = null;
+    }
+    if (gridResetTimeoutRef.current !== null) {
+      window.clearTimeout(gridResetTimeoutRef.current);
+      gridResetTimeoutRef.current = null;
+    }
+  };
+
   const goToNextStep = () => {
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex < stepOrder.length - 1) {
       // Trigger fast grid animation
+      clearTransitionTimers();
       setGridSpeed("fast");
       setIsTransitioning(true);
       
-      setTimeout(() => {
+      transitionTimeoutRef.current = window.setTimeout(() => {
         setCurrentStep(stepOrder[currentIndex + 1]);
         setIsTransitioning(false);
         
         // Return to slow animation after transition
-        setTimeout(() => {
+        gridResetTimeoutRef.current = window.setTimeout(() => {
           setGridSpeed("slow");
         }, 100);
       }, 300);
@@ -152,15 +169,16 @@ export default function MpConfigPage() {
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       // Trigger reverse grid animation (moving backward)
+      clearTransitionTimers();
       setGridSpeed("reverse");
       setIsTransitioning(true);
       
-      setTimeout(() => {
+      transitionTimeoutRef.current = window.setTimeout(() => {
         setCurrentStep(stepOrder[currentIndex - 1]);
         setIsTransitioning(false);
         
         // Return to slow animation after transition
-        setTimeout(() => {
+        gridResetTimeoutRef.current = window.setTimeout(() => {
           setGridSpeed("slow");
         }, 100);
       }, 300);
@@ -193,11 +211,10 @@ export default function MpConfigPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const key = "mp_config_response_id";
-    let id = window.localStorage.getItem(key);
+    let id = window.localStorage.getItem(sessionStorageKey);
     if (!id) {
       id = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-      window.localStorage.setItem(key, id);
+      window.localStorage.setItem(sessionStorageKey, id);
     }
     setResponseId(id);
 
@@ -212,7 +229,7 @@ export default function MpConfigPage() {
         if (!isFinal) return;
 
         const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-        window.localStorage.setItem(key, newId);
+        window.localStorage.setItem(sessionStorageKey, newId);
         setResponseId(newId);
         lastSavedRef.current = "";
         setSaveStatus("idle");
@@ -222,16 +239,21 @@ export default function MpConfigPage() {
     })();
   }, []);
 
-  const startNewMeasurement = () => {
-    if (typeof window !== "undefined") {
-      const key = "mp_config_response_id";
-      const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-      window.localStorage.setItem(key, newId);
-      setResponseId(newId);
-    } else {
-      setResponseId(null);
-    }
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const shouldHideDock = currentStep !== "welcome" || isTransitioning;
+    document.body.classList.toggle("dock-hidden", shouldHideDock);
+    return () => {
+      document.body.classList.remove("dock-hidden");
+    };
+  }, [currentStep, isTransitioning]);
 
+  useEffect(() => {
+    return () => clearTransitionTimers();
+  }, []);
+
+  const resetMeasurementState = () => {
+    clearTransitionTimers();
     lastSavedRef.current = "";
     setSaveStatus("idle");
     setSuggestion(null);
@@ -254,6 +276,57 @@ export default function MpConfigPage() {
     setCurrentStep("welcome");
     setGridSpeed("slow");
     setIsTransitioning(false);
+    setCompletionDialogOpen(false);
+    setCompletedResponseId(null);
+  };
+
+  const ensureResponseId = () => {
+    if (responseId) return responseId;
+    if (typeof window === "undefined") return null;
+    const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    window.localStorage.setItem(sessionStorageKey, newId);
+    setResponseId(newId);
+    return newId;
+  };
+
+  const startNewMeasurement = () => {
+    if (typeof window !== "undefined") {
+      const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      window.localStorage.setItem(sessionStorageKey, newId);
+      setResponseId(newId);
+    } else {
+      setResponseId(null);
+    }
+    resetMeasurementState();
+  };
+
+  const exitToStart = () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(sessionStorageKey);
+    }
+    setResponseId(null);
+    resetMeasurementState();
+  };
+
+  const handleStart = () => {
+    ensureResponseId();
+    goToNextStep();
+  };
+
+  const confirmExit = () => {
+    toast.message("Exit configuration?", {
+      description: "This will clear your saved session and return to the start.",
+      action: {
+        label: "Exit",
+        onClick: () => {
+          exitToStart();
+        },
+      },
+      cancel: {
+        label: "Stay",
+      },
+      id: "mp-config-exit",
+    });
   };
 
   const hasAnyInput = useMemo(() => {
@@ -463,6 +536,25 @@ export default function MpConfigPage() {
         size={0.8}
       />
 
+      {currentStep !== "welcome" && (
+        <div
+          className="absolute right-4 z-20"
+          style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={confirmExit}
+            aria-label="Exit configuration"
+            title="Exit"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Content Container */}
       <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
         <div
@@ -500,7 +592,7 @@ export default function MpConfigPage() {
                   Let&apos;s create your perfect pillow, customized just for you
                 </p>
               </div>
-              <Button size="lg" onClick={goToNextStep} className="group">
+              <Button size="lg" onClick={handleStart} className="group">
                 Get Started
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>

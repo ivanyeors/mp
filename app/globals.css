@@ -113,6 +113,16 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+body.dock-hidden {
+  --app-dock-clearance: 0rem;
+}
+
+body.dock-hidden .app-dock {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
 @media (max-width: 768px) {
   :root {
     --app-dock-clearance: 4.5rem;
