@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from "react";
 import { Dock, DockIcon, DockItem, DockLabel } from "@/components/ui/shadcn-io/dock";
 import { Home, Heart, Settings, Ruler } from "lucide-react";
 import Link from "next/link";
@@ -30,10 +31,38 @@ const dockItems = [
 
 export function AppDock() {
   const pathname = usePathname();
+  const [isHidden, setIsHidden] = React.useState(false);
+
+  React.useEffect(() => {
+    let lastY = window.scrollY;
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+
+      // near top: always show
+      if (y < 24) {
+        setIsHidden(false);
+        lastY = y;
+        return;
+      }
+
+      // scroll down: hide; scroll up: show
+      if (delta > 6) setIsHidden(true);
+      if (delta < -6) setIsHidden(false);
+
+      lastY = y;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div
-      className="fixed left-1/2 max-w-full -translate-x-1/2 z-50"
+      className={`fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-transform duration-200 ease-out ${
+        isHidden ? "translate-y-24 opacity-0" : "translate-y-0 opacity-100"
+      }`}
       style={{ bottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}
     >
       <Dock className="items-end pb-3">

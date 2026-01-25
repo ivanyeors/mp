@@ -1,4 +1,4 @@
-import { ModeToggle } from "@/components/mode-toggle";
+import { HomeHeader } from "@/components/home-header";
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -10,7 +10,6 @@ import {
   Quote,
   Sparkles,
   ShieldCheck,
-  Star,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,115 +17,52 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Sticky top bar */}
-      <header className="sticky top-0 z-30 border-b bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/40">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src="/mpillow_logo_2026.png"
-              alt="Mpillow logo"
-              width={40}
-              height={40}
-              className="h-10 w-10"
-              priority
-            />
-            <span className="text-sm font-semibold tracking-tight">Mpillow</span>
-          </Link>
-
-          <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-            <a className="hover:text-foreground transition-colors" href="#pick">
-              Pick your Mpillow
-            </a>
-            <a className="hover:text-foreground transition-colors" href="#why">
-              Why Mpillow
-            </a>
-            <a className="hover:text-foreground transition-colors" href="#review">
-              Review
-            </a>
-            <a className="hover:text-foreground transition-colors" href="#stories">
-              Stories
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Button asChild size="sm" className="hidden sm:inline-flex">
-              <Link href="/mp-config">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Pick your Mpillow
-              </Link>
-            </Button>
-            <ModeToggle />
-          </div>
-        </div>
-      </header>
+      <HomeHeader />
 
       <main className="relative">
         {/* Hero */}
         <section className="relative">
-          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
-            <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 rounded-full border bg-card/40 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm">
-                  <Star className="h-3.5 w-3.5 text-primary" />
-                  Singapore-crafted · Customised fit
-                </div>
+          <AspectRatio ratio={16 / 9} className="relative w-full overflow-hidden">
+            <Image
+              src="/DarkMpillowImage-WEB.jpg"
+              alt="Mpillow pillow hero"
+              fill
+              priority
+              className="object-cover"
+              sizes="100vw"
+            />
 
-                <div className="space-y-3">
-                  <h1 className="text-4xl font-semibold tracking-tight md:text-6xl">
-                    Gift A Good Night’s Sleep With A{" "}
-                    <span className="text-primary">100% Customised</span> Pillow
-                  </h1>
-                  <p className="text-lg leading-relaxed text-muted-foreground md:text-xl">
-                    A cervical neck support pillow to maintain the perfect posture for every sleep position.
-                  </p>
-                </div>
-
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <BadgeCheck className="mt-0.5 h-4 w-4 text-primary" />
-                    Customised pillow from Singapore, handcrafted for a perfect night’s sleep
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <BadgeCheck className="mt-0.5 h-4 w-4 text-primary" />
-                    Customisable pillows for any body build
-                  </li>
-                </ul>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Button asChild className="h-auto px-6 py-4 text-base">
-                    <Link href="/mp-config">
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      Pick your Mpillow
-                      <ChevronRight className="ml-2 h-5 w-5" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" className="h-auto px-6 py-4 text-base">
-                    <a href="#ambassadors">How it’s made</a>
-                  </Button>
-                  <Button variant="secondary" className="h-auto px-6 py-4 text-base" disabled>
-                    Gift vouchers (CTA placeholder)
-                  </Button>
-                </div>
-              </div>
-
-              <div className="relative">
-                <AspectRatio
-                  ratio={16 / 9}
-                  className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm"
-                >
-                  <div className="h-full w-full bg-muted/40" />
-                  <div className="absolute inset-0 grid place-items-center">
-                    <div className="rounded-full border bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-                      Hero media placeholder (16:9)
-                    </div>
+            {/* Overlay content */}
+            <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-background/85 via-background/25 to-transparent" />
+            <div className="absolute inset-0 z-10 flex items-end md:items-center">
+              <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
+                <div className="max-w-xl space-y-6">
+                  <div className="space-y-3">
+                    <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-6xl">
+                      Gift A Good Night’s Sleep With A{" "}
+                      <span className="text-primary">100% Customised</span> Pillow
+                    </h1>
+                    <p className="text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
+                      A cervical neck support pillow to maintain the perfect posture for every sleep position.
+                    </p>
                   </div>
-                </AspectRatio>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  Placeholder for the homepage key image/video.
+
+                  <div className="pointer-events-auto flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <Button asChild className="h-auto px-6 py-4 text-base">
+                      <Link href="/mp-config">
+                        <Sparkles className="mr-2 h-5 w-5" />
+                        Pick your Mpillow
+                        <ChevronRight className="ml-2 h-5 w-5" />
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="h-auto px-6 py-4 text-base">
+                      <a href="#ambassadors">How it’s made</a>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </AspectRatio>
 
           <Ripple
             mainCircleSize={320}
@@ -138,7 +74,7 @@ export default function Home() {
 
         {/* Ambassadors / How it’s made */}
         <section id="ambassadors" className="relative">
-          <div className="mx-auto w-full max-w-5xl px-4 py-12 md:py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
               <div className="space-y-4">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
@@ -174,7 +110,7 @@ export default function Home() {
 
         {/* Pick your Mpillow */}
         <section id="pick" className="relative">
-          <div className="mx-auto w-full max-w-5xl px-4 py-12 md:py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="space-y-8">
               <div className="space-y-2">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Pick your Mpillow</h2>
@@ -229,7 +165,7 @@ export default function Home() {
 
         {/* Why choose / Neck pain */}
         <section id="why" className="relative">
-          <div className="mx-auto w-full max-w-5xl px-4 py-12 md:py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-start">
               <div className="space-y-4">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
@@ -275,7 +211,7 @@ export default function Home() {
 
         {/* Credibility strip */}
         <section className="relative">
-          <div className="mx-auto w-full max-w-5xl px-4 pb-12 md:pb-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <Award className="h-6 w-6 text-primary" />
@@ -298,7 +234,7 @@ export default function Home() {
 
         {/* Review */}
         <section id="review" className="relative">
-          <div className="mx-auto w-full max-w-5xl px-4 py-12 md:py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="space-y-6">
               <div className="space-y-2">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
@@ -333,7 +269,7 @@ export default function Home() {
 
         {/* Customers */}
         <section id="stories" className="relative">
-          <div className="mx-auto w-full max-w-5xl px-4 py-12 md:py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="space-y-8">
               <div className="space-y-2">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Hear from our customers</h2>
@@ -363,7 +299,7 @@ export default function Home() {
 
         {/* Founder note */}
         <section className="relative">
-          <div className="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="rounded-2xl border bg-card/40 p-8 backdrop-blur-sm">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Quote className="h-5 w-5 text-primary" />
@@ -393,7 +329,7 @@ export default function Home() {
 
         {/* Innovation challenge */}
         <section className="relative">
-          <div className="mx-auto w-full max-w-5xl px-4 py-12 md:py-16 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+          <div className="mx-auto w-full max-w-6xl px-4 pt-12 md:pt-16 pb-[calc(7rem+env(safe-area-inset-bottom))]">
             <div className="space-y-6">
               <div className="space-y-2">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Can you find them?</h2>
