@@ -2,6 +2,7 @@ import { HomeHeader } from "@/components/home-header";
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { AmbassadorsSlideIn } from "@/components/ambassadors-slide-in";
 import {
   Sheet,
   SheetContent,
@@ -111,18 +112,13 @@ export default function Home() {
             <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
               <div className="space-y-4">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  Find out how Mpillows are made
+                  Customisable pillows for any body build
                 </h2>
                 <p className="text-muted-foreground leading-relaxed">
                   For our ambassadors, Skyjin and Piggie — a behind-the-scenes look at the customisation process.
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Button variant="secondary" disabled>
-                    Watch the process (CTA placeholder)
-                  </Button>
-                  <Button asChild variant="outline">
-                    <Link href="/mp-care">Care guide</Link>
-                  </Button>
+                  <AmbassadorsSlideIn />
                 </div>
               </div>
 
@@ -130,12 +126,13 @@ export default function Home() {
                 ratio={16 / 9}
                 className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm"
               >
-                <div className="h-full w-full bg-muted/40" />
-                <div className="absolute inset-0 grid place-items-center">
-                  <div className="rounded-full border bg-background/70 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-                    Video placeholder (16:9)
-                  </div>
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://www.mpillow.com/cdn/shop/files/DSC_2362-H-WEB_1200x_71b66f9b-3cce-4686-99be-34f774ddbe8a.webp?v=1667646766&width=900"
+                  alt="Mpillow ambassadors process"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
               </AspectRatio>
             </div>
           </div>
