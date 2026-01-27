@@ -8,22 +8,88 @@ import { BookAppointmentSheet } from "@/components/book-appointment-sheet";
 import { InfiniteImageMarquee } from "@/components/infinite-image-marquee";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import SpotlightCard from "@/components/SpotlightCard";
 import {
   Award,
   BadgeCheck,
   ChevronRight,
   HeartPulse,
-  Quote,
   SlidersHorizontal,
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { StoriesSection } from "@/components/stories-section";
 
-export default function Home() {
+type PillowKind = "basic" | "premium";
+
+function parsePrice(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const num = typeof value === "number" ? value : Number.parseFloat(String(value));
+  if (!Number.isFinite(num) || num < 0) return null;
+  return num;
+}
+
+function formatPriceLabel(value: number | null): string {
+  if (value === null) return "—";
+  const isInteger = Math.abs(value - Math.round(value)) < 1e-9;
+  return `$${isInteger ? Math.round(value) : value.toFixed(2)}`;
+}
+
+async function getPillowXsFromPriceLabel(kind: PillowKind): Promise<string> {
+  try {
+    const admin = supabaseAdmin();
+    const { data: pillowProduct, error: pillowError } = await admin
+      .from("pillow_products")
+      .select("id")
+      .eq("is_active", true)
+      .eq("kind", kind)
+      .eq("size", "XS")
+      .maybeSingle();
+
+    if (pillowError || !pillowProduct?.id) return "—";
+    const productId = Number(pillowProduct.id);
+    if (!Number.isFinite(productId) || productId <= 0) return "—";
+
+    if (kind === "basic") {
+      const key = `product:pillow:${productId}`;
+      const { data: priceRow, error: priceError } = await admin
+        .from("product_prices")
+        .select("msrp")
+        .eq("key", key)
+        .maybeSingle();
+      if (priceError) return "—";
+      return formatPriceLabel(parsePrice(priceRow?.msrp));
+    }
+
+    // Premium: prefer per-variant keys; if both exist, show the lower price as "From".
+    const keys = [`product:pillow:${productId}:linen`, `product:pillow:${productId}:fibrecool`, `product:pillow:${productId}`];
+    const { data: rows, error: rowsError } = await admin
+      .from("product_prices")
+      .select("key,msrp")
+      .in("key", keys);
+    if (rowsError) return "—";
+
+    const prices = (rows ?? [])
+      .map((r) => parsePrice((r as { msrp?: unknown }).msrp))
+      .filter((v): v is number => v !== null);
+    if (prices.length === 0) return "—";
+    return formatPriceLabel(Math.min(...prices));
+  } catch {
+    return "—";
+  }
+}
+
+export default async function Home() {
   const appointmentUrl =
     "https://calendar.google.com/calendar/appointments/schedules/AcZssZ0bNnrc_0CeREyaoByx0GDhuif5fJFTCyAQTkEJH14vNs5XT_zzqgv47CJ-FrUACncTtYs8yeas?gv=true";
+  const [basicXsFromPrice, premiumXsFromPrice] = await Promise.all([
+    getPillowXsFromPriceLabel("basic"),
+    getPillowXsFromPriceLabel("premium"),
+  ]);
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -161,6 +227,13 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Customers */}
+        <section id="stories" className="relative">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
+            <StoriesSection />
+          </div>
+        </section>
+
         {/* Pick your Mpillow */}
         <section id="pick" className="relative">
           <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
@@ -168,30 +241,32 @@ export default function Home() {
               <div className="space-y-2">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Pick your Mpillow</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  With two levels of customisation, we have an Mpillow for every need.
+                  We have Mpillow for every body.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {[
                   {
-                    title: "Level 1",
-                    desc: "Entry customisation (placeholder copy)",
-                    imageSrc: "/Square_3waysleep.webp",
-                    rightBadge: "Starter",
+                    title: "Basic",
+                    desc: "Basic customisation to try out ",
+                    imageSrc: "/basic-mpillow.webp",
+                    rightBadge: "Standard Fit",
+                    fromPriceLabel: basicXsFromPrice,
                     specs: [
-                      { label: "Customisation", level: 2, hint: "Basic fit" },
-                      { label: "Fit control", level: 2, hint: "Essential" },
+                      { label: "Customisation", level: 1, hint: "" },
+                      { label: "Fit control", level: 2, hint: "" },
                     ],
                   },
                   {
-                    title: "Level 2",
-                    desc: "More fit control (placeholder copy)",
-                    imageSrc: "/3way-side-sleep.jpg",
-                    rightBadge: "Most popular",
+                    title: "Premium",
+                    desc: "Premium customisation for the best fit",
+                    imageSrc: "/DarkMpillowImage-WEB.jpg",
+                    rightBadge: "Custom Fit",
+                    fromPriceLabel: premiumXsFromPrice,
                     specs: [
-                      { label: "Customisation", level: 3, hint: "More options" },
-                      { label: "Fit control", level: 3, hint: "Fine tune" },
+                      { label: "Customisation", level: 3, hint: "" },
+                      { label: "Fit control", level: 4, hint: "" },
                     ],
                   },
                 ].map((card) => (
@@ -222,10 +297,6 @@ export default function Home() {
 
                     <CardContent className="p-4">
                       <h3 className="font-semibold">{card.desc}</h3>
-                      <p className="text-sm text-muted-foreground italic">
-                        Cervical neck support fit (placeholder)
-                      </p>
-
                       <div className="mt-4 space-y-2">
                         {card.specs.map((s) => (
                           <div
@@ -256,9 +327,8 @@ export default function Home() {
 
                       <div className="mt-4 flex items-center justify-between">
                         <span className="text-2xl font-bold tabular-nums">
-                          From $—
+                          From {card.fromPriceLabel}
                         </span>
-                        <Badge variant="outline">Coming soon</Badge>
                       </div>
                     </CardContent>
 
@@ -277,42 +347,51 @@ export default function Home() {
         {/* Why choose / Neck pain */}
         <section id="why" className="relative">
           <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
-            <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-start">
-              <div className="space-y-4">
-                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  Why choose Mpillow
-                </h2>
-                <div className="space-y-3">
-                  <div className="text-lg font-semibold">Neck Pain Issue?</div>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Discover Mpillow – the ultimate customisable pillow for cervical neck pain relief. Designed to
-                    support your unique posture and sleep style, our modular pillows help improve sleep quality,
-                    reduce stiffness, and promote spinal alignment.
-                  </p>
-                  <p className="text-muted-foreground">Wake up refreshed every day.</p>
-                </div>
-                <Button asChild className="h-auto px-6 py-4 text-base">
-                  <Link href="/mp-config">
-                    See recommended fit
-                    <ChevronRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
+            <div className="mx-auto max-w-3xl space-y-4">
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Why choose Mpillow</h2>
+              <div className="space-y-3">
+                <div className="text-lg font-semibold">Neck Pain Issue?</div>
+                <p className="text-muted-foreground leading-relaxed">
+                  Discover Mpillow – the ultimate customisable pillow for cervical neck pain relief. Designed to
+                  support your unique posture and sleep style, our modular pillows help improve sleep quality, reduce
+                  stiffness, and promote spinal alignment.
+                </p>
+                <p className="text-muted-foreground">Wake up refreshed every day.</p>
               </div>
+              <Button asChild className="h-auto px-6 py-4 text-base">
+                <Link href="/mp-config">
+                  See recommended fit
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
 
-              <div className="space-y-4">
+        {/* Why choose (highlights) */}
+        <section className="relative -mt-6 md:-mt-8">
+          <div className="mx-auto w-full max-w-6xl px-4 pb-12 md:pb-16">
+            <div className="mx-auto max-w-5xl rounded-2xl border bg-card p-6 shadow-sm md:p-8">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-5 md:gap-0">
                 {[
-                  "Easily adjustable for any height",
-                  "100% washable",
-                  "Uniquely shaped to suit your sleeping position",
-                  "Customisable width for different body builds",
-                  "Modular components for easy maintenance",
-                ].map((benefit) => (
-                  <div
-                    key={benefit}
-                    className="flex items-start gap-3 rounded-xl border bg-card/40 p-4 backdrop-blur-sm"
-                  >
-                    <HeartPulse className="mt-0.5 h-5 w-5 text-primary" />
-                    <div className="text-sm leading-relaxed">{benefit}</div>
+                  { label: "Easily adjustable for any height", Icon: SlidersHorizontal },
+                  { label: "100% washable", Icon: ShieldCheck },
+                  { label: "Uniquely shaped to suit your sleeping position", Icon: Sparkles },
+                  { label: "Customisable width for different body builds", Icon: BadgeCheck },
+                  { label: "Modular components for easy maintenance", Icon: HeartPulse },
+                ].map(({ label, Icon }, idx) => (
+                  <div key={label} className="relative">
+                    {idx !== 0 ? <Separator className="mb-6 md:hidden" /> : null}
+                    {idx !== 0 ? (
+                      <Separator orientation="vertical" className="absolute left-0 top-0 hidden h-full md:block" />
+                    ) : null}
+                    <div className="flex flex-col items-center text-center md:px-5">
+                      <Icon className="mb-3 h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                      <p className="text-3xl font-bold tabular-nums tracking-tight md:text-4xl">
+                        {String(idx + 1).padStart(2, "0")}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">{label}</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -324,21 +403,21 @@ export default function Home() {
         <section className="relative">
           <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
+              <SpotlightCard className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <Award className="h-6 w-6 text-primary" />
                 <div className="mt-3 text-lg font-semibold">Singapore Good Design 2022</div>
                 <div className="mt-1 text-sm text-muted-foreground">Award-winning brand</div>
-              </div>
-              <div className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
+              </SpotlightCard>
+              <SpotlightCard className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <ShieldCheck className="h-6 w-6 text-primary" />
                 <div className="mt-3 text-lg font-semibold">7 years</div>
                 <div className="mt-1 text-sm text-muted-foreground">Research and development</div>
-              </div>
-              <div className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
+              </SpotlightCard>
+              <SpotlightCard className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <BadgeCheck className="h-6 w-6 text-primary" />
                 <div className="mt-3 text-lg font-semibold">Patented</div>
                 <div className="mt-1 text-sm text-muted-foreground">Across multiple countries</div>
-              </div>
+              </SpotlightCard>
             </div>
           </div>
         </section>
@@ -374,61 +453,50 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Customers */}
-        <section id="stories" className="relative">
-          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
-            <div className="space-y-8">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Hear from our customers</h2>
-                <p className="text-muted-foreground">Testimonials (placeholders).</p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {[
-                  { name: "Customer A", quote: "Placeholder quote about comfort and posture support." },
-                  { name: "Customer B", quote: "Placeholder quote about waking up refreshed every day." },
-                  { name: "Customer C", quote: "Placeholder quote about adjustability and washability." },
-                ].map((t) => (
-                  <div key={t.name} className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
-                    <Quote className="h-5 w-5 text-primary" />
-                    <div className="mt-3 text-sm text-muted-foreground leading-relaxed">{t.quote}</div>
-                    <div className="mt-4 text-sm font-semibold">{t.name}</div>
-                  </div>
-                ))}
-              </div>
-
-              <Button variant="outline" disabled>
-                Read more stories (CTA placeholder)
-              </Button>
-            </div>
-          </div>
-        </section>
-
         {/* Founder note */}
         <section className="relative">
           <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="rounded-2xl border bg-card/40 p-8 backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Quote className="h-5 w-5 text-primary" />
-                Words from the founder, Darren Yeo
-              </div>
-              <p className="mt-4 text-muted-foreground leading-relaxed">
-                What you&apos;re buying is not just a product but what were behind it - art, design, hard work,
-                spirit, breakthroughs, innovation, adventure, persistence, dedication, time, and love.
-              </p>
-              <p className="mt-4 text-muted-foreground leading-relaxed">
-                A good product isn&apos;t just a result of copying another. Instead it carefully considers the needs
-                and problems encountered by each individual. We spent thousands of hours researching and improving,
-                learning from our failures and criticism, and making up for our losses. We believe that as long as we
-                can help others, God will want us to succeed.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button variant="outline" disabled>
-                  Read the full story (CTA placeholder)
-                </Button>
-                <Button asChild>
-                  <Link href="/mp-config">Start your fit assessment</Link>
-                </Button>
+              <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
+                <div className="min-w-0">
+                  <div className="mb-8">
+                    <h2 className="mb-3 text-3xl font-bold tracking-tight">A note from our founder</h2>
+                    <p className="text-muted-foreground">Why we built this company</p>
+                  </div>
+
+                  <div className="space-y-6">
+                    <p className="text-muted-foreground leading-relaxed">
+                      What you&apos;re buying isn&apos;t just a product — it&apos;s everything that went into it: the
+                      art, the design, the long nights, the hard work, the setbacks, the breakthroughs, the
+                      persistence, the dedication, the time, and the love.
+                    </p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      A truly good product isn&apos;t made by copying what already exists. It&apos;s made by listening
+                      closely to real people and building around their needs and pain points. We&apos;ve poured
+                      thousands of hours into research and refinement — learning from mistakes, taking feedback to
+                      heart, and continuing even when it was difficult. And through it all, we&apos;ve held on to one
+                      belief: if we keep showing up with honest intention and help others, God will open the way.
+                    </p>
+
+                    <div className="pt-2">
+                      <p className="font-semibold">Darren Yeo</p>
+                      <p className="text-sm text-muted-foreground">Founder</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl border bg-muted">
+                    <Image
+                      src="/Darrenyeo-profileshoot_2.webp"
+                      alt="Darren Yeo"
+                      fill
+                      className="object-cover object-top"
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      priority={false}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
