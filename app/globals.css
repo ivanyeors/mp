@@ -175,6 +175,23 @@
 }
 
 @layer utilities {
+  @keyframes mp-marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  .mp-marquee-track {
+    animation-name: mp-marquee;
+    animation-duration: var(--mp-marquee-duration, 24s);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: var(--mp-marquee-direction, normal);
+  }
+
   @keyframes ripple {
     0%, 100% {
       transform: translate(-50%, -50%) scale(1);

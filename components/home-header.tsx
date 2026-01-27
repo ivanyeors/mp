@@ -68,11 +68,11 @@ export function HomeHeader() {
 
             <Link href="/" className="shrink-0">
               <Image
-                src="/mpillow_logo_2026.png"
+                src="/mpillow_logo_2026-inv.png"
                 alt="Mpillow"
-                width={30}
-                height={30}
-                className="h-[30px] w-[30px] object-contain"
+                width={42}
+                height={42}
+                className="h-[42px] w-[42px] object-contain"
                 priority
               />
             </Link>
