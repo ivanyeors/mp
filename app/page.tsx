@@ -270,7 +270,7 @@ export default function Home() {
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
                   Dr Steven Hulme&apos;s Mpillow Review
                 </h2>
-                <p className="text-muted-foreground">Featured review (media placeholder).</p>
+                <p className="text-muted-foreground">Featured review.</p>
               </div>
 
               <AspectRatio
@@ -279,8 +279,9 @@ export default function Home() {
               >
                 <iframe
                   className="absolute inset-0 h-full w-full"
-                  src="https://www.youtube.com/embed/nvFI6woJD9g?list=TLGG3IiswPvmL5YyNTAxMjAyNg"
-                  title="Mpillow Review"
+                  src="https://www.youtube.com/embed/nvFI6woJD9g?si=yiFH8pApqbX6GCxf&controls=0"
+                  title="YouTube video player"
+                  frameBorder={0}
                   loading="lazy"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   referrerPolicy="strict-origin-when-cross-origin"
