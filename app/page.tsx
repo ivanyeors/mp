@@ -8,13 +8,12 @@ import { BookAppointmentSheet } from "@/components/book-appointment-sheet";
 import { InfiniteImageMarquee } from "@/components/infinite-image-marquee";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import SpotlightCard from "@/components/SpotlightCard";
+import MagicBento from "@/components/MagicBento";
 import {
   Award,
   BadgeCheck,
   ChevronRight,
-  HeartPulse,
   SlidersHorizontal,
   Sparkles,
   ShieldCheck,
@@ -346,56 +345,133 @@ export default async function Home() {
 
         {/* Why choose / Neck pain */}
         <section id="why" className="relative">
-          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
-            <div className="mx-auto max-w-3xl space-y-4">
-              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Why choose Mpillow</h2>
-              <div className="space-y-3">
-                <div className="text-lg font-semibold">Neck Pain Issue?</div>
-                <p className="text-muted-foreground leading-relaxed">
-                  Discover Mpillow – the ultimate customisable pillow for cervical neck pain relief. Designed to
-                  support your unique posture and sleep style, our modular pillows help improve sleep quality, reduce
-                  stiffness, and promote spinal alignment.
-                </p>
-                <p className="text-muted-foreground">Wake up refreshed every day.</p>
-              </div>
-              <Button asChild className="h-auto px-6 py-4 text-base">
-                <Link href="/mp-config">
-                  See recommended fit
-                  <ChevronRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
+          <div
+            className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16 md:min-h-[760px]"
+            style={{ position: "relative" }}
+          >
+            {/* Requested DOM placement + pixel position (desktop) */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-[287px] hidden h-[444px] w-full overflow-hidden rounded-2xl border bg-card/40 shadow-sm backdrop-blur-sm md:block"
+              aria-hidden="true"
+            >
+              <Image
+                src="/mpillow-cervical-neck.webp"
+                alt="Mpillow cervical neck support"
+                fill
+                className="object-cover"
+                sizes="(min-width: 1280px) 1120px, (min-width: 768px) calc(100vw - 2rem), 100vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
             </div>
+
+            {/* Match the "Ambassadors" section layout style */}
+            <div className="relative z-10 grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
+              <div className="space-y-4">
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Neck Pains?</h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  With our premium Mpillow, the ultimate customisable pillow for cervical neck pain relief. Designed to support
+                  your unique posture and sleep style, our modular pillows help improve sleep quality, reduce stiffness,
+                  and promote spinal alignment.
+                </p>
+              </div>
+
+              {/* Desktop: avoid empty right column (keeps alignment clean) */}
+              <div className="hidden md:block">
+                <div className="rounded-2xl border bg-card/40 p-6 shadow-sm backdrop-blur-sm">
+                  <div className="text-sm font-semibold tracking-tight">What you’ll feel</div>
+                  <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+                      <p>
+                        <span className="font-medium text-foreground">More supported</span> neck and head posture.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <SlidersHorizontal className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+                      <p>
+                        <span className="font-medium text-foreground">Better fit</span> for your height and sleep style.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+                      <p>
+                        <span className="font-medium text-foreground">Easier upkeep</span> with washable components.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile: keep image in-flow like Ambassadors */}
+              <AspectRatio
+                ratio={1048 / 444}
+                className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:hidden"
+              >
+                <Image
+                  src="/mpillow-cervical-neck.webp"
+                  alt="Mpillow cervical neck support"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 1048px"
+                />
+              </AspectRatio>
+            </div>
+
           </div>
         </section>
 
         {/* Why choose (highlights) */}
-        <section className="relative -mt-6 md:-mt-8">
+        <section className="relative pt-10 md:pt-12">
           <div className="mx-auto w-full max-w-6xl px-4 pb-12 md:pb-16">
-            <div className="mx-auto max-w-5xl rounded-2xl border bg-card p-6 shadow-sm md:p-8">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-5 md:gap-0">
-                {[
-                  { label: "Easily adjustable for any height", Icon: SlidersHorizontal },
-                  { label: "100% washable", Icon: ShieldCheck },
-                  { label: "Uniquely shaped to suit your sleeping position", Icon: Sparkles },
-                  { label: "Customisable width for different body builds", Icon: BadgeCheck },
-                  { label: "Modular components for easy maintenance", Icon: HeartPulse },
-                ].map(({ label, Icon }, idx) => (
-                  <div key={label} className="relative">
-                    {idx !== 0 ? <Separator className="mb-6 md:hidden" /> : null}
-                    {idx !== 0 ? (
-                      <Separator orientation="vertical" className="absolute left-0 top-0 hidden h-full md:block" />
-                    ) : null}
-                    <div className="flex flex-col items-center text-center md:px-5">
-                      <Icon className="mb-3 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-                      <p className="text-3xl font-bold tabular-nums tracking-tight md:text-4xl">
-                        {String(idx + 1).padStart(2, "0")}
-                      </p>
-                      <p className="mt-1 text-sm text-muted-foreground">{label}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <MagicBento
+              className="card-grid--asymmetric rounded-2xl bg-card/40 p-2 shadow-sm backdrop-blur-sm"
+              cards={[
+                {
+                  key: "why-01",
+                  color: "var(--card)",
+                  label: "01",
+                  title: "Adjustable height",
+                  description: "Easily adjustable for any height",
+                },
+                {
+                  key: "why-02",
+                  color: "var(--card)",
+                  label: "02",
+                  title: "100% washable",
+                  description: "Covers and components are easy to keep fresh",
+                },
+                {
+                  key: "why-03",
+                  color: "var(--card)",
+                  label: "03",
+                  title: "Designed for your sleep style",
+                  description: "Uniquely shaped to suit your sleeping position",
+                },
+                {
+                  key: "why-04",
+                  color: "var(--card)",
+                  label: "04",
+                  title: "Customisable width",
+                  description: "Built for different body builds and shoulder widths",
+                },
+                {
+                  key: "why-05",
+                  color: "var(--card)",
+                  label: "05",
+                  title: "Modular & serviceable",
+                  description: "Modular components for easy maintenance",
+                },
+              ]}
+              textAutoHide={false}
+              enableTilt={false}
+              enableSpotlight
+              enableBorderGlow
+              enableStars
+              enableMagnetism
+              clickEffect
+              particleCount={10}
+              spotlightRadius={260}
+            />
           </div>
         </section>
 
@@ -403,17 +479,17 @@ export default async function Home() {
         <section className="relative">
           <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <SpotlightCard className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
+              <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <Award className="h-6 w-6 text-primary" />
                 <div className="mt-3 text-lg font-semibold">Singapore Good Design 2022</div>
                 <div className="mt-1 text-sm text-muted-foreground">Award-winning brand</div>
               </SpotlightCard>
-              <SpotlightCard className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
+              <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <ShieldCheck className="h-6 w-6 text-primary" />
                 <div className="mt-3 text-lg font-semibold">7 years</div>
                 <div className="mt-1 text-sm text-muted-foreground">Research and development</div>
               </SpotlightCard>
-              <SpotlightCard className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
+              <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <BadgeCheck className="h-6 w-6 text-primary" />
                 <div className="mt-3 text-lg font-semibold">Patented</div>
                 <div className="mt-1 text-sm text-muted-foreground">Across multiple countries</div>
