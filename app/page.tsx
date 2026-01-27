@@ -3,13 +3,8 @@ import { Ripple } from "@/components/ui/shadcn-io/ripple";
 import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AmbassadorsSlideIn } from "@/components/ambassadors-slide-in";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { SizeMattersSlideIn } from "@/components/size-matters-slide-in";
+import { BookAppointmentSheet } from "@/components/book-appointment-sheet";
 import {
   Award,
   BadgeCheck,
@@ -35,7 +30,7 @@ export default function Home() {
         <section className="relative">
           <AspectRatio ratio={16 / 9} className="relative w-full overflow-hidden">
             <Image
-              src="/DarkMpillowImage-WEB.jpg"
+              src="/m-pillow-417953-web.webp"
               alt="Mpillow pillow hero"
               fill
               priority
@@ -66,32 +61,12 @@ export default function Home() {
                         <ChevronRight className="ml-2 h-5 w-5" />
                       </Link>
                     </Button>
-                    <Sheet>
-                      <SheetTrigger asChild>
-                        <Button variant="outline" className="h-auto px-6 py-4 text-base">
-                          Book an appointment
-                        </Button>
-                      </SheetTrigger>
-                      <SheetContent
-                        side="right"
-                        disableMobileBottom
-                        className="w-full md:w-[70vw] max-w-none sm:max-w-none p-0 overflow-hidden"
-                      >
-                        <SheetHeader className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur pr-12">
-                          <SheetTitle>Book an appointment</SheetTitle>
-                        </SheetHeader>
-                        <div className="flex-1 overflow-hidden">
-                          <iframe
-                            src={appointmentUrl}
-                            style={{ border: 0 }}
-                            width="100%"
-                            height="100%"
-                            frameBorder="0"
-                            title="Google Calendar Appointment Scheduling"
-                          />
-                        </div>
-                      </SheetContent>
-                    </Sheet>
+                    <BookAppointmentSheet
+                      appointmentUrl={appointmentUrl}
+                      triggerVariant="outline"
+                      triggerClassName="h-auto px-6 py-4 text-base"
+                      triggerLabel="Book an appointment"
+                    />
                   </div>
                 </div>
               </div>
@@ -104,6 +79,36 @@ export default function Home() {
             numCircles={6}
             className="absolute inset-0 -z-10"
           />
+        </section>
+
+        {/* Size matters / Why choose */}
+        <section className="relative">
+          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
+            <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
+              <div className="space-y-4">
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                  Customised pillow from Singapore, handcrafted for a perfect night’s sleep
+                </h2>
+                <p className="text-muted-foreground leading-relaxed">
+                  Learn why proper sizing and configuration matter for sleep posture — and how Mpillow is adjusted to
+                  fit your unique body build.
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <SizeMattersSlideIn />
+                </div>
+              </div>
+
+              <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://www.mpillow.com/cdn/shop/files/m-pillow-317409-final-WEB.jpg?v=1662868268&width=1400"
+                  alt="Customised Mpillow"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </AspectRatio>
+            </div>
+          </div>
         </section>
 
         {/* Ambassadors / How it’s made */}
