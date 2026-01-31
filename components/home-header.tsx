@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { MessageCircleMore } from "lucide-react";
+import { Globe, MapPin, MessageCircleMore } from "lucide-react";
 import { openBookAppointmentSheet } from "@/components/book-appointment-sheet";
 
 export function HomeHeader() {
@@ -80,11 +80,15 @@ export function HomeHeader() {
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-foreground/80">Customise</span>
               <Button asChild size="sm" className="h-8 rounded-full px-3">
-                <Link href="/mp-config">Online</Link>
+                <Link href="/mp-config" aria-label="Online">
+                  <Globe className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                  <span className="hidden sm:inline">Online</span>
+                </Link>
               </Button>
               <Button asChild size="sm" variant="outline" className="h-8 rounded-full px-3">
                 <button type="button" onClick={openBookAppointmentSheet}>
-                  In-Person
+                  <MapPin className="h-4 w-4 sm:hidden" aria-hidden="true" />
+                  <span className="hidden sm:inline">In-Person</span>
                 </button>
               </Button>
               <a
