@@ -4,6 +4,8 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { LeftContentRightImgSection } from "@/components/left-content-right-img-section";
+import { Carousel } from "@/components/ui/apple-cards-carousel";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -22,6 +24,30 @@ type ControlledSheetProps = {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-lg font-semibold tracking-tight">{children}</h3>;
+}
+
+function AppleCarouselInfoCard({
+  title,
+  description,
+  imageSrc,
+  imageAlt,
+}: {
+  title: string;
+  description: string;
+  imageSrc: string;
+  imageAlt: string;
+}) {
+  return (
+    <div className="flex w-72 flex-col overflow-hidden rounded-3xl bg-gray-100 dark:bg-neutral-900 md:w-96">
+      <div className="relative aspect-[16/10]">
+        <Image src={imageSrc} alt={imageAlt} fill className="object-cover" sizes="(min-width: 768px) 384px, 288px" />
+      </div>
+      <div className="space-y-1.5 p-4">
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <div className="text-sm leading-relaxed text-muted-foreground">{description}</div>
+      </div>
+    </div>
+  );
 }
 
 function BasicMpillowLearnMoreSheetInner() {
@@ -95,35 +121,128 @@ function BasicMpillowLearnMoreSheetInner() {
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-0">
-            <div className="space-y-10">
-              <section className="px-4 pt-5 md:px-6">
-                <div className="grid gap-4 md:grid-cols-2 md:items-center">
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold text-foreground">Basic Mpillow</div>
-                    <div className="text-2xl font-semibold tabular-nums">$170.00 SGD</div>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      Experience our affordable uniquely shaped pillow for a goodnight&apos;s sleep. Its ergonomic
-                      design helps relieve neck tension. Perfect for both side sleepers and back sleepers in one
-                      pillow.
+            <div className="space-y-10 pb-28">
+              <LeftContentRightImgSection
+                title="Sleep made easy"
+                description={
+                  <>
+                    <p>
+                      The Basic Mpillow is an ergonomic pillow for people who have occasional neck and back pain. Our
+                      Basic Mpillows for neck support are engineered to provide the optimal balance of comfort and
+                      alignment.
                     </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      For an additional $20, you may book a personalised appointment with us to adjust your basic
-                      Mpillow.
+                    <p>
+                      It gives you the right height for proper head and neck support, whether you sleep on your back or
+                      side.
                     </p>
-                  </div>
+                  </>
+                }
+                cta={
+                  <Button asChild className="h-auto py-3">
+                    <Link href="/mp-config">Customise</Link>
+                  </Button>
+                }
+                image={{
+                  src: "/m-pillow-518001-final-WEB.webp",
+                  alt: "Basic Mpillow",
+                  sizes: "(min-width: 768px) 50vw, 100vw",
+                }}
+              />
 
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
-                    <Image
-                      src="/m-pillow-3175012-final---H-WEB.webp"
-                      alt="Basic Mpillow"
-                      fill
-                      className="object-cover"
-                      sizes="(min-width: 768px) 50vw, 100vw"
-                      priority={false}
-                    />
-                  </div>
-                </div>
+              <section className="px-4 md:px-6 space-y-3">
+                <Carousel
+                  itemsContainerClassName="w-full px-0 mx-0 max-w-none"
+                  items={[
+                    <AppleCarouselInfoCard
+                      key="basic-hero"
+                      title="Ergonomic support, made simple"
+                      description="A supportive shape designed to help relieve neck tension and keep you comfortable."
+                      imageSrc="/basic-mpillow.webp"
+                      imageAlt="Basic Mpillow ergonomic support"
+                    />,
+                    <AppleCarouselInfoCard
+                      key="patented-m"
+                      title="Patented M design supports back and side sleepers"
+                      description="Designed to support both back sleepers and side sleepers in one pillow."
+                      imageSrc="/Square_3waysleep.webp"
+                      imageAlt="Patented M design"
+                    />,
+                    <AppleCarouselInfoCard
+                      key="modular"
+                      title="Modular components for easy replacement and maintenance"
+                      description="Modular parts make maintenance and replacement simpler over time."
+                      imageSrc="/001.webp"
+                      imageAlt="Modular components"
+                    />,
+                    <AppleCarouselInfoCard
+                      key="washable"
+                      title="Fully washable and easy to clean"
+                      description="Easy care so you can keep your setup fresh and comfortable."
+                      imageSrc="/wash-care.webp"
+                      imageAlt="Wash care"
+                    />,
+                  ]}
+                />
               </section>
+
+              <LeftContentRightImgSection
+                sectionProps={{ "data-section": "size-does-matter" }}
+                headerProps={{ "data-section-header": "size-does-matter" }}
+                className="space-y-3"
+                gridClassName="gap-3 md:items-start"
+                headerClassName="space-y-2"
+                flip
+                title="Size does matter"
+                titleAs="h3"
+                titleClassName="text-lg font-semibold tracking-tight md:text-xl"
+                description={
+                  <>
+                    <p>
+                      Every body structure is different. The Mpillow&apos;s height conforms to your shoulder length to
+                      provide adequate neck support. This determines your pillow size.
+                    </p>
+
+                    <div className="overflow-hidden rounded-xl">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/30">
+                          <tr className="text-left">
+                            <th className="px-3 py-2.5 font-semibold">Size</th>
+                            <th className="px-3 py-2.5 font-semibold">Shoulder length</th>
+                          </tr>
+                        </thead>
+                        <tbody className="[&>tr:not(:last-child)]:border-b">
+                          <tr>
+                            <td className="px-3 py-2.5 font-medium">XS</td>
+                            <td className="px-3 py-2.5 text-muted-foreground">Less than 14&quot;</td>
+                          </tr>
+                          <tr>
+                            <td className="px-3 py-2.5 font-medium">S</td>
+                            <td className="px-3 py-2.5 text-muted-foreground">Between 15&quot; and 16&quot;</td>
+                          </tr>
+                          <tr>
+                            <td className="px-3 py-2.5 font-medium">M</td>
+                            <td className="px-3 py-2.5 text-muted-foreground">Between 17&quot; and 18&quot;</td>
+                          </tr>
+                          <tr>
+                            <td className="px-3 py-2.5 font-medium">L</td>
+                            <td className="px-3 py-2.5 text-muted-foreground">Between 19&quot; and 20&quot;</td>
+                          </tr>
+                          <tr>
+                            <td className="px-3 py-2.5 font-medium">XL</td>
+                            <td className="px-3 py-2.5 text-muted-foreground">Between 21&quot; and 22&quot;</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                }
+                imageWrapperClassName="aspect-[16/9] border-0 bg-muted/20"
+                image={{
+                  src: "/sizecomparison.webp",
+                  alt: "Why sizing matters",
+                  sizes: "(min-width: 768px) 50vw, 100vw",
+                }}
+              />
 
               <section className="px-4 md:px-6 space-y-3">
                 <SectionTitle>Sizing Chart</SectionTitle>
@@ -132,58 +251,25 @@ function BasicMpillowLearnMoreSheetInner() {
                   in-between the options, please round them up (e.g. 16.4&quot; → select 17&quot;–18&quot;).
                 </p>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
-                    <Image
-                      src="/shoulderlength.webp"
-                      alt="How to measure shoulder length"
-                      fill
-                      className="object-cover"
-                      sizes="(min-width: 768px) 50vw, 100vw"
+                <div className="overflow-hidden rounded-xl border bg-card">
+                  <div className="relative aspect-video bg-muted/20">
+                    <iframe
+                      title="How to measure your shoulder length"
+                      className="absolute inset-0 h-full w-full"
+                      src="https://www.youtube-nocookie.com/embed/r9XfezALQhA"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
                     />
                   </div>
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
-                    <Image
-                      src="/sizecomparison.webp"
-                      alt="Basic Mpillow sizing comparison"
-                      fill
-                      className="object-cover"
-                      sizes="(min-width: 768px) 50vw, 100vw"
-                    />
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
+                    <Button asChild variant="outline" className="h-auto py-2.5">
+                      <Link href="https://www.youtube.com/watch?v=r9XfezALQhA" target="_blank" rel="noopener noreferrer">
+                        Open video
+                      </Link>
+                    </Button>
                   </div>
-                </div>
-
-                <div className="overflow-hidden rounded-xl">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/30">
-                      <tr className="text-left">
-                        <th className="px-3 py-2.5 font-semibold">Size</th>
-                        <th className="px-3 py-2.5 font-semibold">Shoulder length</th>
-                      </tr>
-                    </thead>
-                    <tbody className="[&>tr:not(:last-child)]:border-b">
-                      <tr>
-                        <td className="px-3 py-2.5 font-medium">XS</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">Less than 14&quot;</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2.5 font-medium">S</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">Between 15&quot; and 16&quot;</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2.5 font-medium">M</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">Between 17&quot; and 18&quot;</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2.5 font-medium">L</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">Between 19&quot; and 20&quot;</td>
-                      </tr>
-                      <tr>
-                        <td className="px-3 py-2.5 font-medium">XL</td>
-                        <td className="px-3 py-2.5 text-muted-foreground">Between 21&quot; and 22&quot;</td>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
               </section>
 
@@ -208,77 +294,6 @@ function BasicMpillowLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Sleep made easy</SectionTitle>
-                <div className="grid gap-4 md:grid-cols-2 md:items-center">
-                  <div className="space-y-2">
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      The Basic Mpillow is an ergonomic pillow for people who have occasional neck and back pain. Our
-                      Basic Mpillows for neck support are engineered to provide the optimal balance of comfort and
-                      alignment, ensuring you wake up feeling refreshed and pain-free.
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      It gives you the right height for proper head and neck support, whether you sleep on your back
-                      or side.
-                    </p>
-                  </div>
-
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
-                    <Image
-                      src="/m-pillow-417804-final-WEB.webp"
-                      alt="Basic Mpillow ergonomic support"
-                      fill
-                      className="object-cover"
-                      sizes="(min-width: 768px) 50vw, 100vw"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <div className="font-semibold text-foreground">Highlights</div>
-                  <ul className="space-y-1.5">
-                    <li>Patented M design supports back and side sleepers</li>
-                    <li>Modular components for easy replacement and maintenance</li>
-                    <li>Fully washable and easy to clean</li>
-                  </ul>
-                </div>
-              </section>
-
-              <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Size does matter</SectionTitle>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Every body structure is different. The Mpillow&apos;s height conforms to your shoulder length to
-                  provide adequate neck support. This determines your pillow size.
-                </p>
-                <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
-                  <Image
-                    src="/sizecomparison.webp"
-                    alt="Why sizing matters"
-                    fill
-                    className="object-cover"
-                    sizes="(min-width: 768px) 70vw, 100vw"
-                  />
-                </div>
-              </section>
-
-              <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Perfect for every sleep position</SectionTitle>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <div>Measure your shoulder length.</div>
-                  <div>Choose the right size of your Mpillow from the chart based on your shoulder length.</div>
-                  <div>Add it to your cart and check out. Your Basic Mpillow will be delivered to your doorstep.</div>
-                </div>
-                <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
-                  <Image
-                    src="/3way-side-sleep.jpg"
-                    alt="Sleep positions supported by the Mpillow design"
-                    fill
-                    className="object-cover"
-                    sizes="(min-width: 768px) 70vw, 100vw"
-                  />
-                </div>
-              </section>
-
-              <section className="px-4 md:px-6 space-y-3">
                 <SectionTitle>Firmness Level</SectionTitle>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   The Basic Mpillow is softer than the Premium pillow due to its configuration and internal design.
@@ -286,46 +301,46 @@ function BasicMpillowLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Mpillow Aftercare</SectionTitle>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  How to wash and clean your Basic Mpillow.
-                </p>
-                <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
-                  <Image
-                    src="/wash-care.webp"
-                    alt="Basic Mpillow aftercare and wash instructions"
-                    fill
-                    className="object-cover"
-                    sizes="(min-width: 768px) 70vw, 100vw"
-                  />
+                <SectionTitle>Mpillow Aftercare Video</SectionTitle>
+                <p className="text-sm leading-relaxed text-muted-foreground">How to wash and clean your Basic Mpillow.</p>
+
+                <div className="overflow-hidden rounded-xl border bg-card">
+                  <div className="relative aspect-video bg-muted/20">
+                    <iframe
+                      title="Mpillow aftercare video (Basic)"
+                      className="absolute inset-0 h-full w-full"
+                      src="https://www.youtube-nocookie.com/embed/dsuB9ndOixY"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
+                    <Button asChild variant="outline" className="h-auto py-2.5">
+                      <Link href="https://www.youtube.com/watch?v=dsuB9ndOixY" target="_blank" rel="noopener noreferrer">
+                        Open video
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </section>
 
-              <section className="px-4 pb-6 md:px-6 space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Button asChild className="h-auto py-4">
-                    <Link href="/mp-config">Customise</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="h-auto py-4">
-                    <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
-                      Book Basic Mpillow Adjustment
-                    </Link>
-                  </Button>
-                </div>
+            </div>
+          </div>
+        </div>
 
-                <div className="text-xs text-muted-foreground">
-                  Content duplicated from{" "}
-                  <Link
-                    href="https://www.mpillow.com/pages/basic-ergonomic-pillow"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-4"
-                  >
-                    Mpillow Basic ergonomic pillow page
-                  </Link>
-                  .
-                </div>
-              </section>
+        <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+          <div className="px-4 py-4 md:px-6">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button asChild className="h-auto py-4">
+                <Link href="/mp-config">Customise</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-4">
+                <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
+                  Book Basic Mpillow Adjustment
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
