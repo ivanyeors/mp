@@ -4,8 +4,10 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { FirmnessScale } from "@/components/firmness-scale";
 import { LeftContentRightImgSection } from "@/components/left-content-right-img-section";
 import { Carousel } from "@/components/ui/apple-cards-carousel";
+import { openBookAppointmentSheet } from "@/components/book-appointment-sheet";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -135,6 +137,17 @@ function BasicMpillowLearnMoreSheetInner() {
                       It gives you the right height for proper head and neck support, whether you sleep on your back or
                       side.
                     </p>
+
+                    <div className="space-y-2 pt-2">
+                      <div className="text-sm font-semibold text-foreground">What&apos;s in the packaging</div>
+                      <ul className="space-y-1.5">
+                        <li>x1 Pillow Cover (Cotton)</li>
+                        <li>x1 Pillow Case (Linen)</li>
+                        <li>x1 Vacuum Bag</li>
+                        <li>x1 Laundry Bag</li>
+                        <li>Fillings are provided.</li>
+                      </ul>
+                    </div>
                   </>
                 }
                 cta={
@@ -148,6 +161,22 @@ function BasicMpillowLearnMoreSheetInner() {
                   sizes: "(min-width: 768px) 50vw, 100vw",
                 }}
               />
+
+              <section className="px-4 md:px-6 space-y-3">
+                <div className="grid gap-4 md:grid-cols-2 md:items-start">
+                  <div className="space-y-2">
+                    <SectionTitle>Firmness Level</SectionTitle>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      The Basic Mpillow is softer than the Premium pillow due to its configuration and internal design.
+                    </p>
+                  </div>
+
+                  <div className="w-full space-y-3">
+                    <FirmnessScale mode="range" value={[25, 35]} title="Basic Mpillow" label="25–35%" className="w-full" />
+                    <FirmnessScale mode="range" value={[40, 85]} title="Premium Mpillow" label="40–85%" className="w-full" />
+                  </div>
+                </div>
+              </section>
 
               <section className="px-4 md:px-6 space-y-3">
                 <Carousel
@@ -236,11 +265,12 @@ function BasicMpillowLearnMoreSheetInner() {
                     </div>
                   </>
                 }
-                imageWrapperClassName="aspect-[16/9] border-0 bg-muted/20"
+                imageWrapperClassName="aspect-[600/619] border-0 bg-muted/20"
                 image={{
                   src: "/sizecomparison.webp",
                   alt: "Why sizing matters",
                   sizes: "(min-width: 768px) 50vw, 100vw",
+                  className: "object-contain",
                 }}
               />
 
@@ -256,75 +286,52 @@ function BasicMpillowLearnMoreSheetInner() {
                     <iframe
                       title="How to measure your shoulder length"
                       className="absolute inset-0 h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/r9XfezALQhA"
+                      src="https://www.youtube-nocookie.com/embed/r9XfezALQhA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
+                      loading="lazy"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
                     />
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
-                    <Button asChild variant="outline" className="h-auto py-2.5">
-                      <Link href="https://www.youtube.com/watch?v=r9XfezALQhA" target="_blank" rel="noopener noreferrer">
-                        Open video
-                      </Link>
-                    </Button>
-                  </div>
                 </div>
               </section>
 
-              <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>What&apos;s in the packaging</SectionTitle>
-                <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li>x1 Pillow Cover (Cotton)</li>
-                  <li>x1 Pillow Case (Linen)</li>
-                  <li>x1 Vacuum Bag</li>
-                  <li>x1 Laundry Bag</li>
-                  <li>Fillings are provided.</li>
-                </ul>
-                <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
-                  <Image
-                    src="/fillings.webp"
-                    alt="Fillings provided"
-                    fill
-                    className="object-cover"
-                    sizes="(min-width: 768px) 70vw, 100vw"
-                  />
-                </div>
-              </section>
-
-              <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Firmness Level</SectionTitle>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  The Basic Mpillow is softer than the Premium pillow due to its configuration and internal design.
-                </p>
-              </section>
-
-              <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Mpillow Aftercare Video</SectionTitle>
-                <p className="text-sm leading-relaxed text-muted-foreground">How to wash and clean your Basic Mpillow.</p>
-
-                <div className="overflow-hidden rounded-xl border bg-card">
-                  <div className="relative aspect-video bg-muted/20">
-                    <iframe
-                      title="Mpillow aftercare video (Basic)"
-                      className="absolute inset-0 h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/dsuB9ndOixY"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      allowFullScreen
-                    />
+              <LeftContentRightImgSection
+                className="space-y-3"
+                gridClassName="md:items-start"
+                headerClassName="space-y-2"
+                title="Mpillow Aftercare Video"
+                titleAs="h3"
+                titleClassName="text-lg font-semibold tracking-tight md:text-xl"
+                description={
+                  <>
+                    <p>How to wash and clean your Basic Mpillow.</p>
+                    <p>Want to learn more about doing Mpillow Maintenance?</p>
+                  </>
+                }
+                cta={
+                  <Button asChild variant="secondary" className="h-auto py-2.5">
+                    <Link href="/mp-care">
+                      Mpillow Care
+                    </Link>
+                  </Button>
+                }
+                right={
+                  <div className="overflow-hidden rounded-xl border bg-card">
+                    <div className="relative aspect-video bg-muted/20">
+                      <iframe
+                        title="Mpillow aftercare video (Basic)"
+                        className="absolute inset-0 h-full w-full"
+                        src="https://www.youtube-nocookie.com/embed/dsuB9ndOixY?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
+                        loading="lazy"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        allowFullScreen
+                      />
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
-                    <Button asChild variant="outline" className="h-auto py-2.5">
-                      <Link href="https://www.youtube.com/watch?v=dsuB9ndOixY" target="_blank" rel="noopener noreferrer">
-                        Open video
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              </section>
+                }
+              />
 
             </div>
           </div>
@@ -337,9 +344,9 @@ function BasicMpillowLearnMoreSheetInner() {
                 <Link href="/mp-config">Customise</Link>
               </Button>
               <Button asChild variant="outline" className="h-auto py-4">
-                <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
+                <button type="button" onClick={openBookAppointmentSheet}>
                   Book Basic Mpillow Adjustment
-                </Link>
+                </button>
               </Button>
             </div>
           </div>

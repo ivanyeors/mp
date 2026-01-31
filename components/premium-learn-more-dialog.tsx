@@ -4,6 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { FirmnessScale } from "@/components/firmness-scale";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -285,6 +286,21 @@ function PremiumLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
+                <div className="grid gap-4 md:grid-cols-2 md:items-start">
+                  <div className="space-y-2">
+                    <SectionTitle>Firmness Level</SectionTitle>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      The Premium Mpillow can be customised to your preferred comfort level.
+                    </p>
+                  </div>
+
+                  <div className="w-full">
+                    <FirmnessScale mode="range" value={[40, 85]} title="Premium Mpillow" label="40–85%" className="w-full" />
+                  </div>
+                </div>
+              </section>
+
+              <section className="px-4 md:px-6 space-y-3">
                 <SectionTitle>Additional accessory</SectionTitle>
                 <div className="grid gap-4 md:grid-cols-2 md:items-center">
                   <div className="space-y-2">
@@ -315,19 +331,12 @@ function PremiumLearnMoreSheetInner() {
                     <iframe
                       title="Watch how we customise Premium Mpillow"
                       className="absolute inset-0 h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/V2H03lq9IYU"
+                      src="https://www.youtube-nocookie.com/embed/V2H03lq9IYU?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
+                      loading="lazy"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
                     />
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
-                    <Button asChild variant="outline" className="h-auto py-2.5">
-                      <Link href="https://www.youtube.com/watch?v=V2H03lq9IYU" target="_blank" rel="noopener noreferrer">
-                        Open video
-                      </Link>
-                    </Button>
                   </div>
                 </div>
               </section>
@@ -435,19 +444,12 @@ function PremiumLearnMoreSheetInner() {
                     <iframe
                       title="Mpillow aftercare video"
                       className="absolute inset-0 h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/LxtHJL9s58E"
+                      src="https://www.youtube-nocookie.com/embed/LxtHJL9s58E?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
+                      loading="lazy"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
                     />
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
-                    <Button asChild variant="outline" className="h-auto py-2.5">
-                      <Link href="https://www.youtube.com/watch?v=LxtHJL9s58E" target="_blank" rel="noopener noreferrer">
-                        Open video
-                      </Link>
-                    </Button>
                   </div>
                 </div>
               </section>

@@ -245,7 +245,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                 <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border">
                   <iframe
                     className="absolute inset-0 h-full w-full"
-                    src="https://www.youtube.com/embed/z2u69YPvHi4"
+                    src="https://www.youtube-nocookie.com/embed/z2u69YPvHi4?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
                     title="Mpillow - Watch the process"
                     loading="lazy"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
