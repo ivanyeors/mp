@@ -37,9 +37,8 @@ export function StoriesSectionClient({
 }) {
   const ordered = useMemo(() => sortOldestToNewest(testimonials), [testimonials]);
   const initialVisibleCount = useMemo(() => {
-    // Google Places often returns a small subset of reviews (commonly 5).
-    // If total reviews <= batchSize, start by showing a smaller slice so "View more" actually does something.
-    if (ordered.length <= batchSize) return Math.min(ordered.length, Math.max(1, Math.min(3, ordered.length)));
+    // Prefer showing as many as we have (up to batchSize) so the section doesn't look sparse.
+    // The Places API typically returns a small subset anyway (commonly ~5).
     return Math.min(batchSize, ordered.length);
   }, [batchSize, ordered.length]);
 

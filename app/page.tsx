@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AmbassadorsSlideIn } from "@/components/ambassadors-slide-in";
 import { SizeMattersSlideIn } from "@/components/size-matters-slide-in";
+import { BasicMpillowLearnMoreSlideIn } from "@/components/basic-mpillow-learn-more-slide-in";
+import { PremiumLearnMoreDialog } from "../components/premium-learn-more-dialog";
+import { MbolsterLearnMoreSlideIn } from "@/components/mbolster-learn-more-slide-in";
 import { BookAppointmentSheet } from "@/components/book-appointment-sheet";
 import { InfiniteImageMarquee } from "@/components/infinite-image-marquee";
 import { Badge } from "@/components/ui/badge";
@@ -82,12 +85,33 @@ async function getPillowXsFromPriceLabel(kind: PillowKind): Promise<string> {
   }
 }
 
+async function getBolsterFromPriceLabel(): Promise<string> {
+  try {
+    const admin = supabaseAdmin();
+    const keys = ["product:bolster:short", "product:bolster:medium", "product:bolster:long"];
+    const { data: rows, error } = await admin
+      .from("product_prices")
+      .select("key,msrp")
+      .in("key", keys);
+    if (error) return "—";
+
+    const prices = (rows ?? [])
+      .map((r) => parsePrice((r as { msrp?: unknown }).msrp))
+      .filter((v): v is number => v !== null);
+    if (prices.length === 0) return "—";
+    return formatPriceLabel(Math.min(...prices));
+  } catch {
+    return "—";
+  }
+}
+
 export default async function Home() {
   const appointmentUrl =
     "https://calendar.google.com/calendar/appointments/schedules/AcZssZ0bNnrc_0CeREyaoByx0GDhuif5fJFTCyAQTkEJH14vNs5XT_zzqgv47CJ-FrUACncTtYs8yeas?gv=true";
-  const [basicXsFromPrice, premiumXsFromPrice] = await Promise.all([
+  const [basicXsFromPrice, premiumXsFromPrice, bolsterFromPrice] = await Promise.all([
     getPillowXsFromPriceLabel("basic"),
     getPillowXsFromPriceLabel("premium"),
+    getBolsterFromPriceLabel(),
   ]);
 
   return (
@@ -332,9 +356,21 @@ export default async function Home() {
                     </CardContent>
 
                     <CardFooter className="p-4 pt-0">
-                      <Button asChild className="w-full">
-                        <Link href="/mp-config">Customise</Link>
-                      </Button>
+                      {card.title === "Basic" ? (
+                        <div className="flex w-full items-center gap-2">
+                          <BasicMpillowLearnMoreSlideIn className="flex-1" />
+                          <Button asChild className="flex-1">
+                            <Link href="/mp-config">Customise</Link>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+                          <PremiumLearnMoreDialog className="flex-1" />
+                          <Button asChild className="flex-1">
+                            <Link href="/mp-config">Customise</Link>
+                          </Button>
+                        </div>
+                      )}
                     </CardFooter>
                   </Card>
                 ))}
@@ -475,23 +511,93 @@ export default async function Home() {
           </div>
         </section>
 
+        {/* Mbolster highlight */}
+        <section className="relative">
+          <div className="mx-auto w-full max-w-6xl px-4 pb-12 md:pb-16">
+            <Card className="overflow-hidden bg-card/40 backdrop-blur-sm py-0 gap-0">
+              <div className="relative aspect-[1493/554] w-full">
+                <Image
+                  src="/808907f4-ac2b-499a-ace6-69933883b2f5.webp"
+                  alt="Mbolster"
+                  fill
+                  className="object-cover"
+                  sizes="(min-width: 1280px) 1120px, (min-width: 768px) calc(100vw - 2rem), 100vw"
+                />
+              </div>
+
+              <CardContent className="p-5 md:p-7">
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Mbolster</h2>
+                  <p className="text-muted-foreground leading-relaxed">
+                    A customisable bolster designed to fit your body build — dial in your comfort with adjustable support.
+                  </p>
+                </div>
+
+                <div className="mt-4">
+                  <h3 className="font-semibold">Premium customisation for the best fit</h3>
+
+                  <div className="mt-4 space-y-2">
+                    {[
+                      { label: "Customisation", level: 3 },
+                      { label: "Fit control", level: 4 },
+                    ].map((s) => (
+                      <div key={s.label} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm">
+                          <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                          <span>{s.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: 4 }).map((_, idx) => (
+                            <div
+                              key={idx}
+                              className={[
+                                "h-2 w-4 rounded-sm",
+                                idx < s.level ? "bg-primary" : "bg-muted",
+                              ].join(" ")}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-2xl font-bold tabular-nums">From {bolsterFromPrice}</span>
+                  </div>
+                </div>
+              </CardContent>
+
+              <CardFooter className="p-5 pt-0 md:p-7 md:pt-0">
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+                  <MbolsterLearnMoreSlideIn className="flex-1" />
+                  <Button asChild className="flex-1">
+                    <Link href="/mbolster-config">
+                      Customise mbolster
+                    </Link>
+                  </Button>
+                </div>
+              </CardFooter>
+            </Card>
+          </div>
+        </section>
+
         {/* Credibility strip */}
         <section className="relative">
           <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <Award className="h-6 w-6 text-primary" />
-                <div className="mt-3 text-lg font-semibold">Singapore Good Design 2022</div>
+                <div className="mt-3 text-2xl font-semibold">Singapore Good Design 2022</div>
                 <div className="mt-1 text-sm text-muted-foreground">Award-winning brand</div>
               </SpotlightCard>
               <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <ShieldCheck className="h-6 w-6 text-primary" />
-                <div className="mt-3 text-lg font-semibold">7 years</div>
+                <div className="mt-3 text-2xl font-semibold">7 years</div>
                 <div className="mt-1 text-sm text-muted-foreground">Research and development</div>
               </SpotlightCard>
               <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <BadgeCheck className="h-6 w-6 text-primary" />
-                <div className="mt-3 text-lg font-semibold">Patented</div>
+                <div className="mt-3 text-2xl font-semibold">Patented</div>
                 <div className="mt-1 text-sm text-muted-foreground">Across multiple countries</div>
               </SpotlightCard>
             </div>
@@ -578,39 +684,6 @@ export default async function Home() {
           </div>
         </section>
 
-        {/* Innovation challenge */}
-        <section className="relative">
-          <div className="mx-auto w-full max-w-6xl px-4 pt-12 md:pt-16 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Can you find them?</h2>
-                <p className="text-muted-foreground leading-relaxed">
-                  Mpillow has at least 20 different innovative elements, can you find them?
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-                {Array.from({ length: 10 }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="rounded-xl border bg-card/40 px-3 py-3 text-sm text-muted-foreground backdrop-blur-sm"
-                  >
-                    Innovation element #{idx + 1}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button variant="secondary" disabled>
-                  Explore innovations (CTA placeholder)
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/mp-care">Care & maintenance</Link>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
     </div>
   );

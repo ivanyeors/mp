@@ -23,7 +23,7 @@ type MeasureTileProps = {
 
 function MeasureTile({ iconSrc, title, description }: MeasureTileProps) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border bg-card/40 p-4 backdrop-blur-sm">
+    <div className="flex items-start gap-3">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={iconSrc} alt="" className="mt-0.5 h-8 w-8 shrink-0" />
       <div className="min-w-0">
@@ -84,10 +84,10 @@ export function SizeMattersSlideIn({ className }: Props) {
         side="right"
         disableMobileBottom
         hideClose
-        className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
+        className="w-full max-w-none sm:max-w-none p-0 bg-transparent border-0 shadow-none overflow-hidden"
       >
-        <div className="flex h-full flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
-          <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+        <div className="flex h-full flex-col overflow-hidden bg-background">
+          <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <SheetHeader className="relative pr-12">
               <SheetTitle>Why choose Mpillow</SheetTitle>
               <SheetDescription>Size matters — a pillow should fit you, not the other way around.</SheetDescription>
@@ -102,15 +102,14 @@ export function SizeMattersSlideIn({ className }: Props) {
                 </button>
               </SheetClose>
             </SheetHeader>
-            <div className="px-4 pb-4 md:px-8 md:pb-5">
+            <div className="px-4 pb-4 md:px-6 md:pb-5">
               <Progress value={progress} className="h-1" />
             </div>
           </div>
 
           <div ref={setViewportNode} className="flex-1 overflow-y-auto">
-            <div className="px-4 py-5 md:px-8 md:py-8">
-              <div className="grid gap-8 md:grid-cols-[1fr_320px]">
-                <main className="min-w-0 space-y-6">
+            <div className="px-4 py-5 md:px-6 md:py-6">
+              <main className="min-w-0 space-y-8">
                   <div className="grid gap-6 md:grid-cols-2 md:items-center">
                     <div className="space-y-2">
                       <div className="text-lg font-semibold leading-tight">Size matters</div>
@@ -119,7 +118,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                         components allow for easy adjustments to fit your precise body structure.
                       </p>
                     </div>
-                    <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
+                    <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-muted/20">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src="/m-pillow-417953-web.webp"
@@ -130,29 +129,29 @@ export function SizeMattersSlideIn({ className }: Props) {
                     </AspectRatio>
                   </div>
 
-                  <blockquote className="rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
+                  <blockquote className="space-y-2">
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       When you buy a shirt you have to try different sizes to find one that fits you - so why shouldn&apos;t
                       it be the same for a pillow?
                     </p>
-                    <footer className="mt-3 text-xs text-muted-foreground">— The Straits Times</footer>
+                    <footer className="text-xs text-muted-foreground">— The Straits Times</footer>
                   </blockquote>
 
-                  <Card className="rounded-2xl border bg-card/40 backdrop-blur-sm">
-                    <CardHeader>
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
+                    <CardHeader className="px-0">
                       <CardTitle>Why is Mpillow usable for all but unique for individuals?</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>We are all unique, one way or another.</p>
                       <p>A pillow should fit you, not the other way around.</p>
                     </CardContent>
                   </Card>
 
-                  <Card className="rounded-2xl border bg-card/40 backdrop-blur-sm">
-                    <CardHeader>
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
+                    <CardHeader className="px-0">
                       <CardTitle>Measurements that matter</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="px-0 space-y-4">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <MeasureTile
                           iconSrc="/shoulder-length.svg"
@@ -188,18 +187,18 @@ export function SizeMattersSlideIn({ className }: Props) {
                         <img
                           src="/Head-Shapes-GIF.gif"
                           alt="Head shapes and support examples"
-                          className="w-full h-auto rounded-2xl border bg-muted/30"
+                          className="w-full h-auto rounded-xl bg-muted/20"
                           loading="lazy"
                         />
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className="rounded-2xl border bg-card/40 backdrop-blur-sm">
-                    <CardHeader>
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
+                    <CardHeader className="px-0">
                       <CardTitle>How do we adjust Mpillow accurately for you?</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>To ensure that you have the right fit from the Mpillow, a few measurements is required for this to happen.</p>
                       <p>
                         These measurements would be able to reveal the pillow size that you will actually require to have a
@@ -208,11 +207,11 @@ export function SizeMattersSlideIn({ className }: Props) {
                     </CardContent>
                   </Card>
 
-                  <Card className="rounded-2xl border bg-card/40 backdrop-blur-sm">
-                    <CardHeader>
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
+                    <CardHeader className="px-0">
                       <CardTitle>Designed for your preferred sleep position</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>
                         Our pillow design support system covers all aspect, from your shoulders, to the start of the thoracic
                         spine to your to your neck and head shape.
@@ -224,11 +223,11 @@ export function SizeMattersSlideIn({ className }: Props) {
                     </CardContent>
                   </Card>
 
-                  <Card className="rounded-2xl border bg-card/40 backdrop-blur-sm">
-                    <CardHeader>
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
+                    <CardHeader className="px-0">
                       <CardTitle>Unique configurations for every body</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>
                         We spent 2 years developing the product, 4 years to create 50 over unique configurations for users
                         with round or flat heads, curved or straight spines, long or short necks, and thick or flat backs.
@@ -237,16 +236,16 @@ export function SizeMattersSlideIn({ className }: Props) {
                     </CardContent>
                   </Card>
 
-                  <Card className="rounded-2xl border bg-card/40 backdrop-blur-sm">
-                    <CardHeader>
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
+                    <CardHeader className="px-0">
                       <CardTitle>Engineered to Perfection</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="px-0 space-y-4">
                       <p className="text-sm leading-relaxed text-muted-foreground">
                         We have 3 tiers of customisation, understand which tier would suit your needs before you proceed with
                         your measurements.
                       </p>
-                      <div className="flex items-center gap-3 rounded-xl border bg-background/60 p-4">
+                      <div className="flex items-center gap-3 rounded-xl bg-muted/20 p-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src="/L-plus.svg" alt="" className="h-8 w-8 shrink-0" />
                         <div className="text-sm text-muted-foreground">
@@ -263,7 +262,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                       </Link>
                     </Button>
                     <Button asChild variant="outline" className="h-auto py-4">
-                      <Link href="https://www.mpillow.com/pages/mbolster" target="_blank" rel="noopener noreferrer">
+                      <Link href="/mbolster-config">
                         Customise mbolster
                       </Link>
                     </Button>
@@ -277,46 +276,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                       </Link>
                     </Button>
                   </div>
-                </main>
-
-                <aside className="space-y-4 md:pt-1">
-                  <div className="rounded-2xl border bg-card/40 p-5 backdrop-blur-sm">
-                    <div className="text-sm font-semibold text-foreground">At a glance</div>
-                    <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                      <li>Fits your unique posture and body structure</li>
-                      <li>Supports back and side sleeping zones</li>
-                      <li>Multiple sizes + modular adjustments</li>
-                      <li>Configurations for different head and neck shapes</li>
-                    </ul>
-                  </div>
-
-                  <div className="rounded-2xl border bg-card/40 p-5 backdrop-blur-sm">
-                    <div className="text-sm font-semibold text-foreground">Measurements</div>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border bg-background/60 p-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/shoulder-length.svg" alt="" className="h-7 w-7" />
-                        <div className="mt-2 text-xs text-muted-foreground">Shoulder length</div>
-                      </div>
-                      <div className="rounded-xl border bg-background/60 p-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/neck-length.svg" alt="" className="h-7 w-7" />
-                        <div className="mt-2 text-xs text-muted-foreground">Neck length</div>
-                      </div>
-                      <div className="rounded-xl border bg-background/60 p-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/neck-to-back.svg" alt="" className="h-7 w-7" />
-                        <div className="mt-2 text-xs text-muted-foreground">Neck depth</div>
-                      </div>
-                      <div className="rounded-xl border bg-background/60 p-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/head-to-back.svg" alt="" className="h-7 w-7" />
-                        <div className="mt-2 text-xs text-muted-foreground">Head depth</div>
-                      </div>
-                    </div>
-                  </div>
-                </aside>
-              </div>
+              </main>
             </div>
           </div>
         </div>
