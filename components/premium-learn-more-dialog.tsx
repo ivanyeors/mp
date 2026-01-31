@@ -28,6 +28,30 @@ function SectionSubtitle({ children }: { children: React.ReactNode }) {
   return <div className="text-sm font-semibold text-foreground">{children}</div>;
 }
 
+function FeatureCard({
+  title,
+  imageSrc,
+  imageAlt,
+  children,
+}: {
+  title: string;
+  imageSrc: string;
+  imageAlt: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="relative aspect-[16/10] bg-muted/20">
+        <Image src={imageSrc} alt={imageAlt} fill className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
+      </div>
+      <div className="space-y-1.5 p-4">
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <div className="text-sm leading-relaxed text-muted-foreground">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function PremiumLearnMoreSheetInner() {
   const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
@@ -97,28 +121,63 @@ function PremiumLearnMoreSheetInner() {
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-0">
-            <div className="space-y-10">
+            <div className="space-y-10 pb-28">
               <section className="px-4 pt-5 md:px-6">
+                <div className="space-y-4">
+                  <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
+                    <Image
+                      src="/m-pillow-317460-final---H-WEB.webp"
+                      alt="Premium Mpillow hero"
+                      fill
+                      className="object-cover"
+                      sizes="100vw"
+                      priority={false}
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2 md:items-start">
+                    <div className="space-y-2">
+                      <SectionSubtitle>Premium Mpillow Is A Customised Pillow</SectionSubtitle>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        Get your pillow customised in person by our Mpillow team — we can build it the way you like it.
+                        Watch our experts customise your pillow and try it on the spot until you’re satisfied with the
+                        fit before taking it home.
+                      </p>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        For overseas customers, submit your measurements online and follow the guide below for an
+                        accurate measurement of each section.
+                      </p>
+                    </div>
+
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
+                      <Image
+                        src="/m-pillow-317409-final---H-WEB.webp"
+                        alt="Premium Mpillow in-store customisation"
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 768px) 50vw, 100vw"
+                        priority={false}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="px-4 md:px-6">
                 <div className="grid gap-4 md:grid-cols-2 md:items-center">
                   <div className="space-y-2">
-                    <SectionSubtitle>Premium Mpillow</SectionSubtitle>
+                    <SectionTitle>For overseas customers</SectionTitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Premium Mpillow is a customised pillow. Get your pillow customised in person by our team — built
-                      the way you like it, with on-the-spot fitting until you’re satisfied.
-                    </p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      For overseas customers, follow the measurement guide below and customise online.
+                      Submit your measurements online. Our step-by-step flow will guide you with each measurement — in
+                      the comfort of your own home.
                     </p>
                   </div>
-
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
                     <Image
-                      src="/m-pillow-417804-final-WEB.webp"
-                      alt="Premium Mpillow"
+                      src="/m-pillow-417953-web.webp"
+                      alt="Overseas customisation"
                       fill
                       className="object-cover"
                       sizes="(min-width: 768px) 50vw, 100vw"
-                      priority={false}
                     />
                   </div>
                 </div>
@@ -139,6 +198,10 @@ function PremiumLearnMoreSheetInner() {
                   <li>sleep apnea</li>
                   <li>numb fingers</li>
                 </ul>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Choosing the right neck pain pillow can significantly improve your sleep quality and help alleviate
+                  discomfort.
+                </p>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
@@ -184,22 +247,88 @@ function PremiumLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Features</SectionTitle>
-                <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li>Customised to your specific shoulder, neck and head measurements</li>
-                  <li>3 separate compartments maintain shape and allow for easy height adjustment</li>
-                  <li>Waterproof protector for improved hygiene</li>
-                  <li>Fully washable and easy to clean</li>
-                  <li>10-year warranty (filling height)</li>
-                </ul>
-                <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
-                  <Image
-                    src="/3_compartment.webp"
-                    alt="Premium Mpillow 3 compartments"
-                    fill
-                    className="object-cover"
-                    sizes="(min-width: 768px) 70vw, 100vw"
-                  />
+                <SectionTitle>Features of our Premium neck & shoulder pain pillow</SectionTitle>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Our pillow for cervical neck pain is designed to help maintain proper spinal alignment. Tailored
+                  support can help you wake up feeling more refreshed.
+                </p>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FeatureCard
+                    title="Customised to your specific shoulder, neck and head measurements"
+                    imageSrc="/NeckDepth.webp"
+                    imageAlt="Measurement and customisation"
+                  >
+                    A fitted pillow starts with accurate measurements so the support lands in the right places.
+                  </FeatureCard>
+
+                  <FeatureCard
+                    title="3 separate compartments maintain shape and allow for easy height adjustment"
+                    imageSrc="/3_compartment.webp"
+                    imageAlt="Three compartments"
+                  >
+                    Separate compartments help maintain structure and make fine-tuning the height easier.
+                  </FeatureCard>
+
+                  <FeatureCard title="Waterproof protector for improved hygiene" imageSrc="/m-pillow-518057-final-V-WEB.webp" imageAlt="Waterproof inner protector">
+                    An inner protector helps keep things clean and extends the usable life of your pillow.
+                  </FeatureCard>
+
+                  <FeatureCard title="Fully washable and easy to clean" imageSrc="/wash-care.webp" imageAlt="Wash care">
+                    Easy care matters. Wash and refresh your setup when needed without fuss.
+                  </FeatureCard>
+
+                  <FeatureCard title="10-year warranty (filling height)" imageSrc="/fillings.webp" imageAlt="Filling warranty">
+                    Long-term support: a 10-year warranty on the stuffing (filling height).
+                  </FeatureCard>
+                </div>
+              </section>
+
+              <section className="px-4 md:px-6 space-y-3">
+                <SectionTitle>Additional accessory</SectionTitle>
+                <div className="grid gap-4 md:grid-cols-2 md:items-center">
+                  <div className="space-y-2">
+                    <SectionSubtitle>Pillow For Cervical Neck Pain</SectionSubtitle>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Add cervical support if you need extra neck support in your sleep setup.
+                    </p>
+                    <Button asChild variant="outline" className="h-auto py-3">
+                      <Link
+                        href="https://www.mpillow.com/pages/cervical-support-pillow-customisable-pillow"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Find out more
+                      </Link>
+                    </Button>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
+                    <Image src="/mpillow-cervical-neck.webp" alt="Cervical neck support accessory" fill className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
+                  </div>
+                </div>
+              </section>
+
+              <section className="px-4 md:px-6 space-y-3">
+                <SectionTitle>Watch how we customise Premium Mpillow</SectionTitle>
+                <div className="overflow-hidden rounded-xl border bg-card">
+                  <div className="relative aspect-video bg-muted/20">
+                    <iframe
+                      title="Watch how we customise Premium Mpillow"
+                      className="absolute inset-0 h-full w-full"
+                      src="https://www.youtube-nocookie.com/embed/V2H03lq9IYU"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
+                    <Button asChild variant="outline" className="h-auto py-2.5">
+                      <Link href="https://www.youtube.com/watch?v=V2H03lq9IYU" target="_blank" rel="noopener noreferrer">
+                        Open video
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </section>
 
@@ -279,6 +408,15 @@ function PremiumLearnMoreSheetInner() {
 
               <section className="px-4 md:px-6 space-y-3">
                 <SectionTitle>The Premium Mpillow package</SectionTitle>
+                <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
+                  <Image
+                    src="/m-pillow-417804-final-WEB.webp"
+                    alt="Premium Mpillow package"
+                    fill
+                    className="object-cover"
+                    sizes="(min-width: 768px) 70vw, 100vw"
+                  />
+                </div>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
                   <li>1 Mpillow case (Linen blue / Linen Natural / FibreCool)</li>
                   <li>A number of small and large filling cushions (depending on your pillow size)</li>
@@ -287,6 +425,31 @@ function PremiumLearnMoreSheetInner() {
                   <li>1 travel vacuum bag</li>
                   <li>1 laundry bag packaging</li>
                 </ul>
+              </section>
+
+              <section className="px-4 md:px-6 space-y-3">
+                <SectionTitle>Mpillow aftercare video</SectionTitle>
+                <p className="text-sm leading-relaxed text-muted-foreground">How to wash and clean your Premium Mpillow.</p>
+                <div className="overflow-hidden rounded-xl border bg-card">
+                  <div className="relative aspect-video bg-muted/20">
+                    <iframe
+                      title="Mpillow aftercare video"
+                      className="absolute inset-0 h-full w-full"
+                      src="https://www.youtube-nocookie.com/embed/LxtHJL9s58E"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allowFullScreen
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <div className="text-sm text-muted-foreground">Prefer YouTube?</div>
+                    <Button asChild variant="outline" className="h-auto py-2.5">
+                      <Link href="https://www.youtube.com/watch?v=LxtHJL9s58E" target="_blank" rel="noopener noreferrer">
+                        Open video
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
@@ -309,33 +472,45 @@ function PremiumLearnMoreSheetInner() {
                     </p>
                   </div>
                 </div>
-              </section>
-
-              <section className="px-4 pb-6 md:px-6 space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Button asChild className="h-auto py-4">
-                    <Link href="/mp-config">Customise online</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="h-auto py-4">
-                    <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
-                      Book a bespoke service
-                    </Link>
-                  </Button>
-                </div>
-
-                <div className="text-xs text-muted-foreground">
-                  Content duplicated from{" "}
-                  <Link
-                    href="https://www.mpillow.com/pages/premium-customised-pillow"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-4"
-                  >
-                    Mpillow Premium customised pillow page
-                  </Link>
-                  .
+                <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
+                  <Image src="/DSC03705.webp" alt="Premium Mpillow commitment" fill className="object-cover" sizes="(min-width: 768px) 70vw, 100vw" />
                 </div>
               </section>
+
+              <section className="px-4 md:px-6 space-y-2">
+                <SectionTitle>Need help?</SectionTitle>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Feel free to contact customer support at <span className="font-medium text-foreground">+65 8780 5311</span>.
+                </p>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+          <div className="px-4 py-4 md:px-6">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button asChild className="h-auto py-4">
+                <Link href="/mp-config">Customise online</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-auto py-4">
+                <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
+                  Book a bespoke service
+                </Link>
+              </Button>
+            </div>
+
+            <div className="mt-3 text-xs text-muted-foreground">
+              Source:{" "}
+              <Link
+                href="https://www.mpillow.com/pages/premium-customised-pillow"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-4"
+              >
+                Mpillow Premium customised pillow page
+              </Link>
+              .
             </div>
           </div>
         </div>
