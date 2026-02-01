@@ -9,6 +9,7 @@ import { CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import DecryptedText from "@/components/DecryptedText";
+import { LeftContentRightImgSection } from "@/components/left-content-right-img-section";
 import SpotlightCard from "@/components/SpotlightCard";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
@@ -126,7 +127,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                       Size matters
                     </h2>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      The length of your shoulder determine the height of the pillow. The different sizes and modular
+                      The length of your shoulder determines the height of the pillow. The different sizes and modular
                       components allow for easy adjustments to fit your precise body structure.
                     </p>
                   </div>
@@ -150,7 +151,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                     </CardHeader>
                     <CardContent className="px-0 space-y-4">
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        To ensure that you have the right fit from the Mpillow, a few measurements is required for this to
+                        To ensure that you have the right fit from the Mpillow, a few measurements are required for this to
                         happen.
                       </p>
                       <Carousel
@@ -231,123 +232,77 @@ export function SizeMattersSlideIn({ className }: Props) {
                   </Card>
                 </section>
 
-                <section aria-labelledby="why-unique-heading">
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
-                    <CardHeader className="px-0">
-                      <h2 id="why-unique-heading" className="leading-none font-semibold">
-                        Why is Mpillow usable for all but unique for individuals?
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
-                      <p>We are all unique, one way or another.</p>
-                      <p>A pillow should fit you, not the other way around.</p>
-                    </CardContent>
-                  </Card>
-                </section>
+                <LeftContentRightImgSection
+                  sectionProps={{ "aria-labelledby": "why-unique-heading", className: "px-0 md:px-0 space-y-0" }}
+                  headerClassName="space-y-2"
+                  titleAs="h2"
+                  title="Why is Mpillow right for everyone—yet unique to you?"
+                  titleProps={{ id: "why-unique-heading" }}
+                  titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
+                  description={
+                    <>
+                      <p>These measurements reveal the pillow size you need for good sleep posture.</p>
+                    </>
+                  }
+                  image={{
+                    src: "/five-sizes.webp",
+                    alt: "Five Mpillow size options",
+                    sizes: "(min-width: 768px) 50vw, 100vw",
+                  }}
+                  imageWrapperClassName="border-0 bg-muted/20"
+                />
 
-                <section aria-labelledby="adjust-accurately-heading">
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
-                    <CardHeader className="px-0">
-                      <h2 id="adjust-accurately-heading" className="leading-none font-semibold">
-                        How do we adjust Mpillow accurately for you?
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
-                      <p>To ensure that you have the right fit from the Mpillow, a few measurements is required for this to happen.</p>
+                <LeftContentRightImgSection
+                  sectionProps={{ "aria-labelledby": "sleep-position-heading", className: "px-0 md:px-0 space-y-0" }}
+                  headerClassName="space-y-2"
+                  titleAs="h2"
+                  title="Designed for your preferred sleep position"
+                  titleProps={{ id: "sleep-position-heading" }}
+                  titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
+                  description={
+                    <>
                       <p>
-                        These measurements would be able to reveal the pillow size that you will actually require to have a
-                        good sleep posture.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </section>
-
-                <section aria-labelledby="sleep-position-heading">
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
-                    <CardHeader className="px-0">
-                      <h2 id="sleep-position-heading" className="leading-none font-semibold">
-                        Designed for your preferred sleep position
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
-                      <p>
-                        Our pillow design support system covers all aspect, from your shoulders, to the start of the thoracic
-                        spine to your to your neck and head shape.
+                        Our support system covers every key point—from your shoulders and upper back (thoracic spine) to your
+                        neck curve and head shape.
                       </p>
                       <p>
-                        Mpillow&apos;s internal design is divided into three parts. Sleeping on the back in the middle, sleeping
-                        on the left and right sides at different heights.
+                        Mpillow&apos;s internal design is divided into three zones: a center zone for back sleeping, and left/right
+                        zones at different heights for side sleeping.
                       </p>
-                    </CardContent>
-                  </Card>
-                </section>
+                    </>
+                  }
+                  image={{
+                    src: "/stitch-inner-component.webp",
+                    alt: "Mpillow inner component stitching",
+                    sizes: "(min-width: 768px) 50vw, 100vw",
+                  }}
+                  imageWrapperClassName="border-0 bg-muted/20"
+                />
 
-                <section aria-labelledby="unique-configurations-heading">
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
-                    <CardHeader className="px-0">
-                      <h2 id="unique-configurations-heading" className="leading-none font-semibold">
-                        Unique configurations for every body
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                <LeftContentRightImgSection
+                  sectionProps={{ "aria-labelledby": "unique-configurations-heading", className: "px-0 md:px-0 space-y-0" }}
+                  headerClassName="space-y-2"
+                  titleAs="h2"
+                  title="Unique configurations for every body"
+                  titleProps={{ id: "unique-configurations-heading" }}
+                  titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
+                  description={
+                    <>
                       <p>
-                        We spent 2 years developing the product, 4 years to create 50 over unique configurations for users
+                        We spent 2 years developing the product, and 4 years to create 50+ unique configurations for users
                         with round or flat heads, curved or straight spines, long or short necks, and thick or flat backs.
                       </p>
                       <p>These different configurations support ideal sleeping posture for unrestricted airways.</p>
-                    </CardContent>
-                  </Card>
-                </section>
+                    </>
+                  }
+                  image={{
+                    src: "/diff-body-back-sleep.webp",
+                    alt: "Different body types and back sleeping support",
+                    sizes: "(min-width: 768px) 50vw, 100vw",
+                  }}
+                  imageWrapperClassName="border-0 bg-muted/20"
+                />
 
-                <section aria-labelledby="engineered-perfection-heading">
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
-                    <CardHeader className="px-0">
-                      <h2 id="engineered-perfection-heading" className="leading-none font-semibold">
-                        Engineered to Perfection
-                      </h2>
-                    </CardHeader>
-                    <CardContent className="px-0 space-y-4">
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        We have 3 tiers of customisation, understand which tier would suit your needs before you proceed with
-                        your measurements.
-                      </p>
-                      <div className="flex items-center gap-3 rounded-xl bg-muted/20 p-3">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/L-plus.svg" alt="" className="h-8 w-8 shrink-0" />
-                        <div className="text-sm text-muted-foreground">
-                          Modular components let you fine-tune height and support as your needs change.
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </section>
-
-                <section aria-labelledby="size-matters-actions-heading">
-                  <h2 id="size-matters-actions-heading" className="sr-only">
-                    Next steps
-                  </h2>
-                  <nav aria-label="Size matters actions" className="grid gap-3 sm:grid-cols-3">
-                    <Button asChild className="h-auto py-4">
-                      <Link href="https://www.mpillow.com/pages/pillow-selection" target="_blank" rel="noopener noreferrer">
-                        Choose Mpillow
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" className="h-auto py-4">
-                      <Link href="/mbolster-config">
-                        Customise mbolster
-                      </Link>
-                    </Button>
-                    <Button asChild variant="secondary" className="h-auto py-4">
-                      <Link
-                        href="https://www.mpillow.com/collections/accessories"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Get accessories
-                      </Link>
-                    </Button>
-                  </nav>
-                </section>
               </main>
             </div>
           </div>

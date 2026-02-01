@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
+import { YouTubeAutoplayOnView } from "@/components/youtube-autoplay-on-view";
 
 type Props = {
   className?: string;
@@ -283,14 +284,9 @@ function BasicMpillowLearnMoreSheetInner() {
 
                 <div className="overflow-hidden rounded-xl border bg-card">
                   <div className="relative aspect-video bg-muted/20">
-                    <iframe
+                    <YouTubeAutoplayOnView
+                      videoId="r9XfezALQhA"
                       title="How to measure your shoulder length"
-                      className="absolute inset-0 h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/r9XfezALQhA?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
-                      loading="lazy"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      allowFullScreen
                     />
                   </div>
                 </div>
@@ -319,14 +315,9 @@ function BasicMpillowLearnMoreSheetInner() {
                 right={
                   <div className="overflow-hidden rounded-xl border bg-card">
                     <div className="relative aspect-video bg-muted/20">
-                      <iframe
+                      <YouTubeAutoplayOnView
+                        videoId="dsuB9ndOixY"
                         title="Mpillow aftercare video (Basic)"
-                        className="absolute inset-0 h-full w-full"
-                        src="https://www.youtube-nocookie.com/embed/dsuB9ndOixY?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
-                        loading="lazy"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                        allowFullScreen
                       />
                     </div>
                   </div>

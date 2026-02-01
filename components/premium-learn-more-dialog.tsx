@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
+import { YouTubeAutoplayOnView } from "@/components/youtube-autoplay-on-view";
 
 type Props = {
   className?: string;
@@ -328,14 +329,9 @@ function PremiumLearnMoreSheetInner() {
                 <SectionTitle>Watch how we customise Premium Mpillow</SectionTitle>
                 <div className="overflow-hidden rounded-xl border bg-card">
                   <div className="relative aspect-video bg-muted/20">
-                    <iframe
+                    <YouTubeAutoplayOnView
+                      videoId="V2H03lq9IYU"
                       title="Watch how we customise Premium Mpillow"
-                      className="absolute inset-0 h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/V2H03lq9IYU?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
-                      loading="lazy"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      allowFullScreen
                     />
                   </div>
                 </div>
@@ -441,14 +437,9 @@ function PremiumLearnMoreSheetInner() {
                 <p className="text-sm leading-relaxed text-muted-foreground">How to wash and clean your Premium Mpillow.</p>
                 <div className="overflow-hidden rounded-xl border bg-card">
                   <div className="relative aspect-video bg-muted/20">
-                    <iframe
+                    <YouTubeAutoplayOnView
+                      videoId="LxtHJL9s58E"
                       title="Mpillow aftercare video"
-                      className="absolute inset-0 h-full w-full"
-                      src="https://www.youtube-nocookie.com/embed/LxtHJL9s58E?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
-                      loading="lazy"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      referrerPolicy="strict-origin-when-cross-origin"
-                      allowFullScreen
                     />
                   </div>
                 </div>

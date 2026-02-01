@@ -30,6 +30,11 @@ export type LeftContentRightImgSectionProps = {
    */
   headerProps?: Omit<React.ComponentPropsWithoutRef<"header">, "children">;
   titleClassName?: string;
+  /**
+   * Optional extra props for the title element (e.g. id, aria-*).
+   * `className` here will be merged with `titleClassName`.
+   */
+  titleProps?: Omit<React.HTMLAttributes<HTMLElement>, "children">;
   descriptionClassName?: string;
   ctaWrapperClassName?: string;
   imageWrapperClassName?: string;
@@ -58,6 +63,7 @@ export function LeftContentRightImgSection({
   flip,
   headerProps,
   titleClassName,
+  titleProps,
   descriptionClassName,
   ctaWrapperClassName,
   imageWrapperClassName,
@@ -70,6 +76,7 @@ export function LeftContentRightImgSection({
 }: LeftContentRightImgSectionProps) {
   const { className: sectionClassName, ...restSectionProps } = sectionProps ?? {};
   const { className: headerElementClassName, ...restHeaderProps } = headerProps ?? {};
+  const { className: titleElementClassName, ...restTitleProps } = titleProps ?? {};
   const TitleTag = (titleAs ?? "h1") as React.ElementType;
 
   return (
@@ -79,7 +86,12 @@ export function LeftContentRightImgSection({
           {...restHeaderProps}
           className={cn("space-y-2", flip ? "md:order-2" : null, headerElementClassName, headerClassName)}
         >
-          <TitleTag className={cn("text-2xl font-semibold tracking-tight md:text-3xl", titleClassName)}>{title}</TitleTag>
+          <TitleTag
+            {...restTitleProps}
+            className={cn("text-2xl font-semibold tracking-tight md:text-3xl", titleClassName, titleElementClassName)}
+          >
+            {title}
+          </TitleTag>
 
           {description ? (
             <div className={cn("space-y-2 text-sm leading-relaxed text-muted-foreground", descriptionClassName)}>

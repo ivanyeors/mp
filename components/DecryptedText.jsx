@@ -4,8 +4,7 @@ import { motion } from 'motion/react';
 const styles = {
   wrapper: {
     display: 'inline-block',
-    whiteSpace: 'pre-wrap',
-    fontSize: '32px'
+    whiteSpace: 'pre-wrap'
   },
   srOnly: {
     position: 'absolute',
@@ -211,7 +210,13 @@ export default function DecryptedText({
       : {};
 
   return (
-    <motion.span className={parentClassName} ref={containerRef} style={styles.wrapper} {...hoverProps} {...props}>
+    <motion.span
+      className={parentClassName}
+      ref={containerRef}
+      style={{ ...styles.wrapper, ...(props.style ?? {}) }}
+      {...hoverProps}
+      {...props}
+    >
       <span style={styles.srOnly}>{displayText}</span>
 
       <span aria-hidden="true">

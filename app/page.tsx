@@ -25,6 +25,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { StoriesSection } from "@/components/stories-section";
+import { YouTubeAutoplayOnView } from "@/components/youtube-autoplay-on-view";
 
 type PillowKind = "basic" | "premium";
 
@@ -605,15 +606,9 @@ export default async function Home() {
                 ratio={16 / 9}
                 className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm"
               >
-                <iframe
-                  className="absolute inset-0 h-full w-full"
-                  src="https://www.youtube-nocookie.com/embed/nvFI6woJD9g?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
-                  title="YouTube video player"
-                  frameBorder={0}
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
+                <YouTubeAutoplayOnView
+                  videoId="nvFI6woJD9g"
+                  title="Dr Steven Hulme's Mpillow Review"
                 />
               </AspectRatio>
 

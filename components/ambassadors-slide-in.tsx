@@ -1,16 +1,16 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import * as React from "react";
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { LeftContentRightImgSection } from "@/components/left-content-right-img-section";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronDown, ChevronUp, XIcon } from "lucide-react";
+import TextType from "@/components/TextType";
+import { YouTubeAutoplayOnView } from "@/components/youtube-autoplay-on-view";
 import {
   Sheet,
   SheetClose,
@@ -25,31 +25,8 @@ type Props = {
   className?: string;
 };
 
-type InlineImageProps = {
-  src: string;
-  alt: string;
-  className?: string;
-};
-
-function InlineImage({ src, alt, className }: InlineImageProps) {
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      className={cn(
-        "w-full h-auto rounded-xl border bg-muted/30",
-        // Prevent extremely tall images from overwhelming the sheet on desktop.
-        "max-h-[55svh] object-contain",
-        className
-      )}
-    />
-  );
-}
-
 export function AmbassadorsSlideIn({ className }: Props) {
   const [awardsOpen, setAwardsOpen] = React.useState(true);
-  const [testimonialOpen, setTestimonialOpen] = React.useState(true);
   const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
 
@@ -126,137 +103,140 @@ export function AmbassadorsSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <div className="p-4 md:p-6 space-y-6">
-            <Card className="border-0 bg-transparent shadow-none rounded-none py-0">
-              <CardContent className="px-0 grid gap-6 md:grid-cols-2 md:items-center">
-                <div className="space-y-2">
-                  <div className="text-lg font-semibold leading-tight">How You Stand Is How You Sleep</div>
-                  <div className="text-sm text-muted-foreground">Ambassadors</div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    See how the Mpillow is adjusted to each person’s posture and body build.
-                  </p>
-                </div>
-
-                <InlineImage
-                  src="https://www.mpillow.com/cdn/shop/files/4D59392A-66B4-48D5-BF29-AE4A7B2BD8FF.jpg?v=1676707876&width=1080"
-                  alt="Mpillow ambassadors - posture and fit"
-                  className="max-h-[45svh]"
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 bg-transparent shadow-none rounded-none py-0">
-              <CardHeader className="px-0">
-                <CardTitle>Mpillow Suits All Builds</CardTitle>
-              </CardHeader>
-              <CardContent className="px-0 grid gap-6 md:grid-cols-2 md:items-center">
-                <InlineImage
-                  src="https://www.mpillow.com/cdn/shop/files/mpillow_4.png?v=1670166435&width=1080"
-                  alt="Mpillow customised fit example"
-                  className="max-h-[45svh]"
+            <div className="p-4 md:p-6">
+              <main className="space-y-8" aria-label="Mpillow ambassadors">
+                <LeftContentRightImgSection
+                  sectionProps={{ "aria-labelledby": "ambassadors-hero-heading", className: "px-0 md:px-0" }}
+                  titleAs="h2"
+                  title="How You Stand Is How You Sleep"
+                  titleProps={{ id: "ambassadors-hero-heading" }}
+                  titleClassName="text-lg font-semibold leading-tight md:text-xl"
+                  description={
+                    <>
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Ambassadors</p>
+                      <p>See how the Mpillow is adjusted to each person’s posture and body build.</p>
+                    </>
+                  }
+                  image={{
+                    src: "https://www.mpillow.com/cdn/shop/files/4D59392A-66B4-48D5-BF29-AE4A7B2BD8FF.jpg?v=1676707876&width=1080",
+                    alt: "Mpillow ambassadors posture and fit",
+                    sizes: "(min-width: 768px) 50vw, 100vw",
+                  }}
+                  imageWrapperClassName="border-0 bg-muted/20"
                 />
 
-                <div className="space-y-3">
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    The bespoke Mpillows were customised for Skyjin and Piggie accordingly so the pillows fit them when
-                    they sleep on their side and back. In these photos, the Mpillows are adjusted accordingly to their
-                    build and shape to show how you stand is how you sleep.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+                <LeftContentRightImgSection
+                  sectionProps={{ "aria-labelledby": "ambassadors-all-builds-heading", className: "px-0 md:px-0" }}
+                  titleAs="h2"
+                  title="Mpillow Suits All Builds"
+                  titleProps={{ id: "ambassadors-all-builds-heading" }}
+                  titleClassName="text-base font-semibold tracking-normal md:text-base"
+                  description={
+                    <>
+                      <p>
+                        The Bespoke Mpillows were customised for Skyjin and Piggie accordingly so the pillows fit them when
+                        they sleep on their side and back.
+                      </p>
+                      <p>
+                        In these photos, the Mpillows are adjusted accordingly to their build and shape to show how you stand
+                        is how you sleep.
+                      </p>
+                    </>
+                  }
+                  image={{
+                    src: "https://www.mpillow.com/cdn/shop/files/mpillow_4.png?v=1670166435&width=1080",
+                    alt: "Mpillow suited to different builds",
+                    sizes: "(min-width: 768px) 50vw, 100vw",
+                  }}
+                  imageWrapperClassName="border-0 bg-muted/20"
+                />
 
-            <Card className="border-0 bg-transparent shadow-none rounded-none py-0">
-              <CardHeader className="px-0">
-                <CardTitle>Our Ambassadors: Skyjin &amp; Piggie</CardTitle>
-                <CardDescription>Explore the awards and testimonial.</CardDescription>
-              </CardHeader>
-              <CardContent className="px-0 space-y-4">
-                <Collapsible open={awardsOpen} onOpenChange={setAwardsOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between">
-                      Awards
-                      {awardsOpen ? (
-                        <ChevronUp className="size-4 text-muted-foreground" aria-hidden="true" />
-                      ) : (
-                        <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-3">
-                    <ul className="space-y-2 text-sm text-muted-foreground">
-                      <li>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-help underline decoration-dotted underline-offset-4">
-                              2022 Mr Kedah Bodybuilder Light Heavyweight Champion
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent sideOffset={6}>Award highlight</TooltipContent>
-                        </Tooltip>
-                      </li>
-                      <li>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="cursor-help underline decoration-dotted underline-offset-4">
-                              2022 Mr Malaysia Bodybuilder Light Heavyweight Top10
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent sideOffset={6}>Award highlight</TooltipContent>
-                        </Tooltip>
-                      </li>
-                    </ul>
-                  </CollapsibleContent>
-                </Collapsible>
-
-                <Collapsible open={testimonialOpen} onOpenChange={setTestimonialOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between">
-                      Skyjin&apos;s testimonial
-                      {testimonialOpen ? (
-                        <ChevronUp className="size-4 text-muted-foreground" aria-hidden="true" />
-                      ) : (
-                        <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-3">
-                    <blockquote className="rounded-xl border bg-card/40 p-4 text-sm leading-relaxed text-muted-foreground">
-                      “For several years, I’ve had trouble sleeping well at night. I tried different types of pillows
-                      but nothing worked. Thankfully I discovered the Mpillow. It is the only pillow that can fit my
-                      size and build perfectly and give me the right support. For the first time in years, I have been
-                      able to get seven to eight hours of deep, quality sleep every night. I am also amazed that the
-                      Mpillow successfully resolved my shoulder pain. I had no idea it was caused by ill-fitting pillows!”
-                    </blockquote>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      — Skyjin, fitness trainer and bodybuilder, 2022 Mr Malaysia Bodybuilder Light Heavyweight Top10
+                <LeftContentRightImgSection
+                  sectionProps={{ "aria-labelledby": "ambassadors-skyjin-piggie-heading", className: "px-0 md:px-0" }}
+                  titleAs="h2"
+                  title="Our Ambassadors: Skyjin & Piggie"
+                  titleProps={{ id: "ambassadors-skyjin-piggie-heading" }}
+                  titleClassName="text-base font-semibold tracking-normal md:text-base"
+                  description={
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-sm font-semibold text-foreground">Skyjin has won several awards including:</div>
+                        <Collapsible open={awardsOpen} onOpenChange={setAwardsOpen}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" className="mt-2 w-full justify-between">
+                              Awards
+                              {awardsOpen ? (
+                                <ChevronUp className="size-4 text-muted-foreground" aria-hidden="true" />
+                              ) : (
+                                <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-3">
+                            <ul className="space-y-2 text-sm text-muted-foreground">
+                              <li>2022 Mr Kedah Bodybuilder Light Heavyweight Champion</li>
+                              <li>2022 Mr Malaysia Bodybuilder Light Heavyweight Top10</li>
+                            </ul>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </div>
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </CardContent>
-            </Card>
+                  }
+                  image={{
+                    src: "https://www.mpillow.com/cdn/shop/files/Screenshot_2022-12-04_at_11.27.10_PM.png?v=1670167661&width=2864",
+                    alt: "Skyjin and Piggie with customised Mpillows",
+                    sizes: "(min-width: 768px) 50vw, 100vw",
+                  }}
+                  imageWrapperClassName="border-0 bg-muted/20"
+                />
 
-            <Card className="border-0 bg-transparent shadow-none rounded-none py-0 overflow-hidden">
-              <CardHeader className="px-0">
-                <CardTitle>Watch the process</CardTitle>
-                <CardDescription>Behind-the-scenes video</CardDescription>
-              </CardHeader>
-              <CardContent className="px-0 space-y-4">
-                <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border">
-                  <iframe
-                    className="absolute inset-0 h-full w-full"
-                    src="https://www.youtube-nocookie.com/embed/z2u69YPvHi4?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&fs=0&iv_load_policy=3&disablekb=1&playsinline=1"
-                    title="Mpillow - Watch the process"
-                    loading="lazy"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  />
-                </AspectRatio>
-              </CardContent>
-            </Card>
+                <section aria-labelledby="skyjin-testimonial-heading" className="px-0 md:px-0 space-y-2">
+                  <h2 id="skyjin-testimonial-heading" className="text-sm font-semibold text-foreground">
+                    Skyjin&apos;s Testimonial
+                  </h2>
+                  <section aria-labelledby="skyjin-testimonial-quote" className="space-y-2 pt-3">
+                    <h2 id="skyjin-testimonial-quote" className="sr-only">
+                      Testimonial quote
+                    </h2>
+                    <TextType
+                      as="h2"
+                      className="text-sm leading-relaxed font-normal text-[var(--color-white)]"
+                      text="“For several years, I’ve had trouble sleeping well at night. I tried different types of pillows but nothing worked. Thankfully I discovered the Mpillow. It is the only pillow that can fit my size and build perfectly and give me the right support. For the first time in years, I have been able to get seven to eight hours of deep, quality sleep every night. I am also amazed that the Mpillow successfully resolved my shoulder pain. I had no idea it was caused by ill-fitting pillows!”"
+                      typingSpeed={22}
+                      pauseDuration={1500}
+                      deletingSpeed={18}
+                      loop={false}
+                      showCursor
+                      cursorCharacter="_"
+                      cursorBlinkDuration={0.5}
+                      startOnVisible
+                    />
+                    <h2 className="text-xs font-extralight text-[var(--color-white)]">
+                      — Skyjin, fitness trainer and bodybuilder, 2022 Mr Malaysia Bodybuilder Light Heavyweight Top10
+                    </h2>
+                  </section>
+                </section>
+
+                <LeftContentRightImgSection
+                  sectionProps={{ "aria-labelledby": "ambassadors-video-heading", className: "px-0 md:px-0" }}
+                  titleAs="h2"
+                  title="See Testimonial from Skyjin"
+                  titleProps={{ id: "ambassadors-video-heading" }}
+                  titleClassName="text-base font-semibold tracking-normal md:text-base"
+                  description={<p>Watch Skyjin's testimonial on how he finds the Mpillow to be the only pillow that can fit his size and build perfectly and give him the right support.</p>}
+                  right={
+                    <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border bg-muted/20">
+                      <YouTubeAutoplayOnView
+                        videoId="z2u69YPvHi4"
+                        title="Mpillow ambassadors video"
+                        controls={1}
+                      />
+                    </AspectRatio>
+                  }
+                />
+              </main>
+            </div>
           </div>
-        </div>
         </div>
       </SheetContent>
     </Sheet>
