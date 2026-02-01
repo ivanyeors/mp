@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import DecryptedText from "@/components/DecryptedText";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 
@@ -109,47 +110,54 @@ export function SizeMattersSlideIn({ className }: Props) {
 
           <div ref={setViewportNode} className="flex-1 overflow-y-auto">
             <div className="px-4 py-5 md:px-6 md:py-6">
-              <main className="min-w-0 space-y-8">
-                  <div className="grid gap-6 md:grid-cols-2 md:items-center">
-                    <div className="space-y-2">
-                      <div className="text-lg font-semibold leading-tight">Size matters</div>
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        The length of your shoulder determine the height of the pillow. The different sizes and modular
-                        components allow for easy adjustments to fit your precise body structure.
-                      </p>
-                    </div>
-                    <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-muted/20">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src="/m-pillow-417953-web.webp"
-                        alt="Mpillow sizing and fit"
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    </AspectRatio>
-                  </div>
-
-                  <blockquote className="space-y-2">
+              <main className="min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
+                <section aria-labelledby="size-matters-heading" className="grid gap-6 md:grid-cols-2 md:items-center">
+                  <div className="space-y-2">
+                    <h2 id="size-matters-heading" className="text-lg font-semibold leading-tight">
+                      Size matters
+                    </h2>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      When you buy a shirt you have to try different sizes to find one that fits you - so why shouldn&apos;t
-                      it be the same for a pillow?
+                      The length of your shoulder determine the height of the pillow. The different sizes and modular
+                      components allow for easy adjustments to fit your precise body structure.
                     </p>
-                    <footer className="text-xs text-muted-foreground">— The Straits Times</footer>
+                  </div>
+                  <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-muted/20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/m-pillow-417953-web.webp"
+                      alt="Mpillow sizing and fit"
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  </AspectRatio>
+                </section>
+
+                <section
+                  aria-labelledby="press-quote-heading"
+                  className="mx-auto max-w-3xl animate-in fade-in duration-700"
+                >
+                  <h2 id="press-quote-heading" className="sr-only">
+                    Press quote
+                  </h2>
+                  <blockquote className="space-y-3 text-center">
+                    <p className="text-lg font-semibold leading-relaxed tracking-tight sm:text-xl md:text-4xl">
+                      <DecryptedText
+                        text="When you buy a shirt you have to try different sizes to find one that fits you - so why shouldn't it be the same for a pillow?"
+                        animateOn="view"
+                        sequential
+                        speed={20}
+                        loop
+                        loopDelay={5000}
+                      />
+                    </p>
+                    <footer className="text-sm text-muted-foreground">— The Straits Times</footer>
                   </blockquote>
+                </section>
 
-                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
-                    <CardHeader className="px-0">
-                      <CardTitle>Why is Mpillow usable for all but unique for individuals?</CardTitle>
-                    </CardHeader>
-                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
-                      <p>We are all unique, one way or another.</p>
-                      <p>A pillow should fit you, not the other way around.</p>
-                    </CardContent>
-                  </Card>
-
+                <section aria-labelledby="measurements-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
                     <CardHeader className="px-0">
-                      <CardTitle>Measurements that matter</CardTitle>
+                      <CardTitle id="measurements-heading">Measurements that matter</CardTitle>
                     </CardHeader>
                     <CardContent className="px-0 space-y-4">
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -174,7 +182,16 @@ export function SizeMattersSlideIn({ className }: Props) {
                           description="Accounts for different head shapes so pressure stays balanced."
                         />
                       </div>
+                    </CardContent>
+                  </Card>
+                </section>
 
+                <section aria-labelledby="head-shapes-heading">
+                  <h2 id="head-shapes-heading" className="sr-only">
+                    Head shape differences
+                  </h2>
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
+                    <CardContent className="px-0 space-y-4">
                       <div className="grid gap-4 md:grid-cols-2 md:items-center">
                         <div className="space-y-2">
                           <div className="text-sm font-semibold">Head shape differences</div>
@@ -193,10 +210,24 @@ export function SizeMattersSlideIn({ className }: Props) {
                       </div>
                     </CardContent>
                   </Card>
+                </section>
 
+                <section aria-labelledby="why-unique-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
                     <CardHeader className="px-0">
-                      <CardTitle>How do we adjust Mpillow accurately for you?</CardTitle>
+                      <CardTitle id="why-unique-heading">Why is Mpillow usable for all but unique for individuals?</CardTitle>
+                    </CardHeader>
+                    <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
+                      <p>We are all unique, one way or another.</p>
+                      <p>A pillow should fit you, not the other way around.</p>
+                    </CardContent>
+                  </Card>
+                </section>
+
+                <section aria-labelledby="adjust-accurately-heading">
+                  <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
+                    <CardHeader className="px-0">
+                      <CardTitle id="adjust-accurately-heading">How do we adjust Mpillow accurately for you?</CardTitle>
                     </CardHeader>
                     <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>To ensure that you have the right fit from the Mpillow, a few measurements is required for this to happen.</p>
@@ -206,10 +237,12 @@ export function SizeMattersSlideIn({ className }: Props) {
                       </p>
                     </CardContent>
                   </Card>
+                </section>
 
+                <section aria-labelledby="sleep-position-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
                     <CardHeader className="px-0">
-                      <CardTitle>Designed for your preferred sleep position</CardTitle>
+                      <CardTitle id="sleep-position-heading">Designed for your preferred sleep position</CardTitle>
                     </CardHeader>
                     <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>
@@ -222,10 +255,12 @@ export function SizeMattersSlideIn({ className }: Props) {
                       </p>
                     </CardContent>
                   </Card>
+                </section>
 
+                <section aria-labelledby="unique-configurations-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
                     <CardHeader className="px-0">
-                      <CardTitle>Unique configurations for every body</CardTitle>
+                      <CardTitle id="unique-configurations-heading">Unique configurations for every body</CardTitle>
                     </CardHeader>
                     <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>
@@ -235,10 +270,12 @@ export function SizeMattersSlideIn({ className }: Props) {
                       <p>These different configurations support ideal sleeping posture for unrestricted airways.</p>
                     </CardContent>
                   </Card>
+                </section>
 
+                <section aria-labelledby="engineered-perfection-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
                     <CardHeader className="px-0">
-                      <CardTitle>Engineered to Perfection</CardTitle>
+                      <CardTitle id="engineered-perfection-heading">Engineered to Perfection</CardTitle>
                     </CardHeader>
                     <CardContent className="px-0 space-y-4">
                       <p className="text-sm leading-relaxed text-muted-foreground">
@@ -254,8 +291,13 @@ export function SizeMattersSlideIn({ className }: Props) {
                       </div>
                     </CardContent>
                   </Card>
+                </section>
 
-                  <div className="grid gap-3 sm:grid-cols-3">
+                <section aria-labelledby="size-matters-actions-heading">
+                  <h2 id="size-matters-actions-heading" className="sr-only">
+                    Next steps
+                  </h2>
+                  <nav aria-label="Size matters actions" className="grid gap-3 sm:grid-cols-3">
                     <Button asChild className="h-auto py-4">
                       <Link href="https://www.mpillow.com/pages/pillow-selection" target="_blank" rel="noopener noreferrer">
                         Choose Mpillow
@@ -275,7 +317,8 @@ export function SizeMattersSlideIn({ className }: Props) {
                         Get accessories
                       </Link>
                     </Button>
-                  </div>
+                  </nav>
+                </section>
               </main>
             </div>
           </div>
