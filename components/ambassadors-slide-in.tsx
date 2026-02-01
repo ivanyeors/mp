@@ -223,7 +223,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                   title="See Testimonial from Skyjin"
                   titleProps={{ id: "ambassadors-video-heading" }}
                   titleClassName="text-base font-semibold tracking-normal md:text-base"
-                  description={<p>Watch Skyjin's testimonial on how he finds the Mpillow to be the only pillow that can fit his size and build perfectly and give him the right support.</p>}
+                  description={<p>Watch Skyjin&apos;s testimonial on how he finds the Mpillow to be the only pillow that can fit his size and build perfectly and give him the right support.</p>}
                   right={
                     <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border bg-muted/20">
                       <YouTubeAutoplayOnView
