@@ -11,6 +11,7 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 import DecryptedText from "@/components/DecryptedText";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
+import Aurora from "./Aurora";
 
 type Props = {
   className?: string;
@@ -109,8 +110,34 @@ export function SizeMattersSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="flex-1 overflow-y-auto">
-            <div className="px-4 py-5 md:px-6 md:py-6">
-              <main className="min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
+            <div className="relative overflow-hidden px-4 py-5 md:px-6 md:py-6">
+              <Aurora
+                colorStops={["#105ef9", "#1ffbff", "#00058f"]}
+                blend={0.55}
+                amplitude={0.8}
+                speed={0.6}
+              />
+              <main className="relative z-10 min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
+                <section
+                  aria-labelledby="press-quote-heading"
+                  className="mx-auto max-w-3xl animate-in fade-in duration-700 space-y-3 text-center"
+                >
+                  <h2 id="press-quote-heading" className="sr-only">
+                    Press quote
+                  </h2>
+                  <p className="text-lg font-semibold leading-relaxed tracking-tight sm:text-xl md:text-4xl">
+                    <DecryptedText
+                      text="When you buy a shirt you have to try different sizes to find one that fits you - so why shouldn't it be the same for a pillow?"
+                      animateOn="view"
+                      sequential
+                      speed={20}
+                      loop
+                      loopDelay={5000}
+                    />
+                  </p>
+                  <footer className="text-sm text-muted-foreground">— The Straits Times</footer>
+                </section>
+
                 <section aria-labelledby="size-matters-heading" className="grid gap-6 md:grid-cols-2 md:items-center">
                   <div className="space-y-2">
                     <h2 id="size-matters-heading" className="text-lg font-semibold leading-tight">
@@ -130,28 +157,6 @@ export function SizeMattersSlideIn({ className }: Props) {
                       loading="lazy"
                     />
                   </AspectRatio>
-                </section>
-
-                <section
-                  aria-labelledby="press-quote-heading"
-                  className="mx-auto max-w-3xl animate-in fade-in duration-700"
-                >
-                  <h2 id="press-quote-heading" className="sr-only">
-                    Press quote
-                  </h2>
-                  <blockquote className="space-y-3 text-center">
-                    <p className="text-lg font-semibold leading-relaxed tracking-tight sm:text-xl md:text-4xl">
-                      <DecryptedText
-                        text="When you buy a shirt you have to try different sizes to find one that fits you - so why shouldn't it be the same for a pillow?"
-                        animateOn="view"
-                        sequential
-                        speed={20}
-                        loop
-                        loopDelay={5000}
-                      />
-                    </p>
-                    <footer className="text-sm text-muted-foreground">— The Straits Times</footer>
-                  </blockquote>
                 </section>
 
                 <section aria-labelledby="measurements-heading">
