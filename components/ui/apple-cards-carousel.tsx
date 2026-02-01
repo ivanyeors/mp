@@ -5,6 +5,36 @@ import { AnimatePresence, motion } from "motion/react"
 import React, { createContext, useContext, useEffect, useRef, useState } from "react"
 import { cn } from "@/lib/utils"
 
+export function Card({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card"
+      data-ui="apple-cards-carousel"
+      className={cn("bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm", className)}
+      {...props}
+    />
+  )
+}
+
+export type MeasureTileProps = {
+  iconSrc: string
+  title: string
+  description: string
+}
+
+export function MeasureTile({ iconSrc, title, description }: MeasureTileProps) {
+  return (
+    <div className="flex items-start gap-3" data-ui="apple-cards-carousel-measure-tile">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={iconSrc} alt="" className="mt-0.5 h-[150px] w-[150px] shrink-0 object-contain" />
+      <div className="min-w-0">
+        <div className="text-lg font-semibold leading-tight">{title}</div>
+        <div className="mt-2 text-base leading-relaxed text-muted-foreground">{description}</div>
+      </div>
+    </div>
+  )
+}
+
 function useOnClickOutside<T extends HTMLElement>(
   ref: React.RefObject<T>,
   handler: (event: MouseEvent | TouchEvent) => void,
@@ -39,7 +69,7 @@ export interface CarouselProps {
   itemsContainerClassName?: string
 }
 
-export interface Card {
+export interface AppleCarouselCardData {
   src: string
   title: string
   category: string
@@ -173,12 +203,12 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
 }
 
 export interface CardProps {
-  card: Card
+  card: AppleCarouselCardData
   index: number
   layout?: boolean
 }
 
-export const Card = ({ card, index, layout = false }: CardProps) => {
+export const AppleCarouselCard = ({ card, index, layout = false }: CardProps) => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const { onCardClose, currentIndex: _currentIndex } = useContext(CarouselContext)
@@ -324,7 +354,7 @@ export const BlurImage = ({
 }
 
 // Demo
-const demoCards: Card[] = [
+const demoCards: AppleCarouselCardData[] = [
   {
     src: "https://picsum.photos/seed/1/400/600",
     title: "Forest Adventure",
@@ -356,7 +386,7 @@ export function Demo() {
     <div className="fixed inset-0 flex items-center justify-center bg-background py-10">
       <Carousel
         items={demoCards.map((card, index) => (
-          <Card key={card.title} card={card} index={index} layout />
+          <AppleCarouselCard key={card.title} card={card} index={index} layout />
         ))}
       />
     </div>

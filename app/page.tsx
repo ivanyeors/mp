@@ -382,26 +382,10 @@ export default async function Home() {
         {/* Why choose / Neck pain */}
         <section id="why" className="relative">
           <div
-            className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16 md:min-h-[760px]"
-            style={{ position: "relative" }}
+            className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16"
           >
-            {/* Requested DOM placement + pixel position (desktop) */}
-            <div
-              className="pointer-events-none absolute inset-x-0 top-[287px] hidden h-[444px] w-full overflow-hidden rounded-2xl border bg-card/40 shadow-sm backdrop-blur-sm md:block"
-              aria-hidden="true"
-            >
-              <Image
-                src="/mpillow-cervical-neck.webp"
-                alt="Mpillow cervical neck support"
-                fill
-                className="object-cover"
-                sizes="(min-width: 1280px) 1120px, (min-width: 768px) calc(100vw - 2rem), 100vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
-            </div>
-
             {/* Match the "Ambassadors" section layout style */}
-            <div className="relative z-10 grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
+            <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
               <div className="space-y-4">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Neck Pains?</h2>
                 <p className="text-muted-foreground leading-relaxed">
@@ -437,22 +421,21 @@ export default async function Home() {
                   </div>
                 </div>
               </div>
-
-              {/* Mobile: keep image in-flow like Ambassadors */}
-              <AspectRatio
-                ratio={1048 / 444}
-                className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:hidden"
-              >
-                <Image
-                  src="/mpillow-cervical-neck.webp"
-                  alt="Mpillow cervical neck support"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 1048px"
-                />
-              </AspectRatio>
             </div>
 
+            {/* Image: keep in-flow below text/card (no overlap) */}
+            <AspectRatio
+              ratio={1048 / 444}
+              className="mt-8 overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:mt-10"
+            >
+              <Image
+                src="/mpillow-cervical-neck.webp"
+                alt="Mpillow cervical neck support"
+                fill
+                className="object-cover"
+                sizes="(min-width: 1280px) 1120px, (min-width: 768px) calc(100vw - 2rem), 100vw"
+              />
+            </AspectRatio>
           </div>
         </section>
 

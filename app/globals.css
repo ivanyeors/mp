@@ -172,6 +172,29 @@
   h6 {
     @apply font-sans text-xs font-light leading-snug;
   }
+
+  /*
+    Marketing typography overrides
+    - Applies only on public routes (see `components/route-scope.tsx`)
+    - Forces font-size even when elements use Tailwind `text-*` classes
+  */
+  [data-typography-scope="marketing"] h2 {
+    font-size: 24px !important;
+  }
+
+  [data-typography-scope="marketing"] p {
+    font-size: 16px !important;
+  }
+
+  @media (min-width: 768px) {
+    [data-typography-scope="marketing"] h2 {
+      font-size: 28px !important;
+    }
+
+    [data-typography-scope="marketing"] p {
+      font-size: 18px !important;
+    }
+  }
   img,
   video,
   canvas {

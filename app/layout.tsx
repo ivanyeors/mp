@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppDock } from "@/components/app-dock";
 import { SonnerProvider } from "@/components/sonner-provider";
+import { RouteScope } from "@/components/route-scope";
 
 const soraSans = Sora({
   variable: "--font-sora",
@@ -64,7 +65,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <RouteScope>{children}</RouteScope>
           <AppDock />
           <SonnerProvider />
         </ThemeProvider>

@@ -3,12 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, Carousel, MeasureTile } from "@/components/ui/apple-cards-carousel";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import DecryptedText from "@/components/DecryptedText";
+import SpotlightCard from "@/components/SpotlightCard";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 import Aurora from "./Aurora";
@@ -16,25 +17,6 @@ import Aurora from "./Aurora";
 type Props = {
   className?: string;
 };
-
-type MeasureTileProps = {
-  iconSrc: string;
-  title: string;
-  description: string;
-};
-
-function MeasureTile({ iconSrc, title, description }: MeasureTileProps) {
-  return (
-    <div className="flex items-start gap-3">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={iconSrc} alt="" className="mt-0.5 h-8 w-8 shrink-0" />
-      <div className="min-w-0">
-        <div className="text-sm font-semibold leading-tight">{title}</div>
-        <div className="mt-1 text-sm leading-relaxed text-muted-foreground">{description}</div>
-      </div>
-    </div>
-  );
-}
 
 export function SizeMattersSlideIn({ className }: Props) {
   const [progress, setProgress] = React.useState(0);
@@ -120,7 +102,7 @@ export function SizeMattersSlideIn({ className }: Props) {
               <main className="relative z-10 min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
                 <section
                   aria-labelledby="press-quote-heading"
-                  className="mx-auto max-w-3xl animate-in fade-in duration-700 space-y-3 text-center"
+                  className="mx-auto max-w-3xl py-[42px] animate-in fade-in duration-700 space-y-3 text-center"
                 >
                   <h2 id="press-quote-heading" className="sr-only">
                     Press quote
@@ -135,7 +117,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                       loopDelay={5000}
                     />
                   </p>
-                  <footer className="text-sm text-muted-foreground">— The Straits Times</footer>
+                  <footer className="text-sm text-[var(--color-white)]">— The Straits Times</footer>
                 </section>
 
                 <section aria-labelledby="size-matters-heading" className="grid gap-6 md:grid-cols-2 md:items-center">
@@ -148,45 +130,76 @@ export function SizeMattersSlideIn({ className }: Props) {
                       components allow for easy adjustments to fit your precise body structure.
                     </p>
                   </div>
-                  <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl bg-muted/20">
+                  <div className="overflow-hidden rounded-xl bg-muted/20">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/m-pillow-417953-web.webp"
+                      src="/sizecomparison.webp"
                       alt="Mpillow sizing and fit"
-                      className="h-full w-full object-cover"
+                      className="block w-full h-auto"
                       loading="lazy"
                     />
-                  </AspectRatio>
+                  </div>
                 </section>
 
                 <section aria-labelledby="measurements-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
                     <CardHeader className="px-0">
-                      <CardTitle id="measurements-heading">Measurements that matter</CardTitle>
+                      <CardTitle id="measurements-heading">How do we adjust Mpillow accurately for you?</CardTitle>
                     </CardHeader>
                     <CardContent className="px-0 space-y-4">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <MeasureTile
-                          iconSrc="/shoulder-length.svg"
-                          title="Shoulder length range"
-                          description="Helps determine the pillow height so your neck stays aligned."
-                        />
-                        <MeasureTile
-                          iconSrc="/neck-length.svg"
-                          title="Neck length"
-                          description="Dial in support from the shoulder to the neck curve."
-                        />
-                        <MeasureTile
-                          iconSrc="/neck-to-back.svg"
-                          title="Neck depth range"
-                          description="Fine-tune the contour so the neck isn’t over-extended."
-                        />
-                        <MeasureTile
-                          iconSrc="/head-to-back.svg"
-                          title="Head depth range"
-                          description="Accounts for different head shapes so pressure stays balanced."
-                        />
-                      </div>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        To ensure that you have the right fit from the Mpillow, a few measurements is required for this to
+                        happen.
+                      </p>
+                      <Carousel
+                        itemsContainerClassName="w-full px-0 mx-0 max-w-none"
+                        items={[
+                          <SpotlightCard
+                            key="measure-shoulder"
+                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            data-ui="size-matters-measurement-card"
+                          >
+                            <MeasureTile
+                              iconSrc="/shoulder-length.svg"
+                              title="Shoulder length range"
+                              description="Helps determine the pillow height so your neck stays aligned."
+                            />
+                          </SpotlightCard>,
+                          <SpotlightCard
+                            key="measure-neck-length"
+                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            data-ui="size-matters-measurement-card"
+                          >
+                            <MeasureTile
+                              iconSrc="/neck-length.svg"
+                              title="Neck length"
+                              description="Dial in support from the shoulder to the neck curve."
+                            />
+                          </SpotlightCard>,
+                          <SpotlightCard
+                            key="measure-neck-depth"
+                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            data-ui="size-matters-measurement-card"
+                          >
+                            <MeasureTile
+                              iconSrc="/neck-to-back.svg"
+                              title="Neck depth range"
+                              description="Fine-tune the contour so the neck isn’t over-extended."
+                            />
+                          </SpotlightCard>,
+                          <SpotlightCard
+                            key="measure-head-depth"
+                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            data-ui="size-matters-measurement-card"
+                          >
+                            <MeasureTile
+                              iconSrc="/head-to-back.svg"
+                              title="Head depth range"
+                              description="Accounts for different head shapes so pressure stays balanced."
+                            />
+                          </SpotlightCard>,
+                        ]}
+                      />
                     </CardContent>
                   </Card>
                 </section>
