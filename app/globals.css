@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../components/SpotlightCard.css";
+@import "../components/MagicBento.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -77,6 +79,8 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --app-dock-clearance: 0rem;
+  /* Shared glow color (matches SpotlightCard palette) */
+  --mp-glow-rgb: 148, 163, 184;
 }
 
 .dark {
@@ -111,6 +115,8 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Shared glow color (matches SpotlightCard palette) */
+  --mp-glow-rgb: 102, 167, 255;
 }
 
 body.dock-hidden {
@@ -148,7 +154,7 @@ body.dock-hidden .app-dock {
   body {
     width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow: visible;
     /* Default text (body, small text, UI text) */
     @apply bg-background text-foreground font-mono leading-snug;
     min-height: 100%;
@@ -176,6 +182,29 @@ body.dock-hidden .app-dock {
   h6 {
     @apply font-sans text-xs font-light leading-snug;
   }
+
+  /*
+    Marketing typography overrides
+    - Applies only on public routes (see `components/route-scope.tsx`)
+    - Forces font-size even when elements use Tailwind `text-*` classes
+  */
+  [data-typography-scope="marketing"] h2 {
+    font-size: 24px !important;
+  }
+
+  [data-typography-scope="marketing"] p {
+    font-size: 16px !important;
+  }
+
+  @media (min-width: 768px) {
+    [data-typography-scope="marketing"] h2 {
+      font-size: 28px !important;
+    }
+
+    [data-typography-scope="marketing"] p {
+      font-size: 18px !important;
+    }
+  }
   img,
   video,
   canvas {
@@ -185,6 +214,23 @@ body.dock-hidden .app-dock {
 }
 
 @layer utilities {
+  @keyframes mp-marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  .mp-marquee-track {
+    animation-name: mp-marquee;
+    animation-duration: var(--mp-marquee-duration, 24s);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: var(--mp-marquee-direction, normal);
+  }
+
   @keyframes ripple {
     0%, 100% {
       transform: translate(-50%, -50%) scale(1);
@@ -235,6 +281,44 @@ body.dock-hidden .app-dock {
 
   .animate-grid-reverse {
     animation: grid-reverse 1s linear infinite;
+  }
+
+  @keyframes mp-top-loading-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .mp-top-loading-container {
+    height: 2px;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  .mp-top-loading-bar {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(59, 130, 246, 0.65) 20%,
+      rgba(96, 165, 250, 0.95) 50%,
+      rgba(59, 130, 246, 0.65) 80%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: mp-top-loading-shimmer 1.15s linear infinite;
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.35));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mp-top-loading-bar {
+      animation: none;
+      background: rgba(59, 130, 246, 0.85);
+    }
   }
 }
 

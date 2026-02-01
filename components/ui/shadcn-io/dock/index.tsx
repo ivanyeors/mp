@@ -13,6 +13,7 @@ import {
   Children,
   cloneElement,
   createContext,
+  forwardRef,
   useContext,
   useEffect,
   useMemo,
@@ -38,7 +39,7 @@ type DockItemProps = {
   className?: string;
   children: React.ReactNode;
   isActive?: boolean;
-};
+} & React.HTMLAttributes<HTMLDivElement>;
 type DockLabelProps = {
   className?: string;
   children: React.ReactNode;
@@ -154,15 +155,25 @@ function Dock({
   );
 }
 
-function DockItem({ children, className, isActive = false }: DockItemProps) {
-  const ref = useRef<HTMLDivElement>(null);
+const DockItem = forwardRef<HTMLDivElement, DockItemProps>(function DockItem(
+  { children, className, isActive = false, tabIndex, role, ...props },
+  forwardedRef
+) {
+  const localRef = useRef<HTMLDivElement>(null);
+
+  const setRefs = (node: HTMLDivElement | null) => {
+    localRef.current = node;
+    if (!forwardedRef) return;
+    if (typeof forwardedRef === "function") forwardedRef(node);
+    else (forwardedRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  };
 
   const { distance, magnification, mouseX, spring } = useDock();
 
   const isHovered = useMotionValue(0);
 
   const mouseDistance = useTransform(mouseX, (val) => {
-    const domRect = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
+    const domRect = localRef.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
     return val - domRect.x - domRect.width / 2;
   });
 
@@ -176,7 +187,7 @@ function DockItem({ children, className, isActive = false }: DockItemProps) {
 
   return (
     <motion.div
-      ref={ref}
+      ref={setRefs}
       style={{ width }}
       onHoverStart={() => isHovered.set(1)}
       onHoverEnd={() => isHovered.set(0)}
@@ -187,9 +198,10 @@ function DockItem({ children, className, isActive = false }: DockItemProps) {
         isActive && 'bg-blue-500 dark:bg-blue-600',
         className
       )}
-      tabIndex={0}
-      role='button'
-      aria-haspopup='true'
+      tabIndex={tabIndex ?? 0}
+      role={role ?? "button"}
+      aria-haspopup={props["aria-haspopup"] ?? "true"}
+      {...props}
     >
       {Children.map(children, (child) =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,7 +209,7 @@ function DockItem({ children, className, isActive = false }: DockItemProps) {
       )}
     </motion.div>
   );
-}
+});
 
 function DockLabel({ children, className, ...rest }: DockLabelProps) {
   const restProps = rest as Record<string, unknown>;

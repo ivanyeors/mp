@@ -16,27 +16,44 @@ This document contains the full text and image descriptions from all pages and a
 
 ## Extracted Text Content
 Gift A Good Night’s Sleep With A 100% Customised Pillow
+
 A cervical neck support pillow to maintain the perfect posture for every sleep position.
+
 Customised pillow from Singapore, handcrafted for a perfect night’s sleep
 Customisable pillows for any body build
+
 Find out how Mpillows are made for our ambassadors, Skyjin and Piggie
 Pick your Mpillow
+
 With three levels of customisation, we have an Mpillow for every need.
+
 Why choose Mpillow
 Neck Pain Issue?
-Discover Mpillow – the ultimate customisable pillow for cervical neck pain relief. Designed to support your unique posture and sleep style, our modular pillows help improve sleep quality, reduce stiffness, and promote spinal alignment. Wake up refreshed every day.
+Discover Mpillow – the ultimate customisable pillow for cervical neck pain relief. Designed to support your unique posture and sleep style, our modular pillows help improve sleep quality, reduce stiffness, and promote spinal alignment. 
+
+Wake up refreshed every day.
+
 Easily adjustable for any height
 100% washable
 Uniquely shaped to suit your sleeping position
+
 Customisable width for different body builds
+
 Modular components for easy maintenance
+
 Dr Steven Hulme's Mpillow Review
+
 An award-winning brand - Singapore Good Design 2022
+
 7 years of research and development
+
 Patented across multiple countries
+
 Hear from our customers
+
 Words from the founder, Darren Yeo
 What you're buying is not just a product but what were behind it - art, design, hard work, spirit, breakthroughs, innovation, adventure, persistence, dedication, time, and love.
+
 A good product isn't just a result of copying another. Instead it carefully considers the needs and problems encountered by each individual. We spent thousands of hours researching and improving, learning from our failures and criticism, and making up for our losses. We believe that as long as we can help others, God will want us to succeed.
 Mpillow has at least 20 different innovative elements, can you find them?
 
@@ -72,17 +89,9 @@ Choosing the right neck pain pillow can significantly improve your sleep quality
 Price Range:
 
 ## XS: $340-$360
-
-
 ### S: $400-$430
-
-
 ### M: $430-$460
-
-
 ### L: $580-$610
-
-
 ### XL: $680
 
 Customisation charge for every hour: $50
@@ -169,17 +178,9 @@ Size
 Shoulder Length
 
 ## XS
-
-
 ### S
-
-
 ### M
-
-
 ### L
-
-
 ### XL
 
 Less than 14”

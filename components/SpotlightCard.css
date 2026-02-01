@@ -1,0 +1,70 @@
+.card-spotlight {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  /* Match `components/ui/shadcn-io/dock/index.tsx` background palettes */
+  --spotlight-bg: linear-gradient(rgb(226, 232, 240) 0%, rgb(203, 213, 225) 100%),
+    linear-gradient(90deg, rgb(241, 245, 249) 0%, rgb(241, 245, 249) 100%);
+  --spotlight-inner-shadow: inset 1px 1px 1.8px 0px rgba(255, 255, 255, 0.8),
+    inset -4px 13px 28.4px 0px rgba(148, 163, 184, 0.3);
+  --spotlight-mask: radial-gradient(
+    520px circle at var(--mouse-x) var(--mouse-y),
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0.6) 18%,
+    rgba(0, 0, 0, 0) 55%
+  );
+}
+
+.dark .card-spotlight {
+  --spotlight-bg: linear-gradient(rgb(0, 23, 54) 0%, rgb(43, 105, 188) 100%),
+    linear-gradient(90deg, rgb(7, 55, 120) 0%, rgb(7, 55, 120) 100%);
+  --spotlight-inner-shadow: inset 1px 1px 1.8px 0px rgba(194, 220, 255, 0.5),
+    inset -4px 13px 28.4px 0px rgba(102, 167, 255, 0.5);
+}
+
+.card-spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: var(--spotlight-bg);
+  background-size: cover;
+  background-repeat: no-repeat;
+  /* Mask into a cursor-following spotlight */
+  -webkit-mask-image: var(--spotlight-mask);
+  mask-image: var(--spotlight-mask);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: cover;
+  mask-size: cover;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.card-spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--spotlight-inner-shadow);
+  box-shadow:
+    var(--spotlight-inner-shadow),
+    0 0 0 1px color-mix(in oklab, white 18%, transparent),
+    0 20px 60px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.card-spotlight:hover::before,
+.card-spotlight:focus-within::before {
+  opacity: 0.55;
+}
+
+.card-spotlight:hover::after,
+.card-spotlight:focus-within::after {
+  opacity: 0.5;
+}

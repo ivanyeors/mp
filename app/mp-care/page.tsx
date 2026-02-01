@@ -1,7 +1,3 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Menubar,
   MenubarContent,
@@ -11,19 +7,6 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from "@/components/ui/menubar";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { useSettingsOtpAuth } from "@/hooks/use-settings-otp-auth";
 import {
   FileText,
   Heart,
@@ -37,151 +20,8 @@ import {
 } from "lucide-react";
 
 export default function MpCarePage() {
-  const [comingSoonOpen, setComingSoonOpen] = useState(true);
-  const [view, setView] = useState<"info" | "signin">("info");
-  const router = useRouter();
-  const { status, authenticated, otp, setOtp, verifying, error, verifyOtp, checkSession, setError } =
-    useSettingsOtpAuth({ autoCheck: false });
-
-  useEffect(() => {
-    (async () => {
-      await checkSession();
-    })();
-  }, [checkSession]);
-
-  useEffect(() => {
-    if (authenticated) {
-      setComingSoonOpen(false);
-      setView("info");
-    }
-  }, [authenticated]);
-
   return (
     <div className="min-h-screen bg-background">
-      <Dialog
-        open={comingSoonOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            if (!authenticated) {
-              router.push("/");
-              return;
-            }
-          }
-          setComingSoonOpen(open);
-        }}
-      >
-        <DialogContent
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>{view === "signin" ? "Sign in" : "MP Care is coming soon"}</DialogTitle>
-            {view === "signin" ? (
-              <DialogDescription>Enter the 6-digit OTP to unlock MP Care on this device.</DialogDescription>
-            ) : (
-              <DialogDescription>
-                We’re still polishing this experience. Some content may be incomplete.
-              </DialogDescription>
-            )}
-          </DialogHeader>
-
-          {view === "signin" ? (
-            <div className="space-y-4">
-              {status === "checking" ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Checking session...
-                </div>
-              ) : null}
-
-              {error ? (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{error}</span>
-                </div>
-              ) : null}
-
-              <div className="flex flex-col items-center gap-4">
-                <InputOTP
-                  id="mp-care-otp-input"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(v) => {
-                    setError(null);
-                    setOtp(v);
-                  }}
-                  disabled={verifying || status === "checking"}
-                  className="justify-center"
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={1} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={2} className="h-10 w-10 text-base" />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={4} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={5} className="h-10 w-10 text-base" />
-                  </InputOTPGroup>
-                </InputOTP>
-
-                <Button
-                  onClick={async () => {
-                    const res = await verifyOtp();
-                    if (res.ok) setComingSoonOpen(false);
-                  }}
-                  disabled={verifying || status === "checking"}
-                  className="w-full sm:w-auto"
-                >
-                  {verifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Verify & continue
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">This area is still under construction.</div>
-          )}
-
-          <DialogFooter>
-            {view === "signin" ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setView("info");
-                    setError(null);
-                    setOtp("");
-                  }}
-                >
-                  Back
-                </Button>
-                <Button variant="secondary" asChild>
-                  <Link href="/">Back home</Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={async () => {
-                    setView("signin");
-                    await checkSession();
-                  }}
-                >
-                  Sign in
-                </Button>
-                <Button asChild>
-                  <Link href="/">Back home</Link>
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Header */}
       <div className="flex h-14 items-center px-4">
         {/* Menu Bar */}

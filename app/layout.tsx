@@ -4,6 +4,9 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppDock } from "@/components/app-dock";
 import { SonnerProvider } from "@/components/sonner-provider";
+import { RouteScope } from "@/components/route-scope";
+import { ApiRequestTracker } from "@/components/api-request-tracker";
+import { TopLoadingBar } from "@/components/top-loading-bar";
 
 const soraSans = Sora({
   variable: "--font-sora",
@@ -64,7 +67,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <ApiRequestTracker />
+          <TopLoadingBar />
+          <RouteScope>{children}</RouteScope>
           <AppDock />
           <SonnerProvider />
         </ThemeProvider>
