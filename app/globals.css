@@ -119,6 +119,16 @@
   --mp-glow-rgb: 102, 167, 255;
 }
 
+body.dock-hidden {
+  --app-dock-clearance: 0rem;
+}
+
+body.dock-hidden .app-dock {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
 @media (max-width: 768px) {
   :root {
     --app-dock-clearance: 4.5rem;
