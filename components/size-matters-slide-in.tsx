@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, Carousel, MeasureTile } from "@/components/ui/apple-cards-carousel";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import DecryptedText from "@/components/DecryptedText";
@@ -144,7 +144,9 @@ export function SizeMattersSlideIn({ className }: Props) {
                 <section aria-labelledby="measurements-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
                     <CardHeader className="px-0">
-                      <CardTitle id="measurements-heading">How do we adjust Mpillow accurately for you?</CardTitle>
+                      <h2 id="measurements-heading" className="leading-none font-semibold">
+                        How do we adjust Mpillow accurately for you?
+                      </h2>
                     </CardHeader>
                     <CardContent className="px-0 space-y-4">
                       <p className="text-sm leading-relaxed text-muted-foreground">
@@ -205,14 +207,13 @@ export function SizeMattersSlideIn({ className }: Props) {
                 </section>
 
                 <section aria-labelledby="head-shapes-heading">
-                  <h2 id="head-shapes-heading" className="sr-only">
-                    Head shape differences
-                  </h2>
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
                     <CardContent className="px-0 space-y-4">
                       <div className="grid gap-4 md:grid-cols-2 md:items-center">
                         <div className="space-y-2">
-                          <div className="text-sm font-semibold">Head shape differences</div>
+                          <h2 id="head-shapes-heading" className="leading-none font-semibold">
+                            Head shape differences
+                          </h2>
                           <p className="text-sm leading-relaxed text-muted-foreground">
                             We spent years developing configurations for round or flat heads, curved or straight spines,
                             long or short necks, and thick or flat backs.
@@ -233,7 +234,9 @@ export function SizeMattersSlideIn({ className }: Props) {
                 <section aria-labelledby="why-unique-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
                     <CardHeader className="px-0">
-                      <CardTitle id="why-unique-heading">Why is Mpillow usable for all but unique for individuals?</CardTitle>
+                      <h2 id="why-unique-heading" className="leading-none font-semibold">
+                        Why is Mpillow usable for all but unique for individuals?
+                      </h2>
                     </CardHeader>
                     <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>We are all unique, one way or another.</p>
@@ -245,7 +248,9 @@ export function SizeMattersSlideIn({ className }: Props) {
                 <section aria-labelledby="adjust-accurately-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
                     <CardHeader className="px-0">
-                      <CardTitle id="adjust-accurately-heading">How do we adjust Mpillow accurately for you?</CardTitle>
+                      <h2 id="adjust-accurately-heading" className="leading-none font-semibold">
+                        How do we adjust Mpillow accurately for you?
+                      </h2>
                     </CardHeader>
                     <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>To ensure that you have the right fit from the Mpillow, a few measurements is required for this to happen.</p>
@@ -260,7 +265,9 @@ export function SizeMattersSlideIn({ className }: Props) {
                 <section aria-labelledby="sleep-position-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
                     <CardHeader className="px-0">
-                      <CardTitle id="sleep-position-heading">Designed for your preferred sleep position</CardTitle>
+                      <h2 id="sleep-position-heading" className="leading-none font-semibold">
+                        Designed for your preferred sleep position
+                      </h2>
                     </CardHeader>
                     <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>
@@ -278,7 +285,9 @@ export function SizeMattersSlideIn({ className }: Props) {
                 <section aria-labelledby="unique-configurations-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-2">
                     <CardHeader className="px-0">
-                      <CardTitle id="unique-configurations-heading">Unique configurations for every body</CardTitle>
+                      <h2 id="unique-configurations-heading" className="leading-none font-semibold">
+                        Unique configurations for every body
+                      </h2>
                     </CardHeader>
                     <CardContent className="px-0 space-y-2 text-sm leading-relaxed text-muted-foreground">
                       <p>
@@ -293,7 +302,9 @@ export function SizeMattersSlideIn({ className }: Props) {
                 <section aria-labelledby="engineered-perfection-heading">
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
                     <CardHeader className="px-0">
-                      <CardTitle id="engineered-perfection-heading">Engineered to Perfection</CardTitle>
+                      <h2 id="engineered-perfection-heading" className="leading-none font-semibold">
+                        Engineered to Perfection
+                      </h2>
                     </CardHeader>
                     <CardContent className="px-0 space-y-4">
                       <p className="text-sm leading-relaxed text-muted-foreground">
