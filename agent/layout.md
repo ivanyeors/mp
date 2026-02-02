@@ -246,7 +246,7 @@ Placeholder styling recommendation (theme-adaptive):
 
 ### Dock-safe bottom padding
 
-This app uses a fixed bottom `AppDock` (`components/app-dock.tsx`). Ensure the homepage never ends underneath it:
+This app uses a fixed bottom `AppDock` (`components/ui/app-dock.tsx`). Ensure the homepage never ends underneath it:
 - Add a bottom padding buffer on the main content wrapper, e.g. `pb-28 md:pb-24`
 - Prefer safe-area friendly spacing: `pb-[calc(7rem+env(safe-area-inset-bottom))]` when using arbitrary values.
 
