@@ -3,22 +3,18 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
 import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import { getMessages } from "@/lib/i18n/messages";
-import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { withLocale } from "@/lib/i18n/routing";
+import { useI18n } from "@/lib/i18n/use-i18n";
 
 export function HomeHeader() {
   const [isCompact, setIsCompact] = React.useState(false);
-  const pathname = usePathname() ?? "/";
-  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-  const m = getMessages(locale);
+  const { m, locale } = useI18n();
 
   const homeHref = withLocale("/", locale);
   const mpConfigHref = withLocale("/mp-config", locale);

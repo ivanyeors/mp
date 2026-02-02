@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, Carousel, MeasureTile } from "@/components/ui/apple-cards-carousel";
@@ -14,12 +13,14 @@ import SpotlightCard from "@/components/effects/SpotlightCard";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 import Aurora from "@/components/effects/Aurora";
+import { useI18n } from "@/lib/i18n/use-i18n";
 
 type Props = {
   className?: string;
 };
 
 export function SizeMattersSlideIn({ className }: Props) {
+  const { m } = useI18n();
   const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
 
@@ -61,7 +62,7 @@ export function SizeMattersSlideIn({ className }: Props) {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="secondary" className={cn("h-auto px-6 py-4 text-base", className)}>
-          Learn More
+          {m.slides.sizeMatters.trigger}
         </Button>
       </SheetTrigger>
 
@@ -74,8 +75,8 @@ export function SizeMattersSlideIn({ className }: Props) {
         <div className="flex h-full flex-col overflow-hidden bg-background">
           <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <SheetHeader className="relative pr-12">
-              <SheetTitle>Why choose Mpillow</SheetTitle>
-              <SheetDescription>Size matters — a pillow should fit you, not the other way around.</SheetDescription>
+              <SheetTitle>{m.slides.sizeMatters.title}</SheetTitle>
+              <SheetDescription>{m.slides.sizeMatters.description}</SheetDescription>
 
               <SheetClose asChild>
                 <button
@@ -83,7 +84,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                   className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
                 >
                   <XIcon className="size-4" />
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only">{m.common.close}</span>
                 </button>
               </SheetClose>
             </SheetHeader>
@@ -110,7 +111,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                   </h2>
                   <p className="text-2xl font-semibold leading-relaxed tracking-tight sm:text-2xl md:text-4xl">
                     <DecryptedText
-                      text="When you buy a shirt you have to try different sizes to find one that fits you - so why shouldn't it be the same for a pillow?"
+                      text={m.slides.sizeMatters.pressQuote.text}
                       animateOn="view"
                       sequential
                       speed={20}
@@ -118,17 +119,16 @@ export function SizeMattersSlideIn({ className }: Props) {
                       loopDelay={5000}
                     />
                   </p>
-                  <footer className="text-sm text-[var(--color-white)]">— The Straits Times</footer>
+                  <footer className="text-sm text-[var(--color-white)]">{m.slides.sizeMatters.pressQuote.attribution}</footer>
                 </section>
 
                 <section aria-labelledby="size-matters-heading" className="grid gap-6 md:grid-cols-2 md:items-center">
                   <div className="space-y-2">
                     <h2 id="size-matters-heading" className="text-lg font-semibold leading-tight">
-                      Size matters
+                      {m.slides.sizeMatters.sectionSizeMattersTitle}
                     </h2>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      The length of your shoulder determines the height of the pillow. The different sizes and modular
-                      components allow for easy adjustments to fit your precise body structure.
+                      {m.slides.sizeMatters.sectionSizeMattersDescription}
                     </p>
                   </div>
                   <div className="overflow-hidden rounded-xl bg-muted/20">
@@ -146,13 +146,12 @@ export function SizeMattersSlideIn({ className }: Props) {
                   <Card className="rounded-none border-0 bg-transparent py-0 shadow-none gap-3">
                     <CardHeader className="px-0">
                       <h2 id="measurements-heading" className="leading-none font-semibold">
-                        How do we adjust Mpillow accurately for you?
+                        {m.slides.sizeMatters.measurementsTitle}
                       </h2>
                     </CardHeader>
                     <CardContent className="px-0 space-y-4">
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        To ensure that you have the right fit from the Mpillow, a few measurements are required for this to
-                        happen.
+                        {m.slides.sizeMatters.measurementsIntro}
                       </p>
                       <Carousel
                         itemsContainerClassName="w-full px-0 mx-0 max-w-none"
@@ -164,8 +163,8 @@ export function SizeMattersSlideIn({ className }: Props) {
                           >
                             <MeasureTile
                               iconSrc="/shoulder-length.svg"
-                              title="Shoulder length range"
-                              description="Helps determine the pillow height so your neck stays aligned."
+                              title={m.slides.sizeMatters.measurementCards[0]?.title ?? ""}
+                              description={m.slides.sizeMatters.measurementCards[0]?.description ?? ""}
                             />
                           </SpotlightCard>,
                           <SpotlightCard
@@ -175,8 +174,8 @@ export function SizeMattersSlideIn({ className }: Props) {
                           >
                             <MeasureTile
                               iconSrc="/neck-length.svg"
-                              title="Neck length"
-                              description="Dial in support from the shoulder to the neck curve."
+                              title={m.slides.sizeMatters.measurementCards[1]?.title ?? ""}
+                              description={m.slides.sizeMatters.measurementCards[1]?.description ?? ""}
                             />
                           </SpotlightCard>,
                           <SpotlightCard
@@ -186,8 +185,8 @@ export function SizeMattersSlideIn({ className }: Props) {
                           >
                             <MeasureTile
                               iconSrc="/neck-to-back.svg"
-                              title="Neck depth range"
-                              description="Fine-tune the contour so the neck isn’t over-extended."
+                              title={m.slides.sizeMatters.measurementCards[2]?.title ?? ""}
+                              description={m.slides.sizeMatters.measurementCards[2]?.description ?? ""}
                             />
                           </SpotlightCard>,
                           <SpotlightCard
@@ -197,8 +196,8 @@ export function SizeMattersSlideIn({ className }: Props) {
                           >
                             <MeasureTile
                               iconSrc="/head-to-back.svg"
-                              title="Head depth range"
-                              description="Accounts for different head shapes so pressure stays balanced."
+                              title={m.slides.sizeMatters.measurementCards[3]?.title ?? ""}
+                              description={m.slides.sizeMatters.measurementCards[3]?.description ?? ""}
                             />
                           </SpotlightCard>,
                         ]}
@@ -213,11 +212,10 @@ export function SizeMattersSlideIn({ className }: Props) {
                       <div className="grid gap-4 md:grid-cols-2 md:items-center">
                         <div className="space-y-2">
                           <h2 id="head-shapes-heading" className="leading-none font-semibold">
-                            Head shape differences
+                            {m.slides.sizeMatters.headShapesTitle}
                           </h2>
                           <p className="text-sm leading-relaxed text-muted-foreground">
-                            We spent years developing configurations for round or flat heads, curved or straight spines,
-                            long or short necks, and thick or flat backs.
+                            {m.slides.sizeMatters.headShapesDescription}
                           </p>
                         </div>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -236,12 +234,12 @@ export function SizeMattersSlideIn({ className }: Props) {
                   sectionProps={{ "aria-labelledby": "why-unique-heading", className: "px-0 md:px-0 space-y-0" }}
                   headerClassName="space-y-2"
                   titleAs="h2"
-                  title="Why is Mpillow right for everyone—yet unique to you?"
+                  title={m.slides.sizeMatters.whyUniqueTitle}
                   titleProps={{ id: "why-unique-heading" }}
                   titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
                   description={
                     <>
-                      <p>These measurements reveal the pillow size you need for good sleep posture.</p>
+                      <p>{m.slides.sizeMatters.whyUniqueDescription}</p>
                     </>
                   }
                   image={{
@@ -256,19 +254,13 @@ export function SizeMattersSlideIn({ className }: Props) {
                   sectionProps={{ "aria-labelledby": "sleep-position-heading", className: "px-0 md:px-0 space-y-0" }}
                   headerClassName="space-y-2"
                   titleAs="h2"
-                  title="Designed for your preferred sleep position"
+                  title={m.slides.sizeMatters.sleepPositionTitle}
                   titleProps={{ id: "sleep-position-heading" }}
                   titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
                   description={
                     <>
-                      <p>
-                        Our support system covers every key point—from your shoulders and upper back (thoracic spine) to your
-                        neck curve and head shape.
-                      </p>
-                      <p>
-                        Mpillow&apos;s internal design is divided into three zones: a center zone for back sleeping, and left/right
-                        zones at different heights for side sleeping.
-                      </p>
+                      <p>{m.slides.sizeMatters.sleepPositionParagraphs[0]}</p>
+                      <p>{m.slides.sizeMatters.sleepPositionParagraphs[1]}</p>
                     </>
                   }
                   image={{
@@ -283,16 +275,13 @@ export function SizeMattersSlideIn({ className }: Props) {
                   sectionProps={{ "aria-labelledby": "unique-configurations-heading", className: "px-0 md:px-0 space-y-0" }}
                   headerClassName="space-y-2"
                   titleAs="h2"
-                  title="Unique configurations for every body"
+                  title={m.slides.sizeMatters.configurationsTitle}
                   titleProps={{ id: "unique-configurations-heading" }}
                   titleClassName="leading-none font-semibold text-base tracking-normal md:text-base"
                   description={
                     <>
-                      <p>
-                        We spent 2 years developing the product, and 4 years to create 50+ unique configurations for users
-                        with round or flat heads, curved or straight spines, long or short necks, and thick or flat backs.
-                      </p>
-                      <p>These different configurations support ideal sleeping posture for unrestricted airways.</p>
+                      <p>{m.slides.sizeMatters.configurationsParagraphs[0]}</p>
+                      <p>{m.slides.sizeMatters.configurationsParagraphs[1]}</p>
                     </>
                   }
                   image={{

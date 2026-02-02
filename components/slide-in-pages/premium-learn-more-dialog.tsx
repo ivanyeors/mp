@@ -3,7 +3,6 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 import { FirmnessScale } from "@/components/firmness-scale";
 import { Button } from "@/components/ui/button";
@@ -12,8 +11,8 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { withLocale } from "@/lib/i18n/routing";
+import { useI18n } from "@/lib/i18n/use-i18n";
 
 type Props = {
   className?: string;
@@ -58,8 +57,7 @@ function FeatureCard({
 }
 
 function PremiumLearnMoreSheetInner() {
-  const pathname = usePathname() ?? "/";
-  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+  const { m, locale } = useI18n();
   const to = React.useCallback((href: string) => withLocale(href, locale), [locale]);
 
   const [progress, setProgress] = React.useState(0);
@@ -109,8 +107,8 @@ function PremiumLearnMoreSheetInner() {
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
         <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
           <SheetHeader className="relative pr-12">
-            <SheetTitle>Premium Mpillow</SheetTitle>
-            <SheetDescription>Get the support you need at all the right places with a customised pillow.</SheetDescription>
+            <SheetTitle>{m.slides.premiumMpillow.title}</SheetTitle>
+            <SheetDescription>{m.slides.premiumMpillow.description}</SheetDescription>
 
             <SheetClose asChild>
               <button
@@ -118,7 +116,7 @@ function PremiumLearnMoreSheetInner() {
                 className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
               >
                 <XIcon className="size-4" />
-                <span className="sr-only">Close</span>
+                <span className="sr-only">{m.common.close}</span>
               </button>
             </SheetClose>
           </SheetHeader>
@@ -145,15 +143,12 @@ function PremiumLearnMoreSheetInner() {
                   </div>
                   <div className="grid gap-4 md:grid-cols-2 md:items-start">
                     <div className="space-y-2">
-                      <SectionSubtitle>Premium Mpillow Is A Customised Pillow</SectionSubtitle>
+                      <SectionSubtitle>{m.slides.premiumMpillow.heroSubtitle}</SectionSubtitle>
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        Get your pillow customised in person by our Mpillow team — we can build it the way you like it.
-                        Watch our experts customise your pillow and try it on the spot until you’re satisfied with the
-                        fit before taking it home.
+                        {m.slides.premiumMpillow.heroParagraphs[0]}
                       </p>
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        For overseas customers, submit your measurements online and follow the guide below for an
-                        accurate measurement of each section.
+                        {m.slides.premiumMpillow.heroParagraphs[1]}
                       </p>
                     </div>
 
@@ -174,10 +169,9 @@ function PremiumLearnMoreSheetInner() {
               <section className="px-4 md:px-6">
                 <div className="grid gap-4 md:grid-cols-2 md:items-center">
                   <div className="space-y-2">
-                    <SectionTitle>For overseas customers</SectionTitle>
+                    <SectionTitle>{m.slides.premiumMpillow.overseasTitle}</SectionTitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Submit your measurements online. Our step-by-step flow will guide you with each measurement — in
-                      the comfort of your own home.
+                      {m.slides.premiumMpillow.overseasDescription}
                     </p>
                   </div>
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
@@ -193,34 +187,28 @@ function PremiumLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Who it’s for</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.whoItsForTitle}</SectionTitle>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Our patented M-shaped neck/shoulder pillows are suitable for individuals who have experienced:
+                  {m.slides.premiumMpillow.whoItsForIntro}
                 </p>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li>neck pain</li>
-                  <li>shoulder and cervical spine pain</li>
-                  <li>head and cervical spine surgery</li>
-                  <li>uneven shoulder height (scoliosis)</li>
-                  <li>acid reflux</li>
-                  <li>reversed neck</li>
-                  <li>sleep apnea</li>
-                  <li>numb fingers</li>
+                  {m.slides.premiumMpillow.whoItsForItems.map((text) => (
+                    <li key={text}>{text}</li>
+                  ))}
                 </ul>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Choosing the right neck pain pillow can significantly improve your sleep quality and help alleviate
-                  discomfort.
+                  {m.slides.premiumMpillow.whoItsForConclusion}
                 </p>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Price range & charges</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.pricingTitle}</SectionTitle>
                 <div className="overflow-hidden rounded-xl">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/30">
                       <tr className="text-left">
-                        <th className="px-3 py-2.5 font-semibold">Size</th>
-                        <th className="px-3 py-2.5 font-semibold">Price range (SGD)</th>
+                        <th className="px-3 py-2.5 font-semibold">{m.slides.premiumMpillow.pricingTable.sizeHeader}</th>
+                        <th className="px-3 py-2.5 font-semibold">{m.slides.premiumMpillow.pricingTable.priceHeader}</th>
                       </tr>
                     </thead>
                     <tbody className="[&>tr:not(:last-child)]:border-b">
@@ -249,46 +237,49 @@ function PremiumLearnMoreSheetInner() {
                 </div>
 
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li>Customisation charge for every hour: $50</li>
-                  <li>Readjustment charge: $30 within 60 days of purchase</li>
-                  <li>Doorstep surcharge: $250 (includes transportation and one hour customisation)</li>
+                  {m.slides.premiumMpillow.pricingNotes.map((text) => (
+                    <li key={text}>{text}</li>
+                  ))}
                 </ul>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Features of our Premium neck & shoulder pain pillow</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.featuresTitle}</SectionTitle>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Our pillow for cervical neck pain is designed to help maintain proper spinal alignment. Tailored
-                  support can help you wake up feeling more refreshed.
+                  {m.slides.premiumMpillow.featuresIntro}
                 </p>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <FeatureCard
-                    title="Customised to your specific shoulder, neck and head measurements"
+                    title={m.slides.premiumMpillow.features[0]?.title ?? ""}
                     imageSrc="/NeckDepth.webp"
                     imageAlt="Measurement and customisation"
                   >
-                    A fitted pillow starts with accurate measurements so the support lands in the right places.
+                    {m.slides.premiumMpillow.features[0]?.description ?? ""}
                   </FeatureCard>
 
                   <FeatureCard
-                    title="3 separate compartments maintain shape and allow for easy height adjustment"
+                    title={m.slides.premiumMpillow.features[1]?.title ?? ""}
                     imageSrc="/3_compartment.webp"
                     imageAlt="Three compartments"
                   >
-                    Separate compartments help maintain structure and make fine-tuning the height easier.
+                    {m.slides.premiumMpillow.features[1]?.description ?? ""}
                   </FeatureCard>
 
-                  <FeatureCard title="Waterproof protector for improved hygiene" imageSrc="/m-pillow-518057-final-V-WEB.webp" imageAlt="Waterproof inner protector">
-                    An inner protector helps keep things clean and extends the usable life of your pillow.
+                  <FeatureCard
+                    title={m.slides.premiumMpillow.features[2]?.title ?? ""}
+                    imageSrc="/m-pillow-518057-final-V-WEB.webp"
+                    imageAlt="Waterproof inner protector"
+                  >
+                    {m.slides.premiumMpillow.features[2]?.description ?? ""}
                   </FeatureCard>
 
-                  <FeatureCard title="Fully washable and easy to clean" imageSrc="/wash-care.webp" imageAlt="Wash care">
-                    Easy care matters. Wash and refresh your setup when needed without fuss.
+                  <FeatureCard title={m.slides.premiumMpillow.features[3]?.title ?? ""} imageSrc="/wash-care.webp" imageAlt="Wash care">
+                    {m.slides.premiumMpillow.features[3]?.description ?? ""}
                   </FeatureCard>
 
-                  <FeatureCard title="10-year warranty (filling height)" imageSrc="/fillings.webp" imageAlt="Filling warranty">
-                    Long-term support: a 10-year warranty on the stuffing (filling height).
+                  <FeatureCard title={m.slides.premiumMpillow.features[4]?.title ?? ""} imageSrc="/fillings.webp" imageAlt="Filling warranty">
+                    {m.slides.premiumMpillow.features[4]?.description ?? ""}
                   </FeatureCard>
                 </div>
               </section>
@@ -296,25 +287,31 @@ function PremiumLearnMoreSheetInner() {
               <section className="px-4 md:px-6 space-y-3">
                 <div className="grid gap-4 md:grid-cols-2 md:items-start">
                   <div className="space-y-2">
-                    <SectionTitle>Firmness Level</SectionTitle>
+                    <SectionTitle>{m.slides.premiumMpillow.firmnessTitle}</SectionTitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      The Premium Mpillow can be customised to your preferred comfort level.
+                      {m.slides.premiumMpillow.firmnessDescription}
                     </p>
                   </div>
 
                   <div className="w-full">
-                    <FirmnessScale mode="range" value={[40, 85]} title="Premium Mpillow" label="40–85%" className="w-full" />
+                    <FirmnessScale
+                      mode="range"
+                      value={[40, 85]}
+                      title={m.slides.premiumMpillow.title}
+                      label="40–85%"
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Additional accessory</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.accessoryTitle}</SectionTitle>
                 <div className="grid gap-4 md:grid-cols-2 md:items-center">
                   <div className="space-y-2">
-                    <SectionSubtitle>Pillow For Cervical Neck Pain</SectionSubtitle>
+                    <SectionSubtitle>{m.slides.premiumMpillow.accessorySubtitle}</SectionSubtitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Add cervical support if you need extra neck support in your sleep setup.
+                      {m.slides.premiumMpillow.accessoryDescription}
                     </p>
                     <Button asChild variant="outline" className="h-auto py-3">
                       <Link
@@ -322,7 +319,7 @@ function PremiumLearnMoreSheetInner() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Find out more
+                        {m.slides.premiumMpillow.accessoryButton}
                       </Link>
                     </Button>
                   </div>
@@ -333,29 +330,28 @@ function PremiumLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Watch how we customise Premium Mpillow</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.videoTitle}</SectionTitle>
                 <div className="overflow-hidden rounded-xl border bg-card">
                   <div className="relative aspect-video bg-muted/20">
                     <YouTubeAutoplayOnView
                       videoId="V2H03lq9IYU"
-                      title="Watch how we customise Premium Mpillow"
+                      title={m.slides.premiumMpillow.videoTitle}
                     />
                   </div>
                 </div>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Overseas measurement guide</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.measurementsTitle}</SectionTitle>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Follow the instructions below for an accurate measurement of each section. Take down your measurement
-                  in inches.
+                  {m.slides.premiumMpillow.measurementsIntro}
                 </p>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <SectionSubtitle>A. Shoulder Length</SectionSubtitle>
+                    <SectionSubtitle>{m.slides.premiumMpillow.measurementSteps[0]?.title ?? ""}</SectionSubtitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Wear a fitted shirt and measure your shoulder length from the intersection of the garment.
+                      {m.slides.premiumMpillow.measurementSteps[0]?.description ?? ""}
                     </p>
                     <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
                       <Image
@@ -369,9 +365,9 @@ function PremiumLearnMoreSheetInner() {
                   </div>
 
                   <div className="space-y-2">
-                    <SectionSubtitle>B. Neck Depth</SectionSubtitle>
+                    <SectionSubtitle>{m.slides.premiumMpillow.measurementSteps[1]?.title ?? ""}</SectionSubtitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Stand straight against a door frame. Use a ruler to measure the depth from your back to your neck.
+                      {m.slides.premiumMpillow.measurementSteps[1]?.description ?? ""}
                     </p>
                     <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
                       <Image
@@ -385,9 +381,9 @@ function PremiumLearnMoreSheetInner() {
                   </div>
 
                   <div className="space-y-2">
-                    <SectionSubtitle>C. Head Depth</SectionSubtitle>
+                    <SectionSubtitle>{m.slides.premiumMpillow.measurementSteps[2]?.title ?? ""}</SectionSubtitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Stand straight against a door frame. Use a ruler to measure the depth from your back to your head.
+                      {m.slides.premiumMpillow.measurementSteps[2]?.description ?? ""}
                     </p>
                     <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
                       <Image
@@ -401,9 +397,9 @@ function PremiumLearnMoreSheetInner() {
                   </div>
 
                   <div className="space-y-2">
-                    <SectionSubtitle>D. Neck Length</SectionSubtitle>
+                    <SectionSubtitle>{m.slides.premiumMpillow.measurementSteps[3]?.title ?? ""}</SectionSubtitle>
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Use a ruler to measure the length of your neck from your shoulders to the base of your skull.
+                      {m.slides.premiumMpillow.measurementSteps[3]?.description ?? ""}
                     </p>
                     <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
                       <Image
@@ -419,7 +415,7 @@ function PremiumLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>The Premium Mpillow package</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.packageTitle}</SectionTitle>
                 <div className="relative aspect-[16/9] overflow-hidden rounded-xl bg-muted/20">
                   <Image
                     src="/m-pillow-417804-final-WEB.webp"
@@ -430,45 +426,38 @@ function PremiumLearnMoreSheetInner() {
                   />
                 </div>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li>1 Mpillow case (Linen blue / Linen Natural / FibreCool)</li>
-                  <li>A number of small and large filling cushions (depending on your pillow size)</li>
-                  <li>1 waterproof inner protector</li>
-                  <li>2 satin cover sheets</li>
-                  <li>1 travel vacuum bag</li>
-                  <li>1 laundry bag packaging</li>
+                  {m.slides.premiumMpillow.packageItems.map((text) => (
+                    <li key={text}>{text}</li>
+                  ))}
                 </ul>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Mpillow aftercare video</SectionTitle>
-                <p className="text-sm leading-relaxed text-muted-foreground">How to wash and clean your Premium Mpillow.</p>
+                <SectionTitle>{m.slides.premiumMpillow.aftercareTitle}</SectionTitle>
+                <p className="text-sm leading-relaxed text-muted-foreground">{m.slides.premiumMpillow.aftercareDescription}</p>
                 <div className="overflow-hidden rounded-xl border bg-card">
                   <div className="relative aspect-video bg-muted/20">
                     <YouTubeAutoplayOnView
                       videoId="LxtHJL9s58E"
-                      title="Mpillow aftercare video"
+                      title={m.slides.premiumMpillow.aftercareTitle}
                     />
                   </div>
                 </div>
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>Our commitment</SectionTitle>
+                <SectionTitle>{m.slides.premiumMpillow.commitmentTitle}</SectionTitle>
                 <div className="space-y-3 text-sm text-muted-foreground">
                   <div className="space-y-1">
-                    <div className="font-semibold text-foreground">Complimentary 60-day re-adjustment</div>
+                    <div className="font-semibold text-foreground">{m.slides.premiumMpillow.commitmentReadjustmentTitle}</div>
                     <p className="leading-relaxed">
-                      We offer a one-time complimentary visit within the initial 60 days post-purchase. Beyond this
-                      period or for additional adjustments, a re-adjustment fee of $30 applies. Stuffing is provided
-                      for free during re-adjustments (excluding other accessories/components).
+                      {m.slides.premiumMpillow.commitmentReadjustmentDescription}
                     </p>
                   </div>
                   <div className="space-y-1">
-                    <div className="font-semibold text-foreground">10-year warranty inclusion</div>
+                    <div className="font-semibold text-foreground">{m.slides.premiumMpillow.commitmentWarrantyTitle}</div>
                     <p className="leading-relaxed">
-                      All products are backed by a 10-year warranty on stuffing. To avail, schedule an appointment and
-                      bring your pillow to our service center for re-adjustment and stuffing replacement (readjustment
-                      fees apply).
+                      {m.slides.premiumMpillow.commitmentWarrantyDescription}
                     </p>
                   </div>
                 </div>
@@ -478,10 +467,8 @@ function PremiumLearnMoreSheetInner() {
               </section>
 
               <section className="px-4 md:px-6 space-y-2">
-                <SectionTitle>Need help?</SectionTitle>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Feel free to contact customer support at <span className="font-medium text-foreground">+65 8780 5311</span>.
-                </p>
+                <SectionTitle>{m.slides.premiumMpillow.helpTitle}</SectionTitle>
+                <p className="text-sm leading-relaxed text-muted-foreground">{m.slides.premiumMpillow.helpDescription}</p>
               </section>
             </div>
           </div>
@@ -491,24 +478,24 @@ function PremiumLearnMoreSheetInner() {
           <div className="px-4 py-4 md:px-6">
             <div className="grid gap-3 sm:grid-cols-2">
               <Button asChild className="h-auto py-4">
-                <Link href={to("/mp-config")}>Customise online</Link>
+                <Link href={to("/mp-config")}>{m.slides.premiumMpillow.bottomCustomiseOnline}</Link>
               </Button>
               <Button asChild variant="outline" className="h-auto py-4">
                 <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
-                  Book a bespoke service
+                  {m.slides.premiumMpillow.bottomBookBespoke}
                 </Link>
               </Button>
             </div>
 
             <div className="mt-3 text-xs text-muted-foreground">
-              Source:{" "}
+              {m.slides.premiumMpillow.sourceLabel}{" "}
               <Link
                 href="https://www.mpillow.com/pages/premium-customised-pillow"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline underline-offset-4"
               >
-                Mpillow Premium customised pillow page
+                {m.slides.premiumMpillow.sourceLinkLabel}
               </Link>
               .
             </div>
@@ -527,12 +514,14 @@ export function PremiumLearnMoreSheet({ open, onOpenChange }: ControlledSheetPro
   );
 }
 
-export function PremiumLearnMoreDialog({ className, triggerLabel = "Learn more" }: Props) {
+export function PremiumLearnMoreDialog({ className, triggerLabel }: Props) {
+  const { m } = useI18n();
+  const label = triggerLabel ?? m.slides.premiumMpillow.trigger;
   return (
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="secondary" className={cn("h-auto py-2.5", className)}>
-          {triggerLabel}
+          {label}
         </Button>
       </SheetTrigger>
 

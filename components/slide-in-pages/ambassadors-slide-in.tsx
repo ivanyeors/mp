@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { ChevronDown, ChevronUp, XIcon } from "lucide-react";
 import TextType from "@/components/effects/TextType";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
+import { useI18n } from "@/lib/i18n/use-i18n";
 import {
   Sheet,
   SheetClose,
@@ -26,6 +27,7 @@ type Props = {
 };
 
 export function AmbassadorsSlideIn({ className }: Props) {
+  const { m } = useI18n();
   const [awardsOpen, setAwardsOpen] = React.useState(true);
   const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
@@ -68,7 +70,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="secondary" className={cn("h-auto px-6 py-4 text-base", className)}>
-          Learn how
+          {m.slides.ambassadors.trigger}
         </Button>
       </SheetTrigger>
 
@@ -81,10 +83,8 @@ export function AmbassadorsSlideIn({ className }: Props) {
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
           <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
             <SheetHeader className="relative pr-12">
-              <SheetTitle>How You Stand Is How You Sleep</SheetTitle>
-              <SheetDescription>
-                A behind-the-scenes look at how Mpillow is customised to fit different body builds.
-              </SheetDescription>
+              <SheetTitle>{m.slides.ambassadors.title}</SheetTitle>
+              <SheetDescription>{m.slides.ambassadors.description}</SheetDescription>
 
               <SheetClose asChild>
                 <button
@@ -92,7 +92,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                   className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
                 >
                   <XIcon className="size-4" />
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only">{m.common.close}</span>
                 </button>
               </SheetClose>
             </SheetHeader>
@@ -108,13 +108,15 @@ export function AmbassadorsSlideIn({ className }: Props) {
                 <LeftContentRightImgSection
                   sectionProps={{ "aria-labelledby": "ambassadors-hero-heading", className: "px-0 md:px-0" }}
                   titleAs="h2"
-                  title="How You Stand Is How You Sleep"
+                  title={m.slides.ambassadors.title}
                   titleProps={{ id: "ambassadors-hero-heading" }}
                   titleClassName="text-lg font-semibold leading-tight md:text-xl"
                   description={
                     <>
-                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Ambassadors</p>
-                      <p>See how the Mpillow is adjusted to each person’s posture and body build.</p>
+                      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        {m.slides.ambassadors.heroLabel}
+                      </p>
+                      <p>{m.slides.ambassadors.heroDescription}</p>
                     </>
                   }
                   image={{
@@ -128,19 +130,14 @@ export function AmbassadorsSlideIn({ className }: Props) {
                 <LeftContentRightImgSection
                   sectionProps={{ "aria-labelledby": "ambassadors-all-builds-heading", className: "px-0 md:px-0" }}
                   titleAs="h2"
-                  title="Mpillow Suits All Builds"
+                  title={m.slides.ambassadors.allBuildsTitle}
                   titleProps={{ id: "ambassadors-all-builds-heading" }}
                   titleClassName="text-base font-semibold tracking-normal md:text-base"
                   description={
                     <>
-                      <p>
-                        The Bespoke Mpillows were customised for Skyjin and Piggie accordingly so the pillows fit them when
-                        they sleep on their side and back.
-                      </p>
-                      <p>
-                        In these photos, the Mpillows are adjusted accordingly to their build and shape to show how you stand
-                        is how you sleep.
-                      </p>
+                      {m.slides.ambassadors.allBuildsParagraphs.map((text, idx) => (
+                        <p key={idx}>{text}</p>
+                      ))}
                     </>
                   }
                   image={{
@@ -154,17 +151,17 @@ export function AmbassadorsSlideIn({ className }: Props) {
                 <LeftContentRightImgSection
                   sectionProps={{ "aria-labelledby": "ambassadors-skyjin-piggie-heading", className: "px-0 md:px-0" }}
                   titleAs="h2"
-                  title="Our Ambassadors: Skyjin & Piggie"
+                  title={m.slides.ambassadors.ambassadorsTitle}
                   titleProps={{ id: "ambassadors-skyjin-piggie-heading" }}
                   titleClassName="text-base font-semibold tracking-normal md:text-base"
                   description={
                     <div className="space-y-4">
                       <div>
-                        <div className="text-sm font-semibold text-foreground">Skyjin has won several awards including:</div>
+                        <div className="text-sm font-semibold text-foreground">{m.slides.ambassadors.awardsIntro}</div>
                         <Collapsible open={awardsOpen} onOpenChange={setAwardsOpen}>
                           <CollapsibleTrigger asChild>
                             <Button variant="outline" className="mt-2 w-full justify-between">
-                              Awards
+                              {m.slides.ambassadors.awardsButton}
                               {awardsOpen ? (
                                 <ChevronUp className="size-4 text-muted-foreground" aria-hidden="true" />
                               ) : (
@@ -174,8 +171,9 @@ export function AmbassadorsSlideIn({ className }: Props) {
                           </CollapsibleTrigger>
                           <CollapsibleContent className="pt-3">
                             <ul className="space-y-2 text-sm text-muted-foreground">
-                              <li>2022 Mr Kedah Bodybuilder Light Heavyweight Champion</li>
-                              <li>2022 Mr Malaysia Bodybuilder Light Heavyweight Top10</li>
+                              {m.slides.ambassadors.awards.map((text) => (
+                                <li key={text}>{text}</li>
+                              ))}
                             </ul>
                           </CollapsibleContent>
                         </Collapsible>
@@ -192,16 +190,16 @@ export function AmbassadorsSlideIn({ className }: Props) {
 
                 <section aria-labelledby="skyjin-testimonial-heading" className="px-0 md:px-0 space-y-2">
                   <h2 id="skyjin-testimonial-heading" className="text-sm font-semibold text-foreground">
-                    Skyjin&apos;s Testimonial
+                    {m.slides.ambassadors.testimonialTitle}
                   </h2>
                   <section aria-labelledby="skyjin-testimonial-quote" className="space-y-2 pt-3">
                     <h2 id="skyjin-testimonial-quote" className="sr-only">
-                      Testimonial quote
+                      {m.slides.ambassadors.testimonialTitle}
                     </h2>
                     <TextType
                       as="h2"
                       className="text-sm leading-relaxed font-normal text-[var(--color-white)]"
-                      text="“For several years, I’ve had trouble sleeping well at night. I tried different types of pillows but nothing worked. Thankfully I discovered the Mpillow. It is the only pillow that can fit my size and build perfectly and give me the right support. For the first time in years, I have been able to get seven to eight hours of deep, quality sleep every night. I am also amazed that the Mpillow successfully resolved my shoulder pain. I had no idea it was caused by ill-fitting pillows!”"
+                      text={m.slides.ambassadors.testimonialQuote}
                       typingSpeed={22}
                       pauseDuration={1500}
                       deletingSpeed={18}
@@ -212,7 +210,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                       startOnVisible
                     />
                     <h2 className="text-xs font-extralight text-[var(--color-white)]">
-                      — Skyjin, fitness trainer and bodybuilder, 2022 Mr Malaysia Bodybuilder Light Heavyweight Top10
+                      {m.slides.ambassadors.testimonialAttribution}
                     </h2>
                   </section>
                 </section>
@@ -220,15 +218,15 @@ export function AmbassadorsSlideIn({ className }: Props) {
                 <LeftContentRightImgSection
                   sectionProps={{ "aria-labelledby": "ambassadors-video-heading", className: "px-0 md:px-0" }}
                   titleAs="h2"
-                  title="See Testimonial from Skyjin"
+                  title={m.slides.ambassadors.videoTitle}
                   titleProps={{ id: "ambassadors-video-heading" }}
                   titleClassName="text-base font-semibold tracking-normal md:text-base"
-                  description={<p>Watch Skyjin&apos;s testimonial on how he finds the Mpillow to be the only pillow that can fit his size and build perfectly and give him the right support.</p>}
+                  description={<p>{m.slides.ambassadors.videoDescription}</p>}
                   right={
                     <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-xl border bg-muted/20">
                       <YouTubeAutoplayOnView
                         videoId="z2u69YPvHi4"
-                        title="Mpillow ambassadors video"
+                        title={m.slides.ambassadors.videoTitle}
                         controls={1}
                       />
                     </AspectRatio>

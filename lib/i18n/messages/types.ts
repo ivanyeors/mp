@@ -1,16 +1,247 @@
 export type Messages = {
+  common: {
+    close: string;
+    customise: string;
+    bookAppointment: string;
+    addToCart: string;
+    learnMore: string;
+    learnHow: string;
+    fromPricePrefix: string; // e.g. "From"
+  };
   header: {
     customiseLabel: string;
     online: string;
     inPerson: string;
   };
   home: {
-    heroTitlePrefix: string;
-    heroTitleEmphasis: string;
-    heroTitleSuffix: string;
-    heroSubtitle: string;
-    ctaCustomise: string;
-    ctaBookAppointment: string;
+    hero: {
+      titlePrefix: string;
+      titleEmphasis: string;
+      titleSuffix: string;
+      subtitle: string;
+      ctaCustomise: string;
+      ctaBookAppointment: string;
+    };
+    sizeMatters: {
+      title: string;
+      description: string;
+    };
+    ambassadors: {
+      title: string;
+      description: string;
+    };
+    pickYourMpillow: {
+      title: string;
+      subtitle: string;
+      specs: {
+        customisation: string;
+        fitControl: string;
+      };
+      products: {
+        basic: { title: string; description: string; badge: string };
+        premium: { title: string; description: string; badge: string };
+      };
+      buttonCustomise: string;
+      fromPricePrefix: string; // section-specific if desired
+    };
+    neckPains: {
+      title: string;
+      description: string;
+      feelTitle: string;
+      feelSupported: { label: string; description: string };
+      feelFit: { label: string; description: string };
+      feelUpkeep: { label: string; description: string };
+    };
+    whyChoose: {
+      cards: Array<{ key: string; label: string; title: string; description: string }>;
+    };
+    mbolster: {
+      title: string;
+      description: string;
+      subtitle: string;
+      buttonCustomise: string;
+      fromPricePrefix: string;
+      specs: {
+        customisation: string;
+        fitControl: string;
+      };
+    };
+    credibility: {
+      cards: Array<{ key: string; title: string; description: string }>;
+    };
+    review: {
+      title: string;
+      subtitle: string;
+      videoTitle: string;
+    };
+    founder: {
+      title: string;
+      subtitle: string;
+      paragraphs: string[];
+      name: string;
+      role: string;
+    };
+  };
+  slides: {
+    ambassadors: {
+      trigger: string;
+      title: string;
+      description: string;
+      heroLabel: string;
+      heroDescription: string;
+      allBuildsTitle: string;
+      allBuildsParagraphs: string[];
+      ambassadorsTitle: string;
+      awardsIntro: string;
+      awardsButton: string;
+      awards: string[];
+      testimonialTitle: string;
+      testimonialQuote: string;
+      testimonialAttribution: string;
+      videoTitle: string;
+      videoDescription: string;
+    };
+    sizeMatters: {
+      trigger: string;
+      title: string;
+      description: string;
+      pressQuote: { text: string; attribution: string };
+      sectionSizeMattersTitle: string;
+      sectionSizeMattersDescription: string;
+      measurementsTitle: string;
+      measurementsIntro: string;
+      measurementCards: Array<{ key: string; title: string; description: string }>;
+      headShapesTitle: string;
+      headShapesDescription: string;
+      whyUniqueTitle: string;
+      whyUniqueDescription: string;
+      sleepPositionTitle: string;
+      sleepPositionParagraphs: string[];
+      configurationsTitle: string;
+      configurationsParagraphs: string[];
+    };
+    basicMpillow: {
+      trigger: string;
+      title: string;
+      description: string;
+      heroTitle: string;
+      heroParagraphs: string[];
+      packagingTitle: string;
+      packagingItems: string[];
+      firmnessTitle: string;
+      firmnessDescription: string;
+      firmnessBasicLabel: string;
+      firmnessPremiumLabel: string;
+      features: Array<{ title: string; description: string }>;
+      sizeTitle: string;
+      sizeDescription: string;
+      sizeTable: {
+        sizeHeader: string;
+        shoulderHeader: string;
+        rows: Array<{ size: string; shoulder: string }>;
+      };
+      sizingChartTitle: string;
+      sizingChartDescription: string;
+      aftercareTitle: string;
+      aftercareParagraphs: string[];
+      careButton: string;
+      bottomCustomise: string;
+      bookAdjustment: string;
+    };
+    premiumMpillow: {
+      trigger: string;
+      title: string;
+      description: string;
+      heroSubtitle: string;
+      heroParagraphs: string[];
+      overseasTitle: string;
+      overseasDescription: string;
+      whoItsForTitle: string;
+      whoItsForIntro: string;
+      whoItsForItems: string[];
+      whoItsForConclusion: string;
+      pricingTitle: string;
+      pricingTable: { sizeHeader: string; priceHeader: string };
+      pricingNotes: string[];
+      featuresTitle: string;
+      featuresIntro: string;
+      features: Array<{ title: string; description: string }>;
+      firmnessTitle: string;
+      firmnessDescription: string;
+      accessoryTitle: string;
+      accessorySubtitle: string;
+      accessoryDescription: string;
+      accessoryButton: string;
+      videoTitle: string;
+      measurementsTitle: string;
+      measurementsIntro: string;
+      measurementSteps: Array<{ title: string; description: string }>;
+      packageTitle: string;
+      packageItems: string[];
+      aftercareTitle: string;
+      aftercareDescription: string;
+      commitmentTitle: string;
+      commitmentReadjustmentTitle: string;
+      commitmentReadjustmentDescription: string;
+      commitmentWarrantyTitle: string;
+      commitmentWarrantyDescription: string;
+      helpTitle: string;
+      helpDescription: string;
+      bottomCustomiseOnline: string;
+      bottomBookBespoke: string;
+      sourceLabel: string;
+      sourceLinkLabel: string;
+    };
+    mbolster: {
+      trigger: string;
+      title: string;
+      description: string;
+      heroLabel: string;
+      heroTitle: string;
+      heroDescription: string;
+      zoomLabel: string;
+      salePriceLabel: string;
+      reviewCountLabel: string;
+      sizeLabel: string;
+      sizePlaceholder: string;
+      sizes: string[];
+      caseTypeLabel: string;
+      caseTypePlaceholder: string;
+      caseTypes: string[];
+      purchaseNote: string;
+      purchaseLinkLabel: string;
+      viewDetailsLabel: string;
+      aboutTitle: string;
+      aboutParagraphs: string[];
+      sizeGuideTitle: string;
+      sizeGuideDescription: string;
+      sizeGuideItems: string[];
+      packagingTitle: string;
+      packagingItems: string[];
+      fillingsTitle: string;
+      fillingsDescription: string;
+      packagingNote: string;
+      reviewsTitle: string;
+      reviewsBasedOn: string;
+      reviewTitle: string;
+      reviewText: string;
+      reviewAttribution: string;
+      ratingBreakdown: string;
+      stars: string[];
+      modularTitle: string;
+      modularDescription: string;
+      customiseTitle: string;
+      customiseDescription: string;
+      fillingsSectionTitle: string;
+      fillingsSectionDescription: string;
+      discoverTitle: string;
+      discoverParagraphs: string[];
+      discoverButton: string;
+    };
+    bookAppointment: {
+      trigger: string;
+      title: string;
+    };
   };
 };
 

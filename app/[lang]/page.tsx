@@ -147,14 +147,14 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 <div className="max-w-xl space-y-6">
                   <div className="space-y-3">
                     <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-6xl">
-                      {m.home.heroTitlePrefix}
+                      {m.home.hero.titlePrefix}
                       {sep}
-                      <span className="text-primary">{m.home.heroTitleEmphasis}</span>
+                      <span className="text-primary">{m.home.hero.titleEmphasis}</span>
                       {sep}
-                      {m.home.heroTitleSuffix}
+                      {m.home.hero.titleSuffix}
                     </h1>
                     <p className="text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
-                      {m.home.heroSubtitle}
+                      {m.home.hero.subtitle}
                     </p>
                   </div>
 
@@ -162,7 +162,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                     <Button asChild className="h-auto px-6 py-4 text-base">
                       <Link href={withLocale("/mp-config", locale)}>
                         <Sparkles className="mr-2 h-5 w-5" />
-                        {m.home.ctaCustomise}
+                        {m.home.hero.ctaCustomise}
                         <ChevronRight className="ml-2 h-5 w-5" />
                       </Link>
                     </Button>
@@ -170,7 +170,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                       appointmentUrl={appointmentUrl}
                       triggerVariant="outline"
                       triggerClassName="h-auto px-6 py-4 text-base"
-                      triggerLabel={m.home.ctaBookAppointment}
+                      triggerLabel={m.home.hero.ctaBookAppointment}
                     />
                   </div>
                 </div>
@@ -192,11 +192,10 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
               <div className="space-y-4">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  Customised pillow from Singapore, handcrafted for a perfect night’s sleep
+                  {m.home.sizeMatters.title}
                 </h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  Learn why proper sizing and configuration matter for sleep posture — and how Mpillow is adjusted to
-                  fit your unique body build.
+                  {m.home.sizeMatters.description}
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <SizeMattersSlideIn />
@@ -236,10 +235,10 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
               <div className="space-y-4">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  Customisable pillows for any body build
+                  {m.home.ambassadors.title}
                 </h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  For our ambassadors, Skyjin and Piggie — a behind-the-scenes look at the customisation process.
+                  {m.home.ambassadors.description}
                 </p>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <AmbassadorsSlideIn />
@@ -274,34 +273,34 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
           <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
             <div className="space-y-8">
               <div className="space-y-2">
-                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Pick your Mpillow</h2>
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">{m.home.pickYourMpillow.title}</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  We have Mpillow for every body.
+                  {m.home.pickYourMpillow.subtitle}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 {[
                   {
-                    title: "Basic",
-                    desc: "Basic customisation to try out ",
+                    title: m.home.pickYourMpillow.products.basic.title,
+                    desc: m.home.pickYourMpillow.products.basic.description,
                     imageSrc: "/basic-mpillow.webp",
-                    rightBadge: "Standard Fit",
+                    rightBadge: m.home.pickYourMpillow.products.basic.badge,
                     fromPriceLabel: basicXsFromPrice,
                     specs: [
-                      { label: "Customisation", level: 1, hint: "" },
-                      { label: "Fit control", level: 2, hint: "" },
+                      { label: m.home.pickYourMpillow.specs.customisation, level: 1, hint: "" },
+                      { label: m.home.pickYourMpillow.specs.fitControl, level: 2, hint: "" },
                     ],
                   },
                   {
-                    title: "Premium",
-                    desc: "Premium customisation for the best fit",
+                    title: m.home.pickYourMpillow.products.premium.title,
+                    desc: m.home.pickYourMpillow.products.premium.description,
                     imageSrc: "/DarkMpillowImage-WEB.jpg",
-                    rightBadge: "Custom Fit",
+                    rightBadge: m.home.pickYourMpillow.products.premium.badge,
                     fromPriceLabel: premiumXsFromPrice,
                     specs: [
-                      { label: "Customisation", level: 3, hint: "" },
-                      { label: "Fit control", level: 4, hint: "" },
+                      { label: m.home.pickYourMpillow.specs.customisation, level: 3, hint: "" },
+                      { label: m.home.pickYourMpillow.specs.fitControl, level: 4, hint: "" },
                     ],
                   },
                 ].map((card) => (
@@ -362,7 +361,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
                       <div className="mt-4 flex items-center justify-between">
                         <span className="text-2xl font-bold tabular-nums">
-                          From {card.fromPriceLabel}
+                          {m.home.pickYourMpillow.fromPricePrefix} {card.fromPriceLabel}
                         </span>
                       </div>
                     </CardContent>
@@ -372,14 +371,14 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                         <div className="flex w-full items-center gap-2">
                           <BasicMpillowLearnMoreSlideIn className="flex-1" />
                           <Button asChild className="flex-1">
-                            <Link href={withLocale("/mp-config", locale)}>Customise</Link>
+                            <Link href={withLocale("/mp-config", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
                           </Button>
                         </div>
                       ) : (
                         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
                           <PremiumLearnMoreDialog className="flex-1" />
                           <Button asChild className="flex-1">
-                            <Link href={withLocale("/mp-config", locale)}>Customise</Link>
+                            <Link href={withLocale("/mp-config", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
                           </Button>
                         </div>
                       )}
@@ -399,35 +398,36 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             {/* Match the "Ambassadors" section layout style */}
             <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
               <div className="space-y-4">
-                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Neck Pains?</h2>
+                <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">{m.home.neckPains.title}</h2>
                 <p className="text-muted-foreground leading-relaxed">
-                  With our premium Mpillow, the ultimate customisable pillow for cervical neck pain relief. Designed to support
-                  your unique posture and sleep style, our modular pillows help improve sleep quality, reduce stiffness,
-                  and promote spinal alignment.
+                  {m.home.neckPains.description}
                 </p>
               </div>
 
               {/* Desktop: avoid empty right column (keeps alignment clean) */}
               <div className="hidden md:block">
                 <div className="rounded-2xl border bg-card/40 p-6 shadow-sm backdrop-blur-sm">
-                  <div className="text-sm font-semibold tracking-tight">What you’ll feel</div>
+                  <div className="text-sm font-semibold tracking-tight">{m.home.neckPains.feelTitle}</div>
                   <div className="mt-4 space-y-3 text-sm text-muted-foreground">
                     <div className="flex items-start gap-3">
                       <Sparkles className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
                       <p>
-                        <span className="font-medium text-foreground">More supported</span> neck and head posture.
+                        <span className="font-medium text-foreground">{m.home.neckPains.feelSupported.label}</span>{" "}
+                        {m.home.neckPains.feelSupported.description}
                       </p>
                     </div>
                     <div className="flex items-start gap-3">
                       <SlidersHorizontal className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
                       <p>
-                        <span className="font-medium text-foreground">Better fit</span> for your height and sleep style.
+                        <span className="font-medium text-foreground">{m.home.neckPains.feelFit.label}</span>{" "}
+                        {m.home.neckPains.feelFit.description}
                       </p>
                     </div>
                     <div className="flex items-start gap-3">
                       <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
                       <p>
-                        <span className="font-medium text-foreground">Easier upkeep</span> with washable components.
+                        <span className="font-medium text-foreground">{m.home.neckPains.feelUpkeep.label}</span>{" "}
+                        {m.home.neckPains.feelUpkeep.description}
                       </p>
                     </div>
                   </div>
@@ -456,43 +456,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
           <div className="mx-auto w-full max-w-6xl px-4 pb-12 md:pb-16">
             <MagicBento
               className="card-grid--asymmetric rounded-2xl bg-card/40 p-2 shadow-sm backdrop-blur-sm"
-              cards={[
-                {
-                  key: "why-01",
-                  color: "var(--card)",
-                  label: "01",
-                  title: "Adjustable height",
-                  description: "Easily adjustable for any height",
-                },
-                {
-                  key: "why-02",
-                  color: "var(--card)",
-                  label: "02",
-                  title: "100% washable",
-                  description: "Covers and components are easy to keep fresh",
-                },
-                {
-                  key: "why-03",
-                  color: "var(--card)",
-                  label: "03",
-                  title: "Designed for your sleep style",
-                  description: "Uniquely shaped to suit your sleeping position",
-                },
-                {
-                  key: "why-04",
-                  color: "var(--card)",
-                  label: "04",
-                  title: "Customisable width",
-                  description: "Built for different body builds and shoulder widths",
-                },
-                {
-                  key: "why-05",
-                  color: "var(--card)",
-                  label: "05",
-                  title: "Modular & serviceable",
-                  description: "Modular components for easy maintenance",
-                },
-              ]}
+              cards={m.home.whyChoose.cards.map((c) => ({ ...c, color: "var(--card)" }))}
               textAutoHide={false}
               enableTilt={false}
               enableSpotlight
@@ -524,20 +488,19 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 <div className="flex flex-col">
                   <CardContent className="p-5 md:p-7">
                     <div className="space-y-2">
-                      <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Mbolster</h2>
+                      <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{m.home.mbolster.title}</h2>
                       <p className="text-muted-foreground leading-relaxed">
-                        A customisable bolster designed to fit your body build — dial in your comfort with adjustable
-                        support.
+                        {m.home.mbolster.description}
                       </p>
                     </div>
 
                     <div className="mt-4">
-                      <h3 className="font-semibold">Premium customisation for the best fit</h3>
+                      <h3 className="font-semibold">{m.home.mbolster.subtitle}</h3>
 
                       <div className="mt-4 space-y-2">
                         {[
-                          { label: "Customisation", level: 3 },
-                          { label: "Fit control", level: 4 },
+                          { label: m.home.mbolster.specs.customisation, level: 3 },
+                          { label: m.home.mbolster.specs.fitControl, level: 4 },
                         ].map((s) => (
                           <div key={s.label} className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-sm">
@@ -560,7 +523,9 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                       </div>
 
                       <div className="mt-4 flex items-center justify-between">
-                        <span className="text-2xl font-bold tabular-nums">From {bolsterFromPrice}</span>
+                        <span className="text-2xl font-bold tabular-nums">
+                          {m.home.mbolster.fromPricePrefix} {bolsterFromPrice}
+                        </span>
                       </div>
                     </div>
                   </CardContent>
@@ -569,7 +534,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                     <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
                       <MbolsterLearnMoreSlideIn className="flex-1" />
                       <Button asChild className="flex-1">
-                        <Link href={withLocale("/mbolster-config", locale)}>Customise mbolster</Link>
+                        <Link href={withLocale("/mbolster-config", locale)}>{m.home.mbolster.buttonCustomise}</Link>
                       </Button>
                     </div>
                   </CardFooter>
@@ -585,18 +550,18 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <Award className="h-6 w-6 text-primary" />
-                <div className="mt-3 text-2xl font-semibold">Singapore Good Design 2022</div>
-                <div className="mt-1 text-sm text-muted-foreground">Award-winning brand</div>
+                <div className="mt-3 text-2xl font-semibold">{m.home.credibility.cards[0]?.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{m.home.credibility.cards[0]?.description}</div>
               </SpotlightCard>
               <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <ShieldCheck className="h-6 w-6 text-primary" />
-                <div className="mt-3 text-2xl font-semibold">7 years</div>
-                <div className="mt-1 text-sm text-muted-foreground">Research and development</div>
+                <div className="mt-3 text-2xl font-semibold">{m.home.credibility.cards[1]?.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{m.home.credibility.cards[1]?.description}</div>
               </SpotlightCard>
               <SpotlightCard className="min-h-[207px] rounded-2xl border bg-card/40 p-6 backdrop-blur-sm">
                 <BadgeCheck className="h-6 w-6 text-primary" />
-                <div className="mt-3 text-2xl font-semibold">Patented</div>
-                <div className="mt-1 text-sm text-muted-foreground">Across multiple countries</div>
+                <div className="mt-3 text-2xl font-semibold">{m.home.credibility.cards[2]?.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{m.home.credibility.cards[2]?.description}</div>
               </SpotlightCard>
             </div>
           </div>
@@ -608,9 +573,9 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             <div className="space-y-6">
               <div className="space-y-2">
                 <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
-                  Dr Steven Hulme&apos;s Mpillow Review
+                  {m.home.review.title}
                 </h2>
-                <p className="text-muted-foreground">Featured review.</p>
+                <p className="text-muted-foreground">{m.home.review.subtitle}</p>
               </div>
 
               <AspectRatio
@@ -619,7 +584,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
               >
                 <YouTubeAutoplayOnView
                   videoId="nvFI6woJD9g"
-                  title="Dr Steven Hulme's Mpillow Review"
+                  title={m.home.review.videoTitle}
                 />
               </AspectRatio>
 
@@ -634,27 +599,20 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
               <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
                 <div className="min-w-0">
                   <div className="mb-8">
-                    <h2 className="mb-3 text-3xl font-bold tracking-tight">A note from our founder</h2>
-                    <p className="text-muted-foreground">Why we built this company</p>
+                    <h2 className="mb-3 text-3xl font-bold tracking-tight">{m.home.founder.title}</h2>
+                    <p className="text-muted-foreground">{m.home.founder.subtitle}</p>
                   </div>
 
                   <div className="space-y-6">
-                    <p className="text-muted-foreground leading-relaxed">
-                      What you&apos;re buying isn&apos;t just a product — it&apos;s everything that went into it: the
-                      art, the design, the long nights, the hard work, the setbacks, the breakthroughs, the
-                      persistence, the dedication, the time, and the love.
-                    </p>
-                    <p className="text-muted-foreground leading-relaxed">
-                      A truly good product isn&apos;t made by copying what already exists. It&apos;s made by listening
-                      closely to real people and building around their needs and pain points. We&apos;ve poured
-                      thousands of hours into research and refinement — learning from mistakes, taking feedback to
-                      heart, and continuing even when it was difficult. And through it all, we&apos;ve held on to one
-                      belief: if we keep showing up with honest intention and help others, God will open the way.
-                    </p>
+                    {m.home.founder.paragraphs.map((text, idx) => (
+                      <p key={idx} className="text-muted-foreground leading-relaxed">
+                        {text}
+                      </p>
+                    ))}
 
                     <div className="pt-2">
-                      <p className="font-semibold">Darren Yeo</p>
-                      <p className="text-sm text-muted-foreground">Founder</p>
+                      <p className="font-semibold">{m.home.founder.name}</p>
+                      <p className="text-sm text-muted-foreground">{m.home.founder.role}</p>
                     </div>
                   </div>
                 </div>
