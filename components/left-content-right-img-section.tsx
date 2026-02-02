@@ -3,6 +3,10 @@ import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
+type DataAttributes = {
+  [key: `data-${string}`]: string | number | boolean | undefined;
+};
+
 type ImageConfig = {
   src: string;
   alt: string;
@@ -17,7 +21,7 @@ export type LeftContentRightImgSectionProps = {
    * Optional extra props for the outer <section> (e.g. id, data-*, aria-*).
    * `className` here will be merged with `className`.
    */
-  sectionProps?: Omit<React.ComponentPropsWithoutRef<"section">, "children">;
+  sectionProps?: Omit<React.ComponentPropsWithoutRef<"section">, "children"> & DataAttributes;
   gridClassName?: string;
   headerClassName?: string;
   /**
@@ -28,7 +32,7 @@ export type LeftContentRightImgSectionProps = {
    * Optional extra props for the internal <header> (e.g. id, data-*, aria-*).
    * `className` here will be merged with `headerClassName`.
    */
-  headerProps?: Omit<React.ComponentPropsWithoutRef<"header">, "children">;
+  headerProps?: Omit<React.ComponentPropsWithoutRef<"header">, "children"> & DataAttributes;
   titleClassName?: string;
   /**
    * Optional extra props for the title element (e.g. id, aria-*).

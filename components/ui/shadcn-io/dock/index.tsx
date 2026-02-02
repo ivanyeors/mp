@@ -7,6 +7,7 @@ import {
   useSpring,
   useTransform,
   type SpringOptions,
+  type HTMLMotionProps,
   AnimatePresence,
 } from 'framer-motion';
 import {
@@ -36,10 +37,9 @@ type DockProps = {
   spring?: SpringOptions;
 };
 type DockItemProps = {
-  className?: string;
   children: React.ReactNode;
   isActive?: boolean;
-} & React.HTMLAttributes<HTMLDivElement>;
+} & Omit<HTMLMotionProps<'div'>, 'children'>;
 type DockLabelProps = {
   className?: string;
   children: React.ReactNode;
