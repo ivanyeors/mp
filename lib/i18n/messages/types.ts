@@ -192,6 +192,24 @@ export type Messages = {
       sourceLabel: string;
       sourceLinkLabel: string;
     };
+    cervicalNeckSupport: {
+      title: string;
+      description: string;
+      heroEyebrow: string;
+      heroTitle: string;
+      heroDescription: string;
+      whyTitle: string;
+      whyDescription: string;
+      benefitsTitle: string;
+      benefits: Array<{ title: string; description: string }>;
+      differenceTitle: string;
+      differenceParagraphs: string[];
+      additionalBenefitsTitle: string;
+      additionalBenefits: string[];
+      bottomViewSource: string;
+      sourceLabel: string;
+      sourceLinkLabel: string;
+    };
     mbolster: {
       trigger: string;
       title: string;

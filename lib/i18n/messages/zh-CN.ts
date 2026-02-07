@@ -294,6 +294,43 @@ export const zhCN: Messages = {
       sourceLabel: "来源：",
       sourceLinkLabel: "Mpillow Premium 专属定制枕页面",
     },
+    cervicalNeckSupport: {
+      title: "颈椎支撑垫",
+      description: "颈椎枕（缓解颈部疼痛）",
+      heroEyebrow: "可定制 Premium Mpillow 的颈椎支撑枕",
+      heroTitle: "颈椎支撑垫",
+      heroDescription: "",
+      whyTitle: "为什么设计颈椎支撑枕",
+      whyDescription: "我们的研究与设计，能为颈部曲线更明显的人提供更好的承托，帮助缓解睡眠中造成的颈部僵硬或颈部疼痛。",
+      benefitsTitle: "颈椎支撑枕的好处",
+      benefits: [
+        {
+          title: "改善颈部对齐",
+          description:
+            "颈椎枕能支撑颈部自然曲线，帮助脊柱保持正确对齐，减少颈部肌肉与关节的压力，让睡眠更舒适。",
+        },
+        {
+          title: "缓解颈部与肩部疼痛",
+          description:
+            "针对颈椎区域提供承托，帮助释放颈肩紧绷与压力，减轻不适，让你醒来更放松、更不僵硬。",
+        },
+        {
+          title: "提升睡眠质量",
+          description:
+            "帮助形成更符合人体工学的睡姿，促进更顺畅的呼吸，并减少夜间翻身与辗转，带来更深更好的睡眠。",
+        },
+      ],
+      differenceTitle: "Mpillow 的不同之处：颈椎支撑枕",
+      differenceParagraphs: [
+        "为你的颈部曲线提供额外承托。",
+        "颈椎枕的形状能帮助保持承托结构，减少填充物变扁、塌陷的情况。",
+      ],
+      additionalBenefitsTitle: "Mpillow 颈椎支撑枕的额外优势",
+      additionalBenefits: ["为部分用户提供更耐用的承托", "使用相同的填充技术", "可水洗", "可拆卸", "可更换"],
+      bottomViewSource: "查看来源页面",
+      sourceLabel: "来源：",
+      sourceLinkLabel: "mpillow.com 颈椎支撑枕页面",
+    },
     mbolster: {
       trigger: "了解更多",
       title: "Mbolster",

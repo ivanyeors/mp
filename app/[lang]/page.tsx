@@ -8,6 +8,7 @@ import { BasicMpillowLearnMoreSlideIn } from "@/components/slide-in-pages/basic-
 import { PremiumLearnMoreDialog } from "@/components/slide-in-pages/premium-learn-more-dialog";
 import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
 import { BookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { CervicalNeckSupportLearnMoreCta } from "@/components/slide-in-pages/cervical-neck-support-learn-more-cta";
 import { InfiniteImageMarquee } from "@/components/effects/infinite-image-marquee";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -430,6 +431,10 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                         {m.home.neckPains.feelUpkeep.description}
                       </p>
                     </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <CervicalNeckSupportLearnMoreCta className="w-full" />
                   </div>
                 </div>
               </div>

@@ -5,7 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FirmnessScale } from "@/components/firmness-scale";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { AppleCarouselCard, type AppleCarouselCardData, Carousel } from "@/components/ui/apple-cards-carousel";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,7 @@ import { XIcon } from "lucide-react";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
+import { openCervicalNeckSupportSheet } from "@/components/slide-in-pages/cervical-neck-support";
 
 type Props = {
   className?: string;
@@ -30,30 +32,6 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function SectionSubtitle({ children }: { children: React.ReactNode }) {
   return <div className="text-sm font-semibold text-foreground">{children}</div>;
-}
-
-function FeatureCard({
-  title,
-  imageSrc,
-  imageAlt,
-  children,
-}: {
-  title: string;
-  imageSrc: string;
-  imageAlt: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border bg-card">
-      <div className="relative aspect-[16/10] bg-muted/20">
-        <Image src={imageSrc} alt={imageAlt} fill className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
-      </div>
-      <div className="space-y-1.5 p-4">
-        <div className="text-sm font-semibold text-foreground">{title}</div>
-        <div className="text-sm leading-relaxed text-muted-foreground">{children}</div>
-      </div>
-    </div>
-  );
 }
 
 function PremiumLearnMoreSheetInner() {
@@ -150,6 +128,22 @@ function PremiumLearnMoreSheetInner() {
                       <p className="text-sm leading-relaxed text-muted-foreground">
                         {m.slides.premiumMpillow.heroParagraphs[1]}
                       </p>
+                      <div className="w-full space-y-3">
+                        <FirmnessScale
+                          mode="range"
+                          value={[40, 85]}
+                          title={m.slides.basicMpillow.firmnessPremiumLabel}
+                          label="40–85%"
+                          className="w-full"
+                        />
+                        <FirmnessScale
+                          mode="range"
+                          value={[25, 35]}
+                          title={m.slides.basicMpillow.firmnessBasicLabel}
+                          label="25–35%"
+                          className="w-full"
+                        />
+                      </div>
                     </div>
 
                     <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
@@ -173,11 +167,53 @@ function PremiumLearnMoreSheetInner() {
                     <p className="text-sm leading-relaxed text-muted-foreground">
                       {m.slides.premiumMpillow.overseasDescription}
                     </p>
+                    <div className="pt-1">
+                      <SheetClose asChild>
+                        <Button asChild className="h-auto py-3">
+                          <Link href={to("/mp-config")}>{m.slides.premiumMpillow.bottomCustomiseOnline}</Link>
+                        </Button>
+                      </SheetClose>
+                    </div>
                   </div>
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
                     <Image
                       src="/m-pillow-417953-web.webp"
                       alt="Overseas customisation"
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="px-4 md:px-6 space-y-3">
+                <SectionTitle>{m.slides.premiumMpillow.accessoryTitle}</SectionTitle>
+                <div className="grid gap-4 md:grid-cols-2 md:items-center">
+                  <div className="space-y-2">
+                    <SectionSubtitle>{m.slides.premiumMpillow.accessorySubtitle}</SectionSubtitle>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      {m.slides.premiumMpillow.accessoryDescription}
+                    </p>
+                    <SheetClose asChild>
+                      <Link
+                        href="https://www.mpillow.com/pages/cervical-support-pillow-customisable-pillow"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          openCervicalNeckSupportSheet();
+                        }}
+                        className={cn(buttonVariants({ variant: "outline", className: "h-auto py-3" }))}
+                      >
+                        {m.slides.premiumMpillow.accessoryButton}
+                      </Link>
+                    </SheetClose>
+                  </div>
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
+                    <Image
+                      src="/mpillow-cervical-neck.webp"
+                      alt="Cervical neck support accessory"
                       fill
                       className="object-cover"
                       sizes="(min-width: 768px) 50vw, 100vw"
@@ -249,39 +285,55 @@ function PremiumLearnMoreSheetInner() {
                   {m.slides.premiumMpillow.featuresIntro}
                 </p>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FeatureCard
-                    title={m.slides.premiumMpillow.features[0]?.title ?? ""}
-                    imageSrc="/NeckDepth.webp"
-                    imageAlt="Measurement and customisation"
-                  >
-                    {m.slides.premiumMpillow.features[0]?.description ?? ""}
-                  </FeatureCard>
-
-                  <FeatureCard
-                    title={m.slides.premiumMpillow.features[1]?.title ?? ""}
-                    imageSrc="/3_compartment.webp"
-                    imageAlt="Three compartments"
-                  >
-                    {m.slides.premiumMpillow.features[1]?.description ?? ""}
-                  </FeatureCard>
-
-                  <FeatureCard
-                    title={m.slides.premiumMpillow.features[2]?.title ?? ""}
-                    imageSrc="/m-pillow-518057-final-V-WEB.webp"
-                    imageAlt="Waterproof inner protector"
-                  >
-                    {m.slides.premiumMpillow.features[2]?.description ?? ""}
-                  </FeatureCard>
-
-                  <FeatureCard title={m.slides.premiumMpillow.features[3]?.title ?? ""} imageSrc="/wash-care.webp" imageAlt="Wash care">
-                    {m.slides.premiumMpillow.features[3]?.description ?? ""}
-                  </FeatureCard>
-
-                  <FeatureCard title={m.slides.premiumMpillow.features[4]?.title ?? ""} imageSrc="/fillings.webp" imageAlt="Filling warranty">
-                    {m.slides.premiumMpillow.features[4]?.description ?? ""}
-                  </FeatureCard>
-                </div>
+                <Carousel
+                  items={(
+                    [
+                      {
+                        src: "/NeckDepth.webp",
+                        title: m.slides.premiumMpillow.features[0]?.title ?? "Feature 1",
+                        category: "",
+                        content: (
+                          <p className="text-muted-foreground">{m.slides.premiumMpillow.features[0]?.description ?? ""}</p>
+                        ),
+                      },
+                      {
+                        src: "/3_compartment.webp",
+                        title: m.slides.premiumMpillow.features[1]?.title ?? "Feature 2",
+                        category: "",
+                        content: (
+                          <p className="text-muted-foreground">{m.slides.premiumMpillow.features[1]?.description ?? ""}</p>
+                        ),
+                      },
+                      {
+                        src: "/m-pillow-518057-final-V-WEB.webp",
+                        title: m.slides.premiumMpillow.features[2]?.title ?? "Feature 3",
+                        category: "",
+                        content: (
+                          <p className="text-muted-foreground">{m.slides.premiumMpillow.features[2]?.description ?? ""}</p>
+                        ),
+                      },
+                      {
+                        src: "/wash-care.webp",
+                        title: m.slides.premiumMpillow.features[3]?.title ?? "Feature 4",
+                        category: "",
+                        content: (
+                          <p className="text-muted-foreground">{m.slides.premiumMpillow.features[3]?.description ?? ""}</p>
+                        ),
+                      },
+                      {
+                        src: "/fillings.webp",
+                        title: m.slides.premiumMpillow.features[4]?.title ?? "Feature 5",
+                        category: "",
+                        content: (
+                          <p className="text-muted-foreground">{m.slides.premiumMpillow.features[4]?.description ?? ""}</p>
+                        ),
+                      },
+                    ] satisfies AppleCarouselCardData[]
+                  ).map((card, index) => (
+                    <AppleCarouselCard key={`${index}-${card.title}`} card={card} index={index} layout variant="stacked" />
+                  ))}
+                  itemsContainerClassName="pl-0 mx-0 max-w-none"
+                />
               </section>
 
               <section className="px-4 md:px-6 space-y-3">
@@ -301,30 +353,6 @@ function PremiumLearnMoreSheetInner() {
                       label="40–85%"
                       className="w-full"
                     />
-                  </div>
-                </div>
-              </section>
-
-              <section className="px-4 md:px-6 space-y-3">
-                <SectionTitle>{m.slides.premiumMpillow.accessoryTitle}</SectionTitle>
-                <div className="grid gap-4 md:grid-cols-2 md:items-center">
-                  <div className="space-y-2">
-                    <SectionSubtitle>{m.slides.premiumMpillow.accessorySubtitle}</SectionSubtitle>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {m.slides.premiumMpillow.accessoryDescription}
-                    </p>
-                    <Button asChild variant="outline" className="h-auto py-3">
-                      <Link
-                        href="https://www.mpillow.com/pages/cervical-support-pillow-customisable-pillow"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {m.slides.premiumMpillow.accessoryButton}
-                      </Link>
-                    </Button>
-                  </div>
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
-                    <Image src="/mpillow-cervical-neck.webp" alt="Cervical neck support accessory" fill className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
                   </div>
                 </div>
               </section>

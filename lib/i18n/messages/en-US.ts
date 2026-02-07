@@ -260,8 +260,9 @@ export const enUS: Messages = {
       firmnessTitle: "Firmness Level",
       firmnessDescription: "The Premium Mpillow can be customised to your preferred comfort level.",
       accessoryTitle: "Additional accessory",
-      accessorySubtitle: "Pillow For Cervical Neck Pain",
-      accessoryDescription: "Add cervical support if you need extra neck support in your sleep setup.",
+      accessorySubtitle: "Custom Pillow with Custom Accessories",
+      accessoryDescription:
+        "Add a customisable cervical support pillow accessory to boost neck support and help maintain better spinal alignment—ideal if you wake up with neck pain or stiffness and want a more supportive sleep setup.",
       accessoryButton: "Find out more",
       videoTitle: "Watch how we customise Premium Mpillow",
       measurementsTitle: "Overseas measurement guide",
@@ -296,6 +297,50 @@ export const enUS: Messages = {
       bottomBookBespoke: "Book a bespoke service",
       sourceLabel: "Source:",
       sourceLinkLabel: "Mpillow Premium customised pillow page",
+    },
+    cervicalNeckSupport: {
+      title: "Cervical Neck Support",
+      description: "Cervical Pillow For Neck Pain",
+      heroEyebrow: "Cervical Support Pillow For Customisable Premium Mpillow",
+      heroTitle: "Cervical Neck Support",
+      heroDescription: "",
+      whyTitle: "Why We Design Cervical Support Pillow",
+      whyDescription:
+        "Our research and design would help people with a more curved neck profile to have a better support to relieve that neck stiffness or neck pain caused during your sleep.",
+      benefitsTitle: "Benefits Of A Cervical Support Pillow",
+      benefits: [
+        {
+          title: "Improves Neck Alignment",
+          description:
+            "A cervical pillow for neck pain is specifically designed to support the natural curve of your neck, helping to align the spine correctly. This reduces strain on your neck muscles and joints, leading to a more comfortable and pain-free sleep.",
+        },
+        {
+          title: "Reduces Neck and Shoulder Pain",
+          description:
+            "By providing targeted support to the cervical area, a cervical support pillow helps relieve tension and pressure on the neck and shoulders. This can significantly reduce pain and discomfort, allowing you to wake up feeling refreshed and free from stiffness.",
+        },
+        {
+          title: "Enhances Sleep Quality",
+          description:
+            "A cervical pillow for neck pain encourages a more ergonomic sleeping position, which promotes better breathing and reduces tossing and turning at night. This leads to a deeper, more restful sleep, helping you feel more energized throughout the day.",
+        },
+      ],
+      differenceTitle: "The Mpillow Difference: Cervical Support Pillow",
+      differenceParagraphs: [
+        "An additional support for your curved neck.",
+        "The cervical pillow for neck pain helps to prevent fillings from getting flatter, as its shape keeps the integrity of the support.",
+      ],
+      additionalBenefitsTitle: "Additional Benefits of A Mpillow Cervical Support Pillow",
+      additionalBenefits: [
+        "Creates more durable support for selected users",
+        "Using the same filling technology",
+        "Washable",
+        "Removable",
+        "Replaceable",
+      ],
+      bottomViewSource: "View source",
+      sourceLabel: "Source:",
+      sourceLinkLabel: "mpillow.com cervical support pillow page",
     },
     mbolster: {
       trigger: "Learn more",

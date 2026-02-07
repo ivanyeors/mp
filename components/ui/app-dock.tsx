@@ -30,6 +30,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { BasicMpillowLearnMoreSheet } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
 import { PremiumLearnMoreSheet } from "@/components/slide-in-pages/premium-learn-more-dialog";
 import { MbolsterLearnMoreSheet } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
+import { CervicalNeckSupportSheet } from "@/components/slide-in-pages/cervical-neck-support";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
 
@@ -330,6 +331,9 @@ export function AppDock() {
       <BasicMpillowLearnMoreSheet open={basicOpen} onOpenChange={setBasicOpen} />
       <PremiumLearnMoreSheet open={premiumOpen} onOpenChange={setPremiumOpen} />
       <MbolsterLearnMoreSheet open={mbolsterOpen} onOpenChange={setMbolsterOpen} />
+
+      {/* Global sheets (opened via window events) */}
+      <CervicalNeckSupportSheet />
     </div>
   );
 }
