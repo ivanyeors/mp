@@ -241,7 +241,6 @@ function Chart({
             return (
               <Group key={`row-${rowIndex}-${row.label}`} top={rowY}>
                 {values.map((v, idx) => {
-                  const impliedMarginValue = Math.max(0, row.msrpValue - row.costValue);
                   const barY = idx * (BAR_HEIGHT + INNER_BAR_GAP);
                   return (
                     <Bar

@@ -33,7 +33,6 @@ import {
   User,
   Sparkles,
   CheckCircle,
-  Image as ImageIcon,
   Camera,
   X,
 } from "lucide-react";
