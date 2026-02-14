@@ -163,7 +163,11 @@ export function AppDock() {
               </DockItem>
             </SheetTrigger>
 
-            <SheetContent side="bottom" className="pb-[calc(2rem+var(--safe-bottom))]">
+            <SheetContent
+              side="bottom"
+              mobilePreset="quick"
+              className="pb-[calc(2rem+var(--safe-bottom))]"
+            >
               <div className="px-4 pt-2">
                 <div className="text-base font-semibold">Menu</div>
                 <div className="mt-1 text-sm text-muted-foreground">Quick access</div>

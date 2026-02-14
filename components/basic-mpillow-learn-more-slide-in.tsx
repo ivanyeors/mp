@@ -94,7 +94,7 @@ function BasicMpillowLearnMoreSheetInner() {
   return (
     <SheetContent
       side="right"
-      disableMobileBottom
+      mobilePreset="full"
       hideClose
       className="w-full max-w-none sm:max-w-none p-0 bg-transparent border-0 shadow-none overflow-hidden"
     >

@@ -102,7 +102,7 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel = "Learn more
 
       <SheetContent
         side="right"
-        disableMobileBottom
+        mobilePreset="full"
         hideClose
         className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >
@@ -596,7 +596,7 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        disableMobileBottom
+        mobilePreset="full"
         hideClose
         className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >
