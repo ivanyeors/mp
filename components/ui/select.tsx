@@ -151,6 +151,10 @@ const SelectContent = React.forwardRef<
 
   if (isMobile) {
     const { align, alignOffset, side, sideOffset, ...sheetProps } = props;
+    void align;
+    void alignOffset;
+    void side;
+    void sideOffset;
     return (
       <SheetContent
         side="bottom"
@@ -197,15 +201,19 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
       className,
       disabled,
       textValue,
-      inset: _inset,
-      variant: _variant,
-      asChild: _asChild,
+      inset,
+      variant,
+      asChild,
       onSelect,
       onClick,
       ...props
     },
     ref,
   ) => {
+    void inset;
+    void variant;
+    void asChild;
+
     const { setValue, setOpen, registerLabel, closeOnSelect, value: selectedValue } =
       useSelectContext();
     const { isMobile } = useSelectContext();
