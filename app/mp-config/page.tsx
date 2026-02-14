@@ -536,7 +536,7 @@ export default function MpConfigPage() {
       {currentStep !== "welcome" && (
         <div
           className="absolute right-4 z-20"
-          style={{ top: "calc(1rem + env(safe-area-inset-top))" }}
+          style={{ top: "calc(1rem + var(--safe-top))" }}
         >
           <Button
             type="button"

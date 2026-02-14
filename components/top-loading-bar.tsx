@@ -29,7 +29,12 @@ function computeOffsets(): Offsets {
     return { top: rect.bottom, left };
   }
 
-  // Fallback: respect any top padding applied to body (e.g. PWA safe-area handling).
+  // Fallback: use shared safe-area tokens from the root stylesheet.
+  const rootStyles = window.getComputedStyle(document.documentElement);
+  const topClearance = safeParsePx(rootStyles.getPropertyValue("--mobile-top-clearance"));
+  if (topClearance > 0) return { top: topClearance, left };
+
+  // Final fallback: respect any top padding applied to body (e.g. legacy PWA handling).
   const bodyTopPad = safeParsePx(window.getComputedStyle(document.body).paddingTop);
   return { top: bodyTopPad, left };
 }

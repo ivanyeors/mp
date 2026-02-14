@@ -26,7 +26,7 @@ export function HomeHeader() {
     <>
       {/* Keep compact header explicitly top-anchored so mobile scroll can't drift it. */}
       <div
-        className={`fixed left-1/2 top-[calc(env(safe-area-inset-top)+0.25rem)] z-40 max-w-full -translate-x-1/2 px-4 py-2 transition-all duration-200 ease-out ${
+        className={`fixed left-1/2 top-[var(--mobile-top-clearance)] z-40 max-w-full -translate-x-1/2 px-4 py-2 transition-all duration-200 ease-out ${
           isCompact ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}
       >
