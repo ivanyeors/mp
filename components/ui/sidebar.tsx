@@ -186,6 +186,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
+          mobilePreset="full"
           className="bg-sidebar text-sidebar-foreground h-svh max-h-svh w-full p-0 [&>button]:hidden"
           style={
             {

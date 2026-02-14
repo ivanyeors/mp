@@ -123,10 +123,10 @@ export function AppDock() {
 
   return (
     <div
-      className={`fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-transform duration-200 ease-out ${
+      className={`app-dock fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-transform duration-200 ease-out ${
         isHidden ? "translate-y-24 opacity-0" : "translate-y-0 opacity-100"
       }`}
-      style={{ bottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}
+      style={{ bottom: "calc(var(--mobile-dock-offset) + var(--safe-bottom))" }}
     >
       <Dock className="items-end pb-3">
         {dockItems.map((item, idx) => {
@@ -163,7 +163,11 @@ export function AppDock() {
               </DockItem>
             </SheetTrigger>
 
-            <SheetContent side="bottom" className="pb-8">
+            <SheetContent
+              side="bottom"
+              mobilePreset="quick"
+              className="pb-[calc(2rem+var(--safe-bottom))]"
+            >
               <div className="px-4 pt-2">
                 <div className="text-base font-semibold">Menu</div>
                 <div className="mt-1 text-sm text-muted-foreground">Quick access</div>

@@ -78,6 +78,17 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --mobile-top-offset: 0.25rem;
+  --mobile-top-clearance: calc(var(--safe-top) + var(--mobile-top-offset));
+  --mobile-dock-height: 3.75rem;
+  --mobile-dock-offset: 0.5rem;
+  --mobile-bottom-breathing-room: 0.5rem;
+  --mobile-bottom-clearance: calc(
+    var(--mobile-dock-height) + var(--mobile-dock-offset) + var(--safe-bottom) +
+      var(--mobile-bottom-breathing-room)
+  );
   --app-dock-clearance: 0rem;
   /* Shared glow color (matches SpotlightCard palette) */
   --mp-glow-rgb: 148, 163, 184;
@@ -131,14 +142,14 @@ body.dock-hidden .app-dock {
 
 @media (max-width: 768px) {
   :root {
-    --app-dock-clearance: 4.5rem;
+    --app-dock-clearance: var(--mobile-bottom-clearance);
   }
 }
 
 @media (display-mode: standalone), (display-mode: fullscreen) {
   body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: calc(env(safe-area-inset-bottom) + var(--app-dock-clearance));
+    padding-top: var(--safe-top);
+    padding-bottom: calc(var(--safe-bottom) + var(--app-dock-clearance));
   }
 }
 

@@ -7,6 +7,10 @@ import { XIcon } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
+type SheetSide = "top" | "right" | "bottom" | "left"
+type SheetMobilePreset = "auto" | "quick" | "full"
+type SheetDismissBehavior = "default" | "locked"
+
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
 }
@@ -49,25 +53,79 @@ function SheetContent({
   className,
   children,
   side = "right",
+  mobilePreset,
+  showDragHandle,
+  insetBottomPadding,
+  dismissBehavior = "default",
   disableMobileBottom = false,
   hideClose = false,
+  onEscapeKeyDown,
+  onPointerDownOutside,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
-  side?: "top" | "right" | "bottom" | "left"
+  side?: SheetSide
+  mobilePreset?: SheetMobilePreset
+  showDragHandle?: boolean
+  insetBottomPadding?: boolean
+  dismissBehavior?: SheetDismissBehavior
+  /**
+   * @deprecated Use `mobilePreset="full"` instead.
+   */
   disableMobileBottom?: boolean
   hideClose?: boolean
 }) {
   const isMobile = useIsMobile()
+  const resolvedMobilePreset: SheetMobilePreset =
+    mobilePreset ?? (disableMobileBottom ? "full" : "auto")
+
   const resolvedSide =
-    !disableMobileBottom && isMobile && (side === "left" || side === "right")
+    isMobile && resolvedMobilePreset === "quick"
       ? "bottom"
-      : side
+      : isMobile &&
+          resolvedMobilePreset !== "full" &&
+          (side === "left" || side === "right")
+        ? "bottom"
+        : side
+
+  const isMobileBottomSheet = isMobile && resolvedSide === "bottom"
+  const shouldShowDragHandle =
+    showDragHandle ?? (isMobileBottomSheet && resolvedMobilePreset === "quick")
+  const shouldInsetBottomPadding = insetBottomPadding ?? isMobileBottomSheet
+  const isDismissLocked = dismissBehavior === "locked"
+
+  const handleEscapeKeyDown: React.ComponentProps<
+    typeof SheetPrimitive.Content
+  >["onEscapeKeyDown"] = (event) => {
+    onEscapeKeyDown?.(event)
+    if (isDismissLocked) event.preventDefault()
+  }
+
+  const handlePointerDownOutside: React.ComponentProps<
+    typeof SheetPrimitive.Content
+  >["onPointerDownOutside"] = (event) => {
+    onPointerDownOutside?.(event)
+    if (isDismissLocked) event.preventDefault()
+  }
+
+  const handleInteractOutside: React.ComponentProps<
+    typeof SheetPrimitive.Content
+  >["onInteractOutside"] = (event) => {
+    onInteractOutside?.(event)
+    if (isDismissLocked) event.preventDefault()
+  }
 
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay
+        data-mobile-preset={resolvedMobilePreset}
+        data-dismiss-behavior={dismissBehavior}
+      />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        data-mobile-preset={resolvedMobilePreset}
+        data-dismiss-behavior={dismissBehavior}
+        data-resolved-side={resolvedSide}
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 overflow-y-auto",
           resolvedSide === "right" &&
@@ -77,11 +135,25 @@ function SheetContent({
           resolvedSide === "top" &&
             "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto max-h-svh border-b",
           resolvedSide === "bottom" &&
-            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto max-h-svh border-t",
+            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto max-h-[100svh] border-t",
+          isMobileBottomSheet && "rounded-t-2xl",
+          shouldInsetBottomPadding && "pb-[calc(0.75rem+var(--safe-bottom))]",
           className
         )}
+        onEscapeKeyDown={handleEscapeKeyDown}
+        onPointerDownOutside={handlePointerDownOutside}
+        onInteractOutside={handleInteractOutside}
         {...props}
       >
+        {shouldShowDragHandle && (
+          <div
+            data-slot="sheet-drag-handle"
+            aria-hidden
+            className="pointer-events-none px-4 pt-3"
+          >
+            <div className="bg-muted mx-auto h-1.5 w-12 rounded-full" />
+          </div>
+        )}
         {children}
         {!hideClose && (
           <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 z-50 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
@@ -108,7 +180,10 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+      className={cn(
+        "mt-auto flex flex-col gap-2 p-4 pb-[calc(1rem+var(--safe-bottom))] md:pb-4",
+        className
+      )}
       {...props}
     />
   )

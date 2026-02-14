@@ -158,12 +158,10 @@ const SelectContent = React.forwardRef<
     return (
       <SheetContent
         side="bottom"
-        className={cn("w-full max-w-none p-0", className)}
+        mobilePreset="quick"
+        className={cn("w-full max-w-none px-0 pt-0", className)}
         {...sheetProps}
       >
-        <div className="px-4 pt-3">
-          <div className="bg-muted mx-auto h-1.5 w-12 rounded-full" />
-        </div>
         <div className="max-h-[70svh] overflow-auto px-2 pb-4 pt-2">
           {children}
         </div>
