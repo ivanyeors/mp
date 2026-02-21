@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type CSSProperties } from "react";
+import { useCallback, useMemo, type CSSProperties } from "react";
 import { Group } from "@visx/group";
 import { scaleTime, scaleLinear } from "@visx/scale";
 import { LinePath } from "@visx/shape";
@@ -75,7 +75,10 @@ function Chart({
   const innerWidth = Math.max(10, width - margin.left - margin.right);
   const innerHeight = Math.max(10, height - margin.top - margin.bottom);
 
-  const valueForMetric = (d: TimelineDataPoint) => (metric === "revenue" ? d.revenue : d.units);
+  const valueForMetric = useCallback(
+    (d: TimelineDataPoint) => (metric === "revenue" ? d.revenue : d.units),
+    [metric]
+  );
 
   const months = useMemo(() => {
     const start = startOfMonth(dateRange.from);
@@ -98,7 +101,7 @@ function Chart({
       }
       return total;
     });
-  }, [months, products, metric]);
+  }, [months, products, valueForMetric]);
 
   const compactNumber = useMemo(
     () =>
@@ -146,7 +149,7 @@ function Chart({
       range: [innerHeight, 0],
       nice: true,
     });
-  }, [products, innerHeight, metric]);
+  }, [products, innerHeight, valueForMetric]);
 
   const handleMouseMove = (event: React.MouseEvent<SVGRectElement>) => {
     const point = localPoint(event);

@@ -44,7 +44,7 @@ export function BookAppointmentSheet({
       </SheetTrigger>
       <SheetContent
         side="right"
-        disableMobileBottom
+        mobilePreset="full"
         className="w-full md:w-[70vw] max-w-none sm:max-w-none p-0 overflow-hidden"
       >
         <SheetHeader className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur pr-12">

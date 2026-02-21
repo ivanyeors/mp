@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { IconArrowNarrowLeft, IconArrowNarrowRight, IconX } from "@tabler/icons-react"
 import { AnimatePresence, motion } from "motion/react"
 import React, { createContext, useContext, useEffect, useRef, useState } from "react"
@@ -234,18 +235,16 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
     }
 
     window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [open])
+    return () => {
+      window.removeEventListener("keydown", onKeyDown)
+      document.body.style.overflow = "auto"
+    }
+  }, [handleClose, open])
 
-  useOnClickOutside(containerRef as React.RefObject<HTMLElement>, () => handleClose())
+  useOnClickOutside(containerRef as React.RefObject<HTMLElement>, handleClose)
 
   const handleOpen = () => {
     setOpen(true)
-  }
-
-  const handleClose = () => {
-    setOpen(false)
-    onCardClose(index)
   }
 
   return (
@@ -363,6 +362,7 @@ export interface BlurImageProps {
   fill?: boolean
   width?: number
   height?: number
+  sizes?: string
 }
 
 export const BlurImage = ({
@@ -371,25 +371,45 @@ export const BlurImage = ({
   src,
   className,
   alt,
-  fill,
-  ...rest
+  fill = false,
+  sizes,
 }: BlurImageProps) => {
   const [isLoading, setLoading] = useState(true)
+
+  const imageClassName = cn(
+    "h-full w-full transition duration-300",
+    isLoading ? "blur-sm" : "blur-0",
+    className,
+  )
+
+  if (fill) {
+    return (
+      <Image
+        alt={alt ? alt : "Background of a beautiful view"}
+        className={imageClassName}
+        decoding="async"
+        fill
+        loading="lazy"
+        onLoad={() => setLoading(false)}
+        sizes={sizes ?? "100vw"}
+        src={src}
+        unoptimized
+      />
+    )
+  }
+
   return (
-    <img
+    <Image
       alt={alt ? alt : "Background of a beautiful view"}
-      className={cn(
-        "h-full w-full transition duration-300",
-        isLoading ? "blur-sm" : "blur-0",
-        className,
-      )}
+      className={imageClassName}
       decoding="async"
-      height={height}
+      height={height ?? 600}
       loading="lazy"
       onLoad={() => setLoading(false)}
       src={src}
-      width={width}
-      {...rest}
+      width={width ?? 600}
+      sizes={sizes}
+      unoptimized
     />
   )
 }

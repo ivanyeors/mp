@@ -151,15 +151,17 @@ const SelectContent = React.forwardRef<
 
   if (isMobile) {
     const { align, alignOffset, side, sideOffset, ...sheetProps } = props;
+    void align;
+    void alignOffset;
+    void side;
+    void sideOffset;
     return (
       <SheetContent
         side="bottom"
-        className={cn("w-full max-w-none p-0", className)}
+        mobilePreset="quick"
+        className={cn("w-full max-w-none px-0 pt-0", className)}
         {...sheetProps}
       >
-        <div className="px-4 pt-3">
-          <div className="bg-muted mx-auto h-1.5 w-12 rounded-full" />
-        </div>
         <div className="max-h-[70svh] overflow-auto px-2 pb-4 pt-2">
           {children}
         </div>
@@ -197,15 +199,19 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
       className,
       disabled,
       textValue,
-      inset: _inset,
-      variant: _variant,
-      asChild: _asChild,
+      inset,
+      variant,
+      asChild,
       onSelect,
       onClick,
       ...props
     },
     ref,
   ) => {
+    void inset;
+    void variant;
+    void asChild;
+
     const { setValue, setOpen, registerLabel, closeOnSelect, value: selectedValue } =
       useSelectContext();
     const { isMobile } = useSelectContext();
