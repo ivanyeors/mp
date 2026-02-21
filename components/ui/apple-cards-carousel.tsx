@@ -221,6 +221,11 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
   const { onCardClose, currentIndex: _currentIndex } = useContext(CarouselContext)
   const hasCategory = card.category.trim().length > 0
 
+  const handleClose = React.useCallback(() => {
+    setOpen(false)
+    onCardClose(index)
+  }, [index, onCardClose])
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
