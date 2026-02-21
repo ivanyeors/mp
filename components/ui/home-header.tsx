@@ -124,7 +124,8 @@ export function HomeHeader() {
                 priority
               />
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <LanguageToggle />
               <ModeToggle />
             </div>
           </div>
