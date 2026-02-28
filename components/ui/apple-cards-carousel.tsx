@@ -122,13 +122,16 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
 
   const handleCardClose = (index: number) => {
     if (carouselRef.current) {
-      const cardWidth = isMobile() ? 160 : 224 // (w-40 = 160px, md:w-56 = 224px)
-      const gap = isMobile() ? 4 : 8
-      const scrollPosition = (cardWidth + gap) * (index + 1)
-      carouselRef.current.scrollTo({
-        left: scrollPosition,
-        behavior: "smooth",
-      })
+      const target = carouselRef.current.querySelector<HTMLElement>(
+        `[data-ui="apple-cards-carousel-item"][data-index="${index}"]`,
+      )
+
+      if (target) {
+        carouselRef.current.scrollTo({
+          left: target.offsetLeft,
+          behavior: "smooth",
+        })
+      }
       setCurrentIndex(index)
     }
   }
@@ -173,6 +176,8 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
                   opacity: 0,
                   y: 20,
                 }}
+                data-ui="apple-cards-carousel-item"
+                data-index={index}
                 key={`card${index}`}
               >
                 {item}
@@ -207,12 +212,14 @@ export interface CardProps {
   card: AppleCarouselCardData
   index: number
   layout?: boolean
+  variant?: "overlay" | "stacked"
 }
 
-export const AppleCarouselCard = ({ card, index, layout = false }: CardProps) => {
+export const AppleCarouselCard = ({ card, index, layout = false, variant = "overlay" }: CardProps) => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { onCardClose } = useContext(CarouselContext)
+  const { onCardClose, currentIndex: _currentIndex } = useContext(CarouselContext)
+  const hasCategory = card.category.trim().length > 0
 
   const handleClose = React.useCallback(() => {
     setOpen(false)
@@ -289,31 +296,65 @@ export const AppleCarouselCard = ({ card, index, layout = false }: CardProps) =>
         )}
       </AnimatePresence>
       <motion.button
-        className="relative z-10 flex h-48 w-40 flex-col items-start justify-start overflow-hidden rounded-3xl bg-gray-100 md:h-64 md:w-56 dark:bg-neutral-900"
+        className={cn(
+          "relative z-10 overflow-hidden rounded-3xl bg-gray-100 text-left dark:bg-neutral-900",
+          variant === "overlay"
+            ? "flex h-48 w-40 flex-col items-start justify-start md:h-64 md:w-56"
+            : "flex h-auto w-60 flex-col md:w-84",
+        )}
         layoutId={layout ? `card-${card.title}` : undefined}
         onClick={handleOpen}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-30 h-full bg-gradient-to-b from-black/50 via-transparent to-transparent" />
-        <div className="relative z-40 p-4 md:p-6">
-          <motion.p
-            className="text-left font-sans text-xs font-medium text-white md:text-sm"
-            layoutId={layout ? `category-${card.category}` : undefined}
-          >
-            {card.category}
-          </motion.p>
-          <motion.p
-            className="mt-1 max-w-xs text-left font-sans text-sm font-semibold [text-wrap:balance] text-white md:text-lg"
-            layoutId={layout ? `title-${card.title}` : undefined}
-          >
-            {card.title}
-          </motion.p>
-        </div>
-        <BlurImage
-          alt={card.title}
-          className="absolute inset-0 z-10 object-cover"
-          fill
-          src={card.src}
-        />
+        {variant === "overlay" ? (
+          <>
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-30 h-full bg-gradient-to-b from-black/50 via-transparent to-transparent" />
+            <div className="relative z-40 p-4 md:p-6">
+              {hasCategory ? (
+                <motion.p
+                  className="text-left font-sans text-xs font-medium text-white md:text-sm"
+                  layoutId={layout ? `category-${card.category}` : undefined}
+                >
+                  {card.category}
+                </motion.p>
+              ) : null}
+              <motion.p
+                className={cn(
+                  "max-w-xs text-left font-sans text-sm font-semibold [text-wrap:balance] text-white md:text-lg",
+                  hasCategory ? "mt-1" : "mt-0",
+                )}
+                layoutId={layout ? `title-${card.title}` : undefined}
+              >
+                {card.title}
+              </motion.p>
+            </div>
+            <BlurImage alt={card.title} className="absolute inset-0 z-10 object-cover" src={card.src} />
+          </>
+        ) : (
+          <>
+            <div className="relative h-40 w-full md:h-52">
+              <BlurImage alt={card.title} className="absolute inset-0 h-full w-full object-cover" src={card.src} />
+            </div>
+            <div className="relative z-40 border-t border-black/5 p-4 dark:border-white/10 md:p-5">
+              {hasCategory ? (
+                <motion.p
+                  className="font-sans text-xs font-medium text-muted-foreground md:text-sm"
+                  layoutId={layout ? `category-${card.category}` : undefined}
+                >
+                  {card.category}
+                </motion.p>
+              ) : null}
+              <motion.p
+                className={cn(
+                  "font-sans text-sm font-semibold leading-snug [text-wrap:balance] text-foreground md:text-base",
+                  hasCategory ? "mt-1" : "mt-0",
+                )}
+                layoutId={layout ? `title-${card.title}` : undefined}
+              >
+                {card.title}
+              </motion.p>
+            </div>
+          </>
+        )}
       </motion.button>
     </>
   )

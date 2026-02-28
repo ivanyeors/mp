@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "../components/SpotlightCard.css";
-@import "../components/MagicBento.css";
+@import "../components/effects/SpotlightCard.css";
+@import "../components/effects/MagicBento.css";
 
 @custom-variant dark (&:is(.dark *));
 

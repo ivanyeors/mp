@@ -2,11 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AppDock } from "@/components/app-dock";
-import { SonnerProvider } from "@/components/sonner-provider";
+import { AppDock } from "@/components/ui/app-dock";
+import { SonnerProvider } from "@/components/ui/sonner-provider";
 import { RouteScope } from "@/components/route-scope";
 import { ApiRequestTracker } from "@/components/api-request-tracker";
-import { TopLoadingBar } from "@/components/top-loading-bar";
+import { TopLoadingBar } from "@/components/ui/top-loading-bar";
+import { cookies } from "next/headers";
+import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 
 const soraSans = Sora({
   variable: "--font-sora",
@@ -51,13 +53,17 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
+  const lang = isSupportedLocale(cookieLocale ?? "") ? cookieLocale : DEFAULT_LOCALE;
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={lang} suppressHydrationWarning>
       <body
         className={`${soraSans.variable} ${soraMono.variable} antialiased`}
       >

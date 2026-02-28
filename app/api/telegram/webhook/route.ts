@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { currentOtp } from '@/lib/settings-auth'
-import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/settings/inventory/actions'
+import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/[lang]/settings/inventory/actions'
 
 export const runtime = 'nodejs'
 
