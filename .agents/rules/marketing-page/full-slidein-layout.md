@@ -1,3 +1,8 @@
+---
+trigger: model_decision
+description: when required to work on slide-in drawers / layout from the right. When also working on mobile view
+---
+
 ### Slide-in “full-page” drawer layout (right side)
 
 Use this pattern when you want an **inline popup experience** that feels like a page, but **slides in from the right** (desktop) and **covers the whole screen on mobile**.
