@@ -81,7 +81,7 @@ export function HomeHeader() {
           </Link>
 
           <div className="min-w-0 flex items-center gap-1.5 sm:gap-2">
-            <span className="hidden text-xs font-medium text-foreground/80 min-[360px]:inline">Customise</span>
+            <span className="hidden text-xs font-medium text-foreground/80 md:inline-block">Customise</span>
             <Button asChild size="sm" className="h-8 rounded-full px-2.5 sm:px-3">
               <Link href="/mp-config" aria-label="Online">
                 <Globe className="h-4 w-4 sm:hidden" aria-hidden="true" />
