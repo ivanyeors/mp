@@ -47,8 +47,8 @@ function BenefitCard({
         </div>
       ) : null}
       <div className="p-4">
-      <div className="text-sm font-semibold text-foreground">{title}</div>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
       </div>
     </div>
   );
@@ -250,14 +250,6 @@ function CervicalNeckSupportSheetInner() {
                   {m.slides.cervicalNeckSupport.bottomViewSource}
                 </Link>
               </Button>
-            </div>
-
-            <div className="mt-3 text-xs text-muted-foreground">
-              {m.slides.cervicalNeckSupport.sourceLabel}{" "}
-              <Link href={SOURCE_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
-                {m.slides.cervicalNeckSupport.sourceLinkLabel}
-              </Link>
-              .
             </div>
           </div>
         </div>

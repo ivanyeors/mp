@@ -5,15 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FirmnessScale } from "@/components/firmness-scale";
-import { LeftContentRightImgSection } from "@/components/left-content-right-img-section";
+import { LeftContentRightImgSection } from "@/components/sections/left-content-right-img-section";
 import { Carousel } from "@/components/ui/apple-cards-carousel";
-import { openBookAppointmentSheet } from "@/components/book-appointment-sheet";
+import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
-import { YouTubeAutoplayOnView } from "@/components/youtube-autoplay-on-view";
+import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
 
 type Props = {
   className?: string;

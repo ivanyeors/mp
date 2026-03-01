@@ -187,10 +187,7 @@ export type Messages = {
       commitmentWarrantyDescription: string;
       helpTitle: string;
       helpDescription: string;
-      bottomCustomiseOnline: string;
       bottomBookBespoke: string;
-      sourceLabel: string;
-      sourceLinkLabel: string;
     };
     cervicalNeckSupport: {
       title: string;
@@ -207,8 +204,6 @@ export type Messages = {
       additionalBenefitsTitle: string;
       additionalBenefits: string[];
       bottomViewSource: string;
-      sourceLabel: string;
-      sourceLinkLabel: string;
     };
     mbolster: {
       trigger: string;

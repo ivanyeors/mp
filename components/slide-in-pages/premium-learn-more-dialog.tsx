@@ -170,7 +170,7 @@ function PremiumLearnMoreSheetInner() {
                     <div className="pt-1">
                       <SheetClose asChild>
                         <Button asChild className="h-auto py-3">
-                          <Link href={to("/mp-config")}>{m.slides.premiumMpillow.bottomCustomiseOnline}</Link>
+                          <Link href={to("/mp-config")}>{m.common.customise}</Link>
                         </Button>
                       </SheetClose>
                     </div>
@@ -506,26 +506,13 @@ function PremiumLearnMoreSheetInner() {
           <div className="px-4 py-4 md:px-6">
             <div className="grid gap-3 sm:grid-cols-2">
               <Button asChild className="h-auto py-4">
-                <Link href={to("/mp-config")}>{m.slides.premiumMpillow.bottomCustomiseOnline}</Link>
+                <Link href={to("/mp-config")}>{m.common.customise}</Link>
               </Button>
               <Button asChild variant="outline" className="h-auto py-4">
                 <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
                   {m.slides.premiumMpillow.bottomBookBespoke}
                 </Link>
               </Button>
-            </div>
-
-            <div className="mt-3 text-xs text-muted-foreground">
-              {m.slides.premiumMpillow.sourceLabel}{" "}
-              <Link
-                href="https://www.mpillow.com/pages/premium-customised-pillow"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-4"
-              >
-                {m.slides.premiumMpillow.sourceLinkLabel}
-              </Link>
-              .
             </div>
           </div>
         </div>

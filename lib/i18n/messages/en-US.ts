@@ -293,10 +293,7 @@ export const enUS: Messages = {
         "All products are backed by a 10-year warranty on stuffing. To avail, schedule an appointment and bring your pillow to our service center for re-adjustment and stuffing replacement (readjustment fees apply).",
       helpTitle: "Need help?",
       helpDescription: "Feel free to contact customer support at +65 8780 5311.",
-      bottomCustomiseOnline: "Customise online",
       bottomBookBespoke: "Book a bespoke service",
-      sourceLabel: "Source:",
-      sourceLinkLabel: "Mpillow Premium customised pillow page",
     },
     cervicalNeckSupport: {
       title: "Cervical Neck Support",
@@ -339,8 +336,6 @@ export const enUS: Messages = {
         "Replaceable",
       ],
       bottomViewSource: "View source",
-      sourceLabel: "Source:",
-      sourceLinkLabel: "mpillow.com cervical support pillow page",
     },
     mbolster: {
       trigger: "Learn more",
