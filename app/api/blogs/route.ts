@@ -17,6 +17,7 @@ const CreateBlogSchema = z.object({
     image_url: z.string().nullable().optional().default(null),
     author: z.string().optional().default("Mpillow"),
     published_at: z.string().nullable().optional().default(null),
+    labels: z.array(z.string()).optional().default([]),
 });
 
 export async function GET(req: Request) {

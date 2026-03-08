@@ -4,10 +4,18 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Save, ArrowLeft, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImagePicker } from "@/components/ui/image-picker";
 import Link from "next/link";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
 import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
+
+const MDEditor = dynamic(
+    () => import("@uiw/react-md-editor").then((mod) => mod.default),
+    { ssr: false }
+);
 
 type LocaleContent = {
     title: string;
@@ -31,6 +39,7 @@ export default function BlogEditorPage() {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
+    const { resolvedTheme } = useTheme();
 
     const isNew = params.id === "new";
     const postId = isNew ? null : (params.id as string);
@@ -43,6 +52,7 @@ export default function BlogEditorPage() {
     const [status, setStatus] = useState<string>("draft");
     const [author, setAuthor] = useState("Mpillow");
     const [imageUrl, setImageUrl] = useState("");
+    const [labels, setLabels] = useState<string[]>([]);
     const [content, setContent] = useState<Record<string, LocaleContent>>({
         "en-US": emptyContent(),
         "zh-CN": emptyContent(),
@@ -80,6 +90,7 @@ export default function BlogEditorPage() {
             setStatus(row.status);
             setAuthor(row.author);
             setImageUrl(row.image_url ?? "");
+            setLabels(row.labels ?? []);
             // Merge existing content with empty defaults
             const merged: Record<string, LocaleContent> = {};
             for (const loc of SUPPORTED_LOCALES) {
@@ -99,6 +110,7 @@ export default function BlogEditorPage() {
             status: publishOverride ?? status,
             author,
             image_url: imageUrl || null,
+            labels,
             content,
         };
 
@@ -169,8 +181,8 @@ export default function BlogEditorPage() {
                         type="button"
                         onClick={() => setActiveLocale(loc)}
                         className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${activeLocale === loc
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
                             }`}
                     >
                         {loc === "en-US" ? "🇺🇸 English" : "🇨🇳 中文"}
@@ -256,14 +268,14 @@ export default function BlogEditorPage() {
                 </div>
 
                 {/* Body (Rich Text / Markdown) */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5" data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}>
                     <label className="text-sm font-medium">Content Body ({activeLocale})</label>
-                    <textarea
+                    <MDEditor
                         value={activeContent.body}
-                        onChange={(e) => updateActiveContent("body", e.target.value)}
-                        placeholder="Write your blog content in Markdown..."
-                        rows={20}
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                        onChange={(val) => updateActiveContent("body", val || "")}
+                        height={500}
+                        preview="edit"
+                        className="w-full rounded-lg border focus-within:ring-2 focus-within:ring-primary overflow-hidden"
                     />
                     <p className="text-xs text-muted-foreground">Supports Markdown formatting</p>
                 </div>
@@ -297,13 +309,32 @@ export default function BlogEditorPage() {
 
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium">Hero Image URL</label>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            placeholder="https://... or /images/blogs/..."
+                            className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <ImagePicker onSelect={(url) => setImageUrl(url)} />
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Global Labels</label>
                     <input
                         type="text"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        placeholder="https://... or /images/blogs/..."
+                        value={labels.join(", ")}
+                        onChange={(e) =>
+                            setLabels(
+                                e.target.value.split(",").map((s) => s.trim()).filter(Boolean)
+                            )
+                        }
+                        placeholder="sleep, posture, guide"
                         className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     />
+                    <p className="text-xs text-muted-foreground">Comma-separated list</p>
                 </div>
             </div>
         </div>

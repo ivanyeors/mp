@@ -6,7 +6,7 @@ import { AmbassadorsSlideIn } from "@/components/slide-in-pages/ambassadors-slid
 import { SizeMattersSlideIn } from "@/components/slide-in-pages/size-matters-slide-in";
 import { BasicMpillowLearnMoreSheet } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
 import { PremiumLearnMoreSheet } from "@/components/slide-in-pages/premium-learn-more-dialog";
-import { MbolsterLearnMoreSheet } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
+import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
 import { BookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { CervicalNeckSupportLearnMoreCta } from "@/components/slide-in-pages/cervical-neck-support-learn-more-cta";
 import { InfiniteImageMarquee } from "@/components/effects/infinite-image-marquee";
@@ -533,7 +533,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
                   <CardFooter className="p-5 pt-0 md:p-7 md:pt-0">
                     <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                      <MbolsterLearnMoreSheet className="flex-1" />
+                      <MbolsterLearnMoreSlideIn className="flex-1" />
                       <Button asChild className="flex-1">
                         <Link href={withLocale("/mbolster-config", locale)}>{m.home.mbolster.buttonCustomise}</Link>
                       </Button>

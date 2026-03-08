@@ -21,6 +21,7 @@ export type BlogPostRow = {
     published_at: string | null;
     created_at: string;
     updated_at: string;
+    labels: string[];
 };
 
 /** Flattened blog post for rendering (already resolved to a specific locale). */
@@ -38,6 +39,7 @@ export type BlogPost = {
     created_at: string;
     updated_at: string;
     seo_keywords: string[];
+    labels: string[];
 };
 
 // ---------- Supabase fetchers ----------
@@ -58,6 +60,7 @@ function resolveLocale(row: BlogPostRow, locale: string): BlogPost {
         created_at: row.created_at,
         updated_at: row.updated_at,
         seo_keywords: loc?.seo_keywords ?? [],
+        labels: row.labels ?? [],
     };
 }
 

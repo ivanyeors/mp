@@ -17,6 +17,7 @@ const UpdateBlogSchema = z.object({
     image_url: z.string().nullable().optional(),
     author: z.string().optional(),
     published_at: z.string().nullable().optional(),
+    labels: z.array(z.string()).optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
