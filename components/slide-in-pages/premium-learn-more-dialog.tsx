@@ -19,11 +19,9 @@ import { openCervicalNeckSupportSheet } from "@/components/slide-in-pages/cervic
 type Props = {
   className?: string;
   triggerLabel?: string;
-};
-
-type ControlledSheetProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children?: React.ReactNode;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -521,25 +519,20 @@ function PremiumLearnMoreSheetInner() {
   );
 }
 
-export function PremiumLearnMoreSheet({ open, onOpenChange }: ControlledSheetProps) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <PremiumLearnMoreSheetInner />
-    </Sheet>
-  );
-}
-
-export function PremiumLearnMoreDialog({ className, triggerLabel }: Props) {
+export function PremiumLearnMoreSheet({ open, onOpenChange, children, className, triggerLabel }: Props) {
   const { m } = useI18n();
   const label = triggerLabel ?? m.slides.premiumMpillow.trigger;
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="secondary" className={cn("h-auto py-2.5", className)}>
-          {label}
-        </Button>
-      </SheetTrigger>
-
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {open === undefined && (
+        <SheetTrigger asChild>
+          {children ?? (
+            <Button variant="secondary" className={cn("h-auto py-2.5", className)}>
+              {label}
+            </Button>
+          )}
+        </SheetTrigger>
+      )}
       <PremiumLearnMoreSheetInner />
     </Sheet>
   );

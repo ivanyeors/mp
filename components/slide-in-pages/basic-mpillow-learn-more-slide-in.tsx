@@ -21,11 +21,9 @@ import { useI18n } from "@/lib/i18n/use-i18n";
 type Props = {
   className?: string;
   triggerLabel?: string;
-};
-
-type ControlledSheetProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children?: React.ReactNode;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -272,7 +270,7 @@ function BasicMpillowLearnMoreSheetInner() {
                     <div className="relative aspect-video bg-muted/20">
                       <YouTubeAutoplayOnView
                         videoId="r9XfezALQhA"
-                          title={m.slides.basicMpillow.sizingChartTitle}
+                        title={m.slides.basicMpillow.sizingChartTitle}
                       />
                     </div>
                   </div>
@@ -333,25 +331,20 @@ function BasicMpillowLearnMoreSheetInner() {
   );
 }
 
-export function BasicMpillowLearnMoreSheet({ open, onOpenChange }: ControlledSheetProps) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <BasicMpillowLearnMoreSheetInner />
-    </Sheet>
-  );
-}
-
-export function BasicMpillowLearnMoreSlideIn({ className, triggerLabel }: Props) {
+export function BasicMpillowLearnMoreSheet({ open, onOpenChange, children, className, triggerLabel }: Props) {
   const { m } = useI18n();
   const label = triggerLabel ?? m.slides.basicMpillow.trigger;
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="secondary" className={cn("h-auto py-2.5", className)}>
-          {label}
-        </Button>
-      </SheetTrigger>
-
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {open === undefined && (
+        <SheetTrigger asChild>
+          {children ?? (
+            <Button variant="secondary" className={cn("h-auto py-2.5", className)}>
+              {label}
+            </Button>
+          )}
+        </SheetTrigger>
+      )}
       <BasicMpillowLearnMoreSheetInner />
     </Sheet>
   );

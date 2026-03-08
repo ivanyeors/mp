@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AmbassadorsSlideIn } from "@/components/slide-in-pages/ambassadors-slide-in";
 import { SizeMattersSlideIn } from "@/components/slide-in-pages/size-matters-slide-in";
-import { BasicMpillowLearnMoreSlideIn } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
-import { PremiumLearnMoreDialog } from "@/components/slide-in-pages/premium-learn-more-dialog";
-import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
+import { BasicMpillowLearnMoreSheet } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
+import { PremiumLearnMoreSheet } from "@/components/slide-in-pages/premium-learn-more-dialog";
+import { MbolsterLearnMoreSheet } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
 import { BookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { CervicalNeckSupportLearnMoreCta } from "@/components/slide-in-pages/cervical-neck-support-learn-more-cta";
 import { InfiniteImageMarquee } from "@/components/effects/infinite-image-marquee";
@@ -369,14 +369,14 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                     <CardFooter className="p-4 pt-0">
                       {card.title === "Basic" ? (
                         <div className="flex w-full items-center gap-2">
-                          <BasicMpillowLearnMoreSlideIn className="flex-1" />
+                          <BasicMpillowLearnMoreSheet className="flex-1" />
                           <Button asChild className="flex-1">
                             <Link href={withLocale("/mp-config", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
                           </Button>
                         </div>
                       ) : (
                         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                          <PremiumLearnMoreDialog className="flex-1" />
+                          <PremiumLearnMoreSheet className="flex-1" />
                           <Button asChild className="flex-1">
                             <Link href={withLocale("/mp-config", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
                           </Button>
@@ -533,7 +533,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
                   <CardFooter className="p-5 pt-0 md:p-7 md:pt-0">
                     <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                      <MbolsterLearnMoreSlideIn className="flex-1" />
+                      <MbolsterLearnMoreSheet className="flex-1" />
                       <Button asChild className="flex-1">
                         <Link href={withLocale("/mbolster-config", locale)}>{m.home.mbolster.buttonCustomise}</Link>
                       </Button>
