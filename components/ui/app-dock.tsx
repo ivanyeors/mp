@@ -96,7 +96,7 @@ export function AppDock() {
   const isMenuActive =
     basePathname === "/settings" ||
     basePathname === "/shop" ||
-    basePathname === "/articles" ||
+    basePathname === "/blog" ||
     basePathname === "/support" ||
     basePathname === "/mp-care";
 
@@ -130,9 +130,8 @@ export function AppDock() {
 
   return (
     <div
-      className={`app-dock fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-transform duration-200 ease-out ${
-        isHidden ? "translate-y-24 opacity-0" : "translate-y-0 opacity-100"
-      }`}
+      className={`app-dock fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-transform duration-200 ease-out ${isHidden ? "translate-y-24 opacity-0" : "translate-y-0 opacity-100"
+        }`}
       style={{ bottom: "calc(var(--mobile-dock-offset) + var(--safe-bottom))" }}
     >
       <Dock className="items-end pb-3">
@@ -222,12 +221,12 @@ export function AppDock() {
                   <div className="text-sm font-medium">Shop</div>
                 </Link>
                 <Link
-                  href={to("/articles")}
+                  href={to("/blog")}
                   onClick={() => setDrawerOpen(false)}
                   className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border bg-card/40 p-4 text-center shadow-sm backdrop-blur-sm"
                 >
                   <Newspaper className="h-8 w-8" />
-                  <div className="text-sm font-medium">Articles</div>
+                  <div className="text-sm font-medium">Blogs</div>
                 </Link>
                 <Link
                   href={to("/support")}
@@ -309,9 +308,9 @@ export function AppDock() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={to("/articles")}>
+                <Link href={to("/blog")}>
                   <Newspaper />
-                  Articles
+                  Blogs
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

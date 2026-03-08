@@ -47,8 +47,8 @@ function BenefitCard({
         </div>
       ) : null}
       <div className="p-4">
-      <div className="text-sm font-semibold text-foreground">{title}</div>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
       </div>
     </div>
   );
@@ -97,13 +97,14 @@ function CervicalNeckSupportSheetInner() {
   return (
     <SheetContent
       side="right"
-      disableMobileBottom
+      mobilePreset="full"
       hideClose
-      className="w-full max-w-none sm:max-w-none p-0 bg-transparent border-0 shadow-none overflow-hidden"
+      className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
     >
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
-        <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <SheetHeader className="relative pr-12">
+      {/* Framed shell: inner rounded panel */}
+      <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
+        <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+          <SheetHeader className="relative pr-12 px-4 py-4 md:px-8 md:py-6">
             <SheetTitle>{m.slides.cervicalNeckSupport.title}</SheetTitle>
             <SheetDescription>{m.slides.cervicalNeckSupport.description}</SheetDescription>
 
@@ -118,7 +119,7 @@ function CervicalNeckSupportSheetInner() {
             </SheetClose>
           </SheetHeader>
 
-          <div className="px-4 pb-4 md:px-6 md:pb-5">
+          <div className="px-4 pb-4 md:px-8 md:pb-5">
             <Progress value={progress} className="h-1" />
           </div>
         </div>
@@ -250,14 +251,6 @@ function CervicalNeckSupportSheetInner() {
                   {m.slides.cervicalNeckSupport.bottomViewSource}
                 </Link>
               </Button>
-            </div>
-
-            <div className="mt-3 text-xs text-muted-foreground">
-              {m.slides.cervicalNeckSupport.sourceLabel}{" "}
-              <Link href={SOURCE_URL} target="_blank" rel="noopener noreferrer" className="underline underline-offset-4">
-                {m.slides.cervicalNeckSupport.sourceLinkLabel}
-              </Link>
-              .
             </div>
           </div>
         </div>

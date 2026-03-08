@@ -19,11 +19,9 @@ import { openCervicalNeckSupportSheet } from "@/components/slide-in-pages/cervic
 type Props = {
   className?: string;
   triggerLabel?: string;
-};
-
-type ControlledSheetProps = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children?: React.ReactNode;
 };
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -80,11 +78,12 @@ function PremiumLearnMoreSheetInner() {
       side="right"
       mobilePreset="full"
       hideClose
-      className="w-full max-w-none sm:max-w-none p-0 bg-transparent border-0 shadow-none overflow-hidden"
+      className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
     >
-      <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
-        <div className="sticky top-0 z-10 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <SheetHeader className="relative pr-12">
+      {/* Framed shell: inner rounded panel */}
+      <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
+        <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+          <SheetHeader className="relative pr-12 px-4 py-4 md:px-8 md:py-6">
             <SheetTitle>{m.slides.premiumMpillow.title}</SheetTitle>
             <SheetDescription>{m.slides.premiumMpillow.description}</SheetDescription>
 
@@ -99,7 +98,7 @@ function PremiumLearnMoreSheetInner() {
             </SheetClose>
           </SheetHeader>
 
-          <div className="px-4 pb-4 md:px-6 md:pb-5">
+          <div className="px-4 pb-4 md:px-8 md:pb-5">
             <Progress value={progress} className="h-1" />
           </div>
         </div>
@@ -170,7 +169,7 @@ function PremiumLearnMoreSheetInner() {
                     <div className="pt-1">
                       <SheetClose asChild>
                         <Button asChild className="h-auto py-3">
-                          <Link href={to("/mp-config")}>{m.slides.premiumMpillow.bottomCustomiseOnline}</Link>
+                          <Link href={to("/mp-config")}>{m.common.customise}</Link>
                         </Button>
                       </SheetClose>
                     </div>
@@ -506,26 +505,13 @@ function PremiumLearnMoreSheetInner() {
           <div className="px-4 py-4 md:px-6">
             <div className="grid gap-3 sm:grid-cols-2">
               <Button asChild className="h-auto py-4">
-                <Link href={to("/mp-config")}>{m.slides.premiumMpillow.bottomCustomiseOnline}</Link>
+                <Link href={to("/mp-config")}>{m.common.customise}</Link>
               </Button>
               <Button asChild variant="outline" className="h-auto py-4">
                 <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
                   {m.slides.premiumMpillow.bottomBookBespoke}
                 </Link>
               </Button>
-            </div>
-
-            <div className="mt-3 text-xs text-muted-foreground">
-              {m.slides.premiumMpillow.sourceLabel}{" "}
-              <Link
-                href="https://www.mpillow.com/pages/premium-customised-pillow"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-4"
-              >
-                {m.slides.premiumMpillow.sourceLinkLabel}
-              </Link>
-              .
             </div>
           </div>
         </div>
@@ -534,25 +520,20 @@ function PremiumLearnMoreSheetInner() {
   );
 }
 
-export function PremiumLearnMoreSheet({ open, onOpenChange }: ControlledSheetProps) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <PremiumLearnMoreSheetInner />
-    </Sheet>
-  );
-}
-
-export function PremiumLearnMoreDialog({ className, triggerLabel }: Props) {
+export function PremiumLearnMoreSheet({ open, onOpenChange, children, className, triggerLabel }: Props) {
   const { m } = useI18n();
   const label = triggerLabel ?? m.slides.premiumMpillow.trigger;
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="secondary" className={cn("h-auto py-2.5", className)}>
-          {label}
-        </Button>
-      </SheetTrigger>
-
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {open === undefined && (
+        <SheetTrigger asChild>
+          {children ?? (
+            <Button variant="secondary" className={cn("h-auto py-2.5", className)}>
+              {label}
+            </Button>
+          )}
+        </SheetTrigger>
+      )}
       <PremiumLearnMoreSheetInner />
     </Sheet>
   );

@@ -289,10 +289,7 @@ export const zhCN: Messages = {
         "所有产品填充物均享有 10 年保固。若需保固服务，请预约并将枕头带到服务点进行复调与填充更换（复调费用另计）。",
       helpTitle: "需要帮助？",
       helpDescription: "欢迎联系客户支持：+65 8780 5311。",
-      bottomCustomiseOnline: "线上定制",
       bottomBookBespoke: "预约专属服务",
-      sourceLabel: "来源：",
-      sourceLinkLabel: "Mpillow Premium 专属定制枕页面",
     },
     cervicalNeckSupport: {
       title: "颈椎支撑垫",
@@ -328,8 +325,6 @@ export const zhCN: Messages = {
       additionalBenefitsTitle: "Mpillow 颈椎支撑枕的额外优势",
       additionalBenefits: ["为部分用户提供更耐用的承托", "使用相同的填充技术", "可水洗", "可拆卸", "可更换"],
       bottomViewSource: "查看来源页面",
-      sourceLabel: "来源：",
-      sourceLinkLabel: "mpillow.com 颈椎支撑枕页面",
     },
     mbolster: {
       trigger: "了解更多",

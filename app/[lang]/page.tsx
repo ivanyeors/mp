@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { AmbassadorsSlideIn } from "@/components/slide-in-pages/ambassadors-slide-in";
 import { SizeMattersSlideIn } from "@/components/slide-in-pages/size-matters-slide-in";
-import { BasicMpillowLearnMoreSlideIn } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
-import { PremiumLearnMoreDialog } from "@/components/slide-in-pages/premium-learn-more-dialog";
+import { BasicMpillowLearnMoreSheet } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
+import { PremiumLearnMoreSheet } from "@/components/slide-in-pages/premium-learn-more-dialog";
 import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
 import { BookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { CervicalNeckSupportLearnMoreCta } from "@/components/slide-in-pages/cervical-neck-support-learn-more-cta";
@@ -131,7 +131,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <main className="relative overflow-x-hidden">
         {/* Hero */}
         <section className="relative">
-          <AspectRatio ratio={16 / 9} className="relative w-full overflow-hidden">
+          <div className="relative w-full overflow-hidden aspect-[3/4] md:aspect-video">
             <Image
               src="/m-pillow-417953-web.webp"
               alt="Mpillow pillow hero"
@@ -143,6 +143,8 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
             {/* Overlay content */}
             <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-background/85 via-background/25 to-transparent" />
+            {/* Extra light-mode-only overlay on mobile for better text contrast */}
+            <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/40 via-black/15 to-transparent md:hidden dark:hidden" />
             <div className="absolute inset-0 z-10 flex items-end md:items-center">
               <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
                 <div className="max-w-xl space-y-6">
@@ -177,7 +179,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 </div>
               </div>
             </div>
-          </AspectRatio>
+          </div>
 
           <Ripple
             mainCircleSize={320}
@@ -203,15 +205,15 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 </div>
               </div>
 
-              <AspectRatio ratio={16 / 9} className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
+              <div className="relative aspect-[3/4] md:aspect-video overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="https://www.mpillow.com/cdn/shop/files/m-pillow-317409-final-WEB.jpg?v=1662868268&width=1400"
                   alt="Customised Mpillow"
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
                 />
-              </AspectRatio>
+              </div>
             </div>
           </div>
         </section>
@@ -246,18 +248,15 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 </div>
               </div>
 
-              <AspectRatio
-                ratio={16 / 9}
-                className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm"
-              >
+              <div className="relative aspect-[3/4] md:aspect-video overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="https://www.mpillow.com/cdn/shop/files/DSC_2362-H-WEB_1200x_71b66f9b-3cce-4686-99be-34f774ddbe8a.webp?v=1667646766&width=900"
                   alt="Mpillow ambassadors process"
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
                 />
-              </AspectRatio>
+              </div>
             </div>
           </div>
         </section>
@@ -370,14 +369,14 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                     <CardFooter className="p-4 pt-0">
                       {card.title === "Basic" ? (
                         <div className="flex w-full items-center gap-2">
-                          <BasicMpillowLearnMoreSlideIn className="flex-1" />
+                          <BasicMpillowLearnMoreSheet className="flex-1" />
                           <Button asChild className="flex-1">
                             <Link href={withLocale("/mp-config", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
                           </Button>
                         </div>
                       ) : (
                         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                          <PremiumLearnMoreDialog className="flex-1" />
+                          <PremiumLearnMoreSheet className="flex-1" />
                           <Button asChild className="flex-1">
                             <Link href={withLocale("/mp-config", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
                           </Button>
@@ -441,10 +440,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             </div>
 
             {/* Image: keep in-flow below text/card (no overlap) */}
-            <AspectRatio
-              ratio={1048 / 444}
-              className="mt-8 overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:mt-10"
-            >
+            <div className="relative mt-8 overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:mt-10 aspect-[3/4] md:aspect-[1048/444]">
               <Image
                 src="/mpillow-cervical-neck.webp"
                 alt="Mpillow cervical neck support"
@@ -452,7 +448,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 className="object-cover"
                 sizes="(min-width: 1280px) 1120px, (min-width: 768px) calc(100vw - 2rem), 100vw"
               />
-            </AspectRatio>
+            </div>
           </div>
         </section>
 
@@ -480,7 +476,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
           <div className="mx-auto w-full max-w-6xl px-4 pb-12 md:pb-16">
             <Card className="overflow-hidden bg-card/40 backdrop-blur-sm py-0 gap-0">
               <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="relative aspect-[1493/554] w-full md:aspect-auto md:min-h-[360px]">
+                <div className="relative aspect-[3/4] w-full md:aspect-[1493/554] lg:aspect-auto lg:min-h-[360px]">
                   <Image
                     src="/808907f4-ac2b-499a-ace6-69933883b2f5.webp"
                     alt="Mbolster"

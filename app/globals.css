@@ -358,3 +358,32 @@ body.dock-hidden .app-dock {
     background-color: var(--ring);
   }
 }
+
+/* UIW React MD Editor overrides */
+.w-md-editor, 
+[data-color-mode*='light'] .w-md-editor, 
+[data-color-mode*='dark'] .w-md-editor,
+[data-color-mode*='light'] .wmde-markdown-var, 
+[data-color-mode*='dark'] .wmde-markdown-var {
+  --color-canvas-default: var(--background);
+  --color-fg-default: var(--foreground);
+  --color-canvas-subtle: var(--muted);
+  --color-border-default: var(--border);
+  --color-border-muted: var(--border);
+  --color-accent-fg: var(--primary);
+  --color-btn-bg: transparent;
+  --color-btn-hover-bg: var(--accent);
+  --color-btn-text: var(--foreground);
+  border-radius: var(--radius) !important;
+  border-color: var(--border) !important;
+}
+
+.w-md-editor-toolbar {
+  border-bottom-color: var(--border) !important;
+  background-color: var(--muted) !important;
+}
+
+.wmde-markdown {
+  background-color: transparent !important;
+  font-family: var(--font-mono) !important;
+}

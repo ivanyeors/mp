@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList, Users } from "lucide-react";
+import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList, Users, Newspaper, Image } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarProvider,
@@ -67,6 +67,8 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
   { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
+  { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper },
+  { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
@@ -80,8 +82,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pageTitle = last === "settings"
     ? "Overview"
     : last
-        .replace(/-/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className="flex min-h-svh w-full">
