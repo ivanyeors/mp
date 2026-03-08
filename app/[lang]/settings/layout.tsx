@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList, Users, Newspaper, Image } from "lucide-react";
+import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList, Users, Newspaper, Image, Globe } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarProvider,
@@ -67,8 +67,16 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
   { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
-  { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper },
-  { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image },
+  {
+    href: "/settings/blogs",
+    label: "Landing Site",
+    tooltip: "Customisation and settings for the front page",
+    Icon: Globe,
+    items: [
+      { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper },
+      { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image },
+    ],
+  },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

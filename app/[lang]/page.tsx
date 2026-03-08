@@ -25,6 +25,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getSiteSettings } from "@/lib/site-settings";
 import { StoriesSection } from "@/components/sections/stories-section";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
@@ -118,11 +119,29 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
   const appointmentUrl =
     "https://calendar.google.com/calendar/appointments/schedules/AcZssZ0bNnrc_0CeREyaoByx0GDhuif5fJFTCyAQTkEJH14vNs5XT_zzqgv47CJ-FrUACncTtYs8yeas?gv=true";
-  const [basicXsFromPrice, premiumXsFromPrice, bolsterFromPrice] = await Promise.all([
+
+  // Default images – overridable via Settings → Landing Site → Media
+  const IMAGE_DEFAULTS: Record<string, string> = {
+    landing_hero: "/m-pillow-417953-web.webp",
+    landing_size_matters: "https://www.mpillow.com/cdn/shop/files/m-pillow-317409-final-WEB.jpg?v=1662868268&width=1400",
+    landing_marquee: "/3way-side-sleep.jpg",
+    landing_ambassadors: "https://www.mpillow.com/cdn/shop/files/DSC_2362-H-WEB_1200x_71b66f9b-3cce-4686-99be-34f774ddbe8a.webp?v=1667646766&width=900",
+    landing_cervical_neck: "/mpillow-cervical-neck.webp",
+    landing_basic_pillow: "/basic-mpillow.webp",
+    landing_premium_pillow: "/DarkMpillowImage-WEB.jpg",
+    landing_mbolster: "/808907f4-ac2b-499a-ace6-69933883b2f5.webp",
+    landing_founder: "/Darrenyeo-profileshoot_2.webp",
+  };
+
+  const [basicXsFromPrice, premiumXsFromPrice, bolsterFromPrice, siteOverrides] = await Promise.all([
     getPillowXsFromPriceLabel("basic"),
     getPillowXsFromPriceLabel("premium"),
     getBolsterFromPriceLabel(),
+    getSiteSettings(Object.keys(IMAGE_DEFAULTS)),
   ]);
+
+  // Merge overrides with defaults
+  const img: Record<string, string> = { ...IMAGE_DEFAULTS, ...siteOverrides };
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -133,7 +152,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         <section className="relative">
           <div className="relative w-full overflow-hidden aspect-[3/4] md:aspect-video">
             <Image
-              src="/m-pillow-417953-web.webp"
+              src={img.landing_hero}
               alt="Mpillow pillow hero"
               fill
               priority
@@ -208,7 +227,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
               <div className="relative aspect-[3/4] md:aspect-video overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="https://www.mpillow.com/cdn/shop/files/m-pillow-317409-final-WEB.jpg?v=1662868268&width=1400"
+                  src={img.landing_size_matters}
                   alt="Customised Mpillow"
                   className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
@@ -224,7 +243,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             {/* 30% shorter than original (443px -> ~310px): keep full-bleed marquee but reduce height */}
             <AspectRatio ratio={1150 / 310} className="relative overflow-hidden border bg-card/40 backdrop-blur-sm">
               <InfiniteImageMarquee
-                src="/3way-side-sleep.jpg"
+                src={img.landing_marquee}
                 alt="Three-way sleep positions illustration"
                 imageClassName="object-cover"
               />
@@ -251,7 +270,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
               <div className="relative aspect-[3/4] md:aspect-video overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="https://www.mpillow.com/cdn/shop/files/DSC_2362-H-WEB_1200x_71b66f9b-3cce-4686-99be-34f774ddbe8a.webp?v=1667646766&width=900"
+                  src={img.landing_ambassadors}
                   alt="Mpillow ambassadors process"
                   className="absolute inset-0 h-full w-full object-cover"
                   loading="lazy"
@@ -284,7 +303,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                   {
                     title: m.home.pickYourMpillow.products.basic.title,
                     desc: m.home.pickYourMpillow.products.basic.description,
-                    imageSrc: "/basic-mpillow.webp",
+                    imageSrc: img.landing_basic_pillow,
                     rightBadge: m.home.pickYourMpillow.products.basic.badge,
                     fromPriceLabel: basicXsFromPrice,
                     specs: [
@@ -295,7 +314,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                   {
                     title: m.home.pickYourMpillow.products.premium.title,
                     desc: m.home.pickYourMpillow.products.premium.description,
-                    imageSrc: "/DarkMpillowImage-WEB.jpg",
+                    imageSrc: img.landing_premium_pillow,
                     rightBadge: m.home.pickYourMpillow.products.premium.badge,
                     fromPriceLabel: premiumXsFromPrice,
                     specs: [
@@ -442,7 +461,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             {/* Image: keep in-flow below text/card (no overlap) */}
             <div className="relative mt-8 overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:mt-10 aspect-[3/4] md:aspect-[1048/444]">
               <Image
-                src="/mpillow-cervical-neck.webp"
+                src={img.landing_cervical_neck}
                 alt="Mpillow cervical neck support"
                 fill
                 className="object-cover"
@@ -478,7 +497,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
               <div className="grid grid-cols-1 md:grid-cols-2">
                 <div className="relative aspect-[3/4] w-full md:aspect-[1493/554] lg:aspect-auto lg:min-h-[360px]">
                   <Image
-                    src="/808907f4-ac2b-499a-ace6-69933883b2f5.webp"
+                    src={img.landing_mbolster}
                     alt="Mbolster"
                     fill
                     className="object-cover"
@@ -621,7 +640,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
                 <div className="min-w-0">
                   <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl border bg-muted">
                     <Image
-                      src="/Darrenyeo-profileshoot_2.webp"
+                      src={img.landing_founder}
                       alt="Darren Yeo"
                       fill
                       className="object-cover object-top"
