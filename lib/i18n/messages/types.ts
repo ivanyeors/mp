@@ -256,5 +256,62 @@ export type Messages = {
       title: string;
     };
   };
+  shop: {
+    title: string;
+    subtitle: string;
+    searchPlaceholder: string;
+    allCategories: string;
+    noProducts: string;
+    filters: { category: string; sort: string; clear: string };
+    sort: { newest: string; priceAsc: string; priceDesc: string; popular: string };
+    product: {
+      addToCart: string;
+      outOfStock: string;
+      inStock: string;
+      lowStock: string;
+      from: string;
+      description: string;
+      specifications: string;
+      reviews: string;
+      relatedProducts: string;
+      share: string;
+    };
+    cart: {
+      title: string;
+      empty: string;
+      continueShopping: string;
+      checkout: string;
+      subtotal: string;
+      shipping: string;
+      shippingAtCheckout: string;
+      tax: string;
+      total: string;
+      coupon: string;
+      applyCoupon: string;
+      removeCoupon: string;
+      remove: string;
+    };
+    checkout: {
+      title: string;
+      information: string;
+      shipping: string;
+      payment: string;
+      confirmation: string;
+      email: string;
+      phone: string;
+      shippingAddress: string;
+      shippingMethod: string;
+      payWithStripe: string;
+      orderConfirmed: string;
+      orderNumber: string;
+      thankYou: string;
+    };
+    account: {
+      orders: string;
+      addresses: string;
+      wishlist: string;
+      profile: string;
+    };
+  };
 };
 

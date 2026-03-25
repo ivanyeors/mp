@@ -1,0 +1,226 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { Plus, Tag, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Coupon = {
+    id: string;
+    code: string;
+    discount_type: "percentage" | "fixed_amount" | "free_shipping";
+    discount_value: number;
+    currency: string;
+    usage_count: number;
+    usage_limit: number | null;
+    is_active: boolean;
+    starts_at: string | null;
+    expires_at: string | null;
+    created_at: string;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatValue(coupon: Coupon): string {
+    if (coupon.discount_type === "percentage") return `${coupon.discount_value}%`;
+    if (coupon.discount_type === "fixed_amount")
+        return `RM ${coupon.discount_value.toFixed(2)}`;
+    return "Free shipping";
+}
+
+function typeBadgeVariant(
+    type: Coupon["discount_type"]
+): "default" | "secondary" | "outline" {
+    if (type === "percentage") return "default";
+    if (type === "fixed_amount") return "secondary";
+    return "outline";
+}
+
+function typeBadgeLabel(type: Coupon["discount_type"]): string {
+    if (type === "percentage") return "Percentage";
+    if (type === "fixed_amount") return "Fixed";
+    return "Free shipping";
+}
+
+function getStatus(coupon: Coupon): {
+    label: string;
+    variant: "default" | "secondary" | "outline" | "destructive";
+} {
+    const now = new Date();
+    if (!coupon.is_active) return { label: "Inactive", variant: "secondary" };
+    if (coupon.starts_at && new Date(coupon.starts_at) > now)
+        return { label: "Scheduled", variant: "outline" };
+    if (coupon.expires_at && new Date(coupon.expires_at) < now)
+        return { label: "Expired", variant: "destructive" };
+    return { label: "Active", variant: "default" };
+}
+
+function formatDateRange(starts_at: string | null, expires_at: string | null): string {
+    const fmt = (d: string) =>
+        new Date(d).toLocaleDateString("en-MY", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+        });
+    if (starts_at && expires_at) return `${fmt(starts_at)} – ${fmt(expires_at)}`;
+    if (starts_at) return `From ${fmt(starts_at)}`;
+    if (expires_at) return `Until ${fmt(expires_at)}`;
+    return "No expiry";
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function SettingsDiscountsPage() {
+    const pathname = usePathname() ?? "/";
+    const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+    const to = (href: string) => withLocale(href, locale);
+    const router = useRouter();
+
+    const [coupons, setCoupons] = useState<Coupon[]>([]);
+    const [total, setTotal] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    const fetchCoupons = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/shop/coupons?limit=100");
+            const json = await res.json();
+            setCoupons(json.rows ?? []);
+            setTotal(json.total ?? 0);
+        } catch {
+            setCoupons([]);
+            setTotal(0);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchCoupons();
+    }, [fetchCoupons]);
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight">Discounts</h1>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                        Manage discount codes and promotions for your store.
+                    </p>
+                </div>
+                <Button asChild size="sm">
+                    <Link href={to("/settings/discounts/new")}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Discount
+                    </Link>
+                </Button>
+            </div>
+
+            {/* Content */}
+            {loading ? (
+                <div className="flex items-center justify-center py-24">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+            ) : coupons.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-14 text-center">
+                    <Tag className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                        No discount codes yet. Create your first discount to get started.
+                    </p>
+                    <Button asChild size="sm" className="mt-4">
+                        <Link href={to("/settings/discounts/new")}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Discount
+                        </Link>
+                    </Button>
+                </div>
+            ) : (
+                <div className="rounded-xl border overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                <TableHead className="px-4">Code</TableHead>
+                                <TableHead className="px-4">Type</TableHead>
+                                <TableHead className="px-4">Value</TableHead>
+                                <TableHead className="px-4 hidden sm:table-cell">Usage</TableHead>
+                                <TableHead className="px-4 hidden md:table-cell">Status</TableHead>
+                                <TableHead className="px-4 hidden lg:table-cell">Valid dates</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {coupons.map((coupon) => {
+                                const status = getStatus(coupon);
+                                return (
+                                    <TableRow
+                                        key={coupon.id}
+                                        className="cursor-pointer transition-colors"
+                                        onClick={() =>
+                                            router.push(to(`/settings/discounts/${coupon.id}`))
+                                        }
+                                    >
+                                        {/* Code */}
+                                        <TableCell className="px-4 py-3">
+                                            <span className="font-mono font-medium tracking-wide">
+                                                {coupon.code}
+                                            </span>
+                                        </TableCell>
+
+                                        {/* Type */}
+                                        <TableCell className="px-4">
+                                            <Badge variant={typeBadgeVariant(coupon.discount_type)}>
+                                                {typeBadgeLabel(coupon.discount_type)}
+                                            </Badge>
+                                        </TableCell>
+
+                                        {/* Value */}
+                                        <TableCell className="px-4 text-sm font-medium">
+                                            {formatValue(coupon)}
+                                        </TableCell>
+
+                                        {/* Usage */}
+                                        <TableCell className="px-4 hidden sm:table-cell text-sm text-muted-foreground">
+                                            {coupon.usage_limit === null
+                                                ? `${coupon.usage_count} / Unlimited`
+                                                : `${coupon.usage_count} / ${coupon.usage_limit}`}
+                                        </TableCell>
+
+                                        {/* Status */}
+                                        <TableCell className="px-4 hidden md:table-cell">
+                                            <Badge variant={status.variant}>{status.label}</Badge>
+                                        </TableCell>
+
+                                        {/* Valid dates */}
+                                        <TableCell className="px-4 hidden lg:table-cell text-sm text-muted-foreground">
+                                            {formatDateRange(coupon.starts_at, coupon.expires_at)}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
+
+            {total > 0 && (
+                <p className="text-sm text-muted-foreground">
+                    {total} discount code{total !== 1 ? "s" : ""} total
+                </p>
+            )}
+        </div>
+    );
+}

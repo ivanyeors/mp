@@ -1,7 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList, Users, Newspaper, Image, Globe } from "lucide-react";
+import {
+  Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
+  Users, Newspaper, Image, Globe, LayoutDashboard, ShoppingBag, Package,
+  FolderTree, Library, ShoppingCart, UserCircle, Tag, Truck,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   SidebarProvider,
@@ -39,45 +43,89 @@ type NavItem = {
   items?: NavItem[];
 };
 
-const NAV_ITEMS: NavItem[] = [
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const NAV_GROUPS: NavGroup[] = [
   {
-    href: "/settings",
-    label: "General",
-    tooltip: "General Settings",
-    Icon: Settings2,
+    label: "Settings",
     items: [
       {
-        href: "/settings/staff-management",
-        label: "Staff management",
-        tooltip: "Staff management",
-        Icon: Users,
+        href: "/settings",
+        label: "General",
+        tooltip: "General Settings",
+        Icon: Settings2,
+        items: [
+          { href: "/settings/staff-management", label: "Staff Management", tooltip: "Staff Management", Icon: Users },
+        ],
       },
+      { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
     ],
   },
-  { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
   {
-    href: "/settings/inventory",
+    label: "Store",
+    items: [
+      {
+        href: "/settings/products",
+        label: "Products",
+        tooltip: "Product Management",
+        Icon: ShoppingBag,
+        items: [
+          { href: "/settings/categories", label: "Categories", tooltip: "Product Categories", Icon: FolderTree },
+          { href: "/settings/collections", label: "Collections", tooltip: "Product Collections", Icon: Library },
+        ],
+      },
+      {
+        href: "/settings/orders",
+        label: "Orders",
+        tooltip: "Order Management",
+        Icon: ShoppingCart,
+        items: [
+          { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle },
+        ],
+      },
+      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag },
+      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck },
+    ],
+  },
+  {
     label: "Inventory",
-    tooltip: "Inventory",
-    Icon: Boxes,
     items: [
-      { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store },
-      { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
+      {
+        href: "/settings/inventory",
+        label: "Inventory",
+        tooltip: "Inventory",
+        Icon: Boxes,
+        items: [
+          { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store },
+          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
+        ],
+      },
+      { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
     ],
   },
-  { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
-  { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
   {
-    href: "/settings/blogs",
-    label: "Landing Site",
-    tooltip: "Customisation and settings for the front page",
-    Icon: Globe,
+    label: "Insights",
     items: [
+      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
+    ],
+  },
+  {
+    label: "Landing Site",
+    items: [
+      { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard },
       { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper },
       { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image },
     ],
   },
 ];
+
+function isNavActive(basePathname: string, href: string): boolean {
+  if (href === "/settings") return basePathname === "/settings";
+  return basePathname === href || basePathname.startsWith(`${href}/`);
+}
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
@@ -98,46 +146,46 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       <SidebarProvider>
         <Sidebar collapsible="icon">
           <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Settings</SidebarGroupLabel>
-              <SidebarMenu>
-                {NAV_ITEMS.map(({ href, label, tooltip, Icon, items }) => {
-                  const isActive =
-                    href === "/settings"
-                      ? basePathname === "/settings"
-                      : basePathname === href || basePathname.startsWith(`${href}/`);
+            {NAV_GROUPS.map((group) => (
+              <SidebarGroup key={group.label}>
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                <SidebarMenu>
+                  {group.items.map(({ href, label, tooltip, Icon, items }) => {
+                    const isActive = isNavActive(basePathname, href) ||
+                      (items?.some((sub) => isNavActive(basePathname, sub.href)) ?? false);
 
-                  return (
-                    <SidebarMenuItem key={href}>
-                      <SidebarMenuButton asChild tooltip={tooltip} isActive={isActive}>
-                        <a href={to(href)}>
-                          <Icon />
-                          <span>{label}</span>
-                        </a>
-                      </SidebarMenuButton>
+                    return (
+                      <SidebarMenuItem key={href}>
+                        <SidebarMenuButton asChild tooltip={tooltip} isActive={isActive}>
+                          <a href={to(href)}>
+                            <Icon />
+                            <span>{label}</span>
+                          </a>
+                        </SidebarMenuButton>
 
-                      {items?.length ? (
-                        <SidebarMenuSub>
-                          {items.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
-                            <SidebarMenuSubItem key={subHref}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={basePathname === subHref}
-                              >
-                                <a href={to(subHref)} title={subTooltip}>
-                                  <SubIcon />
-                                  <span>{subLabel}</span>
-                                </a>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      ) : null}
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroup>
+                        {items?.length ? (
+                          <SidebarMenuSub>
+                            {items.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
+                              <SidebarMenuSubItem key={subHref}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={isNavActive(basePathname, subHref)}
+                                >
+                                  <a href={to(subHref)} title={subTooltip}>
+                                    <SubIcon />
+                                    <span>{subLabel}</span>
+                                  </a>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        ) : null}
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroup>
+            ))}
           </SidebarContent>
           <SidebarRail />
         </Sidebar>

@@ -54,12 +54,16 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
               ? max
               : nextUnclamped
 
+        // Round to step precision to avoid floating point issues
+        const stepDecimals = String(step).includes(".") ? String(step).split(".")[1].length : 0
+        const rounded = stepDecimals > 0 ? Number(next.toFixed(stepDecimals)) : next
+
         // Trigger React onChange for both controlled and uncontrolled inputs.
         const valueSetter = Object.getOwnPropertyDescriptor(
           window.HTMLInputElement.prototype,
           "value"
         )?.set
-        valueSetter?.call(el, String(next))
+        valueSetter?.call(el, String(rounded))
         el.dispatchEvent(new Event("input", { bubbles: true }))
         el.focus()
       },
@@ -77,19 +81,67 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       return <input ref={setRefs} type={type} data-slot="input" className={baseClassName} {...props} />
     }
 
+    // Render number inputs as type="text" with inputMode to fix decimal typing
+    // in controlled React inputs. Browsers strip trailing dots from type="number"
+    // value (Safari returns "" for "4."), breaking decimal entry.
+    const stepProp = props.step
+    const stepNum =
+      typeof stepProp === "number"
+        ? stepProp
+        : typeof stepProp === "string" && stepProp !== "any"
+          ? Number(stepProp)
+          : 1
+    const allowsDecimals = String(stepNum).includes(".") || stepProp === "any"
+    const inputMode = allowsDecimals ? "decimal" as const : "numeric" as const
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Allow: backspace, delete, tab, escape, enter, arrows, home, end
+      if (
+        ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key) ||
+        // Allow Ctrl/Cmd+A, C, V, X
+        ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase()))
+      ) {
+        // ArrowUp/Down: bump value
+        if (e.key === "ArrowUp") { e.preventDefault(); bumpValue(1) }
+        if (e.key === "ArrowDown") { e.preventDefault(); bumpValue(-1) }
+        props.onKeyDown?.(e)
+        return
+      }
+      // Allow digits
+      if (/^[0-9]$/.test(e.key)) { props.onKeyDown?.(e); return }
+      // Allow decimal point (only one)
+      if ((e.key === "." || e.key === ",") && allowsDecimals && !e.currentTarget.value.includes(".")) {
+        props.onKeyDown?.(e)
+        return
+      }
+      // Allow minus sign at start
+      if (e.key === "-" && e.currentTarget.selectionStart === 0 && !e.currentTarget.value.includes("-")) {
+        props.onKeyDown?.(e)
+        return
+      }
+      // Block everything else
+      e.preventDefault()
+      props.onKeyDown?.(e)
+    }
+
     const showControls = !props.disabled && !props.readOnly
+
+    // Strip min/max/step from DOM since type="text" doesn't use them
+    const { min, max, step, onKeyDown: _, inputMode: __, ...textProps } = props
 
     return (
       <div className="group relative w-full">
         <input
           ref={setRefs}
-          type="number"
+          type="text"
+          inputMode={inputMode}
           data-slot="input"
           className={cn(
             baseClassName,
-            "pr-18 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            "pr-18"
           )}
-          {...props}
+          onKeyDown={handleKeyDown}
+          {...textProps}
         />
 
         {showControls && (
