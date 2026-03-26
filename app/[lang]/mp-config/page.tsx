@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
@@ -8,6 +8,7 @@ import { Particles } from "@/components/ui/particles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
@@ -35,11 +36,25 @@ import {
   CheckCircle,
   Camera,
   X,
+  Check,
+  ShoppingCart,
 } from "lucide-react";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { useCart } from "@/lib/shop/cart-context";
+import {
+  type RecommendationResponseData,
+  HARDCODED_UPSELLS,
+  computeFillingLines,
+  computeComponentLines,
+  computeAddonPrice,
+  computeUpsellTotal,
+  CustomizationStepRecommendation,
+  CustomizationStepComponents,
+  CustomizationStepSummary,
+} from "@/components/shop/customization-steps";
 
-type Step = 
+type Step =
   | "welcome"
   | "what-to-expect"
   | "name"
@@ -48,7 +63,10 @@ type Step =
   | "head-to-back"
   | "neck-length"
   | "customize"
-  | "preview";
+  | "preview"
+  | "recommendation"
+  | "components"
+  | "summary-cart";
 
 interface MeasurementData {
   name: string;
@@ -62,6 +80,9 @@ interface MeasurementData {
   neckToBack: string;
   headToBack: string;
   neckLength: string;
+  sleepPainAreas: string[];
+  sleepPositionType: string[];
+  usesBolster: "yes" | "no" | "";
 }
 
 type SuggestedBomLine = {
@@ -102,6 +123,9 @@ export default function MpConfigPage() {
     neckToBack: "",
     headToBack: "",
     neckLength: "",
+    sleepPainAreas: [],
+    sleepPositionType: [],
+    usesBolster: "",
   });
 
   const [responseId, setResponseId] = useState<string | null>(null);
@@ -114,6 +138,37 @@ export default function MpConfigPage() {
 
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completedResponseId, setCompletedResponseId] = useState<string | null>(null);
+
+  // --- Shop customization state (for recommendation → components → cart flow) ---
+  const { addItem } = useCart();
+  const [shopRecommendation, setShopRecommendation] = useState<RecommendationResponseData | null>(null);
+  const [shopLoading, setShopLoading] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [selectedCover, setSelectedCover] = useState<number | null>(null);
+  const [selectedCase, setSelectedCase] = useState<number | null>(null);
+  const [componentQtyOverrides, setComponentQtyOverrides] = useState<Map<number, number>>(new Map());
+  const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
+
+  const shopCurrency = shopRecommendation?.variant?.currency ?? "MYR";
+  const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
+
+  const shopFillingLines = useMemo(
+    () => computeFillingLines(shopRecommendation, selectedTemplateId),
+    [shopRecommendation, selectedTemplateId]
+  );
+  const shopComponentLines = useMemo(
+    () => computeComponentLines(shopRecommendation, selectedCover, selectedCase, componentQtyOverrides),
+    [shopRecommendation, selectedCover, selectedCase, componentQtyOverrides]
+  );
+  const shopAddonPrice = useMemo(
+    () => computeAddonPrice(shopRecommendation, shopComponentLines),
+    [shopComponentLines, shopRecommendation]
+  );
+  const shopUpsellTotal = useMemo(
+    () => computeUpsellTotal(selectedUpsells),
+    [selectedUpsells]
+  );
+  const shopTotalPrice = shopBasePrice + shopAddonPrice + shopUpsellTotal;
 
   type PhotoView = "front" | "side";
   const frontInputRef = useRef<HTMLInputElement | null>(null);
@@ -137,6 +192,9 @@ export default function MpConfigPage() {
     "neck-length",
     "customize",
     "preview",
+    "recommendation",
+    "components",
+    "summary-cart",
   ];
 
   const clearTransitionTimers = () => {
@@ -277,12 +335,23 @@ export default function MpConfigPage() {
       neckToBack: "",
       headToBack: "",
       neckLength: "",
+      sleepPainAreas: [],
+      sleepPositionType: [],
+      usesBolster: "",
     });
     setCurrentStep("welcome");
     setGridSpeed("slow");
     setIsTransitioning(false);
     setCompletionDialogOpen(false);
     setCompletedResponseId(null);
+    // Reset shop customization state
+    setShopRecommendation(null);
+    setShopLoading(false);
+    setSelectedTemplateId(null);
+    setSelectedCover(null);
+    setSelectedCase(null);
+    setComponentQtyOverrides(new Map());
+    setSelectedUpsells(new Set());
   };
 
   const ensureResponseId = () => {
@@ -466,7 +535,154 @@ export default function MpConfigPage() {
     measurementData.bloodPressureLevel.trim() !== "" &&
     measurementData.bedFirmness.trim() !== "" &&
     measurementData.earDiscomfortSideSleep !== "" &&
-    measurementData.acidReflux !== "";
+    measurementData.acidReflux !== "" &&
+    measurementData.sleepPositionType.length > 0 &&
+    measurementData.usesBolster !== "";
+
+  // Fetch shop recommendation from customize API
+  const fetchShopRecommendation = useCallback(async () => {
+    setShopLoading(true);
+    try {
+      const shoulderCm = Number(measurementData.shoulderLength);
+      const neckToBackCm = Number(measurementData.neckToBack);
+      const headToBackCm = Number(measurementData.headToBack);
+      const neckLengthCm = Number(measurementData.neckLength);
+
+      const res = await fetch("/api/shop/customize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          measurement_preferences: {
+            measurements: {
+              shoulder_length_cm: shoulderCm || 40,
+              neck_to_back_cm: neckToBackCm || 8,
+              head_to_back_cm: headToBackCm || 10,
+              neck_length_cm: neckLengthCm || 10,
+            },
+            demographics: {
+              gender: measurementData.gender,
+              age_group: measurementData.ageGroup,
+            },
+            health: {
+              blood_pressure: measurementData.bloodPressureLevel,
+              ear_discomfort_side_sleep: measurementData.earDiscomfortSideSleep === "yes",
+              bed_firmness: measurementData.bedFirmness,
+              acid_reflux: measurementData.acidReflux === "yes",
+              sleep_pain_areas: measurementData.sleepPainAreas,
+              sleep_position_type: measurementData.sleepPositionType,
+              uses_bolster: measurementData.usesBolster === "yes",
+            },
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `Failed to get recommendation (${res.status})`);
+      }
+
+      const data: RecommendationResponseData = await res.json();
+      setShopRecommendation(data);
+      setSelectedTemplateId(null);
+
+      // Pre-select default cover and case
+      const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
+      const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
+      if (defaultCover) setSelectedCover(defaultCover.item_id);
+      if (defaultCase) setSelectedCase(defaultCase.item_id);
+      setComponentQtyOverrides(new Map());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to get shop recommendation");
+    } finally {
+      setShopLoading(false);
+    }
+  }, [measurementData]);
+
+  const handleApplyAndAddToCart = useCallback(async () => {
+    if (!shopRecommendation || !shopRecommendation.variant) {
+      toast.error("No variant available");
+      return;
+    }
+
+    setShopLoading(true);
+    try {
+      const coverComp = shopComponentLines.find((c) => c.category === "cover");
+      const caseComp = shopComponentLines.find((c) => c.category === "case");
+      const activeUpsells = HARDCODED_UPSELLS.filter((u) => selectedUpsells.has(u.item_id));
+
+      const res = await fetch("/api/shop/customize?action=apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variant_id: shopRecommendation.variant.id,
+          pillow_product_id: shopRecommendation.pillow_product.id,
+          filling_lines: shopFillingLines,
+          cover_variant: coverComp?.name ?? undefined,
+          case_variant: caseComp?.name ?? undefined,
+          component_quantities: shopComponentLines,
+          upsells: activeUpsells,
+          bom_template_id: selectedTemplateId ?? undefined,
+          llm_metadata: {
+            source: "mp-config",
+            measurements: {
+              shoulder_length_cm: Number(measurementData.shoulderLength),
+              neck_to_back_cm: Number(measurementData.neckToBack),
+              head_to_back_cm: Number(measurementData.headToBack),
+              neck_length_cm: Number(measurementData.neckLength),
+            },
+            health: {
+              blood_pressure: measurementData.bloodPressureLevel,
+              ear_discomfort_side_sleep: measurementData.earDiscomfortSideSleep === "yes",
+              bed_firmness: measurementData.bedFirmness,
+              acid_reflux: measurementData.acidReflux === "yes",
+              sleep_pain_areas: measurementData.sleepPainAreas,
+              sleep_position_type: measurementData.sleepPositionType,
+              uses_bolster: measurementData.usesBolster === "yes",
+            },
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to apply customization");
+      }
+
+      const data = await res.json();
+
+      // Add to cart
+      addItem({
+        variantId: shopRecommendation.variant.id,
+        productId: shopRecommendation.variant.product_id,
+        productSlug: `mpillow-${shopRecommendation.pillow_product.kind}`,
+        productTitle: `Mpillow ${shopRecommendation.pillow_product.kind} ${shopRecommendation.pillow_product.size}`,
+        variantTitle: `Size ${shopRecommendation.pillow_product.size}`,
+        imageUrl: null,
+        price: shopBasePrice,
+        compareAtPrice: null,
+        currency: shopCurrency,
+        quantity: 1,
+        customizationId: data.customization_id,
+        customizationSummary: data.summary,
+        addonPrice: data.total_addon_price,
+      });
+
+      // Also mark the mp-config response as final
+      await upsertToDb({ isFinal: true });
+
+      toast.success("Added to cart!");
+      setCompletedResponseId(responseId);
+      setCompletionDialogOpen(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add to cart");
+    } finally {
+      setShopLoading(false);
+    }
+  }, [
+    shopRecommendation, shopFillingLines, shopComponentLines, selectedTemplateId,
+    selectedUpsells, measurementData, shopBasePrice, shopCurrency,
+    addItem, responseId,
+  ]);
 
   const saveLabel:
     | { text: string; className: string }
@@ -1207,6 +1423,102 @@ export default function MpConfigPage() {
                       </TabsList>
                     </Tabs>
                   </div>
+
+                  {/* Sleep pain areas (multi-select) */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">I experience one of the following during/after sleep</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: "neck", label: "Neck pain" },
+                        { value: "shoulder", label: "Shoulder pain" },
+                        { value: "lower-back", label: "Lower Back pain" },
+                        { value: "sleep-apnea", label: "Sleep Apnea" },
+                        { value: "bad-sleep-quality", label: "Bad Sleep Quality" },
+                      ].map((opt) => {
+                        const isSelected = measurementData.sleepPainAreas.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setMeasurementData((prev) => ({
+                                ...prev,
+                                sleepPainAreas: isSelected
+                                  ? prev.sleepPainAreas.filter((v) => v !== opt.value)
+                                  : [...prev.sleepPainAreas, opt.value],
+                              }));
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all ${
+                              isSelected
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:border-primary/50"
+                            }`}
+                          >
+                            {isSelected && <Check className="h-3 w-3" />}
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Select all that apply (optional)</p>
+                  </div>
+
+                  {/* Sleep position type (multi-select) */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">I&apos;m a</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: "side-and-back", label: "Side & Back sleeper" },
+                        { value: "side", label: "Side Sleeper" },
+                        { value: "back", label: "Back Sleeper" },
+                        { value: "stomach", label: "Stomach Sleeper" },
+                      ].map((opt) => {
+                        const isSelected = measurementData.sleepPositionType.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => {
+                              setMeasurementData((prev) => ({
+                                ...prev,
+                                sleepPositionType: isSelected
+                                  ? prev.sleepPositionType.filter((v) => v !== opt.value)
+                                  : [...prev.sleepPositionType, opt.value],
+                              }));
+                            }}
+                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all ${
+                              isSelected
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border text-muted-foreground hover:border-primary/50"
+                            }`}
+                          >
+                            {isSelected && <Check className="h-3 w-3" />}
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Uses bolster */}
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium">Do you use bolsters to sleep?</h3>
+                    </div>
+                    <Tabs
+                      value={measurementData.usesBolster}
+                      onValueChange={(v) => updateMeasurement("usesBolster", v as "yes" | "no")}
+                    >
+                      <TabsList className="h-12">
+                        <TabsTrigger value="yes" className="px-4">
+                          Yes
+                        </TabsTrigger>
+                        <TabsTrigger value="no" className="px-4">
+                          No
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                  </div>
                 </div>
               </div>
 
@@ -1318,10 +1630,10 @@ export default function MpConfigPage() {
                   <Button
                     onClick={async () => {
                       await upsertToDb();
-                      await loadSuggestion();
+                      await Promise.all([loadSuggestion(), fetchShopRecommendation()]);
                       goToNextStep();
                     }}
-                    disabled={!hasAnsweredAdditionalQuestions || photoUploading.front || photoUploading.side}
+                    disabled={!hasAnsweredAdditionalQuestions || photoUploading.front || photoUploading.side || shopLoading}
                     size="lg"
                     className="group"
                   >
@@ -1442,21 +1754,39 @@ export default function MpConfigPage() {
                   </Button>
                   <Button
                     size="lg"
+                    onClick={() => {
+                      if (shopRecommendation) {
+                        goToNextStep();
+                      } else {
+                        toast.error("Recommendation not loaded yet. Please wait.");
+                      }
+                    }}
+                    disabled={!shopRecommendation || shopLoading}
+                    className="group"
+                  >
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    Continue to Customize
+                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </div>
+                <div className="mt-3 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={async () => {
                       const result = await upsertToDb();
                       if (!result?.id) {
                         toast.error("Save failed");
                         return;
                       }
-
                       toast.success("Saved to cloud");
-
                       setCompletedResponseId(result.id);
                       setCompletionDialogOpen(true);
                     }}
                     disabled={!responseId || !hasAnyInput}
+                    className="text-muted-foreground"
                   >
-                    Save Configuration
+                    Save without purchasing
                   </Button>
                 </div>
                 {saveLabel && (
@@ -1469,6 +1799,77 @@ export default function MpConfigPage() {
                   </div>
                 )}
               </div>
+            </Card>
+          )}
+
+          {/* Recommendation Step */}
+          {currentStep === "recommendation" && shopRecommendation && (
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+              <CustomizationStepRecommendation
+                data={shopRecommendation}
+                selectedTemplateId={selectedTemplateId}
+                onSelectTemplate={setSelectedTemplateId}
+                fillingLines={shopFillingLines}
+                currency={shopCurrency}
+                basePrice={shopBasePrice}
+                onContinue={goToNextStep}
+              />
+            </Card>
+          )}
+
+          {/* Components Step */}
+          {currentStep === "components" && shopRecommendation && (
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+              <CustomizationStepComponents
+                components={shopRecommendation.components}
+                selectedCover={selectedCover}
+                onSelectCover={setSelectedCover}
+                selectedCase={selectedCase}
+                onSelectCase={setSelectedCase}
+                componentQtyOverrides={componentQtyOverrides}
+                onQtyChange={(itemId, qty) => {
+                  setComponentQtyOverrides((prev) => {
+                    const next = new Map(prev);
+                    next.set(itemId, qty);
+                    return next;
+                  });
+                }}
+                currency={shopCurrency}
+                basePrice={shopBasePrice}
+                addonPrice={shopAddonPrice}
+                onBack={goToPreviousStep}
+                onContinue={goToNextStep}
+              />
+            </Card>
+          )}
+
+          {/* Summary & Cart Step */}
+          {currentStep === "summary-cart" && shopRecommendation && (
+            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+              <CustomizationStepSummary
+                data={shopRecommendation}
+                fillingLines={shopFillingLines}
+                componentLines={shopComponentLines}
+                selectedCover={selectedCover}
+                selectedCase={selectedCase}
+                basePrice={shopBasePrice}
+                addonPrice={shopAddonPrice}
+                upsellTotal={shopUpsellTotal}
+                totalPrice={shopTotalPrice}
+                currency={shopCurrency}
+                selectedUpsells={selectedUpsells}
+                onToggleUpsell={(itemId) => {
+                  setSelectedUpsells((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(itemId)) next.delete(itemId);
+                    else next.add(itemId);
+                    return next;
+                  });
+                }}
+                isLoading={shopLoading}
+                onBack={goToPreviousStep}
+                onAddToCart={handleApplyAndAddToCart}
+              />
             </Card>
           )}
         </div>

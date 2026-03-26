@@ -88,7 +88,7 @@ export function CartDrawer() {
             {/* Items list */}
             <div className="flex-1 overflow-y-auto divide-y">
               {items.map((item) => (
-                <div key={item.variantId} className="flex gap-3 px-4 py-4">
+                <div key={item.variantId + (item.customizationId ?? "")} className="flex gap-3 px-4 py-4">
                   {/* Thumbnail */}
                   <div className="shrink-0 rounded-md overflow-hidden bg-muted border w-16 h-16 relative">
                     {item.imageUrl ? (
@@ -122,11 +122,14 @@ export function CartDrawer() {
                             {item.variantTitle}
                           </p>
                         )}
+                        {item.customizationSummary && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{item.customizationSummary}</p>
+                        )}
                       </div>
                       <button
                         type="button"
                         aria-label={`Remove ${item.productTitle}`}
-                        onClick={() => removeItem(item.variantId)}
+                        onClick={() => removeItem(item.variantId, item.customizationId)}
                         className="shrink-0 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       >
                         <Trash2 className="size-4" />
@@ -136,15 +139,22 @@ export function CartDrawer() {
                     <div className="flex items-center justify-between mt-auto">
                       <QuantitySelector
                         value={item.quantity}
-                        onChange={(qty) => updateQuantity(item.variantId, qty)}
+                        onChange={(qty) => updateQuantity(item.variantId, qty, item.customizationId)}
                         min={1}
                         className="h-8 scale-90 origin-left"
                       />
-                      <PriceDisplay
-                        price={item.price * item.quantity}
-                        currency={item.currency}
-                        className="text-sm"
-                      />
+                      <div className="text-right">
+                        <PriceDisplay
+                          price={(item.price + (item.addonPrice ?? 0)) * item.quantity}
+                          currency={item.currency}
+                          className="text-sm"
+                        />
+                        {(item.addonPrice ?? 0) > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            +<PriceDisplay price={item.addonPrice!} currency={item.currency} className="inline text-xs" /> customization
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

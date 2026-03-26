@@ -18,6 +18,11 @@ import {
     Clock,
     Loader2,
     ChevronLeft,
+    ClipboardList,
+    Link2,
+    Unlink,
+    Search,
+    ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,6 +161,17 @@ export default function OrderDetailPage() {
     const [trackingUrl, setTrackingUrl] = useState("");
     const [fulfilling, setFulfilling] = useState(false);
 
+    // Mp-config link
+    type MpConfigLinked = { id: string; data: Record<string, unknown> | null; is_final: boolean; source: string; created_at: string };
+    const [mpConfigResponses, setMpConfigResponses] = useState<MpConfigLinked[]>([]);
+    const [mpConfigLoading, setMpConfigLoading] = useState(true);
+    const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+    const [linkSearch, setLinkSearch] = useState("");
+    const [linkCandidates, setLinkCandidates] = useState<MpConfigLinked[]>([]);
+    const [linkCandidatesLoading, setLinkCandidatesLoading] = useState(false);
+    const [linking, setLinking] = useState(false);
+    const [creating, setCreating] = useState(false);
+
     const fetchOrder = useCallback(async () => {
         setLoading(true);
         try {
@@ -251,6 +267,91 @@ export default function OrderDetailPage() {
             setFulfilling(false);
         }
     };
+
+    const fetchMpConfigLinks = useCallback(async () => {
+        setMpConfigLoading(true);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/mp-config-link`);
+            const json = await res.json();
+            setMpConfigResponses(json.responses ?? []);
+        } catch {
+            setMpConfigResponses([]);
+        } finally {
+            setMpConfigLoading(false);
+        }
+    }, [orderId]);
+
+    useEffect(() => {
+        fetchMpConfigLinks();
+    }, [fetchMpConfigLinks]);
+
+    const searchUnlinkedResults = useCallback(async (query: string) => {
+        setLinkCandidatesLoading(true);
+        try {
+            const res = await fetch(`/api/mp-config/responses?limit=50&offset=0`);
+            const json = await res.json();
+            const all = (json.rows ?? []) as MpConfigLinked[];
+            // Filter to unlinked results matching the search
+            const q = query.trim().toLowerCase();
+            const candidates = all.filter((r) => {
+                if ((r as Record<string, unknown>).order_id) return false;
+                if (!q) return true;
+                const name = String((r.data as Record<string, unknown>)?.name ?? "").toLowerCase();
+                return name.includes(q) || r.id.toLowerCase().includes(q);
+            });
+            setLinkCandidates(candidates);
+        } catch {
+            setLinkCandidates([]);
+        } finally {
+            setLinkCandidatesLoading(false);
+        }
+    }, []);
+
+    const handleLinkResult = useCallback(async (responseId: string) => {
+        setLinking(true);
+        try {
+            await fetch(`/api/shop/orders/${orderId}/mp-config-link`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ response_id: responseId }),
+            });
+            setLinkDialogOpen(false);
+            await fetchMpConfigLinks();
+        } finally {
+            setLinking(false);
+        }
+    }, [orderId, fetchMpConfigLinks]);
+
+    const handleCreateResult = useCallback(async () => {
+        setCreating(true);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/mp-config-link`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ create: true }),
+            });
+            const json = await res.json();
+            await fetchMpConfigLinks();
+            if (json.created) {
+                window.open(to(`/settings/results/${json.created}`), "_blank");
+            }
+        } finally {
+            setCreating(false);
+        }
+    }, [orderId, fetchMpConfigLinks, to]);
+
+    const handleUnlinkResult = useCallback(async (responseId: string) => {
+        try {
+            await fetch(`/api/shop/orders/${orderId}/mp-config-link`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ response_id: responseId }),
+            });
+            await fetchMpConfigLinks();
+        } catch {
+            // ignore
+        }
+    }, [orderId, fetchMpConfigLinks]);
 
     if (loading) {
         return (
@@ -546,6 +647,148 @@ export default function OrderDetailPage() {
                                     View customer profile →
                                 </Link>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Mp-config Result */}
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <ClipboardList className="h-4 w-4" />
+                                Mp-config Result
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {mpConfigLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading…
+                                </div>
+                            ) : mpConfigResponses.length > 0 ? (
+                                <div className="space-y-2">
+                                    {mpConfigResponses.map((r) => {
+                                        const name = String((r.data as Record<string, unknown>)?.name ?? "") || "—";
+                                        const size = String((r.data as Record<string, unknown>)?.online_recommended_size ?? "");
+                                        const kind = String((r.data as Record<string, unknown>)?.online_recommended_kind ?? "");
+                                        return (
+                                            <div key={r.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-medium truncate">{name}</p>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                                            {r.source === "online_customization" ? "Online" : "In-store"}
+                                                        </Badge>
+                                                        {size && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {kind} · {size}
+                                                            </span>
+                                                        )}
+                                                        <Badge variant={r.is_final ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+                                                            {r.is_final ? "Released" : "Active"}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1 shrink-0">
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                                                        <Link href={to(`/settings/results/${r.id}`)}>
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleUnlinkResult(r.id)}
+                                                    >
+                                                        <Unlink className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No linked result.</p>
+                            )}
+                            <div className="flex gap-2">
+                                <Dialog open={linkDialogOpen} onOpenChange={(open) => {
+                                    setLinkDialogOpen(open);
+                                    if (open) {
+                                        setLinkSearch("");
+                                        searchUnlinkedResults("");
+                                    }
+                                }}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="outline" className="flex-1">
+                                            <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                                            Link Existing
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-lg">
+                                        <DialogHeader>
+                                            <DialogTitle>Link Mp-config Result</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-3">
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    placeholder="Search by name or ID…"
+                                                    value={linkSearch}
+                                                    onChange={(e) => {
+                                                        setLinkSearch(e.target.value);
+                                                        searchUnlinkedResults(e.target.value);
+                                                    }}
+                                                    className="flex-1"
+                                                />
+                                                <Button size="icon" variant="outline" disabled={linkCandidatesLoading} onClick={() => searchUnlinkedResults(linkSearch)}>
+                                                    <Search className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <div className="max-h-60 overflow-y-auto space-y-1">
+                                                {linkCandidatesLoading ? (
+                                                    <div className="flex items-center gap-2 py-4 justify-center text-sm text-muted-foreground">
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        Loading…
+                                                    </div>
+                                                ) : linkCandidates.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                                        No unlinked results found.
+                                                    </p>
+                                                ) : (
+                                                    linkCandidates.map((c) => {
+                                                        const cName = String((c.data as Record<string, unknown>)?.name ?? "") || "—";
+                                                        return (
+                                                            <button
+                                                                key={c.id}
+                                                                type="button"
+                                                                className="w-full text-left rounded-md border p-2 hover:bg-accent transition-colors"
+                                                                disabled={linking}
+                                                                onClick={() => handleLinkResult(c.id)}
+                                                            >
+                                                                <p className="text-sm font-medium">{cName}</p>
+                                                                <p className="text-xs text-muted-foreground font-mono truncate">{c.id}</p>
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={handleCreateResult}
+                                    disabled={creating}
+                                >
+                                    {creating ? (
+                                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                    )}
+                                    Create Result
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 

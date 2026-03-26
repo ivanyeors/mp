@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,6 +41,9 @@ type MpConfigResponseRow = {
   is_final: boolean;
   measured_by_type?: string | null;
   measured_by_staff_id?: string | null;
+  source?: string | null;
+  order_id?: string | null;
+  order_number?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -381,6 +385,8 @@ export default function ResultsPage() {
               <TableRow>
                 <TableHead className="w-[120px]">Updated</TableHead>
                 <TableHead className="w-[220px]">Name</TableHead>
+                <TableHead className="w-[80px]">Source</TableHead>
+                <TableHead className="w-[140px]">Order</TableHead>
                 <TableHead className="w-[120px]">Gender</TableHead>
                 <TableHead className="w-[140px]">Age group</TableHead>
                 <TableHead className="w-[130px]">Shoulder (cm)</TableHead>
@@ -393,7 +399,7 @@ export default function ResultsPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={11} className="py-10 text-center text-sm text-muted-foreground">
                     {tab === "active" ? "No active results yet." : "No released results yet."}
                   </TableCell>
                 </TableRow>
@@ -426,6 +432,27 @@ export default function ResultsPage() {
                     >
                       <TableCell className="text-xs text-muted-foreground">{updated}</TableCell>
                       <TableCell className="font-medium">{name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {row.source === "online_customization" ? "Online" : "In-store"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell
+                        onClick={(e) => {
+                          if (row.order_id) e.stopPropagation();
+                        }}
+                      >
+                        {row.order_number ? (
+                          <a
+                            href={`/settings/orders/${row.order_id}`}
+                            className="text-xs text-primary hover:underline font-mono"
+                          >
+                            {row.order_number}
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>{gender}</TableCell>
                       <TableCell>{ageGroup}</TableCell>
                       <TableCell className="tabular-nums">{shoulder}</TableCell>

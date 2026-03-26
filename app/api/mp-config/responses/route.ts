@@ -197,16 +197,32 @@ export async function GET(req: Request) {
   const admin = supabaseAdmin();
   const { data, error, count } = await admin
     .from("mp_config_responses")
-    .select("id,data,is_final,measured_by_type,measured_by_staff_id,created_at,updated_at", { count: "exact" })
+    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,created_at,updated_at", { count: "exact" })
     .order("updated_at", { ascending: false })
     .range(offset, offset + limit - 1);
+
+  // Fetch order numbers for linked responses
+  const orderIds = (data ?? []).map((r) => r.order_id).filter(Boolean) as string[];
+  let orderNumberMap = new Map<string, string>();
+  if (orderIds.length > 0) {
+    const { data: orders } = await admin
+      .from("orders")
+      .select("id, order_number")
+      .in("id", orderIds);
+    orderNumberMap = new Map((orders ?? []).map((o) => [o.id, o.order_number]));
+  }
+
+  const rows = (data ?? []).map((r) => ({
+    ...r,
+    order_number: r.order_id ? orderNumberMap.get(r.order_id) ?? null : null,
+  }));
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json(
     {
       ok: true,
-      rows: data ?? [],
+      rows,
       count: typeof count === "number" ? count : null,
       limit,
       offset,

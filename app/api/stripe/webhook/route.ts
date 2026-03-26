@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
+import { deductInventoryForOrder, restoreInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
+import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
         // Idempotency: check if order is already paid
         const { data: order } = await admin
           .from("orders")
-          .select("id, status, paid_at, coupon_id, order_items(*)")
+          .select("id, status, paid_at, coupon_id, shipping_address, order_items(*)")
           .eq("id", orderId)
           .single();
 
@@ -63,27 +65,26 @@ export async function POST(req: Request) {
           })
           .eq("id", orderId);
 
-        // Deduct inventory for each order item
+        // Deduct inventory using BOM-aware logic
         const items = (order.order_items ?? []) as Array<{
           variant_id: string;
           quantity: number;
+          customization_id?: string | null;
+          customization_snapshot?: Record<string, unknown> | null;
         }>;
 
-        for (const item of items) {
-          const { data: variant } = await admin
-            .from("product_variants")
-            .select("stock_quantity")
-            .eq("id", item.variant_id)
-            .single();
+        await deductInventoryForOrder(orderId, items);
 
-          if (variant && variant.stock_quantity !== null) {
-            const newQty = Math.max(0, (variant.stock_quantity as number) - item.quantity);
-            await admin
-              .from("product_variants")
-              .update({ stock_quantity: newQty })
-              .eq("id", item.variant_id);
-          }
-        }
+        // Auto-create mp-config responses for customized items
+        const orderItemsForSync = (order.order_items ?? []) as Array<{
+          id: string;
+          variant_id: string;
+          quantity: number;
+          customization_id?: string | null;
+          customization_snapshot?: Record<string, unknown> | null;
+        }>;
+        const shippingAddr = order.shipping_address as { recipient?: string } | null;
+        await createMpConfigFromCustomization(orderId, orderItemsForSync, shippingAddr);
 
         // Increment coupon usage if applicable
         if (order.coupon_id) {
@@ -169,26 +170,15 @@ export async function POST(req: Request) {
           .update({ status: "refunded" })
           .eq("id", order.id);
 
-        // Restore inventory
-        const items = (order.order_items ?? []) as Array<{
+        // Restore inventory using BOM-aware logic
+        const refundItems = (order.order_items ?? []) as Array<{
           variant_id: string;
           quantity: number;
+          customization_id?: string | null;
+          customization_snapshot?: Record<string, unknown> | null;
         }>;
 
-        for (const item of items) {
-          const { data: variant } = await admin
-            .from("product_variants")
-            .select("stock_quantity")
-            .eq("id", item.variant_id)
-            .single();
-
-          if (variant && variant.stock_quantity !== null) {
-            await admin
-              .from("product_variants")
-              .update({ stock_quantity: (variant.stock_quantity as number) + item.quantity })
-              .eq("id", item.variant_id);
-          }
-        }
+        await restoreInventoryForOrder(order.id, refundItems);
 
         await addOrderTimelineEvent(
           order.id,

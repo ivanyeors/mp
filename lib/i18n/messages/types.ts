@@ -309,8 +309,69 @@ export type Messages = {
     account: {
       orders: string;
       addresses: string;
-      wishlist: string;
       profile: string;
+    };
+    customization: {
+      title: string;
+      subtitle: string;
+      step1: string;
+      step2: string;
+      step3: string;
+      step4: string;
+      sleepPosition: string;
+      bodyType: string;
+      firmness: string;
+      notes: string;
+      notesPlaceholder: string;
+      getRecommendation: string;
+      recommendedSize: string;
+      fillingConfig: string;
+      alternatives: string;
+      continueCustomize: string;
+      coverStyle: string;
+      caseStyle: string;
+      quantity: string;
+      baseIncluded: string;
+      perUnit: string;
+      reviewOrder: string;
+      orderSummary: string;
+      basePrice: string;
+      addons: string;
+      totalPrice: string;
+      addToCart: string;
+      upsells: string;
+      back: string;
+      next: string;
+      positions: {
+        side: string;
+        back: string;
+        stomach: string;
+        mixed: string;
+      };
+      bodyTypes: {
+        petite: string;
+        average: string;
+        large: string;
+      };
+      firmnesses: {
+        soft: string;
+        "medium-soft": string;
+        medium: string;
+        "medium-firm": string;
+        firm: string;
+      };
+    };
+    settings: {
+      apiConfigs: string;
+      apiConfigsDescription: string;
+      addApi: string;
+      editApi: string;
+      apiName: string;
+      apiSlug: string;
+      apiBaseUrl: string;
+      apiKey: string;
+      apiConfig: string;
+      apiActive: string;
     };
   };
 };

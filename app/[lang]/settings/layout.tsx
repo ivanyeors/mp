@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, Globe, LayoutDashboard, ShoppingBag, Package,
-  FolderTree, Library, ShoppingCart, UserCircle, Tag, Truck,
+  FolderTree, Library, ShoppingCart, UserCircle, Tag, Truck, KeyRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -58,10 +58,10 @@ const NAV_GROUPS: NavGroup[] = [
         tooltip: "General Settings",
         Icon: Settings2,
         items: [
+          { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound },
           { href: "/settings/staff-management", label: "Staff Management", tooltip: "Staff Management", Icon: Users },
         ],
       },
-      { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
     ],
   },
   {
@@ -74,7 +74,6 @@ const NAV_GROUPS: NavGroup[] = [
         Icon: ShoppingBag,
         items: [
           { href: "/settings/categories", label: "Categories", tooltip: "Product Categories", Icon: FolderTree },
-          { href: "/settings/collections", label: "Collections", tooltip: "Product Collections", Icon: Library },
         ],
       },
       {
@@ -83,6 +82,7 @@ const NAV_GROUPS: NavGroup[] = [
         tooltip: "Order Management",
         Icon: ShoppingCart,
         items: [
+          { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
           { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle },
         ],
       },

@@ -7,6 +7,7 @@ import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon, incrementCouponUsage } from "@/lib/ecommerce/discounts";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
+import { validateFullConfig } from "@/lib/shop/customization-inventory";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -65,32 +66,82 @@ export async function POST(req: Request) {
 
   const admin = supabaseAdmin();
 
-  // 5. Validate stock via variant_stock view
-  const variantIds = cart.items.map((item) => item.variant_id);
-  const { data: stockRows, error: stockError } = await admin
-    .from("variant_stock")
-    .select("variant_id, stock_available")
-    .in("variant_id", variantIds);
+  // 5. Validate stock — branch on customization vs standard items
+  const standardItems = cart.items.filter((item) => !item.customization_id);
+  const customizedItems = cart.items.filter((item) => !!item.customization_id);
 
-  if (stockError) {
-    return NextResponse.json({ error: "Failed to check stock availability" }, { status: 500 });
+  // 5a. Standard items: validate via variant_stock view
+  if (standardItems.length > 0) {
+    const variantIds = standardItems.map((item) => item.variant_id);
+    const { data: stockRows, error: stockError } = await admin
+      .from("variant_stock")
+      .select("variant_id, stock_available")
+      .in("variant_id", variantIds);
+
+    if (stockError) {
+      return NextResponse.json({ error: "Failed to check stock availability" }, { status: 500 });
+    }
+
+    const stockMap = new Map<string, number>(
+      (stockRows ?? []).map((row: { variant_id: string; stock_available: number }) => [
+        row.variant_id,
+        row.stock_available,
+      ])
+    );
+
+    for (const item of standardItems) {
+      const available = stockMap.get(item.variant_id) ?? 0;
+      if (available < item.quantity) {
+        const title = item.variant?.title ?? item.variant_id;
+        return NextResponse.json(
+          { error: `Insufficient stock for "${title}". Only ${available} available.` },
+          { status: 400 }
+        );
+      }
+    }
   }
 
-  const stockMap = new Map<string, number>(
-    (stockRows ?? []).map((row: { variant_id: string; stock_available: number }) => [
-      row.variant_id,
-      row.stock_available,
-    ])
-  );
+  // 5b. Customized items: validate via full config check
+  const customizationMap = new Map<string, { config_lines: unknown[]; filling_lines: unknown[]; total_addon_price: number; summary: string | null; pillow_product_id: number }>();
 
-  for (const item of cart.items) {
-    const available = stockMap.get(item.variant_id) ?? 0;
-    if (available < item.quantity) {
-      const title = item.variant?.title ?? item.variant_id;
-      return NextResponse.json(
-        { error: `Insufficient stock for "${title}". Only ${available} available.` },
-        { status: 400 }
+  if (customizedItems.length > 0) {
+    const customizationIds = customizedItems.map((item) => item.customization_id!);
+    const { data: configs, error: configError } = await admin
+      .from("customization_configs")
+      .select("id, pillow_product_id, config_lines, filling_lines, total_addon_price, summary")
+      .in("id", customizationIds);
+
+    if (configError || !configs) {
+      return NextResponse.json({ error: "Failed to load customization configurations" }, { status: 500 });
+    }
+
+    for (const cfg of configs) {
+      customizationMap.set(cfg.id, cfg);
+    }
+
+    for (const item of customizedItems) {
+      const cfg = customizationMap.get(item.customization_id!);
+      if (!cfg) {
+        return NextResponse.json(
+          { error: "Customization configuration not found" },
+          { status: 400 }
+        );
+      }
+
+      const result = await validateFullConfig(
+        cfg.pillow_product_id,
+        cfg.filling_lines as unknown as import("@/lib/types/customization").FillingLine[],
+        cfg.config_lines as unknown as import("@/lib/types/customization").ConfigLine[],
+        item.quantity
       );
+
+      if (!result.valid) {
+        const shortageNames = result.shortages.map((s) => s.name).join(", ");
+        return NextResponse.json(
+          { error: `Insufficient component stock for customized item: ${shortageNames}` },
+          { status: 400 }
+        );
+      }
     }
   }
 
@@ -103,11 +154,14 @@ export async function POST(req: Request) {
     );
   }
 
-  // 7. Calculate subtotal
-  const subtotal = cart.items.reduce(
-    (sum, item) => sum + item.quantity * (item.variant?.price ?? 0),
-    0
-  );
+  // 7. Calculate subtotal (including customization addon prices)
+  const subtotal = cart.items.reduce((sum, item) => {
+    const basePrice = item.quantity * (item.variant?.price ?? 0);
+    const addonPrice = item.customization_id
+      ? (customizationMap.get(item.customization_id)?.total_addon_price ?? 0) * item.quantity
+      : 0;
+    return sum + basePrice + addonPrice;
+  }, 0);
 
   // 8. Validate coupon if provided
   let discountAmount = 0;
@@ -184,18 +238,34 @@ export async function POST(req: Request) {
   }
 
   // 13. Create order_items from cart items
-  const orderItems = cart.items.map((item) => ({
-    order_id: orderRow.id,
-    variant_id: item.variant_id,
-    sku: item.variant?.sku ?? "",
-    product_title:
-      Object.values(item.product?.content ?? {})[0]?.title ?? item.product?.slug ?? "",
-    variant_title: item.variant?.title ?? null,
-    image_url: item.variant?.image_url ?? null,
-    quantity: item.quantity,
-    unit_price: item.variant?.price ?? 0,
-    total_price: item.quantity * (item.variant?.price ?? 0),
-  }));
+  const orderItems = cart.items.map((item) => {
+    const cfg = item.customization_id
+      ? customizationMap.get(item.customization_id)
+      : null;
+    const addonPrice = cfg?.total_addon_price ?? 0;
+
+    return {
+      order_id: orderRow.id,
+      variant_id: item.variant_id,
+      sku: item.variant?.sku ?? "",
+      product_title:
+        Object.values(item.product?.content ?? {})[0]?.title ?? item.product?.slug ?? "",
+      variant_title: item.variant?.title ?? null,
+      image_url: item.variant?.image_url ?? null,
+      quantity: item.quantity,
+      unit_price: (item.variant?.price ?? 0) + addonPrice,
+      total_price: item.quantity * ((item.variant?.price ?? 0) + addonPrice),
+      customization_id: item.customization_id ?? null,
+      customization_snapshot: cfg
+        ? {
+            config_lines: cfg.config_lines,
+            filling_lines: cfg.filling_lines,
+            total_addon_price: cfg.total_addon_price,
+            summary: cfg.summary,
+          }
+        : null,
+    };
+  });
 
   const { error: itemsError } = await admin.from("order_items").insert(orderItems);
   if (itemsError) {

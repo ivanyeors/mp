@@ -262,7 +262,7 @@ export default function SettingsCategoriesPage() {
         try {
             const res = await fetch("/api/shop/categories");
             const json = await res.json();
-            const tree: CategoryWithMeta[] = json.categories ?? json ?? [];
+            const tree: CategoryWithMeta[] = json.rows ?? json.categories ?? [];
             setCategories(tree);
             // Auto-expand top-level categories that have children
             const topIds = tree

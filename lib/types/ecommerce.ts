@@ -9,7 +9,7 @@ export type ProductType = "pillow" | "bolster" | "accessory" | "bundle";
 export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
 export type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
 export type ReviewStatus = "pending" | "approved" | "rejected";
-export type CollectionType = "manual" | "auto";
+// CollectionType removed — collections dropped in migration 0029
 
 // --- Localized Content ---
 
@@ -27,10 +27,7 @@ export interface LocalizedCategoryContent {
   description?: string;
 }
 
-export interface LocalizedCollectionContent {
-  title: string;
-  description?: string;
-}
+// LocalizedCollectionContent removed — collections dropped
 
 export interface LocalizedShippingContent {
   name: string;
@@ -67,6 +64,7 @@ export interface Product {
   stripe_product_id: string | null;
   stripe_payment_link: string | null;
   stripe_payment_link_id: string | null;
+  is_auto_generated: boolean;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -123,29 +121,6 @@ export interface ProductImage {
   created_at: string;
 }
 
-// --- Collections ---
-
-export interface Collection {
-  id: string;
-  slug: string;
-  collection_type: CollectionType;
-  content: Record<string, LocalizedCollectionContent>;
-  image_url: string | null;
-  rules: CollectionRule[];
-  sort_order: string;
-  is_active: boolean;
-  position: number;
-  created_at: string;
-  updated_at: string;
-  product_count?: number;
-}
-
-export interface CollectionRule {
-  field: string;   // "category" | "tag" | "price" | "product_type"
-  condition: string; // "equals" | "contains" | "greater_than" | "less_than"
-  value: string;
-}
-
 // --- Customers ---
 
 export interface Customer {
@@ -200,6 +175,7 @@ export interface CartItem {
   variant_id: string;
   quantity: number;
   added_at: string;
+  customization_id?: string | null;
   // Joined data for display
   variant?: ProductVariant;
   product?: Product;
@@ -217,6 +193,9 @@ export interface CartItemClient {
   compareAtPrice: number | null;
   currency: string;
   quantity: number;
+  customizationId?: string;
+  customizationSummary?: string;
+  addonPrice?: number;
 }
 
 // --- Orders ---
@@ -346,13 +325,4 @@ export interface ProductReview {
   updated_at: string;
 }
 
-// --- Wishlist ---
-
-export interface WishlistItem {
-  id: string;
-  wishlist_id: string;
-  product_id: string;
-  variant_id: string | null;
-  added_at: string;
-  product?: Product;
-}
+// (Wishlists removed — tables dropped in migration 0029)

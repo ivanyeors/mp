@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ShoppingCart, Star, ChevronRight, Package, Check } from "lucide-react";
+import { ShoppingCart, Star, ChevronRight, Package, Check } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ import { QuantitySelector } from "@/components/shop/quantity-selector";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { ProductCard } from "@/components/shop/product-card";
 
+import { PillowCustomizer } from "@/components/shop/pillow-customizer";
 import { useCart } from "@/lib/shop/cart-context";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
@@ -91,8 +93,8 @@ export default function ProductDetailPage() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [mainImageIndex, setMainImageIndex] = useState(0);
-  const [wishlisted, setWishlisted] = useState(false);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const [stickyBarVisible, setStickyBarVisible] = useState(false);
 
   // ── refs ───────────────────────────────────────────────────────────────────
@@ -391,11 +393,20 @@ export default function ProductDetailPage() {
             )}
 
             {/* CTA row */}
-            <div className="flex gap-3 items-stretch">
+            <div className="flex flex-col gap-3">
+              {(product.product_type === "pillow" || product.product_type === "bolster") && (
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setCustomizerOpen(true)}
+                >
+                  Build Your Pillow
+                </Button>
+              )}
               <Button
                 ref={addToCartRef}
                 size="lg"
-                className="flex-1 gap-2"
+                className="w-full gap-2"
                 disabled={isOutOfStock}
                 onClick={handleAddToCart}
               >
@@ -410,20 +421,6 @@ export default function ProductDetailPage() {
                     {isOutOfStock ? "Out of Stock" : "Add to Cart"}
                   </>
                 )}
-              </Button>
-
-              <Button
-                size="lg"
-                variant="outline"
-                className="px-4"
-                aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
-                onClick={() => setWishlisted((w) => !w)}
-              >
-                <Heart
-                  className={`w-5 h-5 transition-colors ${
-                    wishlisted ? "fill-red-500 text-red-500" : "text-muted-foreground"
-                  }`}
-                />
               </Button>
             </div>
           </div>
@@ -456,10 +453,9 @@ export default function ProductDetailPage() {
 
             <TabsContent value="description" className="pt-6">
               {body ? (
-                <div
-                  className="prose prose-neutral dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: body }}
-                />
+                <ReactMarkdown className="prose prose-neutral dark:prose-invert max-w-none">
+                  {body}
+                </ReactMarkdown>
               ) : description ? (
                 <p className="text-muted-foreground leading-relaxed">{description}</p>
               ) : (
@@ -559,6 +555,29 @@ export default function ProductDetailPage() {
           </Button>
         </div>
       </div>
+
+      <PillowCustomizer
+        open={customizerOpen}
+        onOpenChange={setCustomizerOpen}
+        onAddToCart={({ variantId, customizationId, customizationSummary, addonPrice, basePrice, currency }) => {
+          addItem({
+            variantId,
+            productId: product.id,
+            productSlug: product.slug,
+            productTitle: title,
+            variantTitle: selectedVariant?.title ?? null,
+            imageUrl: product.images?.[0]?.url ?? null,
+            price: basePrice,
+            compareAtPrice: null,
+            currency,
+            quantity: 1,
+            customizationId,
+            customizationSummary,
+            addonPrice,
+          });
+          setCustomizerOpen(false);
+        }}
+      />
     </>
   );
 }

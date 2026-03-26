@@ -64,12 +64,23 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const admin = supabaseAdmin();
   const { data: responseRow, error: rErr } = await admin
     .from("mp_config_responses")
-    .select("id,data,is_final,measured_by_type,measured_by_staff_id,created_at,updated_at")
+    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at")
     .eq("id", parsedParams.data.id)
     .maybeSingle();
 
   if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
   if (!responseRow) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Fetch linked order number if present
+  let orderNumber: string | null = null;
+  if (responseRow.order_id) {
+    const { data: orderRow } = await admin
+      .from("orders")
+      .select("order_number")
+      .eq("id", responseRow.order_id)
+      .maybeSingle();
+    orderNumber = orderRow?.order_number ?? null;
+  }
 
   const data = (responseRow.data ?? {}) as Record<string, unknown>;
   const sizeGuess = inferSizeFromMeasurements(data);
@@ -113,6 +124,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   return NextResponse.json({
     ok: true,
     response: responseRow,
+    order_number: orderNumber,
     suggestion: {
       recommended: {
         size: sizeGuess.size,

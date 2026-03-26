@@ -13,8 +13,8 @@ interface CartState {
 
 interface CartActions {
   addItem: (item: CartItemClient) => void;
-  removeItem: (variantId: string) => void;
-  updateQuantity: (variantId: string, quantity: number) => void;
+  removeItem: (variantId: string, customizationId?: string) => void;
+  updateQuantity: (variantId: string, quantity: number, customizationId?: string) => void;
   applyCoupon: (code: string | null) => void;
   clearCart: () => void;
   toggleCart: (open?: boolean) => void;
@@ -72,13 +72,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((item: CartItemClient) => {
     setState((prev) => {
-      const existing = prev.items.find((i) => i.variantId === item.variantId);
+      const itemKey = item.variantId + (item.customizationId ?? "");
+      const existing = prev.items.find(
+        (i) => i.variantId + (i.customizationId ?? "") === itemKey
+      );
       if (existing) {
         return {
           ...prev,
           isOpen: true,
           items: prev.items.map((i) =>
-            i.variantId === item.variantId
+            i.variantId + (i.customizationId ?? "") === itemKey
               ? { ...i, quantity: i.quantity + item.quantity }
               : i
           ),
@@ -88,22 +91,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const removeItem = useCallback((variantId: string) => {
+  const removeItem = useCallback((variantId: string, customizationId?: string) => {
+    const key = variantId + (customizationId ?? "");
     setState((prev) => ({
       ...prev,
-      items: prev.items.filter((i) => i.variantId !== variantId),
+      items: prev.items.filter((i) => i.variantId + (i.customizationId ?? "") !== key),
     }));
   }, []);
 
-  const updateQuantity = useCallback((variantId: string, quantity: number) => {
+  const updateQuantity = useCallback((variantId: string, quantity: number, customizationId?: string) => {
+    const key = variantId + (customizationId ?? "");
     setState((prev) => {
       if (quantity <= 0) {
-        return { ...prev, items: prev.items.filter((i) => i.variantId !== variantId) };
+        return { ...prev, items: prev.items.filter((i) => i.variantId + (i.customizationId ?? "") !== key) };
       }
       return {
         ...prev,
         items: prev.items.map((i) =>
-          i.variantId === variantId ? { ...i, quantity } : i
+          i.variantId + (i.customizationId ?? "") === key ? { ...i, quantity } : i
         ),
       };
     });
@@ -127,7 +132,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const subtotal = useMemo(
-    () => state.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () => state.items.reduce((sum, item) => sum + (item.price + (item.addonPrice ?? 0)) * item.quantity, 0),
     [state.items]
   );
 
