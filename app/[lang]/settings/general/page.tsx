@@ -193,8 +193,10 @@ export default function GeneralSettingsPage() {
   };
 
   /* ---- truncate url ---- */
-  const truncateUrl = (url: string, max = 40) =>
-    url.length > max ? url.slice(0, max) + "..." : url;
+  const truncateUrl = (url: string | null, max = 40) => {
+    if (!url) return "—";
+    return url.length > max ? url.slice(0, max) + "..." : url;
+  };
 
   /* ---------------------------------------------------------------- */
   /* Render                                                            */
@@ -248,7 +250,7 @@ export default function GeneralSettingsPage() {
                   <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
                     {cfg.slug}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs" title={cfg.base_url}>
+                  <td className="px-4 py-3 text-muted-foreground text-xs" title={cfg.base_url ?? ""}>
                     {truncateUrl(cfg.base_url)}
                   </td>
                   <td className="px-4 py-3">
