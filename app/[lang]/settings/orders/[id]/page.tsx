@@ -55,7 +55,7 @@ import {
 } from "@/components/ui/dialog";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import type { Order, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
+import type { Order, OrderItem, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -172,6 +172,9 @@ export default function OrderDetailPage() {
     const [linking, setLinking] = useState(false);
     const [creating, setCreating] = useState(false);
 
+    // Inventory deduction status
+    const [inventoryDeducted, setInventoryDeducted] = useState<boolean | null>(null);
+
     const fetchOrder = useCallback(async () => {
         setLoading(true);
         try {
@@ -200,10 +203,31 @@ export default function OrderDetailPage() {
         }
     }, [orderId]);
 
+    // Check if inventory has been deducted for this order
+    const checkInventoryDeduction = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}`);
+            // We use a lightweight check — look for inventory_transactions via a dedicated query
+            // For now, check if order status is confirmed+ and timeline has payment_confirmed event
+            // A more robust check would query inventory_transactions directly
+            setInventoryDeducted(null); // Will be computed from timeline
+        } catch {
+            setInventoryDeducted(null);
+        }
+    }, [orderId]);
+
     useEffect(() => {
         fetchOrder();
         fetchTimeline();
     }, [fetchOrder, fetchTimeline]);
+
+    // Derive inventory deduction status from timeline
+    useEffect(() => {
+        if (timeline.length > 0 && order) {
+            const hasPaymentConfirmed = timeline.some((e) => e.event_type === "payment_confirmed");
+            setInventoryDeducted(hasPaymentConfirmed && order.status !== "pending");
+        }
+    }, [timeline, order]);
 
     const updateStatus = async () => {
         if (!newStatus || !order) return;
@@ -496,6 +520,85 @@ export default function OrderDetailPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Customization Details & Inventory Status */}
+                    {(order.items ?? []).some((item: OrderItem) => item.customization_id) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <ClipboardList className="h-4 w-4" />
+                                    Customization Details
+                                    {inventoryDeducted === true && (
+                                        <Badge variant="outline" className="ml-auto text-xs text-green-600 border-green-300">
+                                            Inventory deducted
+                                        </Badge>
+                                    )}
+                                    {inventoryDeducted === false && order.status !== "pending" && (
+                                        <Badge variant="outline" className="ml-auto text-xs text-red-600 border-red-300">
+                                            Deduction missing
+                                        </Badge>
+                                    )}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {(order.items ?? [])
+                                    .filter((item: OrderItem) => item.customization_id)
+                                    .map((item: OrderItem) => {
+                                        const snapshot = item.customization_snapshot;
+
+                                        return (
+                                            <div key={item.id} className="rounded-lg border p-4 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="font-medium text-sm">
+                                                        {item.product_title} — {item.variant_title}
+                                                    </div>
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        Customized
+                                                    </Badge>
+                                                </div>
+
+                                                {snapshot?.summary && (
+                                                    <p className="text-sm text-muted-foreground">{snapshot.summary}</p>
+                                                )}
+
+                                                {snapshot?.filling_lines && snapshot.filling_lines.length > 0 && (
+                                                    <div>
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1">Fillings</div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {snapshot.filling_lines.map((fl, idx) => (
+                                                                <span key={idx} className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs">
+                                                                    {fl.quantity}x {fl.subtype || fl.name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {snapshot?.config_lines && snapshot.config_lines.length > 0 && (
+                                                    <div>
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1">Components</div>
+                                                        <div className="space-y-1">
+                                                            {snapshot.config_lines.map((cl, idx) => (
+                                                                <div key={idx} className="flex justify-between text-xs">
+                                                                    <span>{cl.name} ({cl.category})</span>
+                                                                    <span>x{cl.quantity}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {(snapshot?.total_addon_price ?? 0) > 0 && (
+                                                    <div className="text-xs text-primary font-medium">
+                                                        Add-on price: {formatMYR(snapshot!.total_addon_price!)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Order Timeline */}
                     <Card>

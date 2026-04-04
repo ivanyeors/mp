@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -79,6 +79,7 @@ function stepIndex(step: Step): number {
 
 export default function MbolsterConfigPage() {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const mbolsterHref = withLocale("/mbolster", locale);
 
@@ -416,11 +417,18 @@ export default function MbolsterConfigPage() {
               </Button>
               <Button
                 onClick={() => {
-                  fetchBolsterRecommendation();
+                  const heightCm = toNumber(state.heightCm);
+                  if (!heightCm || !state.sleepPosition) return;
+                  router.push(
+                    withLocale(
+                      `/mp-maker?product=bolster&height=${Math.round(heightCm)}&position=${state.sleepPosition}`,
+                      locale
+                    )
+                  );
                 }}
-                disabled={!state.sleepPosition || shopLoading}
+                disabled={!state.sleepPosition || !toNumber(state.heightCm)}
               >
-                {shopLoading ? "Loading..." : "Get Recommendation"}
+                Get Recommendation
               </Button>
             </div>
           </Card>

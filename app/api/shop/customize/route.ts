@@ -168,6 +168,15 @@ async function handleRecommend(req: Request) {
         packaging: relevantItems.filter((i: { category: string }) => i.category === "packaging").map(toOption),
       };
 
+      // Fetch bolster buildable counts per variant
+      const { data: bolsterBuildable } = await admin
+        .from("bolster_buildable")
+        .select("variant, buildable");
+      const buildable_counts: Record<string, number> = {};
+      for (const row of bolsterBuildable ?? []) {
+        buildable_counts[row.variant] = row.buildable ?? 0;
+      }
+
       return NextResponse.json({
         ok: true,
         product_type: "bolster",
@@ -186,6 +195,7 @@ async function handleRecommend(req: Request) {
         components,
         templates: [],
         available_fillings: [],
+        buildable_counts,
       });
     }
 
@@ -229,6 +239,15 @@ async function handleRecommend(req: Request) {
     // Get available fillings for display
     const fillings = await getAvailableFillings();
 
+    // Fetch pillow buildable counts per size
+    const { data: pillowBuildable } = await admin
+      .from("product_buildable")
+      .select("size, buildable");
+    const buildable_counts: Record<string, number> = {};
+    for (const row of pillowBuildable ?? []) {
+      buildable_counts[row.size] = row.buildable ?? 0;
+    }
+
     return NextResponse.json({
       ok: true,
       product_type: "pillow",
@@ -251,6 +270,7 @@ async function handleRecommend(req: Request) {
         lines: t.lines,
       })),
       available_fillings: fillings,
+      buildable_counts,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to get recommendation";

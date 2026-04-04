@@ -26,6 +26,49 @@ function ConfigLoader() {
   const builder = useBuilder();
   const searchParams = useSearchParams();
   const configId = searchParams.get("config");
+  const heightParam = searchParams.get("height");
+  const positionParam = searchParams.get("position");
+
+  // Handle direct bolster params from mbolster-config redirect
+  const loadBolsterDirect = useCallback(async (height: number, position: string) => {
+    builder.setIsLoadingRecommendation(true);
+    builder.goToStep("recommendation");
+    builder.setBolsterPreferences({ height_cm: height, sleep_position: position as "side" | "stomach" | "other" });
+
+    try {
+      const res = await fetch("/api/shop/customize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bolster_preferences: { height_cm: height, sleep_position: position } }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        toast.error(data.error ?? "Failed to get recommendation");
+        builder.goToStep("preferences");
+        return;
+      }
+      builder.setRecommendation(data);
+      const defaultCover = data.components?.covers?.find((c: { base_quantity: number }) => c.base_quantity > 0);
+      const defaultCase = data.components?.cases?.find((c: { base_quantity: number }) => c.base_quantity > 0);
+      if (defaultCover) builder.setSelectedCover(defaultCover.item_id);
+      if (defaultCase) builder.setSelectedCase(defaultCase.item_id);
+      builder.setConfigLoaded(true);
+    } catch {
+      toast.error("Something went wrong");
+      builder.goToStep("preferences");
+    } finally {
+      builder.setIsLoadingRecommendation(false);
+    }
+  }, [builder]);
+
+  useEffect(() => {
+    if (heightParam && positionParam && !builder.configLoaded && !builder.isLoadingRecommendation) {
+      const h = parseInt(heightParam, 10);
+      if (h >= 80 && h <= 250) {
+        loadBolsterDirect(h, positionParam);
+      }
+    }
+  }, [heightParam, positionParam, builder.configLoaded, builder.isLoadingRecommendation, loadBolsterDirect]);
 
   const loadConfig = useCallback(async (id: string) => {
     builder.setConfigId(id);

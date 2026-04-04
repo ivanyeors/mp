@@ -34,7 +34,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+// Tabs removed — unified product list with type filter
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
@@ -44,6 +44,8 @@ type ProductVariant = {
     id: string;
     price: number | null;
     stock_quantity: number | null;
+    stock_available?: number | null;
+    stripe_price_id?: string | null;
 };
 
 type ProductImage = {
@@ -103,9 +105,23 @@ function getPriceRange(variants: ProductVariant[]): string {
     return min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`;
 }
 
-function getTotalStock(variants: ProductVariant[]): number {
-    if (!variants || variants.length === 0) return 0;
-    return variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
+function getTotalStock(variants: ProductVariant[]): { value: number; hasStockAvailable: boolean } {
+    if (!variants || variants.length === 0) return { value: 0, hasStockAvailable: false };
+    // Prefer stock_available (from variant_stock view) when present
+    const hasStockAvailable = variants.some((v) => v.stock_available != null);
+    if (hasStockAvailable) {
+        const total = variants.reduce((sum, v) => sum + (v.stock_available ?? v.stock_quantity ?? 0), 0);
+        return { value: total, hasStockAvailable: true };
+    }
+    return { value: variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0), hasStockAvailable: false };
+}
+
+function hasPriceWarning(variants: ProductVariant[]): boolean {
+    return variants.some((v) => v.price === 0 || v.price === null);
+}
+
+function hasMissingStripe(variants: ProductVariant[]): boolean {
+    return variants.some((v) => !v.stripe_price_id);
 }
 
 function getThumbnailUrl(images: ProductImage[]): string | null {
@@ -130,8 +146,8 @@ export default function SettingsProductsPage() {
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    // Tab state
-    const [activeTab, setActiveTab] = useState<string>("pillows");
+    // Type filter (replaces old tab system)
+    const [typeFilter, setTypeFilter] = useState<string>("all");
 
     // Filter state
     const [search, setSearch] = useState("");
@@ -146,9 +162,12 @@ export default function SettingsProductsPage() {
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState<Category[]>([]);
 
-    // Selection state (accessories tab only)
+    // Selection state
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [deleting, setDeleting] = useState(false);
+
+    // Derived: activeTab kept for backward compat in rendering logic
+    const activeTab = typeFilter === "accessory" ? "accessories" : "pillows";
 
     // Sync state
     const [syncing, setSyncing] = useState(false);
@@ -170,12 +189,8 @@ export default function SettingsProductsPage() {
     useEffect(() => { setPage(1); }, [statusFilter, categoryFilter]);
     useEffect(() => {
         setPage(1);
-        setSearch("");
-        setDebouncedSearch("");
-        setStatusFilter("all");
-        setCategoryFilter("all");
         setSelected(new Set());
-    }, [activeTab]);
+    }, [typeFilter]);
 
     // Fetch categories once
     useEffect(() => {
@@ -195,12 +210,11 @@ export default function SettingsProductsPage() {
         params.set("page", String(page));
         params.set("limit", String(LIMIT));
 
-        // Add product_type filter based on active tab
-        if (activeTab === "pillows") {
-            params.set("product_type", "pillow,bolster");
-        } else {
-            params.set("product_type", "accessory");
-        }
+        // Add product_type filter
+        if (typeFilter === "pillow") params.set("product_type", "pillow");
+        else if (typeFilter === "bolster") params.set("product_type", "bolster");
+        else if (typeFilter === "accessory") params.set("product_type", "accessory");
+        else if (typeFilter === "bundle") params.set("product_type", "bundle");
 
         try {
             const res = await fetch(`/api/shop/products?${params.toString()}`);
@@ -213,7 +227,7 @@ export default function SettingsProductsPage() {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearch, statusFilter, categoryFilter, page, activeTab]);
+    }, [debouncedSearch, statusFilter, categoryFilter, page, typeFilter]);
 
     useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -301,8 +315,8 @@ export default function SettingsProductsPage() {
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
     // Whether the current tab allows selection/deletion
-    const isAccessoriesTab = activeTab === "accessories";
-    const stockColumnLabel = activeTab === "pillows" ? "Buildable Stock" : "Stock";
+    const isAccessoriesTab = typeFilter === "accessory";
+    const stockColumnLabel = "Stock";
 
     // ── Shared product table renderer ──
     const renderProductTable = () => {
@@ -370,7 +384,9 @@ export default function SettingsProductsPage() {
                             const thumbnailUrl = getThumbnailUrl(product.product_images);
                             const title = getProductTitle(product);
                             const priceRange = getPriceRange(product.product_variants);
-                            const stock = getTotalStock(product.product_variants);
+                            const { value: stock } = getTotalStock(product.product_variants);
+                            const priceWarn = hasPriceWarning(product.product_variants);
+                            const stripeWarn = hasMissingStripe(product.product_variants);
                             const category = product.category_id
                                 ? categoryMap.get(product.category_id)
                                 : null;
@@ -440,7 +456,17 @@ export default function SettingsProductsPage() {
 
                                     {/* Price range */}
                                     <TableCell className="px-4 hidden md:table-cell text-sm text-muted-foreground">
-                                        {priceRange}
+                                        <span>{priceRange}</span>
+                                        {priceWarn && (
+                                            <Badge variant="outline" className="ml-2 text-xs text-amber-600 border-amber-300">
+                                                Price not set
+                                            </Badge>
+                                        )}
+                                        {stripeWarn && (
+                                            <Badge variant="outline" className="ml-1 text-xs text-red-600 border-red-300">
+                                                No Stripe
+                                            </Badge>
+                                        )}
                                     </TableCell>
 
                                     {/* Stock */}
@@ -547,6 +573,19 @@ export default function SettingsProductsPage() {
                 />
             </div>
 
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="pillow">Pillows</SelectItem>
+                    <SelectItem value="bolster">Bolsters</SelectItem>
+                    <SelectItem value="accessory">Accessories</SelectItem>
+                    <SelectItem value="bundle">Bundles</SelectItem>
+                </SelectContent>
+            </Select>
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-40">
                     <SelectValue placeholder="Status" />
@@ -585,85 +624,65 @@ export default function SettingsProductsPage() {
                 </p>
             </div>
 
-            {/* Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                    <TabsTrigger value="pillows">Pillows &amp; Bolsters</TabsTrigger>
-                    <TabsTrigger value="accessories">Accessories &amp; Parts</TabsTrigger>
-                </TabsList>
+            {/* Actions bar */}
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex gap-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={syncFromInventory}
+                        disabled={syncing}
+                    >
+                        {syncing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        Sync from Inventory
+                    </Button>
+                </div>
+                <Button asChild size="sm">
+                    <Link href={to("/settings/products/new?type=accessory")}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Product
+                    </Link>
+                </Button>
+            </div>
 
-                {/* Pillows & Bolsters Tab */}
-                <TabsContent value="pillows" className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex-1" />
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={syncFromInventory}
-                            disabled={syncing}
-                        >
-                            {syncing ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                            )}
-                            Sync from Inventory
-                        </Button>
-                    </div>
+            {renderToolbar()}
 
-                    {renderToolbar()}
-                    {renderProductTable()}
-                    {renderPagination()}
-                </TabsContent>
+            {/* Bulk actions bar */}
+            {selected.size > 0 && (
+                <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5">
+                    <span className="text-sm font-medium text-destructive">
+                        {selected.size} selected
+                    </span>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={bulkDelete}
+                        disabled={deleting}
+                    >
+                        {deleting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <Trash2 className="mr-2 h-4 w-4" />
+                        )}
+                        Delete selected
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelected(new Set())}
+                        disabled={deleting}
+                    >
+                        Clear
+                    </Button>
+                </div>
+            )}
 
-                {/* Accessories & Parts Tab */}
-                <TabsContent value="accessories" className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="flex-1" />
-                        <Button asChild size="sm">
-                            <Link href={to("/settings/products/new?type=accessory")}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Accessory
-                            </Link>
-                        </Button>
-                    </div>
-
-                    {renderToolbar()}
-
-                    {/* Bulk actions bar */}
-                    {selected.size > 0 && (
-                        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5">
-                            <span className="text-sm font-medium text-destructive">
-                                {selected.size} selected
-                            </span>
-                            <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={bulkDelete}
-                                disabled={deleting}
-                            >
-                                {deleting ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                )}
-                                Delete selected
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelected(new Set())}
-                                disabled={deleting}
-                            >
-                                Clear
-                            </Button>
-                        </div>
-                    )}
-
-                    {renderProductTable()}
-                    {renderPagination()}
-                </TabsContent>
-            </Tabs>
+            {renderProductTable()}
+            {renderPagination()}
         </div>
     );
 }
