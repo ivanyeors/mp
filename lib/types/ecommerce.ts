@@ -238,6 +238,14 @@ export interface Order {
   customer?: Customer | null;
 }
 
+export interface OrderItemCustomizationSnapshot {
+  config_lines?: import("./customization").ConfigLine[];
+  filling_lines?: import("./customization").FillingLine[];
+  total_addon_price?: number;
+  summary?: string;
+  pillow_product_id?: number;
+}
+
 export interface OrderItem {
   id: string;
   order_id: string;
@@ -249,6 +257,8 @@ export interface OrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  customization_id?: string | null;
+  customization_snapshot?: OrderItemCustomizationSnapshot | null;
   created_at: string;
 }
 

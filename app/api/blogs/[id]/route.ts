@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,9 @@ export async function GET(_req: Request, { params }: RouteParams) {
 }
 
 export async function PATCH(req: Request, { params }: RouteParams) {
+    const denied = await requireSettingsAuth();
+    if (denied) return denied;
+
     const { id } = await params;
     const body = await req.json().catch(() => null);
     const parsed = UpdateBlogSchema.safeParse(body);
@@ -64,6 +68,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
+    const denied = await requireSettingsAuth();
+    if (denied) return denied;
+
     const { id } = await params;
     const admin = supabaseAdmin();
     const { error } = await admin.from("blog_posts").delete().eq("id", id);

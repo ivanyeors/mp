@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -14,6 +16,9 @@ const ReorderCategoriesSchema = z.object({
 });
 
 export async function PUT(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   const parsed = ReorderCategoriesSchema.safeParse(body);
   if (!parsed.success) {
@@ -37,6 +42,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: firstError.error.message }, { status: 500 });
   }
 
+  revalidateTag("categories");
   return NextResponse.json({
     ok: true,
     rows: updates.map((r) => r.data),

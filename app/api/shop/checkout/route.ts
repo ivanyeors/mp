@@ -4,7 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getCartWithItems } from "@/lib/ecommerce/cart";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
-import { validateCoupon, incrementCouponUsage } from "@/lib/ecommerce/discounts";
+import { validateCoupon } from "@/lib/ecommerce/discounts";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
 import { validateFullConfig } from "@/lib/shop/customization-inventory";
@@ -306,10 +306,8 @@ export async function POST(req: Request) {
     .update({ stripe_session_id: stripeSession.sessionId })
     .eq("id", orderRow.id);
 
-  // Increment coupon usage if applicable
-  if (couponId) {
-    await incrementCouponUsage(couponId);
-  }
+  // Note: coupon usage is incremented in the Stripe webhook after successful payment,
+  // not here — avoids double-counting when checkout sessions are abandoned.
 
   // 15. Return checkout URL and order number
   return NextResponse.json({

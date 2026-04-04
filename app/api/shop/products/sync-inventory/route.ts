@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { syncAllProducts } from "@/lib/ecommerce/inventory-sync";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function POST() {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   try {
     const result = await syncAllProducts();
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -37,6 +38,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = CreateVariantSchema.safeParse(body);

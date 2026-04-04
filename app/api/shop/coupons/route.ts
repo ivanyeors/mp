@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   const parsed = CreateCouponSchema.safeParse(body);
   if (!parsed.success) {

@@ -21,8 +21,8 @@ export const baseCookieOptions = {
 }
 
 function getSecret(): string {
-  const secret = process.env.SETTINGS_AUTH_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET
-  if (!secret) throw new Error('Missing SETTINGS_AUTH_SECRET (or TELEGRAM_WEBHOOK_SECRET) env var')
+  const secret = process.env.SETTINGS_AUTH_SECRET
+  if (!secret) throw new Error('Missing SETTINGS_AUTH_SECRET env var')
   return secret
 }
 

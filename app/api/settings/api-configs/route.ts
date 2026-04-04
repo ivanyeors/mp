@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,9 @@ export async function GET() {
 /* POST - create a new api_config                                      */
 /* ------------------------------------------------------------------ */
 export async function POST(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json();
   const parsed = ApiConfigSchema.safeParse(body);
   if (!parsed.success) {
@@ -60,6 +64,9 @@ export async function POST(req: Request) {
 /* PATCH - update an existing api_config                               */
 /* ------------------------------------------------------------------ */
 export async function PATCH(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json();
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) {
@@ -83,6 +90,9 @@ export async function PATCH(req: Request) {
 /* DELETE - remove an api_config                                       */
 /* ------------------------------------------------------------------ */
 export async function DELETE(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json();
   const parsed = DeleteSchema.safeParse(body);
   if (!parsed.success) {

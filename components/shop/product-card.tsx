@@ -7,6 +7,12 @@ import { PriceDisplay } from "@/components/shop/price-display";
 import { cn } from "@/lib/utils";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
+function getProductHref(product: Product): string {
+  if (product.product_type === "pillow") return `/mp-maker?product=pillow`;
+  if (product.product_type === "bolster") return `/mp-maker?product=bolster`;
+  return `/shop/${product.slug}`;
+}
+
 interface ProductCardProps {
   product: Product & {
     variants?: ProductVariant[];
@@ -45,7 +51,7 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
 
   return (
     <Link
-      href={`/shop/${product.slug}`}
+      href={getProductHref(product)}
       className={cn(
         "group block rounded-xl overflow-hidden border border-border bg-card",
         "shadow-sm transition-shadow duration-200 hover:shadow-md",

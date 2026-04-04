@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,9 @@ export async function GET(req: Request) {
  * Upserts a single setting.
  */
 export async function PUT(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   try {
     const body = await req.json();
     const { key, value } = body as { key?: string; value?: string };
@@ -70,6 +74,9 @@ export async function PUT(req: Request) {
  * Removes a setting so the default is used again.
  */
 export async function DELETE(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const key = searchParams.get("key");
 

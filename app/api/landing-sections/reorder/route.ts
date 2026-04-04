@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -14,6 +15,9 @@ const ReorderSchema = z.object({
  * Updates all positions in bulk.
  */
 export async function PUT(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   try {
     const body = await req.json();
     const { order } = ReorderSchema.parse(body);

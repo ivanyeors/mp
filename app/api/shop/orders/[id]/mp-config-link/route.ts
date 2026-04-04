@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,9 @@ const PostBodySchema = z.union([
 
 // POST — link existing response or create new one
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id: orderId } = await ctx.params;
   const paramsParsed = ParamsSchema.safeParse({ id: orderId });
   if (!paramsParsed.success) return NextResponse.json({ error: "Invalid order id" }, { status: 400 });
@@ -96,6 +100,9 @@ const DeleteBodySchema = z.object({ response_id: z.string().uuid() });
 
 // DELETE — unlink a response from this order (does not delete the response)
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id: orderId } = await ctx.params;
   const paramsParsed = ParamsSchema.safeParse({ id: orderId });
   if (!paramsParsed.success) return NextResponse.json({ error: "Invalid order id" }, { status: 400 });

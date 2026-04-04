@@ -1,8 +1,9 @@
+import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { ProductCategory } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
-export async function getCategoryTree(): Promise<ProductCategory[]> {
+async function _getCategoryTree(): Promise<ProductCategory[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("categories")
@@ -32,7 +33,13 @@ export async function getCategoryTree(): Promise<ProductCategory[]> {
   return roots;
 }
 
-export async function getAllCategories(): Promise<ProductCategory[]> {
+export const getCategoryTree = unstable_cache(
+  _getCategoryTree,
+  ["categories-tree"],
+  { tags: ["categories"], revalidate: 3600 }
+);
+
+async function _getAllCategories(): Promise<ProductCategory[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("categories")
@@ -42,6 +49,12 @@ export async function getAllCategories(): Promise<ProductCategory[]> {
   if (error) return [];
   return (data ?? []) as ProductCategory[];
 }
+
+export const getAllCategories = unstable_cache(
+  _getAllCategories,
+  ["categories-all"],
+  { tags: ["categories"], revalidate: 3600 }
+);
 
 export async function getCategoryBySlug(slug: string): Promise<ProductCategory | null> {
   const admin = supabaseAdmin();

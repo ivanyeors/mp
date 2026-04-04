@@ -63,10 +63,7 @@ type Step =
   | "head-to-back"
   | "neck-length"
   | "customize"
-  | "preview"
-  | "recommendation"
-  | "components"
-  | "summary-cart";
+  | "preview";
 
 interface MeasurementData {
   name: string;
@@ -192,9 +189,6 @@ export default function MpConfigPage() {
     "neck-length",
     "customize",
     "preview",
-    "recommendation",
-    "components",
-    "summary-cart",
   ];
 
   const clearTransitionTimers = () => {
@@ -1754,14 +1748,20 @@ export default function MpConfigPage() {
                   </Button>
                   <Button
                     size="lg"
-                    onClick={() => {
-                      if (shopRecommendation) {
-                        goToNextStep();
-                      } else {
-                        toast.error("Recommendation not loaded yet. Please wait.");
+                    onClick={async () => {
+                      // Save response and redirect to mp-maker builder
+                      const result = await upsertToDb({ isFinal: true });
+                      if (!result?.id) {
+                        toast.error("Save failed");
+                        return;
                       }
+                      const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+                      const target = returnTo
+                        ? `${returnTo}?config=${result.id}`
+                        : withLocale(`/mp-maker?config=${result.id}`, locale);
+                      router.push(target);
                     }}
-                    disabled={!shopRecommendation || shopLoading}
+                    disabled={!responseId || !hasAnyInput}
                     className="group"
                   >
                     <ShoppingCart className="mr-2 h-5 w-5" />
@@ -1802,76 +1802,7 @@ export default function MpConfigPage() {
             </Card>
           )}
 
-          {/* Recommendation Step */}
-          {currentStep === "recommendation" && shopRecommendation && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
-              <CustomizationStepRecommendation
-                data={shopRecommendation}
-                selectedTemplateId={selectedTemplateId}
-                onSelectTemplate={setSelectedTemplateId}
-                fillingLines={shopFillingLines}
-                currency={shopCurrency}
-                basePrice={shopBasePrice}
-                onContinue={goToNextStep}
-              />
-            </Card>
-          )}
-
-          {/* Components Step */}
-          {currentStep === "components" && shopRecommendation && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
-              <CustomizationStepComponents
-                components={shopRecommendation.components}
-                selectedCover={selectedCover}
-                onSelectCover={setSelectedCover}
-                selectedCase={selectedCase}
-                onSelectCase={setSelectedCase}
-                componentQtyOverrides={componentQtyOverrides}
-                onQtyChange={(itemId, qty) => {
-                  setComponentQtyOverrides((prev) => {
-                    const next = new Map(prev);
-                    next.set(itemId, qty);
-                    return next;
-                  });
-                }}
-                currency={shopCurrency}
-                basePrice={shopBasePrice}
-                addonPrice={shopAddonPrice}
-                onBack={goToPreviousStep}
-                onContinue={goToNextStep}
-              />
-            </Card>
-          )}
-
-          {/* Summary & Cart Step */}
-          {currentStep === "summary-cart" && shopRecommendation && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
-              <CustomizationStepSummary
-                data={shopRecommendation}
-                fillingLines={shopFillingLines}
-                componentLines={shopComponentLines}
-                selectedCover={selectedCover}
-                selectedCase={selectedCase}
-                basePrice={shopBasePrice}
-                addonPrice={shopAddonPrice}
-                upsellTotal={shopUpsellTotal}
-                totalPrice={shopTotalPrice}
-                currency={shopCurrency}
-                selectedUpsells={selectedUpsells}
-                onToggleUpsell={(itemId) => {
-                  setSelectedUpsells((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(itemId)) next.delete(itemId);
-                    else next.add(itemId);
-                    return next;
-                  });
-                }}
-                isLoading={shopLoading}
-                onBack={goToPreviousStep}
-                onAddToCart={handleApplyAndAddToCart}
-              />
-            </Card>
-          )}
+          {/* Steps 10-12 (recommendation, components, summary) now live in /mp-maker */}
         </div>
       </div>
     </div>

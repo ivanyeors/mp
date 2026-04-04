@@ -91,7 +91,7 @@ export async function createMpConfigFromCustomization(
     await admin.from("mp_config_responses").insert({
       id: crypto.randomUUID(),
       data,
-      is_final: false,
+      is_final: true,
       source: "online_customization",
       order_id: orderId,
       order_item_id: item.id,
