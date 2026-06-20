@@ -6,7 +6,7 @@
 
 export type ProductStatus = "draft" | "active" | "archived";
 export type ProductType = "pillow" | "bolster" | "accessory" | "bundle";
-export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded";
+export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded" | "payment_failed" | "disputed";
 export type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
 export type ReviewStatus = "pending" | "approved" | "rejected";
 // CollectionType removed — collections dropped in migration 0029

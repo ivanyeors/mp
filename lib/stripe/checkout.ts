@@ -16,6 +16,19 @@ interface CreateCheckoutOpts {
   cancelUrl: string;
   shippingAmount?: number;
   shippingLabel?: string;
+  /**
+   * Tax to add as an explicit line item (exclusive tax only). Pass 0/undefined
+   * for inclusive tax, which is already embedded in the line-item prices.
+   */
+  taxAmount?: number;
+  taxLabel?: string;
+  /** Optional server cart token, persisted to metadata so the webhook can clear it. */
+  cartToken?: string;
+  /**
+   * Stable key (e.g. `checkout_${orderId}`) so a double-submitted checkout
+   * reuses the same Stripe session instead of creating duplicates.
+   */
+  idempotencyKey?: string;
   metadata?: Record<string, string>;
 }
 
@@ -33,10 +46,34 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
     }
   }
 
-  const lineItems = opts.lineItems.map((item) => ({
-    price: item.variant.stripe_price_id!,
-    quantity: item.quantity,
-  }));
+  const currency = opts.lineItems[0]?.variant.currency.toLowerCase() ?? "sgd";
+
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = opts.lineItems.map(
+    (item) => ({
+      price: item.variant.stripe_price_id!,
+      quantity: item.quantity,
+    })
+  );
+
+  // Exclusive tax is rendered as a dedicated line item so the Stripe-charged
+  // total matches the order total persisted in our DB.
+  if (opts.taxAmount && opts.taxAmount > 0) {
+    lineItems.push({
+      price_data: {
+        currency,
+        unit_amount: Math.round(opts.taxAmount * 100),
+        product_data: { name: opts.taxLabel ?? "Tax" },
+      },
+      quantity: 1,
+    });
+  }
+
+  const metadata: Record<string, string> = {
+    order_id: opts.orderId,
+    order_number: opts.orderNumber,
+    ...(opts.cartToken ? { cart_token: opts.cartToken } : {}),
+    ...opts.metadata,
+  };
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: "payment",
@@ -44,10 +81,12 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
     customer_email: opts.customerEmail,
     success_url: opts.successUrl,
     cancel_url: opts.cancelUrl,
-    metadata: {
-      order_id: opts.orderId,
-      order_number: opts.orderNumber,
-      ...opts.metadata,
+    metadata,
+    // Mirror metadata onto the PaymentIntent so payment_intent.* webhook events
+    // (e.g. payment_failed) can be linked back to the order before the order
+    // ever stores a payment_reference.
+    payment_intent_data: {
+      metadata,
     },
   };
 
@@ -59,7 +98,7 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
           type: "fixed_amount",
           fixed_amount: {
             amount: Math.round(opts.shippingAmount * 100),
-            currency: opts.lineItems[0]?.variant.currency.toLowerCase() ?? "sgd",
+            currency,
           },
           display_name: opts.shippingLabel ?? "Shipping",
         },
@@ -67,7 +106,10 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
     ];
   }
 
-  const session = await stripe.checkout.sessions.create(sessionParams);
+  const session = await stripe.checkout.sessions.create(
+    sessionParams,
+    opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
+  );
 
   return {
     sessionId: session.id,

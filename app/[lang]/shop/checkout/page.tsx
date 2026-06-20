@@ -198,6 +198,7 @@ export default function CheckoutPage() {
         items: items.map((item) => ({
           variant_id: item.variantId,
           quantity: item.quantity,
+          customization_id: item.customizationId,
           unit_price: item.price,
           product_title: item.productTitle,
           variant_title: item.variantTitle,

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 type SheetSide = "top" | "right" | "bottom" | "left"
 type SheetMobilePreset = "auto" | "quick" | "full"
 type SheetDismissBehavior = "default" | "locked"
+type SheetAnimation = "slide" | "fade-up"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -54,6 +55,7 @@ function SheetContent({
   children,
   side = "right",
   mobilePreset,
+  animation = "slide",
   showDragHandle,
   insetBottomPadding,
   dismissBehavior = "default",
@@ -66,6 +68,7 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: SheetSide
   mobilePreset?: SheetMobilePreset
+  animation?: SheetAnimation
   showDragHandle?: boolean
   insetBottomPadding?: boolean
   dismissBehavior?: SheetDismissBehavior
@@ -88,6 +91,7 @@ function SheetContent({
         ? "bottom"
         : side
 
+  const isFadeUp = animation === "fade-up"
   const isMobileBottomSheet = isMobile && resolvedSide === "bottom"
   const shouldShowDragHandle =
     showDragHandle ?? (isMobileBottomSheet && resolvedMobilePreset === "quick")
@@ -127,15 +131,32 @@ function SheetContent({
         data-dismiss-behavior={dismissBehavior}
         data-resolved-side={resolvedSide}
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 overflow-y-auto",
-          resolvedSide === "right" &&
-            "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
-          resolvedSide === "left" &&
-            "data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
-          resolvedSide === "top" &&
-            "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto max-h-svh border-b",
-          resolvedSide === "bottom" &&
-            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto max-h-[100svh] border-t",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out overflow-y-auto",
+          // Timing: slower, gentler for fade-up
+          isFadeUp
+            ? "data-[state=open]:duration-700 data-[state=closed]:duration-500"
+            : "data-[state=closed]:duration-300 data-[state=open]:duration-500",
+          // Positioning per side
+          resolvedSide === "right" && "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
+          resolvedSide === "left" && "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
+          resolvedSide === "top" && "inset-x-0 top-0 h-auto max-h-svh border-b",
+          resolvedSide === "bottom" && "inset-x-0 bottom-0 h-auto max-h-[100svh] border-t",
+          // Default directional slide animation
+          !isFadeUp &&
+            resolvedSide === "right" &&
+            "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+          !isFadeUp &&
+            resolvedSide === "left" &&
+            "data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
+          !isFadeUp &&
+            resolvedSide === "top" &&
+            "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+          !isFadeUp &&
+            resolvedSide === "bottom" &&
+            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          // Fade-up: fade in with a subtle upward slide
+          isFadeUp &&
+            "data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-4",
           isMobileBottomSheet && "rounded-t-2xl",
           shouldInsetBottomPadding && "pb-[calc(0.75rem+var(--safe-bottom))]",
           className

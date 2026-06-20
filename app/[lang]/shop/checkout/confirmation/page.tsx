@@ -35,19 +35,21 @@ export default function OrderConfirmationPage() {
   const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
-    if (!orderNumber) return;
+    // The order is looked up by order number, gated by the Stripe session id
+    // (a capability token), so both are required to load order details.
+    if (!orderNumber || !sessionId) return;
 
     setLoading(true);
-    const url = sessionId
-      ? `/api/shop/orders/${orderNumber}?session_id=${sessionId}`
-      : `/api/shop/orders/${orderNumber}`;
+    const url = `/api/shop/orders/by-number/${encodeURIComponent(
+      orderNumber
+    )}?session_id=${encodeURIComponent(sessionId)}`;
 
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error("Order not found");
         return res.json();
       })
-      .then((data: Order) => setOrder(data))
+      .then((data: { ok: boolean; order: Order }) => setOrder(data.order))
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
   }, [orderNumber, sessionId]);
