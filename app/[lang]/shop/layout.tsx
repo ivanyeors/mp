@@ -1,14 +1,21 @@
 import { CartProvider } from "@/lib/shop/cart-context";
+import { CurrencyProvider } from "@/lib/shop/currency-context";
+import { CartDrawer } from "@/components/shop/cart-drawer";
+import { ShopHeader } from "@/components/shop/shop-header";
 import type { ReactNode } from "react";
 
 export default function ShopLayout({ children }: { children: ReactNode }) {
   return (
-    <CartProvider>
-      <div className="min-h-screen bg-background">
-        <main className="max-w-7xl mx-auto px-4 py-8">
-          {children}
-        </main>
-      </div>
-    </CartProvider>
+    <CurrencyProvider>
+      <CartProvider>
+        <div className="min-h-screen bg-background">
+          <ShopHeader />
+          <main className="max-w-7xl mx-auto px-4 py-8">
+            {children}
+          </main>
+        </div>
+        <CartDrawer />
+      </CartProvider>
+    </CurrencyProvider>
   );
 }

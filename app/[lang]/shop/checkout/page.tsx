@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { ChevronDown, CreditCard, Loader2, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import { useCart } from "@/lib/shop/cart-context";
-import { PriceDisplay } from "@/components/shop/price-display";
+import { useCurrency } from "@/lib/shop/currency-context";
+import { PriceDisplay, formatPrice } from "@/components/shop/price-display";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -68,14 +69,6 @@ function getShippingContent(method: ShippingMethod, lang: string): LocalizedShip
   return method.content[lang] ?? method.content["en"] ?? { name: method.slug };
 }
 
-function formatPrice(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-MY", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
-
 // ---------------------------------------------------------------------------
 // Checkout Page
 // ---------------------------------------------------------------------------
@@ -86,6 +79,7 @@ export default function CheckoutPage() {
   const lang = (params?.lang as string) ?? "en";
 
   const { items, subtotal, couponCode, clearCart } = useCart();
+  const { isConverted, currency: displayCurrency } = useCurrency();
 
   // Form state
   const [form, setForm] = useState<FormData>({
@@ -97,7 +91,7 @@ export default function CheckoutPage() {
     city: "",
     state: "",
     postal_code: "",
-    country: "MY",
+    country: "SG",
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -139,7 +133,7 @@ export default function CheckoutPage() {
 
   // Derived values
   const selectedMethod = shippingMethods.find((m) => m.id === selectedShipping) ?? null;
-  const currency = items[0]?.currency ?? "MYR";
+  const currency = items[0]?.currency ?? "SGD";
   const shippingCost =
     selectedMethod
       ? selectedMethod.free_above != null && subtotal >= selectedMethod.free_above
@@ -314,7 +308,7 @@ export default function CheckoutPage() {
               {selectedMethod
                 ? shippingCost === 0
                   ? "Free"
-                  : formatPrice(shippingCost, selectedMethod.currency)
+                  : <PriceDisplay price={shippingCost} currency={selectedMethod.currency} className="inline text-sm" />
                 : "—"}
             </span>
           </div>
@@ -330,6 +324,11 @@ export default function CheckoutPage() {
             <span>Total</span>
             <PriceDisplay price={total} currency={currency} />
           </div>
+          {isConverted && (
+            <p className="text-xs text-muted-foreground mt-2">
+              You will be charged <span className="font-medium">{formatPrice(total, "SGD")}</span> SGD
+            </p>
+          )}
         </div>
       </div>
     );
@@ -627,7 +626,7 @@ export default function CheckoutPage() {
                           <span className="shrink-0 text-sm font-semibold">
                             {isFree
                               ? "Free"
-                              : formatPrice(cost, method.currency)}
+                              : <PriceDisplay price={cost} currency={method.currency} className="inline text-sm" />}
                           </span>
                         </div>
                       </label>

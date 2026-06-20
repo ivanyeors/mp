@@ -1,16 +1,30 @@
 "use client";
 
-import { useEffect, useCallback, Suspense } from "react";
+import { useEffect, useCallback, useState, Suspense } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ShoppingCart } from "lucide-react";
+import { X, ShoppingCart } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Particles } from "@/components/ui/particles";
+import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 
 import { BuilderProvider, useBuilder, type ProductType } from "./components/BuilderProvider";
-import { BuilderSidebar } from "./components/BuilderSidebar";
+import { ProductVisual } from "./components/ProductVisual";
+import { StepIndicator } from "./components/StepIndicator";
+import { BottomBar } from "./components/BottomBar";
 import { StepPreferences } from "./components/StepPreferences";
 import { StepRecommendation } from "./components/StepRecommendation";
 import { StepComponents } from "./components/StepComponents";
@@ -19,6 +33,13 @@ import { StepSummary } from "./components/StepSummary";
 import { useCart } from "@/lib/shop/cart-context";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import {
+  HARDCODED_UPSELLS,
+  computeFillingLines,
+  computeComponentLines,
+  computeAddonPrice,
+  computeUpsellTotal,
+} from "@/components/shop/customization-steps";
 
 // ─── Config Warm Start Handler ──────────────────────────────
 
@@ -76,7 +97,6 @@ function ConfigLoader() {
     builder.goToStep("recommendation");
 
     try {
-      // Fetch the mp-config response
       const responseRes = await fetch(`/api/mp-config/responses/${id}`);
       const responseData = await responseRes.json();
 
@@ -88,7 +108,6 @@ function ConfigLoader() {
 
       const data = responseData.response.data;
 
-      // Build measurement preferences from the response
       const measurementPreferences = {
         measurements: {
           shoulder_length_cm: parseFloat(data.shoulderLength) || 0,
@@ -111,7 +130,6 @@ function ConfigLoader() {
         },
       };
 
-      // Call customize API with measurements
       const customizeRes = await fetch("/api/shop/customize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -127,7 +145,6 @@ function ConfigLoader() {
 
       builder.setRecommendation(customizeData);
 
-      // Pre-select default cover/case
       const defaultCover = customizeData.components?.covers?.find(
         (c: { base_quantity: number }) => c.base_quantity > 0
       );
@@ -165,7 +182,7 @@ function BuilderSteps() {
       <div className="flex items-center justify-center py-20">
         <div className="text-center space-y-4">
           <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground">Loading your personalized recommendation...</p>
+          <p className="text-muted-foreground text-sm">Loading your personalized recommendation...</p>
         </div>
       </div>
     );
@@ -185,28 +202,132 @@ function BuilderSteps() {
   }
 }
 
+// ─── Add to Cart handler ─────────────────────────────────────
+
+function AddToCartHandler({ children }: { children: (handleAddToCart: () => void) => React.ReactNode }) {
+  const builder = useBuilder();
+  const { addItem } = useCart();
+
+  const handleAddToCart = useCallback(async () => {
+    if (!builder.recommendation?.variant || !builder.recommendation?.pillow_product) return;
+
+    builder.setIsApplying(true);
+
+    try {
+      const fillingLines = computeFillingLines(builder.recommendation, builder.selectedTemplateId);
+      const componentLines = computeComponentLines(
+        builder.recommendation,
+        builder.selectedCover,
+        builder.selectedCase,
+        builder.componentQtyOverrides
+      );
+
+      const upsellItems = HARDCODED_UPSELLS.filter((u) => builder.selectedUpsells.has(u.item_id));
+
+      const applyRes = await fetch("/api/shop/customize?action=apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variant_id: builder.recommendation.variant.id,
+          pillow_product_id: builder.recommendation.pillow_product.id,
+          filling_lines: fillingLines,
+          cover_variant: builder.selectedCover ? String(builder.selectedCover) : undefined,
+          case_variant: builder.selectedCase ? String(builder.selectedCase) : undefined,
+          component_quantities: componentLines,
+          upsells: upsellItems,
+          bom_template_id: builder.selectedTemplateId,
+          llm_metadata: {
+            source: builder.productType === "bolster" ? "mbolster-builder" : "pillow-builder",
+            ...(builder.pillowPreferences ?? {}),
+            ...(builder.bolsterPreferences ?? {}),
+            config_id: builder.configId,
+          },
+        }),
+      });
+
+      const applyData = await applyRes.json();
+
+      if (!applyData.ok) {
+        toast.error(applyData.error ?? "Failed to save configuration");
+        return;
+      }
+
+      const productSlug = builder.productType === "bolster"
+        ? `mbolster-${builder.recommendation.pillow_product.size.toLowerCase()}`
+        : `mpillow-${builder.recommendation.pillow_product.kind}`;
+
+      const productTitle = builder.productType === "bolster"
+        ? "Mbolster"
+        : `Mpillow ${builder.recommendation.pillow_product.kind}`;
+
+      addItem({
+        variantId: builder.recommendation.variant.id,
+        productId: builder.recommendation.variant.product_id,
+        productSlug,
+        productTitle,
+        variantTitle: `Size ${builder.recommendation.pillow_product.size}`,
+        imageUrl: null,
+        price: builder.recommendation.variant.price,
+        compareAtPrice: null,
+        currency: builder.recommendation.variant.currency,
+        quantity: 1,
+        customizationId: applyData.customization_id,
+        customizationSummary: applyData.summary,
+        addonPrice: applyData.total_addon_price,
+      });
+
+      toast.success("Added to cart!");
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      builder.setIsApplying(false);
+    }
+  }, [builder, addItem]);
+
+  return <>{children(handleAddToCart)}</>;
+}
+
 // ─── Main Content ────────────────────────────────────────────
 
 function MakerContent() {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const { itemCount, toggleCart } = useCart();
+  const builder = useBuilder();
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="flex h-14 items-center justify-between px-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={withLocale("/", locale)}>
-              <ArrowLeft className="size-4" />
-              Back
-            </Link>
-          </Button>
+        <div className="flex h-14 items-center justify-between px-4 max-w-[1400px] mx-auto">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <X className="size-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Leave MP Maker?</DialogTitle>
+                <DialogDescription>
+                  Your current configuration will not be saved. Are you sure you want to leave?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Stay</Button>
+                </DialogClose>
+                <Button variant="destructive" onClick={() => router.push(withLocale("/", locale))}>
+                  Leave
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <h1 className="text-sm font-semibold">MP Maker</h1>
 
-          <Button variant="ghost" size="sm" className="relative" onClick={() => toggleCart(true)}>
+          <Button variant="ghost" size="icon" className="size-8 relative" onClick={() => toggleCart(true)}>
             <ShoppingCart className="size-4" />
             {itemCount > 0 && (
               <span className="absolute -top-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
@@ -217,17 +338,69 @@ function MakerContent() {
         </div>
       </header>
 
-      {/* Content */}
-      <div className="relative z-10">
-        <BuilderSidebar />
-        <SidebarInset className="p-0">
-          <div className="max-w-2xl mx-auto px-4 py-8">
+      {/* Split-panel layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] min-h-[calc(100vh-56px)]">
+        {/* ─── LEFT PANEL: Product Visual + Background Effects ─── */}
+        <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] max-h-[40vh] lg:max-h-none overflow-hidden">
+          {/* Background layer 1: Particles */}
+          <Particles
+            className="absolute inset-0 z-[1]"
+            quantity={100}
+            ease={80}
+            staticity={50}
+            color="#ffffff"
+            size={0.8}
+          />
+
+          {/* Background layer 3: DotPattern */}
+          <DotPattern
+            dotSize={3}
+            gap={32}
+            baseColor="#3992C3"
+            activeColor="#3992C3"
+            proximity={80}
+            shockRadius={250}
+            className="absolute inset-0 opacity-60 z-[2]"
+          />
+
+          {/* Product visual on top */}
+          <div className="relative z-10 flex items-center justify-center h-full">
+            <ProductVisual />
+          </div>
+        </div>
+
+        {/* ─── RIGHT PANEL: Customization ─── */}
+        <div className="flex flex-col border-l bg-background min-h-0 lg:h-[calc(100vh-56px)]">
+          {/* Step indicator */}
+          <div className="px-5 pt-5 pb-3 border-b">
+            <StepIndicator />
+          </div>
+
+          {/* Scrollable step content */}
+          <div className="flex-1 overflow-y-auto px-5 py-6">
             <Suspense>
               <ConfigLoader />
             </Suspense>
-            <BuilderSteps />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={builder.step}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <BuilderSteps />
+              </motion.div>
+            </AnimatePresence>
           </div>
-        </SidebarInset>
+
+          {/* Sticky bottom bar */}
+          <AddToCartHandler>
+            {(handleAddToCart) => (
+              <BottomBar onAddToCart={handleAddToCart} />
+            )}
+          </AddToCartHandler>
+        </div>
       </div>
     </div>
   );
@@ -252,10 +425,8 @@ function MpMakerPageInner() {
   const initialConfigId = configParam || null;
 
   return (
-    <SidebarProvider>
-      <BuilderProvider initialProductType={initialProductType} initialConfigId={initialConfigId}>
-        <MakerContent />
-      </BuilderProvider>
-    </SidebarProvider>
+    <BuilderProvider initialProductType={initialProductType} initialConfigId={initialConfigId}>
+      <MakerContent />
+    </BuilderProvider>
   );
 }

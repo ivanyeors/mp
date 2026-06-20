@@ -10,8 +10,8 @@ const CreateShippingMethodSchema = z.object({
   content: z.record(z.string(), z.unknown()).default({}),
   base_rate: z.number().nonnegative(),
   free_above: z.number().nonnegative().nullable().optional().default(null),
-  currency: z.string().default("MYR"),
-  countries: z.array(z.string()).optional().default(["MY"]),
+  currency: z.string().default("SGD"),
+  countries: z.array(z.string()).optional().default(["SG"]),
   is_active: z.boolean().optional().default(true),
   position: z.number().int().nonnegative().optional().default(0),
 });

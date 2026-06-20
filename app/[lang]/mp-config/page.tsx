@@ -146,7 +146,7 @@ export default function MpConfigPage() {
   const [componentQtyOverrides, setComponentQtyOverrides] = useState<Map<number, number>>(new Map());
   const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
 
-  const shopCurrency = shopRecommendation?.variant?.currency ?? "MYR";
+  const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
 
   const shopFillingLines = useMemo(

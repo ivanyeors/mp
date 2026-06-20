@@ -101,7 +101,7 @@ export default function MbolsterConfigPage() {
   const [componentQtyOverrides, setComponentQtyOverrides] = React.useState<Map<number, number>>(new Map());
   const [selectedUpsells, setSelectedUpsells] = React.useState<Set<number>>(new Set());
 
-  const shopCurrency = shopRecommendation?.variant?.currency ?? "MYR";
+  const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
 
   const shopFillingLines = React.useMemo(

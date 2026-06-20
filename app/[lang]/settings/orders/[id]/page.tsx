@@ -71,10 +71,10 @@ const ORDER_STATUSES: OrderStatus[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatMYR(amount: number): string {
-    return new Intl.NumberFormat("en-MY", {
+function formatSGD(amount: number): string {
+    return new Intl.NumberFormat("en-SG", {
         style: "currency",
-        currency: "MYR",
+        currency: "SGD",
     }).format(amount);
 }
 
@@ -482,10 +482,10 @@ export default function OrderDetailPage() {
                                                 {item.quantity}
                                             </TableCell>
                                             <TableCell className="px-4 text-right text-sm hidden sm:table-cell text-muted-foreground">
-                                                {formatMYR(item.unit_price)}
+                                                {formatSGD(item.unit_price)}
                                             </TableCell>
                                             <TableCell className="px-4 text-right text-sm font-medium">
-                                                {formatMYR(item.total_price)}
+                                                {formatSGD(item.total_price)}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -495,27 +495,27 @@ export default function OrderDetailPage() {
                             <div className="border-t px-4 py-3 space-y-1.5 text-sm">
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>Subtotal</span>
-                                    <span>{formatMYR(order.subtotal)}</span>
+                                    <span>{formatSGD(order.subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>Shipping</span>
-                                    <span>{formatMYR(order.shipping_amount)}</span>
+                                    <span>{formatSGD(order.shipping_amount)}</span>
                                 </div>
                                 {order.discount_amount > 0 && (
                                     <div className="flex justify-between text-green-600 dark:text-green-400">
                                         <span>Discount</span>
-                                        <span>-{formatMYR(order.discount_amount)}</span>
+                                        <span>-{formatSGD(order.discount_amount)}</span>
                                     </div>
                                 )}
                                 {order.tax_amount > 0 && (
                                     <div className="flex justify-between text-muted-foreground">
                                         <span>Tax</span>
-                                        <span>{formatMYR(order.tax_amount)}</span>
+                                        <span>{formatSGD(order.tax_amount)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between font-semibold border-t pt-1.5 mt-1">
                                     <span>Total</span>
-                                    <span>{formatMYR(order.total)}</span>
+                                    <span>{formatSGD(order.total)}</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -590,7 +590,7 @@ export default function OrderDetailPage() {
 
                                                 {(snapshot?.total_addon_price ?? 0) > 0 && (
                                                     <div className="text-xs text-primary font-medium">
-                                                        Add-on price: {formatMYR(snapshot!.total_addon_price!)}
+                                                        Add-on price: {formatSGD(snapshot!.total_addon_price!)}
                                                     </div>
                                                 )}
                                             </div>

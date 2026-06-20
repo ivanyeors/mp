@@ -20,7 +20,7 @@ export function StepRecommendation() {
   if (!recommendation) return null;
 
   const basePrice = recommendation.variant?.price ?? 0;
-  const currency = recommendation.variant?.currency ?? "MYR";
+  const currency = recommendation.variant?.currency ?? "SGD";
   const productLabel = builder.productType === "bolster" ? "Mbolster" : undefined;
 
   return (

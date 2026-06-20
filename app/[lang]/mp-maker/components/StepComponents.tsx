@@ -25,7 +25,7 @@ export function StepComponents() {
   if (!recommendation) return null;
 
   const basePrice = recommendation.variant?.price ?? 0;
-  const currency = recommendation.variant?.currency ?? "MYR";
+  const currency = recommendation.variant?.currency ?? "SGD";
 
   return (
     <CustomizationStepComponents

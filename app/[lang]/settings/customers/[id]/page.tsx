@@ -44,10 +44,10 @@ import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatMYR(amount: number): string {
-    return new Intl.NumberFormat("en-MY", {
+function formatSGD(amount: number): string {
+    return new Intl.NumberFormat("en-SG", {
         style: "currency",
-        currency: "MYR",
+        currency: "SGD",
     }).format(amount);
 }
 
@@ -361,7 +361,7 @@ export default function CustomerDetailPage() {
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="px-4 text-right text-sm font-medium">
-                                                        {formatMYR(order.total)}
+                                                        {formatSGD(order.total)}
                                                     </TableCell>
                                                 </TableRow>
                                             );
@@ -672,7 +672,7 @@ export default function CustomerDetailPage() {
                                     <span>Total Spent</span>
                                 </div>
                                 <span className="font-semibold">
-                                    {formatMYR(customer.total_spent)}
+                                    {formatSGD(customer.total_spent)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between text-sm">

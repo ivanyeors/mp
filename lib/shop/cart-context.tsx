@@ -23,6 +23,7 @@ interface CartActions {
 interface CartContextValue extends CartState, CartActions {
   itemCount: number;
   subtotal: number;
+  hydrated: boolean;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -147,8 +148,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       toggleCart,
       itemCount,
       subtotal,
+      hydrated,
     }),
-    [state, addItem, removeItem, updateQuantity, applyCoupon, clearCart, toggleCart, itemCount, subtotal]
+    [state, addItem, removeItem, updateQuantity, applyCoupon, clearCart, toggleCart, itemCount, subtotal, hydrated]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

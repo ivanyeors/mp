@@ -146,7 +146,7 @@ export function resolveProductContent(product: Product, locale: Locale = DEFAULT
 /** Get the lowest price from all active variants */
 export function getProductPriceRange(variants: ProductVariant[]) {
   const active = variants.filter((v) => v.is_active);
-  if (!active.length) return { min: 0, max: 0, currency: "MYR" };
+  if (!active.length) return { min: 0, max: 0, currency: "SGD" };
   const prices = active.map((v) => v.price);
   return {
     min: Math.min(...prices),

@@ -92,8 +92,8 @@ function slugify(str: string): string {
         .replace(/^-|-$/g, "");
 }
 
-function formatPrice(val: number, currency = "MYR"): string {
-    return new Intl.NumberFormat("en-MY", { style: "currency", currency }).format(val);
+function formatPrice(val: number, currency = "SGD"): string {
+    return new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(val);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -486,7 +486,7 @@ export default function ProductEditorPage() {
         ? {
             min: Math.min(...variants.map((v) => v.price)),
             max: Math.max(...variants.map((v) => v.price)),
-            currency: variants[0]?.currency ?? "MYR",
+            currency: variants[0]?.currency ?? "SGD",
         }
         : null;
 

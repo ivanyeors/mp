@@ -3,7 +3,9 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Star, ChevronRight, Package, Check } from "lucide-react";
+import { ShoppingCart, Star, ChevronRight, Package, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
@@ -78,7 +80,7 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ product, relatedProducts, lang }: ProductDetailClientProps) {
-  const { addItem } = useCart();
+  const { addItem, toggleCart } = useCart();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     getDefaultVariant(product)
@@ -127,7 +129,26 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
 
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
-  }, [product, selectedVariant, quantity, lang, mainImageIndex, addItem]);
+
+    toast(
+      <div className="flex items-center gap-3">
+        {imageUrl && (
+          <img src={imageUrl} alt={title} className="h-12 w-12 rounded-md object-cover" />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Added to cart</p>
+          <p className="text-xs text-muted-foreground truncate">{title}</p>
+        </div>
+      </div>,
+      {
+        action: {
+          label: "View Cart",
+          onClick: () => toggleCart(true),
+        },
+        duration: 4000,
+      }
+    );
+  }, [product, selectedVariant, quantity, lang, mainImageIndex, addItem, toggleCart]);
 
   const title = getTitle(product, lang);
   const description = getDescription(product, lang);
@@ -222,7 +243,7 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
               <PriceDisplay
                 price={selectedVariant?.price ?? 0}
                 compareAtPrice={selectedVariant?.compare_at_price ?? null}
-                currency={selectedVariant?.currency ?? "USD"}
+                currency={selectedVariant?.currency ?? "SGD"}
               />
             </div>
 
@@ -317,18 +338,50 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
                 disabled={isOutOfStock}
                 onClick={handleAddToCart}
               >
-                {addedToCart ? (
-                  <>
-                    <Check className="w-5 h-5" />
-                    Added!
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="w-5 h-5" />
-                    {isOutOfStock ? "Out of Stock" : "Add to Cart"}
-                  </>
-                )}
+                <AnimatePresence mode="wait" initial={false}>
+                  {addedToCart ? (
+                    <motion.span
+                      key="check"
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex items-center gap-2"
+                    >
+                      <Check className="w-5 h-5" />
+                      Added!
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="cart"
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex items-center gap-2"
+                    >
+                      <ShoppingCart className="w-5 h-5" />
+                      {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Button>
+            </div>
+
+            {/* Trust signals */}
+            <div className="flex flex-col gap-2 pt-1 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Truck className="size-4 shrink-0" />
+                <span>Free shipping over S$150</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 shrink-0" />
+                <span>30-day satisfaction guarantee</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <RotateCcw className="size-4 shrink-0" />
+                <span>Easy returns &amp; exchanges</span>
+              </div>
             </div>
           </div>
         </div>
@@ -427,11 +480,11 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
 
       {/* Sticky bottom bar */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t shadow-lg transition-transform duration-300 ${
+        className={`fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t shadow-lg transition-transform duration-300 ${
           stickyBarVisible ? "translate-y-0" : "translate-y-full"
         }`}
       >
-        <div className="container mx-auto px-4 py-3 max-w-7xl flex items-center justify-between gap-4">
+        <div className="container mx-auto px-4 py-3 pb-[max(0.75rem,calc(var(--safe-bottom)+var(--mobile-dock-offset)+var(--mobile-dock-height)))] sm:pb-3 max-w-7xl flex items-center justify-between gap-4">
           <div className="flex flex-col min-w-0">
             <span className="font-semibold truncate text-sm">{title}</span>
             <PriceDisplay
@@ -446,17 +499,33 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
             disabled={isOutOfStock}
             onClick={handleAddToCart}
           >
-            {addedToCart ? (
-              <>
-                <Check className="w-5 h-5" />
-                Added!
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="w-5 h-5" />
-                {isOutOfStock ? "Out of Stock" : "Add to Cart"}
-              </>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {addedToCart ? (
+                <motion.span
+                  key="check"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-2"
+                >
+                  <Check className="w-5 h-5" />
+                  Added!
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="cart"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-2"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+                </motion.span>
+              )}
+            </AnimatePresence>
           </Button>
         </div>
       </div>

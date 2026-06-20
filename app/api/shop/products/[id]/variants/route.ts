@@ -14,7 +14,7 @@ const CreateVariantSchema = z.object({
   price: z.number().min(0),
   compare_at_price: z.number().min(0).nullable().optional().default(null),
   cost_price: z.number().min(0).nullable().optional().default(null),
-  currency: z.string().optional().default("MYR"),
+  currency: z.string().optional().default("SGD"),
   stock_quantity: z.number().int().optional().default(0),
   track_inventory: z.boolean().optional().default(true),
   weight_grams: z.number().int().nullable().optional().default(null),

@@ -21,7 +21,7 @@ const ShippingAddressSchema = z.object({
   city: z.string().min(1),
   state: z.string().optional(),
   postal_code: z.string().min(1),
-  country: z.string().default("MY"),
+  country: z.string().default("SG"),
   phone: z.string().optional(),
 });
 
@@ -215,7 +215,7 @@ export async function POST(req: Request) {
       email: email.toLowerCase().trim(),
       phone: phone ?? null,
       status: "pending",
-      currency: cart.currency ?? "MYR",
+      currency: cart.currency ?? "SGD",
       subtotal,
       shipping_amount: shippingAmount,
       tax_amount: 0,

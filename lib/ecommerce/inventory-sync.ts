@@ -131,7 +131,7 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
           sku: `${slug}-${pp.size}`.toUpperCase(),
           option1: pp.size,
           price: 0, // To be set by admin
-          currency: "MYR",
+          currency: "SGD",
           track_inventory: true,
           is_active: true,
           position: sizeIndex >= 0 ? sizeIndex : i,
@@ -260,7 +260,7 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
         sku: `MBOLSTER-${variant.toUpperCase()}`,
         option1: variant,
         price: 0,
-        currency: "MYR",
+        currency: "SGD",
         track_inventory: true,
         is_active: true,
         position: variantOrder.indexOf(variant),

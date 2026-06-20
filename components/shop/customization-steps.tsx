@@ -88,7 +88,7 @@ export const HARDCODED_UPSELLS: UpsellItem[] = [
 // ─── Shared Utilities ────────────────────────────────────────
 
 export function formatPrice(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-MY", {
+  return new Intl.NumberFormat("en-SG", {
     style: "currency",
     currency,
     minimumFractionDigits: 2,

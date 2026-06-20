@@ -47,7 +47,7 @@ export function StepSummary() {
   );
 
   const basePrice = recommendation?.variant?.price ?? 0;
-  const currency = recommendation?.variant?.currency ?? "MYR";
+  const currency = recommendation?.variant?.currency ?? "SGD";
   const totalPrice = basePrice + addonPrice + upsellTotal;
 
   const handleAddToCart = useCallback(async () => {
