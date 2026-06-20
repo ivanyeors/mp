@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { refreshSupabaseSession } from "@/lib/supabase/middleware";
 
 const CURRENCY_COOKIE = "mp_currency";
 
@@ -23,13 +24,14 @@ function pickLocaleFromAcceptLanguage(headerValue: string | null): Locale {
   return DEFAULT_LOCALE;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip Next internals, API, and direct file requests.
+  // Skip Next internals, API, auth callback, and direct file requests.
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
+    pathname.startsWith("/auth") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname.includes(".")
@@ -62,6 +64,8 @@ export function middleware(request: NextRequest) {
         });
       }
     }
+    // Refresh the Supabase auth session (rotates cookies onto the response).
+    await refreshSupabaseSession(request, res);
     return res;
   }
 
@@ -83,6 +87,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|favicon.ico|manifest.webmanifest).*)"],
+  matcher: ["/((?!api|_next|auth|favicon.ico|manifest.webmanifest).*)"],
 };
 

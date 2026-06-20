@@ -133,6 +133,13 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
   const basePathname = stripLocale(pathname);
   const to = (href: string) => withLocale(href, locale);
 
+  // The staff login screen is part of the settings segment but must render
+  // without the sidebar or the (legacy) auth gate so unauthenticated staff can
+  // sign in.
+  if (basePathname === "/settings/login") {
+    return <>{children}</>;
+  }
+
   const segments = basePathname.split("/").filter(Boolean);
   const last = segments[segments.length - 1] ?? "settings";
   const pageTitle = last === "settings"

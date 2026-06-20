@@ -11,7 +11,7 @@ const ApiConfigSchema = z.object({
   base_url: z.string().trim().url().max(500),
   api_key: z.string().max(500).optional().default(""),
   config: z.record(z.string(), z.unknown()).optional().default({}),
-  active: z.boolean().optional().default(true),
+  is_active: z.boolean().optional().default(true),
 });
 
 const UpdateSchema = ApiConfigSchema.partial().extend({

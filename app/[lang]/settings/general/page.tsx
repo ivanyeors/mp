@@ -29,7 +29,7 @@ interface ApiConfig {
   base_url: string;
   api_key: string;
   config: Record<string, unknown>;
-  active: boolean;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -39,7 +39,7 @@ type FormData = {
   base_url: string;
   api_key: string;
   config: string;
-  active: boolean;
+  is_active: boolean;
 };
 
 const emptyForm: FormData = {
@@ -48,7 +48,7 @@ const emptyForm: FormData = {
   base_url: "",
   api_key: "",
   config: "{}",
-  active: true,
+  is_active: true,
 };
 
 function slugify(value: string) {
@@ -107,7 +107,7 @@ export default function GeneralSettingsPage() {
       base_url: cfg.base_url,
       api_key: cfg.api_key ?? "",
       config: JSON.stringify(cfg.config ?? {}, null, 2),
-      active: cfg.active,
+      is_active: cfg.is_active,
     });
     setAutoSlug(false);
     setShowKey(false);
@@ -142,7 +142,7 @@ export default function GeneralSettingsPage() {
         base_url: form.base_url,
         api_key: form.api_key,
         config: parsedConfig,
-        active: form.active,
+        is_active: form.is_active,
       };
 
       const isEdit = editingId !== null;
@@ -254,8 +254,8 @@ export default function GeneralSettingsPage() {
                     {truncateUrl(cfg.base_url)}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={cfg.active ? "default" : "secondary"}>
-                      {cfg.active ? "Active" : "Inactive"}
+                    <Badge variant={cfg.is_active ? "default" : "secondary"}>
+                      {cfg.is_active ? "Active" : "Inactive"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -358,8 +358,8 @@ export default function GeneralSettingsPage() {
             <div className="flex items-center gap-3">
               <Switch
                 id="cfg-active"
-                checked={form.active}
-                onCheckedChange={(v) => updateField("active", v)}
+                checked={form.is_active}
+                onCheckedChange={(v) => updateField("is_active", v)}
               />
               <Label htmlFor="cfg-active">Active</Label>
             </div>

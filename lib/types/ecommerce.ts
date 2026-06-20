@@ -126,6 +126,7 @@ export interface ProductImage {
 export interface Customer {
   id: string;
   email: string;
+  auth_user_id: string | null;
   first_name: string | null;
   last_name: string | null;
   phone: string | null;

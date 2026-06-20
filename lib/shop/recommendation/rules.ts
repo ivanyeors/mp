@@ -1,0 +1,242 @@
+import type {
+  CustomerPreferences,
+  MeasurementBasedPreferences,
+  BolsterPreferences,
+  CustomizationResult,
+  FillingLine,
+} from "@/lib/types/customization";
+
+/**
+ * Guaranteed, deterministic rule-based recommendation logic.
+ *
+ * These functions are pure: they take the customer input plus the list of
+ * currently-available fillings and return a {@link CustomizationResult}. They
+ * perform no I/O (no DB, no network), which makes them the trustworthy fallback
+ * for the optional model endpoint and keeps them unit-testable.
+ */
+
+export interface AvailableFilling {
+  item_id: number;
+  subtype: string;
+  name: string;
+  on_hand?: number;
+}
+
+// ─── Size Recommendation Logic ─────────────────────────────
+
+export const SIZE_MAP: Record<string, Record<string, string>> = {
+  petite: { side: "S", back: "XS", stomach: "XS", mixed: "S" },
+  average: { side: "M", back: "M", stomach: "S", mixed: "M" },
+  large: { side: "L", back: "L", stomach: "M", mixed: "L" },
+};
+
+// ─── Firmness → Filling Logic ──────────────────────────────
+
+interface FillingSpec {
+  subtypes: string[];
+  quantities: Record<string, number>;
+}
+
+const FILLING_SPECS: Record<string, Record<string, FillingSpec>> = {
+  XS: {
+    soft: { subtypes: ["3D-S"], quantities: { "3D-S": 1 } },
+    "medium-soft": { subtypes: ["3D-S"], quantities: { "3D-S": 1 } },
+    medium: { subtypes: ["3D-S"], quantities: { "3D-S": 1 } },
+    "medium-firm": { subtypes: ["3D-S"], quantities: { "3D-S": 1 } },
+    firm: { subtypes: ["3D-S"], quantities: { "3D-S": 1 } },
+  },
+  S: {
+    soft: { subtypes: ["3D-S"], quantities: { "3D-S": 1 } },
+    "medium-soft": { subtypes: ["3D-S"], quantities: { "3D-S": 2 } },
+    medium: { subtypes: ["3D-S"], quantities: { "3D-S": 2 } },
+    "medium-firm": { subtypes: ["3D-S"], quantities: { "3D-S": 2 } },
+    firm: { subtypes: ["3D-S"], quantities: { "3D-S": 2 } },
+  },
+  M: {
+    soft: { subtypes: ["3D-L"], quantities: { "3D-L": 1 } },
+    "medium-soft": { subtypes: ["3D-L", "6D-S"], quantities: { "3D-L": 1, "6D-S": 1 } },
+    medium: { subtypes: ["3D-L", "6D-S"], quantities: { "3D-L": 1, "6D-S": 1 } },
+    "medium-firm": { subtypes: ["6D-S", "6D-L"], quantities: { "6D-S": 1, "6D-L": 1 } },
+    firm: { subtypes: ["6D-L"], quantities: { "6D-L": 2 } },
+  },
+  L: {
+    soft: { subtypes: ["3D-L"], quantities: { "3D-L": 2 } },
+    "medium-soft": { subtypes: ["3D-L", "6D-L"], quantities: { "3D-L": 1, "6D-L": 1 } },
+    medium: { subtypes: ["3D-L", "6D-L"], quantities: { "3D-L": 1, "6D-L": 1 } },
+    "medium-firm": { subtypes: ["6D-L"], quantities: { "6D-L": 2 } },
+    firm: { subtypes: ["6D-L", "6D-L+"], quantities: { "6D-L": 1, "6D-L+": 1 } },
+  },
+  XL: {
+    soft: { subtypes: ["6D-L"], quantities: { "6D-L": 2 } },
+    "medium-soft": { subtypes: ["6D-L"], quantities: { "6D-L": 2, "6D-L+": 1 } },
+    medium: { subtypes: ["6D-L", "6D-L+"], quantities: { "6D-L": 2, "6D-L+": 1 } },
+    "medium-firm": { subtypes: ["6D-L", "6D-L+"], quantities: { "6D-L": 2, "6D-L+": 1 } },
+    firm: { subtypes: ["6D-L+"], quantities: { "6D-L+": 3 } },
+  },
+};
+
+/**
+ * Resolve a subtype→quantity spec into concrete filling lines using the
+ * fillings that are actually available. Unavailable subtypes are dropped.
+ */
+export function resolveFillingLines(
+  quantities: Record<string, number>,
+  availableFillings: AvailableFilling[],
+): FillingLine[] {
+  const fillingsBySubtype = new Map(availableFillings.map((f) => [f.subtype, f]));
+  const lines: FillingLine[] = [];
+  for (const [subtype, qty] of Object.entries(quantities)) {
+    const filling = fillingsBySubtype.get(subtype);
+    if (filling) {
+      lines.push({ item_id: filling.item_id, subtype, name: filling.name, quantity: qty });
+    }
+  }
+  return lines;
+}
+
+function specFor(size: string, firmness: string): FillingSpec {
+  return FILLING_SPECS[size]?.[firmness] ?? FILLING_SPECS["M"]!["medium"]!;
+}
+
+function buildExplanation(prefs: CustomerPreferences, size: string, firmLabel: string): string {
+  const positionExplanations: Record<string, string> = {
+    side: "Side sleepers need higher loft to maintain proper neck alignment and fill the gap between the shoulder and head.",
+    back: "Back sleepers need moderate loft to support the natural curve of the cervical spine without pushing the head forward.",
+    stomach: "Stomach sleepers need a flatter pillow to avoid straining the neck and maintain a neutral spine position.",
+    mixed: "Mixed sleepers benefit from a versatile pillow that adapts well across different sleeping positions.",
+  };
+  return `Based on your profile (${prefs.body_type} build, ${prefs.sleep_position} sleeper, ${firmLabel} preference), we recommend Size ${size}. ${positionExplanations[prefs.sleep_position] ?? ""}`;
+}
+
+/**
+ * Simple-form recommendation: sleep position + body type + firmness.
+ */
+export function recommendFromPreferences(
+  preferences: CustomerPreferences,
+  availableFillings: AvailableFilling[],
+): CustomizationResult {
+  const { sleep_position, body_type, firmness } = preferences;
+
+  const recommendedSize = SIZE_MAP[body_type]?.[sleep_position] ?? "M";
+  const recommendedKind = "basic";
+
+  const spec = specFor(recommendedSize, firmness);
+  const filling_lines = resolveFillingLines(spec.quantities, availableFillings);
+
+  const fillingDesc = filling_lines.map((f) => `${f.quantity}× ${f.subtype}`).join(", ");
+  const firmLabel = firmness.replace("-", " ");
+
+  return {
+    recommended_size: recommendedSize,
+    recommended_kind: recommendedKind,
+    filling_lines,
+    summary: `Size ${recommendedSize} — ${firmLabel}: ${fillingDesc}`,
+    explanation: buildExplanation(preferences, recommendedSize, firmLabel),
+  };
+}
+
+// ─── Measurement-Based Recommendation ──────────────────────
+
+export function shoulderToBodyType(shoulderCm: number): "petite" | "average" | "large" {
+  if (shoulderCm < 38) return "petite";
+  if (shoulderCm <= 44) return "average";
+  return "large";
+}
+
+export function deriveSleepPosition(types: string[]): "side" | "back" | "stomach" | "mixed" {
+  if (types.length === 0) return "mixed";
+  if (types.length > 1 || types.includes("side-and-back")) return "mixed";
+  if (types.includes("side")) return "side";
+  if (types.includes("back")) return "back";
+  if (types.includes("stomach")) return "stomach";
+  return "mixed";
+}
+
+export function deriveFirmness(
+  bedFirmness: string,
+  health: MeasurementBasedPreferences["health"],
+): "soft" | "medium-soft" | "medium" | "medium-firm" | "firm" {
+  const firmnessScale = ["soft", "medium-soft", "medium", "medium-firm", "firm"] as const;
+  let index = bedFirmness === "firm" ? 4 : bedFirmness === "medium-soft" ? 1 : 2; // default medium
+
+  if (health.ear_discomfort_side_sleep) index = Math.max(0, index - 1);
+  if (health.acid_reflux) index = Math.min(4, index + 1);
+  if (health.sleep_pain_areas.includes("neck")) index = Math.max(0, index - 1);
+  if (health.sleep_pain_areas.includes("shoulder")) index = Math.max(0, index - 1);
+
+  return firmnessScale[Math.max(0, Math.min(4, index))];
+}
+
+/**
+ * Measurement-based recommendation derived from the in-store wizard data.
+ */
+export function recommendFromMeasurements(
+  input: MeasurementBasedPreferences,
+  availableFillings: AvailableFilling[],
+): CustomizationResult {
+  const bodyType = shoulderToBodyType(input.measurements.shoulder_length_cm);
+  const sleepPosition = deriveSleepPosition(input.health.sleep_position_type);
+  const firmness = deriveFirmness(input.health.bed_firmness, input.health);
+
+  const recommendedSize = SIZE_MAP[bodyType]?.[sleepPosition] ?? "M";
+  const recommendedKind = "basic";
+
+  const spec = specFor(recommendedSize, firmness);
+  const filling_lines = resolveFillingLines(spec.quantities, availableFillings);
+
+  const fillingDesc = filling_lines.map((f) => `${f.quantity}× ${f.subtype}`).join(", ");
+  const firmLabel = firmness.replace("-", " ");
+
+  const reasons: string[] = [];
+  reasons.push(`Shoulder width ${input.measurements.shoulder_length_cm}cm → ${bodyType} build`);
+  reasons.push(`Sleep style: ${sleepPosition} sleeper`);
+  reasons.push(`Bed firmness "${input.health.bed_firmness}" → pillow firmness: ${firmLabel}`);
+  if (input.health.ear_discomfort_side_sleep) reasons.push("Adjusted softer for ear discomfort during side sleep");
+  if (input.health.acid_reflux) reasons.push("Adjusted firmer for acid reflux support");
+  if (input.health.sleep_pain_areas.length > 0) {
+    reasons.push(`Sleep issues noted: ${input.health.sleep_pain_areas.join(", ")}`);
+  }
+
+  return {
+    recommended_size: recommendedSize,
+    recommended_kind: recommendedKind,
+    filling_lines,
+    summary: `Size ${recommendedSize} — ${firmLabel}: ${fillingDesc}`,
+    explanation: `Based on your measurements and health profile, we recommend Size ${recommendedSize} (${recommendedKind}). ${reasons.join(". ")}.`,
+  };
+}
+
+// ─── Bolster Recommendation ────────────────────────────────
+
+/**
+ * Bolster recommendation: height → size.
+ */
+export function recommendBolster(input: BolsterPreferences): CustomizationResult {
+  const heightM = input.height_cm / 100;
+  let size: string;
+  let reason: string;
+  if (heightM < 1.5) {
+    size = "S";
+    reason = `Height ${heightM.toFixed(2)}m → Size S`;
+  } else if (heightM <= 1.8) {
+    size = "M";
+    reason = `Height ${heightM.toFixed(2)}m → Size M`;
+  } else {
+    size = "L";
+    reason = `Height ${heightM.toFixed(2)}m → Size L`;
+  }
+
+  return {
+    recommended_size: size,
+    recommended_kind: "basic",
+    filling_lines: [],
+    summary: `Mbolster Size ${size}`,
+    explanation: `${reason}. ${
+      input.sleep_position === "side"
+        ? "Side sleepers benefit most from bolster support between the knees."
+        : input.sleep_position === "stomach"
+          ? "Consider the duo face cover option for stomach sleeping."
+          : "Flexible recommendation for varied sleep positions."
+    }`,
+  };
+}
