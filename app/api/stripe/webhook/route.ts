@@ -5,9 +5,44 @@ import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { deductInventoryForOrder, restoreInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
 import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync";
 import { updateCustomerStats } from "@/lib/ecommerce/customers";
+import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
 import type Stripe from "stripe";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
+
+/**
+ * Thrown by critical webhook steps (order confirmation, inventory deduction).
+ * Critical failures are dead-lettered and answered with HTTP 500 so Stripe
+ * retries. Non-critical failures are logged and answered with 200.
+ */
+class CriticalWebhookError extends Error {
+  constructor(message: string, public override cause?: unknown) {
+    super(message);
+    this.name = "CriticalWebhookError";
+  }
+}
+
+/** Idempotently record a failed event to the dead-letter table (keyed by event id). */
+async function recordWebhookFailure(
+  admin: SupabaseClient,
+  event: Stripe.Event,
+  error: string
+) {
+  try {
+    await admin.from("stripe_webhook_failures").upsert(
+      {
+        event_id: event.id,
+        event_type: event.type,
+        payload: event as unknown as Record<string, unknown>,
+        error,
+      },
+      { onConflict: "event_id" }
+    );
+  } catch (err) {
+    console.error("[stripe/webhook] Failed to write dead-letter row:", err);
+  }
+}
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -44,7 +79,9 @@ export async function POST(req: Request) {
         // Fetch order with items
         const { data: order } = await admin
           .from("orders")
-          .select("id, status, paid_at, coupon_id, customer_id, shipping_address, order_items(*)")
+          .select(
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, order_items(*)"
+          )
           .eq("id", orderId)
           .single();
 
@@ -55,9 +92,9 @@ export async function POST(req: Request) {
             ? session.payment_intent
             : session.payment_intent?.id ?? null;
 
-        // Step 1: Update order to confirmed (idempotent — skip if already paid)
+        // Step 1 (CRITICAL): Update order to confirmed (idempotent — skip if already paid)
         if (!order.paid_at) {
-          await admin
+          const { error: confirmError } = await admin
             .from("orders")
             .update({
               status: "confirmed",
@@ -66,9 +103,14 @@ export async function POST(req: Request) {
               payment_reference: paymentIntent,
             })
             .eq("id", orderId);
+
+          if (confirmError) {
+            throw new CriticalWebhookError(
+              `Failed to confirm order ${orderId}: ${confirmError.message}`
+            );
+          }
         }
 
-        // Step 2: Deduct inventory (idempotent — check if transactions already exist)
         const items = (order.order_items ?? []) as Array<{
           variant_id: string;
           quantity: number;
@@ -76,6 +118,7 @@ export async function POST(req: Request) {
           customization_snapshot?: Record<string, unknown> | null;
         }>;
 
+        // Step 2 (CRITICAL): Deduct inventory (idempotent — check if transactions already exist)
         const { count: existingTxCount } = await admin
           .from("inventory_transactions")
           .select("id", { count: "exact", head: true })
@@ -85,7 +128,11 @@ export async function POST(req: Request) {
           try {
             await deductInventoryForOrder(orderId, items);
           } catch (err) {
-            console.error(`[stripe/webhook] Inventory deduction failed for order ${orderId}:`, err);
+            const message = err instanceof Error ? err.message : String(err);
+            throw new CriticalWebhookError(
+              `Inventory deduction failed for order ${orderId}: ${message}`,
+              err
+            );
           }
         }
 
@@ -145,6 +192,16 @@ export async function POST(req: Request) {
           await admin.from("carts").delete().eq("token", cartToken);
         }
 
+        // Step 8: Send order-confirmation + payment-receipt emails (idempotent,
+        // non-critical — failures are logged and never break the webhook).
+        if (!order.paid_at) {
+          try {
+            await sendOrderConfirmedEmails(orderId, order, admin);
+          } catch (err) {
+            console.error(`[stripe/webhook] Order emails failed for ${orderId}:`, err);
+          }
+        }
+
         break;
       }
 
@@ -188,11 +245,15 @@ export async function POST(req: Request) {
 
         const { data: order } = await admin
           .from("orders")
-          .select("id, status, order_items(*)")
+          .select(
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, shipping_address, order_items(*)"
+          )
           .eq("payment_reference", paymentIntentId)
           .single();
 
         if (!order) break;
+
+        const alreadyRefunded = order.status === "refunded";
 
         await admin
           .from("orders")
@@ -216,6 +277,107 @@ export async function POST(req: Request) {
           { charge_id: charge.id, payment_intent: paymentIntentId }
         );
 
+        // Refund email (idempotent, non-critical). Skip if already refunded so
+        // a re-delivered event doesn't re-attempt.
+        if (!alreadyRefunded) {
+          try {
+            const refundAmount =
+              typeof charge.amount_refunded === "number"
+                ? charge.amount_refunded / 100
+                : null;
+            await sendRefundEmail(order.id, order, refundAmount, admin);
+          } catch (err) {
+            console.error(`[stripe/webhook] Refund email failed for ${order.id}:`, err);
+          }
+        }
+
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const intent = event.data.object as Stripe.PaymentIntent;
+        const orderId = intent.metadata?.order_id ?? null;
+
+        // Fall back to payment_reference in case the order already stored it.
+        const { data: order } = orderId
+          ? await admin
+              .from("orders")
+              .select("id, status")
+              .eq("id", orderId)
+              .maybeSingle()
+          : await admin
+              .from("orders")
+              .select("id, status")
+              .eq("payment_reference", intent.id)
+              .maybeSingle();
+
+        if (!order) break;
+
+        // Only mark failure while still awaiting payment — never clobber a
+        // confirmed/paid order (a later retry may have succeeded).
+        if (order.status !== "pending") break;
+
+        await admin
+          .from("orders")
+          .update({ status: "payment_failed" })
+          .eq("id", order.id);
+
+        const failureMessage =
+          intent.last_payment_error?.message ?? "Payment failed";
+
+        await addOrderTimelineEvent(
+          order.id,
+          "payment_failed",
+          `Payment failed: ${failureMessage}`,
+          {
+            payment_intent: intent.id,
+            decline_code: intent.last_payment_error?.decline_code ?? null,
+          }
+        );
+
+        break;
+      }
+
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const paymentIntentId =
+          typeof dispute.payment_intent === "string"
+            ? dispute.payment_intent
+            : dispute.payment_intent?.id ?? null;
+
+        if (!paymentIntentId) break;
+
+        const { data: order } = await admin
+          .from("orders")
+          .select("id, status")
+          .eq("payment_reference", paymentIntentId)
+          .maybeSingle();
+
+        if (!order) break;
+
+        await admin
+          .from("orders")
+          .update({ status: "disputed" })
+          .eq("id", order.id);
+
+        await addOrderTimelineEvent(
+          order.id,
+          "dispute_created",
+          "Chargeback/dispute opened via Stripe",
+          {
+            dispute_id: dispute.id,
+            charge_id: typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id ?? null,
+            reason: dispute.reason,
+            amount: dispute.amount,
+          }
+        );
+
+        // Disputes are revenue-affecting and time-sensitive — surface loudly.
+        // TODO: wire to a real alert channel (email/Slack).
+        console.error(
+          `[stripe/webhook] DISPUTE opened for order ${order.id} (dispute ${dispute.id}, reason: ${dispute.reason})`
+        );
+
         break;
       }
 
@@ -226,7 +388,16 @@ export async function POST(req: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Webhook handler error";
     console.error(`[stripe/webhook] Error handling ${event.type}:`, message);
-    // Still return 200 so Stripe doesn't retry endlessly for application-level errors
+
+    // Critical failures (order confirmation, inventory deduction) are
+    // dead-lettered and answered with 500 so Stripe retries the event.
+    if (err instanceof CriticalWebhookError) {
+      await recordWebhookFailure(admin, event, message);
+      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    }
+
+    // Non-critical / unexpected application-level errors: log and return 200 so
+    // Stripe doesn't retry endlessly.
     return NextResponse.json({ ok: false, error: message });
   }
 

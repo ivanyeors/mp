@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireSettingsAuth } from "@/lib/api-auth";
+import { sendShippingEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       shipped_at: now,
     },
   });
+
+  // Shipping/tracking email (idempotent, non-critical — never block fulfillment).
+  try {
+    await sendShippingEmail(id, data, admin);
+  } catch (err) {
+    console.error(`[orders/fulfill] Shipping email failed for ${id}:`, err);
+  }
 
   return NextResponse.json({ ok: true, row: data });
 }

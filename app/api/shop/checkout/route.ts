@@ -5,8 +5,10 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
+import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
 import { validateFullConfig } from "@/lib/shop/customization-inventory";
+import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -67,6 +69,11 @@ export async function POST(req: Request) {
   // the webhook can clear a server cart if one happens to exist.
   const cookieStore = await cookies();
   const cartToken = cookieStore.get(CART_COOKIE)?.value ?? null;
+
+  // Resolve the shopper's locale so the post-payment redirect lands on a real,
+  // localized confirmation route (avoids an extra middleware redirect).
+  const localeCookie = cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? "";
+  const locale = isSupportedLocale(localeCookie) ? localeCookie : DEFAULT_LOCALE;
 
   // 3. Build the authoritative working set from posted items: fetch variants
   // (with product) server-side by variant_id. Prices/currency/stripe_price come
@@ -251,8 +258,14 @@ export async function POST(req: Request) {
   const shippingAmount = isFreeShipping ? 0 : calculateShippingRate(shippingMethod, subtotal);
   const shippingLabel = resolveShippingContent(shippingMethod).name;
 
-  // 10. Calculate total
-  const total = Math.max(0, subtotal - discountAmount + shippingAmount);
+  // 10. Compute tax from the configurable region/rate table (keyed on the
+  // shipping country) and the grand total. For exclusive tax the amount is
+  // added on top; for inclusive tax it is embedded and the total is unchanged.
+  const taxInput = { subtotal, shippingAmount, discountAmount };
+  const taxRule = await resolveTaxRuleForRegion(shipping_address.country);
+  const tax = computeTax(taxInput, taxRule);
+  const taxAmount = tax.taxAmount;
+  const total = computeOrderTotal(taxInput, tax);
 
   // 11. Find or create customer
   const customer = await findOrCreateCustomer(email, { phone: phone ?? undefined });
@@ -268,7 +281,7 @@ export async function POST(req: Request) {
       currency: cart.currency ?? "SGD",
       subtotal,
       shipping_amount: shippingAmount,
-      tax_amount: 0,
+      tax_amount: taxAmount,
       discount_amount: discountAmount,
       total,
       shipping_address: shipping_address,
@@ -276,6 +289,7 @@ export async function POST(req: Request) {
       coupon_id: couponId,
       coupon_code: appliedCouponCode,
       payment_method: "stripe",
+      locale,
     })
     .select("id, order_number")
     .single();
@@ -337,10 +351,16 @@ export async function POST(req: Request) {
       customerEmail: email,
       orderId: orderRow.id,
       orderNumber: orderRow.order_number,
-      successUrl: `${siteUrl}/shop/order/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${siteUrl}/shop/checkout`,
+      successUrl: `${siteUrl}/${locale}/shop/checkout/confirmation?order_number=${encodeURIComponent(
+        orderRow.order_number
+      )}&session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${siteUrl}/${locale}/shop/checkout`,
       shippingAmount,
       shippingLabel,
+      // Only exclusive tax is added to the Stripe total; inclusive tax is
+      // already embedded in the variant prices.
+      taxAmount: tax.mode === "exclusive" ? taxAmount : 0,
+      taxLabel: tax.rate > 0 ? `${tax.name} (${(tax.rate * 100).toFixed(2).replace(/\.?0+$/, "")}%)` : undefined,
       cartToken: cartToken ?? undefined,
       // Stable per-order key: a double-submit reuses the same Stripe session
       // instead of creating a duplicate.
