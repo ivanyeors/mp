@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -26,6 +28,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   const parsed = CreateCategorySchema.safeParse(body);
   if (!parsed.success) {
@@ -47,5 +52,6 @@ export async function POST(req: Request) {
     );
   }
 
+  revalidateTag("categories");
   return NextResponse.json({ ok: true, row: data });
 }

@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
-export async function getActiveShippingMethods(country = "MY"): Promise<ShippingMethod[]> {
+export async function getActiveShippingMethods(country = "SG"): Promise<ShippingMethod[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("shipping_methods")

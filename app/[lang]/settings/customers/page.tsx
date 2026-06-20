@@ -32,10 +32,10 @@ const LIMIT = 20;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatMYR(amount: number): string {
-    return new Intl.NumberFormat("en-MY", {
+function formatSGD(amount: number): string {
+    return new Intl.NumberFormat("en-SG", {
         style: "currency",
-        currency: "MYR",
+        currency: "SGD",
     }).format(amount);
 }
 
@@ -201,7 +201,7 @@ export default function SettingsCustomersPage() {
                                             {customer.total_orders}
                                         </TableCell>
                                         <TableCell className="px-4 text-right hidden md:table-cell text-sm font-medium">
-                                            {formatMYR(customer.total_spent)}
+                                            {formatSGD(customer.total_spent)}
                                         </TableCell>
                                         <TableCell className="px-4 hidden lg:table-cell">
                                             <div className="flex flex-wrap gap-1">

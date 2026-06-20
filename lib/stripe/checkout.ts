@@ -59,7 +59,7 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
           type: "fixed_amount",
           fixed_amount: {
             amount: Math.round(opts.shippingAmount * 100),
-            currency: opts.lineItems[0]?.variant.currency.toLowerCase() ?? "myr",
+            currency: opts.lineItems[0]?.variant.currency.toLowerCase() ?? "sgd",
           },
           display_name: opts.shippingLabel ?? "Shipping",
         },

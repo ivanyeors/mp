@@ -2,6 +2,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 
+const CURRENCY_COOKIE = "mp_currency";
+
+function detectCurrencyFromAcceptLanguage(headerValue: string): string | null {
+  const lowered = headerValue.toLowerCase();
+  if (lowered.includes("zh")) return "CNY";
+  if (lowered.includes("ms") || lowered.includes("my")) return "MYR";
+  // Default to SGD for en and all other languages — no cookie needed
+  return null;
+}
+
 function pickLocaleFromAcceptLanguage(headerValue: string | null): Locale {
   if (!headerValue) return DEFAULT_LOCALE;
 
@@ -39,6 +49,18 @@ export function middleware(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 365, // 1 year
         sameSite: "lax",
       });
+    }
+    // Auto-set currency cookie based on locale if not already set
+    if (!request.cookies.get(CURRENCY_COOKIE)?.value) {
+      const acceptLang = request.headers.get("accept-language") ?? "";
+      const detectedCurrency = detectCurrencyFromAcceptLanguage(acceptLang);
+      if (detectedCurrency) {
+        res.cookies.set(CURRENCY_COOKIE, detectedCurrency, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365,
+          sameSite: "lax",
+        });
+      }
     }
     return res;
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -7,6 +8,9 @@ export async function DELETE(
     req: Request,
     { params }: { params: Promise<{ path: string }> }
 ) {
+    const denied = await requireSettingsAuth();
+    if (denied) return denied;
+
     const { path } = await params;
     if (!path) {
         return NextResponse.json({ error: "No file path provided" }, { status: 400 });

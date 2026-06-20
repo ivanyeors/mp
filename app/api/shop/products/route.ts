@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -40,7 +41,11 @@ export async function GET(req: Request) {
 
   if (status) query = query.eq("status", status);
   if (category_id) query = query.eq("category_id", category_id);
-  if (product_type) query = query.eq("product_type", product_type);
+  if (product_type) {
+    const types = product_type.split(",").map((t) => t.trim()).filter(Boolean);
+    if (types.length === 1) query = query.eq("product_type", types[0]);
+    else if (types.length > 1) query = query.in("product_type", types);
+  }
   if (featured === "true") query = query.eq("featured", true);
   if (search) query = query.ilike("slug", `%${search}%`);
 
@@ -65,6 +70,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   const parsed = CreateProductSchema.safeParse(body);
   if (!parsed.success) {

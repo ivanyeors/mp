@@ -1,24 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 
-import {
-  Menubar,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarSeparator,
-  MenubarShortcut,
-  MenubarTrigger,
-} from "@/components/ui/menubar";
-import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
-import MpMakerSidebar from "./components/Sidebar";
-import DesignCanvas from "./components/DesignCanvas";
-import { DesignProvider, useDesign } from "./components/DesignProvider";
-import DesignControls from "./components/DesignControls";
-import SavedDesignsMenu from "./components/SavedDesignsMenu";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { useEffect, useCallback, useState, Suspense } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { X, ShoppingCart } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,377 +15,418 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
-import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/components/ui/input-otp";
-import { AlertCircle, Loader2 } from "lucide-react";
-import { useSettingsOtpAuth } from "@/hooks/use-settings-otp-auth";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { Particles } from "@/components/ui/particles";
+import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
+
+import { BuilderProvider, useBuilder, type ProductType } from "./components/BuilderProvider";
+import { ProductVisual } from "./components/ProductVisual";
+import { StepIndicator } from "./components/StepIndicator";
+import { BottomBar } from "./components/BottomBar";
+import { StepPreferences } from "./components/StepPreferences";
+import { StepRecommendation } from "./components/StepRecommendation";
+import { StepComponents } from "./components/StepComponents";
+import { StepSummary } from "./components/StepSummary";
+
+import { useCart } from "@/lib/shop/cart-context";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import {
-  FileText,
-  Palette,
-  Scissors,
-  Save,
-  Download,
-  Upload,
-  RotateCcw,
-  Eye,
-  Share,
-} from "lucide-react";
- 
-function MakerContent() {
-  const { groupRotation } = useDesign();
-  const [comingSoonOpen, setComingSoonOpen] = useState(true);
-  const [view, setView] = useState<"info" | "signin">("info");
-  const router = useRouter();
-  const pathname = usePathname() ?? "/";
-  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-  const homeHref = withLocale("/", locale);
+  HARDCODED_UPSELLS,
+  computeFillingLines,
+  computeComponentLines,
+  computeAddonPrice,
+  computeUpsellTotal,
+} from "@/components/shop/customization-steps";
 
-  const { status, authenticated, otp, setOtp, verifying, error, verifyOtp, checkSession, setError } =
-    useSettingsOtpAuth({ autoCheck: false });
+// ─── Config Warm Start Handler ──────────────────────────────
 
-  useEffect(() => {
-    (async () => {
-      await checkSession();
-    })();
-  }, [checkSession]);
+function ConfigLoader() {
+  const builder = useBuilder();
+  const searchParams = useSearchParams();
+  const configId = searchParams.get("config");
+  const heightParam = searchParams.get("height");
+  const positionParam = searchParams.get("position");
 
-  useEffect(() => {
-    if (authenticated) {
-      setComingSoonOpen(false);
-      setView("info");
+  // Handle direct bolster params from mbolster-config redirect
+  const loadBolsterDirect = useCallback(async (height: number, position: string) => {
+    builder.setIsLoadingRecommendation(true);
+    builder.goToStep("recommendation");
+    builder.setBolsterPreferences({ height_cm: height, sleep_position: position as "side" | "stomach" | "other" });
+
+    try {
+      const res = await fetch("/api/shop/customize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bolster_preferences: { height_cm: height, sleep_position: position } }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        toast.error(data.error ?? "Failed to get recommendation");
+        builder.goToStep("preferences");
+        return;
+      }
+      builder.setRecommendation(data);
+      const defaultCover = data.components?.covers?.find((c: { base_quantity: number }) => c.base_quantity > 0);
+      const defaultCase = data.components?.cases?.find((c: { base_quantity: number }) => c.base_quantity > 0);
+      if (defaultCover) builder.setSelectedCover(defaultCover.item_id);
+      if (defaultCase) builder.setSelectedCase(defaultCase.item_id);
+      builder.setConfigLoaded(true);
+    } catch {
+      toast.error("Something went wrong");
+      builder.goToStep("preferences");
+    } finally {
+      builder.setIsLoadingRecommendation(false);
     }
-  }, [authenticated]);
+  }, [builder]);
+
+  useEffect(() => {
+    if (heightParam && positionParam && !builder.configLoaded && !builder.isLoadingRecommendation) {
+      const h = parseInt(heightParam, 10);
+      if (h >= 80 && h <= 250) {
+        loadBolsterDirect(h, positionParam);
+      }
+    }
+  }, [heightParam, positionParam, builder.configLoaded, builder.isLoadingRecommendation, loadBolsterDirect]);
+
+  const loadConfig = useCallback(async (id: string) => {
+    builder.setConfigId(id);
+    builder.setIsLoadingRecommendation(true);
+    builder.goToStep("recommendation");
+
+    try {
+      const responseRes = await fetch(`/api/mp-config/responses/${id}`);
+      const responseData = await responseRes.json();
+
+      if (!responseData.ok || !responseData.response) {
+        toast.error("Could not load your measurement data");
+        builder.goToStep("preferences");
+        return;
+      }
+
+      const data = responseData.response.data;
+
+      const measurementPreferences = {
+        measurements: {
+          shoulder_length_cm: parseFloat(data.shoulderLength) || 0,
+          neck_to_back_cm: parseFloat(data.neckToBack) || 0,
+          head_to_back_cm: parseFloat(data.headToBack) || 0,
+          neck_length_cm: parseFloat(data.neckLength) || 0,
+        },
+        demographics: {
+          gender: data.gender ?? "",
+          age_group: data.ageGroup ?? "",
+        },
+        health: {
+          blood_pressure: data.bloodPressureLevel ?? "",
+          ear_discomfort_side_sleep: data.earDiscomfortSideSleep === "yes",
+          bed_firmness: data.bedFirmness ?? "",
+          acid_reflux: data.acidReflux === "yes",
+          sleep_pain_areas: data.sleepPainAreas ?? [],
+          sleep_position_type: data.sleepPositionType ?? [],
+          uses_bolster: data.usesBolster === "yes",
+        },
+      };
+
+      const customizeRes = await fetch("/api/shop/customize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ measurement_preferences: measurementPreferences }),
+      });
+      const customizeData = await customizeRes.json();
+
+      if (!customizeData.ok) {
+        toast.error(customizeData.error ?? "Failed to get recommendation");
+        builder.goToStep("preferences");
+        return;
+      }
+
+      builder.setRecommendation(customizeData);
+
+      const defaultCover = customizeData.components?.covers?.find(
+        (c: { base_quantity: number }) => c.base_quantity > 0
+      );
+      const defaultCase = customizeData.components?.cases?.find(
+        (c: { base_quantity: number }) => c.base_quantity > 0
+      );
+      if (defaultCover) builder.setSelectedCover(defaultCover.item_id);
+      if (defaultCase) builder.setSelectedCase(defaultCase.item_id);
+
+      builder.setConfigLoaded(true);
+    } catch {
+      toast.error("Something went wrong loading your data");
+      builder.goToStep("preferences");
+    } finally {
+      builder.setIsLoadingRecommendation(false);
+    }
+  }, [builder]);
+
+  useEffect(() => {
+    if (configId && !builder.configLoaded && !builder.isLoadingRecommendation) {
+      loadConfig(configId);
+    }
+  }, [configId, builder.configLoaded, builder.isLoadingRecommendation, loadConfig]);
+
+  return null;
+}
+
+// ─── Step Renderer ───────────────────────────────────────────
+
+function BuilderSteps() {
+  const builder = useBuilder();
+
+  if (builder.isLoadingRecommendation && builder.step === "recommendation") {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center space-y-4">
+          <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground text-sm">Loading your personalized recommendation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  switch (builder.step) {
+    case "preferences":
+      return <StepPreferences />;
+    case "recommendation":
+      return <StepRecommendation />;
+    case "components":
+      return <StepComponents />;
+    case "summary":
+      return <StepSummary />;
+    default:
+      return null;
+  }
+}
+
+// ─── Add to Cart handler ─────────────────────────────────────
+
+function AddToCartHandler({ children }: { children: (handleAddToCart: () => void) => React.ReactNode }) {
+  const builder = useBuilder();
+  const { addItem } = useCart();
+
+  const handleAddToCart = useCallback(async () => {
+    if (!builder.recommendation?.variant || !builder.recommendation?.pillow_product) return;
+
+    builder.setIsApplying(true);
+
+    try {
+      const fillingLines = computeFillingLines(builder.recommendation, builder.selectedTemplateId);
+      const componentLines = computeComponentLines(
+        builder.recommendation,
+        builder.selectedCover,
+        builder.selectedCase,
+        builder.componentQtyOverrides
+      );
+
+      const upsellItems = HARDCODED_UPSELLS.filter((u) => builder.selectedUpsells.has(u.item_id));
+
+      const applyRes = await fetch("/api/shop/customize?action=apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variant_id: builder.recommendation.variant.id,
+          pillow_product_id: builder.recommendation.pillow_product.id,
+          filling_lines: fillingLines,
+          cover_variant: builder.selectedCover ? String(builder.selectedCover) : undefined,
+          case_variant: builder.selectedCase ? String(builder.selectedCase) : undefined,
+          component_quantities: componentLines,
+          upsells: upsellItems,
+          bom_template_id: builder.selectedTemplateId,
+          llm_metadata: {
+            source: builder.productType === "bolster" ? "mbolster-builder" : "pillow-builder",
+            ...(builder.pillowPreferences ?? {}),
+            ...(builder.bolsterPreferences ?? {}),
+            config_id: builder.configId,
+          },
+        }),
+      });
+
+      const applyData = await applyRes.json();
+
+      if (!applyData.ok) {
+        toast.error(applyData.error ?? "Failed to save configuration");
+        return;
+      }
+
+      const productSlug = builder.productType === "bolster"
+        ? `mbolster-${builder.recommendation.pillow_product.size.toLowerCase()}`
+        : `mpillow-${builder.recommendation.pillow_product.kind}`;
+
+      const productTitle = builder.productType === "bolster"
+        ? "Mbolster"
+        : `Mpillow ${builder.recommendation.pillow_product.kind}`;
+
+      addItem({
+        variantId: builder.recommendation.variant.id,
+        productId: builder.recommendation.variant.product_id,
+        productSlug,
+        productTitle,
+        variantTitle: `Size ${builder.recommendation.pillow_product.size}`,
+        imageUrl: null,
+        price: builder.recommendation.variant.price,
+        compareAtPrice: null,
+        currency: builder.recommendation.variant.currency,
+        quantity: 1,
+        customizationId: applyData.customization_id,
+        customizationSummary: applyData.summary,
+        addonPrice: applyData.total_addon_price,
+      });
+
+      toast.success("Added to cart!");
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      builder.setIsApplying(false);
+    }
+  }, [builder, addItem]);
+
+  return <>{children(handleAddToCart)}</>;
+}
+
+// ─── Main Content ────────────────────────────────────────────
+
+function MakerContent() {
+  const pathname = usePathname() ?? "/";
+  const router = useRouter();
+  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+  const { itemCount, toggleCart } = useCart();
+  const builder = useBuilder();
 
   return (
-    <div className="min-h-screen bg-background relative">
-      <Dialog
-        open={comingSoonOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            if (!authenticated) {
-              router.push(homeHref);
-              return;
-            }
-          }
-          setComingSoonOpen(open);
-        }}
-      >
-        <DialogContent
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>{view === "signin" ? "Sign in" : "MP Maker is coming soon"}</DialogTitle>
-            {view === "signin" ? (
-              <DialogDescription>Enter the 6-digit OTP to unlock MP Maker on this device.</DialogDescription>
-            ) : (
-              <DialogDescription>
-                We’re still polishing this experience. Some tools may be incomplete or disabled.
-              </DialogDescription>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="flex h-14 items-center justify-between px-4 max-w-[1400px] mx-auto">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <X className="size-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Leave MP Maker?</DialogTitle>
+                <DialogDescription>
+                  Your current configuration will not be saved. Are you sure you want to leave?
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">Stay</Button>
+                </DialogClose>
+                <Button variant="destructive" onClick={() => router.push(withLocale("/", locale))}>
+                  Leave
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <h1 className="text-sm font-semibold">MP Maker</h1>
+
+          <Button variant="ghost" size="icon" className="size-8 relative" onClick={() => toggleCart(true)}>
+            <ShoppingCart className="size-4" />
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                {itemCount}
+              </span>
             )}
-          </DialogHeader>
-
-          {view === "signin" ? (
-            <div className="space-y-4">
-              {status === "checking" ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Checking session...
-                </div>
-              ) : null}
-
-              {error ? (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{error}</span>
-                </div>
-              ) : null}
-
-              <div className="flex flex-col items-center gap-4">
-                <InputOTP
-                  id="mp-maker-otp-input"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(v) => {
-                    setError(null);
-                    setOtp(v);
-                  }}
-                  disabled={verifying || status === "checking"}
-                  className="justify-center"
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={1} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={2} className="h-10 w-10 text-base" />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={4} className="h-10 w-10 text-base" />
-                    <InputOTPSlot index={5} className="h-10 w-10 text-base" />
-                  </InputOTPGroup>
-                </InputOTP>
-
-                <Button
-                  onClick={async () => {
-                    const res = await verifyOtp();
-                    if (res.ok) setComingSoonOpen(false);
-                  }}
-                  disabled={verifying || status === "checking"}
-                  className="w-full sm:w-auto"
-                >
-                  {verifying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Verify & continue
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">This area is still under construction.</div>
-          )}
-
-          <DialogFooter>
-            {view === "signin" ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setView("info");
-                    setError(null);
-                    setOtp("");
-                  }}
-                >
-                  Back
-                </Button>
-                <Button variant="secondary" asChild>
-                  <Link href={homeHref}>Back home</Link>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={async () => {
-                    setView("signin");
-                    await checkSession();
-                  }}
-                >
-                  Sign in
-                </Button>
-                <Button asChild>
-                  <Link href={homeHref}>Back home</Link>
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Subtle Dot Pattern Background */}
-      <DotPattern
-        dotSize={3}
-        gap={32}
-        baseColor="#3992C3"
-        activeColor="#3992C3"
-        proximity={80}
-        shockRadius={250}
-        className="absolute inset-0 opacity-60 pointer-events-none"
-      />
-
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Header */}
-        <div className="flex h-14 items-center px-4 relative z-50">
-        {/* Menu Bar */}
-        <Menubar>
-            <MenubarMenu>
-              <MenubarTrigger>File</MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem>
-                  <FileText className="mr-2 h-4 w-4" />
-                  New Design
-                  <MenubarShortcut>⌘N</MenubarShortcut>
-                </MenubarItem>
-                <MenubarItem>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Open Design
-                  <MenubarShortcut>⌘O</MenubarShortcut>
-                </MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save
-                  <MenubarShortcut>⌘S</MenubarShortcut>
-                </MenubarItem>
-                <MenubarItem>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export Design
-                  <MenubarShortcut>⌘E</MenubarShortcut>
-                </MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>
-                  <Share className="mr-2 h-4 w-4" />
-                  Share Design
-                </MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-
-            <MenubarMenu>
-              <MenubarTrigger>Design</MenubarTrigger>
-              <MenubarContent>
-                <SavedDesignsMenu />
-                <MenubarItem>
-                  <Palette className="mr-2 h-4 w-4" />
-                  Color Picker
-                  <MenubarShortcut>⌘P</MenubarShortcut>
-                </MenubarItem>
-                <MenubarItem>
-                  <Scissors className="mr-2 h-4 w-4" />
-                  Shape Tools
-                  <MenubarShortcut>⌘T</MenubarShortcut>
-                </MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Undo
-                  <MenubarShortcut>⌘Z</MenubarShortcut>
-                </MenubarItem>
-                <MenubarItem>
-                  <Eye className="mr-2 h-4 w-4" />
-                  Preview
-                  <MenubarShortcut>⌘R</MenubarShortcut>
-                </MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-
-            <MenubarMenu>
-              <MenubarTrigger>Materials</MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem>Fabric Selection</MenubarItem>
-                <MenubarItem>Thread Colors</MenubarItem>
-                <MenubarItem>Filling Options</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>Size Templates</MenubarItem>
-                <MenubarItem>Custom Dimensions</MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-
-            <MenubarMenu>
-              <MenubarTrigger>Help</MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem>Getting Started</MenubarItem>
-                <MenubarItem>Tutorial Videos</MenubarItem>
-                <MenubarSeparator />
-                <MenubarItem>Keyboard Shortcuts</MenubarItem>
-                <MenubarItem>About</MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-          </Menubar>
+          </Button>
         </div>
-      <MpMakerSidebar />
-      {/* Main Content */}
-      <SidebarInset className="p-0">
-        <div className="fixed inset-0 z-0">
-          {/* Full-screen ballpit masked to pillow shape */}
-          <div
-            className="absolute inset-0 flex items-center justify-center p-4"
-          >
-            <div
-              className="relative"
-              style={{
-                aspectRatio: '664 / 374',
-                width: 'min(80vmin, 900px)',
-                WebkitMaskImage: 'url(/pillow-shape.svg)',
-                maskImage: 'url(/pillow-shape.svg)',
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                maskPosition: 'center',
-                WebkitMaskSize: 'contain',
-                maskSize: 'contain',
-                transform: `rotate(${groupRotation}deg)`,
-                transformOrigin: '50% 50%'
-              }}
-            >
-              {/* Design canvas for draggable SVGs, rotates with the group */}
-              <DesignCanvas />
-              
-              {/* Inner shadow overlay */}
-              <svg
-                className="absolute inset-0 pointer-events-none"
-                viewBox="0 0 664 374"
-                xmlns="http://www.w3.org/2000/svg"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                <defs>
-                  <filter
-                    id="innerShadow"
-                    x="-30%"
-                    y="-30%"
-                    width="160%"
-                    height="160%"
-                    colorInterpolationFilters="sRGB"
-                  >
-                    <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="blur" />
-                    <feOffset dx="0" dy="2" result="offsetBlur" />
-                    <feComposite
-                      in="offsetBlur"
-                      in2="SourceAlpha"
-                      operator="arithmetic"
-                      k2="-1"
-                      k3="1"
-                      result="innerShadow"
-                    />
-                    <feColorMatrix
-                      in="innerShadow"
-                      type="matrix"
-                      values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.35 0"
-                      result="shadowColor"
-                    />
-                  </filter>
-                </defs>
-                <path
-                  d="M441.322 14.7728C409.558 27.3692 379.727 35.5927 331.965 35.5927C284.202 35.5927 254.372 27.3692 222.607 14.7728C182.901 -0.972711 120.418 -7.80227 69.7585 31.9038C19.099 71.6098 -2.80784 127.746 1.29974 209.896C5.52474 294.395 33.4738 349.165 83.8767 349.165C134.28 349.165 132.251 315.979 160.907 298.148C183.771 283.922 213.925 285.205 229.723 298.148C251.964 316.368 255.062 333.726 263.277 352.894C269.849 368.229 295.474 372.828 331.271 372.828L332.658 372.828C368.455 372.828 394.08 368.229 400.652 352.894C408.867 333.726 411.966 316.368 434.206 298.148C450.005 285.205 480.158 283.922 503.022 298.148C531.678 315.979 529.65 349.165 580.052 349.165C630.455 349.165 658.404 294.395 662.629 209.896C666.737 127.746 644.83 71.6098 594.171 31.9038C543.511 -7.80226 481.029 -0.972712 441.322 14.7728Z"
-                  fill="white"
-                  filter="url(#innerShadow)"
-                />
-              </svg>
-              <svg
-                className="absolute inset-0 pointer-events-none"
-                viewBox="0 0 664 374"
-                xmlns="http://www.w3.org/2000/svg"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                <path
-                  d="M441.322 14.7728C409.558 27.3692 379.727 35.5927 331.965 35.5927C284.202 35.5927 254.372 27.3692 222.607 14.7728C182.901 -0.972711 120.418 -7.80227 69.7585 31.9038C19.099 71.6098 -2.80784 127.746 1.29974 209.896C5.52474 294.395 33.4738 349.165 83.8767 349.165C134.28 349.165 132.251 315.979 160.907 298.148C183.771 283.922 213.925 285.205 229.723 298.148C251.964 316.368 255.062 333.726 263.277 352.894C269.849 368.229 295.474 372.828 331.271 372.828L332.658 372.828C368.455 372.828 394.08 368.229 400.652 352.894C408.867 333.726 411.966 316.368 434.206 298.148C450.005 285.205 480.158 283.922 503.022 298.148C531.678 315.979 529.65 349.165 580.052 349.165C630.455 349.165 658.404 294.395 662.629 209.896C666.737 127.746 644.83 71.6098 594.171 31.9038C543.511 -7.80226 481.029 -0.972712 441.322 14.7728Z"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="3"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-            </div>
+      </header>
+
+      {/* Split-panel layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] min-h-[calc(100vh-56px)]">
+        {/* ─── LEFT PANEL: Product Visual + Background Effects ─── */}
+        <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] max-h-[40vh] lg:max-h-none overflow-hidden">
+          {/* Background layer 1: Particles */}
+          <Particles
+            className="absolute inset-0 z-[1]"
+            quantity={100}
+            ease={80}
+            staticity={50}
+            color="#ffffff"
+            size={0.8}
+          />
+
+          {/* Background layer 3: DotPattern */}
+          <DotPattern
+            dotSize={3}
+            gap={32}
+            baseColor="#3992C3"
+            activeColor="#3992C3"
+            proximity={80}
+            shockRadius={250}
+            className="absolute inset-0 opacity-60 z-[2]"
+          />
+
+          {/* Product visual on top */}
+          <div className="relative z-10 flex items-center justify-center h-full">
+            <ProductVisual />
           </div>
         </div>
-      </SidebarInset>
-      {/* Controls outside the SVG/mask group, over page UI */}
-      <div className="fixed right-4 bottom-4 z-20">
-        <DesignControls />
-      </div>
+
+        {/* ─── RIGHT PANEL: Customization ─── */}
+        <div className="flex flex-col border-l bg-background min-h-0 lg:h-[calc(100vh-56px)]">
+          {/* Step indicator */}
+          <div className="px-5 pt-5 pb-3 border-b">
+            <StepIndicator />
+          </div>
+
+          {/* Scrollable step content */}
+          <div className="flex-1 overflow-y-auto px-5 py-6">
+            <Suspense>
+              <ConfigLoader />
+            </Suspense>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={builder.step}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+              >
+                <BuilderSteps />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Sticky bottom bar */}
+          <AddToCartHandler>
+            {(handleAddToCart) => (
+              <BottomBar onAddToCart={handleAddToCart} />
+            )}
+          </AddToCartHandler>
+        </div>
       </div>
     </div>
   );
 }
 
+// ─── Page Export ──────────────────────────────────────────────
+
 export default function MpMakerPage() {
   return (
-    <SidebarProvider>
-      <DesignProvider>
-        <MakerContent />
-      </DesignProvider>
-    </SidebarProvider>
+    <Suspense>
+      <MpMakerPageInner />
+    </Suspense>
+  );
+}
+
+function MpMakerPageInner() {
+  const searchParams = useSearchParams();
+  const productParam = searchParams.get("product") as ProductType | null;
+  const configParam = searchParams.get("config");
+
+  const initialProductType: ProductType = productParam === "bolster" ? "bolster" : "pillow";
+  const initialConfigId = configParam || null;
+
+  return (
+    <BuilderProvider initialProductType={initialProductType} initialConfigId={initialConfigId}>
+      <MakerContent />
+    </BuilderProvider>
   );
 }

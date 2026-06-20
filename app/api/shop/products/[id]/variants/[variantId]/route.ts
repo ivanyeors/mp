@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,9 @@ const UpdateVariantSchema = z.object({
 }).partial();
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { variantId } = await params;
   const body = await req.json().catch(() => null);
   const parsed = UpdateVariantSchema.safeParse(body);
@@ -44,6 +48,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { variantId } = await params;
   const admin = supabaseAdmin();
   const { error } = await admin.from("product_variants").delete().eq("id", variantId);

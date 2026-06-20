@@ -2,10 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ShoppingBag, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PriceDisplay } from "@/components/shop/price-display";
+import { useCart } from "@/lib/shop/cart-context";
 import { cn } from "@/lib/utils";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
+
+function getProductHref(product: Product): string {
+  if (product.product_type === "pillow") return `/mp-maker?product=pillow`;
+  if (product.product_type === "bolster") return `/mp-maker?product=bolster`;
+  return `/shop/${product.slug}`;
+}
 
 interface ProductCardProps {
   product: Product & {
@@ -16,6 +26,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
+  const { addItem, toggleCart } = useCart();
+
   const content =
     product.content?.[locale] ?? product.content?.["en-US"] ?? null;
   const title = content?.title ?? product.slug;
@@ -30,30 +42,69 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
     (v) => v.compare_at_price != null && v.compare_at_price > v.price
   );
 
-  // Determine min price variant (active, lowest price)
   const sortedByPrice = [...activeVariants].sort((a, b) => a.price - b.price);
   const cheapestVariant = sortedByPrice[0] ?? null;
 
-  const currency = cheapestVariant?.currency ?? "MYR";
+  const currency = cheapestVariant?.currency ?? "SGD";
   const minPrice = cheapestVariant?.price ?? 0;
   const minCompareAtPrice = cheapestVariant?.compare_at_price ?? null;
 
-  // Primary image: variant-specific first, then product-level
   const primaryImage = product.images?.[0] ?? null;
   const imageUrl = primaryImage?.url ?? null;
   const imageAlt = primaryImage?.alt_text ?? title;
 
+  const isCustomizable = product.product_type === "pillow" || product.product_type === "bolster";
+  const canQuickAdd = !isCustomizable && !isOutOfStock && cheapestVariant;
+
+  function handleQuickAdd(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!cheapestVariant) return;
+
+    addItem({
+      variantId: cheapestVariant.id,
+      productId: product.id,
+      productSlug: product.slug,
+      productTitle: title,
+      variantTitle: cheapestVariant.title,
+      imageUrl: imageUrl,
+      price: cheapestVariant.price,
+      compareAtPrice: cheapestVariant.compare_at_price,
+      currency: cheapestVariant.currency,
+      quantity: 1,
+    });
+
+    toast(
+      <div className="flex items-center gap-3">
+        {imageUrl && (
+          <img src={imageUrl} alt={title} className="h-10 w-10 rounded-md object-cover" />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Added to cart</p>
+          <p className="text-xs text-muted-foreground truncate">{title}</p>
+        </div>
+      </div>,
+      {
+        action: {
+          label: "View Cart",
+          onClick: () => toggleCart(true),
+        },
+        duration: 3000,
+      }
+    );
+  }
+
+  const href = getProductHref(product);
+
   return (
-    <Link
-      href={`/shop/${product.slug}`}
+    <div
       className={cn(
-        "group block rounded-xl overflow-hidden border border-border bg-card",
+        "group relative rounded-xl overflow-hidden border border-border bg-card",
         "shadow-sm transition-shadow duration-200 hover:shadow-md",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       )}
     >
       {/* Image area */}
-      <div className="relative aspect-square w-full overflow-hidden bg-muted">
+      <Link href={href} className="block relative aspect-square w-full overflow-hidden bg-muted">
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -78,6 +129,11 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
               Sale
             </Badge>
           )}
+          {isCustomizable && (
+            <Badge variant="secondary" className="text-xs">
+              Customize
+            </Badge>
+          )}
         </div>
 
         {/* Out of stock overlay */}
@@ -88,28 +144,43 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
             </span>
           </div>
         )}
-      </div>
+
+        {/* Quick add button */}
+        {canQuickAdd && (
+          <Button
+            size="icon"
+            variant="secondary"
+            className="absolute bottom-2 right-2 h-9 w-9 rounded-full opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 shadow-md"
+            onClick={handleQuickAdd}
+            aria-label={`Quick add ${title} to cart`}
+          >
+            <Plus className="size-4" />
+          </Button>
+        )}
+      </Link>
 
       {/* Content */}
-      <div className="p-3 flex flex-col gap-1">
-        <p className="text-sm font-medium leading-snug line-clamp-2 text-foreground">
-          {title}
-        </p>
+      <Link href={href} className="block p-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-medium leading-snug line-clamp-2 text-foreground">
+            {title}
+          </p>
 
-        {cheapestVariant ? (
-          <div className="text-sm">
-            {activeVariants.length > 1 ? (
-              <span className="text-muted-foreground text-xs mr-1">From</span>
-            ) : null}
-            <PriceDisplay
-              price={minPrice}
-              compareAtPrice={minCompareAtPrice}
-              currency={currency}
-              className="text-sm"
-            />
-          </div>
-        ) : null}
-      </div>
-    </Link>
+          {cheapestVariant ? (
+            <div className="text-sm">
+              {activeVariants.length > 1 ? (
+                <span className="text-muted-foreground text-xs mr-1">From</span>
+              ) : null}
+              <PriceDisplay
+                price={minPrice}
+                compareAtPrice={minCompareAtPrice}
+                currency={currency}
+                className="text-sm"
+              />
+            </div>
+          ) : null}
+        </div>
+      </Link>
+    </div>
   );
 }

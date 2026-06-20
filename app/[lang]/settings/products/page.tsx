@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, Trash2, Package, Loader2, Search } from "lucide-react";
+import { Plus, Trash2, Package, Loader2, Search, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
+// Tabs removed — unified product list with type filter
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
@@ -42,6 +44,8 @@ type ProductVariant = {
     id: string;
     price: number | null;
     stock_quantity: number | null;
+    stock_available?: number | null;
+    stripe_price_id?: string | null;
 };
 
 type ProductImage = {
@@ -54,6 +58,7 @@ type ProductRow = {
     id: string;
     slug: string;
     status: "draft" | "active" | "archived";
+    product_type: string | null;
     content: Record<string, { title: string; description?: string }>;
     category_id: string | null;
     product_variants: ProductVariant[];
@@ -100,9 +105,23 @@ function getPriceRange(variants: ProductVariant[]): string {
     return min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`;
 }
 
-function getTotalStock(variants: ProductVariant[]): number {
-    if (!variants || variants.length === 0) return 0;
-    return variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
+function getTotalStock(variants: ProductVariant[]): { value: number; hasStockAvailable: boolean } {
+    if (!variants || variants.length === 0) return { value: 0, hasStockAvailable: false };
+    // Prefer stock_available (from variant_stock view) when present
+    const hasStockAvailable = variants.some((v) => v.stock_available != null);
+    if (hasStockAvailable) {
+        const total = variants.reduce((sum, v) => sum + (v.stock_available ?? v.stock_quantity ?? 0), 0);
+        return { value: total, hasStockAvailable: true };
+    }
+    return { value: variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0), hasStockAvailable: false };
+}
+
+function hasPriceWarning(variants: ProductVariant[]): boolean {
+    return variants.some((v) => v.price === 0 || v.price === null);
+}
+
+function hasMissingStripe(variants: ProductVariant[]): boolean {
+    return variants.some((v) => !v.stripe_price_id);
 }
 
 function getThumbnailUrl(images: ProductImage[]): string | null {
@@ -127,6 +146,9 @@ export default function SettingsProductsPage() {
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
+    // Type filter (replaces old tab system)
+    const [typeFilter, setTypeFilter] = useState<string>("all");
+
     // Filter state
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -144,6 +166,12 @@ export default function SettingsProductsPage() {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [deleting, setDeleting] = useState(false);
 
+    // Derived: activeTab kept for backward compat in rendering logic
+    const activeTab = typeFilter === "accessory" ? "accessories" : "pillows";
+
+    // Sync state
+    const [syncing, setSyncing] = useState(false);
+
     // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
@@ -157,8 +185,12 @@ export default function SettingsProductsPage() {
         };
     }, [search]);
 
-    // Reset page when filters change
+    // Reset page and selection when filters or tab change
     useEffect(() => { setPage(1); }, [statusFilter, categoryFilter]);
+    useEffect(() => {
+        setPage(1);
+        setSelected(new Set());
+    }, [typeFilter]);
 
     // Fetch categories once
     useEffect(() => {
@@ -178,6 +210,12 @@ export default function SettingsProductsPage() {
         params.set("page", String(page));
         params.set("limit", String(LIMIT));
 
+        // Add product_type filter
+        if (typeFilter === "pillow") params.set("product_type", "pillow");
+        else if (typeFilter === "bolster") params.set("product_type", "bolster");
+        else if (typeFilter === "accessory") params.set("product_type", "accessory");
+        else if (typeFilter === "bundle") params.set("product_type", "bundle");
+
         try {
             const res = await fetch(`/api/shop/products?${params.toString()}`);
             const json = await res.json();
@@ -189,12 +227,33 @@ export default function SettingsProductsPage() {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearch, statusFilter, categoryFilter, page]);
+    }, [debouncedSearch, statusFilter, categoryFilter, page, typeFilter]);
 
     useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
     // Clear selection when products change
     useEffect(() => { setSelected(new Set()); }, [products]);
+
+    // ── Sync from Inventory ──
+    const syncFromInventory = async () => {
+        setSyncing(true);
+        try {
+            const res = await fetch("/api/shop/products/sync-inventory", {
+                method: "POST",
+            });
+            if (!res.ok) {
+                const json = await res.json().catch(() => ({}));
+                throw new Error(json.error ?? "Sync failed");
+            }
+            const json = await res.json();
+            toast.success(json.message ?? "Inventory synced successfully");
+            fetchProducts();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to sync inventory");
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     // ── Selection helpers ──
     const allSelected =
@@ -255,62 +314,342 @@ export default function SettingsProductsPage() {
     // ── Category map ──
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
+    // Whether the current tab allows selection/deletion
+    const isAccessoriesTab = typeFilter === "accessory";
+    const stockColumnLabel = "Stock";
+
+    // ── Shared product table renderer ──
+    const renderProductTable = () => {
+        if (loading) {
+            return (
+                <div className="flex items-center justify-center py-24">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+            );
+        }
+
+        if (products.length === 0) {
+            return (
+                <div className="rounded-xl border border-dashed p-14 text-center">
+                    <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                        {debouncedSearch || statusFilter !== "all" || categoryFilter !== "all"
+                            ? "No products match your filters."
+                            : activeTab === "pillows"
+                            ? "No pillows or bolsters found. Try syncing from inventory."
+                            : "No accessories yet. Add your first accessory to get started."}
+                    </p>
+                    {isAccessoriesTab && !debouncedSearch && statusFilter === "all" && categoryFilter === "all" && (
+                        <Button asChild size="sm" className="mt-4">
+                            <Link href={to("/settings/products/new?type=accessory")}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Accessory
+                            </Link>
+                        </Button>
+                    )}
+                </div>
+            );
+        }
+
+        return (
+            <div className="rounded-xl border overflow-hidden">
+                <Table>
+                    <TableHeader>
+                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                            {isAccessoriesTab && (
+                                <TableHead className="w-10 px-4">
+                                    <Checkbox
+                                        checked={allSelected}
+                                        ref={(el) => {
+                                            if (el) {
+                                                (el as HTMLButtonElement & { indeterminate?: boolean }).indeterminate =
+                                                    someSelected;
+                                            }
+                                        }}
+                                        onCheckedChange={toggleAll}
+                                        aria-label="Select all"
+                                    />
+                                </TableHead>
+                            )}
+                            <TableHead className="w-12 px-2" />
+                            <TableHead className="px-4">Product</TableHead>
+                            <TableHead className="px-4 hidden sm:table-cell">Status</TableHead>
+                            <TableHead className="px-4 hidden md:table-cell">Price</TableHead>
+                            <TableHead className="px-4 hidden lg:table-cell">{stockColumnLabel}</TableHead>
+                            <TableHead className="px-4 hidden xl:table-cell">Category</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {products.map((product) => {
+                            const thumbnailUrl = getThumbnailUrl(product.product_images);
+                            const title = getProductTitle(product);
+                            const priceRange = getPriceRange(product.product_variants);
+                            const { value: stock } = getTotalStock(product.product_variants);
+                            const priceWarn = hasPriceWarning(product.product_variants);
+                            const stripeWarn = hasMissingStripe(product.product_variants);
+                            const category = product.category_id
+                                ? categoryMap.get(product.category_id)
+                                : null;
+                            const isSelected = selected.has(product.id);
+
+                            return (
+                                <TableRow
+                                    key={product.id}
+                                    className="cursor-pointer transition-colors"
+                                    data-selected={isAccessoriesTab ? isSelected : undefined}
+                                    onClick={(e) => {
+                                        const target = e.target as HTMLElement;
+                                        if (
+                                            target.closest('[role="checkbox"]') ||
+                                            target.closest("button")
+                                        )
+                                            return;
+                                        router.push(to(`/settings/products/${product.id}`));
+                                    }}
+                                >
+                                    {isAccessoriesTab && (
+                                        <TableCell
+                                            className="w-10 px-4"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <Checkbox
+                                                checked={isSelected}
+                                                onCheckedChange={() => toggleOne(product.id)}
+                                                aria-label={`Select ${title}`}
+                                            />
+                                        </TableCell>
+                                    )}
+
+                                    {/* Thumbnail */}
+                                    <TableCell className="w-12 px-2 py-2">
+                                        {thumbnailUrl ? (
+                                            <div className="relative h-10 w-10 overflow-hidden rounded-md border bg-muted shrink-0">
+                                                <Image
+                                                    src={thumbnailUrl}
+                                                    alt={title}
+                                                    fill
+                                                    className="object-cover"
+                                                    sizes="40px"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted shrink-0">
+                                                <Package className="h-4 w-4 text-muted-foreground/50" />
+                                            </div>
+                                        )}
+                                    </TableCell>
+
+                                    {/* Name */}
+                                    <TableCell className="px-4 py-3">
+                                        <span className="font-medium line-clamp-1">{title}</span>
+                                        <span className="block text-xs text-muted-foreground mt-0.5 font-mono">
+                                            {product.slug}
+                                        </span>
+                                    </TableCell>
+
+                                    {/* Status */}
+                                    <TableCell className="px-4 hidden sm:table-cell">
+                                        <Badge variant={statusBadgeVariant(product.status)} className="capitalize">
+                                            {product.status}
+                                        </Badge>
+                                    </TableCell>
+
+                                    {/* Price range */}
+                                    <TableCell className="px-4 hidden md:table-cell text-sm text-muted-foreground">
+                                        <span>{priceRange}</span>
+                                        {priceWarn && (
+                                            <Badge variant="outline" className="ml-2 text-xs text-amber-600 border-amber-300">
+                                                Price not set
+                                            </Badge>
+                                        )}
+                                        {stripeWarn && (
+                                            <Badge variant="outline" className="ml-1 text-xs text-red-600 border-red-300">
+                                                No Stripe
+                                            </Badge>
+                                        )}
+                                    </TableCell>
+
+                                    {/* Stock */}
+                                    <TableCell className="px-4 hidden lg:table-cell text-sm">
+                                        <span
+                                            className={
+                                                stock === 0
+                                                    ? "text-destructive font-medium"
+                                                    : stock < 10
+                                                    ? "text-yellow-600 dark:text-yellow-400 font-medium"
+                                                    : "text-muted-foreground"
+                                            }
+                                        >
+                                            {stock}
+                                        </span>
+                                    </TableCell>
+
+                                    {/* Category */}
+                                    <TableCell className="px-4 hidden xl:table-cell text-sm text-muted-foreground">
+                                        {category ? getCategoryName(category) : "\u2014"}
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </div>
+        );
+    };
+
+    // ── Shared pagination renderer ──
+    const renderPagination = () => {
+        if (totalPages <= 1) return null;
+        return (
+            <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                    Showing {(page - 1) * LIMIT + 1}&ndash;{Math.min(page * LIMIT, total)} of{" "}
+                    {total} product{total !== 1 ? "s" : ""}
+                </p>
+                <Pagination className="w-auto mx-0">
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (page > 1) setPage(page - 1);
+                                }}
+                                aria-disabled={page <= 1}
+                                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                            />
+                        </PaginationItem>
+
+                        {buildPageNumbers().map((item, idx) =>
+                            item === "ellipsis" ? (
+                                <PaginationItem key={`ellipsis-${idx}`}>
+                                    <PaginationEllipsis />
+                                </PaginationItem>
+                            ) : (
+                                <PaginationItem key={item}>
+                                    <PaginationLink
+                                        href="#"
+                                        isActive={item === page}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setPage(item);
+                                        }}
+                                    >
+                                        {item}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            )
+                        )}
+
+                        <PaginationItem>
+                            <PaginationNext
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (page < totalPages) setPage(page + 1);
+                                }}
+                                aria-disabled={page >= totalPages}
+                                className={
+                                    page >= totalPages ? "pointer-events-none opacity-50" : ""
+                                }
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            </div>
+        );
+    };
+
+    // ── Shared toolbar renderer ──
+    const renderToolbar = () => (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <Input
+                    placeholder="Search products..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-9"
+                />
+            </div>
+
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="pillow">Pillows</SelectItem>
+                    <SelectItem value="bolster">Bolsters</SelectItem>
+                    <SelectItem value="accessory">Accessories</SelectItem>
+                    <SelectItem value="bundle">Bundles</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-40">
+                    <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All statuses</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+            </Select>
+
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                            {getCategoryName(cat)}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
-                    <p className="text-muted-foreground mt-1 text-sm">
-                        Manage your store products, variants, and inventory.
-                    </p>
+            <div>
+                <h1 className="text-2xl font-semibold tracking-tight">Products</h1>
+                <p className="text-muted-foreground mt-1 text-sm">
+                    Manage your store products, variants, and inventory.
+                </p>
+            </div>
+
+            {/* Actions bar */}
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex gap-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={syncFromInventory}
+                        disabled={syncing}
+                    >
+                        {syncing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                        )}
+                        Sync from Inventory
+                    </Button>
                 </div>
                 <Button asChild size="sm">
-                    <Link href={to("/settings/products/new")}>
+                    <Link href={to("/settings/products/new?type=accessory")}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add Product
                     </Link>
                 </Button>
             </div>
 
-            {/* Toolbar */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <Input
-                        placeholder="Search products..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9"
-                    />
-                </div>
-
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-40">
-                        <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All statuses</SelectItem>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-full sm:w-44">
-                        <SelectValue placeholder="Category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All categories</SelectItem>
-                        {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                                {getCategoryName(cat)}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+            {renderToolbar()}
 
             {/* Bulk actions bar */}
             {selected.size > 0 && (
@@ -342,217 +681,8 @@ export default function SettingsProductsPage() {
                 </div>
             )}
 
-            {/* Content */}
-            {loading ? (
-                <div className="flex items-center justify-center py-24">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-            ) : products.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-14 text-center">
-                    <Package className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                        {debouncedSearch || statusFilter !== "all" || categoryFilter !== "all"
-                            ? "No products match your filters."
-                            : "No products yet. Add your first product to get started."}
-                    </p>
-                    {!debouncedSearch && statusFilter === "all" && categoryFilter === "all" && (
-                        <Button asChild size="sm" className="mt-4">
-                            <Link href={to("/settings/products/new")}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Product
-                            </Link>
-                        </Button>
-                    )}
-                </div>
-            ) : (
-                <div className="rounded-xl border overflow-hidden">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-muted/50 hover:bg-muted/50">
-                                <TableHead className="w-10 px-4">
-                                    <Checkbox
-                                        checked={allSelected}
-                                        ref={(el) => {
-                                            if (el) {
-                                                (el as HTMLButtonElement & { indeterminate?: boolean }).indeterminate =
-                                                    someSelected;
-                                            }
-                                        }}
-                                        onCheckedChange={toggleAll}
-                                        aria-label="Select all"
-                                    />
-                                </TableHead>
-                                <TableHead className="w-12 px-2" />
-                                <TableHead className="px-4">Product</TableHead>
-                                <TableHead className="px-4 hidden sm:table-cell">Status</TableHead>
-                                <TableHead className="px-4 hidden md:table-cell">Price</TableHead>
-                                <TableHead className="px-4 hidden lg:table-cell">Stock</TableHead>
-                                <TableHead className="px-4 hidden xl:table-cell">Category</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {products.map((product) => {
-                                const thumbnailUrl = getThumbnailUrl(product.product_images);
-                                const title = getProductTitle(product);
-                                const priceRange = getPriceRange(product.product_variants);
-                                const stock = getTotalStock(product.product_variants);
-                                const category = product.category_id
-                                    ? categoryMap.get(product.category_id)
-                                    : null;
-                                const isSelected = selected.has(product.id);
-
-                                return (
-                                    <TableRow
-                                        key={product.id}
-                                        className="cursor-pointer transition-colors"
-                                        data-selected={isSelected}
-                                        onClick={(e) => {
-                                            // Don't navigate if clicking checkbox
-                                            const target = e.target as HTMLElement;
-                                            if (
-                                                target.closest('[role="checkbox"]') ||
-                                                target.closest("button")
-                                            )
-                                                return;
-                                            router.push(to(`/settings/products/${product.id}`));
-                                        }}
-                                    >
-                                        <TableCell
-                                            className="w-10 px-4"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <Checkbox
-                                                checked={isSelected}
-                                                onCheckedChange={() => toggleOne(product.id)}
-                                                aria-label={`Select ${title}`}
-                                            />
-                                        </TableCell>
-
-                                        {/* Thumbnail */}
-                                        <TableCell className="w-12 px-2 py-2">
-                                            {thumbnailUrl ? (
-                                                <div className="relative h-10 w-10 overflow-hidden rounded-md border bg-muted shrink-0">
-                                                    <Image
-                                                        src={thumbnailUrl}
-                                                        alt={title}
-                                                        fill
-                                                        className="object-cover"
-                                                        sizes="40px"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted shrink-0">
-                                                    <Package className="h-4 w-4 text-muted-foreground/50" />
-                                                </div>
-                                            )}
-                                        </TableCell>
-
-                                        {/* Name */}
-                                        <TableCell className="px-4 py-3">
-                                            <span className="font-medium line-clamp-1">{title}</span>
-                                            <span className="block text-xs text-muted-foreground mt-0.5 font-mono">
-                                                {product.slug}
-                                            </span>
-                                        </TableCell>
-
-                                        {/* Status */}
-                                        <TableCell className="px-4 hidden sm:table-cell">
-                                            <Badge variant={statusBadgeVariant(product.status)} className="capitalize">
-                                                {product.status}
-                                            </Badge>
-                                        </TableCell>
-
-                                        {/* Price range */}
-                                        <TableCell className="px-4 hidden md:table-cell text-sm text-muted-foreground">
-                                            {priceRange}
-                                        </TableCell>
-
-                                        {/* Stock */}
-                                        <TableCell className="px-4 hidden lg:table-cell text-sm">
-                                            <span
-                                                className={
-                                                    stock === 0
-                                                        ? "text-destructive font-medium"
-                                                        : stock < 10
-                                                        ? "text-yellow-600 dark:text-yellow-400 font-medium"
-                                                        : "text-muted-foreground"
-                                                }
-                                            >
-                                                {stock}
-                                            </span>
-                                        </TableCell>
-
-                                        {/* Category */}
-                                        <TableCell className="px-4 hidden xl:table-cell text-sm text-muted-foreground">
-                                            {category ? getCategoryName(category) : "—"}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-                <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
-                    <p className="text-sm text-muted-foreground">
-                        Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of{" "}
-                        {total} product{total !== 1 ? "s" : ""}
-                    </p>
-                    <Pagination className="w-auto mx-0">
-                        <PaginationContent>
-                            <PaginationItem>
-                                <PaginationPrevious
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (page > 1) setPage(page - 1);
-                                    }}
-                                    aria-disabled={page <= 1}
-                                    className={page <= 1 ? "pointer-events-none opacity-50" : ""}
-                                />
-                            </PaginationItem>
-
-                            {buildPageNumbers().map((item, idx) =>
-                                item === "ellipsis" ? (
-                                    <PaginationItem key={`ellipsis-${idx}`}>
-                                        <PaginationEllipsis />
-                                    </PaginationItem>
-                                ) : (
-                                    <PaginationItem key={item}>
-                                        <PaginationLink
-                                            href="#"
-                                            isActive={item === page}
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                setPage(item);
-                                            }}
-                                        >
-                                            {item}
-                                        </PaginationLink>
-                                    </PaginationItem>
-                                )
-                            )}
-
-                            <PaginationItem>
-                                <PaginationNext
-                                    href="#"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        if (page < totalPages) setPage(page + 1);
-                                    }}
-                                    aria-disabled={page >= totalPages}
-                                    className={
-                                        page >= totalPages ? "pointer-events-none opacity-50" : ""
-                                    }
-                                />
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
-                </div>
-            )}
+            {renderProductTable()}
+            {renderPagination()}
         </div>
     );
 }

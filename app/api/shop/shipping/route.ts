@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -9,8 +10,8 @@ const CreateShippingMethodSchema = z.object({
   content: z.record(z.string(), z.unknown()).default({}),
   base_rate: z.number().nonnegative(),
   free_above: z.number().nonnegative().nullable().optional().default(null),
-  currency: z.string().default("MYR"),
-  countries: z.array(z.string()).optional().default(["MY"]),
+  currency: z.string().default("SGD"),
+  countries: z.array(z.string()).optional().default(["SG"]),
   is_active: z.boolean().optional().default(true),
   position: z.number().int().nonnegative().optional().default(0),
 });
@@ -34,6 +35,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   const parsed = CreateShippingMethodSchema.safeParse(body);
   if (!parsed.success) {

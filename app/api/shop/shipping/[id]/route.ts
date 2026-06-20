@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,9 @@ const UpdateShippingMethodSchema = z.object({
 }).partial();
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = UpdateShippingMethodSchema.safeParse(body);
@@ -43,6 +47,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const admin = supabaseAdmin();
   const { error } = await admin.from("shipping_methods").delete().eq("id", id);

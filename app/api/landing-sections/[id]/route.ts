@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   try {
     const { id } = await params;
     const body = await req.json();
@@ -68,6 +72,9 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const admin = supabaseAdmin();
 

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -45,6 +47,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = UpdateCategorySchema.safeParse(body);
@@ -68,6 +73,7 @@ export async function PATCH(
     );
   }
 
+  revalidateTag("categories");
   return NextResponse.json({ ok: true, row: data });
 }
 
@@ -75,6 +81,9 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const admin = supabaseAdmin();
   const { error } = await admin
@@ -86,5 +95,6 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  revalidateTag("categories");
   return NextResponse.json({ ok: true });
 }

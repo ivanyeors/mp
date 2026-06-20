@@ -14,7 +14,8 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
-import Aurora from "@/components/effects/Aurora";
+import dynamic from "next/dynamic";
+const Aurora = dynamic(() => import("@/components/effects/Aurora"), { ssr: false });
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
 

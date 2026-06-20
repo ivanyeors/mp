@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
+import { deductInventoryForOrder, restoreInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
+import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync";
+import { updateCustomerStats } from "@/lib/ecommerce/customers";
 import type Stripe from "stripe";
 
 export const runtime = "nodejs";
@@ -38,55 +41,71 @@ export async function POST(req: Request) {
 
         if (!orderId) break;
 
-        // Idempotency: check if order is already paid
+        // Fetch order with items
         const { data: order } = await admin
           .from("orders")
-          .select("id, status, paid_at, coupon_id, order_items(*)")
+          .select("id, status, paid_at, coupon_id, customer_id, shipping_address, order_items(*)")
           .eq("id", orderId)
           .single();
 
-        if (!order || order.paid_at) break; // Already processed
+        if (!order) break;
 
         const paymentIntent =
           typeof session.payment_intent === "string"
             ? session.payment_intent
             : session.payment_intent?.id ?? null;
 
-        // Update order to confirmed
-        await admin
-          .from("orders")
-          .update({
-            status: "confirmed",
-            paid_at: new Date().toISOString(),
-            payment_method: "stripe",
-            payment_reference: paymentIntent,
-          })
-          .eq("id", orderId);
+        // Step 1: Update order to confirmed (idempotent — skip if already paid)
+        if (!order.paid_at) {
+          await admin
+            .from("orders")
+            .update({
+              status: "confirmed",
+              paid_at: new Date().toISOString(),
+              payment_method: "stripe",
+              payment_reference: paymentIntent,
+            })
+            .eq("id", orderId);
+        }
 
-        // Deduct inventory for each order item
+        // Step 2: Deduct inventory (idempotent — check if transactions already exist)
         const items = (order.order_items ?? []) as Array<{
           variant_id: string;
           quantity: number;
+          customization_id?: string | null;
+          customization_snapshot?: Record<string, unknown> | null;
         }>;
 
-        for (const item of items) {
-          const { data: variant } = await admin
-            .from("product_variants")
-            .select("stock_quantity")
-            .eq("id", item.variant_id)
-            .single();
+        const { count: existingTxCount } = await admin
+          .from("inventory_transactions")
+          .select("id", { count: "exact", head: true })
+          .eq("metadata->>order_id", orderId);
 
-          if (variant && variant.stock_quantity !== null) {
-            const newQty = Math.max(0, (variant.stock_quantity as number) - item.quantity);
-            await admin
-              .from("product_variants")
-              .update({ stock_quantity: newQty })
-              .eq("id", item.variant_id);
+        if ((existingTxCount ?? 0) === 0) {
+          try {
+            await deductInventoryForOrder(orderId, items);
+          } catch (err) {
+            console.error(`[stripe/webhook] Inventory deduction failed for order ${orderId}:`, err);
           }
         }
 
-        // Increment coupon usage if applicable
-        if (order.coupon_id) {
+        // Step 3: Auto-create mp-config responses (already idempotent internally)
+        const orderItemsForSync = (order.order_items ?? []) as Array<{
+          id: string;
+          variant_id: string;
+          quantity: number;
+          customization_id?: string | null;
+          customization_snapshot?: Record<string, unknown> | null;
+        }>;
+        const shippingAddr = order.shipping_address as { recipient?: string } | null;
+        try {
+          await createMpConfigFromCustomization(orderId, orderItemsForSync, shippingAddr);
+        } catch (err) {
+          console.error(`[stripe/webhook] MP config creation failed for order ${orderId}:`, err);
+        }
+
+        // Step 4: Increment coupon usage (idempotent — only if order was just confirmed)
+        if (!order.paid_at && order.coupon_id) {
           const { data: coupon } = await admin
             .from("coupons")
             .select("usage_count")
@@ -101,15 +120,26 @@ export async function POST(req: Request) {
           }
         }
 
-        // Add timeline event
-        await addOrderTimelineEvent(
-          orderId,
-          "payment_confirmed",
-          "Payment confirmed via Stripe",
-          { stripe_session_id: session.id, payment_intent: paymentIntent }
-        );
+        // Step 5: Update customer stats
+        if (order.customer_id) {
+          try {
+            await updateCustomerStats(order.customer_id);
+          } catch (err) {
+            console.error(`[stripe/webhook] Customer stats update failed:`, err);
+          }
+        }
 
-        // Clear cart if cart token in metadata
+        // Step 6: Add timeline event (idempotent — skip if already paid)
+        if (!order.paid_at) {
+          await addOrderTimelineEvent(
+            orderId,
+            "payment_confirmed",
+            "Payment confirmed via Stripe",
+            { stripe_session_id: session.id, payment_intent: paymentIntent }
+          );
+        }
+
+        // Step 7: Clear cart if cart token in metadata
         const cartToken = session.metadata?.cart_token;
         if (cartToken) {
           await admin.from("carts").delete().eq("token", cartToken);
@@ -169,26 +199,15 @@ export async function POST(req: Request) {
           .update({ status: "refunded" })
           .eq("id", order.id);
 
-        // Restore inventory
-        const items = (order.order_items ?? []) as Array<{
+        // Restore inventory using BOM-aware logic
+        const refundItems = (order.order_items ?? []) as Array<{
           variant_id: string;
           quantity: number;
+          customization_id?: string | null;
+          customization_snapshot?: Record<string, unknown> | null;
         }>;
 
-        for (const item of items) {
-          const { data: variant } = await admin
-            .from("product_variants")
-            .select("stock_quantity")
-            .eq("id", item.variant_id)
-            .single();
-
-          if (variant && variant.stock_quantity !== null) {
-            await admin
-              .from("product_variants")
-              .update({ stock_quantity: (variant.stock_quantity as number) + item.quantity })
-              .eq("id", item.variant_id);
-          }
-        }
+        await restoreInventoryForOrder(order.id, refundItems);
 
         await addOrderTimelineEvent(
           order.id,

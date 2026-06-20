@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -8,7 +9,7 @@ const CreateCouponSchema = z.object({
   code: z.string().trim().min(1).max(100),
   discount_type: z.enum(["percentage", "fixed_amount", "free_shipping"]),
   discount_value: z.number().nonnegative(),
-  currency: z.string().default("MYR"),
+  currency: z.string().default("SGD"),
   min_order_amount: z.number().nonnegative().nullable().optional().default(null),
   max_discount: z.number().nonnegative().nullable().optional().default(null),
   usage_limit: z.number().int().positive().nullable().optional().default(null),
@@ -43,6 +44,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   const parsed = CreateCouponSchema.safeParse(body);
   if (!parsed.success) {

@@ -12,11 +12,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import dynamic from "next/dynamic";
 import { ProductConfigurationCard } from "./ProductConfigurationCard";
-import { MarginByCategoryVisx } from "./MarginByCategoryVisx";
 import type { CategoryStackDatum, ItemStackDatum } from "./MarginByCategoryVisx";
-import { MarginByProductVisx } from "./MarginByProductVisx";
-import { ProductTimelineVisx } from "./ProductTimelineVisx";
 import {
   getInventoryMovementWaterfall,
   getMpConfigMetricsBreakdown,
@@ -25,8 +23,12 @@ import {
   type InventoryMovementRow,
   type MpConfigMetricBreakdown,
 } from "./actions";
-import { InventoryMovementWaterfallVisx } from "./InventoryMovementWaterfallVisx";
-import { MpConfigMetricsStackedBarVisx } from "./MpConfigMetricsStackedBarVisx";
+
+const MarginByCategoryVisx = dynamic(() => import("./MarginByCategoryVisx").then((m) => m.MarginByCategoryVisx), { ssr: false });
+const MarginByProductVisx = dynamic(() => import("./MarginByProductVisx").then((m) => m.MarginByProductVisx), { ssr: false });
+const ProductTimelineVisx = dynamic(() => import("./ProductTimelineVisx").then((m) => m.ProductTimelineVisx), { ssr: false });
+const InventoryMovementWaterfallVisx = dynamic(() => import("./InventoryMovementWaterfallVisx").then((m) => m.InventoryMovementWaterfallVisx), { ssr: false });
+const MpConfigMetricsStackedBarVisx = dynamic(() => import("./MpConfigMetricsStackedBarVisx").then((m) => m.MpConfigMetricsStackedBarVisx), { ssr: false });
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";

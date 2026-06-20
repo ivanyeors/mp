@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,21 +12,31 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { useCart } from "@/lib/shop/cart-context";
+import {
+  type RecommendationResponseData,
+  HARDCODED_UPSELLS,
+  computeFillingLines,
+  computeComponentLines,
+  computeAddonPrice,
+  computeUpsellTotal,
+  CustomizationStepRecommendation,
+  CustomizationStepComponents,
+  CustomizationStepSummary,
+} from "@/components/shop/customization-steps";
 
-type Step = "welcome" | "height" | "sleep-position" | "case-type" | "summary";
+type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "components" | "summary-cart";
 type HeightUnit = "cm" | "m";
 type SleepPosition = "side" | "stomach" | "other";
-type CaseType = "camel" | "light-green" | "light-blue";
 
 type State = {
   step: Step;
   heightUnit: HeightUnit;
-  heightCm: string; // canonical storage in cm (string for easy input)
+  heightCm: string;
   sleepPosition: SleepPosition | null;
-  caseType: CaseType | null;
 };
 
-const STORAGE_KEY = "mbolster_config_v1";
+const STORAGE_KEY = "mbolster_config_v2";
 
 function clampNumber(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -50,17 +61,8 @@ function toCmValue(unit: HeightUnit, raw: string): string {
   const n = toNumber(raw);
   if (n === null) return raw.trim() ? raw : "";
   const cm = unit === "cm" ? n : n * 100;
-  // guardrails for typos
   const clamped = clampNumber(cm, 80, 250);
   return String(Math.round(clamped * 10) / 10);
-}
-
-function recommendSizeFromHeightCm(heightCm: number | null): { size: "S" | "M" | "L"; reason: string } {
-  if (!heightCm) return { size: "M", reason: "Missing height → defaulting to Size M" };
-  const meters = heightCm / 100;
-  if (meters < 1.5) return { size: "S", reason: `Height ${meters.toFixed(2)}m → Size S` };
-  if (meters <= 1.8) return { size: "M", reason: `Height ${meters.toFixed(2)}m → Size M` };
-  return { size: "L", reason: `Height ${meters.toFixed(2)}m → Size L` };
 }
 
 function labelForSleepPosition(v: SleepPosition): string {
@@ -69,29 +71,58 @@ function labelForSleepPosition(v: SleepPosition): string {
   return "Other / mixed";
 }
 
-function labelForCaseType(v: CaseType): string {
-  if (v === "camel") return "Bolster + Inner Protector + Camel Case";
-  if (v === "light-green") return "Bolster + Inner Protector + Light Green Case";
-  return "Bolster + Inner Protector + Light Blue Case";
-}
+const STEP_ORDER: Step[] = ["welcome", "height", "sleep-position", "recommendation", "components", "summary-cart"];
 
 function stepIndex(step: Step): number {
-  return ["welcome", "height", "sleep-position", "case-type", "summary"].indexOf(step);
+  return STEP_ORDER.indexOf(step);
 }
 
 export default function MbolsterConfigPage() {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const mbolsterHref = withLocale("/mbolster", locale);
+
+  const { addItem } = useCart();
 
   const [state, setState] = React.useState<State>({
     step: "welcome",
     heightUnit: "m",
     heightCm: "",
     sleepPosition: null,
-    caseType: null,
   });
 
+  // Shop customization state
+  const [shopRecommendation, setShopRecommendation] = React.useState<RecommendationResponseData | null>(null);
+  const [shopLoading, setShopLoading] = React.useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<number | null>(null);
+  const [selectedCover, setSelectedCover] = React.useState<number | null>(null);
+  const [selectedCase, setSelectedCase] = React.useState<number | null>(null);
+  const [componentQtyOverrides, setComponentQtyOverrides] = React.useState<Map<number, number>>(new Map());
+  const [selectedUpsells, setSelectedUpsells] = React.useState<Set<number>>(new Set());
+
+  const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
+  const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
+
+  const shopFillingLines = React.useMemo(
+    () => computeFillingLines(shopRecommendation, selectedTemplateId),
+    [shopRecommendation, selectedTemplateId]
+  );
+  const shopComponentLines = React.useMemo(
+    () => computeComponentLines(shopRecommendation, selectedCover, selectedCase, componentQtyOverrides),
+    [shopRecommendation, selectedCover, selectedCase, componentQtyOverrides]
+  );
+  const shopAddonPrice = React.useMemo(
+    () => computeAddonPrice(shopRecommendation, shopComponentLines),
+    [shopComponentLines, shopRecommendation]
+  );
+  const shopUpsellTotal = React.useMemo(
+    () => computeUpsellTotal(selectedUpsells),
+    [selectedUpsells]
+  );
+  const shopTotalPrice = shopBasePrice + shopAddonPrice + shopUpsellTotal;
+
+  // Persist state to localStorage
   React.useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -100,15 +131,13 @@ export default function MbolsterConfigPage() {
       if (!parsed) return;
       setState((prev) => ({
         ...prev,
-        ...parsed,
-        step: (parsed.step as Step) ?? prev.step,
+        step: STEP_ORDER.includes(parsed.step as Step) ? (parsed.step as Step) : prev.step,
         heightUnit: (parsed.heightUnit as HeightUnit) ?? prev.heightUnit,
         heightCm: typeof parsed.heightCm === "string" ? parsed.heightCm : prev.heightCm,
         sleepPosition: (parsed.sleepPosition as SleepPosition) ?? prev.sleepPosition,
-        caseType: (parsed.caseType as CaseType) ?? prev.caseType,
       }));
     } catch {
-      // best-effort; ignore malformed state
+      // best-effort
     }
   }, []);
 
@@ -116,32 +145,29 @@ export default function MbolsterConfigPage() {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
-      // best-effort only
+      // best-effort
     }
   }, [state]);
 
   const heightNum = toNumber(state.heightCm);
-  const recommendation = React.useMemo(() => recommendSizeFromHeightCm(heightNum), [heightNum]);
 
   const progressValue = React.useMemo(() => {
     const idx = stepIndex(state.step);
-    return idx <= 0 ? 0 : Math.round((idx / 4) * 100);
+    return idx <= 0 ? 0 : Math.round((idx / (STEP_ORDER.length - 1)) * 100);
   }, [state.step]);
 
   const goNext = () => {
     setState((s) => {
-      const order: Step[] = ["welcome", "height", "sleep-position", "case-type", "summary"];
-      const idx = order.indexOf(s.step);
-      const next = idx < order.length - 1 ? order[idx + 1] : s.step;
+      const idx = STEP_ORDER.indexOf(s.step);
+      const next = idx < STEP_ORDER.length - 1 ? STEP_ORDER[idx + 1] : s.step;
       return { ...s, step: next };
     });
   };
 
   const goBack = () => {
     setState((s) => {
-      const order: Step[] = ["welcome", "height", "sleep-position", "case-type", "summary"];
-      const idx = order.indexOf(s.step);
-      const prev = idx > 0 ? order[idx - 1] : s.step;
+      const idx = STEP_ORDER.indexOf(s.step);
+      const prev = idx > 0 ? STEP_ORDER[idx - 1] : s.step;
       return { ...s, step: prev };
     });
   };
@@ -152,14 +178,124 @@ export default function MbolsterConfigPage() {
       heightUnit: "m",
       heightCm: "",
       sleepPosition: null,
-      caseType: null,
     });
+    setShopRecommendation(null);
+    setSelectedTemplateId(null);
+    setSelectedCover(null);
+    setSelectedCase(null);
+    setComponentQtyOverrides(new Map());
+    setSelectedUpsells(new Set());
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {
       // ignore
     }
   };
+
+  const fetchBolsterRecommendation = React.useCallback(async () => {
+    if (!heightNum) return;
+    setShopLoading(true);
+    try {
+      const res = await fetch("/api/shop/customize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bolster_preferences: {
+            height_cm: heightNum,
+            sleep_position: state.sleepPosition ?? "other",
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? `Failed to get recommendation (${res.status})`);
+      }
+
+      const data: RecommendationResponseData = await res.json();
+      setShopRecommendation(data);
+      setSelectedTemplateId(null);
+
+      const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
+      const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
+      if (defaultCover) setSelectedCover(defaultCover.item_id);
+      if (defaultCase) setSelectedCase(defaultCase.item_id);
+      setComponentQtyOverrides(new Map());
+
+      // Auto-advance to recommendation step
+      setState((s) => ({ ...s, step: "recommendation" }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to get recommendation");
+    } finally {
+      setShopLoading(false);
+    }
+  }, [heightNum, state.sleepPosition]);
+
+  const handleApplyAndAddToCart = React.useCallback(async () => {
+    if (!shopRecommendation || !shopRecommendation.variant) {
+      toast.error("No variant available");
+      return;
+    }
+
+    setShopLoading(true);
+    try {
+      const coverComp = shopComponentLines.find((c) => c.category === "cover");
+      const caseComp = shopComponentLines.find((c) => c.category === "case");
+      const activeUpsells = HARDCODED_UPSELLS.filter((u) => selectedUpsells.has(u.item_id));
+
+      const res = await fetch("/api/shop/customize?action=apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          variant_id: shopRecommendation.variant.id,
+          pillow_product_id: shopRecommendation.pillow_product.id,
+          filling_lines: shopFillingLines,
+          cover_variant: coverComp?.name ?? undefined,
+          case_variant: caseComp?.name ?? undefined,
+          component_quantities: shopComponentLines,
+          upsells: activeUpsells,
+          bom_template_id: selectedTemplateId ?? undefined,
+          llm_metadata: {
+            source: "mbolster-config",
+            height_cm: heightNum,
+            sleep_position: state.sleepPosition,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Failed to apply customization");
+      }
+
+      const data = await res.json();
+
+      addItem({
+        variantId: shopRecommendation.variant.id,
+        productId: shopRecommendation.variant.product_id,
+        productSlug: `mbolster-${shopRecommendation.pillow_product.size?.toLowerCase()}`,
+        productTitle: `Mbolster Size ${shopRecommendation.pillow_product.size}`,
+        variantTitle: `Size ${shopRecommendation.pillow_product.size}`,
+        imageUrl: null,
+        price: shopBasePrice,
+        compareAtPrice: null,
+        currency: shopCurrency,
+        quantity: 1,
+        customizationId: data.customization_id,
+        customizationSummary: data.summary,
+        addonPrice: data.total_addon_price,
+      });
+
+      toast.success("Added to cart!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add to cart");
+    } finally {
+      setShopLoading(false);
+    }
+  }, [
+    shopRecommendation, shopFillingLines, shopComponentLines, selectedTemplateId,
+    selectedUpsells, heightNum, state.sleepPosition, shopBasePrice, shopCurrency, addItem,
+  ]);
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
@@ -176,8 +312,7 @@ export default function MbolsterConfigPage() {
               <div className="text-sm font-semibold text-muted-foreground">Mbolster</div>
               <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Customise your Mbolster</h1>
               <p className="mx-auto max-w-2xl text-muted-foreground">
-                Answer a few quick questions to get a recommended size (S/M/L), then proceed to purchase or book an
-                appointment.
+                Answer a few quick questions to get a recommended size, customize your components, and add to cart.
               </p>
             </div>
 
@@ -198,7 +333,7 @@ export default function MbolsterConfigPage() {
               <div className="text-sm font-semibold text-muted-foreground">Step 1</div>
               <h2 className="text-2xl font-semibold tracking-tight">Your height</h2>
               <p className="text-sm text-muted-foreground">
-                We use height to recommend a Mbolster size, based on the mpillow.com sizing guidance.
+                We use height to recommend a Mbolster size.
               </p>
             </div>
 
@@ -229,14 +364,6 @@ export default function MbolsterConfigPage() {
                   </TabsList>
                 </Tabs>
               </div>
-
-              <div className="rounded-xl border bg-muted/20 p-3 text-sm text-muted-foreground">
-                <div className="font-semibold text-foreground">Recommendation preview</div>
-                <div className="mt-1">
-                  <span className="font-medium text-foreground">Size {recommendation.size}</span>{" "}
-                  <span className="text-muted-foreground">({recommendation.reason})</span>
-                </div>
-              </div>
             </div>
 
             <div className="flex items-center justify-between pt-2">
@@ -255,7 +382,7 @@ export default function MbolsterConfigPage() {
             <div className="space-y-1">
               <div className="text-sm font-semibold text-muted-foreground">Step 2</div>
               <h2 className="text-2xl font-semibold tracking-tight">Sleep position</h2>
-              <p className="text-sm text-muted-foreground">This helps us tailor the guidance (and appointment advice).</p>
+              <p className="text-sm text-muted-foreground">This helps us tailor the guidance.</p>
             </div>
 
             <div className="grid gap-3">
@@ -277,7 +404,7 @@ export default function MbolsterConfigPage() {
                         ? "Most common use-case for Mbolster."
                         : v === "stomach"
                           ? "Consider the duo face cover option."
-                          : "We’ll keep the recommendation flexible."}
+                          : "We'll keep the recommendation flexible."}
                     </div>
                   </button>
                 );
@@ -288,132 +415,97 @@ export default function MbolsterConfigPage() {
               <Button variant="outline" onClick={goBack}>
                 Back
               </Button>
-              <Button onClick={goNext} disabled={!state.sleepPosition}>
-                Continue
+              <Button
+                onClick={() => {
+                  const heightCm = toNumber(state.heightCm);
+                  if (!heightCm || !state.sleepPosition) return;
+                  router.push(
+                    withLocale(
+                      `/mp-maker?product=bolster&height=${Math.round(heightCm)}&position=${state.sleepPosition}`,
+                      locale
+                    )
+                  );
+                }}
+                disabled={!state.sleepPosition || !toNumber(state.heightCm)}
+              >
+                Get Recommendation
               </Button>
             </div>
           </Card>
         ) : null}
 
-        {state.step === "case-type" ? (
+        {state.step === "recommendation" && shopRecommendation ? (
           <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
-            <div className="space-y-1">
-              <div className="text-sm font-semibold text-muted-foreground">Step 3</div>
-              <h2 className="text-2xl font-semibold tracking-tight">Case type</h2>
-              <p className="text-sm text-muted-foreground">Select one of the available case type bundles.</p>
-            </div>
-
-            <div className="grid gap-3">
-              {(
-                [
-                  { id: "camel", label: "Bolster + Inner Protector + Camel Case" },
-                  { id: "light-green", label: "Bolster + Inner Protector + Light Green Case" },
-                  { id: "light-blue", label: "Bolster + Inner Protector + Light Blue Case" },
-                ] as const
-              ).map((opt) => {
-                const selected = state.caseType === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setState((s) => ({ ...s, caseType: opt.id }))}
-                    className={[
-                      "w-full rounded-xl border px-4 py-3 text-left transition-colors",
-                      selected ? "bg-primary/10 border-primary/30" : "bg-background/50 hover:bg-muted/30",
-                    ].join(" ")}
-                  >
-                    <div className="text-sm font-semibold text-foreground">{opt.label}</div>
-                    <div className="text-sm text-muted-foreground">You can adjust firmness later with modular fillings.</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <Button variant="outline" onClick={goBack}>
-                Back
-              </Button>
-              <Button onClick={goNext} disabled={!state.caseType}>
-                Continue
-              </Button>
-            </div>
+            <CustomizationStepRecommendation
+              data={shopRecommendation}
+              selectedTemplateId={selectedTemplateId}
+              onSelectTemplate={setSelectedTemplateId}
+              fillingLines={shopFillingLines}
+              currency={shopCurrency}
+              basePrice={shopBasePrice}
+              onContinue={goNext}
+              productLabel="Mbolster"
+            />
           </Card>
         ) : null}
 
-        {state.step === "summary" ? (
+        {state.step === "components" && shopRecommendation ? (
           <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
-            <div className="space-y-1">
-              <div className="text-sm font-semibold text-muted-foreground">Summary</div>
-              <h2 className="text-2xl font-semibold tracking-tight">Your Mbolster recommendation</h2>
-              <p className="text-sm text-muted-foreground">Review your selections and proceed.</p>
-            </div>
+            <CustomizationStepComponents
+              components={shopRecommendation.components}
+              selectedCover={selectedCover}
+              onSelectCover={setSelectedCover}
+              selectedCase={selectedCase}
+              onSelectCase={setSelectedCase}
+              componentQtyOverrides={componentQtyOverrides}
+              onQtyChange={(itemId, qty) => {
+                setComponentQtyOverrides((prev) => {
+                  const next = new Map(prev);
+                  next.set(itemId, qty);
+                  return next;
+                });
+              }}
+              currency={shopCurrency}
+              basePrice={shopBasePrice}
+              addonPrice={shopAddonPrice}
+              onBack={goBack}
+              onContinue={goNext}
+            />
+          </Card>
+        ) : null}
 
-            <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border bg-background/50 p-4">
-                  <div className="text-xs text-muted-foreground">Recommended size</div>
-                  <div className="mt-1 text-2xl font-bold tabular-nums">Size {recommendation.size}</div>
-                  <div className="mt-1 text-xs text-muted-foreground">{recommendation.reason}</div>
-                </div>
-                <div className="rounded-xl border bg-background/50 p-4">
-                  <div className="text-xs text-muted-foreground">Height</div>
-                  <div className="mt-1 text-lg font-semibold tabular-nums">
-                    {toDisplayHeight(state)} {state.heightUnit}
-                  </div>
-                </div>
-              </div>
+        {state.step === "summary-cart" && shopRecommendation ? (
+          <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
+            <CustomizationStepSummary
+              data={shopRecommendation}
+              fillingLines={shopFillingLines}
+              componentLines={shopComponentLines}
+              selectedCover={selectedCover}
+              selectedCase={selectedCase}
+              basePrice={shopBasePrice}
+              addonPrice={shopAddonPrice}
+              upsellTotal={shopUpsellTotal}
+              totalPrice={shopTotalPrice}
+              currency={shopCurrency}
+              selectedUpsells={selectedUpsells}
+              onToggleUpsell={(itemId) => {
+                setSelectedUpsells((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(itemId)) next.delete(itemId);
+                  else next.add(itemId);
+                  return next;
+                });
+              }}
+              isLoading={shopLoading}
+              onBack={goBack}
+              onAddToCart={handleApplyAndAddToCart}
+              productLabel="Mbolster"
+            />
 
-              <div className="rounded-xl border bg-background/50 p-4">
-                <div className="text-xs text-muted-foreground">Sleep position</div>
-                <div className="mt-1 text-sm font-semibold text-foreground">
-                  {state.sleepPosition ? labelForSleepPosition(state.sleepPosition) : "—"}
-                </div>
-              </div>
-
-              <div className="rounded-xl border bg-background/50 p-4">
-                <div className="text-xs text-muted-foreground">Case type</div>
-                <div className="mt-1 text-sm font-semibold text-foreground">
-                  {state.caseType ? labelForCaseType(state.caseType) : "—"}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Note: Bolster case is optional on mpillow.com; availability may vary.
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3 pt-2 sm:grid-cols-2">
-              <Button asChild className="h-auto py-4">
-                <Link href="https://www.mpillow.com/products/bolsters" target="_blank" rel="noopener noreferrer">
-                  Continue to purchase
-                </Link>
-              </Button>
-              <Button asChild variant="secondary" className="h-auto py-4">
-                <Link href="https://www.mpillow.com/pages/contact" target="_blank" rel="noopener noreferrer">
-                  Book an appointment
-                </Link>
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-              <Button variant="outline" onClick={goBack}>
-                Back
-              </Button>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button variant="ghost" onClick={reset}>
                 Start over
               </Button>
-            </div>
-
-            <div className="text-xs text-muted-foreground">
-              Sizing logic duplicated from{" "}
-              <Link
-                href="https://www.mpillow.com/products/bolsters"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-4"
-              >
-                mpillow.com product page
-              </Link>
-              .
             </div>
           </Card>
         ) : null}
@@ -421,4 +513,3 @@ export default function MbolsterConfigPage() {
     </div>
   );
 }
-

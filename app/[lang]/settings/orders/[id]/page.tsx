@@ -18,6 +18,11 @@ import {
     Clock,
     Loader2,
     ChevronLeft,
+    ClipboardList,
+    Link2,
+    Unlink,
+    Search,
+    ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +55,7 @@ import {
 } from "@/components/ui/dialog";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import type { Order, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
+import type { Order, OrderItem, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -66,10 +71,10 @@ const ORDER_STATUSES: OrderStatus[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatMYR(amount: number): string {
-    return new Intl.NumberFormat("en-MY", {
+function formatSGD(amount: number): string {
+    return new Intl.NumberFormat("en-SG", {
         style: "currency",
-        currency: "MYR",
+        currency: "SGD",
     }).format(amount);
 }
 
@@ -156,6 +161,20 @@ export default function OrderDetailPage() {
     const [trackingUrl, setTrackingUrl] = useState("");
     const [fulfilling, setFulfilling] = useState(false);
 
+    // Mp-config link
+    type MpConfigLinked = { id: string; data: Record<string, unknown> | null; is_final: boolean; source: string; created_at: string };
+    const [mpConfigResponses, setMpConfigResponses] = useState<MpConfigLinked[]>([]);
+    const [mpConfigLoading, setMpConfigLoading] = useState(true);
+    const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+    const [linkSearch, setLinkSearch] = useState("");
+    const [linkCandidates, setLinkCandidates] = useState<MpConfigLinked[]>([]);
+    const [linkCandidatesLoading, setLinkCandidatesLoading] = useState(false);
+    const [linking, setLinking] = useState(false);
+    const [creating, setCreating] = useState(false);
+
+    // Inventory deduction status
+    const [inventoryDeducted, setInventoryDeducted] = useState<boolean | null>(null);
+
     const fetchOrder = useCallback(async () => {
         setLoading(true);
         try {
@@ -184,10 +203,31 @@ export default function OrderDetailPage() {
         }
     }, [orderId]);
 
+    // Check if inventory has been deducted for this order
+    const checkInventoryDeduction = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}`);
+            // We use a lightweight check — look for inventory_transactions via a dedicated query
+            // For now, check if order status is confirmed+ and timeline has payment_confirmed event
+            // A more robust check would query inventory_transactions directly
+            setInventoryDeducted(null); // Will be computed from timeline
+        } catch {
+            setInventoryDeducted(null);
+        }
+    }, [orderId]);
+
     useEffect(() => {
         fetchOrder();
         fetchTimeline();
     }, [fetchOrder, fetchTimeline]);
+
+    // Derive inventory deduction status from timeline
+    useEffect(() => {
+        if (timeline.length > 0 && order) {
+            const hasPaymentConfirmed = timeline.some((e) => e.event_type === "payment_confirmed");
+            setInventoryDeducted(hasPaymentConfirmed && order.status !== "pending");
+        }
+    }, [timeline, order]);
 
     const updateStatus = async () => {
         if (!newStatus || !order) return;
@@ -251,6 +291,91 @@ export default function OrderDetailPage() {
             setFulfilling(false);
         }
     };
+
+    const fetchMpConfigLinks = useCallback(async () => {
+        setMpConfigLoading(true);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/mp-config-link`);
+            const json = await res.json();
+            setMpConfigResponses(json.responses ?? []);
+        } catch {
+            setMpConfigResponses([]);
+        } finally {
+            setMpConfigLoading(false);
+        }
+    }, [orderId]);
+
+    useEffect(() => {
+        fetchMpConfigLinks();
+    }, [fetchMpConfigLinks]);
+
+    const searchUnlinkedResults = useCallback(async (query: string) => {
+        setLinkCandidatesLoading(true);
+        try {
+            const res = await fetch(`/api/mp-config/responses?limit=50&offset=0`);
+            const json = await res.json();
+            const all = (json.rows ?? []) as MpConfigLinked[];
+            // Filter to unlinked results matching the search
+            const q = query.trim().toLowerCase();
+            const candidates = all.filter((r) => {
+                if ((r as Record<string, unknown>).order_id) return false;
+                if (!q) return true;
+                const name = String((r.data as Record<string, unknown>)?.name ?? "").toLowerCase();
+                return name.includes(q) || r.id.toLowerCase().includes(q);
+            });
+            setLinkCandidates(candidates);
+        } catch {
+            setLinkCandidates([]);
+        } finally {
+            setLinkCandidatesLoading(false);
+        }
+    }, []);
+
+    const handleLinkResult = useCallback(async (responseId: string) => {
+        setLinking(true);
+        try {
+            await fetch(`/api/shop/orders/${orderId}/mp-config-link`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ response_id: responseId }),
+            });
+            setLinkDialogOpen(false);
+            await fetchMpConfigLinks();
+        } finally {
+            setLinking(false);
+        }
+    }, [orderId, fetchMpConfigLinks]);
+
+    const handleCreateResult = useCallback(async () => {
+        setCreating(true);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/mp-config-link`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ create: true }),
+            });
+            const json = await res.json();
+            await fetchMpConfigLinks();
+            if (json.created) {
+                window.open(to(`/settings/results/${json.created}`), "_blank");
+            }
+        } finally {
+            setCreating(false);
+        }
+    }, [orderId, fetchMpConfigLinks, to]);
+
+    const handleUnlinkResult = useCallback(async (responseId: string) => {
+        try {
+            await fetch(`/api/shop/orders/${orderId}/mp-config-link`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ response_id: responseId }),
+            });
+            await fetchMpConfigLinks();
+        } catch {
+            // ignore
+        }
+    }, [orderId, fetchMpConfigLinks]);
 
     if (loading) {
         return (
@@ -357,10 +482,10 @@ export default function OrderDetailPage() {
                                                 {item.quantity}
                                             </TableCell>
                                             <TableCell className="px-4 text-right text-sm hidden sm:table-cell text-muted-foreground">
-                                                {formatMYR(item.unit_price)}
+                                                {formatSGD(item.unit_price)}
                                             </TableCell>
                                             <TableCell className="px-4 text-right text-sm font-medium">
-                                                {formatMYR(item.total_price)}
+                                                {formatSGD(item.total_price)}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -370,31 +495,110 @@ export default function OrderDetailPage() {
                             <div className="border-t px-4 py-3 space-y-1.5 text-sm">
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>Subtotal</span>
-                                    <span>{formatMYR(order.subtotal)}</span>
+                                    <span>{formatSGD(order.subtotal)}</span>
                                 </div>
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>Shipping</span>
-                                    <span>{formatMYR(order.shipping_amount)}</span>
+                                    <span>{formatSGD(order.shipping_amount)}</span>
                                 </div>
                                 {order.discount_amount > 0 && (
                                     <div className="flex justify-between text-green-600 dark:text-green-400">
                                         <span>Discount</span>
-                                        <span>-{formatMYR(order.discount_amount)}</span>
+                                        <span>-{formatSGD(order.discount_amount)}</span>
                                     </div>
                                 )}
                                 {order.tax_amount > 0 && (
                                     <div className="flex justify-between text-muted-foreground">
                                         <span>Tax</span>
-                                        <span>{formatMYR(order.tax_amount)}</span>
+                                        <span>{formatSGD(order.tax_amount)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between font-semibold border-t pt-1.5 mt-1">
                                     <span>Total</span>
-                                    <span>{formatMYR(order.total)}</span>
+                                    <span>{formatSGD(order.total)}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Customization Details & Inventory Status */}
+                    {(order.items ?? []).some((item: OrderItem) => item.customization_id) && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <ClipboardList className="h-4 w-4" />
+                                    Customization Details
+                                    {inventoryDeducted === true && (
+                                        <Badge variant="outline" className="ml-auto text-xs text-green-600 border-green-300">
+                                            Inventory deducted
+                                        </Badge>
+                                    )}
+                                    {inventoryDeducted === false && order.status !== "pending" && (
+                                        <Badge variant="outline" className="ml-auto text-xs text-red-600 border-red-300">
+                                            Deduction missing
+                                        </Badge>
+                                    )}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {(order.items ?? [])
+                                    .filter((item: OrderItem) => item.customization_id)
+                                    .map((item: OrderItem) => {
+                                        const snapshot = item.customization_snapshot;
+
+                                        return (
+                                            <div key={item.id} className="rounded-lg border p-4 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="font-medium text-sm">
+                                                        {item.product_title} — {item.variant_title}
+                                                    </div>
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        Customized
+                                                    </Badge>
+                                                </div>
+
+                                                {snapshot?.summary && (
+                                                    <p className="text-sm text-muted-foreground">{snapshot.summary}</p>
+                                                )}
+
+                                                {snapshot?.filling_lines && snapshot.filling_lines.length > 0 && (
+                                                    <div>
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1">Fillings</div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {snapshot.filling_lines.map((fl, idx) => (
+                                                                <span key={idx} className="inline-flex items-center rounded-full bg-accent px-2 py-0.5 text-xs">
+                                                                    {fl.quantity}x {fl.subtype || fl.name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {snapshot?.config_lines && snapshot.config_lines.length > 0 && (
+                                                    <div>
+                                                        <div className="text-xs font-medium text-muted-foreground mb-1">Components</div>
+                                                        <div className="space-y-1">
+                                                            {snapshot.config_lines.map((cl, idx) => (
+                                                                <div key={idx} className="flex justify-between text-xs">
+                                                                    <span>{cl.name} ({cl.category})</span>
+                                                                    <span>x{cl.quantity}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {(snapshot?.total_addon_price ?? 0) > 0 && (
+                                                    <div className="text-xs text-primary font-medium">
+                                                        Add-on price: {formatSGD(snapshot!.total_addon_price!)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Order Timeline */}
                     <Card>
@@ -546,6 +750,148 @@ export default function OrderDetailPage() {
                                     View customer profile →
                                 </Link>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Mp-config Result */}
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <ClipboardList className="h-4 w-4" />
+                                Mp-config Result
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {mpConfigLoading ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading…
+                                </div>
+                            ) : mpConfigResponses.length > 0 ? (
+                                <div className="space-y-2">
+                                    {mpConfigResponses.map((r) => {
+                                        const name = String((r.data as Record<string, unknown>)?.name ?? "") || "—";
+                                        const size = String((r.data as Record<string, unknown>)?.online_recommended_size ?? "");
+                                        const kind = String((r.data as Record<string, unknown>)?.online_recommended_kind ?? "");
+                                        return (
+                                            <div key={r.id} className="flex items-center justify-between gap-2 rounded-md border p-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-medium truncate">{name}</p>
+                                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                                            {r.source === "online_customization" ? "Online" : "In-store"}
+                                                        </Badge>
+                                                        {size && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {kind} · {size}
+                                                            </span>
+                                                        )}
+                                                        <Badge variant={r.is_final ? "default" : "secondary"} className="text-[10px] px-1.5 py-0">
+                                                            {r.is_final ? "Released" : "Active"}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1 shrink-0">
+                                                    <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                                                        <Link href={to(`/settings/results/${r.id}`)}>
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                                        onClick={() => handleUnlinkResult(r.id)}
+                                                    >
+                                                        <Unlink className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No linked result.</p>
+                            )}
+                            <div className="flex gap-2">
+                                <Dialog open={linkDialogOpen} onOpenChange={(open) => {
+                                    setLinkDialogOpen(open);
+                                    if (open) {
+                                        setLinkSearch("");
+                                        searchUnlinkedResults("");
+                                    }
+                                }}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="outline" className="flex-1">
+                                            <Link2 className="mr-1.5 h-3.5 w-3.5" />
+                                            Link Existing
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-lg">
+                                        <DialogHeader>
+                                            <DialogTitle>Link Mp-config Result</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="space-y-3">
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    placeholder="Search by name or ID…"
+                                                    value={linkSearch}
+                                                    onChange={(e) => {
+                                                        setLinkSearch(e.target.value);
+                                                        searchUnlinkedResults(e.target.value);
+                                                    }}
+                                                    className="flex-1"
+                                                />
+                                                <Button size="icon" variant="outline" disabled={linkCandidatesLoading} onClick={() => searchUnlinkedResults(linkSearch)}>
+                                                    <Search className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <div className="max-h-60 overflow-y-auto space-y-1">
+                                                {linkCandidatesLoading ? (
+                                                    <div className="flex items-center gap-2 py-4 justify-center text-sm text-muted-foreground">
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                        Loading…
+                                                    </div>
+                                                ) : linkCandidates.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground text-center py-4">
+                                                        No unlinked results found.
+                                                    </p>
+                                                ) : (
+                                                    linkCandidates.map((c) => {
+                                                        const cName = String((c.data as Record<string, unknown>)?.name ?? "") || "—";
+                                                        return (
+                                                            <button
+                                                                key={c.id}
+                                                                type="button"
+                                                                className="w-full text-left rounded-md border p-2 hover:bg-accent transition-colors"
+                                                                disabled={linking}
+                                                                onClick={() => handleLinkResult(c.id)}
+                                                            >
+                                                                <p className="text-sm font-medium">{cName}</p>
+                                                                <p className="text-xs text-muted-foreground font-mono truncate">{c.id}</p>
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={handleCreateResult}
+                                    disabled={creating}
+                                >
+                                    {creating ? (
+                                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                                    )}
+                                    Create Result
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 

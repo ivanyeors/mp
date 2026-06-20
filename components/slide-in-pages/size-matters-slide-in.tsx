@@ -12,7 +12,8 @@ import { LeftContentRightImgSection } from "@/components/sections/left-content-r
 import SpotlightCard from "@/components/effects/SpotlightCard";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
-import Aurora from "@/components/effects/Aurora";
+import dynamic from "next/dynamic";
+const Aurora = dynamic(() => import("@/components/effects/Aurora"), { ssr: false });
 import { useI18n } from "@/lib/i18n/use-i18n";
 
 type Props = {

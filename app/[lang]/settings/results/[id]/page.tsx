@@ -32,6 +32,9 @@ type MpConfigResponseRow = {
   id: string;
   data: Partial<MeasurementData> | null;
   is_final: boolean;
+  source?: string | null;
+  order_id?: string | null;
+  order_item_id?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -79,6 +82,7 @@ export default function ResultDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   const [row, setRow] = useState<MpConfigResponseRow | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
 
@@ -101,6 +105,7 @@ export default function ResultDetailPage() {
       if (!res.ok) throw new Error(payload?.error ?? "Failed to load result");
       const response = payload?.response as MpConfigResponseRow | null;
       setRow(response);
+      setOrderNumber((payload?.order_number as string) ?? null);
       setSuggestion((payload?.suggestion ?? null) as MpConfigSuggestion | null);
       setDraft(normalizeMeasurement(response?.data ?? null));
     } catch (e) {
@@ -220,6 +225,57 @@ export default function ResultDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* Order link banner */}
+      {row.order_id && orderNumber && (
+        <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-2.5">
+          <span className="text-sm">Linked to Order</span>
+          <a
+            href={to(`/settings/orders/${row.order_id}`)}
+            className="text-sm font-semibold text-primary hover:underline"
+          >
+            #{orderNumber}
+          </a>
+          {row.source === "online_customization" && (
+            <span className="ml-auto rounded-full bg-blue-100 dark:bg-blue-900/40 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+              Online Customization
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Online customization preferences (read-only, only for online-sourced results) */}
+      {row.source === "online_customization" && (
+        <Card className="p-4">
+          <div className="text-sm font-medium mb-3">Online Customization Preferences</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-md border bg-muted/30 p-2.5">
+              <div className="text-xs text-muted-foreground">Sleep Position</div>
+              <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.sleep_position) || "—"}</div>
+            </div>
+            <div className="rounded-md border bg-muted/30 p-2.5">
+              <div className="text-xs text-muted-foreground">Body Type</div>
+              <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.body_type) || "—"}</div>
+            </div>
+            <div className="rounded-md border bg-muted/30 p-2.5">
+              <div className="text-xs text-muted-foreground">Firmness</div>
+              <div className="text-sm font-medium capitalize">{safeString((row.data as Record<string, unknown>)?.firmness) || "—"}</div>
+            </div>
+            <div className="rounded-md border bg-muted/30 p-2.5">
+              <div className="text-xs text-muted-foreground">Recommended</div>
+              <div className="text-sm font-medium">
+                {safeString((row.data as Record<string, unknown>)?.online_recommended_kind) || "—"} · {safeString((row.data as Record<string, unknown>)?.online_recommended_size) || "—"}
+              </div>
+            </div>
+          </div>
+          {safeString((row.data as Record<string, unknown>)?.notes) && (
+            <div className="mt-3 rounded-md border bg-muted/30 p-2.5">
+              <div className="text-xs text-muted-foreground">Customer Notes</div>
+              <div className="text-sm">{safeString((row.data as Record<string, unknown>)?.notes)}</div>
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card className="p-4">
         <div className="flex flex-col gap-4">

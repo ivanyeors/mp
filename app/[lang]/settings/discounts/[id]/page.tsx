@@ -128,7 +128,7 @@ const DEFAULT_FORM: CouponForm = {
     code: "",
     discount_type: "percentage",
     discount_value: "",
-    currency: "MYR",
+    currency: "SGD",
     min_order_amount: "",
     max_discount: "",
     usage_limit: "",

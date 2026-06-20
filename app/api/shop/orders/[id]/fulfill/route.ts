@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,9 @@ const FulfillSchema = z.object({
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const parsed = FulfillSchema.safeParse(body);

@@ -14,7 +14,7 @@ import type { Order } from "@/lib/types/ecommerce";
 // ---------------------------------------------------------------------------
 
 function formatPrice(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-MY", {
+  return new Intl.NumberFormat("en-SG", {
     style: "currency",
     currency,
     minimumFractionDigits: 2,

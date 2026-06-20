@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,9 @@ export const runtime = "nodejs";
  * - site_settings.value (landing page slots)
  */
 export async function POST(req: Request) {
+    const denied = await requireSettingsAuth();
+    if (denied) return denied;
+
     try {
         const body = await req.json();
         const { oldUrl, newUrl } = body as { oldUrl?: string; newUrl?: string };

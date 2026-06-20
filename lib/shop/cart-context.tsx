@@ -13,8 +13,8 @@ interface CartState {
 
 interface CartActions {
   addItem: (item: CartItemClient) => void;
-  removeItem: (variantId: string) => void;
-  updateQuantity: (variantId: string, quantity: number) => void;
+  removeItem: (variantId: string, customizationId?: string) => void;
+  updateQuantity: (variantId: string, quantity: number, customizationId?: string) => void;
   applyCoupon: (code: string | null) => void;
   clearCart: () => void;
   toggleCart: (open?: boolean) => void;
@@ -23,6 +23,7 @@ interface CartActions {
 interface CartContextValue extends CartState, CartActions {
   itemCount: number;
   subtotal: number;
+  hydrated: boolean;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -72,13 +73,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback((item: CartItemClient) => {
     setState((prev) => {
-      const existing = prev.items.find((i) => i.variantId === item.variantId);
+      const itemKey = item.variantId + (item.customizationId ?? "");
+      const existing = prev.items.find(
+        (i) => i.variantId + (i.customizationId ?? "") === itemKey
+      );
       if (existing) {
         return {
           ...prev,
           isOpen: true,
           items: prev.items.map((i) =>
-            i.variantId === item.variantId
+            i.variantId + (i.customizationId ?? "") === itemKey
               ? { ...i, quantity: i.quantity + item.quantity }
               : i
           ),
@@ -88,22 +92,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const removeItem = useCallback((variantId: string) => {
+  const removeItem = useCallback((variantId: string, customizationId?: string) => {
+    const key = variantId + (customizationId ?? "");
     setState((prev) => ({
       ...prev,
-      items: prev.items.filter((i) => i.variantId !== variantId),
+      items: prev.items.filter((i) => i.variantId + (i.customizationId ?? "") !== key),
     }));
   }, []);
 
-  const updateQuantity = useCallback((variantId: string, quantity: number) => {
+  const updateQuantity = useCallback((variantId: string, quantity: number, customizationId?: string) => {
+    const key = variantId + (customizationId ?? "");
     setState((prev) => {
       if (quantity <= 0) {
-        return { ...prev, items: prev.items.filter((i) => i.variantId !== variantId) };
+        return { ...prev, items: prev.items.filter((i) => i.variantId + (i.customizationId ?? "") !== key) };
       }
       return {
         ...prev,
         items: prev.items.map((i) =>
-          i.variantId === variantId ? { ...i, quantity } : i
+          i.variantId + (i.customizationId ?? "") === key ? { ...i, quantity } : i
         ),
       };
     });
@@ -127,7 +133,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const subtotal = useMemo(
-    () => state.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () => state.items.reduce((sum, item) => sum + (item.price + (item.addonPrice ?? 0)) * item.quantity, 0),
     [state.items]
   );
 
@@ -142,8 +148,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       toggleCart,
       itemCount,
       subtotal,
+      hydrated,
     }),
-    [state, addItem, removeItem, updateQuantity, applyCoupon, clearCart, toggleCart, itemCount, subtotal]
+    [state, addItem, removeItem, updateQuantity, applyCoupon, clearCart, toggleCart, itemCount, subtotal, hydrated]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -68,10 +68,10 @@ const ORDER_STATUSES: OrderStatus[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatMYR(amount: number): string {
-    return new Intl.NumberFormat("en-MY", {
+function formatSGD(amount: number): string {
+    return new Intl.NumberFormat("en-SG", {
         style: "currency",
-        currency: "MYR",
+        currency: "SGD",
     }).format(amount);
 }
 
@@ -266,13 +266,13 @@ export default function SettingsOrdersPage() {
                 <SummaryCard
                     icon={DollarSign}
                     label="Revenue"
-                    value={stats ? formatMYR(stats.revenue) : "—"}
+                    value={stats ? formatSGD(stats.revenue) : "—"}
                     loading={statsLoading}
                 />
                 <SummaryCard
                     icon={TrendingUp}
                     label="Avg Order Value"
-                    value={stats ? formatMYR(stats.avg_order_value) : "—"}
+                    value={stats ? formatSGD(stats.avg_order_value) : "—"}
                     loading={statsLoading}
                 />
                 <SummaryCard
@@ -392,7 +392,7 @@ export default function SettingsOrdersPage() {
                                             {itemCount}
                                         </TableCell>
                                         <TableCell className="px-4 text-right text-sm font-medium">
-                                            {formatMYR(order.total)}
+                                            {formatSGD(order.total)}
                                         </TableCell>
                                     </TableRow>
                                 );

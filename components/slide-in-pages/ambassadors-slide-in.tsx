@@ -9,7 +9,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { LeftContentRightImgSection } from "@/components/sections/left-content-right-img-section";
 import { Progress } from "@/components/ui/progress";
 import { ChevronDown, ChevronUp, XIcon } from "lucide-react";
-import TextType from "@/components/effects/TextType";
+import dynamic from "next/dynamic";
+const TextType = dynamic(() => import("@/components/effects/TextType"), { ssr: false });
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
 import { useI18n } from "@/lib/i18n/use-i18n";
 import {

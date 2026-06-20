@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireSettingsAuth } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ const CreateVariantSchema = z.object({
   price: z.number().min(0),
   compare_at_price: z.number().min(0).nullable().optional().default(null),
   cost_price: z.number().min(0).nullable().optional().default(null),
-  currency: z.string().optional().default("MYR"),
+  currency: z.string().optional().default("SGD"),
   stock_quantity: z.number().int().optional().default(0),
   track_inventory: z.boolean().optional().default(true),
   weight_grams: z.number().int().nullable().optional().default(null),
@@ -37,6 +38,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireSettingsAuth();
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = CreateVariantSchema.safeParse(body);

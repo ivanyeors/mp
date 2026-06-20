@@ -1,4 +1,5 @@
-import MagicBento from "@/components/effects/MagicBento";
+import dynamic from "next/dynamic";
+const MagicBento = dynamic(() => import("@/components/effects/MagicBento"));
 import type { Messages } from "@/lib/i18n/messages/types";
 import type { LandingSection, WhyChooseContent } from "@/lib/types/landing-sections";
 
