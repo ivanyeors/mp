@@ -16,6 +16,13 @@ interface CreateCheckoutOpts {
   cancelUrl: string;
   shippingAmount?: number;
   shippingLabel?: string;
+  /** Optional server cart token, persisted to metadata so the webhook can clear it. */
+  cartToken?: string;
+  /**
+   * Stable key (e.g. `checkout_${orderId}`) so a double-submitted checkout
+   * reuses the same Stripe session instead of creating duplicates.
+   */
+  idempotencyKey?: string;
   metadata?: Record<string, string>;
 }
 
@@ -47,6 +54,7 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
     metadata: {
       order_id: opts.orderId,
       order_number: opts.orderNumber,
+      ...(opts.cartToken ? { cart_token: opts.cartToken } : {}),
       ...opts.metadata,
     },
   };
@@ -67,7 +75,10 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
     ];
   }
 
-  const session = await stripe.checkout.sessions.create(sessionParams);
+  const session = await stripe.checkout.sessions.create(
+    sessionParams,
+    opts.idempotencyKey ? { idempotencyKey: opts.idempotencyKey } : undefined
+  );
 
   return {
     sessionId: session.id,

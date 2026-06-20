@@ -2,13 +2,12 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getCartWithItems } from "@/lib/ecommerce/cart";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
 import { validateFullConfig } from "@/lib/shop/customization-inventory";
-import type { ShippingMethod } from "@/lib/types/ecommerce";
+import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
 
@@ -25,46 +24,97 @@ const ShippingAddressSchema = z.object({
   phone: z.string().optional(),
 });
 
+const CheckoutItemSchema = z.object({
+  variant_id: z.string().uuid(),
+  quantity: z.number().int().min(1),
+  customization_id: z.string().uuid().optional(),
+});
+
 const CheckoutSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   shipping_address: ShippingAddressSchema,
   shipping_method_id: z.string().uuid(),
   coupon_code: z.string().optional(),
+  items: z.array(CheckoutItemSchema).min(1),
 });
 
+// Working line item: derived entirely from server-side data (never trust
+// client-sent prices). Mirrors the previous cart-item shape so the downstream
+// pricing / order-creation logic can stay unchanged.
+type WorkingItem = {
+  variant_id: string;
+  quantity: number;
+  customization_id: string | null;
+  variant: ProductVariant;
+  product: Product | undefined;
+};
+
 export async function POST(req: Request) {
-  // 1. Read cart_token from cookie
-  const cookieStore = await cookies();
-  const cartToken = cookieStore.get(CART_COOKIE)?.value ?? null;
-
-  if (!cartToken) {
-    return NextResponse.json({ error: "No cart found" }, { status: 400 });
-  }
-
-  // 2. Validate request body
+  // 1. Validate request body (checkout is authoritative from posted items)
   const body = await req.json().catch(() => null);
   const parsed = CheckoutSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, phone, shipping_address, shipping_method_id, coupon_code } = parsed.data;
-
-  // 3. Load cart with items
-  let cart: Awaited<ReturnType<typeof getCartWithItems>>;
-  try {
-    cart = await getCartWithItems(cartToken);
-  } catch {
-    return NextResponse.json({ error: "Cart not found or expired" }, { status: 400 });
-  }
-
-  // 4. If cart empty, return 400
-  if (!cart.items || cart.items.length === 0) {
-    return NextResponse.json({ error: "Your cart is empty" }, { status: 400 });
-  }
+  const { email, phone, shipping_address, shipping_method_id, coupon_code, items } = parsed.data;
 
   const admin = supabaseAdmin();
+
+  // 2. Optional server cart token (cookie). The storefront uses a localStorage
+  // cart, so this is usually absent — we only forward it to Stripe metadata so
+  // the webhook can clear a server cart if one happens to exist.
+  const cookieStore = await cookies();
+  const cartToken = cookieStore.get(CART_COOKIE)?.value ?? null;
+
+  // 3. Build the authoritative working set from posted items: fetch variants
+  // (with product) server-side by variant_id. Prices/currency/stripe_price come
+  // from the DB, never from the client.
+  const requestedVariantIds = [...new Set(items.map((i) => i.variant_id))];
+  const { data: variantRows, error: variantError } = await admin
+    .from("product_variants")
+    .select("*, products(*)")
+    .in("id", requestedVariantIds);
+
+  if (variantError) {
+    return NextResponse.json({ error: "Failed to load products" }, { status: 500 });
+  }
+
+  const variantMap = new Map<string, ProductVariant & { products?: Product }>(
+    (variantRows ?? []).map((row: ProductVariant & { products?: Product }) => [row.id, row])
+  );
+
+  const cartItems: WorkingItem[] = [];
+  for (const item of items) {
+    const variant = variantMap.get(item.variant_id);
+    if (!variant) {
+      return NextResponse.json(
+        { error: "One or more items are no longer available" },
+        { status: 400 }
+      );
+    }
+    if (variant.is_active === false) {
+      return NextResponse.json(
+        { error: "One or more items are no longer available" },
+        { status: 400 }
+      );
+    }
+    const { products, ...variantOnly } = variant;
+    cartItems.push({
+      variant_id: item.variant_id,
+      quantity: item.quantity,
+      customization_id: item.customization_id ?? null,
+      variant: variantOnly as ProductVariant,
+      product: products,
+    });
+  }
+
+  // Currency is derived from the variants themselves (base currency).
+  const cartCurrency = cartItems[0]?.variant.currency ?? "SGD";
+
+  // Shim so the rest of the handler can keep referencing `cart.items`.
+  const cart = { items: cartItems, currency: cartCurrency };
 
   // 5. Validate stock — branch on customization vs standard items
   const standardItems = cart.items.filter((item) => !item.customization_id);
@@ -281,7 +331,7 @@ export async function POST(req: Request) {
   try {
     stripeSession = await createCheckoutSession({
       lineItems: cart.items.map((item) => ({
-        variant: item.variant!,
+        variant: item.variant,
         quantity: item.quantity,
       })),
       customerEmail: email,
@@ -291,6 +341,10 @@ export async function POST(req: Request) {
       cancelUrl: `${siteUrl}/shop/checkout`,
       shippingAmount,
       shippingLabel,
+      cartToken: cartToken ?? undefined,
+      // Stable per-order key: a double-submit reuses the same Stripe session
+      // instead of creating a duplicate.
+      idempotencyKey: `checkout_${orderRow.id}`,
     });
   } catch (err) {
     // Clean up orphaned order and items on Stripe failure
