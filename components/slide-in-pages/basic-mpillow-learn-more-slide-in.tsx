@@ -100,6 +100,7 @@ function BasicMpillowLearnMoreSheetInner() {
     <SheetContent
       side="right"
       mobilePreset="full"
+      animation="fade-up"
       hideClose
       className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
     >
