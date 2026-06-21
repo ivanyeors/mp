@@ -4,6 +4,13 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
+import { getCustomerOrders } from "@/lib/shop/customer-orders";
+import {
+  formatOrderDate,
+  formatOrderPrice,
+  orderStatusBadgeClass,
+  orderStatusLabel,
+} from "@/lib/shop/order-display";
 import { Button } from "@/components/ui/button";
 
 export default async function AccountHomePage({
@@ -24,6 +31,8 @@ export default async function AccountHomePage({
 
   const ordersHref = withLocale("/account/orders", locale);
   const addressesHref = withLocale("/account/addresses", locale);
+
+  const recentOrders = (await getCustomerOrders()).slice(0, 3);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">
@@ -59,6 +68,52 @@ export default async function AccountHomePage({
           </p>
         </Link>
       </div>
+
+      <section className="mt-10">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Recent orders</h2>
+          {recentOrders.length > 0 ? (
+            <Link
+              href={ordersHref}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              View all
+            </Link>
+          ) : null}
+        </div>
+
+        {recentOrders.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            You don&apos;t have any orders yet.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {recentOrders.map((order) => (
+              <li key={order.id}>
+                <Link
+                  href={withLocale(`/account/orders/${order.order_number}`, locale)}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/40"
+                >
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium tracking-wide">
+                      {order.order_number}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatOrderDate(order.created_at)} ·{" "}
+                      {formatOrderPrice(order.total, order.currency)}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${orderStatusBadgeClass(order.status)}`}
+                  >
+                    {orderStatusLabel(order.status)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
   );
 }
