@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Star, ChevronRight, Package, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react";
+import { ShoppingCart, ChevronRight, Package, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -19,7 +19,13 @@ import { ProductGrid } from "@/components/shop/product-grid";
 import { ProductCard } from "@/components/shop/product-card";
 
 import { PillowCustomizer } from "@/components/shop/pillow-customizer";
+import { ProductReviews, ReviewStars, useApprovedReviews } from "./product-reviews";
 import { useCart } from "@/lib/shop/cart-context";
+import {
+  buildProductSpecifications,
+  hasSpecifications,
+  SPEC_FIELDS,
+} from "@/lib/shop/product-specifications";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
 function getTitle(product: Product, lang: string): string {
@@ -91,6 +97,13 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [stickyBarVisible, setStickyBarVisible] = useState(false);
 
+  const {
+    reviews,
+    average: reviewAverage,
+    count: reviewCount,
+    loading: reviewsLoading,
+  } = useApprovedReviews(product.id);
+
   const addToCartRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -157,6 +170,7 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
   const images = (product.images ?? []).sort((a, b) => a.position - b.position);
   const stockStatus = getStockStatus(selectedVariant);
   const isOutOfStock = stockStatus === "out_of_stock";
+  const specifications = buildProductSpecifications(product, selectedVariant);
 
   return (
     <>
@@ -248,12 +262,14 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star key={n} className="w-4 h-4 text-amber-400 fill-amber-400" />
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">(No reviews yet)</span>
+              <ReviewStars rating={reviewCount > 0 ? reviewAverage : 0} size={16} />
+              <span className="text-sm text-muted-foreground">
+                {reviewsLoading
+                  ? "Loading reviews…"
+                  : reviewCount > 0
+                    ? `${reviewAverage.toFixed(1)} (${reviewCount} review${reviewCount === 1 ? "" : "s"})`
+                    : "(No reviews yet)"}
+              </span>
             </div>
 
             {description && (
@@ -423,45 +439,37 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
             </TabsContent>
 
             <TabsContent value="specifications" className="pt-6">
-              <div className="rounded-lg border p-6 text-muted-foreground text-sm space-y-3">
-                <p>Specifications coming soon.</p>
-                {selectedVariant && (
-                  <dl className="grid grid-cols-2 gap-x-6 gap-y-2 max-w-sm">
-                    {selectedVariant.sku && (
-                      <>
-                        <dt className="font-medium text-foreground">SKU</dt>
-                        <dd>{selectedVariant.sku}</dd>
-                      </>
-                    )}
-                    {selectedVariant.weight_grams != null && (
-                      <>
-                        <dt className="font-medium text-foreground">Weight</dt>
-                        <dd>{selectedVariant.weight_grams}g</dd>
-                      </>
-                    )}
-                    {product.product_type && (
-                      <>
-                        <dt className="font-medium text-foreground">Type</dt>
-                        <dd className="capitalize">{product.product_type}</dd>
-                      </>
-                    )}
-                  </dl>
-                )}
-              </div>
+              {hasSpecifications(specifications) ? (
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 max-w-2xl">
+                  {SPEC_FIELDS.filter(({ key }) => specifications[key]).map(
+                    ({ key, label }) => (
+                      <div
+                        key={key}
+                        className="flex justify-between gap-4 border-b py-2 text-sm"
+                      >
+                        <dt className="font-medium text-foreground">{label}</dt>
+                        <dd className="text-muted-foreground text-right">
+                          {specifications[key]}
+                        </dd>
+                      </div>
+                    )
+                  )}
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No specifications available for this product.
+                </p>
+              )}
             </TabsContent>
 
             <TabsContent value="reviews" className="pt-6">
-              <div className="flex flex-col items-center justify-center gap-4 py-12 text-muted-foreground">
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <Star key={n} className="w-6 h-6 text-muted-foreground/30" />
-                  ))}
-                </div>
-                <p className="text-lg font-medium">No reviews yet</p>
-                <p className="text-sm text-center max-w-xs">
-                  Be the first to review this product.
-                </p>
-              </div>
+              <ProductReviews
+                productId={product.id}
+                reviews={reviews}
+                average={reviewAverage}
+                count={reviewCount}
+                loading={reviewsLoading}
+              />
             </TabsContent>
           </Tabs>
 
