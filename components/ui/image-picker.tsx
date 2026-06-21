@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Upload, Loader2, ImageIcon, Check, Search } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -74,7 +75,7 @@ export function ImagePicker({ onSelect, children }: ImagePickerProps) {
                 setFiles((prev) => [data.file, ...prev]);
                 toast.success("Image uploaded");
             } else {
-                toast.error(data.error || "Upload failed");
+                toast.error(getApiErrorMessage(data.error, "Upload failed"));
             }
         } catch (error) {
             console.error("Upload error", error);

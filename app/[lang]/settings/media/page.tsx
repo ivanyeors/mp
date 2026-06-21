@@ -16,6 +16,7 @@ import {
     ExternalLink,
     AlertTriangle,
 } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -209,7 +210,7 @@ export default function MediaPage() {
                 loadFiles();
                 toast.success("Image uploaded successfully");
             } else {
-                toast.error(data.error || "Upload failed");
+                toast.error(getApiErrorMessage(data.error, "Upload failed"));
             }
         } catch (error) {
             console.error("Upload error", error);
@@ -239,7 +240,7 @@ export default function MediaPage() {
                 toast.success("Image deleted");
                 loadUsages();
             } else {
-                toast.error(data.error || "Delete failed");
+                toast.error(getApiErrorMessage(data.error, "Delete failed"));
             }
         } catch (error) {
             console.error("Delete error", error);
@@ -274,7 +275,7 @@ export default function MediaPage() {
                 toast.success(`Updated "${slot.label}" image`);
                 loadUsages();
             } else {
-                toast.error(data.error || "Failed to update");
+                toast.error(getApiErrorMessage(data.error, "Failed to update"));
             }
         } catch (error) {
             console.error("Set slot error", error);
@@ -301,7 +302,7 @@ export default function MediaPage() {
                 toast.success(`Reset "${slot.label}" to default`);
                 loadUsages();
             } else {
-                toast.error(data.error || "Failed to reset");
+                toast.error(getApiErrorMessage(data.error, "Failed to reset"));
             }
         } catch (error) {
             console.error("Reset slot error", error);
@@ -333,7 +334,7 @@ export default function MediaPage() {
                 loadUsages();
                 loadOverrides();
             } else {
-                toast.error(data.error || "Replace failed");
+                toast.error(getApiErrorMessage(data.error, "Replace failed"));
             }
         } catch (error) {
             console.error("Replace error", error);

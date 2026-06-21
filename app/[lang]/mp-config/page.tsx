@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { getApiErrorMessage } from "@/lib/utils";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
 import { Particles } from "@/components/ui/particles";
 import { Button } from "@/components/ui/button";
@@ -572,7 +573,7 @@ export default function MpConfigPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `Failed to get recommendation (${res.status})`);
+        throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
       }
 
       const data: RecommendationResponseData = await res.json();
@@ -639,7 +640,7 @@ export default function MpConfigPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? "Failed to apply customization");
+        throw new Error(getApiErrorMessage(err.error, "Failed to apply customization"));
       }
 
       const data = await res.json();

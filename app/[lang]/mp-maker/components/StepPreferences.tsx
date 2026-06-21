@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 
-import { cn } from "@/lib/utils";
+import { cn, getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,7 +92,7 @@ export function StepPreferences() {
       const data = await res.json();
 
       if (!data.ok) {
-        toast.error(data.error ?? "Failed to get recommendation");
+        toast.error(getApiErrorMessage(data.error, "Failed to get recommendation"));
         return;
       }
 
@@ -141,7 +141,7 @@ export function StepPreferences() {
       const data = await res.json();
 
       if (!data.ok) {
-        toast.error(data.error ?? "Failed to get recommendation");
+        toast.error(getApiErrorMessage(data.error, "Failed to get recommendation"));
         return;
       }
 

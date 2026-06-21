@@ -33,6 +33,7 @@ import { StepSummary } from "./components/StepSummary";
 import { useCart } from "@/lib/shop/cart-context";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { getApiErrorMessage } from "@/lib/utils";
 import {
   HARDCODED_UPSELLS,
   computeFillingLines,
@@ -64,7 +65,7 @@ function ConfigLoader() {
       });
       const data = await res.json();
       if (!data.ok) {
-        toast.error(data.error ?? "Failed to get recommendation");
+        toast.error(getApiErrorMessage(data.error, "Failed to get recommendation"));
         builder.goToStep("preferences");
         return;
       }
@@ -138,7 +139,7 @@ function ConfigLoader() {
       const customizeData = await customizeRes.json();
 
       if (!customizeData.ok) {
-        toast.error(customizeData.error ?? "Failed to get recommendation");
+        toast.error(getApiErrorMessage(customizeData.error, "Failed to get recommendation"));
         builder.goToStep("preferences");
         return;
       }
@@ -248,7 +249,7 @@ function AddToCartHandler({ children }: { children: (handleAddToCart: () => void
       const applyData = await applyRes.json();
 
       if (!applyData.ok) {
-        toast.error(applyData.error ?? "Failed to save configuration");
+        toast.error(getApiErrorMessage(applyData.error, "Failed to save configuration"));
         return;
       }
 

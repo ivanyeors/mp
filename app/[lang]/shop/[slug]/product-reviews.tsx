@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Star, Loader2, CheckCircle2 } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -144,8 +145,7 @@ function ReviewForm({ productId }: { productId: string }) {
         if (!res.ok) {
           const data = await res.json().catch(() => null);
           throw new Error(
-            (data && (data.error?.formErrors?.[0] || data.error)) ||
-              "Failed to submit review"
+            getApiErrorMessage(data?.error, "Failed to submit review")
           );
         }
         setSubmitted(true);

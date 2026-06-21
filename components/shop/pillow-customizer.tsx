@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { cn } from "@/lib/utils";
+import { cn, getApiErrorMessage } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -232,7 +232,7 @@ export function PillowCustomizer({
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(
-          err.error ?? `Failed to get recommendation (${res.status})`
+          getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`)
         );
       }
 
@@ -299,7 +299,7 @@ export function PillowCustomizer({
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `Failed to apply customization`);
+        throw new Error(getApiErrorMessage(err.error, "Failed to apply customization"));
       }
 
       const data: ApplyResponse = await res.json();

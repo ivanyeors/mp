@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -261,7 +262,7 @@ export default function ProductEditorPage() {
 
             const data = await res.json();
             if (!data.ok) {
-                toast.error(data.error ?? "Save failed");
+                toast.error(getApiErrorMessage(data.error, "Save failed"));
                 return;
             }
 
@@ -293,7 +294,7 @@ export default function ProductEditorPage() {
                 setImages((prev) => [...prev, data.row]);
                 toast.success("Image added");
             } else {
-                toast.error(data.error ?? "Failed to add image");
+                toast.error(getApiErrorMessage(data.error, "Failed to add image"));
             }
         } catch {
             toast.error("Failed to add image");
@@ -308,7 +309,7 @@ export default function ProductEditorPage() {
                 setImages((prev) => prev.filter((img) => img.id !== imageId));
                 toast.success("Image removed");
             } else {
-                toast.error(data.error ?? "Failed to remove image");
+                toast.error(getApiErrorMessage(data.error, "Failed to remove image"));
             }
         } catch {
             toast.error("Failed to remove image");
@@ -380,7 +381,7 @@ export default function ProductEditorPage() {
             }
 
             const data = await res.json();
-            if (!data.ok) { toast.error(data.error ?? "Failed to save variant"); return; }
+            if (!data.ok) { toast.error(getApiErrorMessage(data.error, "Failed to save variant")); return; }
 
             if (editingVariant) {
                 setVariants((prev) => prev.map((v) => v.id === editingVariant.id ? data.row : v));
@@ -405,7 +406,7 @@ export default function ProductEditorPage() {
                 setVariants((prev) => prev.filter((v) => v.id !== variantId));
                 toast.success("Variant deleted");
             } else {
-                toast.error(data.error ?? "Failed to delete variant");
+                toast.error(getApiErrorMessage(data.error, "Failed to delete variant"));
             }
         } catch {
             toast.error("Failed to delete variant");
@@ -443,7 +444,7 @@ export default function ProductEditorPage() {
                 setStripeProductId(data.stripe_product_id ?? stripeProductId);
                 toast.success("Synced to Stripe");
             } else {
-                toast.error(data.error ?? "Sync failed");
+                toast.error(getApiErrorMessage(data.error, "Sync failed"));
             }
         } catch {
             toast.error("Sync failed");
@@ -466,7 +467,7 @@ export default function ProductEditorPage() {
                 setStripePaymentLink(data.url ?? data.stripe_payment_link ?? null);
                 toast.success("Payment link generated");
             } else {
-                toast.error(data.error ?? "Failed to generate link");
+                toast.error(getApiErrorMessage(data.error, "Failed to generate link"));
             }
         } catch {
             toast.error("Failed to generate link");

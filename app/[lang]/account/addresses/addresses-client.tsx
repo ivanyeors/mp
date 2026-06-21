@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MapPin, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -114,7 +115,7 @@ export function AddressesClient({ addresses }: { addresses: CustomerAddress[] })
         setOpen(false);
         router.refresh();
       } else {
-        toast.error(result.error);
+        toast.error(getApiErrorMessage(result.error));
       }
     });
   }
@@ -127,7 +128,7 @@ export function AddressesClient({ addresses }: { addresses: CustomerAddress[] })
         toast.success("Address deleted");
         router.refresh();
       } else {
-        toast.error(result.error);
+        toast.error(getApiErrorMessage(result.error));
       }
     });
   }
@@ -139,7 +140,7 @@ export function AddressesClient({ addresses }: { addresses: CustomerAddress[] })
         toast.success("Default address updated");
         router.refresh();
       } else {
-        toast.error(result.error);
+        toast.error(getApiErrorMessage(result.error));
       }
     });
   }

@@ -16,6 +16,7 @@ import {
 } from "@/components/shop/customization-steps";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { getApiErrorMessage } from "@/lib/utils";
 
 export function StepSummary() {
   const builder = useBuilder();
@@ -83,7 +84,7 @@ export function StepSummary() {
       const applyData = await applyRes.json();
 
       if (!applyData.ok) {
-        toast.error(applyData.error ?? "Failed to save configuration");
+        toast.error(getApiErrorMessage(applyData.error, "Failed to save configuration"));
         return;
       }
 

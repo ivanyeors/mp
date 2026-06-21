@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 
+import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -209,7 +210,7 @@ export default function MbolsterConfigPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `Failed to get recommendation (${res.status})`);
+        throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
       }
 
       const data: RecommendationResponseData = await res.json();
@@ -265,7 +266,7 @@ export default function MbolsterConfigPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? "Failed to apply customization");
+        throw new Error(getApiErrorMessage(err.error, "Failed to apply customization"));
       }
 
       const data = await res.json();
