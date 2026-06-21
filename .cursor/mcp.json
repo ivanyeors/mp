@@ -6,6 +6,10 @@
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=irgxjthamhiaolvdfgar&features=development%2Cdocs%2Cdatabase%2Cstorage%2Cfunctions",
+      "headers": {}
     }
   }
 }
