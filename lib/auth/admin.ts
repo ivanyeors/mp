@@ -20,8 +20,17 @@ export interface AdminContext {
   isBootstrap: boolean;
 }
 
+/**
+ * Settings logins that are always allowed regardless of env configuration.
+ * These bootstrap an owner row on first sign-in (see {@link getAdminContext}).
+ */
+const ALWAYS_ALLOWED_SETTINGS_EMAILS = ["sg@mpillow.com", "admin@mpillow.com"];
+
 function bootstrapEmails(): string[] {
-  return parseBootstrapEmails(process.env.ADMIN_BOOTSTRAP_EMAILS);
+  const fromEnv = parseBootstrapEmails(process.env.ADMIN_BOOTSTRAP_EMAILS);
+  return Array.from(
+    new Set([...ALWAYS_ALLOWED_SETTINGS_EMAILS.map((e) => e.toLowerCase()), ...fromEnv]),
+  );
 }
 
 /**

@@ -26,7 +26,7 @@ export default async function SettingsLoginPage({
         </p>
       </div>
       <div className="mt-8">
-        <LoginForm nextPath={settingsHref} />
+        <LoginForm nextPath={settingsHref} allowEmailLink={false} />
       </div>
     </main>
   );

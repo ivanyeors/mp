@@ -428,9 +428,9 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
 
             <TabsContent value="description" className="pt-6">
               {body ? (
-                <ReactMarkdown className="prose prose-neutral dark:prose-invert max-w-none">
-                  {body}
-                </ReactMarkdown>
+                <div className="prose prose-neutral dark:prose-invert max-w-none">
+                  <ReactMarkdown>{body}</ReactMarkdown>
+                </div>
               ) : description ? (
                 <p className="text-muted-foreground leading-relaxed">{description}</p>
               ) : (
