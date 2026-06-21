@@ -279,17 +279,24 @@ export type Messages = {
     cart: {
       title: string;
       empty: string;
+      emptyHint: string;
       continueShopping: string;
       checkout: string;
+      proceedToCheckout: string;
       subtotal: string;
       shipping: string;
       shippingAtCheckout: string;
+      freeShippingAway: string; // e.g. "{amount} away from free shipping"
+      freeShippingQualified: string;
       tax: string;
       total: string;
       coupon: string;
       applyCoupon: string;
       removeCoupon: string;
+      couponApplied: string; // e.g. 'Coupon "{code}" applied!'
       remove: string;
+      customizationAddon: string;
+      closeCart: string;
     };
     checkout: {
       title: string;

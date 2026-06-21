@@ -1,6 +1,6 @@
 import { CartProvider } from "@/lib/shop/cart-context";
 import { CurrencyProvider } from "@/lib/shop/currency-context";
-import { CartDrawer } from "@/components/shop/cart-drawer";
+import { CartShell } from "@/components/shop/cart-shell";
 import { ShopHeader } from "@/components/shop/shop-header";
 import type { ReactNode } from "react";
 
@@ -14,7 +14,7 @@ export default function ShopLayout({ children }: { children: ReactNode }) {
             {children}
           </main>
         </div>
-        <CartDrawer />
+        <CartShell />
       </CartProvider>
     </CurrencyProvider>
   );

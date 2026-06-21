@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { CartProvider } from "@/lib/shop/cart-context";
 import { CurrencyProvider } from "@/lib/shop/currency-context";
+import { CartShell } from "@/components/shop/cart-shell";
 import type { ReactNode } from "react";
 
 export default function MpConfigLayout({ children }: { children: ReactNode }) {
@@ -23,6 +24,7 @@ export default function MpConfigLayout({ children }: { children: ReactNode }) {
           {children}
         </motion.div>
       </AnimatePresence>
+      <CartShell />
     </CartProvider>
     </CurrencyProvider>
   );

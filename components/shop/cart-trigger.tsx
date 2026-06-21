@@ -1,0 +1,90 @@
+"use client";
+
+import { forwardRef, type MouseEventHandler, type ReactNode } from "react";
+import { ShoppingBag } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCart } from "@/lib/shop/cart-context";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+interface CartTriggerProps {
+  className?: string;
+  iconClassName?: string;
+  badgeClassName?: string;
+  /** When inside PopoverTrigger, Radix onClick opens the popover; skip local open logic. */
+  suppressOpen?: boolean;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  children?: ReactNode;
+}
+
+export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
+  function CartTrigger(
+    {
+      className,
+      iconClassName,
+      badgeClassName,
+      suppressOpen,
+      onClick,
+      children,
+    },
+    ref
+  ) {
+    const router = useRouter();
+    const pathname = usePathname() ?? "/";
+    const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+    const isMobile = useIsMobile();
+    const { itemCount, toggleCart, hydrated } = useCart();
+
+    function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+      onClick?.(event);
+      if (suppressOpen || event.defaultPrevented) return;
+
+      if (isMobile) {
+        router.push(withLocale("/shop/cart", locale));
+      } else {
+        toggleCart(true);
+      }
+    }
+
+    if (children) {
+      return (
+        <button ref={ref} type="button" onClick={handleClick} className={className}>
+          {children}
+        </button>
+      );
+    }
+
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative", className)}
+        aria-label={`Shopping cart${hydrated && itemCount > 0 ? `, ${itemCount} items` : ""}`}
+        onClick={handleClick}
+      >
+        <ShoppingBag className={cn("size-5", iconClassName)} />
+        <AnimatePresence mode="wait">
+          {hydrated && itemCount > 0 && (
+            <motion.span
+              key={itemCount}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              transition={{ type: "spring", stiffness: 500, damping: 25 }}
+              className={cn(
+                "absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground",
+                badgeClassName
+              )}
+            >
+              {itemCount > 99 ? "99+" : itemCount}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
+    );
+  }
+);

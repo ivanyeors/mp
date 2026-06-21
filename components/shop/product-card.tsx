@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PriceDisplay } from "@/components/shop/price-display";
 import { useCart } from "@/lib/shop/cart-context";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 
@@ -26,7 +27,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
-  const { addItem, toggleCart } = useCart();
+  const { addItem } = useCart();
+  const isMobile = useIsMobile();
 
   const content =
     product.content?.[locale] ?? product.content?.["en-US"] ?? null;
@@ -74,24 +76,20 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
       quantity: 1,
     });
 
-    toast(
-      <div className="flex items-center gap-3">
-        {imageUrl && (
-          <img src={imageUrl} alt={title} className="h-10 w-10 rounded-md object-cover" />
-        )}
-        <div className="min-w-0">
-          <p className="text-sm font-medium">Added to cart</p>
-          <p className="text-xs text-muted-foreground truncate">{title}</p>
-        </div>
-      </div>,
-      {
-        action: {
-          label: "View Cart",
-          onClick: () => toggleCart(true),
-        },
-        duration: 3000,
-      }
-    );
+    if (!isMobile) {
+      toast(
+        <div className="flex items-center gap-3">
+          {imageUrl && (
+            <img src={imageUrl} alt={title} className="h-10 w-10 rounded-md object-cover" />
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Added to cart</p>
+            <p className="text-xs text-muted-foreground truncate">{title}</p>
+          </div>
+        </div>,
+        { duration: 3000 }
+      );
+    }
   }
 
   const href = getProductHref(product);

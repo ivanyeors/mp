@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useState, Suspense } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { X, ShoppingCart } from "lucide-react";
+import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -31,6 +31,7 @@ import { StepComponents } from "./components/StepComponents";
 import { StepSummary, buildCustomizeApplyPayload, canApplyRecommendation, getCartProductInfo } from "./components/StepSummary";
 
 import { useCart } from "@/lib/shop/cart-context";
+import { CartButton } from "@/components/shop/cart-button";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getApiErrorMessage } from "@/lib/utils";
@@ -288,7 +289,6 @@ function MakerContent() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-  const { itemCount, toggleCart } = useCart();
   const builder = useBuilder();
 
   return (
@@ -322,14 +322,7 @@ function MakerContent() {
 
           <h1 className="text-sm font-semibold">MP Maker</h1>
 
-          <Button variant="ghost" size="icon" className="size-8 relative" onClick={() => toggleCart(true)}>
-            <ShoppingCart className="size-4" />
-            {itemCount > 0 && (
-              <span className="absolute -top-1 -right-1 size-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                {itemCount}
-              </span>
-            )}
-          </Button>
+          <CartButton className="size-8" iconClassName="size-4" />
         </div>
       </header>
 

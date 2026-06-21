@@ -21,6 +21,7 @@ import { ProductCard } from "@/components/shop/product-card";
 import { PillowCustomizer } from "@/components/shop/pillow-customizer";
 import { ProductReviews, ReviewStars, useApprovedReviews } from "./product-reviews";
 import { useCart } from "@/lib/shop/cart-context";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   buildProductSpecifications,
   hasSpecifications,
@@ -86,7 +87,8 @@ interface ProductDetailClientProps {
 }
 
 export function ProductDetailClient({ product, relatedProducts, lang }: ProductDetailClientProps) {
-  const { addItem, toggleCart } = useCart();
+  const { addItem } = useCart();
+  const isMobile = useIsMobile();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     getDefaultVariant(product)
@@ -143,25 +145,21 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 2000);
 
-    toast(
-      <div className="flex items-center gap-3">
-        {imageUrl && (
-          <img src={imageUrl} alt={title} className="h-12 w-12 rounded-md object-cover" />
-        )}
-        <div className="min-w-0">
-          <p className="text-sm font-medium">Added to cart</p>
-          <p className="text-xs text-muted-foreground truncate">{title}</p>
-        </div>
-      </div>,
-      {
-        action: {
-          label: "View Cart",
-          onClick: () => toggleCart(true),
-        },
-        duration: 4000,
-      }
-    );
-  }, [product, selectedVariant, quantity, lang, mainImageIndex, addItem, toggleCart]);
+    if (!isMobile) {
+      toast(
+        <div className="flex items-center gap-3">
+          {imageUrl && (
+            <img src={imageUrl} alt={title} className="h-12 w-12 rounded-md object-cover" />
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Added to cart</p>
+            <p className="text-xs text-muted-foreground truncate">{title}</p>
+          </div>
+        </div>,
+        { duration: 4000 }
+      );
+    }
+  }, [product, selectedVariant, quantity, lang, mainImageIndex, addItem, isMobile]);
 
   const title = getTitle(product, lang);
   const description = getDescription(product, lang);
