@@ -7,9 +7,24 @@ import { validateCoupon } from "@/lib/ecommerce/discounts";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
-import { validateFullConfig } from "@/lib/shop/customization-inventory";
+import {
+  buildCheckoutCustomizationSnapshot,
+  resolveCustomizationProductType,
+} from "@/lib/ecommerce/customization-product-type";
+import { validateCustomizationConfig } from "@/lib/shop/customization-inventory";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
+import type { BolsterVariant, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
+
+type CustomizationConfigRow = {
+  config_lines: unknown[];
+  filling_lines: unknown[];
+  total_addon_price: number;
+  summary: string | null;
+  pillow_product_id: number | null;
+  product_type: CustomizationProductType | null;
+  bolster_variant: BolsterVariant | null;
+};
 
 export const runtime = "nodejs";
 
@@ -159,13 +174,15 @@ export async function POST(req: Request) {
   }
 
   // 5b. Customized items: validate via full config check
-  const customizationMap = new Map<string, { config_lines: unknown[]; filling_lines: unknown[]; total_addon_price: number; summary: string | null; pillow_product_id: number }>();
+  const customizationMap = new Map<string, CustomizationConfigRow>();
 
   if (customizedItems.length > 0) {
     const customizationIds = customizedItems.map((item) => item.customization_id!);
     const { data: configs, error: configError } = await admin
       .from("customization_configs")
-      .select("id, pillow_product_id, config_lines, filling_lines, total_addon_price, summary")
+      .select(
+        "id, pillow_product_id, product_type, bolster_variant, config_lines, filling_lines, total_addon_price, summary"
+      )
       .in("id", customizationIds);
 
     if (configError || !configs) {
@@ -185,12 +202,16 @@ export async function POST(req: Request) {
         );
       }
 
-      const result = await validateFullConfig(
-        cfg.pillow_product_id,
-        cfg.filling_lines as unknown as import("@/lib/types/customization").FillingLine[],
-        cfg.config_lines as unknown as import("@/lib/types/customization").ConfigLine[],
-        item.quantity
-      );
+      const productType = resolveCustomizationProductType(cfg);
+
+      const result = await validateCustomizationConfig({
+        product_type: productType,
+        pillow_product_id: cfg.pillow_product_id ?? undefined,
+        bolster_variant: cfg.bolster_variant ?? undefined,
+        filling_lines: cfg.filling_lines as FillingLine[],
+        component_quantities: cfg.config_lines as ConfigLine[],
+        orderQuantity: item.quantity,
+      });
 
       if (!result.valid) {
         const shortageNames = result.shortages.map((s) => s.name).join(", ");
@@ -320,14 +341,7 @@ export async function POST(req: Request) {
       unit_price: (item.variant?.price ?? 0) + addonPrice,
       total_price: item.quantity * ((item.variant?.price ?? 0) + addonPrice),
       customization_id: item.customization_id ?? null,
-      customization_snapshot: cfg
-        ? {
-            config_lines: cfg.config_lines,
-            filling_lines: cfg.filling_lines,
-            total_addon_price: cfg.total_addon_price,
-            summary: cfg.summary,
-          }
-        : null,
+      customization_snapshot: cfg ? buildCheckoutCustomizationSnapshot(cfg) : null,
     };
   });
 

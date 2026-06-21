@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { QuantitySelector } from "@/components/shop/quantity-selector";
 
 import type {
+  BolsterVariant,
+  CustomizationProductType,
   FillingLine,
   ConfigLine,
   ComponentOption,
@@ -26,7 +28,9 @@ import type {
 
 export interface RecommendationResponseData {
   ok: boolean;
-  product_type?: string;
+  product_type?: CustomizationProductType;
+  bolster_variant?: BolsterVariant;
+  ecom_product?: { id: string; slug: string } | null;
   recommendation: {
     recommended_size: string;
     recommended_kind: string;
@@ -66,24 +70,9 @@ export interface RecommendationResponseData {
 
 // ─── Shared Constants ────────────────────────────────────────
 
-export const HARDCODED_UPSELLS: UpsellItem[] = [
-  {
-    item_id: 9999,
-    name: "Extra Pillowcase",
-    discount_pct: 20,
-    original_price: 29.9,
-    price: 23.92,
-    quantity: 1,
-  },
-  {
-    item_id: 9998,
-    name: "Pillow Protector",
-    discount_pct: 15,
-    original_price: 19.9,
-    price: 16.92,
-    quantity: 1,
-  },
-];
+import { HARDCODED_UPSELLS } from "@/lib/shop/customize-apply-payload";
+
+export { HARDCODED_UPSELLS };
 
 // ─── Shared Utilities ────────────────────────────────────────
 

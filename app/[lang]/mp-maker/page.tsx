@@ -28,18 +28,15 @@ import { BottomBar } from "./components/BottomBar";
 import { StepPreferences } from "./components/StepPreferences";
 import { StepRecommendation } from "./components/StepRecommendation";
 import { StepComponents } from "./components/StepComponents";
-import { StepSummary } from "./components/StepSummary";
+import { StepSummary, buildCustomizeApplyPayload, canApplyRecommendation, getCartProductInfo } from "./components/StepSummary";
 
 import { useCart } from "@/lib/shop/cart-context";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getApiErrorMessage } from "@/lib/utils";
 import {
-  HARDCODED_UPSELLS,
   computeFillingLines,
   computeComponentLines,
-  computeAddonPrice,
-  computeUpsellTotal,
 } from "@/components/shop/customization-steps";
 
 // ─── Config Warm Start Handler ──────────────────────────────
@@ -210,7 +207,7 @@ function AddToCartHandler({ children }: { children: (handleAddToCart: () => void
   const { addItem } = useCart();
 
   const handleAddToCart = useCallback(async () => {
-    if (!builder.recommendation?.variant || !builder.recommendation?.pillow_product) return;
+    if (!canApplyRecommendation(builder.productType, builder.recommendation)) return;
 
     builder.setIsApplying(true);
 
@@ -223,54 +220,51 @@ function AddToCartHandler({ children }: { children: (handleAddToCart: () => void
         builder.componentQtyOverrides
       );
 
-      const upsellItems = HARDCODED_UPSELLS.filter((u) => builder.selectedUpsells.has(u.item_id));
-
       const applyRes = await fetch("/api/shop/customize?action=apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          variant_id: builder.recommendation.variant.id,
-          pillow_product_id: builder.recommendation.pillow_product.id,
-          filling_lines: fillingLines,
-          cover_variant: builder.selectedCover ? String(builder.selectedCover) : undefined,
-          case_variant: builder.selectedCase ? String(builder.selectedCase) : undefined,
-          component_quantities: componentLines,
-          upsells: upsellItems,
-          bom_template_id: builder.selectedTemplateId,
-          llm_metadata: {
-            source: builder.productType === "bolster" ? "mbolster-builder" : "pillow-builder",
-            ...(builder.pillowPreferences ?? {}),
-            ...(builder.bolsterPreferences ?? {}),
-            config_id: builder.configId,
-          },
-        }),
+        body: JSON.stringify(
+          buildCustomizeApplyPayload({
+            productType: builder.productType,
+            recommendation: builder.recommendation,
+            fillingLines,
+            componentLines,
+            selectedCover: builder.selectedCover,
+            selectedCase: builder.selectedCase,
+            selectedUpsells: builder.selectedUpsells,
+            selectedTemplateId: builder.selectedTemplateId,
+            llmMetadata: {
+              source: builder.productType === "bolster" ? "mbolster-builder" : "pillow-builder",
+              ...(builder.pillowPreferences ?? {}),
+              ...(builder.bolsterPreferences ?? {}),
+              config_id: builder.configId,
+            },
+          })
+        ),
       });
 
-      const applyData = await applyRes.json();
+      const applyData = await applyRes.json().catch(() => ({}));
 
-      if (!applyData.ok) {
+      if (!applyRes.ok || !applyData.ok) {
         toast.error(getApiErrorMessage(applyData.error, "Failed to save configuration"));
         return;
       }
 
-      const productSlug = builder.productType === "bolster"
-        ? `mbolster-${builder.recommendation.pillow_product.size.toLowerCase()}`
-        : `mpillow-${builder.recommendation.pillow_product.kind}`;
-
-      const productTitle = builder.productType === "bolster"
-        ? "Mbolster"
-        : `Mpillow ${builder.recommendation.pillow_product.kind}`;
+      const { productSlug, productTitle, variantTitle } = getCartProductInfo(
+        builder.productType,
+        builder.recommendation
+      );
 
       addItem({
-        variantId: builder.recommendation.variant.id,
-        productId: builder.recommendation.variant.product_id,
+        variantId: builder.recommendation.variant!.id,
+        productId: builder.recommendation.variant!.product_id,
         productSlug,
         productTitle,
-        variantTitle: `Size ${builder.recommendation.pillow_product.size}`,
+        variantTitle,
         imageUrl: null,
-        price: builder.recommendation.variant.price,
+        price: builder.recommendation.variant!.price,
         compareAtPrice: null,
-        currency: builder.recommendation.variant.currency,
+        currency: builder.recommendation.variant!.currency,
         quantity: 1,
         customizationId: applyData.customization_id,
         customizationSummary: applyData.summary,

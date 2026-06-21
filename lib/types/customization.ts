@@ -98,9 +98,15 @@ export interface UpsellItem {
 
 // --- Full Customization Order (sent from frontend) ---
 
+export type CustomizationProductType = "pillow" | "bolster";
+export type BolsterVariant = "short" | "medium" | "long";
+
 export interface CustomizationOrder {
   variant_id: string;
-  pillow_product_id: number;
+  product_type?: CustomizationProductType;
+  pillow_product_id?: number;
+  bolster_variant?: BolsterVariant;
+  ecom_product_id?: string;
   filling_lines: FillingLine[];
   cover_variant: string;
   case_variant: string;
@@ -114,7 +120,10 @@ export interface CustomizationOrder {
 
 export interface CustomizationConfig {
   id: string;
-  pillow_product_id: number;
+  product_type: CustomizationProductType;
+  pillow_product_id: number | null;
+  bolster_variant: BolsterVariant | null;
+  ecom_product_id: string | null;
   bom_template_id: number | null;
   config_lines: ConfigLine[];
   filling_lines: FillingLine[];

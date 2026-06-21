@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { ComponentOption, ConfigLine, FillingLine } from "@/lib/types/customization";
+import type { BolsterVariant, ComponentOption, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 
 /**
  * Get available components (covers, cases, protectors, packaging) for a pillow product.
@@ -272,6 +272,158 @@ export async function validateFullConfig(
   }
 
   return { valid: shortages.length === 0, shortages };
+}
+
+/**
+ * Get base BOM quantities for a bolster variant from bolster_bom_lines.
+ */
+export async function getBolsterBaseQuantities(
+  bolsterVariant: BolsterVariant
+): Promise<Map<number, number>> {
+  const admin = supabaseAdmin();
+
+  const { data: bomLines } = await admin
+    .from("bolster_bom_lines")
+    .select("item_id, quantity")
+    .eq("variant", bolsterVariant);
+
+  return new Map<number, number>(
+    (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => [bl.item_id, bl.quantity])
+  );
+}
+
+/**
+ * Validate a bolster customization config against current inventory.
+ * Bolsters have no filling lines — only component_quantities from bolster_bom_lines + user selections.
+ */
+export async function validateBolsterConfig(
+  bolsterVariant: BolsterVariant,
+  componentQuantities: ConfigLine[],
+  orderQuantity: number
+): Promise<{
+  valid: boolean;
+  shortages: { item_id: number; name: string; needed: number; available: number }[];
+}> {
+  const admin = supabaseAdmin();
+
+  const needed = new Map<number, number>();
+
+  for (const cl of componentQuantities) {
+    needed.set(cl.item_id, (needed.get(cl.item_id) ?? 0) + cl.quantity * orderQuantity);
+  }
+
+  const hasNonFilling = componentQuantities.some(
+    (cl) => !["filling"].includes(cl.category)
+  );
+
+  if (!hasNonFilling) {
+    const { data: bomLines } = await admin
+      .from("bolster_bom_lines")
+      .select("item_id, quantity, items!inner(category)")
+      .eq("variant", bolsterVariant);
+
+    for (const bl of bomLines ?? []) {
+      const cat = (bl as unknown as { items: { category: string } }).items.category;
+      if (cat !== "filling") {
+        needed.set(bl.item_id, (needed.get(bl.item_id) ?? 0) + bl.quantity * orderQuantity);
+      }
+    }
+  }
+
+  const itemIds = [...needed.keys()];
+  if (itemIds.length === 0) {
+    return { valid: true, shortages: [] };
+  }
+
+  const { data: balances } = await admin
+    .from("inventory_balances")
+    .select("item_id, on_hand")
+    .in("item_id", itemIds);
+
+  const stockMap = new Map<number, number>(
+    (balances ?? []).map((b: { item_id: number; on_hand: number }) => [b.item_id, b.on_hand])
+  );
+
+  const { data: items } = await admin
+    .from("items")
+    .select("id, name, subtype")
+    .in("id", itemIds);
+
+  const nameMap = new Map<number, string>(
+    (items ?? []).map((i: { id: number; name: string; subtype: string | null }) => [
+      i.id,
+      i.subtype ? `${i.name} (${i.subtype})` : i.name,
+    ])
+  );
+
+  const shortages: { item_id: number; name: string; needed: number; available: number }[] = [];
+
+  for (const [itemId, qty] of needed) {
+    const available = stockMap.get(itemId) ?? 0;
+    if (available < qty) {
+      shortages.push({
+        item_id: itemId,
+        name: nameMap.get(itemId) ?? `Item #${itemId}`,
+        needed: qty,
+        available,
+      });
+    }
+  }
+
+  return { valid: shortages.length === 0, shortages };
+}
+
+/**
+ * Validate a customization config for either pillow or bolster products.
+ */
+export async function validateCustomizationConfig(params: {
+  product_type: CustomizationProductType;
+  pillow_product_id?: number;
+  bolster_variant?: BolsterVariant;
+  filling_lines: FillingLine[];
+  component_quantities: ConfigLine[];
+  orderQuantity: number;
+}): Promise<{
+  valid: boolean;
+  shortages: { item_id: number; name: string; needed: number; available: number }[];
+}> {
+  if (params.product_type === "bolster") {
+    if (!params.bolster_variant) {
+      return {
+        valid: false,
+        shortages: [{
+          item_id: 0,
+          name: "Missing bolster_variant",
+          needed: 0,
+          available: 0,
+        }],
+      };
+    }
+    return validateBolsterConfig(
+      params.bolster_variant,
+      params.component_quantities,
+      params.orderQuantity
+    );
+  }
+
+  if (!params.pillow_product_id) {
+    return {
+      valid: false,
+      shortages: [{
+        item_id: 0,
+        name: "Missing pillow_product_id",
+        needed: 0,
+        available: 0,
+      }],
+    };
+  }
+
+  return validateFullConfig(
+    params.pillow_product_id,
+    params.filling_lines,
+    params.component_quantities,
+    params.orderQuantity
+  );
 }
 
 /**

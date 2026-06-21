@@ -8,15 +8,55 @@ import { useBuilder } from "./BuilderProvider";
 import { useCart } from "@/lib/shop/cart-context";
 import {
   CustomizationStepSummary,
-  HARDCODED_UPSELLS,
   computeFillingLines,
   computeComponentLines,
   computeAddonPrice,
   computeUpsellTotal,
+  type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
+import { HARDCODED_UPSELLS } from "@/lib/shop/customize-apply-payload";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getApiErrorMessage } from "@/lib/utils";
+import type { ConfigLine, FillingLine } from "@/lib/types/customization";
+import type { ProductType } from "./BuilderProvider";
+import {
+  buildCustomizeApplyPayload,
+  resolveBolsterVariant,
+} from "@/lib/shop/customize-apply-payload";
+
+export { buildCustomizeApplyPayload, resolveBolsterVariant };
+
+export function canApplyRecommendation(
+  productType: ProductType,
+  recommendation: RecommendationResponseData | null
+): recommendation is RecommendationResponseData {
+  if (!recommendation?.variant) return false;
+  if (productType === "bolster") return true;
+  return Boolean(recommendation.pillow_product);
+}
+
+export function getCartProductInfo(
+  productType: ProductType,
+  recommendation: RecommendationResponseData
+) {
+  const sizeLabel = recommendation.recommendation.recommended_size;
+
+  if (productType === "bolster") {
+    const slugSuffix = sizeLabel.toLowerCase();
+    return {
+      productSlug: `mbolster-${slugSuffix}`,
+      productTitle: "Mbolster",
+      variantTitle: `Size ${sizeLabel}`,
+    };
+  }
+
+  return {
+    productSlug: `mpillow-${recommendation.pillow_product.kind}`,
+    productTitle: `Mpillow ${recommendation.pillow_product.kind}`,
+    variantTitle: `Size ${recommendation.pillow_product.size}`,
+  };
+}
 
 export function StepSummary() {
   const builder = useBuilder();
@@ -52,57 +92,52 @@ export function StepSummary() {
   const totalPrice = basePrice + addonPrice + upsellTotal;
 
   const handleAddToCart = useCallback(async () => {
-    if (!recommendation?.variant || !recommendation?.pillow_product) return;
+    if (!canApplyRecommendation(builder.productType, recommendation)) return;
 
     builder.setIsApplying(true);
 
     try {
-      // Build upsell items for the selected ones
-      const upsellItems = HARDCODED_UPSELLS.filter((u) => selectedUpsells.has(u.item_id));
-
       const applyRes = await fetch("/api/shop/customize?action=apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          variant_id: recommendation.variant.id,
-          pillow_product_id: recommendation.pillow_product.id,
-          filling_lines: fillingLines,
-          cover_variant: selectedCover ? String(selectedCover) : undefined,
-          case_variant: selectedCase ? String(selectedCase) : undefined,
-          component_quantities: componentLines,
-          upsells: upsellItems,
-          bom_template_id: selectedTemplateId,
-          llm_metadata: {
-            source: builder.productType === "bolster" ? "mbolster-builder" : "pillow-builder",
-            ...(builder.pillowPreferences ?? {}),
-            ...(builder.bolsterPreferences ?? {}),
-            config_id: builder.configId,
-          },
-        }),
+        body: JSON.stringify(
+          buildCustomizeApplyPayload({
+            productType: builder.productType,
+            recommendation,
+            fillingLines,
+            componentLines,
+            selectedCover,
+            selectedCase,
+            selectedUpsells,
+            selectedTemplateId,
+            llmMetadata: {
+              source: builder.productType === "bolster" ? "mbolster-builder" : "pillow-builder",
+              ...(builder.pillowPreferences ?? {}),
+              ...(builder.bolsterPreferences ?? {}),
+              config_id: builder.configId,
+            },
+          })
+        ),
       });
 
-      const applyData = await applyRes.json();
+      const applyData = await applyRes.json().catch(() => ({}));
 
-      if (!applyData.ok) {
+      if (!applyRes.ok || !applyData.ok) {
         toast.error(getApiErrorMessage(applyData.error, "Failed to save configuration"));
         return;
       }
 
-      // Determine product info for cart
-      const productSlug = builder.productType === "bolster"
-        ? `mbolster-${recommendation.pillow_product.size.toLowerCase()}`
-        : `mpillow-${recommendation.pillow_product.kind}`;
-
-      const productTitle = builder.productType === "bolster"
-        ? "Mbolster"
-        : `Mpillow ${recommendation.pillow_product.kind}`;
+      const { productSlug, productTitle, variantTitle } = getCartProductInfo(
+        builder.productType,
+        recommendation
+      );
 
       addItem({
-        variantId: recommendation.variant.id,
-        productId: recommendation.variant.product_id,
+        variantId: recommendation.variant!.id,
+        productId: recommendation.variant!.product_id,
         productSlug,
         productTitle,
-        variantTitle: `Size ${recommendation.pillow_product.size}`,
+        variantTitle,
         imageUrl: null,
         price: basePrice,
         compareAtPrice: null,

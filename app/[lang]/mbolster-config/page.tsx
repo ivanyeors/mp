@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 
@@ -80,7 +80,6 @@ function stepIndex(step: Step): number {
 
 export default function MbolsterConfigPage() {
   const pathname = usePathname() ?? "/";
-  const router = useRouter();
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const mbolsterHref = withLocale("/mbolster", locale);
 
@@ -238,6 +237,13 @@ export default function MbolsterConfigPage() {
       return;
     }
 
+    const bolsterVariant = shopRecommendation.bolster_variant;
+    const ecomProductId = shopRecommendation.ecom_product?.id ?? shopRecommendation.variant.product_id;
+    if (!bolsterVariant) {
+      toast.error("Missing bolster variant from recommendation");
+      return;
+    }
+
     setShopLoading(true);
     try {
       const coverComp = shopComponentLines.find((c) => c.category === "cover");
@@ -249,13 +255,14 @@ export default function MbolsterConfigPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           variant_id: shopRecommendation.variant.id,
-          pillow_product_id: shopRecommendation.pillow_product.id,
-          filling_lines: shopFillingLines,
+          product_type: "bolster",
+          bolster_variant: bolsterVariant,
+          ecom_product_id: ecomProductId,
+          filling_lines: [],
           cover_variant: coverComp?.name ?? undefined,
           case_variant: caseComp?.name ?? undefined,
           component_quantities: shopComponentLines,
           upsells: activeUpsells,
-          bom_template_id: selectedTemplateId ?? undefined,
           llm_metadata: {
             source: "mbolster-config",
             height_cm: heightNum,
@@ -274,7 +281,7 @@ export default function MbolsterConfigPage() {
       addItem({
         variantId: shopRecommendation.variant.id,
         productId: shopRecommendation.variant.product_id,
-        productSlug: `mbolster-${shopRecommendation.pillow_product.size?.toLowerCase()}`,
+        productSlug: shopRecommendation.ecom_product?.slug ?? `mbolster-${shopRecommendation.pillow_product.size?.toLowerCase()}`,
         productTitle: `Mbolster Size ${shopRecommendation.pillow_product.size}`,
         variantTitle: `Size ${shopRecommendation.pillow_product.size}`,
         imageUrl: null,
@@ -294,7 +301,7 @@ export default function MbolsterConfigPage() {
       setShopLoading(false);
     }
   }, [
-    shopRecommendation, shopFillingLines, shopComponentLines, selectedTemplateId,
+    shopRecommendation, shopComponentLines,
     selectedUpsells, heightNum, state.sleepPosition, shopBasePrice, shopCurrency, addItem,
   ]);
 
@@ -417,19 +424,10 @@ export default function MbolsterConfigPage() {
                 Back
               </Button>
               <Button
-                onClick={() => {
-                  const heightCm = toNumber(state.heightCm);
-                  if (!heightCm || !state.sleepPosition) return;
-                  router.push(
-                    withLocale(
-                      `/mp-maker?product=bolster&height=${Math.round(heightCm)}&position=${state.sleepPosition}`,
-                      locale
-                    )
-                  );
-                }}
-                disabled={!state.sleepPosition || !toNumber(state.heightCm)}
+                onClick={() => void fetchBolsterRecommendation()}
+                disabled={!state.sleepPosition || !toNumber(state.heightCm) || shopLoading}
               >
-                Get Recommendation
+                {shopLoading ? "Loading..." : "Get Recommendation"}
               </Button>
             </div>
           </Card>

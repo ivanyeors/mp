@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings } from "@/lib/shop/customization-llm";
-import { getAvailableComponents, validateFullConfig, calculateAddonPrice } from "@/lib/shop/customization-inventory";
-import type { ConfigLine, FillingLine } from "@/lib/types/customization";
+import { getAvailableComponents, validateCustomizationConfig, calculateAddonPrice, getBolsterBaseQuantities } from "@/lib/shop/customization-inventory";
+import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 
 export const runtime = "nodejs";
 
@@ -180,9 +180,14 @@ async function handleRecommend(req: Request) {
       return NextResponse.json({
         ok: true,
         product_type: "bolster",
+        bolster_variant: bolsterVariant,
+        ecom_product: bolsterProduct ? {
+          id: bolsterProduct.id,
+          slug: bolsterProduct.slug,
+        } : null,
         recommendation,
         pillow_product: {
-          id: bolsterProduct?.id ?? 0,
+          id: 0,
           size: recommendation.recommended_size,
           kind: "basic",
         },
@@ -282,15 +287,18 @@ async function handleRecommend(req: Request) {
 
 const ApplyRequestSchema = z.object({
   variant_id: z.string().uuid(),
-  pillow_product_id: z.number().int().positive(),
+  product_type: z.enum(["pillow", "bolster"]).default("pillow"),
+  pillow_product_id: z.number().int().positive().optional(),
+  bolster_variant: z.enum(["short", "medium", "long"]).optional(),
+  ecom_product_id: z.string().uuid().optional(),
   filling_lines: z.array(z.object({
     item_id: z.number().int().positive(),
     subtype: z.string(),
     name: z.string(),
     quantity: z.number().int().positive(),
-  })),
-  cover_variant: z.string().optional(),
-  case_variant: z.string().optional(),
+  })).optional().default([]),
+  cover_variant: z.string().nullish(),
+  case_variant: z.string().nullish(),
   component_quantities: z.array(z.object({
     item_id: z.number().int().positive(),
     category: z.string(),
@@ -313,6 +321,34 @@ const ApplyRequestSchema = z.object({
   llm_metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
+const SIZE_TO_BOLSTER_VARIANT: Record<string, BolsterVariant> = {
+  S: "short",
+  M: "medium",
+  L: "long",
+  short: "short",
+  medium: "medium",
+  long: "long",
+};
+
+function resolveBolsterVariantFromVariant(
+  explicit: BolsterVariant | undefined,
+  variant: { title: string | null; option1: string | null; sku: string | null }
+): BolsterVariant | null {
+  if (explicit) return explicit;
+
+  for (const field of [variant.option1, variant.title, variant.sku]) {
+    if (!field) continue;
+    const lower = field.toLowerCase();
+    if (lower.includes("short") || /\bs\b/.test(lower)) return "short";
+    if (lower.includes("long") || /\bl\b/.test(lower)) return "long";
+    if (lower.includes("medium") || /\bm\b/.test(lower)) return "medium";
+    const mapped = SIZE_TO_BOLSTER_VARIANT[field.toUpperCase()];
+    if (mapped) return mapped;
+  }
+
+  return null;
+}
+
 async function handleApply(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = ApplyRequestSchema.safeParse(body);
@@ -323,7 +359,10 @@ async function handleApply(req: Request) {
 
   const {
     variant_id,
+    product_type,
     pillow_product_id,
+    bolster_variant,
+    ecom_product_id,
     filling_lines,
     cover_variant,
     case_variant,
@@ -334,6 +373,25 @@ async function handleApply(req: Request) {
   } = parsed.data;
 
   const admin = supabaseAdmin();
+
+  if (product_type === "bolster") {
+    return handleApplyBolster({
+      admin,
+      variant_id,
+      bolster_variant,
+      ecom_product_id,
+      filling_lines,
+      cover_variant: cover_variant ?? undefined,
+      case_variant: case_variant ?? undefined,
+      component_quantities,
+      bom_template_id,
+      llm_metadata,
+    });
+  }
+
+  if (!pillow_product_id) {
+    return NextResponse.json({ error: "pillow_product_id is required for pillow customizations" }, { status: 400 });
+  }
 
   // Validate variant exists and matches pillow_product_id
   const { data: variant } = await admin
@@ -348,23 +406,26 @@ async function handleApply(req: Request) {
 
   // Validate filling items are actual filling items
   const fillingItemIds = filling_lines.map((fl) => fl.item_id);
-  const { data: fillingItems } = await admin
-    .from("items")
-    .select("id, category")
-    .in("id", fillingItemIds);
+  if (fillingItemIds.length > 0) {
+    const { data: fillingItems } = await admin
+      .from("items")
+      .select("id, category")
+      .in("id", fillingItemIds);
 
-  const nonFillings = (fillingItems ?? []).filter((i: { category: string }) => i.category !== "filling");
-  if (nonFillings.length > 0) {
-    return NextResponse.json({ error: "Invalid items in filling lines — only fillings allowed" }, { status: 400 });
+    const nonFillings = (fillingItems ?? []).filter((i: { category: string }) => i.category !== "filling");
+    if (nonFillings.length > 0) {
+      return NextResponse.json({ error: "Invalid items in filling lines — only fillings allowed" }, { status: 400 });
+    }
   }
 
   // Validate inventory availability
-  const validation = await validateFullConfig(
+  const validation = await validateCustomizationConfig({
+    product_type: "pillow",
     pillow_product_id,
-    filling_lines as FillingLine[],
-    component_quantities as ConfigLine[],
-    1
-  );
+    filling_lines: filling_lines as FillingLine[],
+    component_quantities: component_quantities as ConfigLine[],
+    orderQuantity: 1,
+  });
 
   if (!validation.valid) {
     return NextResponse.json({
@@ -374,7 +435,6 @@ async function handleApply(req: Request) {
   }
 
   // Calculate addon price
-  // Get base BOM quantities
   const { data: bomLines } = await admin
     .from("bom_lines")
     .select("item_id, quantity")
@@ -386,21 +446,133 @@ async function handleApply(req: Request) {
 
   const totalAddonPrice = calculateAddonPrice(component_quantities as ConfigLine[], baseQuantities);
 
-  // Build summary
   const fillingDesc = filling_lines.map((f) => `${f.quantity}× ${f.subtype}`).join(", ");
-  const parts: string[] = [fillingDesc];
+  const parts: string[] = [];
+  if (fillingDesc) parts.push(fillingDesc);
   if (cover_variant) parts.push(`Cover: ${cover_variant}`);
   if (case_variant) parts.push(`Case: ${case_variant}`);
   const summary = parts.join(" | ");
 
-  // Create customization config
   const { data: config, error: configError } = await admin
     .from("customization_configs")
     .insert({
+      product_type: "pillow",
       pillow_product_id,
+      bolster_variant: null,
+      ecom_product_id: null,
       bom_template_id: bom_template_id ?? null,
       config_lines: component_quantities,
       filling_lines,
+      cover_variant: cover_variant ?? null,
+      case_variant: case_variant ?? null,
+      llm_metadata: llm_metadata ?? {},
+      summary,
+      total_addon_price: totalAddonPrice,
+    })
+    .select("id")
+    .single();
+
+  if (configError || !config) {
+    return NextResponse.json({ error: "Failed to save customization" }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    customization_id: config.id,
+    summary,
+    total_addon_price: totalAddonPrice,
+  });
+}
+
+async function handleApplyBolster({
+  admin,
+  variant_id,
+  bolster_variant,
+  ecom_product_id,
+  filling_lines,
+  cover_variant,
+  case_variant,
+  component_quantities,
+  bom_template_id,
+  llm_metadata,
+}: {
+  admin: ReturnType<typeof supabaseAdmin>;
+  variant_id: string;
+  bolster_variant?: BolsterVariant;
+  ecom_product_id?: string;
+  filling_lines: { item_id: number; subtype: string; name: string; quantity: number }[];
+  cover_variant?: string;
+  case_variant?: string;
+  component_quantities: ConfigLine[];
+  bom_template_id?: number;
+  llm_metadata?: Record<string, unknown>;
+}) {
+  if (!ecom_product_id) {
+    return NextResponse.json({ error: "ecom_product_id is required for bolster customizations" }, { status: 400 });
+  }
+
+  const { data: product } = await admin
+    .from("products")
+    .select("id, product_type")
+    .eq("id", ecom_product_id)
+    .single();
+
+  if (!product || product.product_type !== "bolster") {
+    return NextResponse.json({ error: "Invalid bolster product" }, { status: 400 });
+  }
+
+  const { data: variant } = await admin
+    .from("product_variants")
+    .select("id, product_id, title, option1, sku")
+    .eq("id", variant_id)
+    .single();
+
+  if (!variant || variant.product_id !== ecom_product_id) {
+    return NextResponse.json({ error: "Invalid variant or product mismatch" }, { status: 400 });
+  }
+
+  const resolvedBolsterVariant = resolveBolsterVariantFromVariant(bolster_variant, variant);
+  if (!resolvedBolsterVariant) {
+    return NextResponse.json({ error: "Could not resolve bolster variant" }, { status: 400 });
+  }
+
+  if (filling_lines.length > 0) {
+    return NextResponse.json({ error: "Bolster customizations do not support filling lines" }, { status: 400 });
+  }
+
+  const validation = await validateCustomizationConfig({
+    product_type: "bolster",
+    bolster_variant: resolvedBolsterVariant,
+    filling_lines: [],
+    component_quantities,
+    orderQuantity: 1,
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json({
+      error: "Insufficient inventory",
+      shortages: validation.shortages,
+    }, { status: 400 });
+  }
+
+  const baseQuantities = await getBolsterBaseQuantities(resolvedBolsterVariant);
+  const totalAddonPrice = calculateAddonPrice(component_quantities, baseQuantities);
+
+  const parts: string[] = [`Bolster: ${resolvedBolsterVariant}`];
+  if (cover_variant) parts.push(`Cover: ${cover_variant}`);
+  if (case_variant) parts.push(`Case: ${case_variant}`);
+  const summary = parts.join(" | ");
+
+  const { data: config, error: configError } = await admin
+    .from("customization_configs")
+    .insert({
+      product_type: "bolster",
+      pillow_product_id: null,
+      bolster_variant: resolvedBolsterVariant,
+      ecom_product_id,
+      bom_template_id: bom_template_id ?? null,
+      config_lines: component_quantities,
+      filling_lines: [],
       cover_variant: cover_variant ?? null,
       case_variant: case_variant ?? null,
       llm_metadata: llm_metadata ?? {},
