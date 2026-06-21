@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -38,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("products");
   if (denied) return denied;
 
   const { id } = await params;

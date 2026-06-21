@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
  * Upserts a single setting.
  */
 export async function PUT(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("page-builder");
   if (denied) return denied;
 
   try {
@@ -74,7 +74,7 @@ export async function PUT(req: Request) {
  * Removes a setting so the default is used again.
  */
 export async function DELETE(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("page-builder");
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);

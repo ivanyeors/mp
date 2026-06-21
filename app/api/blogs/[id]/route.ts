@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -32,7 +32,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
 }
 
 export async function PATCH(req: Request, { params }: RouteParams) {
-    const denied = await requireSettingsAuth();
+    const denied = await requireAdmin("blogs");
     if (denied) return denied;
 
     const { id } = await params;
@@ -68,7 +68,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 }
 
 export async function DELETE(_req: Request, { params }: RouteParams) {
-    const denied = await requireSettingsAuth();
+    const denied = await requireAdmin("blogs");
     if (denied) return denied;
 
     const { id } = await params;

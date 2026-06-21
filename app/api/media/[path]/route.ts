@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -8,7 +8,7 @@ export async function DELETE(
     req: Request,
     { params }: { params: Promise<{ path: string }> }
 ) {
-    const denied = await requireSettingsAuth();
+    const denied = await requireAdmin("media");
     if (denied) return denied;
 
     const { path } = await params;

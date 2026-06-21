@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,7 @@ const ReorderSchema = z.object({
  * Updates all positions in bulk.
  */
 export async function PUT(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("page-builder");
   if (denied) return denied;
 
   try {

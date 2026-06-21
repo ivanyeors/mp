@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,7 @@ export const runtime = "nodejs";
  * - site_settings.value (landing page slots)
  */
 export async function POST(req: Request) {
-    const denied = await requireSettingsAuth();
+    const denied = await requireAdmin("media");
     if (denied) return denied;
 
     try {

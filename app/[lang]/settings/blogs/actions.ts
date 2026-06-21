@@ -2,14 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { validateSession, SETTINGS_SESSION_COOKIE } from "@/lib/settings-auth";
-import { cookies } from "next/headers";
+import { assertAdmin } from "@/lib/auth/admin";
 
 async function requireAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SETTINGS_SESSION_COOKIE)?.value;
-  const result = validateSession(token);
-  if (!result.valid) throw new Error("Unauthorized");
+  await assertAdmin("blogs");
 }
 
 export async function deleteBlog(id: string) {

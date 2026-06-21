@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -16,7 +16,7 @@ const ReorderCategoriesSchema = z.object({
 });
 
 export async function PUT(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("categories");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

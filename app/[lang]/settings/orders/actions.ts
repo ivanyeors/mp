@@ -2,22 +2,28 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { validateSession, SETTINGS_SESSION_COOKIE } from "@/lib/settings-auth";
-import { cookies } from "next/headers";
+import { assertAdmin } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
 
-async function requireAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SETTINGS_SESSION_COOKIE)?.value;
-  const result = validateSession(token);
-  if (!result.valid) throw new Error("Unauthorized");
+function requireAuth() {
+  return assertAdmin("orders");
 }
+
+const ORDER_AUDIT_FIELDS =
+  "id, status, tracking_number, tracking_url, shipped_at, delivered_at, cancelled_at";
 
 export async function updateOrderStatus(
   orderId: string,
   status: string,
 ) {
-  await requireAuth();
+  const actor = await requireAuth();
   const admin = supabaseAdmin();
+
+  const { data: before } = await admin
+    .from("orders")
+    .select(ORDER_AUDIT_FIELDS)
+    .eq("id", orderId)
+    .maybeSingle();
 
   const update: Record<string, unknown> = { status };
   if (status === "cancelled") update.cancelled_at = new Date().toISOString();
@@ -31,6 +37,16 @@ export async function updateOrderStatus(
     .single();
 
   if (error) throw new Error(error.message);
+
+  await recordAdminAction({
+    actor,
+    action: "order.status_change",
+    entityType: "order",
+    entityId: orderId,
+    before,
+    after: { status: data.status },
+  });
+
   revalidatePath("/settings/orders");
   return { ok: true, row: data };
 }
@@ -40,9 +56,15 @@ export async function fulfillOrder(
   trackingNumber?: string,
   trackingUrl?: string,
 ) {
-  await requireAuth();
+  const actor = await requireAuth();
   const admin = supabaseAdmin();
   const now = new Date().toISOString();
+
+  const { data: before } = await admin
+    .from("orders")
+    .select(ORDER_AUDIT_FIELDS)
+    .eq("id", orderId)
+    .maybeSingle();
 
   const update: Record<string, unknown> = { status: "shipped", shipped_at: now };
   if (trackingNumber) update.tracking_number = trackingNumber;
@@ -56,6 +78,20 @@ export async function fulfillOrder(
     .single();
 
   if (error) throw new Error(error.message);
+
+  await recordAdminAction({
+    actor,
+    action: "order.fulfill",
+    entityType: "order",
+    entityId: orderId,
+    before,
+    after: {
+      status: data.status,
+      tracking_number: data.tracking_number,
+      tracking_url: data.tracking_url,
+      shipped_at: data.shipped_at,
+    },
+  });
 
   const timelineMessage = trackingNumber
     ? `Order shipped. Tracking: ${trackingNumber}${trackingUrl ? ` — ${trackingUrl}` : ""}`

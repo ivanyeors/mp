@@ -3,7 +3,7 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -28,7 +28,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("categories");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

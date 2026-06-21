@@ -106,6 +106,20 @@ export async function requireAdminContext(permission: Permission): Promise<Admin
 }
 
 /**
+ * Server-action guard. Throws a plain `Error` (rather than a `NextResponse`)
+ * so it surfaces cleanly through React Server Actions. Returns the admin
+ * context on success for audit attribution.
+ *
+ *   await assertAdmin("orders");
+ */
+export async function assertAdmin(permission: Permission): Promise<AdminContext> {
+  const ctx = await getAdminContext();
+  if (!ctx) throw new Error("Unauthorized");
+  if (!roleHasPermission(ctx.role, permission)) throw new Error("Forbidden");
+  return ctx;
+}
+
+/**
  * Server-component / page guard. Redirects to the staff login when not signed
  * in, or to the settings overview when signed in but lacking `permission`.
  */

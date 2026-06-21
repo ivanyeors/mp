@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -26,6 +26,9 @@ const DeleteSchema = z.object({
 /* GET - list all api_configs                                          */
 /* ------------------------------------------------------------------ */
 export async function GET() {
+  const denied = await requireAdmin("api-configs");
+  if (denied) return denied;
+
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("api_configs")
@@ -40,7 +43,7 @@ export async function GET() {
 /* POST - create a new api_config                                      */
 /* ------------------------------------------------------------------ */
 export async function POST(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("api-configs");
   if (denied) return denied;
 
   const body = await req.json();
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
 /* PATCH - update an existing api_config                               */
 /* ------------------------------------------------------------------ */
 export async function PATCH(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("api-configs");
   if (denied) return denied;
 
   const body = await req.json();
@@ -90,7 +93,7 @@ export async function PATCH(req: Request) {
 /* DELETE - remove an api_config                                       */
 /* ------------------------------------------------------------------ */
 export async function DELETE(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("api-configs");
   if (denied) return denied;
 
   const body = await req.json();

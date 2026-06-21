@@ -1,10 +1,12 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag,
-  FolderTree, ShoppingCart, UserCircle, Tag, Truck, KeyRound,
+  FolderTree, ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
+  ShieldCheck, ScrollText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -31,15 +33,17 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import SettingsAuthGate from "@/app/[lang]/settings/auth-gate";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
+import type { Permission } from "@/lib/auth/permissions";
 
 type NavItem = {
   href: string;
   label: string;
   tooltip: string;
   Icon: LucideIcon;
+  /** Permission required to see this entry; omitted = visible to any staff. */
+  perm?: Permission;
   items?: NavItem[];
 };
 
@@ -58,8 +62,9 @@ const NAV_GROUPS: NavGroup[] = [
         tooltip: "General Settings",
         Icon: Settings2,
         items: [
-          { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound },
-          { href: "/settings/staff-management", label: "Staff Management", tooltip: "Staff Management", Icon: Users },
+          { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound, perm: "api-configs" },
+          { href: "/settings/admins", label: "Admin Users", tooltip: "Admin users & roles", Icon: ShieldCheck, perm: "staff" },
+          { href: "/settings/staff-management", label: "Staff Management", tooltip: "Manufacturing staff", Icon: Users, perm: "results" },
         ],
       },
     ],
@@ -72,8 +77,9 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Products",
         tooltip: "Product Management",
         Icon: ShoppingBag,
+        perm: "products",
         items: [
-          { href: "/settings/categories", label: "Categories", tooltip: "Product Categories", Icon: FolderTree },
+          { href: "/settings/categories", label: "Categories", tooltip: "Product Categories", Icon: FolderTree, perm: "categories" },
         ],
       },
       {
@@ -81,13 +87,14 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Orders",
         tooltip: "Order Management",
         Icon: ShoppingCart,
+        perm: "orders",
         items: [
-          { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList },
-          { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle },
+          { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList, perm: "results" },
+          { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle, perm: "customers" },
         ],
       },
-      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag },
-      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck },
+      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag, perm: "discounts" },
+      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck, perm: "shipping" },
     ],
   },
   {
@@ -98,26 +105,28 @@ const NAV_GROUPS: NavGroup[] = [
         label: "Inventory",
         tooltip: "Inventory",
         Icon: Boxes,
+        perm: "inventory",
         items: [
-          { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store },
-          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench },
+          { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store, perm: "inventory" },
+          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
         ],
       },
-      { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign },
+      { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign, perm: "costings" },
     ],
   },
   {
     label: "Insights",
     items: [
-      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp },
+      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp, perm: "analytics" },
+      { href: "/settings/audit-log", label: "Audit Log", tooltip: "Admin audit log", Icon: ScrollText, perm: "audit-log" },
     ],
   },
   {
     label: "Landing Site",
     items: [
-      { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard },
-      { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper },
-      { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image },
+      { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard, perm: "page-builder" },
+      { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper, perm: "blogs" },
+      { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image, perm: "media" },
     ],
   },
 ];
@@ -127,18 +136,82 @@ function isNavActive(basePathname: string, href: string): boolean {
   return basePathname === href || basePathname.startsWith(`${href}/`);
 }
 
+/** An item is visible when its permission is granted (or it requires none). */
+function canSee(item: NavItem, permissions: Permission[]): boolean {
+  if (!item.perm) return true;
+  return permissions.includes(item.perm);
+}
+
+/** A parent is visible when it or any of its children is visible. */
+function itemVisible(item: NavItem, permissions: Permission[]): boolean {
+  if (canSee(item, permissions)) return true;
+  return (item.items ?? []).some((sub) => canSee(sub, permissions));
+}
+
+type AdminStatus = "checking" | "authed" | "unauth";
+
 export function SettingsSidebarNav({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const basePathname = stripLocale(pathname);
   const to = (href: string) => withLocale(href, locale);
 
-  // The staff login screen is part of the settings segment but must render
-  // without the sidebar or the (legacy) auth gate so unauthenticated staff can
-  // sign in.
-  if (basePathname === "/settings/login") {
+  const isLoginRoute = basePathname === "/settings/login";
+
+  const [status, setStatus] = useState<AdminStatus>("checking");
+  const [permissions, setPermissions] = useState<Permission[]>([]);
+
+  useEffect(() => {
+    if (isLoginRoute) return;
+    let cancelled = false;
+    fetch("/api/admin/context")
+      .then((res) => res.json())
+      .then((data: { signedIn?: boolean; permissions?: Permission[] }) => {
+        if (cancelled) return;
+        if (data?.signedIn) {
+          setPermissions(Array.isArray(data.permissions) ? data.permissions : []);
+          setStatus("authed");
+        } else {
+          setStatus("unauth");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("unauth");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoginRoute]);
+
+  // Redirect unauthorized visitors to the staff login.
+  useEffect(() => {
+    if (status === "unauth" && !isLoginRoute) {
+      router.replace(to("/settings/login"));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, isLoginRoute]);
+
+  // The staff login screen renders without the sidebar or the auth gate so
+  // unauthenticated staff can sign in.
+  if (isLoginRoute) {
     return <>{children}</>;
   }
+
+  if (status !== "authed") {
+    return (
+      <div className="flex min-h-svh w-full items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const groups = NAV_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => itemVisible(item, permissions)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const segments = basePathname.split("/").filter(Boolean);
   const last = segments[segments.length - 1] ?? "settings";
@@ -153,13 +226,14 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
       <SidebarProvider>
         <Sidebar collapsible="icon">
           <SidebarContent>
-            {NAV_GROUPS.map((group) => (
+            {groups.map((group) => (
               <SidebarGroup key={group.label}>
                 <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
                 <SidebarMenu>
                   {group.items.map(({ href, label, tooltip, Icon, items }) => {
                     const isActive = isNavActive(basePathname, href) ||
                       (items?.some((sub) => isNavActive(basePathname, sub.href)) ?? false);
+                    const visibleSubs = (items ?? []).filter((sub) => canSee(sub, permissions));
 
                     return (
                       <SidebarMenuItem key={href}>
@@ -170,9 +244,9 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
                           </a>
                         </SidebarMenuButton>
 
-                        {items?.length ? (
+                        {visibleSubs.length ? (
                           <SidebarMenuSub>
-                            {items.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
+                            {visibleSubs.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
                               <SidebarMenuSubItem key={subHref}>
                                 <SidebarMenuSubButton
                                   asChild
@@ -214,7 +288,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
             </div>
           </header>
           <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
-            <SettingsAuthGate>{children}</SettingsAuthGate>
+            {children}
           </div>
         </SidebarInset>
       </SidebarProvider>

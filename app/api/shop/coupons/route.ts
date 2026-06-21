@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -21,6 +21,9 @@ const CreateCouponSchema = z.object({
 });
 
 export async function GET(req: Request) {
+  const denied = await requireAdmin("discounts");
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const active = searchParams.get("active");
   const page = parseInt(searchParams.get("page") ?? "1", 10);
@@ -44,7 +47,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("discounts");
   if (denied) return denied;
 
   const body = await req.json().catch(() => null);

@@ -2,22 +2,35 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { validateSession, SETTINGS_SESSION_COOKIE } from "@/lib/settings-auth";
 import { syncAllProducts } from "@/lib/ecommerce/inventory-sync";
-import { cookies } from "next/headers";
+import { assertAdmin } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
 
-async function requireAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SETTINGS_SESSION_COOKIE)?.value;
-  const result = validateSession(token);
-  if (!result.valid) throw new Error("Unauthorized");
+function requireAuth() {
+  return assertAdmin("products");
 }
 
 export async function deleteProduct(id: string) {
-  await requireAuth();
+  const actor = await requireAuth();
   const admin = supabaseAdmin();
+
+  const { data: before } = await admin
+    .from("products")
+    .select("id, slug, status, product_type")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await admin.from("products").delete().eq("id", id);
   if (error) throw new Error(error.message);
+
+  await recordAdminAction({
+    actor,
+    action: "product.delete",
+    entityType: "product",
+    entityId: id,
+    before,
+  });
+
   revalidatePath("/settings/products");
   return { ok: true };
 }

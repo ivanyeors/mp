@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -25,7 +25,7 @@ const UpdateVariantSchema = z.object({
 }).partial();
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("products");
   if (denied) return denied;
 
   const { variantId } = await params;
@@ -48,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("products");
   if (denied) return denied;
 
   const { variantId } = await params;

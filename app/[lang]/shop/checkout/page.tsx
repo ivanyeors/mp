@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -24,7 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ShippingMethod, LocalizedShippingContent } from "@/lib/types/ecommerce";
+import type {
+  ShippingMethod,
+  LocalizedShippingContent,
+  CustomerAddress,
+} from "@/lib/types/ecommerce";
+
+const NEW_ADDRESS = "new";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -107,12 +114,44 @@ export default function CheckoutPage() {
   // Order summary collapsible on mobile
   const [summaryOpen, setSummaryOpen] = useState(false);
 
+  // Saved addresses (signed-in shoppers only)
+  const [signedIn, setSignedIn] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>(NEW_ADDRESS);
+  const [saveNewAddress, setSaveNewAddress] = useState(false);
+
   // Redirect if cart is empty
   useEffect(() => {
     if (items.length === 0) {
       router.replace(`/${lang}/shop`);
     }
   }, [items.length, lang, router]);
+
+  // Load the signed-in shopper's saved addresses; preselect the default.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/account/addresses")
+      .then((res) => res.json())
+      .then((data: { signedIn?: boolean; addresses?: CustomerAddress[]; email?: string | null }) => {
+        if (cancelled || !data?.signedIn) return;
+        setSignedIn(true);
+        const addresses = Array.isArray(data.addresses) ? data.addresses : [];
+        setSavedAddresses(addresses);
+        setForm((prev) => ({ ...prev, email: prev.email || data.email || "" }));
+        // Addresses are returned default-first, so the first one is the default.
+        const preferred = addresses[0];
+        if (preferred) {
+          setSelectedAddressId(preferred.id);
+          applyAddress(preferred);
+        }
+      })
+      .catch(() => {
+        /* anonymous checkout — nothing to load */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fetch shipping methods when country changes
   useEffect(() => {
@@ -177,6 +216,30 @@ export default function CheckoutPage() {
     if (!validate()) return;
 
     setSubmitting(true);
+
+    // Optionally persist a newly entered address to the signed-in account.
+    // Best-effort: a failure here must not block checkout.
+    if (signedIn && selectedAddressId === NEW_ADDRESS && saveNewAddress) {
+      try {
+        await fetch("/api/account/addresses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipient: form.recipient,
+            line1: form.line1,
+            line2: form.line2 || undefined,
+            city: form.city,
+            state: form.state || undefined,
+            postal_code: form.postal_code,
+            country: form.country,
+            phone: form.phone || undefined,
+            is_default: savedAddresses.length === 0,
+          }),
+        });
+      } catch {
+        toast.error("Could not save the address, but your order will continue.");
+      }
+    }
 
     try {
       const payload = {
@@ -243,6 +306,40 @@ export default function CheckoutPage() {
     if (errors[key as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [key]: undefined }));
     }
+  }
+
+  // Copy a saved address into the editable form (email is left untouched).
+  function applyAddress(a: CustomerAddress) {
+    setForm((prev) => ({
+      ...prev,
+      phone: a.phone ?? prev.phone,
+      recipient: a.recipient,
+      line1: a.line1,
+      line2: a.line2 ?? "",
+      city: a.city,
+      state: a.state ?? "",
+      postal_code: a.postal_code,
+      country: a.country,
+    }));
+    setErrors({});
+  }
+
+  function handleSelectAddress(id: string) {
+    setSelectedAddressId(id);
+    if (id === NEW_ADDRESS) {
+      setForm((prev) => ({
+        ...prev,
+        recipient: "",
+        line1: "",
+        line2: "",
+        city: "",
+        state: "",
+        postal_code: "",
+      }));
+      return;
+    }
+    const match = savedAddresses.find((a) => a.id === id);
+    if (match) applyAddress(match);
   }
 
   // ---------------------------------------------------------------------------
@@ -423,6 +520,32 @@ export default function CheckoutPage() {
             {/* Shipping address */}
             <section>
               <h2 className="text-lg font-semibold mb-4">Shipping Address</h2>
+
+              {/* Saved addresses (signed-in shoppers) */}
+              {signedIn && savedAddresses.length > 0 && (
+                <div className="mb-4 flex flex-col gap-1.5">
+                  <Label htmlFor="saved_address">Use a saved address</Label>
+                  <Select
+                    value={selectedAddressId}
+                    onValueChange={handleSelectAddress}
+                  >
+                    <SelectTrigger id="saved_address">
+                      <SelectValue placeholder="Select a saved address" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedAddresses.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {(a.label ? `${a.label} — ` : "") +
+                            `${a.recipient}, ${a.line1}, ${a.city}`}
+                          {a.is_default ? " (default)" : ""}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={NEW_ADDRESS}>Enter a new address</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Recipient */}
                 <div className="sm:col-span-2 flex flex-col gap-1.5">
@@ -560,6 +683,17 @@ export default function CheckoutPage() {
                     <p className="text-xs text-destructive">{errors.country}</p>
                   )}
                 </div>
+
+                {/* Save new address to account */}
+                {signedIn && selectedAddressId === NEW_ADDRESS && (
+                  <label className="sm:col-span-2 flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={saveNewAddress}
+                      onCheckedChange={(checked) => setSaveNewAddress(checked === true)}
+                    />
+                    Save this address to my account
+                  </label>
+                )}
               </div>
             </section>
 

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { syncAllProducts } from "@/lib/ecommerce/inventory-sync";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
 export async function POST() {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("inventory");
   if (denied) return denied;
 
   try {

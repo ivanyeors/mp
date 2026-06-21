@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireSettingsAuth } from "@/lib/api-auth";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -32,7 +32,7 @@ const PostBodySchema = z.union([
 
 // POST — link existing response or create new one
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("orders");
   if (denied) return denied;
 
   const { id: orderId } = await ctx.params;
@@ -100,7 +100,7 @@ const DeleteBodySchema = z.object({ response_id: z.string().uuid() });
 
 // DELETE — unlink a response from this order (does not delete the response)
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const denied = await requireSettingsAuth();
+  const denied = await requireAdmin("orders");
   if (denied) return denied;
 
   const { id: orderId } = await ctx.params;
