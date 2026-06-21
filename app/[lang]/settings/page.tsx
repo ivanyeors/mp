@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { usePathname, useRouter } from "next/navigation";
 import { Sun, Moon, Monitor, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
+  const pathname = usePathname() ?? "/";
+  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const [mounted, setMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -90,15 +97,16 @@ export default function SettingsPage() {
       <div className="space-y-3">
         <h2 className="text-sm font-medium">Session</h2>
         <p className="text-muted-foreground text-sm">
-          Logged in via Telegram OTP. Sessions stay active for 3 days per device.
+          Signed in with your staff account. Sign out to end this session on this device.
         </p>
         <Button
           variant="outline"
           onClick={async () => {
             try {
               setLoggingOut(true);
-              await fetch("/api/auth/settings-otp/logout", { method: "POST" });
-              window.location.reload();
+              const supabase = createSupabaseBrowserClient();
+              await supabase.auth.signOut();
+              router.replace(withLocale("/settings/login", locale));
             } finally {
               setLoggingOut(false);
             }

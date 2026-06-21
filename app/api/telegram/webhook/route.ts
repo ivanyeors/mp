@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { currentOtp } from '@/lib/settings-auth'
 import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/[lang]/settings/inventory/actions'
 
 export const runtime = 'nodejs'
@@ -101,7 +100,6 @@ function helpText(): string {
   return [
     'Commands:',
     '/help – show this help',
-    '/otp – generate OTP for work.mpillow.com',
     '/stock – interactive stock and actions',
     '/in – interactive stock-in (parts)',
     '/out – interactive stock-out/sell',
@@ -225,12 +223,6 @@ async function handleCommand(chatId: number, text: string) {
   try {
     if (name === '/help' || name === '/start') {
       await sendTelegramMessage(chatId, helpText())
-      return
-    }
-
-    if (name === '/otp') {
-      const { code } = currentOtp()
-      await sendTelegramMessage(chatId, String(code))
       return
     }
 

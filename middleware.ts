@@ -4,6 +4,15 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { refreshSupabaseSession } from "@/lib/supabase/middleware";
 
 const CURRENCY_COOKIE = "mp_currency";
+// Retired shared-OTP admin session cookie (#39). Cleared on next navigation so
+// any previously-issued shared session cannot linger in browsers.
+const LEGACY_SETTINGS_SESSION_COOKIE = "mp_settings_session";
+
+function clearLegacySettingsSession(request: NextRequest, response: NextResponse) {
+  if (request.cookies.get(LEGACY_SETTINGS_SESSION_COOKIE)) {
+    response.cookies.set(LEGACY_SETTINGS_SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+  }
+}
 
 function detectCurrencyFromAcceptLanguage(headerValue: string): string | null {
   const lowered = headerValue.toLowerCase();
@@ -44,6 +53,7 @@ export async function middleware(request: NextRequest) {
   // If the URL already has a locale, keep it and ensure cookie matches.
   if (pathLocale) {
     const res = NextResponse.next();
+    clearLegacySettingsSession(request, res);
     const existing = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
     if (existing !== pathLocale) {
       res.cookies.set(LOCALE_COOKIE_NAME, pathLocale, {
@@ -78,6 +88,7 @@ export async function middleware(request: NextRequest) {
   url.pathname = withLocale(pathname, preferredLocale);
 
   const res = NextResponse.redirect(url);
+  clearLegacySettingsSession(request, res);
   res.cookies.set(LOCALE_COOKIE_NAME, preferredLocale, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,

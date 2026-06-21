@@ -48,6 +48,27 @@ describe("role → permission matrix", () => {
       }
     }
   });
+
+  // Cutover guarantee (#39): authorization is decided solely by the role →
+  // permission matrix. There is no fallback role, wildcard, or shared-secret
+  // path that yields access outside the matrix.
+  it("grants nothing to a role that is not in the matrix", () => {
+    const unknownRole = "intruder" as AdminRole;
+    expect(permissionsForRole(unknownRole)).toEqual([]);
+    for (const perm of ADMIN_PERMISSIONS) {
+      expect(roleHasPermission(unknownRole, perm)).toBe(false);
+    }
+  });
+
+  it("only owner and admin hold the privileged audit-log and staff permissions", () => {
+    const privileged: Permission[] = ["staff", "audit-log", "api-configs"];
+    for (const perm of privileged) {
+      const granted = (Object.keys(ROLE_PERMISSIONS) as AdminRole[]).filter((role) =>
+        roleHasPermission(role, perm),
+      );
+      expect(granted.sort()).toEqual(["admin", "owner"]);
+    }
+  });
 });
 
 describe("first-admin bootstrap allowlist", () => {
