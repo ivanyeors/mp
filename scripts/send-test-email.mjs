@@ -8,6 +8,8 @@ import { JWT } from "google-auth-library";
 const clientEmail = process.env.GMAIL_CLIENT_EMAIL;
 const privateKey = process.env.GMAIL_PRIVATE_KEY?.replace(/\\n/g, "\n");
 const sender = process.env.TEST_SENDER || process.env.GMAIL_SENDER;
+// From header mirrors getDefaultFromAddress(): EMAIL_FROM falls back to the sender.
+const from = process.env.EMAIL_FROM || sender;
 const to = process.argv[2] || sender;
 
 if (!clientEmail || !privateKey || !sender) {
@@ -24,13 +26,13 @@ const jwt = new JWT({
 
 function buildRaw() {
   const mime = [
-    `From: ${sender}`,
+    `From: ${from}`,
     `To: ${to}`,
     "Subject: mpillow Gmail delegation test",
     "MIME-Version: 1.0",
     "Content-Type: text/plain; charset=UTF-8",
     "",
-    `Delegation works. Sent as ${sender} at ${new Date().toISOString()}.`,
+    `Impersonated ${sender}; From header set to ${from} at ${new Date().toISOString()}.`,
   ].join("\r\n");
   return Buffer.from(mime, "utf8").toString("base64url");
 }
@@ -38,7 +40,7 @@ function buildRaw() {
 try {
   const { token } = await jwt.getAccessToken();
   if (!token) throw new Error("No access token returned");
-  console.log("Token minted for", sender);
+  console.log("Impersonating:", sender, "| From header:", from);
 
   const res = await fetch(
     "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
