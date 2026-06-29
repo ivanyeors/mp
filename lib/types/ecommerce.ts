@@ -104,6 +104,7 @@ export interface ProductVariant {
   stripe_price_id: string | null;
   item_id: number | null;
   pillow_product_id: number | null;
+  price_key: string | null;
   shopify_variant_id: number | null;
   created_at: string;
   updated_at: string;

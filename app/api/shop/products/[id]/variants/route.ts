@@ -50,13 +50,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const admin = supabaseAdmin();
 
-  // Auto-calculate position
-  const { count } = await admin
-    .from("product_variants")
-    .select("*", { count: "exact", head: true })
-    .eq("product_id", id);
+  const [{ count }, { data: product }] = await Promise.all([
+    admin.from("product_variants").select("*", { count: "exact", head: true }).eq("product_id", id),
+    admin.from("products").select("is_auto_generated").eq("id", id).single(),
+  ]);
 
-  const row = { ...parsed.data, product_id: id, position: parsed.data.position || (count ?? 0) };
+  const variantData = { ...parsed.data };
+  // Price is managed by price-sync for auto-generated products; ignore client value.
+  if (product?.is_auto_generated) variantData.price = 0;
+
+  const row = { ...variantData, product_id: id, position: variantData.position || (count ?? 0) };
 
   const { data, error } = await admin.from("product_variants").insert(row).select("*").single();
   if (error) {

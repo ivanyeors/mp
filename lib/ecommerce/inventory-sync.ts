@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
 
 interface SyncResult {
   pillows: { created: number; updated: number };
@@ -130,7 +131,7 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
           title: `Size ${pp.size}`,
           sku: `${slug}-${pp.size}`.toUpperCase(),
           option1: pp.size,
-          price: 0, // To be set by admin
+          price: 0,
           currency: "SGD",
           track_inventory: true,
           is_active: true,
@@ -138,6 +139,8 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
         });
       }
     }
+    // Populate price from costings if available (no-op when costings not yet set).
+    await syncVariantPricesFromCostings(productId).catch(() => {});
   }
 
   return { created, updated };
@@ -259,6 +262,7 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
         title: `${variant.charAt(0).toUpperCase() + variant.slice(1)}`,
         sku: `MBOLSTER-${variant.toUpperCase()}`,
         option1: variant,
+        price_key: `product:bolster:${variant}`,
         price: 0,
         currency: "SGD",
         track_inventory: true,
@@ -267,6 +271,8 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
       });
     }
   }
+  // Populate price from costings if available (no-op when costings not yet set).
+  await syncVariantPricesFromCostings(productId).catch(() => {});
 
   return { created, updated };
 }

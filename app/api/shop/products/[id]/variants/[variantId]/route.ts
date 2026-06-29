@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 
 export const runtime = "nodejs";
 
@@ -28,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const denied = await requireAdmin("products");
   if (denied) return denied;
 
-  const { variantId } = await params;
+  const { id, variantId } = await params;
   const body = await req.json().catch(() => null);
   const parsed = UpdateVariantSchema.safeParse(body);
   if (!parsed.success) {
@@ -36,15 +37,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   const admin = supabaseAdmin();
+
+  // Price is managed by price-sync for auto-generated products; strip to prevent drift.
+  const { data: product } = await admin.from("products").select("is_auto_generated").eq("id", id).single();
+  const update = { ...parsed.data };
+  if (product?.is_auto_generated) {
+    delete update.price;
+    delete update.cost_price;
+  }
+
   const { data, error } = await admin
     .from("product_variants")
-    .update(parsed.data)
+    .update(update)
     .eq("id", variantId)
     .select("*")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, row: data });
+
+  // Re-push to Stripe on price/active edits so checkout charges the new amount.
+  // syncProductToStripe archives the old immutable Price and creates a new one.
+  const stripe =
+    data.price > 0 && data.is_active !== false
+      ? await syncProductToStripeSafe(id)
+      : undefined;
+
+  const freshPriceId = stripe?.result?.variants.find((v) => v.id === variantId)?.stripe_price_id;
+  const row = freshPriceId ? { ...data, stripe_price_id: freshPriceId } : data;
+
+  return NextResponse.json({
+    ok: true,
+    row,
+    stripe: stripe && { synced: stripe.synced, error: stripe.error },
+  });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string; variantId: string }> }) {
