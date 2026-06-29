@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag,
-  FolderTree, ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
+  ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
   ShieldCheck, ScrollText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -70,55 +70,22 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Store",
-    items: [
-      {
-        href: "/settings/products",
-        label: "Products",
-        tooltip: "Product Management",
-        Icon: ShoppingBag,
-        perm: "products",
-        items: [
-          { href: "/settings/categories", label: "Categories", tooltip: "Product Categories", Icon: FolderTree, perm: "categories" },
-        ],
-      },
-      {
-        href: "/settings/orders",
-        label: "Orders",
-        tooltip: "Order Management",
-        Icon: ShoppingCart,
-        perm: "orders",
-        items: [
-          { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList, perm: "results" },
-          { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle, perm: "customers" },
-        ],
-      },
-      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag, perm: "discounts" },
-      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck, perm: "shipping" },
-    ],
-  },
-  {
     label: "Inventory",
     items: [
-      {
-        href: "/settings/inventory",
-        label: "Inventory",
-        tooltip: "Inventory",
-        Icon: Boxes,
-        perm: "inventory",
-        items: [
-          { href: "/settings/inventory/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store, perm: "inventory" },
-          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
-        ],
-      },
+      { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes, perm: "inventory" },
       { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign, perm: "costings" },
+      { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
     ],
   },
   {
-    label: "Insights",
+    label: "Store",
     items: [
-      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp, perm: "analytics" },
-      { href: "/settings/audit-log", label: "Audit Log", tooltip: "Admin audit log", Icon: ScrollText, perm: "audit-log" },
+      { href: "/settings/products", label: "Products", tooltip: "Product Management", Icon: ShoppingBag, perm: "products" },
+      { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle, perm: "customers" },
+      { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList, perm: "results" },
+      { href: "/settings/orders", label: "Orders", tooltip: "Order Management", Icon: ShoppingCart, perm: "orders" },
+      { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag, perm: "discounts" },
+      { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck, perm: "shipping" },
     ],
   },
   {
@@ -129,11 +96,43 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image, perm: "media" },
     ],
   },
+  {
+    label: "Insights",
+    items: [
+      { href: "/settings/analytics", label: "Analytics", tooltip: "Analytics", Icon: TrendingUp, perm: "analytics" },
+      { href: "/settings/audit-log", label: "Audit Log", tooltip: "Admin audit log", Icon: ScrollText, perm: "audit-log" },
+    ],
+  },
+  {
+    label: "Integration",
+    items: [
+      { href: "/settings/integrations/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store, perm: "inventory" },
+    ],
+  },
 ];
 
 function isNavActive(basePathname: string, href: string): boolean {
   if (href === "/settings") return basePathname === "/settings";
   return basePathname === href || basePathname.startsWith(`${href}/`);
+}
+
+/**
+ * The active entry is the one whose href is the *longest* prefix of the current
+ * path. Needed because flat siblings can share a prefix (e.g. `/settings/inventory`
+ * and `/settings/inventory/configure`) — startsWith alone would light up both.
+ */
+function findActiveHref(basePathname: string, groups: NavGroup[]): string | null {
+  let best: string | null = null;
+  for (const group of groups) {
+    for (const item of group.items) {
+      for (const href of [item.href, ...(item.items ?? []).map((s) => s.href)]) {
+        if (isNavActive(basePathname, href) && href.length > (best?.length ?? -1)) {
+          best = href;
+        }
+      }
+    }
+  }
+  return best;
 }
 
 /** An item is visible when its permission is granted (or it requires none). */
@@ -213,6 +212,8 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
     }))
     .filter((group) => group.items.length > 0);
 
+  const activeHref = findActiveHref(basePathname, NAV_GROUPS);
+
   const segments = basePathname.split("/").filter(Boolean);
   const last = segments[segments.length - 1] ?? "settings";
   const pageTitle = last === "settings"
@@ -231,8 +232,8 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
                 <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
                 <SidebarMenu>
                   {group.items.map(({ href, label, tooltip, Icon, items }) => {
-                    const isActive = isNavActive(basePathname, href) ||
-                      (items?.some((sub) => isNavActive(basePathname, sub.href)) ?? false);
+                    const isActive = activeHref === href ||
+                      (items?.some((sub) => sub.href === activeHref) ?? false);
                     const visibleSubs = (items ?? []).filter((sub) => canSee(sub, permissions));
 
                     return (
@@ -250,7 +251,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
                               <SidebarMenuSubItem key={subHref}>
                                 <SidebarMenuSubButton
                                   asChild
-                                  isActive={isNavActive(basePathname, subHref)}
+                                  isActive={activeHref === subHref}
                                 >
                                   <a href={to(subHref)} title={subTooltip}>
                                     <SubIcon />

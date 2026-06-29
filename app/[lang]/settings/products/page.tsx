@@ -34,9 +34,10 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
-// Tabs removed — unified product list with type filter
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { CategoriesManager } from "./categories-manager";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -624,65 +625,78 @@ export default function SettingsProductsPage() {
                 </p>
             </div>
 
-            {/* Actions bar */}
-            <div className="flex items-center justify-between gap-3">
-                <div className="flex gap-2">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={syncFromInventory}
-                        disabled={syncing}
-                    >
-                        {syncing ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                        )}
-                        Sync from Inventory
-                    </Button>
-                </div>
-                <Button asChild size="sm">
-                    <Link href={to("/settings/products/new?type=accessory")}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Product
-                    </Link>
-                </Button>
-            </div>
+            <Tabs defaultValue="products">
+                <TabsList>
+                    <TabsTrigger value="products">Products</TabsTrigger>
+                    <TabsTrigger value="categories">Categories</TabsTrigger>
+                </TabsList>
 
-            {renderToolbar()}
+                <TabsContent value="products" className="mt-6 space-y-6">
+                    {/* Actions bar */}
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={syncFromInventory}
+                                disabled={syncing}
+                            >
+                                {syncing ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                )}
+                                Sync from Inventory
+                            </Button>
+                        </div>
+                        <Button asChild size="sm">
+                            <Link href={to("/settings/products/new?type=accessory")}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Product
+                            </Link>
+                        </Button>
+                    </div>
 
-            {/* Bulk actions bar */}
-            {selected.size > 0 && (
-                <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5">
-                    <span className="text-sm font-medium text-destructive">
-                        {selected.size} selected
-                    </span>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={bulkDelete}
-                        disabled={deleting}
-                    >
-                        {deleting ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                            <Trash2 className="mr-2 h-4 w-4" />
-                        )}
-                        Delete selected
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelected(new Set())}
-                        disabled={deleting}
-                    >
-                        Clear
-                    </Button>
-                </div>
-            )}
+                    {renderToolbar()}
 
-            {renderProductTable()}
-            {renderPagination()}
+                    {/* Bulk actions bar */}
+                    {selected.size > 0 && (
+                        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5">
+                            <span className="text-sm font-medium text-destructive">
+                                {selected.size} selected
+                            </span>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={bulkDelete}
+                                disabled={deleting}
+                            >
+                                {deleting ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                )}
+                                Delete selected
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelected(new Set())}
+                                disabled={deleting}
+                            >
+                                Clear
+                            </Button>
+                        </div>
+                    )}
+
+                    {renderProductTable()}
+                    {renderPagination()}
+                </TabsContent>
+
+                <TabsContent value="categories" className="mt-6">
+                    <CategoriesManager />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }
