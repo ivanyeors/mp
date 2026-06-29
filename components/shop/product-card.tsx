@@ -38,7 +38,7 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
 
   const isOutOfStock =
     activeVariants.length > 0 &&
-    activeVariants.every((v) => v.stock_quantity <= 0);
+    activeVariants.every((v) => (v.stock_available ?? 0) <= 0);
 
   const hasSale = activeVariants.some(
     (v) => v.compare_at_price != null && v.compare_at_price > v.price

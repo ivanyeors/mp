@@ -17,6 +17,8 @@ interface CartItemRowProps {
   onQuantityChange: (quantity: number) => void;
   onNavigate?: () => void;
   variant?: CartVariant;
+  /** Live availability cap for this variant (omitted = no cap, e.g. customized items). */
+  maxQuantity?: number;
 }
 
 export function CartItemRow({
@@ -27,6 +29,7 @@ export function CartItemRow({
   onQuantityChange,
   onNavigate,
   variant = "popover",
+  maxQuantity,
 }: CartItemRowProps) {
   const isPage = variant === "page";
   const thumbnailSize = isPage ? "w-20 h-20" : "w-16 h-16";
@@ -34,6 +37,9 @@ export function CartItemRow({
     ? "shrink-0 p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
     : "shrink-0 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors";
   const trashIconClass = isPage ? "size-5" : "size-4";
+
+  const isSoldOut = maxQuantity != null && maxQuantity <= 0;
+  const overLimit = maxQuantity != null && item.quantity > maxQuantity;
 
   return (
     <motion.div
@@ -86,11 +92,20 @@ export function CartItemRow({
           </button>
         </div>
 
+        {(isSoldOut || overLimit) && (
+          <p className="text-xs font-medium text-destructive">
+            {isSoldOut
+              ? "Out of stock"
+              : `Only ${maxQuantity} available`}
+          </p>
+        )}
+
         <div className="flex items-center justify-between mt-auto">
           <QuantitySelector
             value={item.quantity}
             onChange={onQuantityChange}
             min={1}
+            max={maxQuantity}
             className={isPage ? "h-10" : "h-8"}
           />
           <div className="text-right">

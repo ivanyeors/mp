@@ -118,7 +118,7 @@ export function VariantSelector({
               const isAvailable = matchingVariants.length > 0;
               const isOutOfStock =
                 isAvailable &&
-                matchingVariants.every((v) => v.stock_quantity <= 0);
+                matchingVariants.every((v) => (v.stock_available ?? 0) <= 0);
 
               function handleClick() {
                 const best = findBestVariant(
@@ -135,7 +135,7 @@ export function VariantSelector({
                   key={value}
                   type="button"
                   onClick={handleClick}
-                  disabled={!isAvailable}
+                  disabled={!isAvailable || isOutOfStock}
                   aria-pressed={isSelected}
                   title={isOutOfStock ? "Out of stock" : undefined}
                   className={cn(

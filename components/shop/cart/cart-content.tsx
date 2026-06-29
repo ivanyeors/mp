@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import type { CartItemClient } from "@/lib/types/ecommerce";
 import type { Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
+import { useCartStock } from "@/lib/shop/use-cart-stock";
 import { Button } from "@/components/ui/button";
 import type { CartMessages, CartVariant } from "./cart-types";
 import { CartEmptyState } from "./cart-empty-state";
@@ -47,6 +49,31 @@ export function CartContent({
   const currency = items[0]?.currency ?? "SGD";
   const handleNavigate = onClose;
 
+  // Live availability for standard items; customized items are validated against
+  // their component BOM at checkout, so they are not capped here.
+  const standardVariantIds = items
+    .filter((i) => !i.customizationId)
+    .map((i) => i.variantId);
+  const { stock } = useCartStock(standardVariantIds);
+
+  const maxFor = (item: CartItemClient): number | undefined =>
+    item.customizationId ? undefined : stock[item.variantId];
+
+  useEffect(() => {
+    for (const item of items) {
+      const max = maxFor(item);
+      if (max != null && max > 0 && item.quantity > max) {
+        updateQuantity(item.variantId, max, item.customizationId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stock]);
+
+  const hasShortage = items.some((item) => {
+    const max = maxFor(item);
+    return max != null && (max <= 0 || item.quantity > max);
+  });
+
   return (
     <AnimatePresence mode="wait">
       {items.length === 0 ? (
@@ -81,6 +108,7 @@ export function CartContent({
                   }
                   onNavigate={handleNavigate}
                   variant={variant}
+                  maxQuantity={maxFor(item)}
                 />
               ))}
             </AnimatePresence>
@@ -94,11 +122,22 @@ export function CartContent({
               messages={messages}
             />
             <CartSummary subtotal={subtotal} currency={currency} messages={messages} />
-            <Button asChild className="w-full" size="lg">
-              <Link href={checkoutHref} onClick={handleNavigate}>
+            {hasShortage && (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                Some items exceed available stock. Adjust quantities to continue.
+              </p>
+            )}
+            {hasShortage ? (
+              <Button className="w-full" size="lg" disabled>
                 {messages.proceedToCheckout}
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button asChild className="w-full" size="lg">
+                <Link href={checkoutHref} onClick={handleNavigate}>
+                  {messages.proceedToCheckout}
+                </Link>
+              </Button>
+            )}
             {onClose ? (
               <button
                 type="button"

@@ -373,17 +373,20 @@ export function CustomizationStepComponents({
           <div className="space-y-2">
             {components.covers.map((cover) => {
               const isSelected = selectedCover === cover.item_id;
+              const isSoldOut = cover.stock_available <= 0;
               return (
                 <button
                   key={cover.item_id}
                   type="button"
+                  disabled={isSoldOut}
                   onClick={() => onSelectCover(cover.item_id)}
                   className={cn(
                     "w-full flex items-center justify-between rounded-lg border-2 p-3 transition-all",
                     "hover:border-primary/50",
                     isSelected
                       ? "border-primary bg-primary/5"
-                      : "border-border"
+                      : "border-border",
+                    isSoldOut && "opacity-50 cursor-not-allowed hover:border-border"
                   )}
                 >
                   <div className="text-left">
@@ -395,11 +398,15 @@ export function CustomizationStepComponents({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {cover.stock_available <= 5 && cover.stock_available > 0 && (
+                    {isSoldOut ? (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Sold out
+                      </Badge>
+                    ) : cover.stock_available <= 5 ? (
                       <Badge variant="outline" className="text-xs text-amber-600">
                         Low stock
                       </Badge>
-                    )}
+                    ) : null}
                     {isSelected && (
                       <Check className="size-4 text-primary shrink-0" />
                     )}
@@ -418,17 +425,20 @@ export function CustomizationStepComponents({
           <div className="space-y-2">
             {components.cases.map((caseItem) => {
               const isSelected = selectedCase === caseItem.item_id;
+              const isSoldOut = caseItem.stock_available <= 0;
               return (
                 <button
                   key={caseItem.item_id}
                   type="button"
+                  disabled={isSoldOut}
                   onClick={() => onSelectCase(caseItem.item_id)}
                   className={cn(
                     "w-full flex items-center justify-between rounded-lg border-2 p-3 transition-all",
                     "hover:border-primary/50",
                     isSelected
                       ? "border-primary bg-primary/5"
-                      : "border-border"
+                      : "border-border",
+                    isSoldOut && "opacity-50 cursor-not-allowed hover:border-border"
                   )}
                 >
                   <div className="text-left">
@@ -440,15 +450,15 @@ export function CustomizationStepComponents({
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    {caseItem.stock_available <= 5 &&
-                      caseItem.stock_available > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs text-amber-600"
-                        >
-                          Low stock
-                        </Badge>
-                      )}
+                    {isSoldOut ? (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Sold out
+                      </Badge>
+                    ) : caseItem.stock_available <= 5 ? (
+                      <Badge variant="outline" className="text-xs text-amber-600">
+                        Low stock
+                      </Badge>
+                    ) : null}
                     {isSelected && (
                       <Check className="size-4 text-primary shrink-0" />
                     )}

@@ -2,6 +2,39 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Product, ProductVariant, ProductImage, ProductOption } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 
+/**
+ * Attach live `stock_available` (from the variant_stock view) onto each variant
+ * of the given products. This is the single availability truth the storefront
+ * gates on — pillow buildable, bolster buildable, item on-hand, or infinite for
+ * untracked variants. Mutates and returns the same products for convenience.
+ */
+async function attachStockAvailable<
+  T extends { product_variants?: { id: string; stock_available?: number }[] }
+>(products: T[]): Promise<T[]> {
+  const variantIds = products.flatMap((p) => (p.product_variants ?? []).map((v) => v.id));
+  if (variantIds.length === 0) return products;
+
+  const admin = supabaseAdmin();
+  const { data: stockRows } = await admin
+    .from("variant_stock")
+    .select("variant_id, stock_available")
+    .in("variant_id", variantIds);
+
+  const stockMap = new Map<string, number>(
+    (stockRows ?? []).map((r: { variant_id: string; stock_available: number }) => [
+      r.variant_id,
+      r.stock_available,
+    ])
+  );
+
+  for (const p of products) {
+    for (const v of p.product_variants ?? []) {
+      v.stock_available = stockMap.get(v.id) ?? 0;
+    }
+  }
+  return products;
+}
+
 export interface GetProductsOpts {
   status?: string;
   category_id?: string;
@@ -63,6 +96,8 @@ export async function getProducts(opts: GetProductsOpts = {}) {
     products = products.filter((p) => productIds.has(p.id));
   }
 
+  await attachStockAvailable(products);
+
   return {
     products: products.map((p) => ({
       ...p,
@@ -89,6 +124,7 @@ export async function getProductBySlug(slug: string) {
     product_images: ProductImage[];
     product_options: ProductOption[];
   };
+  await attachStockAvailable([row]);
   return {
     ...row,
     variants: (row.product_variants ?? []).sort((a, b) => a.position - b.position),
@@ -111,6 +147,7 @@ export async function getProductById(id: string) {
     product_images: ProductImage[];
     product_options: ProductOption[];
   };
+  await attachStockAvailable([row]);
   return {
     ...row,
     variants: (row.product_variants ?? []).sort((a, b) => a.position - b.position),
@@ -130,7 +167,12 @@ export async function getFeaturedProducts(limit = 8) {
     .limit(limit);
 
   if (error) return [];
-  return (data ?? []).map((p: Product & { product_variants: ProductVariant[]; product_images: ProductImage[] }) => ({
+  const rows = (data ?? []) as (Product & {
+    product_variants: ProductVariant[];
+    product_images: ProductImage[];
+  })[];
+  await attachStockAvailable(rows);
+  return rows.map((p) => ({
     ...p,
     variants: p.product_variants ?? [],
     images: p.product_images ?? [],

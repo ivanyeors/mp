@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { AnimatePresence } from "motion/react";
 import { useCart } from "@/lib/shop/cart-context";
+import { useCartStock } from "@/lib/shop/use-cart-stock";
 import type { CartMessages } from "@/components/shop/cart/cart-types";
 import type { Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
@@ -33,6 +35,33 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
   const shopHref = withLocale("/shop", locale);
   const checkoutHref = withLocale("/shop/checkout", locale);
   const currency = items[0]?.currency ?? "SGD";
+
+  // Live availability for standard (non-customized) items. Customized items are
+  // validated against their component BOM at checkout, so they are not capped here.
+  const standardVariantIds = items
+    .filter((i) => !i.customizationId)
+    .map((i) => i.variantId);
+  const { stock } = useCartStock(standardVariantIds);
+
+  const maxFor = (item: (typeof items)[number]): number | undefined =>
+    item.customizationId ? undefined : stock[item.variantId];
+
+  // Auto-clamp any quantity that now exceeds live availability (stock may have
+  // dropped after the item was added to the cart).
+  useEffect(() => {
+    for (const item of items) {
+      const max = maxFor(item);
+      if (max != null && max > 0 && item.quantity > max) {
+        updateQuantity(item.variantId, max, item.customizationId);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stock]);
+
+  const hasShortage = items.some((item) => {
+    const max = maxFor(item);
+    return max != null && (max <= 0 || item.quantity > max);
+  });
 
   if (!hydrated) {
     return (
@@ -74,6 +103,7 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
                 updateQuantity(item.variantId, qty, item.customizationId)
               }
               variant="page"
+              maxQuantity={maxFor(item)}
             />
           ))}
         </AnimatePresence>
@@ -88,12 +118,24 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
         />
       </div>
 
+      {hasShortage && (
+        <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Some items exceed available stock. Adjust the quantities to continue.
+        </p>
+      )}
+
       {/* Desktop inline footer */}
       <div className="mt-6 hidden flex-col gap-3 md:flex">
         <CartSummary subtotal={subtotal} currency={currency} messages={messages} />
-        <Button asChild className="w-full max-w-sm" size="lg">
-          <Link href={checkoutHref}>{messages.proceedToCheckout}</Link>
-        </Button>
+        {hasShortage ? (
+          <Button className="w-full max-w-sm" size="lg" disabled>
+            {messages.proceedToCheckout}
+          </Button>
+        ) : (
+          <Button asChild className="w-full max-w-sm" size="lg">
+            <Link href={checkoutHref}>{messages.proceedToCheckout}</Link>
+          </Button>
+        )}
         <Button asChild variant="link" className="w-fit text-sm">
           <Link href={shopHref}>{messages.continueShopping}</Link>
         </Button>
@@ -103,9 +145,15 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
         <div className="mx-auto max-w-7xl px-4 py-3 pb-[calc(var(--mobile-bottom-clearance)+env(safe-area-inset-bottom,0px))]">
           <CartSummary subtotal={subtotal} currency={currency} messages={messages} />
-          <Button asChild className="mt-3 w-full" size="lg">
-            <Link href={checkoutHref}>{messages.proceedToCheckout}</Link>
-          </Button>
+          {hasShortage ? (
+            <Button className="mt-3 w-full" size="lg" disabled>
+              {messages.proceedToCheckout}
+            </Button>
+          ) : (
+            <Button asChild className="mt-3 w-full" size="lg">
+              <Link href={checkoutHref}>{messages.proceedToCheckout}</Link>
+            </Button>
+          )}
         </div>
       </div>
     </div>

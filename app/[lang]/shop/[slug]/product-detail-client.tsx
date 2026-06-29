@@ -74,7 +74,7 @@ function getDefaultVariant(product: Product): ProductVariant | null {
 function getStockStatus(variant: ProductVariant | null): "in_stock" | "low_stock" | "out_of_stock" {
   if (!variant) return "out_of_stock";
   if (!variant.track_inventory) return "in_stock";
-  const qty = variant.stock_available ?? variant.stock_quantity ?? 0;
+  const qty = variant.stock_available ?? 0;
   if (qty <= 0) return "out_of_stock";
   if (qty < 10) return "low_stock";
   return "in_stock";
@@ -332,7 +332,7 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
                   min={1}
                   max={
                     selectedVariant?.track_inventory
-                      ? (selectedVariant.stock_available ?? selectedVariant.stock_quantity ?? 99)
+                      ? (selectedVariant.stock_available ?? 99)
                       : 99
                   }
                 />
