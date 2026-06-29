@@ -41,6 +41,7 @@ import type {
     Product, ProductVariant, ProductImage, ProductCategory,
     LocalizedProductContent, ProductStatus, ProductType,
 } from "@/lib/types/ecommerce";
+import { formatCurrency } from "@/lib/i18n/currencies";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function slugify(str: string): string {
 }
 
 function formatPrice(val: number, currency = "SGD"): string {
-    return new Intl.NumberFormat("en-SG", { style: "currency", currency }).format(val);
+    return formatCurrency(val, currency);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { formatCurrency } from "@/lib/i18n/currencies";
 import type {
   EmailTemplateName,
   OrderEmailAddress,
@@ -14,11 +15,7 @@ import type {
 
 function formatMoney(amount: number, currency: string): string {
   try {
-    return new Intl.NumberFormat("en-SG", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
+    return formatCurrency(amount, currency);
   } catch {
     return `${currency} ${amount.toFixed(2)}`;
   }

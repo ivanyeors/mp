@@ -270,7 +270,7 @@ export async function POST(req: Request) {
           variant: row.kind === "bolster" ? row.variant! : null,
           msrp: toDecimalString(row.msrpCents),
           compare_at_price: toDecimalString(row.compareAtCents ?? null),
-          currency: "USD",
+          currency: "SGD",
         }));
       if (productUpserts.length > 0) {
         const { error } = await admin.from("product_prices").upsert(productUpserts, { onConflict: "key" });

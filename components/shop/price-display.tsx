@@ -2,7 +2,7 @@
 
 import { useContext } from "react";
 import { cn } from "@/lib/utils";
-import { CURRENCY_CONFIG, BASE_CURRENCY, type SupportedCurrency } from "@/lib/i18n/currencies";
+import { BASE_CURRENCY, formatCurrency } from "@/lib/i18n/currencies";
 
 // We import the context directly to avoid a hard dependency — PriceDisplay
 // can work without the CurrencyProvider (falls back to base currency formatting).
@@ -18,15 +18,8 @@ interface PriceDisplayProps {
   skipConversion?: boolean;
 }
 
-function formatAmount(amount: number, currency: string, locale?: string): string {
-  const config = CURRENCY_CONFIG[currency as SupportedCurrency];
-  const resolvedLocale = locale ?? config?.locale ?? "en-SG";
-  return new Intl.NumberFormat(resolvedLocale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: config?.decimals ?? 2,
-    maximumFractionDigits: config?.decimals ?? 2,
-  }).format(amount);
+function formatAmount(amount: number, currency: string): string {
+  return formatCurrency(amount, currency);
 }
 
 function useCurrencySafe() {

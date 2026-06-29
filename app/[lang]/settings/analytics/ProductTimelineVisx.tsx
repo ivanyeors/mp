@@ -208,8 +208,8 @@ function Chart({
   };
 
   const currencyFormatter = useMemo(() => {
-    const cur = (currency ?? "USD").toUpperCase();
-    return new Intl.NumberFormat("en-US", {
+    const cur = (currency ?? "SGD").toUpperCase();
+    return new Intl.NumberFormat("en-SG", {
       style: "currency",
       currency: cur,
       maximumFractionDigits: 0,

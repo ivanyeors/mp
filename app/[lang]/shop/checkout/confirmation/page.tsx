@@ -8,18 +8,7 @@ import { CheckCircle, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Order } from "@/lib/types/ecommerce";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatPrice(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-SG", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
+import { formatCurrency as formatPrice } from "@/lib/i18n/currencies";
 
 // ---------------------------------------------------------------------------
 // Confirmation Page

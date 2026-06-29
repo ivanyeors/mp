@@ -98,9 +98,9 @@ const estimateLabelWidth = (labels: string[], fontSize: number) => {
 
 const formatCompactCurrency = (() => {
   try {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-SG", {
       style: "currency",
-      currency: "USD",
+      currency: "SGD",
       notation: "compact",
       maximumFractionDigits: 1,
     });

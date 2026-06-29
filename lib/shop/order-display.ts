@@ -1,4 +1,5 @@
 import type { OrderStatus } from "@/lib/types/ecommerce";
+import { formatCurrency } from "@/lib/i18n/currencies";
 
 /**
  * Presentation helpers shared by the customer-facing order pages
@@ -45,11 +46,7 @@ export function orderStatusBadgeClass(status: OrderStatus): string {
 
 /** Currency-aware money formatting consistent across the storefront. */
 export function formatOrderPrice(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-SG", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
+  return formatCurrency(amount, currency);
 }
 
 /** Compact date for order timestamps. */

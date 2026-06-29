@@ -31,6 +31,9 @@ import {
 } from "@/components/ui/select";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
+
+const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,17 +101,17 @@ function buildSummary(form: CouponForm): string {
     if (form.discount_type === "percentage") {
         parts.push(`${value}% off`);
     } else if (form.discount_type === "fixed_amount") {
-        parts.push(`RM ${value.toFixed(2)} off`);
+        parts.push(`${formatCurrency(value, form.currency)} off`);
     } else {
         parts.push("Free shipping");
     }
 
     if (minOrder > 0) {
-        parts[0] += ` orders over RM ${minOrder.toFixed(2)}`;
+        parts[0] += ` orders over ${formatCurrency(minOrder, form.currency)}`;
     }
 
     if (form.discount_type === "percentage" && maxDiscount > 0) {
-        parts.push(`max RM ${maxDiscount.toFixed(2)} discount`);
+        parts.push(`max ${formatCurrency(maxDiscount, form.currency)} discount`);
     }
 
     const usageLimit = parseInt(form.usage_limit) || 0;
@@ -260,7 +263,7 @@ export default function DiscountEditorPage() {
         form.discount_type === "percentage"
             ? "Percentage (%)"
             : form.discount_type === "fixed_amount"
-            ? "Amount (RM)"
+            ? `Amount (${CURRENCY_SYMBOL})`
             : "Value";
 
     if (loading) {
@@ -396,25 +399,6 @@ export default function DiscountEditorPage() {
                                 </div>
                             )}
 
-                            {/* Currency (fixed_amount only) */}
-                            {form.discount_type === "fixed_amount" && (
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="currency">Currency</Label>
-                                    <Select
-                                        value={form.currency}
-                                        onValueChange={(v) => set("currency", v)}
-                                    >
-                                        <SelectTrigger id="currency">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="MYR">MYR – Malaysian Ringgit</SelectItem>
-                                            <SelectItem value="SGD">SGD – Singapore Dollar</SelectItem>
-                                            <SelectItem value="USD">USD – US Dollar</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
                         </CardContent>
                     </Card>
 
@@ -430,7 +414,7 @@ export default function DiscountEditorPage() {
                                 </Label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                        RM
+                                        {CURRENCY_SYMBOL}
                                     </span>
                                     <Input
                                         id="min_order_amount"
@@ -457,7 +441,7 @@ export default function DiscountEditorPage() {
                                     </Label>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                            RM
+                                            {CURRENCY_SYMBOL}
                                         </span>
                                         <Input
                                             id="max_discount"

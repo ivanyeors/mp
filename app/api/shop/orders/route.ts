@@ -44,7 +44,7 @@ const CreateOrderSchema = z.object({
     ])
     .optional()
     .default("pending"),
-  currency: z.string().length(3).optional().default("USD"),
+  currency: z.string().length(3).optional().default("SGD"),
   subtotal: z.number().nonnegative(),
   shipping_amount: z.number().nonnegative().optional().default(0),
   tax_amount: z.number().nonnegative().optional().default(0),

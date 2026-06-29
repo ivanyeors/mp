@@ -17,3 +17,21 @@ export const CURRENCY_CONFIG: Record<
 export function isSupportedCurrency(code: string): code is SupportedCurrency {
   return (SUPPORTED_CURRENCIES as readonly string[]).includes(code);
 }
+
+/**
+ * Single money-formatting interface for the whole app. Defaults to the base
+ * currency (SGD) so callers can omit the code for the common case. Unknown
+ * codes still format via Intl, falling back to en-SG / 2 decimals.
+ */
+export function formatCurrency(
+  amount: number,
+  currency: SupportedCurrency | string = BASE_CURRENCY
+): string {
+  const config = CURRENCY_CONFIG[currency as SupportedCurrency];
+  return new Intl.NumberFormat(config?.locale ?? "en-SG", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: config?.decimals ?? 2,
+    maximumFractionDigits: config?.decimals ?? 2,
+  }).format(amount);
+}

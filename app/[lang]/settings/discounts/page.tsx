@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { formatCurrency } from "@/lib/i18n/currencies";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ type Coupon = {
 function formatValue(coupon: Coupon): string {
     if (coupon.discount_type === "percentage") return `${coupon.discount_value}%`;
     if (coupon.discount_type === "fixed_amount")
-        return `RM ${coupon.discount_value.toFixed(2)}`;
+        return formatCurrency(coupon.discount_value, coupon.currency);
     return "Free shipping";
 }
 

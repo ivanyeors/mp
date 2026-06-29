@@ -54,6 +54,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Order, OrderItem, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
 
@@ -72,10 +73,7 @@ const ORDER_STATUSES: OrderStatus[] = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatSGD(amount: number): string {
-    return new Intl.NumberFormat("en-SG", {
-        style: "currency",
-        currency: "SGD",
-    }).format(amount);
+    return formatCurrency(amount);
 }
 
 function formatDate(dateStr: string): string {

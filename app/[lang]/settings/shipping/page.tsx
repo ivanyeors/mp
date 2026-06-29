@@ -33,6 +33,9 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
+
+const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -327,11 +330,11 @@ export default function SettingsShippingPage() {
 
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                                         <span className="font-medium text-foreground">
-                                            RM {method.base_rate.toFixed(2)}
+                                            {formatCurrency(method.base_rate, method.currency)}
                                         </span>
                                         <span>
                                             {method.free_above !== null
-                                                ? `Free above RM ${method.free_above.toFixed(2)}`
+                                                ? `Free above ${formatCurrency(method.free_above, method.currency)}`
                                                 : "No free shipping"}
                                         </span>
                                         <span className="font-mono text-xs">{method.slug}</span>
@@ -462,7 +465,7 @@ export default function SettingsShippingPage() {
                         {/* Rates */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label htmlFor="base_rate">Base rate (RM)</Label>
+                                <Label htmlFor="base_rate">Base rate ({CURRENCY_SYMBOL})</Label>
                                 <Input
                                     id="base_rate"
                                     type="number"
@@ -475,7 +478,7 @@ export default function SettingsShippingPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="free_above">Free shipping above (RM)</Label>
+                                <Label htmlFor="free_above">Free shipping above ({CURRENCY_SYMBOL})</Label>
                                 <Input
                                     id="free_above"
                                     type="number"

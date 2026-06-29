@@ -37,6 +37,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -101,8 +102,7 @@ function getPriceRange(variants: ProductVariant[]): string {
     if (prices.length === 0) return "No price";
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-    const fmt = (n: number) =>
-        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+    const fmt = (n: number) => formatCurrency(n);
     return min === max ? fmt(min) : `${fmt(min)} – ${fmt(max)}`;
 }
 

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/i18n/currencies";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,14 +77,7 @@ export { HARDCODED_UPSELLS };
 
 // ─── Shared Utilities ────────────────────────────────────────
 
-export function formatPrice(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-SG", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
+export const formatPrice = formatCurrency;
 
 /**
  * Compute filling lines from recommendation data + optional template selection.

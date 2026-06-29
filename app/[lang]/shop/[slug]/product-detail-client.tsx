@@ -496,7 +496,7 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
             <PriceDisplay
               price={selectedVariant?.price ?? 0}
               compareAtPrice={selectedVariant?.compare_at_price ?? null}
-              currency={selectedVariant?.currency ?? "USD"}
+              currency={selectedVariant?.currency ?? "SGD"}
             />
           </div>
           <Button

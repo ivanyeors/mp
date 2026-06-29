@@ -180,9 +180,9 @@ export default function AnalyticsPage() {
 
   const currencyFormatter = useMemo(
     () =>
-      new Intl.NumberFormat("en-US", {
+      new Intl.NumberFormat("en-SG", {
         style: "currency",
-        currency: "USD",
+        currency: "SGD",
         maximumFractionDigits: 0,
       }),
     []
