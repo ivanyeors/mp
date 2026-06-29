@@ -4,6 +4,18 @@ import type { Product, ProductVariant } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
 /**
+ * Stripe Product tax code (drives Stripe Tax categorization). Defaults to
+ * "General - Tangible Goods"; override per catalog via STRIPE_TAX_CODE.
+ */
+const STRIPE_TAX_CODE = process.env.STRIPE_TAX_CODE || "txcd_99999999";
+
+/**
+ * How line-item prices relate to tax. SG GST is added on top (exclusive), so
+ * Stripe Tax computes tax above the displayed price rather than extracting it.
+ */
+const STRIPE_TAX_BEHAVIOR: "exclusive" | "inclusive" = "exclusive";
+
+/**
  * Sync a product to Stripe. Creates or updates the Stripe Product,
  * then creates/updates Stripe Prices for all variants.
  * Returns the updated product with stripe IDs populated.
@@ -37,6 +49,7 @@ export async function syncProductToStripe(productId: string) {
       name: title,
       description: description || undefined,
       images: images.length ? images : undefined,
+      tax_code: STRIPE_TAX_CODE,
     });
   } else {
     // Create new Stripe product
@@ -44,6 +57,7 @@ export async function syncProductToStripe(productId: string) {
       name: title,
       description: description || undefined,
       images: images.length ? images : undefined,
+      tax_code: STRIPE_TAX_CODE,
       metadata: { supabase_product_id: productId },
     });
     stripeProductId = stripeProduct.id;
@@ -74,6 +88,32 @@ export async function syncProductToStripe(productId: string) {
 }
 
 /**
+ * Best-effort auto-sync used by product/variant mutation routes. Never throws,
+ * so a Stripe outage or missing key can't block an admin's product or price
+ * edit. Returns whether the push succeeded so the API can surface a warning.
+ *
+ * ponytail: best-effort + synchronous. Ceiling: if Stripe is down the DB edit
+ * still saves but `stripe_price_id` stays stale until the next edit or a manual
+ * "Sync to Stripe". Upgrade path: enqueue a background retry.
+ */
+export async function syncProductToStripeSafe(
+  productId: string
+): Promise<{
+  synced: boolean;
+  error?: string;
+  result?: Awaited<ReturnType<typeof syncProductToStripe>>;
+}> {
+  try {
+    const result = await syncProductToStripe(productId);
+    return { synced: true, result };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Stripe sync failed";
+    console.error(`[stripe/auto-sync] product ${productId}:`, error);
+    return { synced: false, error };
+  }
+}
+
+/**
  * Create a new Stripe Price for a variant.
  * Stripe Prices are immutable — if price changes, we create a new one and archive the old.
  */
@@ -87,11 +127,12 @@ async function syncVariantPrice(stripeProductId: string, variant: ProductVariant
       const existingPrice = await stripe.prices.retrieve(variant.stripe_price_id);
       if (
         existingPrice.unit_amount === unitAmount &&
-        existingPrice.currency === variant.currency.toLowerCase()
+        existingPrice.currency === variant.currency.toLowerCase() &&
+        existingPrice.tax_behavior === STRIPE_TAX_BEHAVIOR
       ) {
         return variant.stripe_price_id; // Price unchanged, reuse
       }
-      // Price changed — archive old price
+      // Price/tax behavior changed — archive old price
       await stripe.prices.update(variant.stripe_price_id, { active: false });
     } catch {
       // Price not found, create new
@@ -104,6 +145,7 @@ async function syncVariantPrice(stripeProductId: string, variant: ProductVariant
     product: stripeProductId,
     unit_amount: unitAmount,
     currency: variant.currency.toLowerCase(),
+    tax_behavior: STRIPE_TAX_BEHAVIOR,
     metadata: {
       supabase_variant_id: variant.id,
       variant_title: variantName,

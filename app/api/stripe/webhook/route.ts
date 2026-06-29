@@ -5,6 +5,7 @@ import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { deductInventoryForOrder, restoreInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
 import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync";
 import { updateCustomerStats } from "@/lib/ecommerce/customers";
+import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -92,7 +93,30 @@ export async function POST(req: Request) {
             ? session.payment_intent
             : session.payment_intent?.id ?? null;
 
-        // Step 1 (CRITICAL): Update order to confirmed (idempotent — skip if already paid)
+        // Reconcile what Stripe charged against what we computed. The pre-tax
+        // amount (subtotal − discount + shipping) is ours to get right; tax and
+        // grand total are Stripe's authority and get written back. A mismatch
+        // means a discount/price/shipping leak — flag it, never silently confirm.
+        const totals = sessionTotals(session);
+        const recon = reconcileOrderTotal(order, totals);
+        if (!recon.ok && !order.paid_at) {
+          const detail =
+            `Order ${orderId} total mismatch: Stripe charged ${recon.sessionTotal}, ` +
+            `expected ${recon.expectedTotal} (delta ${recon.delta}).`;
+          console.error(`[stripe/webhook] ${detail}`);
+          await recordWebhookFailure(admin, event, detail);
+          await addOrderTimelineEvent(orderId, "total_mismatch", detail, {
+            stripe_session_id: session.id,
+            session_total: recon.sessionTotal,
+            expected_total: recon.expectedTotal,
+          });
+          // Leave the order unconfirmed for manual review and ack the event so
+          // Stripe doesn't retry a deterministic mismatch forever.
+          break;
+        }
+
+        // Step 1 (CRITICAL): Update order to confirmed (idempotent — skip if
+        // already paid). Tax/total are written back from the completed session.
         if (!order.paid_at) {
           const { error: confirmError } = await admin
             .from("orders")
@@ -101,6 +125,8 @@ export async function POST(req: Request) {
               paid_at: new Date().toISOString(),
               payment_method: "stripe",
               payment_reference: paymentIntent,
+              tax_amount: recon.writeBack.tax_amount,
+              total: recon.writeBack.total,
             })
             .eq("id", orderId);
 

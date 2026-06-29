@@ -280,8 +280,11 @@ export async function POST(req: Request) {
   const shippingLabel = resolveShippingContent(shippingMethod).name;
 
   // 10. Compute tax from the configurable region/rate table (keyed on the
-  // shipping country) and the grand total. For exclusive tax the amount is
-  // added on top; for inclusive tax it is embedded and the total is unchanged.
+  // shipping country) and the grand total. When Stripe Tax is enabled this is
+  // only a pre-checkout ESTIMATE: the webhook overwrites tax_amount/total from
+  // the completed session (Stripe Tax is authoritative). When disabled it is
+  // the final tax, added to Stripe as an explicit exclusive line item.
+  const useStripeTax = process.env.STRIPE_AUTOMATIC_TAX === "true";
   const taxInput = { subtotal, shippingAmount, discountAmount };
   const taxRule = await resolveTaxRuleForRegion(shipping_address.country);
   const tax = computeTax(taxInput, taxRule);
@@ -358,10 +361,17 @@ export async function POST(req: Request) {
   let stripeSession: { sessionId: string; url: string | null };
   try {
     stripeSession = await createCheckoutSession({
-      lineItems: cart.items.map((item) => ({
-        variant: item.variant,
-        quantity: item.quantity,
-      })),
+      lineItems: cart.items.map((item) => {
+        const cfg = item.customization_id ? customizationMap.get(item.customization_id) : null;
+        const itemTitle =
+          Object.values(item.product?.content ?? {})[0]?.title ?? item.product?.slug ?? "item";
+        return {
+          variant: item.variant,
+          quantity: item.quantity,
+          addonAmount: cfg?.total_addon_price ?? 0,
+          addonLabel: cfg ? `${itemTitle} — customization` : undefined,
+        };
+      }),
       customerEmail: email,
       orderId: orderRow.id,
       orderNumber: orderRow.order_number,
@@ -371,6 +381,24 @@ export async function POST(req: Request) {
       cancelUrl: `${siteUrl}/${locale}/shop/checkout`,
       shippingAmount,
       shippingLabel,
+      // The discount is applied as a Stripe coupon so the customer is charged
+      // the discounted amount (closes the discount leak).
+      discountAmount,
+      discountLabel: appliedCouponCode ?? undefined,
+      // Stripe Tax (gated): compute tax on the post-discount amount and supply
+      // the address. Otherwise add manual exclusive tax as a line item.
+      automaticTax: useStripeTax,
+      customerName: shipping_address.recipient,
+      customerAddress: useStripeTax
+        ? {
+            line1: shipping_address.line1,
+            line2: shipping_address.line2,
+            city: shipping_address.city,
+            state: shipping_address.state,
+            postal_code: shipping_address.postal_code,
+            country: shipping_address.country,
+          }
+        : undefined,
       // Only exclusive tax is added to the Stripe total; inclusive tax is
       // already embedded in the variant prices.
       taxAmount: tax.mode === "exclusive" ? taxAmount : 0,
