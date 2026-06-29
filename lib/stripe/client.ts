@@ -3,10 +3,9 @@ import Stripe from "stripe";
 let _stripe: Stripe | null = null;
 
 // Pin the Stripe API version so SDK upgrades / account-default changes don't
-// silently alter request/response shapes. Keep this in sync with the version
-// bundled by the installed `stripe` SDK (Stripe.LatestApiVersion) and the
-// default in the Stripe Dashboard when upgrading.
-const STRIPE_API_VERSION = "2026-02-25.clover";
+// silently alter request/response shapes. Must match the version bundled by the
+// installed `stripe` SDK (its `apiVersion` literal type), so bump both together.
+const STRIPE_API_VERSION = "2026-06-24.dahlia";
 
 export function getStripe(): Stripe {
   if (!_stripe) {
