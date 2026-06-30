@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 
 export const runtime = "nodejs";
 
@@ -69,5 +70,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       { status: isDup ? 409 : 500 }
     );
   }
-  return NextResponse.json({ ok: true, row: data });
+  // Auto-push to Stripe so the new variant is immediately sellable. Skipped for
+  // $0 / inactive variants (e.g. unset auto-generated rows) to avoid junk prices.
+  const stripe =
+    data.price > 0 && data.is_active !== false
+      ? await syncProductToStripeSafe(id)
+      : undefined;
+
+  const freshPriceId = stripe?.result?.variants.find((v) => v.id === data.id)?.stripe_price_id;
+  const responseRow = freshPriceId ? { ...data, stripe_price_id: freshPriceId } : data;
+
+  return NextResponse.json({
+    ok: true,
+    row: responseRow,
+    stripe: stripe && { synced: stripe.synced, error: stripe.error },
+  });
 }

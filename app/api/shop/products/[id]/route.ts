@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { syncProductToStripeSafe } from "@/lib/stripe/sync";
 
 export const runtime = "nodejs";
 
@@ -69,7 +70,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       { status: isDup ? 409 : 500 }
     );
   }
-  return NextResponse.json({ ok: true, row: data });
+
+  // Push name/description/image (and variant prices) to Stripe once a product is
+  // active. Drafts stay out of Stripe until published.
+  const stripe = data.status === "active" ? await syncProductToStripeSafe(id) : undefined;
+
+  const row = stripe?.result
+    ? { ...data, stripe_product_id: stripe.result.stripe_product_id }
+    : data;
+
+  return NextResponse.json({
+    ok: true,
+    row,
+    stripe: stripe && { synced: stripe.synced, error: stripe.error },
+  });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {

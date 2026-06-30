@@ -268,6 +268,9 @@ export default function ProductEditorPage() {
             }
 
             toast.success(isNew ? "Product created" : "Product saved");
+            if (data.stripe && data.stripe.synced === false) {
+                toast.warning(`Saved, but Stripe sync failed: ${data.stripe.error ?? "unknown"}. Use "Sync to Stripe".`);
+            }
             if (isNew && data.row?.id) {
                 router.push(`../products/${data.row.id}`);
             }
@@ -390,6 +393,9 @@ export default function ProductEditorPage() {
                 setVariants((prev) => [...prev, data.row]);
             }
             toast.success(editingVariant ? "Variant updated" : "Variant added");
+            if (data.stripe && data.stripe.synced === false) {
+                toast.warning(`Saved, but Stripe sync failed: ${data.stripe.error ?? "unknown"}. Use "Sync to Stripe".`);
+            }
             setVariantDialogOpen(false);
         } catch {
             toast.error("Failed to save variant");

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:push": "supabase db push",
-    "db:gen-types": "supabase gen types typescript --linked"
+    "db:gen-types": "supabase gen types typescript --linked",
+    "stripe:sync-all": "node --env-file=.env.local scripts/stripe-sync-all.mjs"
   },
   "dependencies": {
     "@dnd-kit/react": "^0.3.2",

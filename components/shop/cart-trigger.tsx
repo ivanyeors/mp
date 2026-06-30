@@ -62,7 +62,7 @@ export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
       <button
         ref={ref}
         type="button"
-        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative", className)}
+        className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative overflow-visible", className)}
         aria-label={`Shopping cart${hydrated && itemCount > 0 ? `, ${itemCount} items` : ""}`}
         onClick={handleClick}
       >
@@ -76,7 +76,7 @@ export const CartTrigger = forwardRef<HTMLButtonElement, CartTriggerProps>(
               exit={{ scale: 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
               className={cn(
-                "absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground",
+                "absolute -top-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground",
                 badgeClassName
               )}
             >
