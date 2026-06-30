@@ -9,10 +9,12 @@ import { supabaseAdmin } from "@/lib/supabase/server";
  * `resolveTaxRuleForRegion`), which fall back to {@link DEFAULT_TAX_RULES} when
  * no rates have been configured yet.
  *
- * Rate model (confirmed): Singapore GST at 9%, applied tax-EXCLUSIVE (added on
- * top of the displayed price), on the subtotal only (shipping is not taxed),
- * SG-only — orders shipped elsewhere are untaxed. Each field stays configurable
- * per row in the `tax_rates` table.
+ * Rate model: Singapore GST at 9%, tax-EXCLUSIVE, on the subtotal only
+ * (shipping untaxed), SG-only. CURRENTLY DISABLED: the business is not
+ * GST-registered, so {@link DEFAULT_TAX_RULES} is empty and the storefront
+ * charges no tax. The model is preserved as {@link SG_GST_RULE} for the day a
+ * GST registration number exists. Each field stays configurable per row in the
+ * `tax_rates` table.
  */
 
 /**
@@ -56,12 +58,25 @@ export interface TaxResult {
 }
 
 /**
- * Default rule set — used when the `tax_rates` table is empty or unreachable.
- * Mirrors the confirmed rate model (see the note at the top of this file).
+ * Confirmed SG model, kept for easy restoration. NOT applied today because the
+ * business is not GST-registered. To start charging GST: add this to
+ * {@link DEFAULT_TAX_RULES} (and/or seed the `tax_rates` table) and enable
+ * Stripe Tax (STRIPE_AUTOMATIC_TAX=true + a SG registration in Stripe).
  */
-export const DEFAULT_TAX_RULES: TaxRule[] = [
-  { region: "SG", name: "GST", rate: 0.09, mode: "exclusive", appliesToShipping: false },
-];
+export const SG_GST_RULE: TaxRule = {
+  region: "SG",
+  name: "GST",
+  rate: 0.09,
+  mode: "exclusive",
+  appliesToShipping: false,
+};
+
+/**
+ * Default rule set — used when the `tax_rates` table is empty or unreachable.
+ * EMPTY: not GST-registered, so the storefront charges no tax. See
+ * {@link SG_GST_RULE} to re-enable.
+ */
+export const DEFAULT_TAX_RULES: TaxRule[] = [];
 
 /** Round to 2 decimal places (currency), avoiding binary float drift. */
 function round2(n: number): number {

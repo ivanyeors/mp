@@ -4,6 +4,7 @@ import {
   computeOrderTotal,
   resolveTaxRule,
   DEFAULT_TAX_RULES,
+  SG_GST_RULE,
   type TaxRule,
 } from "@/lib/ecommerce/tax";
 
@@ -152,23 +153,29 @@ describe("resolveTaxRule", () => {
   });
 });
 
-describe("DEFAULT_TAX_RULES (confirmed rate model)", () => {
+describe("DEFAULT_TAX_RULES (no tax until GST-registered)", () => {
+  it("is empty, so the storefront charges no tax by default", () => {
+    expect(DEFAULT_TAX_RULES).toEqual([]);
+    expect(resolveTaxRule("SG", DEFAULT_TAX_RULES)).toBeNull();
+    const tax = computeTax(
+      { subtotal: 200, shippingAmount: 50, discountAmount: 0 },
+      resolveTaxRule("SG", DEFAULT_TAX_RULES)
+    );
+    expect(tax.taxAmount).toBe(0);
+  });
+});
+
+describe("SG_GST_RULE (confirmed model, applied once registered)", () => {
   it("is SG GST 9%, exclusive, subtotal only (shipping untaxed)", () => {
-    const sg = resolveTaxRule("SG", DEFAULT_TAX_RULES);
-    expect(sg).not.toBeNull();
-    expect(sg?.rate).toBe(0.09);
-    expect(sg?.mode).toBe("exclusive");
-    expect(sg?.appliesToShipping).toBe(false);
+    expect(SG_GST_RULE.rate).toBe(0.09);
+    expect(SG_GST_RULE.mode).toBe("exclusive");
+    expect(SG_GST_RULE.appliesToShipping).toBe(false);
     // Shipping is excluded from the base: tax is 9% of the subtotal only.
     const tax = computeTax(
       { subtotal: 200, shippingAmount: 50, discountAmount: 0 },
-      sg
+      SG_GST_RULE
     );
     expect(tax.taxableBase).toBe(200);
     expect(tax.taxAmount).toBe(18);
-  });
-
-  it("does not tax non-SG regions", () => {
-    expect(resolveTaxRule("US", DEFAULT_TAX_RULES)).toBeNull();
   });
 });
