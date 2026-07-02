@@ -6,7 +6,7 @@
 
 export type ProductStatus = "draft" | "active" | "archived";
 export type ProductType = "pillow" | "bolster" | "accessory" | "bundle";
-export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded" | "payment_failed" | "disputed";
+export type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled" | "refunded" | "partially_refunded" | "payment_failed" | "disputed";
 export type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
 export type ReviewStatus = "pending" | "approved" | "rejected";
 // CollectionType removed — collections dropped in migration 0029
@@ -215,6 +215,8 @@ export interface Order {
   tax_amount: number;
   discount_amount: number;
   total: number;
+  amount_captured?: number;
+  amount_refunded?: number;
   shipping_address: ShippingAddress;
   billing_address: ShippingAddress | null;
   shipping_method_id: string | null;
@@ -257,11 +259,28 @@ export interface OrderItem {
   variant_title: string | null;
   image_url: string | null;
   quantity: number;
+  returned_quantity?: number;
   unit_price: number;
   total_price: number;
+  unit_cost?: number | null;
+  total_cost?: number | null;
   customization_id?: string | null;
   customization_snapshot?: OrderItemCustomizationSnapshot | null;
   created_at: string;
+}
+
+/** Per-order realized margin from `order_margins` view. */
+export interface OrderMargin {
+  order_id: string;
+  order_number: string;
+  revenue: number;
+  discount: number;
+  shipping: number;
+  tax: number;
+  cogs: number;
+  net_revenue: number;
+  gross_margin: number;
+  margin_pct: number | null;
 }
 
 export interface OrderTimelineEvent {

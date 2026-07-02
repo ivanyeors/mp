@@ -23,6 +23,9 @@ import {
     Unlink,
     Search,
     ExternalLink,
+    RotateCcw,
+    Ban,
+    TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +59,7 @@ import {
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import type { Order, OrderItem, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
+import type { Order, OrderItem, OrderMargin, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -67,6 +70,7 @@ const ORDER_STATUSES: OrderStatus[] = [
     "shipped",
     "delivered",
     "cancelled",
+    "partially_refunded",
     "refunded",
 ];
 
@@ -108,6 +112,7 @@ function orderStatusBadgeVariant(status: OrderStatus): BadgeVariant {
         case "cancelled":
             return "destructive";
         case "refunded":
+        case "partially_refunded":
             return "outline";
         default:
             return "default";
@@ -127,7 +132,11 @@ function orderStatusBadgeClass(status: OrderStatus): string {
     }
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function formatMarginPct(pct: number | null | undefined): string {
+    if (pct == null || Number.isNaN(pct)) return "—";
+    return `${pct.toFixed(1)}%`;
+}
+
 
 export default function OrderDetailPage() {
     const pathname = usePathname() ?? "/";
@@ -137,6 +146,7 @@ export default function OrderDetailPage() {
     const orderId = params.id;
 
     const [order, setOrder] = useState<Order | null>(null);
+    const [margin, setMargin] = useState<OrderMargin | null>(null);
     const [timeline, setTimeline] = useState<OrderTimelineEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [timelineLoading, setTimelineLoading] = useState(true);
@@ -173,16 +183,34 @@ export default function OrderDetailPage() {
     // Inventory deduction status
     const [inventoryDeducted, setInventoryDeducted] = useState<boolean | null>(null);
 
+    // Refund / cancel / restock
+    const [refundOpen, setRefundOpen] = useState(false);
+    const [refundAmount, setRefundAmount] = useState("");
+    const [refunding, setRefunding] = useState(false);
+    const [cancelOpen, setCancelOpen] = useState(false);
+    const [cancelling, setCancelling] = useState(false);
+    const [restockOpen, setRestockOpen] = useState(false);
+    const [restockQty, setRestockQty] = useState<Record<string, string>>({});
+    const [restocking, setRestocking] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+
     const fetchOrder = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/shop/orders/${orderId}`);
             const json = await res.json();
-            setOrder(json);
-            setInternalNotes(json.internal_notes ?? "");
-            setNewStatus(json.status ?? "");
+            const row = json.row ?? json;
+            const normalized = {
+                ...row,
+                items: row.order_items ?? row.items ?? [],
+            };
+            setOrder(normalized);
+            setMargin(json.margin ?? null);
+            setInternalNotes(normalized.internal_notes ?? "");
+            setNewStatus(normalized.status ?? "");
         } catch {
             setOrder(null);
+            setMargin(null);
         } finally {
             setLoading(false);
         }
@@ -375,6 +403,111 @@ export default function OrderDetailPage() {
         }
     }, [orderId, fetchMpConfigLinks]);
 
+    const refundableRemaining = order
+        ? Math.max(0, Number(order.total) - Number(order.amount_refunded ?? 0))
+        : 0;
+
+    const canRefund =
+        !!order?.payment_reference &&
+        order.status !== "refunded" &&
+        order.status !== "pending" &&
+        order.status !== "payment_failed" &&
+        refundableRemaining > 0;
+
+    const canCancel =
+        !!order &&
+        order.status !== "cancelled" &&
+        order.status !== "refunded";
+
+    const canRestock =
+        !!order &&
+        (order.status === "refunded" ||
+            order.status === "partially_refunded" ||
+            Number(order.amount_refunded ?? 0) > 0);
+
+    const handleRefund = async () => {
+        if (!order) return;
+        setRefunding(true);
+        setActionError(null);
+        try {
+            const trimmed = refundAmount.trim();
+            const body =
+                trimmed.length > 0
+                    ? { amount: Number.parseFloat(trimmed) }
+                    : {};
+            const res = await fetch(`/api/shop/orders/${orderId}/refund`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Refund failed");
+            setRefundOpen(false);
+            setRefundAmount("");
+            await fetchOrder();
+            await fetchTimeline();
+        } catch (e) {
+            setActionError(e instanceof Error ? e.message : "Refund failed");
+        } finally {
+            setRefunding(false);
+        }
+    };
+
+    const handleCancel = async () => {
+        setCancelling(true);
+        setActionError(null);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/cancel`, {
+                method: "POST",
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Cancel failed");
+            setCancelOpen(false);
+            await fetchOrder();
+            await fetchTimeline();
+        } catch (e) {
+            setActionError(e instanceof Error ? e.message : "Cancel failed");
+        } finally {
+            setCancelling(false);
+        }
+    };
+
+    const handleRestock = async () => {
+        if (!order) return;
+        const items = (order.items ?? [])
+            .map((item) => {
+                const qty = Number.parseInt(restockQty[item.id] ?? "0", 10);
+                if (!qty || qty <= 0) return null;
+                return { order_item_id: item.id, quantity: qty };
+            })
+            .filter(Boolean) as Array<{ order_item_id: string; quantity: number }>;
+
+        if (items.length === 0) {
+            setActionError("Enter a quantity to restock for at least one line");
+            return;
+        }
+
+        setRestocking(true);
+        setActionError(null);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/restock`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items }),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Restock failed");
+            setRestockOpen(false);
+            setRestockQty({});
+            await fetchOrder();
+            await fetchTimeline();
+        } catch (e) {
+            setActionError(e instanceof Error ? e.message : "Restock failed");
+        } finally {
+            setRestocking(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
@@ -399,6 +532,9 @@ export default function OrderDetailPage() {
 
     const customClass = orderStatusBadgeClass(order.status);
     const badgeVariant = orderStatusBadgeVariant(order.status);
+    const hasUnitCost = (order.items ?? []).some(
+        (item) => item.unit_cost != null && item.unit_cost > 0
+    );
 
     return (
         <div className="space-y-6">
@@ -437,9 +573,15 @@ export default function OrderDetailPage() {
                                         <TableHead className="px-4">Product</TableHead>
                                         <TableHead className="px-4 hidden sm:table-cell">SKU</TableHead>
                                         <TableHead className="px-4 text-right">Qty</TableHead>
+                                        <TableHead className="px-4 text-right hidden md:table-cell">Returned</TableHead>
                                         <TableHead className="px-4 text-right hidden sm:table-cell">
                                             Unit Price
                                         </TableHead>
+                                        {hasUnitCost && (
+                                            <TableHead className="px-4 text-right hidden lg:table-cell">
+                                                Unit Cost
+                                            </TableHead>
+                                        )}
                                         <TableHead className="px-4 text-right">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -479,9 +621,19 @@ export default function OrderDetailPage() {
                                             <TableCell className="px-4 text-right text-sm">
                                                 {item.quantity}
                                             </TableCell>
+                                            <TableCell className="px-4 text-right text-sm hidden md:table-cell text-muted-foreground">
+                                                {item.returned_quantity ?? 0}
+                                            </TableCell>
                                             <TableCell className="px-4 text-right text-sm hidden sm:table-cell text-muted-foreground">
                                                 {formatSGD(item.unit_price)}
                                             </TableCell>
+                                            {hasUnitCost && (
+                                                <TableCell className="px-4 text-right text-sm hidden lg:table-cell text-muted-foreground">
+                                                    {item.unit_cost != null && item.unit_cost > 0
+                                                        ? formatSGD(item.unit_cost)
+                                                        : "—"}
+                                                </TableCell>
+                                            )}
                                             <TableCell className="px-4 text-right text-sm font-medium">
                                                 {formatSGD(item.total_price)}
                                             </TableCell>
@@ -515,7 +667,78 @@ export default function OrderDetailPage() {
                                     <span>Total</span>
                                     <span>{formatSGD(order.total)}</span>
                                 </div>
+                                {Number(order.amount_refunded ?? 0) > 0 && (
+                                    <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                                        <span>Refunded</span>
+                                        <span>-{formatSGD(Number(order.amount_refunded))}</span>
+                                    </div>
+                                )}
                             </div>
+                            {canRestock && (
+                                <Dialog open={restockOpen} onOpenChange={setRestockOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="outline" className="w-full mt-3">
+                                            <RotateCcw className="mr-2 h-4 w-4" />
+                                            Restock returned items
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent>
+                                        <DialogHeader>
+                                            <DialogTitle>Restock returned items</DialogTitle>
+                                        </DialogHeader>
+                                        <p className="text-sm text-muted-foreground">
+                                            Manual restock — inventory is not restored automatically on refund.
+                                        </p>
+                                        <div className="space-y-3 py-2">
+                                            {(order.items ?? []).map((item) => {
+                                                const remaining =
+                                                    item.quantity - (item.returned_quantity ?? 0);
+                                                if (remaining <= 0) return null;
+                                                return (
+                                                    <div key={item.id} className="flex items-center gap-2">
+                                                        <Label className="flex-1 text-sm truncate">
+                                                            {item.product_title}
+                                                            <span className="text-muted-foreground ml-1">
+                                                                (max {remaining})
+                                                            </span>
+                                                        </Label>
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={remaining}
+                                                            className="w-20"
+                                                            placeholder="0"
+                                                            value={restockQty[item.id] ?? ""}
+                                                            onChange={(e) =>
+                                                                setRestockQty((prev) => ({
+                                                                    ...prev,
+                                                                    [item.id]: e.target.value,
+                                                                }))
+                                                            }
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        {actionError && restockOpen && (
+                                            <p className="text-sm text-destructive">{actionError}</p>
+                                        )}
+                                        <DialogFooter>
+                                            <Button
+                                                onClick={handleRestock}
+                                                disabled={restocking}
+                                            >
+                                                {restocking ? (
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <RotateCcw className="mr-2 h-4 w-4" />
+                                                )}
+                                                Confirm restock
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -1041,8 +1264,169 @@ export default function OrderDetailPage() {
                                     {order.paid_at ? formatDate(order.paid_at) : "—"}
                                 </span>
                             </div>
+                            {Number(order.amount_refunded ?? 0) > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Refunded</span>
+                                    <span className="font-medium text-amber-600 dark:text-amber-400">
+                                        {formatSGD(Number(order.amount_refunded))}
+                                    </span>
+                                </div>
+                            )}
+                            {actionError && (refundOpen || cancelOpen) && (
+                                <p className="text-sm text-destructive pt-1">{actionError}</p>
+                            )}
+                            <div className="flex flex-col gap-2 pt-2 border-t">
+                                {canRefund && (
+                                    <Dialog open={refundOpen} onOpenChange={(open) => {
+                                        setRefundOpen(open);
+                                        if (open) {
+                                            setRefundAmount("");
+                                            setActionError(null);
+                                        }
+                                    }}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" variant="outline" className="w-full">
+                                                Issue refund
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Issue refund</DialogTitle>
+                                            </DialogHeader>
+                                            <p className="text-sm text-muted-foreground">
+                                                Refundable balance: {formatSGD(refundableRemaining)}.
+                                                Leave amount blank for a full refund. Stripe webhook updates the ledger.
+                                            </p>
+                                            <div className="space-y-1.5 py-2">
+                                                <Label htmlFor="refund-amount">Amount (optional)</Label>
+                                                <Input
+                                                    id="refund-amount"
+                                                    type="number"
+                                                    min={0.01}
+                                                    max={refundableRemaining}
+                                                    step={0.01}
+                                                    placeholder={String(refundableRemaining)}
+                                                    value={refundAmount}
+                                                    onChange={(e) => setRefundAmount(e.target.value)}
+                                                />
+                                            </div>
+                                            {actionError && refundOpen && (
+                                                <p className="text-sm text-destructive">{actionError}</p>
+                                            )}
+                                            <DialogFooter>
+                                                <Button onClick={handleRefund} disabled={refunding}>
+                                                    {refunding ? (
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    ) : null}
+                                                    Confirm refund
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
+                                {canCancel && (
+                                    <Dialog open={cancelOpen} onOpenChange={(open) => {
+                                        setCancelOpen(open);
+                                        if (open) setActionError(null);
+                                    }}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" variant="destructive" className="w-full">
+                                                <Ban className="mr-2 h-4 w-4" />
+                                                Cancel order
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Cancel order</DialogTitle>
+                                            </DialogHeader>
+                                            <p className="text-sm text-muted-foreground">
+                                                {order.payment_reference && order.paid_at
+                                                    ? "This paid order will receive a full refund via Stripe."
+                                                    : "This unpaid order will be cancelled with no money moved."}
+                                            </p>
+                                            {actionError && cancelOpen && (
+                                                <p className="text-sm text-destructive">{actionError}</p>
+                                            )}
+                                            <DialogFooter>
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={handleCancel}
+                                                    disabled={cancelling}
+                                                >
+                                                    {cancelling ? (
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                        <Ban className="mr-2 h-4 w-4" />
+                                                    )}
+                                                    Confirm cancel
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
+
+                    {/* Realized margin */}
+                    {margin && (
+                        <Card>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4" />
+                                    Realized Margin
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Revenue (subtotal)</span>
+                                    <span>{formatSGD(margin.revenue)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">COGS</span>
+                                    <span>{formatSGD(margin.cogs)}</span>
+                                </div>
+                                {margin.discount > 0 && (
+                                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                                        <span>Discount</span>
+                                        <span>-{formatSGD(margin.discount)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Shipping</span>
+                                    <span>{formatSGD(margin.shipping)}</span>
+                                </div>
+                                {margin.tax > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Tax</span>
+                                        <span>{formatSGD(margin.tax)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between font-semibold border-t pt-2 mt-1">
+                                    <span>Gross margin</span>
+                                    <span
+                                        className={
+                                            margin.gross_margin >= 0
+                                                ? "text-green-600 dark:text-green-400"
+                                                : "text-destructive"
+                                        }
+                                    >
+                                        {formatSGD(margin.gross_margin)}
+                                        {margin.margin_pct != null && (
+                                            <span className="ml-1.5 font-normal text-muted-foreground">
+                                                ({formatMarginPct(margin.margin_pct)})
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                                {margin.net_revenue !== order.total && (
+                                    <p className="text-xs text-muted-foreground pt-1">
+                                        Net revenue after refunds: {formatSGD(margin.net_revenue)}
+                                    </p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Notes */}
                     <Card>

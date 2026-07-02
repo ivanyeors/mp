@@ -6,22 +6,23 @@ export const runtime = "nodejs";
 export async function GET() {
   const admin = supabaseAdmin();
 
-  const [totalResult, revenueResult, pendingResult] = await Promise.all([
-    // Total orders count
-    admin.from("orders").select("*", { count: "exact", head: true }),
-
-    // Revenue: sum of total where status is not cancelled or refunded
-    admin
-      .from("orders")
-      .select("total")
-      .not("status", "in", '("cancelled","refunded")'),
-
-    // Pending orders count
-    admin
-      .from("orders")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending"),
-  ]);
+  const [totalResult, revenueResult, pendingResult, marginResult, ledgerResult] =
+    await Promise.all([
+      admin.from("orders").select("*", { count: "exact", head: true }),
+      admin
+        .from("orders")
+        .select("total")
+        .not("status", "in", '("cancelled","refunded")'),
+      admin
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "pending"),
+      admin
+        .from("order_margins")
+        .select("order_id, gross_margin, margin_pct, orders!inner(status, paid_at)")
+        .not("orders.status", "eq", "cancelled"),
+      admin.from("order_payments").select("order_id"),
+    ]);
 
   if (totalResult.error) {
     return NextResponse.json({ error: totalResult.error.message }, { status: 500 });
@@ -31,6 +32,12 @@ export async function GET() {
   }
   if (pendingResult.error) {
     return NextResponse.json({ error: pendingResult.error.message }, { status: 500 });
+  }
+  if (marginResult.error) {
+    return NextResponse.json({ error: marginResult.error.message }, { status: 500 });
+  }
+  if (ledgerResult.error) {
+    return NextResponse.json({ error: ledgerResult.error.message }, { status: 500 });
   }
 
   const totalOrders = totalResult.count ?? 0;
@@ -44,6 +51,30 @@ export async function GET() {
   const averageOrderValue =
     revenueOrders.length > 0 ? totalRevenue / revenueOrders.length : 0;
 
+  const ledgerOrderIds = new Set(
+    (ledgerResult.data ?? []).map((row: { order_id: string }) => row.order_id)
+  );
+  const qualifyingMargins = (marginResult.data ?? []).filter((row) => {
+    const ordersJoin = row.orders as
+      | { paid_at: string | null }
+      | Array<{ paid_at: string | null }>
+      | null
+      | undefined;
+    const paidAt = Array.isArray(ordersJoin) ? ordersJoin[0]?.paid_at : ordersJoin?.paid_at;
+    return paidAt != null || ledgerOrderIds.has(row.order_id);
+  });
+  const totalGrossMargin = qualifyingMargins.reduce(
+    (sum: number, row: { gross_margin: number }) => sum + Number(row.gross_margin ?? 0),
+    0
+  );
+  const marginPcts = qualifyingMargins
+    .map((row: { margin_pct: number | null }) => row.margin_pct)
+    .filter((pct): pct is number => pct != null);
+  const avgMarginPct =
+    marginPcts.length > 0
+      ? marginPcts.reduce((sum, pct) => sum + pct, 0) / marginPcts.length
+      : null;
+
   return NextResponse.json({
     ok: true,
     stats: {
@@ -51,6 +82,8 @@ export async function GET() {
       total_revenue: totalRevenue,
       average_order_value: averageOrderValue,
       pending_orders: pendingOrders,
+      total_gross_margin: totalGrossMargin,
+      avg_margin_pct: avgMarginPct,
     },
   });
 }

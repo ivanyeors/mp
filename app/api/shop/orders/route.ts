@@ -79,7 +79,7 @@ export async function GET(req: Request) {
 
   let query = admin
     .from("orders")
-    .select("*", { count: "exact" });
+    .select("*, order_margins(gross_margin, margin_pct)", { count: "exact" });
 
   if (status) query = query.eq("status", status);
   if (email) query = query.ilike("email", `%${email}%`);
@@ -97,7 +97,17 @@ export async function GET(req: Request) {
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, rows: data ?? [], total: count ?? 0, page, limit });
+  const rows = (data ?? []).map(
+    (row: Record<string, unknown> & { order_margins?: unknown }) => {
+      const margin = Array.isArray(row.order_margins)
+        ? row.order_margins[0]
+        : row.order_margins;
+      const { order_margins: _omit, ...rest } = row;
+      return { ...rest, margin: margin ?? null };
+    }
+  );
+
+  return NextResponse.json({ ok: true, rows, total: count ?? 0, page, limit });
 }
 
 export async function POST(req: Request) {

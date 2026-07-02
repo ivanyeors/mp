@@ -42,7 +42,7 @@ import {
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import type { Order, OrderStatus } from "@/lib/types/ecommerce";
+import type { Order, OrderMargin, OrderStatus } from "@/lib/types/ecommerce";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +51,12 @@ type DashboardStats = {
     revenue: number;
     avg_order_value: number;
     pending_orders: number;
+    total_gross_margin?: number | null;
+    avg_margin_pct?: number | null;
+};
+
+type OrderRow = Order & {
+    margin?: Pick<OrderMargin, "gross_margin" | "margin_pct"> | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -113,7 +119,11 @@ function orderStatusBadgeClass(status: OrderStatus): string {
     }
 }
 
-// ─── Summary Card ─────────────────────────────────────────────────────────────
+function formatMarginPct(pct: number | null | undefined): string {
+    if (pct == null || Number.isNaN(pct)) return "—";
+    return `${pct.toFixed(1)}%`;
+}
+
 
 function SummaryCard({
     icon: Icon,
@@ -164,7 +174,7 @@ export default function SettingsOrdersPage() {
     const [page, setPage] = useState(1);
 
     // Data state
-    const [orders, setOrders] = useState<Order[]>([]);
+    const [orders, setOrders] = useState<OrderRow[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
 
@@ -195,7 +205,17 @@ export default function SettingsOrdersPage() {
         setStatsLoading(true);
         fetch("/api/shop/orders/dashboard")
             .then((r) => r.json())
-            .then((json) => setStats(json))
+            .then((json) => {
+                const s = json.stats ?? json;
+                setStats({
+                    total_orders: s.total_orders ?? 0,
+                    revenue: s.total_revenue ?? s.revenue ?? 0,
+                    avg_order_value: s.average_order_value ?? s.avg_order_value ?? 0,
+                    pending_orders: s.pending_orders ?? 0,
+                    total_gross_margin: s.total_gross_margin ?? null,
+                    avg_margin_pct: s.avg_margin_pct ?? null,
+                });
+            })
             .catch(() => {})
             .finally(() => setStatsLoading(false));
     }, []);
@@ -254,7 +274,7 @@ export default function SettingsOrdersPage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                 <SummaryCard
                     icon={ShoppingCart}
                     label="Total Orders"
@@ -273,6 +293,14 @@ export default function SettingsOrdersPage() {
                     value={stats ? formatSGD(stats.avg_order_value) : "—"}
                     loading={statsLoading}
                 />
+                {!statsLoading && stats && (
+                    <SummaryCard
+                        icon={TrendingUp}
+                        label="Gross Margin"
+                        value={`${formatSGD(stats.total_gross_margin ?? 0)}${stats.avg_margin_pct != null ? ` · ${formatMarginPct(stats.avg_margin_pct)} avg` : ""}`}
+                        loading={statsLoading}
+                    />
+                )}
                 <SummaryCard
                     icon={Clock}
                     label="Pending Orders"
@@ -350,6 +378,7 @@ export default function SettingsOrdersPage() {
                                 <TableHead className="px-4 hidden md:table-cell">Customer</TableHead>
                                 <TableHead className="px-4">Status</TableHead>
                                 <TableHead className="px-4 hidden lg:table-cell text-right">Items</TableHead>
+                                <TableHead className="px-4 hidden xl:table-cell text-right">Margin</TableHead>
                                 <TableHead className="px-4 text-right">Total</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -388,6 +417,20 @@ export default function SettingsOrdersPage() {
                                         </TableCell>
                                         <TableCell className="px-4 hidden lg:table-cell text-right text-sm text-muted-foreground">
                                             {itemCount}
+                                        </TableCell>
+                                        <TableCell className="px-4 hidden xl:table-cell text-right text-sm text-muted-foreground">
+                                            {order.margin?.gross_margin != null ? (
+                                                <span>
+                                                    {formatSGD(order.margin.gross_margin)}
+                                                    {order.margin.margin_pct != null && (
+                                                        <span className="block text-xs">
+                                                            {formatMarginPct(order.margin.margin_pct)}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            ) : (
+                                                "—"
+                                            )}
                                         </TableCell>
                                         <TableCell className="px-4 text-right text-sm font-medium">
                                             {formatSGD(order.total)}

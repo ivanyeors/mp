@@ -14,11 +14,11 @@ Make per-order profit traceable by snapshotting cost at order time and exposing 
 
 ## Acceptance criteria
 
-- [ ] Each order line stores `unit_cost`/`total_cost` frozen at order time (unaffected by later cost changes).
-- [ ] Order detail shows revenue, cost, discount, shipping, tax, and gross margin/percentage.
-- [ ] `order_margins` nets refunds and dispute losses; returned-goods COGS only counts when physically restocked.
-- [ ] Analytics reflects realized sold margin (not just on-hand MSRP).
-- [ ] A customized order's COGS includes its customization BOM cost.
+- [x] Each order line stores `unit_cost`/`total_cost` frozen at order time (unaffected by later cost changes).
+- [x] Order detail shows revenue, cost, discount, shipping, tax, and gross margin/percentage.
+- [x] `order_margins` nets refunds and dispute losses; returned-goods COGS only counts when physically restocked.
+- [x] Analytics reflects realized sold margin (not just on-hand MSRP).
+- [x] A customized order's COGS includes its customization BOM cost.
 
 ## Blocked by
 

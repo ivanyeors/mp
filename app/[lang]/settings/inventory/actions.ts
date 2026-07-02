@@ -8,7 +8,15 @@ import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
 import { shopifyListPaidOrders } from '@/lib/shopify/orders'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
-const ItemQtySchema = z.object({ itemId: z.number().int().positive(), quantity: z.number().int().positive() })
+const ItemQtySchema = z.object({
+  itemId: z.number().int().positive(),
+  quantity: z.number().int().positive(),
+  orderId: z.string().uuid().optional(),
+  orderItemId: z.string().uuid().optional(),
+  stripeRefundId: z.string().optional(),
+  /** Product units returned (bumps order_items.returned_quantity when orderItemId set). */
+  returnUnits: z.number().int().positive().optional(),
+})
 const DeleteItemSchema = z.object({ itemId: z.number().int().positive() })
 const RenameItemSchema = z.object({
   itemId: z.number().int().positive(),
@@ -214,10 +222,39 @@ export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
   const admin = supabaseAdmin()
   const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
   const effectiveId = effectiveById.get(parsed.itemId) ?? parsed.itemId
+
+  const metadata: Record<string, unknown> = {}
+  if (parsed.orderId) metadata.order_id = parsed.orderId
+  if (parsed.orderItemId) metadata.order_item_id = parsed.orderItemId
+  if (parsed.stripeRefundId) metadata.stripe_refund_id = parsed.stripeRefundId
+  if (parsed.orderItemId) metadata.restock = true
+
+  if (parsed.orderItemId && parsed.returnUnits) {
+    const { data: line } = await admin
+      .from('order_items')
+      .select('id, quantity, returned_quantity, order_id')
+      .eq('id', parsed.orderItemId)
+      .maybeSingle()
+    if (!line) throw new Error('Order item not found')
+    if (parsed.orderId && line.order_id !== parsed.orderId) {
+      throw new Error('Order item does not belong to this order')
+    }
+    const next = line.returned_quantity + parsed.returnUnits
+    if (next > line.quantity) {
+      throw new Error(`Cannot link ${parsed.returnUnits} unit(s): only ${line.quantity - line.returned_quantity} remaining`)
+    }
+    const { error: bumpErr } = await admin
+      .from('order_items')
+      .update({ returned_quantity: next })
+      .eq('id', parsed.orderItemId)
+    if (bumpErr) throw new Error(bumpErr.message)
+  }
+
   const { error } = await admin.from('inventory_transactions').insert({
     item_id: effectiveId,
     quantity_signed: parsed.quantity,
     reason: 'receive',
+    ...(Object.keys(metadata).length ? { metadata } : {}),
   })
   if (error) throw new Error(error.message)
   return { ok: true }

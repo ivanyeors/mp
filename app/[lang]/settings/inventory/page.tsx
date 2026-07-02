@@ -1053,9 +1053,13 @@ export default function InventoryPage() {
     }
   };
 
-  const onReceive = async (itemId: number, qty: number) => {
+  const onReceive = async (
+    itemId: number,
+    qty: number,
+    link?: { orderId?: string; orderItemId?: string; returnUnits?: number }
+  ) => {
     if (!qty || qty <= 0) return;
-    await receiveStock({ itemId, quantity: qty });
+    await receiveStock({ itemId, quantity: qty, ...link });
     await load();
     toast.success(`Received ${qty} unit(s)`);
   };
@@ -2808,7 +2812,11 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   onOpenChange: (open: boolean) => void;
   group: Group | null;
   balances: Record<number, number>;
-  onReceive: (itemId: number, qty: number) => Promise<void>;
+  onReceive: (
+    itemId: number,
+    qty: number,
+    link?: { orderId?: string; orderItemId?: string; returnUnits?: number }
+  ) => Promise<void>;
   onSell: (itemId: number, qty: number) => Promise<void>;
   onSelectVariant: (itemId: number) => void;
   onDelete: (itemId: number) => Promise<void>;
@@ -2822,6 +2830,9 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   const [renameValue, setRenameValue] = useState("");
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
+  const [linkOrderId, setLinkOrderId] = useState("");
+  const [linkOrderItemId, setLinkOrderItemId] = useState("");
+  const [linkReturnUnits, setLinkReturnUnits] = useState("");
 
   const sortedVariants = useMemo(() => {
     const list: Item[] = group?.items ?? [];
@@ -2944,10 +2955,23 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     if (entriesIn.length === 0 && entriesOut.length === 0) return;
     setSaving(true);
     try {
-      for (const e of entriesIn) await onReceive(e.id, e.qty);
+      const link =
+        linkOrderItemId.trim().length > 0
+          ? {
+              ...(linkOrderId.trim() ? { orderId: linkOrderId.trim() } : {}),
+              orderItemId: linkOrderItemId.trim(),
+              ...(linkReturnUnits.trim()
+                ? { returnUnits: Number.parseInt(linkReturnUnits, 10) }
+                : {}),
+            }
+          : undefined;
+      for (const e of entriesIn) await onReceive(e.id, e.qty, link);
       for (const e of entriesOut) await onSell(e.id, e.qty);
       setQtyByItem({});
       setOutQtyByItem({});
+      setLinkOrderId("");
+      setLinkOrderItemId("");
+      setLinkReturnUnits("");
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -3125,6 +3149,29 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
               </div>
             </Collapsible>
           ))}
+          <div className="rounded border p-3 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Link receive to order return (optional)</p>
+            <Input
+              placeholder="Order ID (uuid)"
+              value={linkOrderId}
+              onChange={(e) => setLinkOrderId(e.target.value)}
+              className="h-8 text-xs"
+            />
+            <Input
+              placeholder="Order item ID (uuid)"
+              value={linkOrderItemId}
+              onChange={(e) => setLinkOrderItemId(e.target.value)}
+              className="h-8 text-xs"
+            />
+            <Input
+              placeholder="Product units returned (optional)"
+              value={linkReturnUnits}
+              onChange={(e) => setLinkReturnUnits(e.target.value)}
+              className="h-8 text-xs"
+              type="number"
+              min={1}
+            />
+          </div>
         </div>
         <SheetFooter>
           <div className="flex w-full gap-2">

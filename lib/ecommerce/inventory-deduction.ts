@@ -84,7 +84,7 @@ function filterNonFillingBomLines(bomLines: Record<string, unknown>[]): Inventor
     }));
 }
 
-async function mergeBolsterCustomLines(
+export async function mergeBolsterCustomLines(
   bolsterVariant: "short" | "medium" | "long",
   configLines: InventoryLine[]
 ): Promise<InventoryLine[]> {
@@ -98,7 +98,7 @@ async function mergeBolsterCustomLines(
   return mergeConfigLinesWithNonFillingBom(configLines, filterNonFillingBomLines(bomLines ?? []));
 }
 
-async function mergePillowCustomLines(
+export async function mergePillowCustomLines(
   pillowProductId: number,
   snapshot: CustomizationSnapshot
 ): Promise<InventoryLine[]> {

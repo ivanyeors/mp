@@ -15,6 +15,7 @@ const UpdateOrderSchema = z.object({
       "delivered",
       "cancelled",
       "refunded",
+      "partially_refunded",
     ])
     .optional(),
   tracking_number: z.string().optional(),
@@ -33,14 +34,17 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const admin = supabaseAdmin();
 
-  const { data, error } = await admin
-    .from("orders")
-    .select("*, order_items(*), order_timeline(*)")
-    .eq("id", id)
-    .single();
+  const [{ data, error }, { data: margin }] = await Promise.all([
+    admin
+      .from("orders")
+      .select("*, order_items(*), order_timeline(*)")
+      .eq("id", id)
+      .single(),
+    admin.from("order_margins").select("*").eq("order_id", id).maybeSingle(),
+  ]);
 
   if (error) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  return NextResponse.json({ ok: true, row: data });
+  return NextResponse.json({ ok: true, row: data, margin: margin ?? null });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -18,10 +18,12 @@ import type { CategoryStackDatum, ItemStackDatum } from "./MarginByCategoryVisx"
 import {
   getInventoryMovementWaterfall,
   getMpConfigMetricsBreakdown,
+  getRealizedMarginSummary,
   getShopifySalesTimeline,
   type InventoryMovementGroup,
   type InventoryMovementRow,
   type MpConfigMetricBreakdown,
+  type RealizedMarginSummary,
 } from "./actions";
 
 const MarginByCategoryVisx = dynamic(() => import("./MarginByCategoryVisx").then((m) => m.MarginByCategoryVisx), { ssr: false });
@@ -177,6 +179,10 @@ export default function AnalyticsPage() {
   const [mpMetricsLoading, setMpMetricsLoading] = useState(false);
   const [mpMetricsRefreshing, setMpMetricsRefreshing] = useState(false);
   const [mpMetricsError, setMpMetricsError] = useState<string | null>(null);
+
+  const [realizedMargin, setRealizedMargin] = useState<RealizedMarginSummary | null>(null);
+  const [realizedMarginLoading, setRealizedMarginLoading] = useState(false);
+  const [realizedMarginError, setRealizedMarginError] = useState<string | null>(null);
 
   const currencyFormatter = useMemo(
     () =>
@@ -422,6 +428,29 @@ export default function AnalyticsPage() {
   useEffect(() => {
     loadMpMetrics("initial");
   }, [loadMpMetrics]);
+
+  const loadRealizedMargin = useCallback(async () => {
+    setRealizedMarginLoading(true);
+    setRealizedMarginError(null);
+    try {
+      const res = await getRealizedMarginSummary({
+        from: timelineDateRange.from.toISOString(),
+        to: timelineDateRange.to.toISOString(),
+      });
+      if (!res.ok) throw new Error("Failed to load realized margin");
+      setRealizedMargin(res.summary);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load realized margin";
+      setRealizedMarginError(message);
+      setRealizedMargin(null);
+    } finally {
+      setRealizedMarginLoading(false);
+    }
+  }, [timelineDateRange.from, timelineDateRange.to]);
+
+  useEffect(() => {
+    loadRealizedMargin();
+  }, [loadRealizedMargin]);
 
   const loadInventoryMovement = useCallback(async () => {
     setInventoryLoading(true);
@@ -788,6 +817,59 @@ export default function AnalyticsPage() {
             Weighted by MSRP across all stocked SKUs with pricing coverage.
           </CardContent>
         </Card>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h2 className="text-base font-medium">Sold orders</h2>
+          <p className="text-sm text-muted-foreground">
+            Realized margin from actual orders in the selected date range, net of refunds — not on-hand MSRP.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardDescription>Realized gross margin (sold)</CardDescription>
+              <CardTitle className="text-2xl">
+                {realizedMarginLoading ? (
+                  <Skeleton className="h-8 w-28" />
+                ) : realizedMarginError ? (
+                  "—"
+                ) : (
+                  currencyFormatter.format(realizedMargin?.gross_margin ?? 0)
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs text-muted-foreground">
+              {realizedMarginError
+                ? realizedMarginError
+                : realizedMarginLoading
+                  ? "Loading sold-order margin…"
+                  : `${realizedMargin?.order_count ?? 0} orders; product revenue net of refunds minus COGS.`}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="space-y-1">
+              <CardDescription>Realized margin %</CardDescription>
+              <CardTitle className="text-2xl">
+                {realizedMarginLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : realizedMarginError ? (
+                  "—"
+                ) : (
+                  formatPercent(realizedMargin?.margin_pct ?? null)
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs text-muted-foreground">
+              {realizedMarginError
+                ? realizedMarginError
+                : realizedMarginLoading
+                  ? "Loading sold-order margin…"
+                  : "Gross margin as a share of adjusted product revenue after refunds."}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid gap-6">

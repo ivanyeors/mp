@@ -651,3 +651,81 @@ export async function getInventoryMovementWaterfall(input: {
   };
 }
 
+export type RealizedMarginSummary = {
+  net_revenue: number;
+  cogs: number;
+  gross_margin: number;
+  margin_pct: number | null;
+  order_count: number;
+};
+
+export async function getRealizedMarginSummary(input: {
+  from: string;
+  to: string;
+}): Promise<{ ok: true; summary: RealizedMarginSummary }> {
+  const from = new Date(input.from);
+  const to = new Date(input.to);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    throw new Error("Invalid date range");
+  }
+
+  const fromIso = from.toISOString();
+  const toIso = to.toISOString();
+  const admin = supabaseAdmin();
+
+  const [{ data: paidOrders, error: paidErr }, { data: unpaidOrders, error: unpaidErr }] =
+    await Promise.all([
+      admin.from("orders").select("id").gte("paid_at", fromIso).lte("paid_at", toIso),
+      admin
+        .from("orders")
+        .select("id")
+        .is("paid_at", null)
+        .gte("created_at", fromIso)
+        .lte("created_at", toIso),
+    ]);
+  if (paidErr) throw new Error(paidErr.message);
+  if (unpaidErr) throw new Error(unpaidErr.message);
+
+  const orderIds = Array.from(
+    new Set([...(paidOrders ?? []), ...(unpaidOrders ?? [])].map((row) => String(row.id)))
+  );
+
+  const empty: RealizedMarginSummary = {
+    net_revenue: 0,
+    cogs: 0,
+    gross_margin: 0,
+    margin_pct: null,
+    order_count: 0,
+  };
+  if (!orderIds.length) return { ok: true, summary: empty };
+
+  const { data: marginRows, error: marginErr } = await admin
+    .from("order_margins")
+    .select("net_revenue, cogs, gross_margin")
+    .in("order_id", orderIds);
+  if (marginErr) throw new Error(marginErr.message);
+
+  let net_revenue = 0;
+  let cogs = 0;
+  let gross_margin = 0;
+  for (const row of marginRows ?? []) {
+    net_revenue += toMoneyNumber(row.net_revenue);
+    cogs += toMoneyNumber(row.cogs);
+    gross_margin += toMoneyNumber(row.gross_margin);
+  }
+
+  const productRevenue = gross_margin + cogs;
+  const margin_pct = productRevenue > 0 ? (gross_margin / productRevenue) * 100 : null;
+
+  return {
+    ok: true,
+    summary: {
+      net_revenue,
+      cogs,
+      gross_margin,
+      margin_pct,
+      order_count: orderIds.length,
+    },
+  };
+}
+

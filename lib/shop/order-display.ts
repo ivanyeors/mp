@@ -12,6 +12,8 @@ export function orderStatusLabel(status: OrderStatus): string {
   switch (status) {
     case "payment_failed":
       return "Payment failed";
+    case "partially_refunded":
+      return "Partially refunded";
     default:
       return status.charAt(0).toUpperCase() + status.slice(1);
   }
@@ -38,6 +40,7 @@ export function orderStatusBadgeClass(status: OrderStatus): string {
     case "disputed":
       return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
     case "refunded":
+    case "partially_refunded":
       return "bg-muted text-muted-foreground border-border";
     default:
       return "bg-muted text-muted-foreground border-border";
