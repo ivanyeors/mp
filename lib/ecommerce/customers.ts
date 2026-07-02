@@ -63,7 +63,7 @@ export async function updateCustomerStats(customerId: string) {
     .from("orders")
     .select("total")
     .eq("customer_id", customerId)
-    .in("status", ["confirmed", "processing", "shipped", "delivered"]);
+    .in("status", ["confirmed", "processing", "shipped", "delivered", "partially_refunded"]);
 
   const orders = data ?? [];
   const totalOrders = orders.length;

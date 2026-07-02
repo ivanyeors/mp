@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
-import { deductInventoryForOrder, restoreInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
+import { deductInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
 import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync";
 import { updateCustomerStats } from "@/lib/ecommerce/customers";
+import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
 import type Stripe from "stripe";
@@ -137,6 +138,20 @@ export async function POST(req: Request) {
           }
         }
 
+        // Step 1b: Record the captured charge in the money ledger (idempotent on
+        // the PaymentIntent id) and roll up amount_captured. The ledger — not the
+        // order status — is the source of truth for the order's net money.
+        if (paymentIntent) {
+          await recordLedgerEntry(admin, orderId, {
+            type: "charge",
+            amount: recon.writeBack.total,
+            currency: order.currency ?? "SGD",
+            stripeObjectId: paymentIntent,
+            metadata: { stripe_session_id: session.id },
+          });
+          await rollupOrderMoney(admin, orderId);
+        }
+
         const items = (order.order_items ?? []) as Array<{
           variant_id: string;
           quantity: number;
@@ -155,6 +170,19 @@ export async function POST(req: Request) {
             await deductInventoryForOrder(orderId, items);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
+            // Oversold: a PAID order can't be fulfilled from stock. Flag it loudly
+            // for a human to refund/reconcile (the dead-letter + 500 retry happens
+            // via CriticalWebhookError below) instead of silently overselling.
+            await admin.from("orders").update({ needs_attention: true }).eq("id", orderId);
+            await addOrderTimelineEvent(
+              orderId,
+              "oversold",
+              `Paid order could not be fulfilled from stock: ${message}`,
+              { reason: message }
+            );
+            console.error(
+              `[stripe/webhook] OVERSOLD paid order ${orderId}: ${message}`
+            );
             throw new CriticalWebhookError(
               `Inventory deduction failed for order ${orderId}: ${message}`,
               err
@@ -272,49 +300,89 @@ export async function POST(req: Request) {
         const { data: order } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, shipping_address, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, coupon_id, customer_id, shipping_address, order_items(*)"
           )
           .eq("payment_reference", paymentIntentId)
           .single();
 
         if (!order) break;
 
-        const alreadyRefunded = order.status === "refunded";
+        const wasFullyRefunded = order.status === "refunded";
 
-        await admin
-          .from("orders")
-          .update({ status: "refunded" })
-          .eq("id", order.id);
+        // Record each SUCCEEDED refund as a signed ledger row, idempotent on the
+        // refund id. A re-delivered event records nothing new and is a no-op.
+        // ponytail: relies on charge.refunds.data (Stripe returns the latest ~10).
+        // Ceiling: an order with >10 distinct refunds could miss older ids on a
+        // late redelivery. Upgrade path: handle refund.* events directly.
+        const refunds = (charge.refunds?.data ?? []).filter((r) => r.status === "succeeded");
+        let newlyRecorded = 0;
+        for (const r of refunds) {
+          const { recorded } = await recordLedgerEntry(admin, order.id, {
+            type: "refund",
+            amount: -(r.amount / 100),
+            currency: (r.currency ?? order.currency ?? "SGD").toUpperCase(),
+            stripeObjectId: r.id,
+            metadata: {
+              charge_id: charge.id,
+              payment_intent: paymentIntentId,
+              reason: r.reason ?? null,
+            },
+          });
+          if (recorded) newlyRecorded++;
+        }
 
-        // Restore inventory using BOM-aware logic
-        const refundItems = (order.order_items ?? []) as Array<{
-          variant_id: string;
-          quantity: number;
-          customization_id?: string | null;
-          customization_snapshot?: Record<string, unknown> | null;
-        }>;
+        if (newlyRecorded === 0) break;
 
-        await restoreInventoryForOrder(order.id, refundItems);
+        // Derive money state from the ledger: partially_refunded unless fully
+        // refunded. Refunds NEVER auto-restock — restocking is a deliberate
+        // manual action linked to the refund (slice 08).
+        const state = await rollupOrderMoney(admin, order.id);
+        const nowFullyRefunded = state.status === "refunded";
 
         await addOrderTimelineEvent(
           order.id,
-          "refunded",
-          "Order refunded via Stripe",
-          { charge_id: charge.id, payment_intent: paymentIntentId }
+          nowFullyRefunded ? "refunded" : "partially_refunded",
+          nowFullyRefunded
+            ? "Order fully refunded via Stripe"
+            : `Partial refund recorded via Stripe (${state.amountRefunded} of ${state.amountCaptured})`,
+          {
+            charge_id: charge.id,
+            payment_intent: paymentIntentId,
+            amount_refunded: state.amountRefunded,
+          }
         );
 
-        // Refund email (idempotent, non-critical). Skip if already refunded so
-        // a re-delivered event doesn't re-attempt.
-        if (!alreadyRefunded) {
-          try {
-            const refundAmount =
-              typeof charge.amount_refunded === "number"
-                ? charge.amount_refunded / 100
-                : null;
-            await sendRefundEmail(order.id, order, refundAmount, admin);
-          } catch (err) {
-            console.error(`[stripe/webhook] Refund email failed for ${order.id}:`, err);
+        // On FULL refund only (first transition), reverse coupon usage and
+        // recompute customer lifetime stats so reporting and coupon limits stay
+        // accurate. Partial refunds leave both untouched.
+        if (nowFullyRefunded && !wasFullyRefunded) {
+          if (order.coupon_id) {
+            const { data: coupon } = await admin
+              .from("coupons")
+              .select("usage_count")
+              .eq("id", order.coupon_id)
+              .single();
+            if (coupon) {
+              await admin
+                .from("coupons")
+                .update({ usage_count: Math.max(0, (coupon.usage_count ?? 0) - 1) })
+                .eq("id", order.coupon_id);
+            }
           }
+          if (order.customer_id) {
+            try {
+              await updateCustomerStats(order.customer_id);
+            } catch (err) {
+              console.error(`[stripe/webhook] Customer stats update failed:`, err);
+            }
+          }
+        }
+
+        // Refund email (non-critical) — only when a new refund was recorded.
+        try {
+          await sendRefundEmail(order.id, order, state.amountRefunded, admin);
+        } catch (err) {
+          console.error(`[stripe/webhook] Refund email failed for ${order.id}:`, err);
         }
 
         break;
@@ -403,6 +471,123 @@ export async function POST(req: Request) {
         console.error(
           `[stripe/webhook] DISPUTE opened for order ${order.id} (dispute ${dispute.id}, reason: ${dispute.reason})`
         );
+
+        break;
+      }
+
+      case "charge.dispute.closed": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const paymentIntentId =
+          typeof dispute.payment_intent === "string"
+            ? dispute.payment_intent
+            : dispute.payment_intent?.id ?? null;
+
+        if (!paymentIntentId) break;
+
+        const { data: order } = await admin
+          .from("orders")
+          .select("id, currency, status")
+          .eq("payment_reference", paymentIntentId)
+          .maybeSingle();
+
+        if (!order) break;
+
+        // Only the terminal outcomes move money; intermediate closes are ignored.
+        if (dispute.status !== "won" && dispute.status !== "lost") break;
+
+        // Dispute fee (e.g. SGD ~20) is charged regardless of outcome, surfaced
+        // via the dispute's balance transactions.
+        const feeMinor = (dispute.balance_transactions ?? []).reduce(
+          (sum, bt) => sum + (bt.fee ?? 0),
+          0
+        );
+
+        if (dispute.status === "won") {
+          // Funds were only ever held by Stripe, now returned — our captured
+          // charge stands, so no ledger debit. Restore the active status.
+          await admin.from("orders").update({ status: "confirmed" }).eq("id", order.id);
+        } else {
+          // Lost: the charge is reversed. Record the loss against the ledger.
+          await recordLedgerEntry(admin, order.id, {
+            type: "dispute_loss",
+            amount: -(dispute.amount / 100),
+            currency: order.currency ?? "SGD",
+            stripeObjectId: dispute.id,
+            metadata: { reason: dispute.reason },
+          });
+        }
+
+        if (feeMinor) {
+          await recordLedgerEntry(admin, order.id, {
+            type: "fee",
+            amount: -(feeMinor / 100),
+            currency: order.currency ?? "SGD",
+            stripeObjectId: `${dispute.id}:fee`,
+            metadata: { kind: "dispute_fee" },
+          });
+        }
+
+        await rollupOrderMoney(admin, order.id);
+
+        await addOrderTimelineEvent(
+          order.id,
+          "dispute_closed",
+          `Dispute ${dispute.status} (amount ${dispute.amount / 100}` +
+            (feeMinor ? `, fee ${feeMinor / 100}` : "") +
+            ")",
+          { dispute_id: dispute.id, status: dispute.status }
+        );
+
+        break;
+      }
+
+      case "refund.failed": {
+        const refund = event.data.object as Stripe.Refund;
+        const paymentIntentId =
+          typeof refund.payment_intent === "string"
+            ? refund.payment_intent
+            : refund.payment_intent?.id ?? null;
+
+        const detail = `Refund ${refund.id} failed (${refund.failure_reason ?? "unknown reason"})`;
+
+        const { data: order } = paymentIntentId
+          ? await admin
+              .from("orders")
+              .select("id, currency")
+              .eq("payment_reference", paymentIntentId)
+              .maybeSingle()
+          : { data: null };
+
+        if (order) {
+          await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
+
+          // If we optimistically recorded this refund as succeeded earlier, post a
+          // compensating adjustment so the ledger reflects that the money never
+          // actually moved, then recompute the rollup.
+          const { count } = await admin
+            .from("order_payments")
+            .select("id", { count: "exact", head: true })
+            .eq("stripe_object_id", refund.id);
+          if ((count ?? 0) > 0) {
+            await recordLedgerEntry(admin, order.id, {
+              type: "adjustment",
+              amount: refund.amount / 100,
+              currency: order.currency ?? "SGD",
+              stripeObjectId: `${refund.id}:failed`,
+              metadata: { kind: "refund_reversal" },
+            });
+            await rollupOrderMoney(admin, order.id);
+          }
+
+          await addOrderTimelineEvent(order.id, "refund_failed", detail, {
+            refund_id: refund.id,
+            failure_reason: refund.failure_reason ?? null,
+          });
+        }
+
+        // Dead-letter for visibility regardless of whether we matched an order.
+        await recordWebhookFailure(admin, event, detail);
+        console.error(`[stripe/webhook] ${detail}`);
 
         break;
       }
