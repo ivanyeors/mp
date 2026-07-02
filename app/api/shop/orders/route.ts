@@ -80,9 +80,7 @@ export async function GET(req: Request) {
 
   let query = admin
     .from("orders")
-    .select("*, order_items(quantity), order_margins(gross_margin, margin_pct)", {
-      count: "exact",
-    });
+    .select("*, order_items(quantity)", { count: "exact" });
 
   if (status) query = query.eq("status", status);
   if (email) query = query.ilike("email", `%${email}%`);
@@ -100,17 +98,30 @@ export async function GET(req: Request) {
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const orderIds = (data ?? []).map((row: { id: string }) => row.id);
+  const marginByOrder = new Map<string, { gross_margin: number; margin_pct: number | null }>();
+  if (orderIds.length > 0) {
+    const { data: margins, error: marginError } = await admin
+      .from("order_margins")
+      .select("order_id, gross_margin, margin_pct")
+      .in("order_id", orderIds);
+    if (marginError) return NextResponse.json({ error: marginError.message }, { status: 500 });
+    for (const m of margins ?? []) {
+      marginByOrder.set(m.order_id, {
+        gross_margin: m.gross_margin,
+        margin_pct: m.margin_pct,
+      });
+    }
+  }
+
   const rows = (data ?? []).map(
-    (row: Record<string, unknown> & { order_margins?: unknown; order_items?: unknown }) => {
-      const margin = Array.isArray(row.order_margins)
-        ? row.order_margins[0]
-        : row.order_margins;
+    (row: Record<string, unknown> & { order_items?: unknown; id: string }) => {
       const items = Array.isArray(row.order_items) ? row.order_items : [];
-      const { order_margins: _omitMargin, order_items: _omitItems, ...rest } = row;
+      const { order_items: _omitItems, ...rest } = row;
       return {
         ...rest,
         items_count: sumOrderItemQuantities(items),
-        margin: margin ?? null,
+        margin: marginByOrder.get(row.id) ?? null,
       };
     }
   );

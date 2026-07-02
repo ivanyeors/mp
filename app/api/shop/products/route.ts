@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { attachStockAvailable } from "@/lib/ecommerce/products";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -66,7 +67,9 @@ export async function GET(req: Request) {
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, rows: data ?? [], total: count ?? 0, page, limit });
+  const rows = await attachStockAvailable(data ?? []);
+
+  return NextResponse.json({ ok: true, rows, total: count ?? 0, page, limit });
 }
 
 export async function POST(req: Request) {

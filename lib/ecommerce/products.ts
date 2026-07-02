@@ -8,7 +8,7 @@ import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
  * gates on — pillow buildable, bolster buildable, item on-hand, or infinite for
  * untracked variants. Mutates and returns the same products for convenience.
  */
-async function attachStockAvailable<
+export async function attachStockAvailable<
   T extends { product_variants?: { id: string; stock_available?: number }[] }
 >(products: T[]): Promise<T[]> {
   const variantIds = products.flatMap((p) => (p.product_variants ?? []).map((v) => v.id));

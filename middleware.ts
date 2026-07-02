@@ -52,6 +52,18 @@ export async function middleware(request: NextRequest) {
 
   // If the URL already has a locale, keep it and ensure cookie matches.
   if (pathLocale) {
+    // ponytail: middleware redirects beat stale static caches for moved settings routes
+    if (pathname.endsWith("/settings/inventory/shopify")) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathname.replace("/settings/inventory/shopify", "/settings/integrations/shopify");
+      return NextResponse.redirect(url, 308);
+    }
+    if (pathname.endsWith("/settings/categories")) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathname.replace("/settings/categories", "/settings/products");
+      return NextResponse.redirect(url, 308);
+    }
+
     const res = NextResponse.next();
     clearLegacySettingsSession(request, res);
     const existing = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
