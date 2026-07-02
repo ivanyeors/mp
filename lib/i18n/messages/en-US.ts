@@ -437,6 +437,7 @@ export const enUS: Messages = {
       checkout: "Checkout",
       proceedToCheckout: "Proceed to Checkout",
       subtotal: "Subtotal",
+      discount: "Discount",
       shipping: "Shipping",
       shippingAtCheckout: "Calculated at checkout",
       freeShippingAway: "{amount} away from free shipping",

@@ -342,13 +342,35 @@ export async function POST(req: Request) {
   let appliedCouponCode: string | null = null;
   let isFreeShipping = false;
 
+  const normalizedEmail = email.toLowerCase().trim();
+  const { data: existingCustomer } = await admin
+    .from("customers")
+    .select("id")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
+
   if (coupon_code) {
     const productIds = cart.items.map((item) => item.product?.id).filter(Boolean) as string[];
     const categoryIds = cart.items
       .map((item) => item.product?.category_id)
       .filter(Boolean) as string[];
+    const lineItems = cart.items.map((item) => {
+      const basePrice = item.quantity * (item.variant?.price ?? 0);
+      const addonPrice = item.customization_id
+        ? (customizationMap.get(item.customization_id)?.total_addon_price ?? 0) * item.quantity
+        : 0;
+      return {
+        productId: item.product?.id ?? "",
+        categoryId: item.product?.category_id ?? null,
+        lineTotal: basePrice + addonPrice,
+      };
+    });
 
-    const couponResult = await validateCoupon(coupon_code, subtotal, productIds, categoryIds);
+    const couponResult = await validateCoupon(coupon_code, subtotal, productIds, categoryIds, {
+      customerEmail: normalizedEmail,
+      customerId: existingCustomer?.id,
+      lineItems,
+    });
     if (!couponResult.valid) {
       return NextResponse.json({ error: couponResult.error ?? "Invalid coupon" }, { status: 400 });
     }

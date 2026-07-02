@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/admin";
+import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
+import { roleHasPermission } from "@/lib/auth/permissions";
 
 export const runtime = "nodejs";
 
@@ -19,10 +20,18 @@ const CreateShippingMethodSchema = z.object({
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const country = searchParams.get("country");
+  const includeInactive = searchParams.get("include_inactive") === "1";
+  const adminCtx = includeInactive ? await getAdminContext() : null;
+  const canIncludeInactive =
+    adminCtx != null && roleHasPermission(adminCtx.role, "shipping");
 
   const admin = supabaseAdmin();
 
   let query = admin.from("shipping_methods").select("*").order("position", { ascending: true });
+
+  if (!canIncludeInactive) {
+    query = query.eq("is_active", true);
+  }
 
   if (country) {
     query = query.contains("countries", [country]);

@@ -1,6 +1,13 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Order, OrderItem, OrderTimelineEvent } from "@/lib/types/ecommerce";
 
+/** Sum line quantities for list/detail item counts (not line-item row count). */
+export function sumOrderItemQuantities(
+  items: ReadonlyArray<{ quantity?: number | null }> | null | undefined
+): number {
+  return (items ?? []).reduce((sum, item) => sum + (item.quantity ?? 0), 0);
+}
+
 export interface GetOrdersOpts {
   status?: string;
   email?: string;
@@ -32,10 +39,14 @@ export async function getOrders(opts: GetOrdersOpts = {}) {
   if (error) throw new Error(error.message);
 
   return {
-    orders: (data ?? []).map((o: Order & { order_items: OrderItem[] }) => ({
-      ...o,
-      items: o.order_items ?? [],
-    })),
+    orders: (data ?? []).map((o: Order & { order_items: OrderItem[] }) => {
+      const items = o.order_items ?? [];
+      return {
+        ...o,
+        items,
+        items_count: sumOrderItemQuantities(items),
+      };
+    }),
     total: count ?? 0,
     page,
     limit,

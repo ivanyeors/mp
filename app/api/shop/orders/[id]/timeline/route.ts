@@ -26,7 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, rows: data ?? [] });
+  return NextResponse.json({ ok: true, rows: data ?? [], events: data ?? [] });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

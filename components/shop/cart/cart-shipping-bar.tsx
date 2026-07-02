@@ -1,20 +1,45 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Truck } from "lucide-react";
 import { motion } from "motion/react";
 import { formatPrice } from "@/components/shop/price-display";
 import type { CartMessages } from "./cart-types";
-import { FREE_SHIPPING_THRESHOLD } from "./cart-constants";
 
 interface CartShippingBarProps {
   subtotal: number;
   currency: string;
   messages: CartMessages;
+  country?: string;
 }
 
-export function CartShippingBar({ subtotal, currency, messages }: CartShippingBarProps) {
-  const shippingProgress = Math.min(subtotal / FREE_SHIPPING_THRESHOLD, 1);
-  const amountToFreeShipping = FREE_SHIPPING_THRESHOLD - subtotal;
+export function CartShippingBar({
+  subtotal,
+  currency,
+  messages,
+  country = "SG",
+}: CartShippingBarProps) {
+  const [freeAbove, setFreeAbove] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/shop/shipping?country=${country}`)
+      .then((res) => res.json())
+      .then((json) => {
+        const rows = (json.rows ?? []).filter(
+          (m: { is_active?: boolean }) => m.is_active !== false
+        );
+        const thresholds = rows
+          .map((m: { free_above: number | null }) => m.free_above)
+          .filter((v: number | null): v is number => v != null);
+        setFreeAbove(thresholds.length > 0 ? Math.min(...thresholds) : null);
+      })
+      .catch(() => setFreeAbove(null));
+  }, [country]);
+
+  if (freeAbove == null) return null;
+
+  const shippingProgress = Math.min(subtotal / freeAbove, 1);
+  const amountToFreeShipping = freeAbove - subtotal;
   const qualified = shippingProgress >= 1;
 
   return (

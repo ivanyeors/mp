@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { sumOrderItemQuantities } from "@/lib/ecommerce/orders";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -79,7 +80,9 @@ export async function GET(req: Request) {
 
   let query = admin
     .from("orders")
-    .select("*, order_margins(gross_margin, margin_pct)", { count: "exact" });
+    .select("*, order_items(quantity), order_margins(gross_margin, margin_pct)", {
+      count: "exact",
+    });
 
   if (status) query = query.eq("status", status);
   if (email) query = query.ilike("email", `%${email}%`);
@@ -98,12 +101,17 @@ export async function GET(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const rows = (data ?? []).map(
-    (row: Record<string, unknown> & { order_margins?: unknown }) => {
+    (row: Record<string, unknown> & { order_margins?: unknown; order_items?: unknown }) => {
       const margin = Array.isArray(row.order_margins)
         ? row.order_margins[0]
         : row.order_margins;
-      const { order_margins: _omit, ...rest } = row;
-      return { ...rest, margin: margin ?? null };
+      const items = Array.isArray(row.order_items) ? row.order_items : [];
+      const { order_margins: _omitMargin, order_items: _omitItems, ...rest } = row;
+      return {
+        ...rest,
+        items_count: sumOrderItemQuantities(items),
+        margin: margin ?? null,
+      };
     }
   );
 

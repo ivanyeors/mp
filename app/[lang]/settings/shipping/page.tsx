@@ -184,7 +184,7 @@ export default function SettingsShippingPage() {
     const fetchMethods = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/shop/shipping");
+            const res = await fetch("/api/shop/shipping?include_inactive=1");
             const json = await res.json();
             setMethods(json.rows ?? []);
         } catch {

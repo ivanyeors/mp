@@ -414,6 +414,7 @@ export const zhCN: Messages = {
       checkout: "结账",
       proceedToCheckout: "前往结账",
       subtotal: "小计",
+      discount: "折扣",
       shipping: "运费",
       shippingAtCheckout: "结账时计算",
       freeShippingAway: "还差 {amount} 即可免运费",

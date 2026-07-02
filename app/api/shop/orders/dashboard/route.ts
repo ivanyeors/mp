@@ -79,6 +79,8 @@ export async function GET() {
     ok: true,
     stats: {
       total_orders: totalOrders,
+      revenue: totalRevenue,
+      avg_order_value: averageOrderValue,
       total_revenue: totalRevenue,
       average_order_value: averageOrderValue,
       pending_orders: pendingOrders,

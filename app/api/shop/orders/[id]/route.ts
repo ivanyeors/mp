@@ -44,7 +44,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   ]);
 
   if (error) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  return NextResponse.json({ ok: true, row: data, margin: margin ?? null });
+
+  const orderItems = Array.isArray(data.order_items) ? data.order_items : [];
+  const timeline = Array.isArray(data.order_timeline)
+    ? [...data.order_timeline].sort(
+        (a: { created_at: string }, b: { created_at: string }) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    : [];
+  const { order_items: _items, order_timeline: _timeline, ...orderFields } = data;
+
+  return NextResponse.json({
+    ok: true,
+    row: { ...orderFields, items: orderItems, timeline },
+    margin: margin ?? null,
+  });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

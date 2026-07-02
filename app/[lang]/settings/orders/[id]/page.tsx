@@ -221,7 +221,7 @@ export default function OrderDetailPage() {
         try {
             const res = await fetch(`/api/shop/orders/${orderId}/timeline`);
             const json = await res.json();
-            setTimeline(json.events ?? json ?? []);
+            setTimeline(json.events ?? json.rows ?? []);
         } catch {
             setTimeline([]);
         } finally {

@@ -20,10 +20,14 @@ interface CartContentProps {
   messages: CartMessages;
   locale: Locale;
   subtotal: number;
+  couponDiscount: number;
+  couponFreeShipping: boolean;
   items: CartItemClient[];
   itemCount: number;
   couponCode: string | null;
-  applyCoupon: (code: string | null) => void;
+  couponError: string | null;
+  couponValidating: boolean;
+  applyCoupon: (code: string | null) => Promise<void>;
   updateQuantity: (variantId: string, quantity: number, customizationId?: string) => void;
   removeItem: (variantId: string, customizationId?: string) => void;
   onClose?: () => void;
@@ -36,9 +40,13 @@ export function CartContent({
   messages,
   locale,
   subtotal,
+  couponDiscount,
+  couponFreeShipping,
   items,
   itemCount: _itemCount,
   couponCode,
+  couponError,
+  couponValidating,
   applyCoupon,
   updateQuantity,
   removeItem,
@@ -118,10 +126,21 @@ export function CartContent({
             <CartShippingBar subtotal={subtotal} currency={currency} messages={messages} />
             <CartCouponField
               couponCode={couponCode}
+              couponDiscount={couponDiscount}
+              couponFreeShipping={couponFreeShipping}
+              couponError={couponError}
+              couponValidating={couponValidating}
               applyCoupon={applyCoupon}
+              currency={currency}
               messages={messages}
             />
-            <CartSummary subtotal={subtotal} currency={currency} messages={messages} />
+            <CartSummary
+              subtotal={subtotal}
+              couponDiscount={couponDiscount}
+              couponCode={couponCode}
+              currency={currency}
+              messages={messages}
+            />
             {hasShortage && (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                 Some items exceed available stock. Adjust quantities to continue.

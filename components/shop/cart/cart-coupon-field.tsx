@@ -1,35 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { formatPrice } from "@/components/shop/price-display";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CartMessages } from "./cart-types";
 
 interface CartCouponFieldProps {
   couponCode: string | null;
-  applyCoupon: (code: string | null) => void;
+  couponDiscount: number;
+  couponFreeShipping: boolean;
+  couponError: string | null;
+  couponValidating: boolean;
+  applyCoupon: (code: string | null) => Promise<void>;
+  currency: string;
   messages: CartMessages;
 }
 
-export function CartCouponField({ couponCode, applyCoupon, messages }: CartCouponFieldProps) {
+export function CartCouponField({
+  couponCode,
+  couponDiscount,
+  couponFreeShipping,
+  couponError,
+  couponValidating,
+  applyCoupon,
+  currency,
+  messages,
+}: CartCouponFieldProps) {
   const [couponInput, setCouponInput] = useState(couponCode ?? "");
-  const [couponApplied, setCouponApplied] = useState(false);
 
   useEffect(() => {
     setCouponInput(couponCode ?? "");
-    setCouponApplied(Boolean(couponCode));
   }, [couponCode]);
 
-  function handleApplyCoupon() {
+  async function handleApplyCoupon() {
     const trimmed = couponInput.trim();
     if (trimmed) {
-      applyCoupon(trimmed);
-      setCouponApplied(true);
+      await applyCoupon(trimmed);
     } else {
-      applyCoupon(null);
-      setCouponApplied(false);
+      await applyCoupon(null);
     }
   }
+
+  const applied = Boolean(couponCode && !couponError);
 
   return (
     <div className="flex flex-col gap-1">
@@ -37,27 +51,39 @@ export function CartCouponField({ couponCode, applyCoupon, messages }: CartCoupo
         <Input
           placeholder={messages.coupon}
           value={couponInput}
-          onChange={(e) => {
-            setCouponInput(e.target.value);
-            setCouponApplied(false);
-          }}
+          onChange={(e) => setCouponInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleApplyCoupon();
+            if (e.key === "Enter") void handleApplyCoupon();
           }}
+          disabled={couponValidating}
           className="h-9 text-sm"
         />
         <Button
           variant="outline"
           size="sm"
-          onClick={handleApplyCoupon}
+          onClick={() => void handleApplyCoupon()}
+          disabled={couponValidating}
           className="shrink-0 h-9"
         >
-          {messages.applyCoupon}
+          {couponValidating ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            messages.applyCoupon
+          )}
         </Button>
       </div>
-      {couponApplied && couponCode && (
+      {couponError && (
+        <p className="text-xs text-destructive">{couponError}</p>
+      )}
+      {applied && (
         <p className="text-xs text-green-600 dark:text-green-400">
-          {messages.couponApplied(couponCode)}
+          {messages.couponApplied(couponCode!)}
+          {couponDiscount > 0 && (
+            <> — {formatPrice(couponDiscount, currency)} off</>
+          )}
+          {couponFreeShipping && couponDiscount <= 0 && (
+            <> — {messages.freeShippingQualified.toLowerCase()}</>
+          )}
         </p>
       )}
     </div>

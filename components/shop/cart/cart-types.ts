@@ -7,6 +7,7 @@ export interface CartMessages {
   continueShopping: string;
   proceedToCheckout: string;
   subtotal: string;
+  discount: string;
   coupon: string;
   applyCoupon: string;
   couponApplied: (code: string) => string;

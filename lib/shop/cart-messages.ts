@@ -9,6 +9,7 @@ export function buildCartMessages(cart: Messages["shop"]["cart"]): CartMessages 
     continueShopping: cart.continueShopping,
     proceedToCheckout: cart.proceedToCheckout,
     subtotal: cart.subtotal,
+    discount: cart.discount,
     coupon: cart.coupon,
     applyCoupon: cart.applyCoupon,
     couponApplied: (code) => cart.couponApplied.replace("{code}", code),

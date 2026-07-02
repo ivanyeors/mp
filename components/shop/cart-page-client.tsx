@@ -29,6 +29,10 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
     removeItem,
     applyCoupon,
     couponCode,
+    couponError,
+    couponDiscount,
+    couponFreeShipping,
+    couponValidating,
     hydrated,
   } = useCart();
 
@@ -113,7 +117,12 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
         <CartShippingBar subtotal={subtotal} currency={currency} messages={messages} />
         <CartCouponField
           couponCode={couponCode}
+          couponDiscount={couponDiscount}
+          couponFreeShipping={couponFreeShipping}
+          couponError={couponError}
+          couponValidating={couponValidating}
           applyCoupon={applyCoupon}
+          currency={currency}
           messages={messages}
         />
       </div>
@@ -126,7 +135,13 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
 
       {/* Desktop inline footer */}
       <div className="mt-6 hidden flex-col gap-3 md:flex">
-        <CartSummary subtotal={subtotal} currency={currency} messages={messages} />
+        <CartSummary
+          subtotal={subtotal}
+          couponDiscount={couponDiscount}
+          couponCode={couponCode}
+          currency={currency}
+          messages={messages}
+        />
         {hasShortage ? (
           <Button className="w-full max-w-sm" size="lg" disabled>
             {messages.proceedToCheckout}
@@ -144,7 +159,13 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
       {/* Mobile sticky checkout bar */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
         <div className="mx-auto max-w-7xl px-4 py-3 pb-[calc(var(--mobile-bottom-clearance)+env(safe-area-inset-bottom,0px))]">
-          <CartSummary subtotal={subtotal} currency={currency} messages={messages} />
+          <CartSummary
+          subtotal={subtotal}
+          couponDiscount={couponDiscount}
+          couponCode={couponCode}
+          currency={currency}
+          messages={messages}
+        />
           {hasShortage ? (
             <Button className="mt-3 w-full" size="lg" disabled>
               {messages.proceedToCheckout}

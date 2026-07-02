@@ -207,17 +207,11 @@ export async function POST(req: Request) {
 
         // Step 4: Increment coupon usage (idempotent — only if order was just confirmed)
         if (!order.paid_at && order.coupon_id) {
-          const { data: coupon } = await admin
-            .from("coupons")
-            .select("usage_count")
-            .eq("id", order.coupon_id)
-            .single();
-
-          if (coupon) {
-            await admin
-              .from("coupons")
-              .update({ usage_count: (coupon.usage_count ?? 0) + 1 })
-              .eq("id", order.coupon_id);
+          const { incrementCouponUsage } = await import("@/lib/ecommerce/discounts");
+          try {
+            await incrementCouponUsage(order.coupon_id);
+          } catch (err) {
+            console.error(`[stripe/webhook] Coupon usage increment failed:`, err);
           }
         }
 

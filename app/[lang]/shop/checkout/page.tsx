@@ -85,7 +85,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const lang = (params?.lang as string) ?? "en";
 
-  const { items, subtotal, couponCode, clearCart } = useCart();
+  const { items, subtotal, couponCode, couponDiscount, couponFreeShipping, clearCart } = useCart();
   const { isConverted, currency: displayCurrency } = useCurrency();
 
   // Form state
@@ -162,24 +162,69 @@ export default function CheckoutPage() {
 
     fetch(`/api/shop/shipping?country=${form.country}`)
       .then((res) => res.json())
-      .then((data: ShippingMethod[]) => {
-        setShippingMethods(Array.isArray(data) ? data : []);
-        if (data.length > 0) setSelectedShipping(data[0].id);
+      .then((data: { rows?: ShippingMethod[] }) => {
+        const methods = data.rows ?? [];
+        setShippingMethods(methods);
+        if (methods.length > 0) setSelectedShipping(methods[0].id);
       })
       .catch(() => setShippingMethods([]))
       .finally(() => setShippingLoading(false));
   }, [form.country]);
+
+  const [checkoutDiscount, setCheckoutDiscount] = useState(couponDiscount);
+  const [checkoutFreeShipping, setCheckoutFreeShipping] = useState(couponFreeShipping);
+  const [couponPreviewError, setCouponPreviewError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!couponCode) {
+      setCheckoutDiscount(0);
+      setCheckoutFreeShipping(false);
+      setCouponPreviewError(null);
+      return;
+    }
+
+    fetch("/api/shop/coupons/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: couponCode,
+        subtotal,
+        product_ids: items.map((i) => i.productId),
+        email: form.email || undefined,
+        line_items: items.map((i) => ({
+          product_id: i.productId,
+          line_total: (i.price + (i.addonPrice ?? 0)) * i.quantity,
+        })),
+      }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json.valid) {
+          setCheckoutDiscount(0);
+          setCheckoutFreeShipping(false);
+          setCouponPreviewError(json.reason ?? "Invalid coupon");
+          return;
+        }
+        setCheckoutDiscount(json.discount_amount ?? 0);
+        setCheckoutFreeShipping(json.coupon?.discount_type === "free_shipping");
+        setCouponPreviewError(null);
+      })
+      .catch(() => {
+        setCheckoutDiscount(couponDiscount);
+        setCheckoutFreeShipping(couponFreeShipping);
+      });
+  }, [couponCode, subtotal, items, form.email, couponDiscount, couponFreeShipping]);
 
   // Derived values
   const selectedMethod = shippingMethods.find((m) => m.id === selectedShipping) ?? null;
   const currency = items[0]?.currency ?? "SGD";
   const shippingCost =
     selectedMethod
-      ? selectedMethod.free_above != null && subtotal >= selectedMethod.free_above
+      ? checkoutFreeShipping || (selectedMethod.free_above != null && subtotal >= selectedMethod.free_above)
         ? 0
         : selectedMethod.base_rate
       : 0;
-  const total = subtotal + shippingCost;
+  const total = Math.max(0, subtotal + shippingCost - checkoutDiscount);
 
   // ---------------------------------------------------------------------------
   // Validation
@@ -414,8 +459,17 @@ export default function CheckoutPage() {
           {couponCode && (
             <div className="flex justify-between text-green-600 dark:text-green-400">
               <span>Coupon ({couponCode})</span>
-              <span>Applied</span>
+              <span>
+                {checkoutFreeShipping
+                  ? "Free shipping"
+                  : checkoutDiscount > 0
+                    ? <>-<PriceDisplay price={checkoutDiscount} currency={currency} className="inline text-sm" /></>
+                    : "Applied"}
+              </span>
             </div>
+          )}
+          {couponPreviewError && (
+            <p className="text-xs text-destructive">{couponPreviewError}</p>
           )}
 
           <div className="flex justify-between font-semibold text-base border-t pt-2 mt-1">

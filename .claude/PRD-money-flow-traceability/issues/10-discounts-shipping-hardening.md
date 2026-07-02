@@ -14,13 +14,13 @@ Close the remaining discount/shipping enforcement gaps and fix the order screens
 
 ## Acceptance criteria
 
-- [ ] A coupon past its `per_customer_limit` for a customer is rejected.
-- [ ] The discount editor can scope a coupon to products/categories, and that scoping is enforced.
-- [ ] Applying a coupon in the cart validates it and shows the real discount amount before checkout.
-- [ ] Coupon usage increments reliably (RPC or manual path).
-- [ ] The storefront shipping list shows only active methods; the checkout page lists them correctly (no empty list from the `{ rows }` shape).
-- [ ] The free-shipping bar reflects the selected method's `free_above`.
-- [ ] Orders dashboard shows correct revenue/avg order value; order detail loads correctly; item counts are accurate.
+- [x] A coupon past its `per_customer_limit` for a customer is rejected.
+- [x] The discount editor can scope a coupon to products/categories, and that scoping is enforced.
+- [x] Applying a coupon in the cart validates it and shows the real discount amount before checkout.
+- [x] Coupon usage increments reliably (RPC or manual path).
+- [x] The storefront shipping list shows only active methods; the checkout page lists them correctly (no empty list from the `{ rows }` shape).
+- [x] The free-shipping bar reflects the selected method's `free_above`.
+- [x] Orders dashboard shows correct revenue/avg order value; order detail loads correctly; item counts are accurate.
 
 ## Blocked by
 

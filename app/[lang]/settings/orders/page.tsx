@@ -56,6 +56,7 @@ type DashboardStats = {
 };
 
 type OrderRow = Order & {
+    items_count?: number;
     margin?: Pick<OrderMargin, "gross_margin" | "margin_pct"> | null;
 };
 
@@ -386,7 +387,7 @@ export default function SettingsOrdersPage() {
                             {orders.map((order) => {
                                 const customClass = orderStatusBadgeClass(order.status);
                                 const variant = orderStatusBadgeVariant(order.status);
-                                const itemCount = order.items?.length ?? 0;
+                                const itemCount = order.items_count ?? 0;
 
                                 return (
                                     <TableRow

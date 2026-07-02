@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { supabaseAdmin } from "@/lib/supabase/server";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
 
 export const runtime = "nodejs";
@@ -9,6 +10,17 @@ const ValidateCouponSchema = z.object({
   subtotal: z.number().nonnegative(),
   product_ids: z.array(z.string().uuid()).optional(),
   category_ids: z.array(z.string().uuid()).optional(),
+  email: z.string().email().optional(),
+  customer_id: z.string().uuid().optional(),
+  line_items: z
+    .array(
+      z.object({
+        product_id: z.string().uuid(),
+        category_id: z.string().uuid().nullable().optional(),
+        line_total: z.number().nonnegative(),
+      })
+    )
+    .optional(),
 });
 
 export async function POST(req: Request) {
@@ -18,9 +30,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { code, subtotal, product_ids, category_ids } = parsed.data;
+  const { code, subtotal, product_ids, email, customer_id, line_items } = parsed.data;
+  let { category_ids } = parsed.data;
 
-  const result = await validateCoupon(code, subtotal, product_ids, category_ids);
+  // Enrich category IDs from products when not supplied (cart only has productId).
+  if (product_ids?.length && !category_ids?.length) {
+    const admin = supabaseAdmin();
+    const { data: products } = await admin
+      .from("products")
+      .select("category_id")
+      .in("id", product_ids);
+    category_ids = [
+      ...new Set(
+        (products ?? [])
+          .map((p: { category_id: string | null }) => p.category_id)
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+  }
+
+  const result = await validateCoupon(code, subtotal, product_ids, category_ids, {
+    customerEmail: email,
+    customerId: customer_id,
+    lineItems: line_items?.map((item) => ({
+      productId: item.product_id,
+      categoryId: item.category_id,
+      lineTotal: item.line_total,
+    })),
+  });
 
   if (!result.valid) {
     return NextResponse.json({

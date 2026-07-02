@@ -31,6 +31,10 @@ export function CartPopover({ trigger }: CartPopoverProps) {
     removeItem,
     applyCoupon,
     couponCode,
+    couponError,
+    couponDiscount,
+    couponFreeShipping,
+    couponValidating,
   } = useCart();
 
   const shopHref = withLocale("/shop", locale);
@@ -76,9 +80,13 @@ export function CartPopover({ trigger }: CartPopoverProps) {
             messages={messages}
             locale={locale}
             subtotal={subtotal}
+            couponDiscount={couponDiscount}
+            couponFreeShipping={couponFreeShipping}
             items={items}
             itemCount={itemCount}
             couponCode={couponCode}
+            couponError={couponError}
+            couponValidating={couponValidating}
             applyCoupon={applyCoupon}
             updateQuantity={updateQuantity}
             removeItem={removeItem}

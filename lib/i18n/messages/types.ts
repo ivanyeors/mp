@@ -284,6 +284,7 @@ export type Messages = {
       checkout: string;
       proceedToCheckout: string;
       subtotal: string;
+      discount: string;
       shipping: string;
       shippingAtCheckout: string;
       freeShippingAway: string; // e.g. "{amount} away from free shipping"

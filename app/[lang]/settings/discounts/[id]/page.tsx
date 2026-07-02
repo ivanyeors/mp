@@ -12,6 +12,7 @@ import {
     Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,26 @@ const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
+
+type AppliesTo = { product_ids?: string[]; category_ids?: string[] } | null;
+
+type CatalogProduct = {
+    id: string;
+    slug: string;
+    content: Record<string, { title: string }>;
+};
+
+type CatalogCategory = {
+    id: string;
+    slug: string;
+    content: Record<string, { name: string }>;
+    children?: CatalogCategory[];
+};
+
+type AppliesToSelection = {
+    product_ids: string[];
+    category_ids: string[];
+};
 
 type CouponForm = {
     code: string;
@@ -66,6 +87,7 @@ type Coupon = {
     per_customer_limit: number;
     starts_at: string | null;
     expires_at: string | null;
+    applies_to: AppliesTo;
     is_active: boolean;
 };
 
@@ -141,6 +163,51 @@ const DEFAULT_FORM: CouponForm = {
     is_active: true,
 };
 
+function getProductTitle(row: CatalogProduct): string {
+    const loc =
+        row.content?.["en-US"] ??
+        row.content?.["en"] ??
+        Object.values(row.content ?? {})[0];
+    return loc?.title ?? row.slug;
+}
+
+function getCategoryName(cat: CatalogCategory): string {
+    const loc =
+        cat.content?.["en-US"] ??
+        cat.content?.["en"] ??
+        Object.values(cat.content ?? {})[0];
+    return loc?.name ?? cat.slug;
+}
+
+function flattenCategories(
+    nodes: CatalogCategory[],
+    depth = 0
+): { cat: CatalogCategory; depth: number }[] {
+    const result: { cat: CatalogCategory; depth: number }[] = [];
+    for (const node of nodes) {
+        result.push({ cat: node, depth });
+        result.push(...flattenCategories(node.children ?? [], depth + 1));
+    }
+    return result;
+}
+
+function appliesToFromCoupon(c: Coupon): AppliesToSelection {
+    return {
+        product_ids: c.applies_to?.product_ids ?? [],
+        category_ids: c.applies_to?.category_ids ?? [],
+    };
+}
+
+function buildAppliesToPayload(selection: AppliesToSelection): AppliesTo {
+    const product_ids = selection.product_ids;
+    const category_ids = selection.category_ids;
+    if (product_ids.length === 0 && category_ids.length === 0) return null;
+    return {
+        ...(product_ids.length > 0 ? { product_ids } : {}),
+        ...(category_ids.length > 0 ? { category_ids } : {}),
+    };
+}
+
 function couponToForm(c: Coupon): CouponForm {
     return {
         code: c.code,
@@ -170,11 +237,20 @@ export default function DiscountEditorPage() {
     const router = useRouter();
 
     const [form, setForm] = useState<CouponForm>(DEFAULT_FORM);
+    const [appliesTo, setAppliesTo] = useState<AppliesToSelection>({
+        product_ids: [],
+        category_ids: [],
+    });
     const [original, setOriginal] = useState<Coupon | null>(null);
     const [loading, setLoading] = useState(!isNew);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+    const [products, setProducts] = useState<CatalogProduct[]>([]);
+    const [categories, setCategories] = useState<CatalogCategory[]>([]);
+    const [catalogLoading, setCatalogLoading] = useState(true);
+    const [productSearch, setProductSearch] = useState("");
+    const [categorySearch, setCategorySearch] = useState("");
 
     // Load existing coupon
     const fetchCoupon = useCallback(async () => {
@@ -186,6 +262,7 @@ export default function DiscountEditorPage() {
             const json = await res.json();
             setOriginal(json.row);
             setForm(couponToForm(json.row));
+            setAppliesTo(appliesToFromCoupon(json.row));
         } catch {
             setError("Failed to load coupon.");
         } finally {
@@ -196,6 +273,32 @@ export default function DiscountEditorPage() {
     useEffect(() => {
         fetchCoupon();
     }, [fetchCoupon]);
+
+    useEffect(() => {
+        let cancelled = false;
+        setCatalogLoading(true);
+        Promise.all([
+            fetch("/api/shop/products?limit=100").then((r) => r.json()),
+            fetch("/api/shop/categories").then((r) => r.json()),
+        ])
+            .then(([productsJson, categoriesJson]) => {
+                if (cancelled) return;
+                setProducts(productsJson.rows ?? []);
+                setCategories(categoriesJson.rows ?? []);
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setProducts([]);
+                    setCategories([]);
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setCatalogLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // ── Field helpers ──
     const set = (field: keyof CouponForm, value: string | boolean) =>
@@ -209,6 +312,35 @@ export default function DiscountEditorPage() {
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
     };
+
+    const toggleAppliesToId = (field: keyof AppliesToSelection, id: string) => {
+        setAppliesTo((prev) => {
+            const selected = prev[field];
+            const next = selected.includes(id)
+                ? selected.filter((value) => value !== id)
+                : [...selected, id];
+            return { ...prev, [field]: next };
+        });
+    };
+
+    const productQuery = productSearch.trim().toLowerCase();
+    const filteredProducts = products.filter((product) => {
+        if (!productQuery) return true;
+        return (
+            getProductTitle(product).toLowerCase().includes(productQuery) ||
+            product.slug.toLowerCase().includes(productQuery)
+        );
+    });
+
+    const categoryQuery = categorySearch.trim().toLowerCase();
+    const flatCategories = flattenCategories(categories);
+    const filteredCategories = flatCategories.filter(({ cat }) => {
+        if (!categoryQuery) return true;
+        return (
+            getCategoryName(cat).toLowerCase().includes(categoryQuery) ||
+            cat.slug.toLowerCase().includes(categoryQuery)
+        );
+    });
 
     // ── Save ──
     const handleSave = async () => {
@@ -226,6 +358,7 @@ export default function DiscountEditorPage() {
             per_customer_limit: parseInt(form.per_customer_limit) || 1,
             starts_at: toISOWithOffset(form.starts_at),
             expires_at: toISOWithOffset(form.expires_at),
+            applies_to: buildAppliesToPayload(appliesTo),
             is_active: form.is_active,
         };
 
@@ -250,6 +383,7 @@ export default function DiscountEditorPage() {
                 } else {
                     setOriginal(json.row);
                     setForm(couponToForm(json.row));
+                    setAppliesTo(appliesToFromCoupon(json.row));
                 }
             }
         } catch {
@@ -461,6 +595,114 @@ export default function DiscountEditorPage() {
                                     </p>
                                 </div>
                             )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Applies to section */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Applies to</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <p className="text-xs text-muted-foreground">
+                                Leave all unchecked to apply this discount to the entire cart.
+                                Select products and/or categories to restrict where it applies.
+                            </p>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="product_scope_search">Products</Label>
+                                <Input
+                                    id="product_scope_search"
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                    placeholder="Search products…"
+                                />
+                                <div className="max-h-48 overflow-y-auto rounded-md border p-3">
+                                    {catalogLoading ? (
+                                        <div className="flex items-center justify-center py-6">
+                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : filteredProducts.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No products found.
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {filteredProducts.map((product) => {
+                                                const checked = appliesTo.product_ids.includes(product.id);
+                                                return (
+                                                    <label
+                                                        key={product.id}
+                                                        className="flex cursor-pointer items-start gap-2 text-sm"
+                                                    >
+                                                        <Checkbox
+                                                            checked={checked}
+                                                            onCheckedChange={() =>
+                                                                toggleAppliesToId("product_ids", product.id)
+                                                            }
+                                                            className="mt-0.5"
+                                                        />
+                                                        <span>
+                                                            {getProductTitle(product)}
+                                                            <span className="ml-1 text-xs text-muted-foreground">
+                                                                ({product.slug})
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="category_scope_search">Categories</Label>
+                                <Input
+                                    id="category_scope_search"
+                                    value={categorySearch}
+                                    onChange={(e) => setCategorySearch(e.target.value)}
+                                    placeholder="Search categories…"
+                                />
+                                <div className="max-h-48 overflow-y-auto rounded-md border p-3">
+                                    {catalogLoading ? (
+                                        <div className="flex items-center justify-center py-6">
+                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                        </div>
+                                    ) : filteredCategories.length === 0 ? (
+                                        <p className="text-sm text-muted-foreground">
+                                            No categories found.
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {filteredCategories.map(({ cat, depth }) => {
+                                                const checked = appliesTo.category_ids.includes(cat.id);
+                                                return (
+                                                    <label
+                                                        key={cat.id}
+                                                        className="flex cursor-pointer items-start gap-2 text-sm"
+                                                        style={{ paddingLeft: depth * 12 }}
+                                                    >
+                                                        <Checkbox
+                                                            checked={checked}
+                                                            onCheckedChange={() =>
+                                                                toggleAppliesToId("category_ids", cat.id)
+                                                            }
+                                                            className="mt-0.5"
+                                                        />
+                                                        <span>
+                                                            {getCategoryName(cat)}
+                                                            <span className="ml-1 text-xs text-muted-foreground">
+                                                                ({cat.slug})
+                                                            </span>
+                                                        </span>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
 
