@@ -14,6 +14,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatFillingPreview } from "@/lib/filling-preview";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 
@@ -44,7 +45,14 @@ type Item = {
 type PillowKind = "basic" | "premium";
 type PremiumVariant = "linen" | "fibrecool";
 
-type Product = { id: number; size: "XS" | "S" | "M" | "L" | "XL"; kind: PillowKind };
+type Product = {
+  id: number;
+  size: "XS" | "S" | "M" | "L" | "XL";
+  kind: PillowKind;
+  default_filling_template_id: number | null;
+};
+
+type BolsterLength = "short" | "medium" | "long";
 
 type BomLine = { item_id: number; quantity: number };
 
@@ -66,6 +74,15 @@ const KNOWN_CATEGORIES: Item["category"][] = [
 
 const makeEmptyBom = (): BomState => ({ XS: [], S: [], M: [], L: [], XL: [] });
 const makeEmptyBomByKind = (): BomByKind => ({ basic: makeEmptyBom(), premium: makeEmptyBom() });
+const makeEmptyDefaultByPillow = (): Record<PillowKind, Record<Product["size"], number | null>> => ({
+  basic: { XS: null, S: null, M: null, L: null, XL: null },
+  premium: { XS: null, S: null, M: null, L: null, XL: null },
+});
+const makeEmptyDefaultByBolster = (): Record<BolsterLength, number | null> => ({
+  short: null,
+  medium: null,
+  long: null,
+});
 
 const humanizeText = (value: string) =>
   value
@@ -175,6 +192,8 @@ export default function ConfigureInventoryPage() {
   const [bolsterDeleteOpen, setBolsterDeleteOpen] = useState(false);
   const [pillowDrawerTab, setPillowDrawerTab] = useState<"product" | "filling">("product");
   const [bolsterDrawerTab, setBolsterDrawerTab] = useState<"product" | "filling">("product");
+  const [defaultFillingByPillow, setDefaultFillingByPillow] = useState(makeEmptyDefaultByPillow);
+  const [defaultFillingByBolster, setDefaultFillingByBolster] = useState(makeEmptyDefaultByBolster);
 
   const getBolsterTemplateKey = useCallback((variant: NonNullable<typeof bolsterVariant>) => {
     return variant === 'Short (0.8m)' ? 'short' : variant === 'Long (1.2m)' ? 'long' : 'medium';
@@ -192,16 +211,34 @@ export default function ConfigureInventoryPage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: itemsData }, { data: productsData }, { data: bomData }] = await Promise.all([
+    const [{ data: itemsData }, { data: productsData }, { data: bomData }, { data: bolsterConfig }] = await Promise.all([
       supabaseClient.from("items").select("id,category,subtype,name,size").eq("is_active", true),
-      supabaseClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
+      supabaseClient.from("pillow_products").select("id,size,kind,default_filling_template_id").eq("is_active", true),
       supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
+      supabaseClient.from("bolster_length_config").select("variant,default_filling_template_id"),
     ]);
     setItems(normalizeDbItems((itemsData ?? []) as DbItem[]));
-    setProducts((productsData ?? []) as Product[]);
+    const prods = (productsData ?? []) as Product[];
+    setProducts(prods);
+    const nextDefaults = makeEmptyDefaultByPillow();
+    for (const p of prods) {
+      if (p.kind === "basic" || p.kind === "premium") {
+        nextDefaults[p.kind][p.size] =
+          p.default_filling_template_id != null ? Number(p.default_filling_template_id) : null;
+      }
+    }
+    setDefaultFillingByPillow(nextDefaults);
+    const nextBolsterDefaults = makeEmptyDefaultByBolster();
+    for (const row of bolsterConfig ?? []) {
+      const variant = String(row.variant) as BolsterLength;
+      if (variant in nextBolsterDefaults) {
+        nextBolsterDefaults[variant] =
+          row.default_filling_template_id != null ? Number(row.default_filling_template_id) : null;
+      }
+    }
+    setDefaultFillingByBolster(nextBolsterDefaults);
     const next: BomByKind = makeEmptyBomByKind();
     type BomRow = { product_id: number; item_id: number; quantity: number | string };
-    const prods = (productsData ?? []) as Product[];
     (bomData ?? []).forEach((row: BomRow) => {
       const product = prods.find((p) => p.id === row.product_id);
       if (!product) return;
@@ -325,12 +362,24 @@ export default function ConfigureInventoryPage() {
     }
   };
 
-  const persistProductBom = async (productId: number, lines: BomLine[]) => {
+  const persistProductBom = async (
+    productId: number,
+    lines: BomLine[],
+    defaultFillingTemplateId?: number | null,
+  ) => {
     const payloadLines = buildPayloadLines(lines);
+    const body: {
+      productId: number;
+      lines: { item_id: number; quantity: number }[];
+      defaultFillingTemplateId?: number | null;
+    } = { productId, lines: payloadLines };
+    if (defaultFillingTemplateId !== undefined) {
+      body.defaultFillingTemplateId = defaultFillingTemplateId;
+    }
     const response = await fetch(settingsPath("/settings/inventory/configure/save"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, lines: payloadLines }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
@@ -466,14 +515,18 @@ export default function ConfigureInventoryPage() {
     }
     setSaving(true);
     try {
-      const variant = bolsterVariant === 'Short (0.8m)'
-        ? 'short' : bolsterVariant === 'Long (1.2m)'
-        ? 'long' : 'medium';
+      const bolsterKey = getBolsterTemplateKey(bolsterVariant);
       const lines = buildPayloadLines(bolsterLines ?? []);
+      const defaultFillingTemplateId = defaultFillingByBolster[bolsterKey];
       const response = await fetch(settingsPath("/settings/inventory/configure/save"), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'bolster', variant, lines }),
+        body: JSON.stringify({
+          kind: 'bolster',
+          variant: bolsterKey,
+          lines,
+          defaultFillingTemplateId,
+        }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -529,7 +582,11 @@ export default function ConfigureInventoryPage() {
           throw new Error(payload?.error ?? 'Failed to update template')
         }
       }
-      await persistProductBom(product.id, bomByKind[kind][size]);
+      await persistProductBom(
+        product.id,
+        bomByKind[kind][size] ?? [],
+        defaultFillingByPillow[kind][size],
+      );
       toast.success(`${kind === 'basic' ? 'Basic' : 'Premium'} configuration saved for size ${size}`);
       notifyInventoryChange();
     } catch (err) {
@@ -798,6 +855,21 @@ export default function ConfigureInventoryPage() {
                 </DialogContent>
               </Dialog>
               <Separator />
+              <DefaultFillingPicker
+                kind="pillow"
+                templateKey={selectedSize}
+                items={items}
+                selectedId={defaultFillingByPillow[selectedPillowKind][selectedSize]}
+                onSelectedIdChange={(next) => {
+                  setDefaultFillingByPillow((prev) => ({
+                    ...prev,
+                    [selectedPillowKind]: { ...prev[selectedPillowKind], [selectedSize]: next },
+                  }));
+                }}
+                loadFillingTemplates={loadFillingTemplates}
+                loadTemplateLines={loadTemplateLines}
+              />
+              <Separator />
               <SizeEditor
                 size={selectedSize}
                 items={items}
@@ -975,6 +1047,19 @@ export default function ConfigureInventoryPage() {
                 </DialogContent>
               </Dialog>
               <Separator />
+              <DefaultFillingPicker
+                kind="bolster"
+                templateKey={getBolsterTemplateKey(bolsterVariant)}
+                items={items}
+                selectedId={defaultFillingByBolster[getBolsterTemplateKey(bolsterVariant)]}
+                onSelectedIdChange={(next) => {
+                  const key = getBolsterTemplateKey(bolsterVariant);
+                  setDefaultFillingByBolster((prev) => ({ ...prev, [key]: next }));
+                }}
+                loadFillingTemplates={loadFillingTemplates}
+                loadTemplateLines={loadTemplateLines}
+              />
+              <Separator />
               <BolsterEditor
                 items={items}
                 lines={bolsterLines}
@@ -1003,6 +1088,109 @@ export default function ConfigureInventoryPage() {
           )}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function DefaultFillingPicker({
+  kind,
+  templateKey,
+  items,
+  selectedId,
+  onSelectedIdChange,
+  loadFillingTemplates,
+  loadTemplateLines,
+}: {
+  kind: "pillow" | "bolster";
+  templateKey: string;
+  items: Item[];
+  selectedId: number | null;
+  onSelectedIdChange: (id: number | null) => void;
+  loadFillingTemplates: (kind: "pillow" | "bolster", key: string) => Promise<FillingTemplateRow[]>;
+  loadTemplateLines: (templateId: number) => Promise<BomLine[]>;
+}) {
+  const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
+  const [preview, setPreview] = useState<Array<{ variant: string; qty: number }>>([]);
+  const [loading, setLoading] = useState(false);
+
+  const itemsById = useMemo(
+    () => new Map(items.map((i) => [i.id, { name: i.name, subtype: i.subtype, size: i.size }])),
+    [items],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await loadFillingTemplates(kind, templateKey);
+        if (!cancelled) setTemplates(list.filter((t) => t.is_active));
+      } catch {
+        if (!cancelled) setTemplates([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, templateKey, loadFillingTemplates]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (selectedId == null) {
+      setPreview([]);
+      return;
+    }
+    (async () => {
+      setLoading(true);
+      try {
+        const lines = await loadTemplateLines(selectedId);
+        if (!cancelled) {
+          setPreview(formatFillingPreview(lines, itemsById, templateKey));
+        }
+      } catch {
+        if (!cancelled) setPreview([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, loadTemplateLines, itemsById, templateKey]);
+
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium text-muted-foreground">Default Filling Template</div>
+      <Select
+        value={selectedId == null ? "" : String(selectedId)}
+        onValueChange={(value) => onSelectedIdChange(value ? Number(value) : null)}
+      >
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="No default configured" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="">No default configured</SelectItem>
+          {templates.map((t) => (
+            <SelectItem key={t.id} value={String(t.id)}>
+              {t.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {selectedId == null ? (
+        <p className="text-xs text-muted-foreground">No default configured</p>
+      ) : loading ? (
+        <p className="text-xs text-muted-foreground">Loading preview…</p>
+      ) : preview.length ? (
+        <ul className="text-xs text-muted-foreground space-y-0.5">
+          {preview.map((line, idx) => (
+            <li key={idx}>
+              {line.variant} ×{line.qty}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">Default has no filling lines</p>
+      )}
     </div>
   );
 }

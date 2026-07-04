@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { lookupItemCategories, stripFillingLines } from '@/lib/bom-sanitizer'
+import { setDefaultFillingTemplateId } from '@/lib/results/composed-sellable'
 
 function formatSupabaseError(err: unknown) {
   if (!err || typeof err !== 'object') return { message: String(err ?? 'Unknown error') }
@@ -24,13 +25,15 @@ function dedupeLines<T extends { item_id: number; quantity: number }>(lines: T[]
 
 const BodySchema = z.object({
   productId: z.number().int().positive(),
-  lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() }))
+  lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })),
+  defaultFillingTemplateId: z.number().int().positive().nullable().optional(),
 })
 
 const BolsterBodySchema = z.object({
   kind: z.literal('bolster'),
   variant: z.enum(['short','medium','long']).default('medium'),
-  lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() }))
+  lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })),
+  defaultFillingTemplateId: z.number().int().positive().nullable().optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -59,12 +62,20 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: formatSupabaseError(upErr) }, { status: 500 })
       }
     }
+    if (bolsterParsed.data.defaultFillingTemplateId !== undefined) {
+      const defResult = await setDefaultFillingTemplateId(
+        admin,
+        { productType: 'bolster', length: variant },
+        bolsterParsed.data.defaultFillingTemplateId,
+      )
+      if (!defResult.ok) return NextResponse.json({ error: defResult.error }, { status: 400 })
+    }
     return NextResponse.json({ ok: true })
   }
 
   const parsed = BodySchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
-  const { productId, lines } = parsed.data
+  const { productId, lines, defaultFillingTemplateId } = parsed.data
   const admin = supabaseAdmin()
   const deduped = dedupeLines(lines)
   const cats = await lookupItemCategories(admin, deduped.map((l) => l.item_id))
@@ -97,6 +108,22 @@ export async function POST(req: NextRequest) {
       console.error('save/pillow upsert failed', { productId, upsertCount: upserts.length, ...formatSupabaseError(upErr) })
       return NextResponse.json({ error: formatSupabaseError(upErr) }, { status: 500 })
     }
+  }
+
+  if (defaultFillingTemplateId !== undefined) {
+    const { data: product, error: prodErr } = await admin
+      .from('pillow_products')
+      .select('size, kind')
+      .eq('id', productId)
+      .maybeSingle()
+    if (prodErr) return NextResponse.json({ error: prodErr.message }, { status: 500 })
+    if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    const defResult = await setDefaultFillingTemplateId(
+      admin,
+      { productType: 'pillow', size: String(product.size), tier: String(product.kind) },
+      defaultFillingTemplateId,
+    )
+    if (!defResult.ok) return NextResponse.json({ error: defResult.error }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true })

@@ -9,6 +9,8 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { formatFillingPreview } from "@/lib/filling-preview";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
@@ -81,6 +83,16 @@ type FillingTemplateOption = {
   is_active: boolean;
 };
 
+type AssignPrepData = {
+  productLines: Array<{ category: string; label: string; qty: number }>;
+  defaultFillingTemplate: {
+    id: number;
+    name: string;
+    preview: Array<{ variant: string; qty: number }>;
+  } | null;
+  fillingTemplates: Array<{ id: number; name: string }>;
+};
+
 const safeString = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
 const safeYesNoEmpty = (value: unknown): YesNoEmpty => (value === "yes" || value === "no" ? value : "");
 
@@ -123,6 +135,9 @@ export default function ResultDetailPage() {
   const [assignLength, setAssignLength] = useState("");
   const [fillingTemplateId, setFillingTemplateId] = useState<string>("");
   const [fillingTemplates, setFillingTemplates] = useState<FillingTemplateOption[]>([]);
+  const [assignPrep, setAssignPrep] = useState<AssignPrepData | null>(null);
+  const [selectedFillingPreview, setSelectedFillingPreview] = useState<Array<{ variant: string; qty: number }>>([]);
+  const [prepLoading, setPrepLoading] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
@@ -179,40 +194,93 @@ export default function ResultDetailPage() {
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
   const canAssign = row?.status === "held";
 
-  const loadFillingTemplates = useCallback(async () => {
-    if (!sizeKey) {
+  const loadAssignPrep = useCallback(async () => {
+    if (!canAssign || !sizeKey) {
+      setAssignPrep(null);
       setFillingTemplates([]);
       return;
     }
+    setPrepLoading(true);
     setTemplatesLoading(true);
     try {
-      const qs = new URLSearchParams({
-        kind: productType,
-        key: sizeKey,
-        role: "filling",
-        activeOnly: "true",
-      });
-      const res = await fetch(to(`/settings/inventory/configure/templates?${qs.toString()}`));
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to load Filling Templates");
-      const list = (payload?.templates ?? payload ?? []) as FillingTemplateOption[];
-      setFillingTemplates(Array.isArray(list) ? list : []);
-      setFillingTemplateId((prev) => {
-        if (prev && list.some((t) => String(t.id) === prev)) return prev;
-        return "";
-      });
+      const qs =
+        productType === "bolster"
+          ? new URLSearchParams({
+              productType: "bolster",
+              length: assignLength || "medium",
+            })
+          : new URLSearchParams({
+              productType: "pillow",
+              size: assignSize,
+              tier: assignTier,
+            });
+      const res = await fetch(`/api/results/assign/prep?${qs.toString()}`);
+      const payload = (await res.json().catch(() => null)) as AssignPrepData | { error?: string } | null;
+      if (!res.ok) throw new Error((payload as { error?: string })?.error ?? "Failed to load assignment preview");
+      const prep = payload as AssignPrepData;
+      setAssignPrep(prep);
+      setFillingTemplates(
+        prep.fillingTemplates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          key: sizeKey,
+          kind: productType,
+          role: "filling",
+          is_active: true,
+        })),
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load Filling Templates");
+      toast.error(e instanceof Error ? e.message : "Failed to load assignment preview");
+      setAssignPrep(null);
       setFillingTemplates([]);
     } finally {
+      setPrepLoading(false);
       setTemplatesLoading(false);
     }
-  }, [productType, sizeKey, to]);
+  }, [canAssign, sizeKey, productType, assignLength, assignSize, assignTier]);
+
+  useEffect(() => {
+    setFillingTemplateId("");
+    setSelectedFillingPreview([]);
+  }, [assignSize, assignTier, assignLength, productType]);
 
   useEffect(() => {
     if (!row || !canAssign) return;
-    void loadFillingTemplates();
-  }, [row, canAssign, loadFillingTemplates]);
+    void loadAssignPrep();
+  }, [row, canAssign, loadAssignPrep]);
+
+  const loadSelectedFillingPreview = useCallback(
+    async (templateId: string) => {
+      if (!templateId) {
+        setSelectedFillingPreview([]);
+        return;
+      }
+      try {
+        const res = await fetch(
+          to(`/settings/inventory/configure/templates/${encodeURIComponent(templateId)}`),
+        );
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(payload?.error ?? "Failed to load template");
+        type LineRow = { item_id: number | string; quantity: number | string };
+        const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({
+          item_id: Number(l.item_id),
+          quantity: Number(l.quantity),
+        }));
+        const { supabaseClient } = await import("@/lib/supabase/client");
+        const itemIds = lines.map((l) => l.item_id);
+        const { data: itemRows } = itemIds.length
+          ? await supabaseClient.from("items").select("id,name,subtype,size").in("id", itemIds)
+          : { data: [] as Array<{ id: number; name: string; subtype: string | null; size: string | null }> };
+        const itemsById = new Map(
+          (itemRows ?? []).map((i) => [Number(i.id), { name: i.name, subtype: i.subtype, size: i.size }]),
+        );
+        setSelectedFillingPreview(formatFillingPreview(lines, itemsById, sizeKey));
+      } catch {
+        setSelectedFillingPreview([]);
+      }
+    },
+    [sizeKey, to],
+  );
 
   const assign = useCallback(async () => {
     if (!id) return;
@@ -415,90 +483,177 @@ export default function ResultDetailPage() {
               </div>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {productType === "bolster" ? (
-                <Field label="Length">
-                  <Select
-                    value={assignLength || "medium"}
-                    onValueChange={setAssignLength}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(["short", "medium", "long"] as const).map((len) => (
-                        <SelectItem key={len} value={len}>
-                          {len}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-              ) : (
-                <>
-                  <Field label="Size">
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {productType === "bolster" ? (
+                  <Field label="Length">
                     <Select
-                      value={assignSize}
-                      onValueChange={(v) => setAssignSize(v as PillowSize)}
+                      value={assignLength || "medium"}
+                      onValueChange={setAssignLength}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(["XS", "S", "M", "L", "XL"] as const).map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
+                        {(["short", "medium", "long"] as const).map((len) => (
+                          <SelectItem key={len} value={len}>
+                            {len}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </Field>
-                  <Field label="Tier">
+                ) : (
+                  <>
+                    <Field label="Size">
+                      <Select
+                        value={assignSize}
+                        onValueChange={(v) => setAssignSize(v as PillowSize)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(["XS", "S", "M", "L", "XL"] as const).map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Tier">
+                      <Select
+                        value={assignTier}
+                        onValueChange={(v) => setAssignTier(v as PillowTier)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="basic">basic</SelectItem>
+                          <SelectItem value="premium">premium</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </>
+                )}
+              </div>
+
+              <Collapsible defaultOpen className="rounded-lg border">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium hover:bg-muted/50">
+                  Product
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {prepLoading ? "Loading…" : `${assignPrep?.productLines.length ?? 0} parts`}
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border-t px-4 py-3">
+                  {prepLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading product recipe…</p>
+                  ) : assignPrep?.productLines.length ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Part</TableHead>
+                          <TableHead className="w-[80px]">Qty</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignPrep.productLines.map((line, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-sm">
+                              {line.category} · {line.label}
+                            </TableCell>
+                            <TableCell className="tabular-nums">×{line.qty}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No non-filling BOM configured.</p>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible defaultOpen className="rounded-lg border">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium hover:bg-muted/50">
+                  Filling mix
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {fillingTemplateId ? "Selected" : "Confirm required"}
+                  </span>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-3 border-t px-4 py-3">
+                  <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                    <div className="text-xs text-muted-foreground mb-1">Suggested default</div>
+                    {prepLoading ? (
+                      <p className="text-muted-foreground">Loading…</p>
+                    ) : assignPrep?.defaultFillingTemplate ? (
+                      <>
+                        <p className="font-medium">{assignPrep.defaultFillingTemplate.name}</p>
+                        {assignPrep.defaultFillingTemplate.preview.length ? (
+                          <ul className="mt-1 text-muted-foreground space-y-0.5">
+                            {assignPrep.defaultFillingTemplate.preview.map((line, idx) => (
+                              <li key={idx}>
+                                {line.variant} ×{line.qty}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-muted-foreground">Default has no filling lines</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground">No default configured</p>
+                    )}
+                  </div>
+
+                  <Field label="Filling Template">
                     <Select
-                      value={assignTier}
-                      onValueChange={(v) => setAssignTier(v as PillowTier)}
+                      value={fillingTemplateId}
+                      onValueChange={(value) => {
+                        setFillingTemplateId(value);
+                        void loadSelectedFillingPreview(value);
+                      }}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
+                      <SelectTrigger disabled={templatesLoading || !sizeKey}>
+                        <SelectValue
+                          placeholder={
+                            templatesLoading
+                              ? "Loading…"
+                              : fillingTemplates.length
+                                ? "Select template…"
+                                : "No templates for this size"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="basic">basic</SelectItem>
-                        <SelectItem value="premium">premium</SelectItem>
+                        {fillingTemplates.map((t) => (
+                          <SelectItem key={t.id} value={String(t.id)}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </Field>
-                </>
-              )}
-              <Field label="Filling Template">
-                <Select
-                  value={fillingTemplateId}
-                  onValueChange={setFillingTemplateId}
-                >
-                  <SelectTrigger disabled={templatesLoading || !sizeKey}>
-                    <SelectValue
-                      placeholder={
-                        templatesLoading
-                          ? "Loading…"
-                          : fillingTemplates.length
-                            ? "Select template…"
-                            : "No templates for this size"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {fillingTemplates.map((t) => (
-                      <SelectItem key={t.id} value={String(t.id)}>
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <div className="flex items-end">
-                <Button onClick={assign} disabled={assigning || !fillingTemplateId}>
-                  {assigning ? "Assigning…" : "Save assignment"}
-                </Button>
-              </div>
+
+                  {fillingTemplateId && selectedFillingPreview.length > 0 && (
+                    <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                      <div className="text-xs text-muted-foreground mb-1">Selected preview</div>
+                      <ul className="space-y-0.5">
+                        {selectedFillingPreview.map((line, idx) => (
+                          <li key={idx}>
+                            {line.variant} ×{line.qty}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <Button onClick={assign} disabled={assigning || !fillingTemplateId}>
+                    {assigning ? "Assigning…" : "Save assignment"}
+                  </Button>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           )}
 
