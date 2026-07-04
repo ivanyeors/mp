@@ -74,7 +74,24 @@ export async function POST(req: Request) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        const resultId = session.metadata?.result_id;
         const orderId = session.metadata?.order_id;
+
+        // Result authorization hold (manual-capture PI) — attach PI id, do not create an order.
+        if (resultId && !orderId) {
+          const paymentIntent =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : session.payment_intent?.id ?? null;
+          if (paymentIntent) {
+            await admin
+              .from("mp_config_responses")
+              .update({ payment_intent_id: paymentIntent })
+              .eq("id", resultId)
+              .eq("status", "held");
+          }
+          break;
+        }
 
         if (!orderId) break;
 

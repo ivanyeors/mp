@@ -59,6 +59,15 @@ export default async function AccountHomePage({
           </p>
         </Link>
         <Link
+          href={withLocale("/account/results", locale)}
+          className="rounded-lg border p-5 transition-colors hover:bg-muted/40"
+        >
+          <h2 className="font-medium">Results</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track customisation reviews and authorization holds.
+          </p>
+        </Link>
+        <Link
           href={addressesHref}
           className="rounded-lg border p-5 transition-colors hover:bg-muted/40"
         >

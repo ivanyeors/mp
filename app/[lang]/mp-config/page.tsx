@@ -38,22 +38,10 @@ import {
   Camera,
   X,
   Check,
-  ShoppingCart,
 } from "lucide-react";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
-import { useCart } from "@/lib/shop/cart-context";
-import {
-  type RecommendationResponseData,
-  HARDCODED_UPSELLS,
-  computeFillingLines,
-  computeComponentLines,
-  computeAddonPrice,
-  computeUpsellTotal,
-  CustomizationStepRecommendation,
-  CustomizationStepComponents,
-  CustomizationStepSummary,
-} from "@/components/shop/customization-steps";
+import { type RecommendationResponseData } from "@/components/shop/customization-steps";
 
 type Step =
   | "welcome"
@@ -137,36 +125,27 @@ export default function MpConfigPage() {
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completedResponseId, setCompletedResponseId] = useState<string | null>(null);
 
-  // --- Shop customization state (for recommendation → components → cart flow) ---
-  const { addItem } = useCart();
+  // --- Online purchase path (cover/case prefs, add-ons, hold) — no fillings/protector ---
   const [shopRecommendation, setShopRecommendation] = useState<RecommendationResponseData | null>(null);
   const [shopLoading, setShopLoading] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const [selectedCover, setSelectedCover] = useState<number | null>(null);
   const [selectedCase, setSelectedCase] = useState<number | null>(null);
-  const [componentQtyOverrides, setComponentQtyOverrides] = useState<Map<number, number>>(new Map());
-  const [selectedUpsells, setSelectedUpsells] = useState<Set<number>>(new Set());
-
-  const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
-  const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
-
-  const shopFillingLines = useMemo(
-    () => computeFillingLines(shopRecommendation, selectedTemplateId),
-    [shopRecommendation, selectedTemplateId]
-  );
-  const shopComponentLines = useMemo(
-    () => computeComponentLines(shopRecommendation, selectedCover, selectedCase, componentQtyOverrides),
-    [shopRecommendation, selectedCover, selectedCase, componentQtyOverrides]
-  );
-  const shopAddonPrice = useMemo(
-    () => computeAddonPrice(shopRecommendation, shopComponentLines),
-    [shopComponentLines, shopRecommendation]
-  );
-  const shopUpsellTotal = useMemo(
-    () => computeUpsellTotal(selectedUpsells),
-    [selectedUpsells]
-  );
-  const shopTotalPrice = shopBasePrice + shopAddonPrice + shopUpsellTotal;
+  const [selectedAddons, setSelectedAddons] = useState<Set<number>>(new Set());
+  const [addons, setAddons] = useState<{ item_id: number; name: string; msrp: number; currency: string }[]>([]);
+  const [holdEmail, setHoldEmail] = useState("");
+  const [holdAddress, setHoldAddress] = useState({
+    recipient: "",
+    line1: "",
+    line2: "",
+    city: "",
+    postal_code: "",
+    country: "SG",
+  });
+  const [shippingMethods, setShippingMethods] = useState<
+    { id: string; slug: string; base_rate: number; free_above: number | null; content: Record<string, { name?: string }> }[]
+  >([]);
+  const [selectedShippingId, setSelectedShippingId] = useState("");
+  const [holdSubmitting, setHoldSubmitting] = useState(false);
 
   type PhotoView = "front" | "side";
   const frontInputRef = useRef<HTMLInputElement | null>(null);
@@ -339,14 +318,14 @@ export default function MpConfigPage() {
     setIsTransitioning(false);
     setCompletionDialogOpen(false);
     setCompletedResponseId(null);
-    // Reset shop customization state
+    // Reset purchase-path state
     setShopRecommendation(null);
     setShopLoading(false);
-    setSelectedTemplateId(null);
     setSelectedCover(null);
     setSelectedCase(null);
-    setComponentQtyOverrides(new Map());
-    setSelectedUpsells(new Set());
+    setSelectedAddons(new Set());
+    setHoldEmail("");
+    setHoldSubmitting(false);
   };
 
   const ensureResponseId = () => {
@@ -578,14 +557,12 @@ export default function MpConfigPage() {
 
       const data: RecommendationResponseData = await res.json();
       setShopRecommendation(data);
-      setSelectedTemplateId(null);
 
-      // Pre-select default cover and case
+      // Pre-select default cover and case only (no fillings / protector).
       const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
       const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
       if (defaultCover) setSelectedCover(defaultCover.item_id);
       if (defaultCase) setSelectedCase(defaultCase.item_id);
-      setComponentQtyOverrides(new Map());
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get shop recommendation");
     } finally {
@@ -593,90 +570,101 @@ export default function MpConfigPage() {
     }
   }, [measurementData]);
 
-  const handleApplyAndAddToCart = useCallback(async () => {
-    if (!shopRecommendation || !shopRecommendation.variant) {
-      toast.error("No variant available");
+  // Load accessory add-ons + shipping when entering purchase preview.
+  useEffect(() => {
+    if (currentStep !== "preview") return;
+    fetch("/api/results/addons")
+      .then((r) => r.json())
+      .then((d: { addons?: { item_id: number; name: string; msrp: number; currency: string }[] }) =>
+        setAddons(d.addons ?? []),
+      )
+      .catch(() => setAddons([]));
+    fetch("/api/shop/shipping?country=SG")
+      .then((r) => r.json())
+      .then((d: { rows?: typeof shippingMethods }) => {
+        const methods = d.rows ?? [];
+        setShippingMethods(methods);
+        if (methods[0]) setSelectedShippingId(methods[0].id);
+      })
+      .catch(() => setShippingMethods([]));
+  }, [currentStep]);
+
+  const handleAuthorizeHold = useCallback(async () => {
+    const size =
+      shopRecommendation?.pillow_product?.size ??
+      suggestion?.recommended?.size ??
+      suggestion?.product?.size;
+    const tier =
+      (shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
+      suggestion?.recommended?.kind ??
+      suggestion?.product?.kind;
+
+    if (!size || !tier) {
+      toast.error("Missing size or tier suggestion");
+      return;
+    }
+    if (!selectedCover || !selectedCase) {
+      toast.error("Choose a cover and case");
+      return;
+    }
+    if (!holdEmail.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    if (!holdAddress.recipient || !holdAddress.line1 || !holdAddress.city || !holdAddress.postal_code) {
+      toast.error("Shipping address is incomplete");
+      return;
+    }
+    if (!selectedShippingId) {
+      toast.error("Choose a shipping method");
       return;
     }
 
-    setShopLoading(true);
+    setHoldSubmitting(true);
     try {
-      const coverComp = shopComponentLines.find((c) => c.category === "cover");
-      const caseComp = shopComponentLines.find((c) => c.category === "case");
-      const activeUpsells = HARDCODED_UPSELLS.filter((u) => selectedUpsells.has(u.item_id));
-
-      const res = await fetch("/api/shop/customize?action=apply", {
+      await upsertToDb();
+      const res = await fetch("/api/results/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          variant_id: shopRecommendation.variant.id,
-          pillow_product_id: shopRecommendation.pillow_product.id,
-          filling_lines: shopFillingLines,
-          cover_variant: coverComp?.name ?? undefined,
-          case_variant: caseComp?.name ?? undefined,
-          component_quantities: shopComponentLines,
-          upsells: activeUpsells,
-          bom_template_id: selectedTemplateId ?? undefined,
-          llm_metadata: {
-            source: "mp-config",
-            measurements: {
-              shoulder_length_cm: Number(measurementData.shoulderLength),
-              neck_to_back_cm: Number(measurementData.neckToBack),
-              head_to_back_cm: Number(measurementData.headToBack),
-              neck_length_cm: Number(measurementData.neckLength),
-            },
-            health: {
-              blood_pressure: measurementData.bloodPressureLevel,
-              ear_discomfort_side_sleep: measurementData.earDiscomfortSideSleep === "yes",
-              bed_firmness: measurementData.bedFirmness,
-              acid_reflux: measurementData.acidReflux === "yes",
-              sleep_pain_areas: measurementData.sleepPainAreas,
-              sleep_position_type: measurementData.sleepPositionType,
-              uses_bolster: measurementData.usesBolster === "yes",
-            },
+          responseId: responseId ?? undefined,
+          email: holdEmail.trim(),
+          measurements: measurementData,
+          suggestedSize: size,
+          suggestedTier: tier,
+          preferenceLines: [
+            { item_id: selectedCover, quantity: 1, category: "cover" },
+            { item_id: selectedCase, quantity: 1, category: "case" },
+          ],
+          addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          shippingMethodId: selectedShippingId,
+          shippingAddress: {
+            ...holdAddress,
+            recipient: holdAddress.recipient || measurementData.name,
           },
         }),
       });
-
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(getApiErrorMessage(err.error, "Failed to apply customization"));
+        throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-
-      const data = await res.json();
-
-      // Add to cart
-      addItem({
-        variantId: shopRecommendation.variant.id,
-        productId: shopRecommendation.variant.product_id,
-        productSlug: `mpillow-${shopRecommendation.pillow_product.kind}`,
-        productTitle: `Mpillow ${shopRecommendation.pillow_product.kind} ${shopRecommendation.pillow_product.size}`,
-        variantTitle: `Size ${shopRecommendation.pillow_product.size}`,
-        imageUrl: null,
-        price: shopBasePrice,
-        compareAtPrice: null,
-        currency: shopCurrency,
-        quantity: 1,
-        customizationId: data.customization_id,
-        customizationSummary: data.summary,
-        addonPrice: data.total_addon_price,
-      });
-
-      // Also mark the mp-config response as final
-      await upsertToDb({ isFinal: true });
-
-      toast.success("Added to cart!");
-      setCompletedResponseId(responseId);
-      setCompletionDialogOpen(true);
+      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
+      window.location.href = data.checkoutUrl;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add to cart");
-    } finally {
-      setShopLoading(false);
+      toast.error(err instanceof Error ? err.message : "Failed to authorize");
+      setHoldSubmitting(false);
     }
   }, [
-    shopRecommendation, shopFillingLines, shopComponentLines, selectedTemplateId,
-    selectedUpsells, measurementData, shopBasePrice, shopCurrency,
-    addItem, responseId,
+    shopRecommendation,
+    suggestion,
+    selectedCover,
+    selectedCase,
+    holdEmail,
+    holdAddress,
+    selectedShippingId,
+    selectedAddons,
+    responseId,
+    measurementData,
   ]);
 
   const saveLabel:
@@ -1650,123 +1638,218 @@ export default function MpConfigPage() {
             </Card>
           )}
 
-          {/* Preview Step */}
+          {/* Preview Step — online purchase: prefs + add-ons + address + auth hold */}
           {currentStep === "preview" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <h2 className="text-3xl font-bold">Your Custom Mpillow</h2>
                 <p className="text-muted-foreground">
-                  Here&apos;s a preview of your personalized pillow configuration
+                  Review your ballpark size×tier, choose cover and case, then authorize payment.
+                  You are not charged until you accept the final build.
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="text-sm font-medium">Recommendation (from your answers + current inventory config)</div>
+                  <div className="text-sm font-medium">Suggested size × tier</div>
                   <Button variant="secondary" size="sm" onClick={loadSuggestion} disabled={suggestionLoading}>
                     {suggestionLoading ? "Refreshing…" : "Refresh"}
                   </Button>
                 </div>
-                {suggestionLoading && (
+                {(suggestionLoading || shopLoading) && (
                   <div className="text-sm text-muted-foreground">Generating suggestion…</div>
                 )}
-                {!suggestionLoading && !suggestion && (
-                  <div className="text-sm text-muted-foreground">
-                    No suggestion yet. Click Refresh (or go back and click Generate Results).
-                  </div>
-                )}
-                {!suggestionLoading && suggestion && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-md bg-background/60 p-3">
-                        <div className="text-xs text-muted-foreground">Recommended kind</div>
-                        <div className="text-lg font-semibold">{suggestion.recommended.kind}</div>
-                      </div>
-                      <div className="rounded-md bg-background/60 p-3">
-                        <div className="text-xs text-muted-foreground">Recommended size</div>
-                        <div className="text-lg font-semibold">{suggestion.recommended.size}</div>
+                {(suggestion || shopRecommendation) && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-md bg-background/60 p-3">
+                      <div className="text-xs text-muted-foreground">Recommended tier</div>
+                      <div className="text-lg font-semibold capitalize">
+                        {shopRecommendation?.pillow_product?.kind ??
+                          suggestion?.recommended?.kind ??
+                          "—"}
                       </div>
                     </div>
+                    <div className="rounded-md bg-background/60 p-3">
+                      <div className="text-xs text-muted-foreground">Recommended size</div>
+                      <div className="text-lg font-semibold">
+                        {shopRecommendation?.pillow_product?.size ??
+                          suggestion?.recommended?.size ??
+                          "—"}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Fillings and protector are chosen by our team after review — not by you.
+                </p>
+              </div>
 
-                    {suggestion.product ? (
-                      <div className="rounded-md bg-background/60 p-3">
-                        <div className="text-xs text-muted-foreground">Matched active product</div>
-                        <div className="text-sm">
-                          Product #{suggestion.product.id} ({suggestion.product.kind} · {suggestion.product.size})
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-md bg-background/60 p-3 text-sm text-muted-foreground">
-                        No active product found for this recommendation (check `app/settings/inventory/configure/`).
-                      </div>
-                    )}
+              {/* Cover / case preferences only */}
+              {shopRecommendation && (
+                <div className="space-y-3 rounded-md border bg-background/40 p-4">
+                  <h3 className="font-semibold">Cover and case</h3>
+                  <div className="space-y-2">
+                    <Label>Cover</Label>
+                    <Select
+                      value={selectedCover != null ? String(selectedCover) : ""}
+                      onValueChange={(v) => setSelectedCover(Number(v))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select cover" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shopRecommendation.components.covers.map((c) => (
+                          <SelectItem key={c.item_id} value={String(c.item_id)}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Case</Label>
+                    <Select
+                      value={selectedCase != null ? String(selectedCase) : ""}
+                      onValueChange={(v) => setSelectedCase(Number(v))}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select case" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shopRecommendation.components.cases.map((c) => (
+                          <SelectItem key={c.item_id} value={String(c.item_id)}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
-                    {suggestion.bom?.length ? (
-                      <div className="rounded-md bg-background/60 p-3">
-                        <div className="text-xs text-muted-foreground mb-2">Current BOM for recommended product</div>
-                        <div className="space-y-1">
-                          {suggestion.bom.map((line, idx) => {
-                            const item = line.item;
-                            const label = item
-                              ? `${item.category} · ${item.name}${item.subtype ? ` (${item.subtype})` : ""}${
-                                  item.size ? ` · ${item.size}` : ""
-                                }`
-                              : "Unknown item";
-                            return (
-                              <div key={idx} className="flex items-center justify-between text-sm">
-                                <div className="truncate">{label}</div>
-                                <div className="shrink-0 tabular-nums">x{line.quantity}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : suggestion.product ? (
-                      <div className="rounded-md bg-background/60 p-3 text-sm text-muted-foreground">
-                        No BOM lines configured yet for this product.
-                      </div>
-                    ) : null}
+              {/* Accessory add-ons */}
+              {addons.length > 0 && (
+                <div className="space-y-2 rounded-md border bg-background/40 p-4">
+                  <h3 className="font-semibold">Add-ons (optional)</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {addons.map((a) => {
+                      const on = selectedAddons.has(a.item_id);
+                      return (
+                        <button
+                          key={a.item_id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAddons((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(a.item_id)) next.delete(a.item_id);
+                              else next.add(a.item_id);
+                              return next;
+                            });
+                          }}
+                          className={`rounded-full border-2 px-3 py-1.5 text-sm font-medium ${
+                            on
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground"
+                          }`}
+                        >
+                          {a.name} · {a.currency} {a.msrp.toFixed(2)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-                    {suggestion.reasons?.length ? (
-                      <div className="rounded-md bg-background/60 p-3">
-                        <div className="text-xs text-muted-foreground mb-2">Why this suggestion</div>
-                        <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                          {suggestion.reasons.map((r, idx) => (
-                            <li key={idx}>{r}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
+              {/* Contact + shipping */}
+              <div className="space-y-3 rounded-md border bg-background/40 p-4">
+                <h3 className="font-semibold">Shipping</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="hold-email">Email</Label>
+                  <Input
+                    id="hold-email"
+                    type="email"
+                    value={holdEmail}
+                    onChange={(e) => setHoldEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hold-recipient">Recipient</Label>
+                  <Input
+                    id="hold-recipient"
+                    value={holdAddress.recipient}
+                    onChange={(e) =>
+                      setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
+                    }
+                    placeholder={measurementData.name || "Name"}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hold-line1">Address</Label>
+                  <Input
+                    id="hold-line1"
+                    value={holdAddress.line1}
+                    onChange={(e) =>
+                      setHoldAddress((a) => ({ ...a, line1: e.target.value }))
+                    }
+                    placeholder="Street address"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="hold-city">City</Label>
+                    <Input
+                      id="hold-city"
+                      value={holdAddress.city}
+                      onChange={(e) =>
+                        setHoldAddress((a) => ({ ...a, city: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hold-postal">Postal code</Label>
+                    <Input
+                      id="hold-postal"
+                      value={holdAddress.postal_code}
+                      onChange={(e) =>
+                        setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                {shippingMethods.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Shipping method</Label>
+                    <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select shipping" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shippingMethods.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {(m.content?.["en-US"]?.name ?? m.content?.en?.name ?? m.slug) +
+                              ` · SGD ${m.base_rate.toFixed(2)}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
               </div>
 
               <div className="pt-4">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-2">
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
                   </Button>
                   <Button
                     size="lg"
-                    onClick={async () => {
-                      // Save response and redirect to mp-maker builder
-                      const result = await upsertToDb({ isFinal: true });
-                      if (!result?.id) {
-                        toast.error("Save failed");
-                        return;
-                      }
-                      const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-                      const target = returnTo
-                        ? `${returnTo}?config=${result.id}`
-                        : withLocale(`/mp-maker?config=${result.id}`, locale);
-                      router.push(target);
-                    }}
-                    disabled={!responseId || !hasAnyInput}
+                    onClick={() => void handleAuthorizeHold()}
+                    disabled={holdSubmitting || shopLoading}
                     className="group"
                   >
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    Continue to Customize
+                    {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </div>
@@ -1802,8 +1885,6 @@ export default function MpConfigPage() {
               </div>
             </Card>
           )}
-
-          {/* Steps 10-12 (recommendation, components, summary) now live in /mp-maker */}
         </div>
       </div>
     </div>

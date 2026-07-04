@@ -21,19 +21,33 @@ End-to-end **online** pillow purchase path from mp-config to a **held** Result w
 
 ## Acceptance criteria
 
-- [ ] Completing **online** mp-config purchase path creates a Result in `held` with authorized amount including base MSRP + prefs/add-ons + shipping + tax.
-- [ ] Result stores selected cover and case preference item ids (customer preferences).
-- [ ] Result stores selected accessory add-on item ids and quantities.
-- [ ] Customer-facing flow has no control to pick fillings or protector.
-- [ ] Stripe shows an uncaptured PaymentIntent (manual capture); customer is not charged yet.
-- [ ] Status page shows pending review (no Accept until assigned — Accept lands in slice 07).
-- [ ] Guest can open the status page via email or magic link.
-- [ ] Logged-in customer can open the same Result from an account area (list or detail).
-- [ ] Operators receive Telegram with link to the Result on the platform.
-- [ ] Inventory balances unchanged after hold (no reserve, no deduct).
-- [ ] Customer-visible copy uses **tier** (not kind) for basic/premium.
-- [ ] mp-maker routes and behavior are unchanged by this slice.
-- [ ] ADR for authorize-then-capture exists under `docs/adr/`.
+- [x] Completing **online** mp-config purchase path creates a Result in `held` with authorized amount including base MSRP + prefs/add-ons + shipping + tax.
+- [x] Result stores selected cover and case preference item ids (customer preferences).
+- [x] Result stores selected accessory add-on item ids and quantities.
+- [x] Customer-facing flow has no control to pick fillings or protector.
+- [x] Stripe shows an uncaptured PaymentIntent (manual capture); customer is not charged yet.
+- [x] Status page shows pending review (no Accept until assigned — Accept lands in slice 07).
+- [x] Guest can open the status page via email or magic link.
+- [x] Logged-in customer can open the same Result from an account area (list or detail).
+- [x] Operators receive Telegram with link to the Result on the platform.
+- [x] Inventory balances unchanged after hold (no reserve, no deduct).
+- [x] Customer-visible copy uses **tier** (not kind) for basic/premium.
+- [x] mp-maker routes and behavior are unchanged by this slice.
+- [x] ADR for authorize-then-capture exists under `docs/adr/`.
+
+## Status
+
+**Done** on `cursor/domain-glossary-tier-result`.
+
+- `lib/authorization-hold` — manual-capture PI create/capture/release + Checkout hold
+- `POST /api/results/hold` — prices via `result-pricing`, upserts Result `held`, Checkout redirect, Telegram + email
+- `GET /api/results/[id]` — status by access token or logged-in customer
+- `/[lang]/results/[id]` status page (pending review; no Accept yet)
+- `/[lang]/account/results` list + account home link
+- mp-config preview: cover/case, add-ons, address, shipping, authorize CTA (no fillings/protector)
+- Webhook attaches `payment_intent_id` when `metadata.result_id` present
+- Migration `0045_result_customer_access.sql`
+- ADR `docs/adr/0002-authorize-then-capture-customised-goods.md`
 
 ## Blocked by
 
