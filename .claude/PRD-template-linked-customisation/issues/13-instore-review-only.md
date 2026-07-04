@@ -18,13 +18,22 @@ Walk-in / in-store measurement finalization creates a **Result without a Stripe 
 
 ## Acceptance criteria
 
-- [ ] Finalizing an in-store measurement creates a Result with no PaymentIntent and no card authorization.
-- [ ] Operators receive Telegram with a platform link for that Result.
-- [ ] Operator can assign size×tier (confirm/override) + Filling Template on the platform for that Result.
-- [ ] Assignment is blocked without a Filling Template; stock validation runs on assign.
-- [ ] Review-only Result has no customer Accept/capture actions.
-- [ ] Online purchase path still creates a held Result with authorization (slice 05) and is not broken.
-- [ ] Pure in-store measurement never requires entering card details.
+- [x] Finalizing an in-store measurement creates a Result with no PaymentIntent and no card authorization.
+- [x] Operators receive Telegram with a platform link for that Result.
+- [x] Operator can assign size×tier (confirm/override) + Filling Template on the platform for that Result.
+- [x] Assignment is blocked without a Filling Template; stock validation runs on assign.
+- [x] Review-only Result has no customer Accept/capture actions.
+- [x] Online purchase path still creates a held Result with authorization (slice 05) and is not broken.
+- [x] Pure in-store measurement never requires entering card details.
+
+## Status
+
+**In progress** on `cursor/slice-13-instore-review-only`.
+
+- `buildInstoreReviewOnlyPatch` on first `isFinal` in `/api/mp-config/responses` — `status: held`, ballpark size×tier, no PI/authorized amount
+- SLA cron skips held rows without `payment_intent_id`
+- Assign skips customer email when no hold; Accept/Decline hidden on status page without PI
+- Tests: `lib/results/__tests__/slice-13-instore-review-only.test.ts`
 
 ## Blocked by
 

@@ -67,6 +67,7 @@ type MpConfigResponseRow = {
   created_at: string;
   updated_at: string;
   status?: string | null;
+  product_type?: string | null;
   suggested_size?: string | null;
   suggested_tier?: string | null;
   assigned_size?: string | null;
@@ -351,7 +352,24 @@ export default function ResultsPage() {
         });
         const payload = await res.json().catch(() => null);
         if (!res.ok) throw new Error(payload?.error ?? "Failed to update");
-        setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_final: true } : r)));
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === row.id
+              ? {
+                  ...r,
+                  is_final: true,
+                  ...(payload?.reviewOnly
+                    ? {
+                        status: payload.status ?? "held",
+                        suggested_size: payload.suggested_size ?? r.suggested_size,
+                        suggested_tier: payload.suggested_tier ?? r.suggested_tier,
+                        product_type: payload.product_type ?? r.product_type,
+                      }
+                    : {}),
+                }
+              : r,
+          ),
+        );
 
         const telegramStatus = payload?.telegramStatus as "sent" | "skipped" | "failed" | undefined;
         if (telegramStatus === "sent") toast.success("Sent to Telegram");

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import {
+  buildInstoreReviewOnlyPatch,
+  shouldCreateInstoreReviewOnly,
+} from "@/lib/results/instore-finalize";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -262,14 +266,21 @@ export async function POST(req: Request) {
   let wasFinal = false;
   let existingMeasuredByType: string | null = null;
   let existingMeasuredByStaffId: string | null = null;
+  let existingForFinalize: {
+    is_final?: boolean | null;
+    payment_intent_id?: string | null;
+    source?: string | null;
+    status?: string | null;
+  } | null = null;
   if (isFinal) {
     const { data: existing, error: existingErr } = await admin
       .from("mp_config_responses")
-      .select("is_final,measured_by_type,measured_by_staff_id")
+      .select("is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status")
       .eq("id", id)
       .maybeSingle();
     if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
     wasFinal = Boolean(existing?.is_final);
+    existingForFinalize = existing;
     const existingMeasuredByParsed = ExistingMeasuredBySchema.safeParse(existing);
     if (existingMeasuredByParsed.success) {
       existingMeasuredByType = existingMeasuredByParsed.data.measured_by_type ?? null;
@@ -288,6 +299,15 @@ export async function POST(req: Request) {
     if (effectiveType === "staff" && !effectiveStaffId) {
       return NextResponse.json({ error: "Measured by is required" }, { status: 400 });
     }
+  }
+
+  if (
+    isFinal &&
+    !wasFinal &&
+    shouldCreateInstoreReviewOnly(existingForFinalize) &&
+    parsed.data.data
+  ) {
+    Object.assign(row, buildInstoreReviewOnlyPatch(parsed.data.data as Record<string, unknown>));
   }
 
   const { error } = await admin.from("mp_config_responses").upsert(row, { onConflict: "id" });
@@ -367,6 +387,19 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, id, telegramStatus });
+  const reviewOnly =
+    isFinal &&
+    !wasFinal &&
+    shouldCreateInstoreReviewOnly(existingForFinalize);
+
+  return NextResponse.json({
+    ok: true,
+    id,
+    telegramStatus,
+    reviewOnly,
+    ...(reviewOnly
+      ? buildInstoreReviewOnlyPatch(parsed.data.data as Record<string, unknown>)
+      : {}),
+  });
 }
 

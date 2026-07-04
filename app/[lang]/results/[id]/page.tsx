@@ -286,6 +286,8 @@ function ResultStatusPage() {
   const currency = result?.currency ?? "SGD";
   const build = result?.build;
   const showFinalBuild = status === "assigned" || status === "accepted" || status === "captured";
+  const hasPaymentHold = Boolean(result?.payment_intent_id);
+  const canDecide = status === "assigned" && hasPaymentHold;
   const activeStep = journeyIndex(status);
   const progressValue = ((activeStep + 1) / JOURNEY_STEPS.length) * 100;
   const isTerminalFail = status === "declined" || status === "expired";
@@ -418,7 +420,14 @@ function ResultStatusPage() {
         </div>
       )}
 
-      {status === "assigned" && (
+      {status === "assigned" && !hasPaymentHold && (
+        <p className="border-t pt-3 text-sm text-muted-foreground">
+          This in-store measurement is for operator review only. Complete the online purchase
+          path when you are ready to authorize payment and accept your final build.
+        </p>
+      )}
+
+      {canDecide && (
         <div className="flex flex-wrap gap-2 border-t pt-3">
           <Button
             variant="default"

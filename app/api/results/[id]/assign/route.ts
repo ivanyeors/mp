@@ -403,7 +403,7 @@ export async function POST(
   );
 
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
-  if (row.customer_email && row.access_token) {
+  if (hasHold && row.customer_email && row.access_token) {
     emailStatus = await sendAssignedEmail({
       to: row.customer_email,
       resultId: id,

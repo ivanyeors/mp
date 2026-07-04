@@ -134,6 +134,9 @@ export async function GET(req: Request) {
   };
 
   for (const row of rows ?? []) {
+    // Review-only in-store Results have no Stripe hold — SLA expiry does not apply.
+    if (!row.payment_intent_id) continue;
+
     const heldAt = new Date(row.created_at);
     const lastReminderAt = row.last_reminder_at ? new Date(row.last_reminder_at) : null;
     const action = planHeldTick(
