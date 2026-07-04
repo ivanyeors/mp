@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { lookupItemCategories, stripFillingLines } from '@/lib/bom-sanitizer'
 
 export const runtime = 'nodejs'
 
@@ -37,7 +38,17 @@ export async function POST(req: NextRequest) {
   if (lErr) return NextResponse.json({ error: lErr.message }, { status: 500 })
 
   type LineRow = { item_id: number | string; quantity: number | string }
-  const safeLines = (lines ?? []) as LineRow[]
+  const rawLines = (lines ?? []) as LineRow[]
+  const normalized = rawLines.map((r) => ({
+    item_id: Number(r.item_id),
+    quantity: Number(r.quantity),
+  }))
+  const cats = await lookupItemCategories(
+    admin,
+    normalized.map((l) => l.item_id),
+  )
+  if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
+  const safeLines = stripFillingLines(normalized, cats.byId)
 
   if (tpl.kind === 'pillow') {
     // Apply to the active BOM for the pillow size (key is XS/S/M/L/XL)

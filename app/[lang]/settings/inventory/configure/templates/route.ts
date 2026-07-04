@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
+import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
 
 export const runtime = 'nodejs'
 
@@ -134,6 +135,15 @@ export async function POST(req: NextRequest) {
   if (role === 'filling') {
     const err = await assertFillingLines(admin, safeLines)
     if (err) return NextResponse.json({ error: err }, { status: 400 })
+  } else if (safeLines.length) {
+    const cats = await lookupItemCategories(admin, safeLines.map((l) => l.item_id))
+    if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
+    const withCat = safeLines.map((l) => ({
+      item_id: l.item_id,
+      category: cats.byId.get(l.item_id) ?? 'unknown',
+    }))
+    const rejected = rejectFillingLines(withCat)
+    if (!rejected.ok) return NextResponse.json({ error: rejected.error }, { status: 400 })
   }
 
   let existingQuery = admin

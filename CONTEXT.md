@@ -43,7 +43,10 @@ A **Storefront product** that is not inventory-linked (`is_auto_generated = fals
 A customisation submission with optional **Authorization hold** and operator assignment. After assignment it links to a **Composed sellable** (size×tier or length) and a **Filling Template**. Accepted Results become an **Order** after successful payment capture (when a hold exists).
 
 **Filling Template**:
-A Configure BOM template that contains filling lines only, scoped by product type and size, and selected by the operator at assignment. Fillings come from Filling Templates only — not from customer input or from the composed sellable’s live filling lines when a template is supplied. Affects COGS and fulfillment, not sell price.
+A Configure BOM template that contains filling lines only, scoped by product type and size. A **Composed sellable** may designate one active Filling Template as its **Default Filling Template** (baseline mix). At assignment the operator may keep that default or pick another template from the same size-scoped catalog; the choice is stored on the **Result**. Fillings never come from customer input or from raw filling lines on the composed sellable BOM. Affects COGS and fulfillment, not sell price.
+
+**Default Filling Template**:
+The baseline filling mix for one Configure product card (e.g. Basic Size S, Premium Size M, Bolster medium). Stored on that **Composed sellable**, not on a warehouse preset name. Shown as a hint at assignment; the operator must actively confirm or override. Changing assigned size×tier (or length) on a **Result** clears any filling selection and reloads the hint for the new product card.
 
 **Customer preference**:
 Cover and case **Item** choices only. Protector is tier-owned on the **Composed sellable**, not a preference.
@@ -61,8 +64,12 @@ An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** 
 - A **Storefront product** projects either a **Composed sellable** or a **Sellable item**
 - A **Storefront product** has one or more **Variants**
 - **Costings** owns MSRP, cost, and compare-at for every non-legacy **Variant**
-- After assignment, a **Result** links to a **Composed sellable** (size×tier or length) and a **Filling Template**
-- Final build lines = non-filling **Composed sellable** BOM lines (packaging, protector, and other non-filling defaults) + **Filling Template** lines + **Customer preference** lines + **Add-on** lines
+- Each **Composed sellable** may have at most one **Default Filling Template**; many Filling Templates may exist per size (catalog)
+- After assignment, a **Result** links to a **Composed sellable** (size×tier or length) and a **Filling Template** (default or operator override)
+- Final build lines = non-filling **Composed sellable** BOM lines (packaging, protector, and other non-filling defaults) + **Filling Template** lines (default or operator override) + **Customer preference** lines + **Add-on** lines
+- **Composed sellable** Configure drawers edit non-filling BOM lines only; fillings are not edited as raw lines there — only a **Default Filling Template** is chosen from the size-scoped catalog
+- A **complete product** on a **Result** = assigned **Composed sellable** (non-filling) + operator-**confirmed** **Filling Template** at assign — not a Configure validation gate
+- Fillings live only in **Filling Templates** — never in composed sellable BOM or warehouse presets. Legacy filling rows are migrated into Filling Templates (seed defaults per product card), then removed from live BOMs
 - Fillings affect COGS/fulfillment only; sell price is **Costings** **MSRP** for the composed sellable plus preference/add-on item **MSRP**s, plus shipping and tax
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
 
@@ -79,10 +86,28 @@ An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** 
 >
 > **Dev:** "Can the customer pick the protector or fillings?"
 > **Domain expert:** "No. Protector is **tier**-owned on the **Composed sellable**. Fillings come only from the **Filling Template**. **Customer preference** is cover and case only."
+>
+> **Dev:** "What if the operator doesn't pick a filling mix at assign?"
+> **Domain expert:** "Assign is blocked until they confirm one. The UI shows the **Default Filling Template** for that **Composed sellable** as a hint, plus a short preview of its filling lines (variant, qty). They must actively select — usually the default, sometimes an override."
+>
+> **Dev:** "What does the operator see while assigning?"
+> **Domain expert:** "Two sections: **Product** (size×tier, non-filling lines — mostly read-only) and **Filling mix** (default hint, dropdown, variant/qty preview). Both update when size or tier changes. Save only after they confirm a filling template."
+
+## Configure (settings)
+
+**Product tab**:
+The composed sellable recipe editor in Configure: non-filling BOM lines (cover, case, protector, packaging, etc.) plus the **Default Filling Template** picker for that size×tier or length.
+
+**Complete product**:
+What gets sold and fulfilled for one order: non-filling **Composed sellable** lines for the assigned size×tier (or length) plus the operator-**confirmed** **Filling Template** at assignment. Configure maintains the recipe and catalog separately; they come together only when the operator confirms assignment on a **Result**.
+
+**Filling Config tab**:
+The filling-only catalog and editor inside the same product drawer. Scoped to that product type and size (or length) only — pillow drawers never show bolster mixes and vice versa. Create, edit, and activate mixes; set which one is default on the Product tab. Auto-seeded templates from legacy BOM data are named `{size} - {tier} - default` (pillow) or `{length} - default` (bolster), active immediately.
+
+**Warehouse template**:
+A named non-filling BOM preset (`role: warehouse`) for Apply-to-active-BOM. Must not include filling lines — fillings live only in **Filling Templates**. See ADR `docs/adr/0003-fillings-only-in-filling-templates.md`.
 
 ## Flagged ambiguities
-
-- "product" was used for both inventory BOM templates (`pillow_products`) and storefront listings (`products`) — resolved: **Composed sellable** vs **Storefront product**.
 - "price" was used for both the editable Costings field and the storefront mirror — resolved: **MSRP** is the source; `product_variants.price` is the mirror.
 - "kind" was used for basic/premium — resolved: human-facing language is **tier**. Existing DB columns may remain `kind` / `pillow_kind`; UI, emails, and new human-facing API field labels use `tier`.
 - **Filling Template** (filling-only Configure BOM template, operator-selected) vs **Composed sellable** (size×tier or length BOM owning packaging/protector defaults and sell **MSRP**) vs **Storefront product** (shop listing projection) — three different things; do not conflate.

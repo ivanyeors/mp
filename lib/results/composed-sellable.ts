@@ -1,6 +1,10 @@
 /** Composed sellable BOM + Costings MSRP for pillow (size×tier) or bolster (length). */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  validateDefaultFillingTemplate,
+  type FillingTemplateLike,
+} from "@/lib/filling-templates";
 
 export const BOLSTER_LENGTHS = ["short", "medium", "long"] as const;
 export type BolsterLength = (typeof BOLSTER_LENGTHS)[number];
@@ -114,4 +118,79 @@ export async function loadComposedSellable(
       currency: (productPrice?.currency as string) ?? "SGD",
     },
   };
+}
+
+/** Read persisted Default Filling Template id for a product card. */
+export async function getDefaultFillingTemplateId(
+  admin: SupabaseClient,
+  key: ComposedSellableKey,
+): Promise<number | null> {
+  if (key.productType === "pillow") {
+    const { data } = await admin
+      .from("pillow_products")
+      .select("default_filling_template_id")
+      .eq("size", key.size)
+      .eq("kind", key.tier)
+      .eq("is_active", true)
+      .maybeSingle();
+    const id = data?.default_filling_template_id;
+    return id != null ? Number(id) : null;
+  }
+
+  const { data } = await admin
+    .from("bolster_length_config")
+    .select("default_filling_template_id")
+    .eq("variant", key.length)
+    .maybeSingle();
+  const id = data?.default_filling_template_id;
+  return id != null ? Number(id) : null;
+}
+
+/** Persist Default Filling Template id for a product card (nullable to clear). */
+export async function setDefaultFillingTemplateId(
+  admin: SupabaseClient,
+  key: ComposedSellableKey,
+  templateId: number | null,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (templateId != null) {
+    const { data: template, error: tplErr } = await admin
+      .from("bom_templates")
+      .select("kind, key, role, is_active")
+      .eq("id", templateId)
+      .maybeSingle();
+    if (tplErr) return { ok: false, error: tplErr.message };
+    if (!template) return { ok: false, error: "Filling Template not found" };
+    const valid = validateDefaultFillingTemplate(template as FillingTemplateLike, key);
+    if (!valid.ok) return valid;
+  }
+
+  if (key.productType === "pillow") {
+    const { data: row, error: findErr } = await admin
+      .from("pillow_products")
+      .select("id")
+      .eq("size", key.size)
+      .eq("kind", key.tier)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (findErr) return { ok: false, error: findErr.message };
+    if (!row) {
+      return {
+        ok: false,
+        error: `No active composed sellable for size ${key.size} tier ${key.tier}`,
+      };
+    }
+    const { error: upErr } = await admin
+      .from("pillow_products")
+      .update({ default_filling_template_id: templateId })
+      .eq("id", row.id);
+    if (upErr) return { ok: false, error: upErr.message };
+    return { ok: true };
+  }
+
+  const { error: upErr } = await admin
+    .from("bolster_length_config")
+    .update({ default_filling_template_id: templateId })
+    .eq("variant", key.length);
+  if (upErr) return { ok: false, error: upErr.message };
+  return { ok: true };
 }

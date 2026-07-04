@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
+import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
 
 export const runtime = 'nodejs'
 
@@ -97,6 +98,15 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
     if (tpl.role === 'filling') {
       const err = await assertFillingLines(admin, safeLines)
       if (err) return NextResponse.json({ error: err }, { status: 400 })
+    } else if (safeLines.length) {
+      const cats = await lookupItemCategories(admin, safeLines.map((l) => l.item_id))
+      if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
+      const withCat = safeLines.map((l) => ({
+        item_id: l.item_id,
+        category: cats.byId.get(l.item_id) ?? 'unknown',
+      }))
+      const rejected = rejectFillingLines(withCat)
+      if (!rejected.ok) return NextResponse.json({ error: rejected.error }, { status: 400 })
     }
 
     const { error: delErr } = await admin.from('bom_template_lines').delete().eq('template_id', id)

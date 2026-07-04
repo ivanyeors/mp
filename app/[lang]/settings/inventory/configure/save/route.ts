@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { lookupItemCategories, stripFillingLines } from '@/lib/bom-sanitizer'
 
 function formatSupabaseError(err: unknown) {
   if (!err || typeof err !== 'object') return { message: String(err ?? 'Unknown error') }
@@ -39,8 +40,11 @@ export async function POST(req: NextRequest) {
   const bolsterParsed = BolsterBodySchema.safeParse(json)
   if (bolsterParsed.success) {
     const { lines, variant } = bolsterParsed.data
-    const safeLines = dedupeLines(lines)
     const admin = supabaseAdmin()
+    const deduped = dedupeLines(lines)
+    const cats = await lookupItemCategories(admin, deduped.map((l) => l.item_id))
+    if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
+    const safeLines = stripFillingLines(deduped, cats.byId)
     // Replace lines for this variant only
     const { error: delErr } = await admin.from('bolster_bom_lines').delete().eq('variant', variant)
     if (delErr) {
@@ -61,9 +65,11 @@ export async function POST(req: NextRequest) {
   const parsed = BodySchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   const { productId, lines } = parsed.data
-  const safeLines = dedupeLines(lines)
-
   const admin = supabaseAdmin()
+  const deduped = dedupeLines(lines)
+  const cats = await lookupItemCategories(admin, deduped.map((l) => l.item_id))
+  if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
+  const safeLines = stripFillingLines(deduped, cats.byId)
   const { data: existing, error: selErr } = await admin
     .from('bom_lines')
     .select('id,item_id')
