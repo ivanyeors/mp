@@ -587,24 +587,52 @@ export default function MpConfigPage() {
     }
   }, [measurementData]);
 
-  // Load accessory add-ons + shipping when entering purchase preview.
+  // Load size-scoped add-ons + shipping when entering purchase preview.
   useEffect(() => {
     if (currentStep !== "preview") return;
-    fetch("/api/results/addons")
+    const size =
+      shopRecommendation?.pillow_product?.size ??
+      suggestion?.recommended?.size ??
+      suggestion?.product?.size ??
+      "";
+    const addonsUrl = size
+      ? `/api/results/addons?size=${encodeURIComponent(size)}`
+      : "/api/results/addons";
+    fetch(addonsUrl)
       .then((r) => r.json())
-      .then((d: { addons?: { item_id: number; name: string; msrp: number; currency: string }[] }) =>
-        setAddons(d.addons ?? []),
-      )
+      .then((d: { addons?: { item_id: number; name: string; msrp: number; currency: string }[] }) => {
+        const list = d.addons ?? [];
+        setAddons(list);
+        setSelectedAddons((prev) => {
+          const valid = new Set(list.map((a) => a.item_id));
+          return new Set([...prev].filter((id) => valid.has(id)));
+        });
+      })
       .catch(() => setAddons([]));
-    fetch("/api/shop/shipping?country=SG")
+
+    const country = holdAddress.country || "SG";
+    fetch(`/api/shop/shipping?country=${encodeURIComponent(country)}`)
       .then((r) => r.json())
-      .then((d: { rows?: typeof shippingMethods }) => {
-        const methods = d.rows ?? [];
+      .then(async (d: { rows?: typeof shippingMethods }) => {
+        let methods = d.rows ?? [];
+        // Fallback: methods may predate SG country tags (seeded as MY).
+        if (methods.length === 0) {
+          const all = await fetch("/api/shop/shipping").then((r) => r.json());
+          methods = all.rows ?? [];
+        }
         setShippingMethods(methods);
-        if (methods[0]) setSelectedShippingId(methods[0].id);
+        setSelectedShippingId((prev) =>
+          methods.some((m) => m.id === prev) ? prev : (methods[0]?.id ?? ""),
+        );
       })
       .catch(() => setShippingMethods([]));
-  }, [currentStep]);
+  }, [
+    currentStep,
+    shopRecommendation?.pillow_product?.size,
+    suggestion?.recommended?.size,
+    suggestion?.product?.size,
+    holdAddress.country,
+  ]);
 
   const handleAuthorizeHold = useCallback(async () => {
     const size =
@@ -982,24 +1010,42 @@ export default function MpConfigPage() {
                       />
                     </div>
                   </div>
-                  {shippingMethods.length > 0 && (
-                    <div className="space-y-2">
-                      <Label>Shipping method</Label>
-                      <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select shipping" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {shippingMethods.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {(m.content?.["en-US"]?.name ?? m.slug) +
-                                ` · SGD ${m.base_rate.toFixed(2)}`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label>Shipping method</Label>
+                    {shippingMethods.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No shipping methods available. Add active methods under Settings → Shipping.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {shippingMethods.map((m) => {
+                          const label =
+                            m.content?.["en-US"]?.name ?? m.slug;
+                          const selected = selectedShippingId === m.id;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setSelectedShippingId(m.id)}
+                              className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                                selected
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border"
+                              }`}
+                            >
+                              <span className="text-sm font-medium">{label}</span>
+                              <span className="text-sm tabular-nums text-muted-foreground">
+                                SGD {Number(m.base_rate).toFixed(2)}
+                                {selected && (
+                                  <Check className="ml-2 inline size-4 text-primary" />
+                                )}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="text-center">
