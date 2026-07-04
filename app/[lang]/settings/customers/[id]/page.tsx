@@ -41,6 +41,7 @@ import {
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/ecommerce";
+import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -142,6 +143,10 @@ export default function CustomerDetailPage() {
     const [notes, setNotes] = useState("");
     const [tags, setTags] = useState<string[]>([]);
     const [tagInput, setTagInput] = useState("");
+
+    useSettingsBreadcrumbDetail(
+        [firstName, lastName].filter(Boolean).join(" ") || customer?.email || null,
+    );
 
     // Saving
     const [saving, setSaving] = useState(false);

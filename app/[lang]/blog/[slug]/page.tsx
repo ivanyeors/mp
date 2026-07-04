@@ -6,6 +6,14 @@ import { Metadata } from "next";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
+import {
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 type Props = {
     params: Promise<{ lang: string; slug: string }>;
@@ -83,17 +91,27 @@ export default async function BlogPostPage({ params }: Props) {
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
             />
 
-            <nav className="mb-8 font-medium text-sm text-muted-foreground flex items-center space-x-2">
-                <Link href={withLocale("/", locale)} className="hover:text-primary transition-colors">
-                    Home
-                </Link>
-                <span>/</span>
-                <Link href={withLocale("/blog", locale)} className="hover:text-primary transition-colors">
-                    Blogs
-                </Link>
-                <span>/</span>
-                <span className="text-foreground truncate max-w-xs sm:max-w-sm">{post.title}</span>
-            </nav>
+            <Breadcrumb className="mb-8">
+                <BreadcrumbList>
+                    <BreadcrumbItem>
+                        <BreadcrumbLink asChild>
+                            <Link href={withLocale("/", locale)}>Home</Link>
+                        </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        <BreadcrumbLink asChild>
+                            <Link href={withLocale("/blog", locale)}>Blogs</Link>
+                        </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem className="min-w-0">
+                        <BreadcrumbPage className="truncate max-w-xs sm:max-w-sm" title={post.title}>
+                            {post.title}
+                        </BreadcrumbPage>
+                    </BreadcrumbItem>
+                </BreadcrumbList>
+            </Breadcrumb>
 
             <header className="mb-12">
                 <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 leading-tight">

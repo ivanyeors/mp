@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 
 type YesNoEmpty = "yes" | "no" | "";
 
@@ -87,6 +88,8 @@ export default function ResultDetailPage() {
   const [suggestionLoading, setSuggestionLoading] = useState(false);
 
   const [draft, setDraft] = useState<MeasurementData>(() => normalizeMeasurement(null));
+
+  useSettingsBreadcrumbDetail(draft.name.trim() || orderNumber || null);
 
   const headerMeta = useMemo(() => {
     if (!row) return null;

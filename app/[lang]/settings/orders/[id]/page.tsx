@@ -57,6 +57,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Order, OrderItem, OrderMargin, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
@@ -150,6 +151,8 @@ export default function OrderDetailPage() {
     const [timeline, setTimeline] = useState<OrderTimelineEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [timelineLoading, setTimelineLoading] = useState(true);
+
+    useSettingsBreadcrumbDetail(order ? `#${order.order_number}` : null);
 
     // Status update
     const [newStatus, setNewStatus] = useState<OrderStatus | "">("");

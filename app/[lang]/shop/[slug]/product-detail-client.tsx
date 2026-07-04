@@ -3,7 +3,15 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, ChevronRight, Package, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react";
+import { ShoppingCart, Package, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -226,28 +234,39 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
 
           {/* RIGHT: Product Info */}
           <div className="flex flex-col gap-5">
-            <nav className="flex items-center gap-1 text-sm text-muted-foreground flex-wrap">
-              <Link href={`/${lang}`} className="hover:text-foreground transition-colors">
-                Home
-              </Link>
-              <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-              <Link href={`/${lang}/shop`} className="hover:text-foreground transition-colors">
-                Shop
-              </Link>
-              {product.category && (
-                <>
-                  <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-                  <Link
-                    href={`/${lang}/shop?category=${product.category.slug}`}
-                    className="hover:text-foreground transition-colors"
-                  >
-                    {categoryName}
-                  </Link>
-                </>
-              )}
-              <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="text-foreground truncate max-w-[180px]">{title}</span>
-            </nav>
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href={`/${lang}`}>Home</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href={`/${lang}/shop`}>Shop</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {product.category ? (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbLink asChild>
+                        <Link href={`/${lang}/shop?category=${product.category.slug}`}>
+                          {categoryName}
+                        </Link>
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                  </>
+                ) : null}
+                <BreadcrumbSeparator />
+                <BreadcrumbItem className="min-w-0">
+                  <BreadcrumbPage className="truncate max-w-[180px]" title={title}>
+                    {title}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
 
             <h1 className="text-2xl lg:text-3xl font-bold leading-tight">{title}</h1>
 

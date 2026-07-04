@@ -8,6 +8,7 @@ import { ImagePicker } from "@/components/ui/image-picker";
 import Link from "next/link";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
+import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
@@ -61,6 +62,10 @@ export default function BlogEditorPage() {
     // Language toggle
     const [activeLocale, setActiveLocale] = useState<Locale>("en-US");
     const activeContent = content[activeLocale] ?? emptyContent();
+
+    useSettingsBreadcrumbDetail(
+        isNew ? "New Post" : (content["en-US"]?.title?.trim() || null),
+    );
 
     const updateActiveContent = (field: keyof LocaleContent, value: string | string[]) => {
         setContent((prev) => ({

@@ -31,6 +31,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
 
@@ -243,6 +244,8 @@ export default function DiscountEditorPage() {
     });
     const [original, setOriginal] = useState<Coupon | null>(null);
     const [loading, setLoading] = useState(!isNew);
+
+    useSettingsBreadcrumbDetail(isNew ? "New Discount" : (form.code.trim() || null));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);

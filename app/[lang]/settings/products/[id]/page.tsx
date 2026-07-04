@@ -42,6 +42,7 @@ import type {
     LocalizedProductContent, ProductStatus, ProductType,
 } from "@/lib/types/ecommerce";
 import { formatCurrency } from "@/lib/i18n/currencies";
+import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,6 +108,7 @@ export default function ProductEditorPage() {
     const id = (Array.isArray(params?.id) ? params.id[0] : params?.id) ?? "new";
     const isNew = id === "new";
 
+
     // ── Core product state ──
     const [slug, setSlug] = useState("");
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -125,6 +127,10 @@ export default function ProductEditorPage() {
         "en-US": { ...EMPTY_CONTENT },
         "zh-CN": { ...EMPTY_CONTENT },
     });
+
+    useSettingsBreadcrumbDetail(
+        isNew ? "New Product" : (content["en-US"]?.title?.trim() || null),
+    );
 
     // ── Images ──
     const [images, setImages] = useState<ProductImage[]>([]);

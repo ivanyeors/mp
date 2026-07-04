@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
@@ -36,6 +37,14 @@ import {
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
 import type { Permission } from "@/lib/auth/permissions";
+import {
+  SettingsBreadcrumbProvider,
+  useSettingsBreadcrumbDetailLabel,
+} from "@/components/settings/settings-breadcrumb-context";
+import {
+  buildSettingsBreadcrumbs,
+  findActiveHref,
+} from "@/components/settings/settings-breadcrumbs";
 
 type NavItem = {
   href: string;
@@ -110,30 +119,6 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ];
-
-function isNavActive(basePathname: string, href: string): boolean {
-  if (href === "/settings") return basePathname === "/settings";
-  return basePathname === href || basePathname.startsWith(`${href}/`);
-}
-
-/**
- * The active entry is the one whose href is the *longest* prefix of the current
- * path. Needed because flat siblings can share a prefix (e.g. `/settings/inventory`
- * and `/settings/inventory/configure`) — startsWith alone would light up both.
- */
-function findActiveHref(basePathname: string, groups: NavGroup[]): string | null {
-  let best: string | null = null;
-  for (const group of groups) {
-    for (const item of group.items) {
-      for (const href of [item.href, ...(item.items ?? []).map((s) => s.href)]) {
-        if (isNavActive(basePathname, href) && href.length > (best?.length ?? -1)) {
-          best = href;
-        }
-      }
-    }
-  }
-  return best;
-}
 
 /** An item is visible when its permission is granted (or it requires none). */
 function canSee(item: NavItem, permissions: Permission[]): boolean {
@@ -214,85 +199,108 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
 
   const activeHref = findActiveHref(basePathname, NAV_GROUPS);
 
-  const segments = basePathname.split("/").filter(Boolean);
-  const last = segments[segments.length - 1] ?? "settings";
-  const pageTitle = last === "settings"
-    ? "Overview"
-    : last
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+  return (
+    <SettingsBreadcrumbProvider>
+      <div className="flex min-h-svh w-full">
+        <SidebarProvider>
+          <Sidebar collapsible="icon">
+            <SidebarContent>
+              {groups.map((group) => (
+                <SidebarGroup key={group.label}>
+                  <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                  <SidebarMenu>
+                    {group.items.map(({ href, label, tooltip, Icon, items }) => {
+                      const isActive = activeHref === href ||
+                        (items?.some((sub) => sub.href === activeHref) ?? false);
+                      const visibleSubs = (items ?? []).filter((sub) => canSee(sub, permissions));
+
+                      return (
+                        <SidebarMenuItem key={href}>
+                          <SidebarMenuButton asChild tooltip={tooltip} isActive={isActive}>
+                            <Link href={to(href)}>
+                              <Icon />
+                              <span>{label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+
+                          {visibleSubs.length ? (
+                            <SidebarMenuSub>
+                              {visibleSubs.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
+                                <SidebarMenuSubItem key={subHref}>
+                                  <SidebarMenuSubButton
+                                    asChild
+                                    isActive={activeHref === subHref}
+                                  >
+                                    <Link href={to(subHref)} title={subTooltip}>
+                                      <SubIcon />
+                                      <span>{subLabel}</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          ) : null}
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroup>
+              ))}
+            </SidebarContent>
+            <SidebarRail />
+          </Sidebar>
+          <SidebarInset>
+            <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
+              <SidebarTrigger />
+              <div className="min-w-0 flex-1">
+                <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
+              </div>
+            </header>
+            <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
+              {children}
+            </div>
+          </SidebarInset>
+        </SidebarProvider>
+      </div>
+    </SettingsBreadcrumbProvider>
+  );
+}
+
+function SettingsBreadcrumbTrail({
+  basePathname,
+  to,
+}: {
+  basePathname: string;
+  to: (href: string) => string;
+}) {
+  const detailLabel = useSettingsBreadcrumbDetailLabel();
+  const crumbs = buildSettingsBreadcrumbs(basePathname, NAV_GROUPS, detailLabel);
 
   return (
-    <div className="flex min-h-svh w-full">
-      <SidebarProvider>
-        <Sidebar collapsible="icon">
-          <SidebarContent>
-            {groups.map((group) => (
-              <SidebarGroup key={group.label}>
-                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                <SidebarMenu>
-                  {group.items.map(({ href, label, tooltip, Icon, items }) => {
-                    const isActive = activeHref === href ||
-                      (items?.some((sub) => sub.href === activeHref) ?? false);
-                    const visibleSubs = (items ?? []).filter((sub) => canSee(sub, permissions));
-
-                    return (
-                      <SidebarMenuItem key={href}>
-                        <SidebarMenuButton asChild tooltip={tooltip} isActive={isActive}>
-                          <a href={to(href)}>
-                            <Icon />
-                            <span>{label}</span>
-                          </a>
-                        </SidebarMenuButton>
-
-                        {visibleSubs.length ? (
-                          <SidebarMenuSub>
-                            {visibleSubs.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
-                              <SidebarMenuSubItem key={subHref}>
-                                <SidebarMenuSubButton
-                                  asChild
-                                  isActive={activeHref === subHref}
-                                >
-                                  <a href={to(subHref)} title={subTooltip}>
-                                    <SubIcon />
-                                    <span>{subLabel}</span>
-                                  </a>
-                                </SidebarMenuSubButton>
-                              </SidebarMenuSubItem>
-                            ))}
-                          </SidebarMenuSub>
-                        ) : null}
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroup>
-            ))}
-          </SidebarContent>
-          <SidebarRail />
-        </Sidebar>
-        <SidebarInset>
-          <header className="flex h-14 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
-            <SidebarTrigger />
-            <div className="flex items-center gap-2">
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href={to("/settings")}>Settings</BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
-            </div>
-          </header>
-          <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
-            {children}
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    </div>
+    <Breadcrumb>
+      <BreadcrumbList className="flex-nowrap overflow-hidden">
+        {crumbs.map((crumb, i) => {
+          const isLast = i === crumbs.length - 1;
+          return (
+            <Fragment key={`${crumb.label}-${i}`}>
+              {i > 0 ? <BreadcrumbSeparator /> : null}
+              <BreadcrumbItem className={isLast ? "min-w-0" : "shrink-0"}>
+                {isLast || !crumb.href ? (
+                  <BreadcrumbPage className="truncate" title={crumb.label}>
+                    {crumb.label}
+                  </BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    <Link href={to(crumb.href)} className="truncate" title={crumb.label}>
+                      {crumb.label}
+                    </Link>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </Fragment>
+          );
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }
