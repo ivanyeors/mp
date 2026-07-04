@@ -1,6 +1,5 @@
 "use client";
 
-import { useContext } from "react";
 import { cn } from "@/lib/utils";
 import { BASE_CURRENCY, formatCurrency } from "@/lib/i18n/currencies";
 

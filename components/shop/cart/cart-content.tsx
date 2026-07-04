@@ -23,7 +23,6 @@ interface CartContentProps {
   couponDiscount: number;
   couponFreeShipping: boolean;
   items: CartItemClient[];
-  itemCount: number;
   couponCode: string | null;
   couponError: string | null;
   couponValidating: boolean;
@@ -43,7 +42,6 @@ export function CartContent({
   couponDiscount,
   couponFreeShipping,
   items,
-  itemCount: _itemCount,
   couponCode,
   couponError,
   couponValidating,

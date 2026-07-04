@@ -71,9 +71,12 @@ export async function loadAssignPrep(
       const itemIds = (defLines ?? []).map((l) => Number(l.item_id));
       const { data: fillItems } = itemIds.length
         ? await admin.from("items").select("id, name, subtype, size").in("id", itemIds)
-        : { data: [] as FillingItemMeta[] };
-      const itemsById = new Map(
-        (fillItems ?? []).map((i) => [Number(i.id), i as FillingItemMeta]),
+        : { data: [] as Array<{ id: number; name: string; subtype: string | null; size: string | null }> };
+      const itemsById = new Map<number, FillingItemMeta>(
+        (fillItems ?? []).map((i) => [
+          Number(i.id),
+          { name: i.name, subtype: i.subtype, size: i.size },
+        ]),
       );
 
       defaultFillingTemplate = {

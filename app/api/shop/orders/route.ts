@@ -117,7 +117,8 @@ export async function GET(req: Request) {
   const rows = (data ?? []).map(
     (row: Record<string, unknown> & { order_items?: unknown; id: string }) => {
       const items = Array.isArray(row.order_items) ? row.order_items : [];
-      const { order_items: _omitItems, ...rest } = row;
+      const rest = { ...row };
+      delete (rest as { order_items?: unknown }).order_items;
       return {
         ...rest,
         items_count: sumOrderItemQuantities(items),

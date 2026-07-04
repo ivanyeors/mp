@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 
 interface ShopSearchFormProps {
   placeholder: string;
-  clearLabel: string;
 }
 
-export function ShopSearchForm({ placeholder, clearLabel }: ShopSearchFormProps) {
+export function ShopSearchForm({ placeholder }: ShopSearchFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState(searchParams.get("search") ?? "");

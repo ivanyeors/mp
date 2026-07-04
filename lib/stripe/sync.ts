@@ -1,6 +1,6 @@
 import { getStripe } from "./client";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { Product, ProductVariant } from "@/lib/types/ecommerce";
+import type { ProductVariant } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
 /**

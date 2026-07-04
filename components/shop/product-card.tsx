@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingBag, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,7 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
       toast(
         <div className="flex items-center gap-3">
           {imageUrl && (
-            <img src={imageUrl} alt={title} className="h-10 w-10 rounded-md object-cover" />
+            <Image src={imageUrl} alt={title} width={40} height={40} className="h-10 w-10 rounded-md object-cover" unoptimized />
           )}
           <div className="min-w-0">
             <p className="text-sm font-medium">Added to cart</p>

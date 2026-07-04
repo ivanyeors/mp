@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const createPi = vi.fn(async (_params?: unknown, _opts?: unknown) => ({
+const createPi = vi.fn(async () => ({
   id: "pi_test",
   client_secret: "pi_test_secret",
 }));
-const createSession = vi.fn(async (_params?: unknown, _opts?: unknown) => ({
+const createSession = vi.fn(async () => ({
   id: "cs_test",
   url: "https://stripe.test/cs",
 }));
-const capturePi = vi.fn(async (id: string, _params?: unknown) => ({
+const capturePi = vi.fn(async (id: string) => ({
   id,
   status: "succeeded",
 }));

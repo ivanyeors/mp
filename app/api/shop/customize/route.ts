@@ -379,7 +379,6 @@ async function handleApply(req: Request) {
     cover_variant,
     case_variant,
     component_quantities,
-    upsells,
     bom_template_id,
     llm_metadata,
   } = parsed.data;

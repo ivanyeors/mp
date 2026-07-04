@@ -83,7 +83,6 @@ export function CartPopover({ trigger }: CartPopoverProps) {
             couponDiscount={couponDiscount}
             couponFreeShipping={couponFreeShipping}
             items={items}
-            itemCount={itemCount}
             couponCode={couponCode}
             couponError={couponError}
             couponValidating={couponValidating}

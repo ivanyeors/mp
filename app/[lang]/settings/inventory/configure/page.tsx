@@ -167,6 +167,23 @@ export default function ConfigureInventoryPage() {
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const settingsPath = useCallback((path: string) => withLocale(path, locale), [locale]);
 
+  const loadTemplates = useCallback(async (kind: 'pillow' | 'bolster', key: string, pillowKind?: PillowKind, pillowVariant?: PremiumVariant) => {
+    const pillowKindParam = kind === 'pillow' && pillowKind ? `&pillowKind=${encodeURIComponent(pillowKind)}` : ''
+    const pillowVariantParam =
+      kind === 'pillow' && pillowKind === 'premium' && pillowVariant
+        ? `&pillowVariant=${encodeURIComponent(pillowVariant)}`
+        : '';
+    const url = settingsPath(`/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}&role=warehouse${pillowKindParam}${pillowVariantParam}`)
+    const res = await fetch(url, { method: 'GET' })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null)
+      const message = payload?.error ?? 'Failed to load templates'
+      throw new Error(typeof message === 'string' ? message : 'Failed to load templates')
+    }
+    const payload = await res.json().catch(() => null)
+    return (payload?.templates ?? []) as Array<{ id: number; name: string; notes: string | null }>
+  }, [settingsPath]);
+
   const [items, setItems] = useState<Item[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [bomByKind, setBomByKind] = useState<BomByKind>(() => makeEmptyBomByKind());
@@ -322,7 +339,7 @@ export default function ConfigureInventoryPage() {
       }
     };
     load();
-  }, [open, selectedSize, selectedPillowKind, premiumVariant]);
+  }, [open, selectedSize, selectedPillowKind, premiumVariant, loadTemplates]);
 
   useEffect(() => {
     const load = async () => {
@@ -336,7 +353,7 @@ export default function ConfigureInventoryPage() {
       }
     };
     load();
-  }, [bolsterOpen, bolsterVariant, getBolsterTemplateKey]);
+  }, [bolsterOpen, bolsterVariant, getBolsterTemplateKey, loadTemplates]);
 
   // removed unused itemsBy
 
@@ -387,23 +404,6 @@ export default function ConfigureInventoryPage() {
       throw new Error(message);
     }
   };
-
-  const loadTemplates = async (kind: 'pillow' | 'bolster', key: string, pillowKind?: PillowKind, pillowVariant?: PremiumVariant) => {
-    const pillowKindParam = kind === 'pillow' && pillowKind ? `&pillowKind=${encodeURIComponent(pillowKind)}` : ''
-    const pillowVariantParam =
-      kind === 'pillow' && pillowKind === 'premium' && pillowVariant
-        ? `&pillowVariant=${encodeURIComponent(pillowVariant)}`
-        : '';
-    const url = settingsPath(`/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}&role=warehouse${pillowKindParam}${pillowVariantParam}`)
-    const res = await fetch(url, { method: 'GET' })
-    if (!res.ok) {
-      const payload = await res.json().catch(() => null)
-      const message = payload?.error ?? 'Failed to load templates'
-      throw new Error(typeof message === 'string' ? message : 'Failed to load templates')
-    }
-    const payload = await res.json().catch(() => null)
-    return (payload?.templates ?? []) as Array<{ id: number; name: string; notes: string | null }>
-  }
 
   const loadFillingTemplates = useCallback(async (kind: "pillow" | "bolster", key: string) => {
     const url = settingsPath(

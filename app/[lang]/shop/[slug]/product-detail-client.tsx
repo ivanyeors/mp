@@ -157,7 +157,7 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
       toast(
         <div className="flex items-center gap-3">
           {imageUrl && (
-            <img src={imageUrl} alt={title} className="h-12 w-12 rounded-md object-cover" />
+            <Image src={imageUrl} alt={title} width={48} height={48} className="h-12 w-12 rounded-md object-cover" unoptimized />
           )}
           <div className="min-w-0">
             <p className="text-sm font-medium">Added to cart</p>

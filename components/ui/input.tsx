@@ -126,8 +126,12 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 
     const showControls = !props.disabled && !props.readOnly
 
-    // Strip min/max/step from DOM since type="text" doesn't use them
-    const { min, max, step, onKeyDown: _, inputMode: __, ...textProps } = props
+    const textProps = { ...props };
+    delete (textProps as { min?: unknown }).min;
+    delete (textProps as { max?: unknown }).max;
+    delete (textProps as { step?: unknown }).step;
+    delete (textProps as { onKeyDown?: unknown }).onKeyDown;
+    delete (textProps as { inputMode?: unknown }).inputMode;
 
     return (
       <div className="group relative w-full">

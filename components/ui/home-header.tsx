@@ -10,15 +10,9 @@ import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
 import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
-import { withLocale } from "@/lib/i18n/routing";
-import { useI18n } from "@/lib/i18n/use-i18n";
 
 export function HomeHeader() {
   const [isCompact, setIsCompact] = React.useState(false);
-  const { m, locale } = useI18n();
-
-  const homeHref = withLocale("/", locale);
-  const mpConfigHref = withLocale("/mp-config", locale);
 
   React.useEffect(() => {
     const onScroll = () => {

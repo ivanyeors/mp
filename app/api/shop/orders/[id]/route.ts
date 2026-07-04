@@ -52,7 +52,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
     : [];
-  const { order_items: _items, order_timeline: _timeline, ...orderFields } = data;
+  const orderFields = { ...data };
+  delete (orderFields as { order_items?: unknown }).order_items;
+  delete (orderFields as { order_timeline?: unknown }).order_timeline;
 
   return NextResponse.json({
     ok: true,

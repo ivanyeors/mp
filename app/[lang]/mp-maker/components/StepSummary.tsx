@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useCallback } from "react";
-import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { useBuilder } from "./BuilderProvider";
@@ -14,11 +13,7 @@ import {
   computeUpsellTotal,
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
-import { HARDCODED_UPSELLS } from "@/lib/shop/customize-apply-payload";
-import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getApiErrorMessage } from "@/lib/utils";
-import type { ConfigLine, FillingLine } from "@/lib/types/customization";
 import type { ProductType } from "./BuilderProvider";
 import {
   buildCustomizeApplyPayload,
@@ -61,9 +56,6 @@ export function getCartProductInfo(
 export function StepSummary() {
   const builder = useBuilder();
   const { addItem } = useCart();
-  const router = useRouter();
-  const pathname = usePathname() ?? "/";
-  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
 
   const { recommendation, selectedTemplateId, selectedCover, selectedCase, componentQtyOverrides, selectedUpsells } = builder;
 
@@ -166,8 +158,6 @@ export function StepSummary() {
     currency,
     builder,
     addItem,
-    router,
-    locale,
   ]);
 
   if (!recommendation) return null;

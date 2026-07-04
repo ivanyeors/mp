@@ -61,7 +61,7 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, rows, total: count ?? 0, page, limit });
 }
 
-export async function POST(_req: Request) {
+export async function POST() {
   const denied = await requireAdmin("products");
   if (denied) return denied;
 

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useCallback, useState, Suspense } from "react";
+import { useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";

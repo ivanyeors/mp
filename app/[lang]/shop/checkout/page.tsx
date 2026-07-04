@@ -86,7 +86,7 @@ export default function CheckoutPage() {
   const lang = (params?.lang as string) ?? "en";
 
   const { items, subtotal, couponCode, couponDiscount, couponFreeShipping, clearCart } = useCart();
-  const { isConverted, currency: displayCurrency } = useCurrency();
+  const { isConverted } = useCurrency();
 
   // Form state
   const [form, setForm] = useState<FormData>({

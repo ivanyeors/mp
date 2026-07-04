@@ -118,7 +118,6 @@ export class GmailTransport implements EmailTransport {
 
 /** RFC 2047 encode a header value when it contains non-ASCII characters. */
 function encodeHeaderValue(value: string): string {
-  // eslint-disable-next-line no-control-regex
   if (/^[\x00-\x7F]*$/.test(value)) return value;
   return `=?UTF-8?B?${Buffer.from(value, "utf8").toString("base64")}?=`;
 }

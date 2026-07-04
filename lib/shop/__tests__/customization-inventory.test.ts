@@ -26,7 +26,7 @@ function createSupabaseMock(tables: Record<string, MockRow[]>) {
       };
 
       const builder = {
-        select(_cols: string) {
+        select() {
           return builder;
         },
         eq(column: string, value: unknown) {

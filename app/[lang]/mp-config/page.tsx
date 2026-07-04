@@ -422,7 +422,7 @@ export default function MpConfigPage() {
     );
   }, [measurementData]);
 
-  const upsertToDb = async (
+  const upsertToDb = useCallback(async (
     opts?: { isFinal?: boolean },
   ): Promise<{ id: string; telegramStatus?: "sent" | "skipped" | "failed" } | null> => {
     if (!responseId) return null;
@@ -454,7 +454,7 @@ export default function MpConfigPage() {
       setSaveStatus("error");
       return null;
     }
-  };
+  }, [responseId, hasAnyInput, measurementData]);
 
   const loadSuggestion = async () => {
     if (!responseId) return;
@@ -480,8 +480,7 @@ export default function MpConfigPage() {
       upsertToDb();
     }, 650);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [responseId, hasAnyInput, measurementData]);
+  }, [responseId, hasAnyInput, measurementData, upsertToDb]);
 
   const fileToDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
@@ -721,6 +720,7 @@ export default function MpConfigPage() {
     selectedAddons,
     responseId,
     measurementData,
+    upsertToDb,
   ]);
 
   const saveLabel:

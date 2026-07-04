@@ -249,6 +249,9 @@ export async function GET(
   }
 
   const build = await buildPublicSummary(row);
-  const { access_token: _t, customer_id: _c, shipping_address: _a, ...publicRow } = row;
+  const publicRow = { ...row };
+  delete (publicRow as { access_token?: string }).access_token;
+  delete (publicRow as { customer_id?: string }).customer_id;
+  delete (publicRow as { shipping_address?: unknown }).shipping_address;
   return NextResponse.json({ result: { ...publicRow, build } });
 }

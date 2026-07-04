@@ -136,10 +136,6 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
     }
   }
 
-  const isMobile = () => {
-    return window && window.innerWidth < 768
-  }
-
   return (
     <CarouselContext.Provider value={{ onCardClose: handleCardClose, currentIndex }}>
       <div className="relative w-full">
@@ -218,7 +214,7 @@ export interface CardProps {
 export const AppleCarouselCard = ({ card, index, layout = false, variant = "overlay" }: CardProps) => {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { onCardClose, currentIndex: _currentIndex } = useContext(CarouselContext)
+  const { onCardClose } = useContext(CarouselContext)
   const hasCategory = card.category.trim().length > 0
 
   const handleClose = React.useCallback(() => {

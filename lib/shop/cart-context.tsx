@@ -124,7 +124,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (hydrated) saveCartToStorage(state);
-  }, [state.items, state.couponCode, hydrated]);
+  }, [state, hydrated]);
 
   // Re-validate stored coupon when cart items change.
   useEffect(() => {

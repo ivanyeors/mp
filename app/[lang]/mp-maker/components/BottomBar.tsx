@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useBuilder } from "./BuilderProvider";
 import {
   formatPrice,
-  computeFillingLines,
   computeComponentLines,
   computeAddonPrice,
   computeUpsellTotal,
@@ -21,7 +20,6 @@ export function BottomBar({ onAddToCart }: BottomBarProps) {
   const {
     step,
     recommendation,
-    selectedTemplateId,
     selectedCover,
     selectedCase,
     componentQtyOverrides,

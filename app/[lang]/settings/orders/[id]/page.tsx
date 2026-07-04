@@ -60,7 +60,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
-import type { Order, OrderItem, OrderMargin, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
+import type { Order, OrderItem, OrderMargin, OrderTimelineEvent, OrderStatus } from "@/lib/types/ecommerce";
 import {
     groupBuildLinesByRole,
     isResultOrderBuildSnapshot,
@@ -94,17 +94,6 @@ function formatDate(dateStr: string): string {
         hour: "2-digit",
         minute: "2-digit",
     }).format(new Date(dateStr));
-}
-
-function formatAddress(addr: ShippingAddress): string {
-    const parts = [
-        addr.recipient,
-        addr.line1,
-        addr.line2,
-        `${addr.city}${addr.state ? `, ${addr.state}` : ""} ${addr.postal_code}`,
-        addr.country,
-    ].filter(Boolean);
-    return parts.join(", ");
 }
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
@@ -147,7 +136,7 @@ function formatMarginPct(pct: number | null | undefined): string {
 export default function OrderDetailPage() {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-    const to = (href: string) => withLocale(href, locale);
+    const to = useCallback((href: string) => withLocale(href, locale), [locale]);
     const params = useParams<{ id: string }>();
     const orderId = params.id;
 
@@ -236,19 +225,6 @@ export default function OrderDetailPage() {
             setTimeline([]);
         } finally {
             setTimelineLoading(false);
-        }
-    }, [orderId]);
-
-    // Check if inventory has been deducted for this order
-    const checkInventoryDeduction = useCallback(async () => {
-        try {
-            const res = await fetch(`/api/shop/orders/${orderId}`);
-            // We use a lightweight check — look for inventory_transactions via a dedicated query
-            // For now, check if order status is confirmed+ and timeline has payment_confirmed event
-            // A more robust check would query inventory_transactions directly
-            setInventoryDeducted(null); // Will be computed from timeline
-        } catch {
-            setInventoryDeducted(null);
         }
     }, [orderId]);
 

@@ -8,8 +8,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import type { ProductCategory } from "@/lib/types/ecommerce";
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
@@ -22,18 +20,10 @@ const SORT_OPTIONS = [
 export type SortOption = (typeof SORT_OPTIONS)[number]["value"];
 
 interface ShopFiltersProps {
-  categories: ProductCategory[];
-  selectedCategory?: string;
   sort: string;
-  locale?: string;
 }
 
-export function ShopFilters({
-  categories,
-  selectedCategory,
-  sort,
-  locale = "en-US",
-}: ShopFiltersProps) {
+export function ShopFilters({ sort }: ShopFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 

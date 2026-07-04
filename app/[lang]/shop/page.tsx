@@ -5,7 +5,6 @@ import { ProductGrid } from "@/components/shop/product-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
 import { ShopSearchForm, ShopClearFilters } from "@/components/shop/shop-search-form";
 import { getProducts } from "@/lib/ecommerce/products";
-import { getCategoryTree } from "@/lib/ecommerce/categories";
 import { getMessages } from "@/lib/i18n/messages";
 import type { Locale } from "@/lib/i18n/locales";
 
@@ -27,17 +26,14 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
 
   const m = getMessages(lang as Locale);
 
-  const [{ products, total }, categories] = await Promise.all([
-    getProducts({
+  const { products, total } = await getProducts({
       status: "active",
       category_id: category || undefined,
       sort,
       search: search || undefined,
       page,
       limit: PAGE_SIZE,
-    }),
-    getCategoryTree(),
-  ]);
+    });
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const hasFilters = !!(category || search || sort !== "newest");
@@ -55,17 +51,11 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
 
         <ShopSearchForm
           placeholder={m.shop.searchPlaceholder}
-          clearLabel={m.shop.filters.clear}
         />
       </div>
 
       {/* Filters */}
-      <ShopFilters
-        categories={categories}
-        selectedCategory={category}
-        sort={sort}
-        locale={lang}
-      />
+      <ShopFilters sort={sort} />
 
       {/* Product grid / empty state */}
       {products.length === 0 ? (

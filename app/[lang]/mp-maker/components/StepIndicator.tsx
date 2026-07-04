@@ -12,7 +12,7 @@ const STEPS: { key: BuilderStep; label: string }[] = [
 ];
 
 export function StepIndicator() {
-  const { step, stepIndex, productType } = useBuilder();
+  const { stepIndex, productType } = useBuilder();
 
   const steps = STEPS.map((s) =>
     s.key === "recommendation" && productType === "bolster"
