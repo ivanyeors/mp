@@ -9,6 +9,11 @@ import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
+import {
+  isCaseInventoryCategory,
+  isProtectorInventoryCategory,
+  itemMatchesPreferenceRole,
+} from "@/lib/shop/customization-inventory";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -168,7 +173,7 @@ export async function POST(req: Request) {
   const itemById = new Map((items ?? []).map((i) => [i.id as number, i]));
   for (const line of input.preferenceLines) {
     const item = itemById.get(line.item_id);
-    if (!item || item.category !== line.category) {
+    if (!item || !itemMatchesPreferenceRole(String(item.category), line.category)) {
       return NextResponse.json(
         { error: `Invalid preference item ${line.item_id}` },
         { status: 400 },
@@ -177,7 +182,13 @@ export async function POST(req: Request) {
   }
   for (const line of input.addonLines) {
     const item = itemById.get(line.item_id);
-    if (!item || item.category === "filling" || item.category === "protector") {
+    const cat = String(item?.category ?? "");
+    if (
+      !item ||
+      cat === "filling" ||
+      isProtectorInventoryCategory(cat) ||
+      isCaseInventoryCategory(cat)
+    ) {
       return NextResponse.json(
         { error: `Invalid add-on item ${line.item_id}` },
         { status: 400 },

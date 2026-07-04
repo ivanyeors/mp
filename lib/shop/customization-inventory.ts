@@ -2,8 +2,60 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { BolsterVariant, ComponentOption, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 
 /**
+ * Inventory stores split categories (pillow_case / bolster_case, …) after migration 0015.
+ * Customisation UI / preference lines still use the role names cover | case | protector.
+ */
+export function toComponentRole(category: string): string {
+  if (category === "pillow_case" || category === "bolster_case" || category === "case") return "case";
+  if (category === "pillow_protector" || category === "bolster_protector" || category === "protector") {
+    return "protector";
+  }
+  return category;
+}
+
+export function isCaseInventoryCategory(category: string): boolean {
+  return category === "case" || category === "pillow_case" || category === "bolster_case";
+}
+
+export function isProtectorInventoryCategory(category: string): boolean {
+  return (
+    category === "protector" ||
+    category === "pillow_protector" ||
+    category === "bolster_protector"
+  );
+}
+
+/** True when a DB item may be used as the given customer preference role. */
+export function itemMatchesPreferenceRole(
+  itemCategory: string,
+  preferenceRole: "cover" | "case",
+): boolean {
+  if (preferenceRole === "cover") return itemCategory === "cover";
+  return isCaseInventoryCategory(itemCategory);
+}
+
+const PILLOW_COMPONENT_CATEGORIES = [
+  "cover",
+  "pillow_case",
+  "pillow_protector",
+  "packaging",
+  // legacy pre-0015 rows (if any remain)
+  "case",
+  "protector",
+] as const;
+
+const BOLSTER_COMPONENT_CATEGORIES = [
+  "cover",
+  "bolster_case",
+  "bolster_protector",
+  "packaging",
+  "case",
+  "protector",
+] as const;
+
+/**
  * Get available components (covers, cases, protectors, packaging) for a pillow product.
- * Returns items grouped by category with stock and pricing info.
+ * Source of truth: inventory `items` (+ balances / prices). Cases are `pillow_case`.
  */
 export async function getAvailableComponents(pillowProductId: number): Promise<{
   covers: ComponentOption[];
@@ -34,13 +86,12 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => [bl.item_id, bl.quantity])
   );
 
-  // Get items matching this pillow's size for covers, cases, protectors
-  // Plus packaging items matching size category
+  // Inventory categories: pillow_case / pillow_protector (not legacy case / protector).
   const { data: items } = await admin
     .from("items")
     .select("id, category, subtype, name, size")
     .eq("is_active", true)
-    .in("category", ["cover", "case", "protector", "packaging"]);
+    .in("category", [...PILLOW_COMPONENT_CATEGORIES]);
 
   if (!items) return { covers: [], cases: [], protectors: [], packaging: [] };
 
@@ -76,10 +127,16 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     (prices ?? []).map((p: { item_id: number; msrp: number | null }) => [p.item_id, p.msrp ?? 0])
   );
 
-  // Build component options
-  const toOption = (i: { id: number; category: string; subtype: string | null; name: string; size: string | null }): ComponentOption => ({
+  // Role category (case/protector) so preference + component-line logic stays stable.
+  const toOption = (i: {
+    id: number;
+    category: string;
+    subtype: string | null;
+    name: string;
+    size: string | null;
+  }): ComponentOption => ({
     item_id: i.id,
-    category: i.category,
+    category: toComponentRole(i.category),
     name: i.name,
     subtype: i.subtype ?? undefined,
     size: i.size ?? undefined,
@@ -90,8 +147,10 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
 
   return {
     covers: relevantItems.filter((i: { category: string }) => i.category === "cover").map(toOption),
-    cases: relevantItems.filter((i: { category: string }) => i.category === "case").map(toOption),
-    protectors: relevantItems.filter((i: { category: string }) => i.category === "protector").map(toOption),
+    cases: relevantItems.filter((i: { category: string }) => isCaseInventoryCategory(i.category)).map(toOption),
+    protectors: relevantItems
+      .filter((i: { category: string }) => isProtectorInventoryCategory(i.category))
+      .map(toOption),
     packaging: relevantItems.filter((i: { category: string }) => i.category === "packaging").map(toOption),
   };
 }
@@ -129,19 +188,24 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => [bl.item_id, bl.quantity])
   );
 
-  // Get items matching bolster categories
+  // Inventory categories: bolster_case / bolster_protector (size often BOLSTER).
   const { data: items } = await admin
     .from("items")
     .select("id, category, subtype, name, size")
     .eq("is_active", true)
-    .in("category", ["cover", "case", "protector", "packaging"]);
+    .in("category", [...BOLSTER_COMPONENT_CATEGORIES]);
 
   if (!items) return { covers: [], cases: [], protectors: [], packaging: [] };
 
   // Filter items by size compatibility for bolsters
   const bolsterSize = bolsterProduct.size;
   const relevantItems = items.filter((i: { category: string; size: string | null }) => {
-    return i.size === bolsterSize || i.size === null;
+    const size = i.size?.toUpperCase() ?? null;
+    return (
+      i.size === bolsterSize ||
+      size === "BOLSTER" ||
+      i.size === null
+    );
   });
 
   // Get stock levels
@@ -167,9 +231,15 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     (prices ?? []).map((p: { item_id: number; msrp: number | null }) => [p.item_id, p.msrp ?? 0])
   );
 
-  const toOption = (i: { id: number; category: string; subtype: string | null; name: string; size: string | null }): ComponentOption => ({
+  const toOption = (i: {
+    id: number;
+    category: string;
+    subtype: string | null;
+    name: string;
+    size: string | null;
+  }): ComponentOption => ({
     item_id: i.id,
-    category: i.category,
+    category: toComponentRole(i.category),
     name: i.name,
     subtype: i.subtype ?? undefined,
     size: i.size ?? undefined,
@@ -180,8 +250,10 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
 
   return {
     covers: relevantItems.filter((i: { category: string }) => i.category === "cover").map(toOption),
-    cases: relevantItems.filter((i: { category: string }) => i.category === "case").map(toOption),
-    protectors: relevantItems.filter((i: { category: string }) => i.category === "protector").map(toOption),
+    cases: relevantItems.filter((i: { category: string }) => isCaseInventoryCategory(i.category)).map(toOption),
+    protectors: relevantItems
+      .filter((i: { category: string }) => isProtectorInventoryCategory(i.category))
+      .map(toOption),
     packaging: relevantItems.filter((i: { category: string }) => i.category === "packaging").map(toOption),
   };
 }
