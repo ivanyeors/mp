@@ -5,11 +5,13 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { getApiErrorMessage } from "@/lib/utils";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
+import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 import { Particles } from "@/components/ui/particles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
@@ -41,7 +43,24 @@ import {
 } from "lucide-react";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
-import { type RecommendationResponseData } from "@/components/shop/customization-steps";
+import {
+  CustomizationStepComponents,
+  type RecommendationResponseData,
+} from "@/components/shop/customization-steps";
+
+/** Prefer BOM default, else first in-stock option, else first row. */
+function pickDefaultComponent(
+  options: { item_id: number; base_quantity: number; stock_available: number }[],
+): number | null {
+  if (options.length === 0) return null;
+  const fromBom = options.find((c) => c.base_quantity > 0);
+  if (fromBom) return fromBom.item_id;
+  const inStock = options.find((c) => c.stock_available > 0);
+  return (inStock ?? options[0]).item_id;
+}
+
+const PILLOW_PATH =
+  "M441.322 14.7728C409.558 27.3692 379.727 35.5927 331.965 35.5927C284.202 35.5927 254.372 27.3692 222.607 14.7728C182.901 -0.972711 120.418 -7.80227 69.7585 31.9038C19.099 71.6098 -2.80784 127.746 1.29974 209.896C5.52474 294.395 33.4738 349.165 83.8767 349.165C134.28 349.165 132.251 315.979 160.907 298.148C183.771 283.922 213.925 285.205 229.723 298.148C251.964 316.368 255.062 333.726 263.277 352.894C269.849 368.229 295.474 372.828 331.271 372.828L332.658 372.828C368.455 372.828 394.08 368.229 400.652 352.894C408.867 333.726 411.966 316.368 434.206 298.148C450.005 285.205 480.158 283.922 503.022 298.148C531.678 315.979 529.65 349.165 580.052 349.165C630.455 349.165 658.404 294.395 662.629 209.896C666.737 127.746 644.83 71.6098 594.171 31.9038C543.511 -7.80226 481.029 -0.972712 441.322 14.7728Z";
 
 type Step =
   | "welcome"
@@ -558,11 +577,9 @@ export default function MpConfigPage() {
       const data: RecommendationResponseData = await res.json();
       setShopRecommendation(data);
 
-      // Pre-select default cover and case only (no fillings / protector).
-      const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
-      const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
-      if (defaultCover) setSelectedCover(defaultCover.item_id);
-      if (defaultCase) setSelectedCase(defaultCase.item_id);
+      // Pre-select cover and case (BOM default, else first in-stock).
+      setSelectedCover(pickDefaultComponent(data.components.covers));
+      setSelectedCase(pickDefaultComponent(data.components.cases));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get shop recommendation");
     } finally {
@@ -688,43 +705,358 @@ export default function MpConfigPage() {
             }
           : null;
 
+  const completionDialog = (
+    <Dialog open={completionDialogOpen} onOpenChange={setCompletionDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            Measurement complete
+          </DialogTitle>
+          <DialogDescription>
+            Your configuration has been saved. What would you like to do next?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="sm:justify-between">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setCompletionDialogOpen(false);
+              setCompletedResponseId(null);
+              startNewMeasurement();
+            }}
+          >
+            New measurement
+          </Button>
+          <Button
+            onClick={() => {
+              const id = completedResponseId ?? responseId;
+              if (!id) return;
+              setCompletionDialogOpen(false);
+              router.push(to(`/settings/results/${id}`));
+            }}
+          >
+            Results page
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  // Purchase preview uses mp-maker split layout (cover/case card pickers, no fillings/protector).
+  if (currentStep === "preview") {
+    const size =
+      shopRecommendation?.pillow_product?.size ??
+      suggestion?.recommended?.size ??
+      suggestion?.product?.size;
+    const tier =
+      shopRecommendation?.pillow_product?.kind ??
+      suggestion?.recommended?.kind ??
+      suggestion?.product?.kind;
+    const currency = shopRecommendation?.variant?.currency ?? "SGD";
+    const basePrice = shopRecommendation?.variant?.price ?? 0;
+    const addonTotal = addons
+      .filter((a) => selectedAddons.has(a.item_id))
+      .reduce((s, a) => s + a.msrp, 0);
+
+    return (
+      <>
+        {completionDialog}
+        <div className="min-h-screen bg-background">
+          <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={goToPreviousStep}
+                aria-label="Back"
+              >
+                <ArrowLeft className="size-4" />
+              </Button>
+              <h1 className="text-sm font-semibold">Your Custom Mpillow</h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={confirmExit}
+                aria-label="Exit"
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+          </header>
+
+          <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
+            {/* Left: product visual (mp-maker style) */}
+            <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
+              <Particles
+                className="absolute inset-0 z-[1]"
+                quantity={100}
+                ease={80}
+                staticity={50}
+                color="#ffffff"
+                size={0.8}
+              />
+              <DotPattern
+                dotSize={3}
+                gap={32}
+                baseColor="#3992C3"
+                activeColor="#3992C3"
+                proximity={80}
+                shockRadius={250}
+                className="absolute inset-0 z-[2] opacity-60"
+              />
+              <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4">
+                <div
+                  className="relative"
+                  style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
+                >
+                  <svg
+                    className="absolute inset-0 pointer-events-none"
+                    viewBox="0 0 664 374"
+                    xmlns="http://www.w3.org/2000/svg"
+                    preserveAspectRatio="xMidYMid meet"
+                  >
+                    <path d={PILLOW_PATH} fill="white" />
+                    <path
+                      d={PILLOW_PATH}
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="3"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                  {(shopLoading || suggestionLoading) && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {size && (
+                    <Badge variant="secondary" className="px-3 py-1 text-sm">
+                      Size {size}
+                    </Badge>
+                  )}
+                  {tier && (
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {tier} tier
+                    </Badge>
+                  )}
+                </div>
+                <p className="max-w-xs text-center text-xs text-white/80">
+                  Fillings and protector are chosen by our team after review.
+                </p>
+              </div>
+            </div>
+
+            {/* Right: customization panel */}
+            <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
+              <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6">
+                <div className="space-y-1">
+                  <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Choose cover and case, optional add-ons, then authorize payment.
+                    You are not charged until you accept the final build.
+                  </p>
+                </div>
+
+                {shopRecommendation ? (
+                  <CustomizationStepComponents
+                    components={shopRecommendation.components}
+                    selectedCover={selectedCover}
+                    onSelectCover={setSelectedCover}
+                    selectedCase={selectedCase}
+                    onSelectCase={setSelectedCase}
+                    componentQtyOverrides={new Map()}
+                    onQtyChange={() => {}}
+                    currency={currency}
+                    basePrice={basePrice}
+                    addonPrice={addonTotal}
+                    onBack={goToPreviousStep}
+                    onContinue={() => void handleAuthorizeHold()}
+                    preferencesOnly
+                    hideNav
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {shopLoading
+                        ? "Loading options…"
+                        : "No recommendation yet. Go back and generate results."}
+                    </p>
+                    <Button variant="secondary" size="sm" onClick={() => void fetchShopRecommendation()}>
+                      Retry
+                    </Button>
+                  </div>
+                )}
+
+                {addons.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Add-ons (optional)</Label>
+                    <div className="space-y-2">
+                      {addons.map((a) => {
+                        const on = selectedAddons.has(a.item_id);
+                        return (
+                          <button
+                            key={a.item_id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedAddons((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(a.item_id)) next.delete(a.item_id);
+                                else next.add(a.item_id);
+                                return next;
+                              });
+                            }}
+                            className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                              on ? "border-primary bg-primary/5" : "border-border"
+                            }`}
+                          >
+                            <span className="text-sm font-medium">{a.name}</span>
+                            <span className="text-sm tabular-nums text-muted-foreground">
+                              {a.currency} {a.msrp.toFixed(2)}
+                              {on && <Check className="ml-2 inline size-4 text-primary" />}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Shipping</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="hold-email">Email</Label>
+                    <Input
+                      id="hold-email"
+                      type="email"
+                      value={holdEmail}
+                      onChange={(e) => setHoldEmail(e.target.value)}
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hold-recipient">Recipient</Label>
+                    <Input
+                      id="hold-recipient"
+                      value={holdAddress.recipient}
+                      onChange={(e) =>
+                        setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
+                      }
+                      placeholder={measurementData.name || "Name"}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hold-line1">Address</Label>
+                    <Input
+                      id="hold-line1"
+                      value={holdAddress.line1}
+                      onChange={(e) =>
+                        setHoldAddress((a) => ({ ...a, line1: e.target.value }))
+                      }
+                      placeholder="Street address"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="hold-city">City</Label>
+                      <Input
+                        id="hold-city"
+                        value={holdAddress.city}
+                        onChange={(e) =>
+                          setHoldAddress((a) => ({ ...a, city: e.target.value }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="hold-postal">Postal code</Label>
+                      <Input
+                        id="hold-postal"
+                        value={holdAddress.postal_code}
+                        onChange={(e) =>
+                          setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  {shippingMethods.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Shipping method</Label>
+                      <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select shipping" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shippingMethods.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {(m.content?.["en-US"]?.name ?? m.slug) +
+                                ` · SGD ${m.base_rate.toFixed(2)}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      const result = await upsertToDb();
+                      if (!result?.id) {
+                        toast.error("Save failed");
+                        return;
+                      }
+                      toast.success("Saved to cloud");
+                      setCompletedResponseId(result.id);
+                      setCompletionDialogOpen(true);
+                    }}
+                    disabled={!responseId}
+                    className="text-muted-foreground"
+                  >
+                    Save without purchasing
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t bg-background px-5 py-4">
+                <div className="mb-3 flex justify-between text-sm">
+                  <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
+                  <span className="font-medium tabular-nums">
+                    {currency} {(basePrice + addonTotal).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={goToPreviousStep} className="flex-1">
+                    <ArrowLeft className="size-4" />
+                    Back
+                  </Button>
+                  <Button
+                    className="flex-[2]"
+                    size="lg"
+                    onClick={() => void handleAuthorizeHold()}
+                    disabled={holdSubmitting || shopLoading || !shopRecommendation}
+                  >
+                    {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
-      <Dialog open={completionDialogOpen} onOpenChange={setCompletionDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-              Measurement complete
-            </DialogTitle>
-            <DialogDescription>
-              Your configuration has been saved. What would you like to do next?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:justify-between">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setCompletionDialogOpen(false);
-                setCompletedResponseId(null);
-                startNewMeasurement();
-              }}
-            >
-              New measurement
-            </Button>
-            <Button
-              onClick={() => {
-                const id = completedResponseId ?? responseId;
-                if (!id) return;
-                setCompletionDialogOpen(false);
-                router.push(to(`/settings/results/${id}`));
-              }}
-            >
-              Results page
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {completionDialog}
       {/* Retro Grid Background */}
       <RetroGrid className="z-0" opacity={0.3} speed={gridSpeed} />
 
@@ -1638,253 +1970,6 @@ export default function MpConfigPage() {
             </Card>
           )}
 
-          {/* Preview Step — online purchase: prefs + add-ons + address + auth hold */}
-          {currentStep === "preview" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
-              <div className="text-center space-y-2">
-                <h2 className="text-3xl font-bold">Your Custom Mpillow</h2>
-                <p className="text-muted-foreground">
-                  Review your ballpark size×tier, choose cover and case, then authorize payment.
-                  You are not charged until you accept the final build.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="text-sm font-medium">Suggested size × tier</div>
-                  <Button variant="secondary" size="sm" onClick={loadSuggestion} disabled={suggestionLoading}>
-                    {suggestionLoading ? "Refreshing…" : "Refresh"}
-                  </Button>
-                </div>
-                {(suggestionLoading || shopLoading) && (
-                  <div className="text-sm text-muted-foreground">Generating suggestion…</div>
-                )}
-                {(suggestion || shopRecommendation) && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-md bg-background/60 p-3">
-                      <div className="text-xs text-muted-foreground">Recommended tier</div>
-                      <div className="text-lg font-semibold capitalize">
-                        {shopRecommendation?.pillow_product?.kind ??
-                          suggestion?.recommended?.kind ??
-                          "—"}
-                      </div>
-                    </div>
-                    <div className="rounded-md bg-background/60 p-3">
-                      <div className="text-xs text-muted-foreground">Recommended size</div>
-                      <div className="text-lg font-semibold">
-                        {shopRecommendation?.pillow_product?.size ??
-                          suggestion?.recommended?.size ??
-                          "—"}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Fillings and protector are chosen by our team after review — not by you.
-                </p>
-              </div>
-
-              {/* Cover / case preferences only */}
-              {shopRecommendation && (
-                <div className="space-y-3 rounded-md border bg-background/40 p-4">
-                  <h3 className="font-semibold">Cover and case</h3>
-                  <div className="space-y-2">
-                    <Label>Cover</Label>
-                    <Select
-                      value={selectedCover != null ? String(selectedCover) : ""}
-                      onValueChange={(v) => setSelectedCover(Number(v))}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select cover" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shopRecommendation.components.covers.map((c) => (
-                          <SelectItem key={c.item_id} value={String(c.item_id)}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Case</Label>
-                    <Select
-                      value={selectedCase != null ? String(selectedCase) : ""}
-                      onValueChange={(v) => setSelectedCase(Number(v))}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select case" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shopRecommendation.components.cases.map((c) => (
-                          <SelectItem key={c.item_id} value={String(c.item_id)}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-
-              {/* Accessory add-ons */}
-              {addons.length > 0 && (
-                <div className="space-y-2 rounded-md border bg-background/40 p-4">
-                  <h3 className="font-semibold">Add-ons (optional)</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {addons.map((a) => {
-                      const on = selectedAddons.has(a.item_id);
-                      return (
-                        <button
-                          key={a.item_id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedAddons((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(a.item_id)) next.delete(a.item_id);
-                              else next.add(a.item_id);
-                              return next;
-                            });
-                          }}
-                          className={`rounded-full border-2 px-3 py-1.5 text-sm font-medium ${
-                            on
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border text-muted-foreground"
-                          }`}
-                        >
-                          {a.name} · {a.currency} {a.msrp.toFixed(2)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Contact + shipping */}
-              <div className="space-y-3 rounded-md border bg-background/40 p-4">
-                <h3 className="font-semibold">Shipping</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="hold-email">Email</Label>
-                  <Input
-                    id="hold-email"
-                    type="email"
-                    value={holdEmail}
-                    onChange={(e) => setHoldEmail(e.target.value)}
-                    placeholder="you@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hold-recipient">Recipient</Label>
-                  <Input
-                    id="hold-recipient"
-                    value={holdAddress.recipient}
-                    onChange={(e) =>
-                      setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
-                    }
-                    placeholder={measurementData.name || "Name"}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hold-line1">Address</Label>
-                  <Input
-                    id="hold-line1"
-                    value={holdAddress.line1}
-                    onChange={(e) =>
-                      setHoldAddress((a) => ({ ...a, line1: e.target.value }))
-                    }
-                    placeholder="Street address"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="hold-city">City</Label>
-                    <Input
-                      id="hold-city"
-                      value={holdAddress.city}
-                      onChange={(e) =>
-                        setHoldAddress((a) => ({ ...a, city: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="hold-postal">Postal code</Label>
-                    <Input
-                      id="hold-postal"
-                      value={holdAddress.postal_code}
-                      onChange={(e) =>
-                        setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-                {shippingMethods.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Shipping method</Label>
-                    <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select shipping" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shippingMethods.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {(m.content?.["en-US"]?.name ?? m.content?.en?.name ?? m.slug) +
-                              ` · SGD ${m.base_rate.toFixed(2)}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-4">
-                <div className="flex justify-between gap-2">
-                  <Button variant="outline" onClick={goToPreviousStep}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back
-                  </Button>
-                  <Button
-                    size="lg"
-                    onClick={() => void handleAuthorizeHold()}
-                    disabled={holdSubmitting || shopLoading}
-                    className="group"
-                  >
-                    {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
-                    <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                </div>
-                <div className="mt-3 text-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      const result = await upsertToDb();
-                      if (!result?.id) {
-                        toast.error("Save failed");
-                        return;
-                      }
-                      toast.success("Saved to cloud");
-                      setCompletedResponseId(result.id);
-                      setCompletionDialogOpen(true);
-                    }}
-                    disabled={!responseId || !hasAnyInput}
-                    className="text-muted-foreground"
-                  >
-                    Save without purchasing
-                  </Button>
-                </div>
-                {saveLabel && (
-                  <div className="mt-2 flex items-center justify-start">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${saveLabel.className}`}
-                    >
-                      {saveLabel.text}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
         </div>
       </div>
     </div>

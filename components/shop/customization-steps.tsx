@@ -348,6 +348,64 @@ export interface CustomizationStepComponentsProps {
   addonPrice: number;
   onBack: () => void;
   onContinue: () => void;
+  /**
+   * Cover + case only (no protector, packaging, or qty adjusters).
+   * Used by the authorize-then-capture purchase path.
+   */
+  preferencesOnly?: boolean;
+  /** Hide back/continue row when the parent owns navigation. */
+  hideNav?: boolean;
+  continueLabel?: string;
+}
+
+function ComponentOptionButton({
+  name,
+  subtype,
+  stockAvailable,
+  isSelected,
+  onSelect,
+  /** Hold path: stock is checked at assign/accept, so sold-out stays selectable. */
+  allowSoldOut = false,
+}: {
+  name: string;
+  subtype?: string;
+  stockAvailable: number;
+  isSelected: boolean;
+  onSelect: () => void;
+  allowSoldOut?: boolean;
+}) {
+  const isSoldOut = stockAvailable <= 0;
+  const disabled = isSoldOut && !allowSoldOut;
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "w-full flex items-center justify-between rounded-lg border-2 p-3 transition-all",
+        "hover:border-primary/50",
+        isSelected ? "border-primary bg-primary/5" : "border-border",
+        disabled && "opacity-50 cursor-not-allowed hover:border-border",
+      )}
+    >
+      <div className="text-left">
+        <p className="font-medium text-sm">{name}</p>
+        {subtype && <p className="text-xs text-muted-foreground">{subtype}</p>}
+      </div>
+      <div className="flex items-center gap-2">
+        {isSoldOut ? (
+          <Badge variant="outline" className="text-xs text-muted-foreground">
+            {allowSoldOut ? "Low stock" : "Sold out"}
+          </Badge>
+        ) : stockAvailable <= 5 ? (
+          <Badge variant="outline" className="text-xs text-amber-600">
+            Low stock
+          </Badge>
+        ) : null}
+        {isSelected && <Check className="size-4 text-primary shrink-0" />}
+      </div>
+    </button>
+  );
 }
 
 export function CustomizationStepComponents({
@@ -363,202 +421,155 @@ export function CustomizationStepComponents({
   addonPrice,
   onBack,
   onContinue,
+  preferencesOnly = false,
+  hideNav = false,
+  continueLabel = "Review & Add to Cart",
 }: CustomizationStepComponentsProps) {
   return (
     <div className="space-y-6">
       {/* Cover style picker */}
-      {components.covers.length > 0 && (
-        <div className="space-y-3">
-          <Label className="text-base font-semibold">Cover Style</Label>
-          <div className="space-y-2">
-            {components.covers.map((cover) => {
-              const isSelected = selectedCover === cover.item_id;
-              const isSoldOut = cover.stock_available <= 0;
-              return (
-                <button
-                  key={cover.item_id}
-                  type="button"
-                  disabled={isSoldOut}
-                  onClick={() => onSelectCover(cover.item_id)}
-                  className={cn(
-                    "w-full flex items-center justify-between rounded-lg border-2 p-3 transition-all",
-                    "hover:border-primary/50",
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border",
-                    isSoldOut && "opacity-50 cursor-not-allowed hover:border-border"
-                  )}
-                >
-                  <div className="text-left">
-                    <p className="font-medium text-sm">{cover.name}</p>
-                    {cover.subtype && (
-                      <p className="text-xs text-muted-foreground">
-                        {cover.subtype}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isSoldOut ? (
-                      <Badge variant="outline" className="text-xs text-muted-foreground">
-                        Sold out
-                      </Badge>
-                    ) : cover.stock_available <= 5 ? (
-                      <Badge variant="outline" className="text-xs text-amber-600">
-                        Low stock
-                      </Badge>
-                    ) : null}
-                    {isSelected && (
-                      <Check className="size-4 text-primary shrink-0" />
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Case style picker */}
-      {components.cases.length > 0 && (
-        <div className="space-y-3">
-          <Label className="text-base font-semibold">Case Style</Label>
-          <div className="space-y-2">
-            {components.cases.map((caseItem) => {
-              const isSelected = selectedCase === caseItem.item_id;
-              const isSoldOut = caseItem.stock_available <= 0;
-              return (
-                <button
-                  key={caseItem.item_id}
-                  type="button"
-                  disabled={isSoldOut}
-                  onClick={() => onSelectCase(caseItem.item_id)}
-                  className={cn(
-                    "w-full flex items-center justify-between rounded-lg border-2 p-3 transition-all",
-                    "hover:border-primary/50",
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border",
-                    isSoldOut && "opacity-50 cursor-not-allowed hover:border-border"
-                  )}
-                >
-                  <div className="text-left">
-                    <p className="font-medium text-sm">{caseItem.name}</p>
-                    {caseItem.subtype && (
-                      <p className="text-xs text-muted-foreground">
-                        {caseItem.subtype}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isSoldOut ? (
-                      <Badge variant="outline" className="text-xs text-muted-foreground">
-                        Sold out
-                      </Badge>
-                    ) : caseItem.stock_available <= 5 ? (
-                      <Badge variant="outline" className="text-xs text-amber-600">
-                        Low stock
-                      </Badge>
-                    ) : null}
-                    {isSelected && (
-                      <Check className="size-4 text-primary shrink-0" />
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Quantity adjusters for all selected components */}
       <div className="space-y-3">
-        <Label className="text-base font-semibold">Quantities</Label>
-        <p className="text-xs text-muted-foreground">
-          Adjust quantities beyond the included base amount. Extra items are
-          charged individually.
-        </p>
-        <div className="space-y-3">
-          {[
-            ...components.covers,
-            ...components.cases,
-            ...components.protectors,
-            ...components.packaging,
-          ]
-            .filter((comp) => {
-              if (comp.category === "cover")
-                return comp.item_id === selectedCover;
-              if (comp.category === "case")
-                return comp.item_id === selectedCase;
-              return comp.base_quantity > 0;
-            })
-            .map((comp) => {
-              const currentQty =
-                componentQtyOverrides.get(comp.item_id) ?? comp.base_quantity;
-              const extraQty = Math.max(0, currentQty - comp.base_quantity);
-              const extraCost = extraQty * comp.unit_price;
-
-              return (
-                <div
-                  key={comp.item_id}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{comp.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Base: {comp.base_quantity} included
-                      {comp.unit_price > 0 && (
-                        <> &middot; {formatPrice(comp.unit_price, currency)} each extra</>
-                      )}
-                    </p>
-                    {extraCost > 0 && (
-                      <p className="text-xs font-medium text-primary mt-0.5">
-                        +{formatPrice(extraCost, currency)}
-                      </p>
-                    )}
-                  </div>
-                  <QuantitySelector
-                    value={currentQty}
-                    onChange={(qty) => onQtyChange(comp.item_id, qty)}
-                    min={comp.category === "cover" || comp.category === "case" ? 1 : 0}
-                    max={comp.stock_available}
-                  />
-                </div>
-              );
-            })}
-        </div>
-      </div>
-
-      {/* Price summary bar */}
-      <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Base price</span>
-          <span>{formatPrice(basePrice, currency)}</span>
-        </div>
-        {addonPrice > 0 && (
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Add-ons</span>
-            <span className="text-primary">
-              +{formatPrice(addonPrice, currency)}
-            </span>
+        <Label className="text-base font-semibold">Cover Style</Label>
+        {components.covers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No covers available for this size.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {components.covers.map((cover) => (
+              <ComponentOptionButton
+                key={cover.item_id}
+                name={cover.name}
+                subtype={cover.subtype}
+                stockAvailable={cover.stock_available}
+                isSelected={selectedCover === cover.item_id}
+                onSelect={() => onSelectCover(cover.item_id)}
+                allowSoldOut={preferencesOnly}
+              />
+            ))}
           </div>
         )}
-        <div className="flex justify-between font-semibold border-t pt-2">
-          <span>Subtotal</span>
-          <span>{formatPrice(basePrice + addonPrice, currency)}</span>
-        </div>
       </div>
 
-      {/* Navigation */}
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack} className="flex-1">
-          <ArrowLeft className="size-4" />
-          Back
-        </Button>
-        <Button onClick={onContinue} className="flex-[2]">
-          Review & Add to Cart
-          <ArrowRight className="size-4" />
-        </Button>
+      {/* Case style picker — always shown (empty state if none) so Case is never missing */}
+      <div className="space-y-3">
+        <Label className="text-base font-semibold">Case Style</Label>
+        {components.cases.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No cases available for this size. Check inventory for active case items matching the recommended size.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {components.cases.map((caseItem) => (
+              <ComponentOptionButton
+                key={caseItem.item_id}
+                name={caseItem.name}
+                subtype={caseItem.subtype}
+                stockAvailable={caseItem.stock_available}
+                isSelected={selectedCase === caseItem.item_id}
+                onSelect={() => onSelectCase(caseItem.item_id)}
+                allowSoldOut={preferencesOnly}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {!preferencesOnly && (
+        <>
+          {/* Quantity adjusters for all selected components */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Quantities</Label>
+            <p className="text-xs text-muted-foreground">
+              Adjust quantities beyond the included base amount. Extra items are
+              charged individually.
+            </p>
+            <div className="space-y-3">
+              {[
+                ...components.covers,
+                ...components.cases,
+                ...components.protectors,
+                ...components.packaging,
+              ]
+                .filter((comp) => {
+                  if (comp.category === "cover")
+                    return comp.item_id === selectedCover;
+                  if (comp.category === "case")
+                    return comp.item_id === selectedCase;
+                  return comp.base_quantity > 0;
+                })
+                .map((comp) => {
+                  const currentQty =
+                    componentQtyOverrides.get(comp.item_id) ?? comp.base_quantity;
+                  const extraQty = Math.max(0, currentQty - comp.base_quantity);
+                  const extraCost = extraQty * comp.unit_price;
+
+                  return (
+                    <div
+                      key={comp.item_id}
+                      className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-sm truncate">{comp.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Base: {comp.base_quantity} included
+                          {comp.unit_price > 0 && (
+                            <> &middot; {formatPrice(comp.unit_price, currency)} each extra</>
+                          )}
+                        </p>
+                        {extraCost > 0 && (
+                          <p className="text-xs font-medium text-primary mt-0.5">
+                            +{formatPrice(extraCost, currency)}
+                          </p>
+                        )}
+                      </div>
+                      <QuantitySelector
+                        value={currentQty}
+                        onChange={(qty) => onQtyChange(comp.item_id, qty)}
+                        min={comp.category === "cover" || comp.category === "case" ? 1 : 0}
+                        max={comp.stock_available}
+                      />
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+
+          {/* Price summary bar */}
+          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Base price</span>
+              <span>{formatPrice(basePrice, currency)}</span>
+            </div>
+            {addonPrice > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Add-ons</span>
+                <span className="text-primary">
+                  +{formatPrice(addonPrice, currency)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between font-semibold border-t pt-2">
+              <span>Subtotal</span>
+              <span>{formatPrice(basePrice + addonPrice, currency)}</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Navigation */}
+      {!hideNav && (
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onBack} className="flex-1">
+            <ArrowLeft className="size-4" />
+            Back
+          </Button>
+          <Button onClick={onContinue} className="flex-[2]">
+            {continueLabel}
+            <ArrowRight className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
