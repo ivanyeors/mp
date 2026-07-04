@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
@@ -17,16 +17,24 @@ export function LoginForm({
   nextPath,
   allowEmailLink = true,
   initialEmail = "",
+  submitLabel = "Email me a magic link",
 }: {
   nextPath: string;
   allowEmailLink?: boolean;
   /** Prefill email (e.g. from a Result hold submission). */
   initialEmail?: string;
+  submitLabel?: string;
 }) {
+  const emailFieldId = useId();
   const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState<"google" | "email" | null>(null);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Prefill can arrive after async Result load.
+  useEffect(() => {
+    if (initialEmail) setEmail(initialEmail);
+  }, [initialEmail]);
 
   const callbackUrl = () =>
     `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
@@ -117,20 +125,21 @@ export function LoginForm({
 
       <form onSubmit={signInWithEmail} className="space-y-3">
         <div className="space-y-1.5">
-          <Label htmlFor="login-email">Email</Label>
+          <Label htmlFor={emailFieldId}>Email</Label>
           <Input
-            id="login-email"
+            id={emailFieldId}
             type="email"
             required
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={loading !== null}
+            autoComplete="email"
           />
         </div>
         <Button type="submit" className="w-full" disabled={loading !== null || !email.trim()}>
           {loading === "email" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          Email me a magic link
+          {submitLabel}
         </Button>
       </form>
 
