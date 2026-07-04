@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:push": "supabase db push",
     "db:gen-types": "supabase gen types typescript --linked",
-    "stripe:sync-all": "node --env-file=.env.local scripts/stripe-sync-all.mjs"
+    "stripe:sync-all": "node --env-file=.env.local scripts/stripe-sync-all.mjs",
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
   },
   "dependencies": {
     "@dnd-kit/react": "^0.3.2",
