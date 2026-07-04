@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 
 import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Particles } from "@/components/ui/particles";
+import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import {
@@ -21,7 +23,7 @@ import {
   CustomizationStepComponents,
 } from "@/components/shop/customization-steps";
 
-type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "components" | "purchase";
+type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type HeightUnit = "cm" | "m";
 type SleepPosition = "side" | "stomach" | "other";
 type BolsterLength = "short" | "medium" | "long";
@@ -33,7 +35,11 @@ type State = {
   sleepPosition: SleepPosition | null;
 };
 
-const STORAGE_KEY = "mbolster_config_v3";
+const STORAGE_KEY = "mbolster_config_v4";
+
+/** Simple capsule silhouette for the left visual panel. */
+const BOLSTER_PATH =
+  "M80 40 C80 18 120 18 160 18 L504 18 C544 18 584 18 584 40 L584 334 C584 356 544 356 504 356 L160 356 C120 356 80 356 80 334 Z";
 
 function clampNumber(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -68,13 +74,26 @@ function labelForSleepPosition(v: SleepPosition): string {
   return "Other / mixed";
 }
 
+function normalizeStep(step: unknown): Step | null {
+  if (step === "components" || step === "purchase") return "preview";
+  if (
+    step === "welcome" ||
+    step === "height" ||
+    step === "sleep-position" ||
+    step === "recommendation" ||
+    step === "preview"
+  ) {
+    return step;
+  }
+  return null;
+}
+
 const STEP_ORDER: Step[] = [
   "welcome",
   "height",
   "sleep-position",
   "recommendation",
-  "components",
-  "purchase",
+  "preview",
 ];
 
 function stepIndex(step: Step): number {
@@ -82,9 +101,11 @@ function stepIndex(step: Step): number {
 }
 
 export default function MbolsterConfigPage() {
+  const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const mbolsterHref = withLocale("/mbolster", locale);
+  const homeHref = withLocale("/", locale);
 
   const [state, setState] = React.useState<State>({
     step: "welcome",
@@ -137,13 +158,16 @@ export default function MbolsterConfigPage() {
 
   React.useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw =
+        window.localStorage.getItem(STORAGE_KEY) ??
+        window.localStorage.getItem("mbolster_config_v3");
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<State> | null;
       if (!parsed) return;
+      const step = normalizeStep(parsed.step);
       setState((prev) => ({
         ...prev,
-        step: STEP_ORDER.includes(parsed.step as Step) ? (parsed.step as Step) : prev.step,
+        step: step ?? prev.step,
         heightUnit: (parsed.heightUnit as HeightUnit) ?? prev.heightUnit,
         heightCm: typeof parsed.heightCm === "string" ? parsed.heightCm : prev.heightCm,
         sleepPosition: (parsed.sleepPosition as SleepPosition) ?? prev.sleepPosition,
@@ -160,6 +184,15 @@ export default function MbolsterConfigPage() {
       // best-effort
     }
   }, [state]);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const shouldHideDock = state.step !== "welcome";
+    document.body.classList.toggle("dock-hidden", shouldHideDock);
+    return () => {
+      document.body.classList.remove("dock-hidden");
+    };
+  }, [state.step]);
 
   const heightNum = toNumber(state.heightCm);
 
@@ -207,9 +240,25 @@ export default function MbolsterConfigPage() {
     });
     try {
       window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem("mbolster_config_v3");
     } catch {
       // ignore
     }
+  };
+
+  const confirmExit = () => {
+    toast.message("Exit configuration?", {
+      description: "This will clear your session and return home.",
+      action: {
+        label: "Exit",
+        onClick: () => {
+          reset();
+          router.push(homeHref);
+        },
+      },
+      cancel: "Stay",
+      id: "mbolster-config-exit",
+    });
   };
 
   const fetchBolsterRecommendation = React.useCallback(async () => {
@@ -250,9 +299,9 @@ export default function MbolsterConfigPage() {
     }
   }, [heightNum, state.sleepPosition]);
 
-  // Load add-ons + shipping on purchase step.
+  // Load add-ons + shipping when entering the cover/purchase preview (same as mp-config).
   React.useEffect(() => {
-    if (state.step !== "purchase") return;
+    if (state.step !== "preview") return;
 
     fetch("/api/results/addons")
       .then((r) => r.json())
@@ -353,6 +402,300 @@ export default function MbolsterConfigPage() {
     heightNum,
     state.sleepPosition,
   ]);
+
+  // Purchase preview uses the same mp-config split layout (cover/case, add-ons, shipping).
+  if (state.step === "preview") {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={goBack}
+              aria-label="Back"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <h1 className="text-sm font-semibold">Your Custom Mbolster</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={confirmExit}
+              aria-label="Exit"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        </header>
+
+        <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
+          {/* Left: product visual */}
+          <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
+            <Particles
+              className="absolute inset-0 z-[1]"
+              quantity={100}
+              ease={80}
+              staticity={50}
+              color="#ffffff"
+              size={0.8}
+            />
+            <DotPattern
+              dotSize={3}
+              gap={32}
+              baseColor="#3992C3"
+              activeColor="#3992C3"
+              proximity={80}
+              shockRadius={250}
+              className="absolute inset-0 z-[2] opacity-60"
+            />
+            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4">
+              <div
+                className="relative"
+                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
+              >
+                <svg
+                  className="absolute inset-0 pointer-events-none"
+                  viewBox="0 0 664 374"
+                  xmlns="http://www.w3.org/2000/svg"
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  <path d={BOLSTER_PATH} fill="white" />
+                  <path
+                    d={BOLSTER_PATH}
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="3"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                {shopLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {suggestedLength && (
+                  <Badge variant="secondary" className="px-3 py-1 text-sm capitalize">
+                    {suggestedLength}
+                  </Badge>
+                )}
+              </div>
+              <p className="max-w-xs text-center text-xs text-white/80">
+                Fillings are chosen by our team after review.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: customization panel (cover style, add-ons, shipping) */}
+          <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
+            <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6">
+              <div className="space-y-1">
+                <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
+                <p className="text-sm text-muted-foreground">
+                  Choose cover and case, optional add-ons, then authorize payment. You are not
+                  charged until you accept the final build.
+                </p>
+              </div>
+
+              {shopRecommendation ? (
+                <CustomizationStepComponents
+                  components={shopRecommendation.components}
+                  selectedCover={selectedCover}
+                  onSelectCover={setSelectedCover}
+                  selectedCase={selectedCase}
+                  onSelectCase={setSelectedCase}
+                  componentQtyOverrides={new Map()}
+                  onQtyChange={() => {}}
+                  currency={shopCurrency}
+                  basePrice={shopBasePrice}
+                  addonPrice={addonTotal}
+                  onBack={goBack}
+                  onContinue={() => void handleAuthorizeHold()}
+                  preferencesOnly
+                  hideNav
+                />
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {shopLoading
+                      ? "Loading options…"
+                      : "No recommendation yet. Go back and generate results."}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void fetchBolsterRecommendation()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              {addons.length > 0 && (
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Add-ons (optional)</Label>
+                  <div className="space-y-2">
+                    {addons.map((a) => {
+                      const on = selectedAddons.has(a.item_id);
+                      return (
+                        <button
+                          key={a.item_id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAddons((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(a.item_id)) next.delete(a.item_id);
+                              else next.add(a.item_id);
+                              return next;
+                            });
+                          }}
+                          className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                            on ? "border-primary bg-primary/5" : "border-border"
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{a.name}</span>
+                          <span className="text-sm tabular-nums text-muted-foreground">
+                            {a.currency} {a.msrp.toFixed(2)}
+                            {on && <Check className="ml-2 inline size-4 text-primary" />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Shipping</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="hold-email">Email</Label>
+                  <Input
+                    id="hold-email"
+                    type="email"
+                    value={holdEmail}
+                    onChange={(e) => setHoldEmail(e.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hold-recipient">Recipient</Label>
+                  <Input
+                    id="hold-recipient"
+                    value={holdAddress.recipient}
+                    onChange={(e) =>
+                      setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
+                    }
+                    placeholder="Name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hold-line1">Address</Label>
+                  <Input
+                    id="hold-line1"
+                    value={holdAddress.line1}
+                    onChange={(e) => setHoldAddress((a) => ({ ...a, line1: e.target.value }))}
+                    placeholder="Street address"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="hold-city">City</Label>
+                    <Input
+                      id="hold-city"
+                      value={holdAddress.city}
+                      onChange={(e) => setHoldAddress((a) => ({ ...a, city: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hold-postal">Postal code</Label>
+                    <Input
+                      id="hold-postal"
+                      value={holdAddress.postal_code}
+                      onChange={(e) =>
+                        setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Shipping method</Label>
+                  {shippingMethods.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No shipping methods available. Add active methods under Settings → Shipping.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {shippingMethods.map((m) => {
+                        const label = m.content?.["en-US"]?.name ?? m.slug;
+                        const selected = selectedShippingId === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setSelectedShippingId(m.id)}
+                            className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                              selected ? "border-primary bg-primary/5" : "border-border"
+                            }`}
+                          >
+                            <span className="text-sm font-medium">{label}</span>
+                            <span className="text-sm tabular-nums text-muted-foreground">
+                              SGD {Number(m.base_rate).toFixed(2)}
+                              {selected && (
+                                <Check className="ml-2 inline size-4 text-primary" />
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={reset}
+                  className="text-muted-foreground"
+                >
+                  Start over
+                </Button>
+              </div>
+            </div>
+
+            <div className="border-t bg-background px-5 py-4">
+              <div className="mb-3 flex justify-between text-sm">
+                <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
+                <span className="font-medium tabular-nums">
+                  {shopCurrency} {(shopBasePrice + addonTotal).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={goBack} className="flex-1">
+                  <ArrowLeft className="size-4" />
+                  Back
+                </Button>
+                <Button
+                  className="flex-[2]"
+                  size="lg"
+                  onClick={() => void handleAuthorizeHold()}
+                  disabled={holdSubmitting || shopLoading || !shopRecommendation}
+                >
+                  {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
+                  <ArrowRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
@@ -521,186 +864,6 @@ export default function MbolsterConfigPage() {
                 </Button>
                 <Button onClick={goNext}>Continue</Button>
               </div>
-            </div>
-          </Card>
-        ) : null}
-
-        {state.step === "components" && shopRecommendation ? (
-          <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
-            <CustomizationStepComponents
-              components={shopRecommendation.components}
-              selectedCover={selectedCover}
-              onSelectCover={setSelectedCover}
-              selectedCase={selectedCase}
-              onSelectCase={setSelectedCase}
-              componentQtyOverrides={new Map()}
-              onQtyChange={() => {}}
-              currency={shopCurrency}
-              basePrice={shopBasePrice}
-              addonPrice={0}
-              onBack={goBack}
-              onContinue={goNext}
-              preferencesOnly
-              continueLabel="Continue to shipping"
-            />
-          </Card>
-        ) : null}
-
-        {state.step === "purchase" && shopRecommendation && suggestedLength ? (
-          <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
-            <div className="space-y-1">
-              <h2 className="text-xl font-semibold tracking-tight">Authorize & submit</h2>
-              <p className="text-sm text-muted-foreground">
-                Optional add-ons and shipping. You are not charged until you accept the final build.
-              </p>
-              <p className="text-sm">
-                Length: <span className="font-medium capitalize">{suggestedLength}</span>
-              </p>
-            </div>
-
-            {addons.length > 0 && (
-              <div className="space-y-3">
-                <Label className="text-base font-semibold">Add-ons (optional)</Label>
-                <div className="space-y-2">
-                  {addons.map((a) => {
-                    const on = selectedAddons.has(a.item_id);
-                    return (
-                      <button
-                        key={a.item_id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedAddons((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(a.item_id)) next.delete(a.item_id);
-                            else next.add(a.item_id);
-                            return next;
-                          });
-                        }}
-                        className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
-                          on ? "border-primary bg-primary/5" : "border-border"
-                        }`}
-                      >
-                        <span className="text-sm font-medium">{a.name}</span>
-                        <span className="text-sm tabular-nums text-muted-foreground">
-                          {a.currency} {a.msrp.toFixed(2)}
-                          {on && <Check className="ml-2 inline size-4 text-primary" />}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Shipping</Label>
-              <div className="space-y-2">
-                <Label htmlFor="hold-email">Email</Label>
-                <Input
-                  id="hold-email"
-                  type="email"
-                  value={holdEmail}
-                  onChange={(e) => setHoldEmail(e.target.value)}
-                  placeholder="you@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hold-recipient">Recipient</Label>
-                <Input
-                  id="hold-recipient"
-                  value={holdAddress.recipient}
-                  onChange={(e) =>
-                    setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
-                  }
-                  placeholder="Name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hold-line1">Address</Label>
-                <Input
-                  id="hold-line1"
-                  value={holdAddress.line1}
-                  onChange={(e) => setHoldAddress((a) => ({ ...a, line1: e.target.value }))}
-                  placeholder="Street address"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-2">
-                  <Label htmlFor="hold-city">City</Label>
-                  <Input
-                    id="hold-city"
-                    value={holdAddress.city}
-                    onChange={(e) => setHoldAddress((a) => ({ ...a, city: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="hold-postal">Postal code</Label>
-                  <Input
-                    id="hold-postal"
-                    value={holdAddress.postal_code}
-                    onChange={(e) =>
-                      setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Shipping method</Label>
-                {shippingMethods.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No shipping methods available. Add active methods under Settings → Shipping.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {shippingMethods.map((m) => {
-                      const label = m.content?.["en-US"]?.name ?? m.slug;
-                      const selected = selectedShippingId === m.id;
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setSelectedShippingId(m.id)}
-                          className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
-                            selected ? "border-primary bg-primary/5" : "border-border"
-                          }`}
-                        >
-                          <span className="text-sm font-medium">{label}</span>
-                          <span className="text-sm tabular-nums text-muted-foreground">
-                            SGD {Number(m.base_rate).toFixed(2)}
-                            {selected && <Check className="ml-2 inline size-4 text-primary" />}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-between text-sm border-t pt-3">
-              <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
-              <span className="font-medium tabular-nums">
-                {shopCurrency} {(shopBasePrice + addonTotal).toFixed(2)}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 pt-2">
-              <Button variant="outline" onClick={goBack}>
-                Back
-              </Button>
-              <Button
-                size="lg"
-                onClick={() => void handleAuthorizeHold()}
-                disabled={holdSubmitting || !shopRecommendation}
-              >
-                {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Button variant="ghost" onClick={reset}>
-                Start over
-              </Button>
             </div>
           </Card>
         ) : null}
