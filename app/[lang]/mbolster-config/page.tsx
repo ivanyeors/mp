@@ -4,31 +4,27 @@ import * as React from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import { Check } from "lucide-react";
 
 import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
-import { useCart } from "@/lib/shop/cart-context";
 import {
   type RecommendationResponseData,
-  HARDCODED_UPSELLS,
-  computeFillingLines,
-  computeComponentLines,
-  computeAddonPrice,
-  computeUpsellTotal,
-  CustomizationStepRecommendation,
   CustomizationStepComponents,
-  CustomizationStepSummary,
 } from "@/components/shop/customization-steps";
 
-type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "components" | "summary-cart";
+type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "components" | "purchase";
 type HeightUnit = "cm" | "m";
 type SleepPosition = "side" | "stomach" | "other";
+type BolsterLength = "short" | "medium" | "long";
 
 type State = {
   step: Step;
@@ -37,7 +33,7 @@ type State = {
   sleepPosition: SleepPosition | null;
 };
 
-const STORAGE_KEY = "mbolster_config_v2";
+const STORAGE_KEY = "mbolster_config_v3";
 
 function clampNumber(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -72,7 +68,14 @@ function labelForSleepPosition(v: SleepPosition): string {
   return "Other / mixed";
 }
 
-const STEP_ORDER: Step[] = ["welcome", "height", "sleep-position", "recommendation", "components", "summary-cart"];
+const STEP_ORDER: Step[] = [
+  "welcome",
+  "height",
+  "sleep-position",
+  "recommendation",
+  "components",
+  "purchase",
+];
 
 function stepIndex(step: Step): number {
   return STEP_ORDER.indexOf(step);
@@ -83,8 +86,6 @@ export default function MbolsterConfigPage() {
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const mbolsterHref = withLocale("/mbolster", locale);
 
-  const { addItem } = useCart();
-
   const [state, setState] = React.useState<State>({
     step: "welcome",
     heightUnit: "m",
@@ -92,37 +93,48 @@ export default function MbolsterConfigPage() {
     sleepPosition: null,
   });
 
-  // Shop customization state
-  const [shopRecommendation, setShopRecommendation] = React.useState<RecommendationResponseData | null>(null);
+  const [shopRecommendation, setShopRecommendation] =
+    React.useState<RecommendationResponseData | null>(null);
   const [shopLoading, setShopLoading] = React.useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = React.useState<number | null>(null);
   const [selectedCover, setSelectedCover] = React.useState<number | null>(null);
   const [selectedCase, setSelectedCase] = React.useState<number | null>(null);
-  const [componentQtyOverrides, setComponentQtyOverrides] = React.useState<Map<number, number>>(new Map());
-  const [selectedUpsells, setSelectedUpsells] = React.useState<Set<number>>(new Set());
+  const [selectedAddons, setSelectedAddons] = React.useState<Set<number>>(new Set());
+  const [addons, setAddons] = React.useState<
+    { item_id: number; name: string; msrp: number; currency: string }[]
+  >([]);
+  const [holdEmail, setHoldEmail] = React.useState("");
+  const [holdAddress, setHoldAddress] = React.useState({
+    recipient: "",
+    line1: "",
+    line2: "",
+    city: "",
+    postal_code: "",
+    country: "SG",
+  });
+  const [shippingMethods, setShippingMethods] = React.useState<
+    {
+      id: string;
+      slug: string;
+      base_rate: number;
+      free_above: number | null;
+      content: Record<string, { name?: string }>;
+    }[]
+  >([]);
+  const [selectedShippingId, setSelectedShippingId] = React.useState("");
+  const [holdSubmitting, setHoldSubmitting] = React.useState(false);
 
   const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
+  const suggestedLength = (shopRecommendation?.bolster_variant ?? null) as BolsterLength | null;
 
-  const shopFillingLines = React.useMemo(
-    () => computeFillingLines(shopRecommendation, selectedTemplateId),
-    [shopRecommendation, selectedTemplateId]
-  );
-  const shopComponentLines = React.useMemo(
-    () => computeComponentLines(shopRecommendation, selectedCover, selectedCase, componentQtyOverrides),
-    [shopRecommendation, selectedCover, selectedCase, componentQtyOverrides]
-  );
-  const shopAddonPrice = React.useMemo(
-    () => computeAddonPrice(shopRecommendation, shopComponentLines),
-    [shopComponentLines, shopRecommendation]
-  );
-  const shopUpsellTotal = React.useMemo(
-    () => computeUpsellTotal(selectedUpsells),
-    [selectedUpsells]
-  );
-  const shopTotalPrice = shopBasePrice + shopAddonPrice + shopUpsellTotal;
+  const addonTotal = React.useMemo(() => {
+    let sum = 0;
+    for (const a of addons) {
+      if (selectedAddons.has(a.item_id)) sum += a.msrp;
+    }
+    return sum;
+  }, [addons, selectedAddons]);
 
-  // Persist state to localStorage
   React.useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -180,11 +192,19 @@ export default function MbolsterConfigPage() {
       sleepPosition: null,
     });
     setShopRecommendation(null);
-    setSelectedTemplateId(null);
     setSelectedCover(null);
     setSelectedCase(null);
-    setComponentQtyOverrides(new Map());
-    setSelectedUpsells(new Set());
+    setSelectedAddons(new Set());
+    setAddons([]);
+    setHoldEmail("");
+    setHoldAddress({
+      recipient: "",
+      line1: "",
+      line2: "",
+      city: "",
+      postal_code: "",
+      country: "SG",
+    });
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {
@@ -209,20 +229,19 @@ export default function MbolsterConfigPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
+        throw new Error(
+          getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`),
+        );
       }
 
       const data: RecommendationResponseData = await res.json();
       setShopRecommendation(data);
-      setSelectedTemplateId(null);
 
       const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
       const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
       if (defaultCover) setSelectedCover(defaultCover.item_id);
       if (defaultCase) setSelectedCase(defaultCase.item_id);
-      setComponentQtyOverrides(new Map());
 
-      // Auto-advance to recommendation step
       setState((s) => ({ ...s, step: "recommendation" }));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get recommendation");
@@ -231,78 +250,108 @@ export default function MbolsterConfigPage() {
     }
   }, [heightNum, state.sleepPosition]);
 
-  const handleApplyAndAddToCart = React.useCallback(async () => {
-    if (!shopRecommendation || !shopRecommendation.variant) {
-      toast.error("No variant available");
+  // Load add-ons + shipping on purchase step.
+  React.useEffect(() => {
+    if (state.step !== "purchase") return;
+
+    fetch("/api/results/addons")
+      .then((r) => r.json())
+      .then((d: { addons?: typeof addons }) => {
+        const list = d.addons ?? [];
+        setAddons(list);
+        setSelectedAddons((prev) => {
+          const valid = new Set(list.map((a) => a.item_id));
+          return new Set([...prev].filter((id) => valid.has(id)));
+        });
+      })
+      .catch(() => setAddons([]));
+
+    const country = holdAddress.country || "SG";
+    fetch(`/api/shop/shipping?country=${encodeURIComponent(country)}`)
+      .then((r) => r.json())
+      .then(async (d: { rows?: typeof shippingMethods }) => {
+        let methods = d.rows ?? [];
+        if (methods.length === 0) {
+          const all = await fetch("/api/shop/shipping").then((r) => r.json());
+          methods = all.rows ?? [];
+        }
+        setShippingMethods(methods);
+        setSelectedShippingId((prev) =>
+          methods.some((m) => m.id === prev) ? prev : (methods[0]?.id ?? ""),
+        );
+      })
+      .catch(() => setShippingMethods([]));
+  }, [state.step, holdAddress.country]);
+
+  const handleAuthorizeHold = React.useCallback(async () => {
+    if (!suggestedLength) {
+      toast.error("Missing length recommendation");
+      return;
+    }
+    if (!selectedCover || !selectedCase) {
+      toast.error("Choose a cover and case");
+      return;
+    }
+    if (!holdEmail.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    if (
+      !holdAddress.recipient ||
+      !holdAddress.line1 ||
+      !holdAddress.city ||
+      !holdAddress.postal_code
+    ) {
+      toast.error("Shipping address is incomplete");
+      return;
+    }
+    if (!selectedShippingId) {
+      toast.error("Choose a shipping method");
       return;
     }
 
-    const bolsterVariant = shopRecommendation.bolster_variant;
-    const ecomProductId = shopRecommendation.ecom_product?.id ?? shopRecommendation.variant.product_id;
-    if (!bolsterVariant) {
-      toast.error("Missing bolster variant from recommendation");
-      return;
-    }
-
-    setShopLoading(true);
+    setHoldSubmitting(true);
     try {
-      const coverComp = shopComponentLines.find((c) => c.category === "cover");
-      const caseComp = shopComponentLines.find((c) => c.category === "case");
-      const activeUpsells = HARDCODED_UPSELLS.filter((u) => selectedUpsells.has(u.item_id));
-
-      const res = await fetch("/api/shop/customize?action=apply", {
+      const res = await fetch("/api/results/hold", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          variant_id: shopRecommendation.variant.id,
-          product_type: "bolster",
-          bolster_variant: bolsterVariant,
-          ecom_product_id: ecomProductId,
-          filling_lines: [],
-          cover_variant: coverComp?.name ?? undefined,
-          case_variant: caseComp?.name ?? undefined,
-          component_quantities: shopComponentLines,
-          upsells: activeUpsells,
-          llm_metadata: {
-            source: "mbolster-config",
+          email: holdEmail.trim(),
+          productType: "bolster",
+          suggestedLength,
+          measurements: {
             height_cm: heightNum,
             sleep_position: state.sleepPosition,
           },
+          preferenceLines: [
+            { item_id: selectedCover, quantity: 1, category: "cover" },
+            { item_id: selectedCase, quantity: 1, category: "case" },
+          ],
+          addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          shippingMethodId: selectedShippingId,
+          shippingAddress: holdAddress,
         }),
       });
-
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(getApiErrorMessage(err.error, "Failed to apply customization"));
+        throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-
-      const data = await res.json();
-
-      addItem({
-        variantId: shopRecommendation.variant.id,
-        productId: shopRecommendation.variant.product_id,
-        productSlug: shopRecommendation.ecom_product?.slug ?? `mbolster-${shopRecommendation.pillow_product.size?.toLowerCase()}`,
-        productTitle: `Mbolster Size ${shopRecommendation.pillow_product.size}`,
-        variantTitle: `Size ${shopRecommendation.pillow_product.size}`,
-        imageUrl: null,
-        price: shopBasePrice,
-        compareAtPrice: null,
-        currency: shopCurrency,
-        quantity: 1,
-        customizationId: data.customization_id,
-        customizationSummary: data.summary,
-        addonPrice: data.total_addon_price,
-      });
-
-      toast.success("Added to cart!");
+      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
+      window.location.href = data.checkoutUrl;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add to cart");
-    } finally {
-      setShopLoading(false);
+      toast.error(err instanceof Error ? err.message : "Failed to authorize");
+      setHoldSubmitting(false);
     }
   }, [
-    shopRecommendation, shopComponentLines,
-    selectedUpsells, heightNum, state.sleepPosition, shopBasePrice, shopCurrency, addItem,
+    suggestedLength,
+    selectedCover,
+    selectedCase,
+    holdEmail,
+    holdAddress,
+    selectedShippingId,
+    selectedAddons,
+    heightNum,
+    state.sleepPosition,
   ]);
 
   return (
@@ -318,9 +367,12 @@ export default function MbolsterConfigPage() {
           <div className="space-y-6 text-center">
             <div className="space-y-2">
               <div className="text-sm font-semibold text-muted-foreground">Mbolster</div>
-              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Customise your Mbolster</h1>
+              <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
+                Customise your Mbolster
+              </h1>
               <p className="mx-auto max-w-2xl text-muted-foreground">
-                Answer a few quick questions to get a recommended size, customize your components, and add to cart.
+                Answer a few quick questions, choose cover and case preferences, then authorize
+                payment for operator review. You are not charged until you accept the final build.
               </p>
             </div>
 
@@ -341,7 +393,7 @@ export default function MbolsterConfigPage() {
               <div className="text-sm font-semibold text-muted-foreground">Step 1</div>
               <h2 className="text-2xl font-semibold tracking-tight">Your height</h2>
               <p className="text-sm text-muted-foreground">
-                We use height to recommend a Mbolster size.
+                We use height to recommend a Mbolster length.
               </p>
             </div>
 
@@ -360,7 +412,13 @@ export default function MbolsterConfigPage() {
                 />
                 <Tabs
                   value={state.heightUnit}
-                  onValueChange={(v) => setState((s) => ({ ...s, heightUnit: v as HeightUnit, heightCm: toCmValue(v as HeightUnit, toDisplayHeight(s)) }))}
+                  onValueChange={(v) =>
+                    setState((s) => ({
+                      ...s,
+                      heightUnit: v as HeightUnit,
+                      heightCm: toCmValue(v as HeightUnit, toDisplayHeight(s)),
+                    }))
+                  }
                 >
                   <TabsList className="h-12">
                     <TabsTrigger value="m" className="px-4">
@@ -403,10 +461,14 @@ export default function MbolsterConfigPage() {
                     onClick={() => setState((s) => ({ ...s, sleepPosition: v }))}
                     className={[
                       "w-full rounded-xl border px-4 py-3 text-left transition-colors",
-                      selected ? "bg-primary/10 border-primary/30" : "bg-background/50 hover:bg-muted/30",
+                      selected
+                        ? "bg-primary/10 border-primary/30"
+                        : "bg-background/50 hover:bg-muted/30",
                     ].join(" ")}
                   >
-                    <div className="text-sm font-semibold text-foreground">{labelForSleepPosition(v)}</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {labelForSleepPosition(v)}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       {v === "side"
                         ? "Most common use-case for Mbolster."
@@ -433,18 +495,33 @@ export default function MbolsterConfigPage() {
           </Card>
         ) : null}
 
-        {state.step === "recommendation" && shopRecommendation ? (
+        {state.step === "recommendation" && shopRecommendation && suggestedLength ? (
           <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
-            <CustomizationStepRecommendation
-              data={shopRecommendation}
-              selectedTemplateId={selectedTemplateId}
-              onSelectTemplate={setSelectedTemplateId}
-              fillingLines={shopFillingLines}
-              currency={shopCurrency}
-              basePrice={shopBasePrice}
-              onContinue={goNext}
-              productLabel="Mbolster"
-            />
+            <div className="space-y-6 text-center">
+              <Badge variant="secondary" className="text-xs">
+                Recommended length
+              </Badge>
+              <h2 className="text-3xl font-bold tracking-tight capitalize">{suggestedLength}</h2>
+              <p className="text-sm text-muted-foreground">Mbolster</p>
+              {shopBasePrice > 0 && (
+                <p className="text-lg font-semibold text-primary">
+                  {shopCurrency} {shopBasePrice.toFixed(2)}
+                </p>
+              )}
+              <p className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed text-muted-foreground text-left">
+                {shopRecommendation.recommendation.explanation}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Fillings are chosen by our team after review. You pick cover and case preferences
+                next.
+              </p>
+              <div className="flex items-center justify-between pt-2">
+                <Button variant="outline" onClick={goBack}>
+                  Back
+                </Button>
+                <Button onClick={goNext}>Continue</Button>
+              </div>
+            </div>
           </Card>
         ) : null}
 
@@ -456,50 +533,169 @@ export default function MbolsterConfigPage() {
               onSelectCover={setSelectedCover}
               selectedCase={selectedCase}
               onSelectCase={setSelectedCase}
-              componentQtyOverrides={componentQtyOverrides}
-              onQtyChange={(itemId, qty) => {
-                setComponentQtyOverrides((prev) => {
-                  const next = new Map(prev);
-                  next.set(itemId, qty);
-                  return next;
-                });
-              }}
+              componentQtyOverrides={new Map()}
+              onQtyChange={() => {}}
               currency={shopCurrency}
               basePrice={shopBasePrice}
-              addonPrice={shopAddonPrice}
+              addonPrice={0}
               onBack={goBack}
               onContinue={goNext}
+              preferencesOnly
+              continueLabel="Continue to shipping"
             />
           </Card>
         ) : null}
 
-        {state.step === "summary-cart" && shopRecommendation ? (
+        {state.step === "purchase" && shopRecommendation && suggestedLength ? (
           <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
-            <CustomizationStepSummary
-              data={shopRecommendation}
-              fillingLines={shopFillingLines}
-              componentLines={shopComponentLines}
-              selectedCover={selectedCover}
-              selectedCase={selectedCase}
-              basePrice={shopBasePrice}
-              addonPrice={shopAddonPrice}
-              upsellTotal={shopUpsellTotal}
-              totalPrice={shopTotalPrice}
-              currency={shopCurrency}
-              selectedUpsells={selectedUpsells}
-              onToggleUpsell={(itemId) => {
-                setSelectedUpsells((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(itemId)) next.delete(itemId);
-                  else next.add(itemId);
-                  return next;
-                });
-              }}
-              isLoading={shopLoading}
-              onBack={goBack}
-              onAddToCart={handleApplyAndAddToCart}
-              productLabel="Mbolster"
-            />
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold tracking-tight">Authorize & submit</h2>
+              <p className="text-sm text-muted-foreground">
+                Optional add-ons and shipping. You are not charged until you accept the final build.
+              </p>
+              <p className="text-sm">
+                Length: <span className="font-medium capitalize">{suggestedLength}</span>
+              </p>
+            </div>
+
+            {addons.length > 0 && (
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Add-ons (optional)</Label>
+                <div className="space-y-2">
+                  {addons.map((a) => {
+                    const on = selectedAddons.has(a.item_id);
+                    return (
+                      <button
+                        key={a.item_id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddons((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(a.item_id)) next.delete(a.item_id);
+                            else next.add(a.item_id);
+                            return next;
+                          });
+                        }}
+                        className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                          on ? "border-primary bg-primary/5" : "border-border"
+                        }`}
+                      >
+                        <span className="text-sm font-medium">{a.name}</span>
+                        <span className="text-sm tabular-nums text-muted-foreground">
+                          {a.currency} {a.msrp.toFixed(2)}
+                          {on && <Check className="ml-2 inline size-4 text-primary" />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Shipping</Label>
+              <div className="space-y-2">
+                <Label htmlFor="hold-email">Email</Label>
+                <Input
+                  id="hold-email"
+                  type="email"
+                  value={holdEmail}
+                  onChange={(e) => setHoldEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hold-recipient">Recipient</Label>
+                <Input
+                  id="hold-recipient"
+                  value={holdAddress.recipient}
+                  onChange={(e) =>
+                    setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
+                  }
+                  placeholder="Name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hold-line1">Address</Label>
+                <Input
+                  id="hold-line1"
+                  value={holdAddress.line1}
+                  onChange={(e) => setHoldAddress((a) => ({ ...a, line1: e.target.value }))}
+                  placeholder="Street address"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="hold-city">City</Label>
+                  <Input
+                    id="hold-city"
+                    value={holdAddress.city}
+                    onChange={(e) => setHoldAddress((a) => ({ ...a, city: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hold-postal">Postal code</Label>
+                  <Input
+                    id="hold-postal"
+                    value={holdAddress.postal_code}
+                    onChange={(e) =>
+                      setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Shipping method</Label>
+                {shippingMethods.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No shipping methods available. Add active methods under Settings → Shipping.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {shippingMethods.map((m) => {
+                      const label = m.content?.["en-US"]?.name ?? m.slug;
+                      const selected = selectedShippingId === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setSelectedShippingId(m.id)}
+                          className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                            selected ? "border-primary bg-primary/5" : "border-border"
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{label}</span>
+                          <span className="text-sm tabular-nums text-muted-foreground">
+                            SGD {Number(m.base_rate).toFixed(2)}
+                            {selected && <Check className="ml-2 inline size-4 text-primary" />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-between text-sm border-t pt-3">
+              <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
+              <span className="font-medium tabular-nums">
+                {shopCurrency} {(shopBasePrice + addonTotal).toFixed(2)}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <Button variant="outline" onClick={goBack}>
+                Back
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => void handleAuthorizeHold()}
+                disabled={holdSubmitting || !shopRecommendation}
+              >
+                {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
+              </Button>
+            </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button variant="ghost" onClick={reset}>

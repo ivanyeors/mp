@@ -26,15 +26,19 @@ describe("sla-reminders", () => {
 
   it("expires at min(SLA, auth − buffer) so capture never needs a dead hold", () => {
     const heldAt = new Date(Date.UTC(2026, 6, 6, 12, 0, 0)); // Mon
-    const settings = { ...DEFAULT_SLA_SETTINGS, workingDays: 5, authExpiryBufferHours: 24 };
+    const settings = { ...DEFAULT_SLA_SETTINGS, workingDays: 5 };
     const deadline = expiryDeadline(heldAt, settings);
     const auth = authExpiresAt(heldAt);
     expect(auth.getTime() - heldAt.getTime()).toBe(STRIPE_AUTH_HOLD_DAYS * 24 * 60 * 60 * 1000);
     // Must be strictly before auth expiry
     expect(deadline.getTime()).toBeLessThan(auth.getTime());
+    // Default buffer leaves room for a once-daily Hobby cron (±1h jitter)
+    expect(DEFAULT_SLA_SETTINGS.authExpiryBufferHours).toBeGreaterThanOrEqual(48);
     // Long SLA still cannot outrun auth buffer
     const longSla = expiryDeadline(heldAt, { ...settings, workingDays: 20 });
-    expect(longSla.getTime()).toBe(auth.getTime() - 24 * 60 * 60 * 1000);
+    expect(longSla.getTime()).toBe(
+      auth.getTime() - DEFAULT_SLA_SETTINGS.authExpiryBufferHours * 60 * 60 * 1000,
+    );
   });
 
   it("plans expire when past deadline", () => {

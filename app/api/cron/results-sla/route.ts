@@ -105,7 +105,7 @@ async function sendCustomerExpiredEmail(opts: {
   });
 }
 
-/** Cron tick: remind operators and expire held Results past SLA / before auth dies. */
+/** Daily cron tick (Hobby-safe): remind operators and expire held Results past SLA / before auth dies. */
 export async function GET(req: Request) {
   if (!authorizeCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -225,7 +225,7 @@ export default function ResultDetailPage() {
       const body =
         productType === "bolster"
           ? {
-              assignedLength: assignLength,
+              assignedLength: assignLength || "medium",
               fillingTemplateId: Number(fillingTemplateId),
             }
           : {
@@ -376,7 +376,9 @@ export default function ResultDetailPage() {
           <div>
             <div className="text-sm font-medium">Assignment</div>
             <p className="text-sm text-muted-foreground">
-              Confirm or override size×tier and select a Filling Template. Customer is emailed on save.
+              {productType === "bolster"
+                ? "Confirm or override length and select a bolster Filling Template. Customer is emailed on save."
+                : "Confirm or override size×tier and select a Filling Template. Customer is emailed on save."}
             </p>
           </div>
 
@@ -416,11 +418,21 @@ export default function ResultDetailPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {productType === "bolster" ? (
                 <Field label="Length">
-                  <Input
-                    value={assignLength}
-                    onChange={(e) => setAssignLength(e.target.value)}
-                    placeholder="e.g. medium"
-                  />
+                  <Select
+                    value={assignLength || "medium"}
+                    onValueChange={setAssignLength}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(["short", "medium", "long"] as const).map((len) => (
+                        <SelectItem key={len} value={len}>
+                          {len}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </Field>
               ) : (
                 <>

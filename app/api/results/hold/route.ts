@@ -14,6 +14,10 @@ import {
   isProtectorInventoryCategory,
   itemMatchesPreferenceRole,
 } from "@/lib/shop/customization-inventory";
+import {
+  BOLSTER_LENGTHS,
+  loadComposedSellable,
+} from "@/lib/results/composed-sellable";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -42,18 +46,38 @@ const AddressSchema = z.object({
   country: z.string().length(2).default("SG"),
 });
 
-const HoldSchema = z.object({
-  responseId: z.string().uuid().optional(),
-  email: z.string().email(),
-  measurements: z.record(z.string(), z.unknown()).optional(),
-  suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]),
-  /** Customer-facing tier (basic | premium). Maps to pillow_products.kind in DB. */
-  suggestedTier: z.enum(["basic", "premium"]),
-  preferenceLines: z.array(PreferenceLineSchema).min(1),
-  addonLines: z.array(AddonLineSchema).default([]),
-  shippingMethodId: z.string().uuid(),
-  shippingAddress: AddressSchema,
-});
+const HoldSchema = z
+  .object({
+    responseId: z.string().uuid().optional(),
+    email: z.string().email(),
+    measurements: z.record(z.string(), z.unknown()).optional(),
+    productType: z.enum(["pillow", "bolster"]).default("pillow"),
+    suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]).optional(),
+    /** Customer-facing tier (basic | premium). Maps to pillow_products.kind in DB. */
+    suggestedTier: z.enum(["basic", "premium"]).optional(),
+    /** Bolster length key (short | medium | long). */
+    suggestedLength: z.enum(BOLSTER_LENGTHS).optional(),
+    preferenceLines: z.array(PreferenceLineSchema).min(1),
+    addonLines: z.array(AddonLineSchema).default([]),
+    shippingMethodId: z.string().uuid(),
+    shippingAddress: AddressSchema,
+  })
+  .superRefine((v, ctx) => {
+    if (v.productType === "pillow") {
+      if (!v.suggestedSize) {
+        ctx.addIssue({ code: "custom", message: "suggestedSize required for pillow", path: ["suggestedSize"] });
+      }
+      if (!v.suggestedTier) {
+        ctx.addIssue({ code: "custom", message: "suggestedTier required for pillow", path: ["suggestedTier"] });
+      }
+    } else if (!v.suggestedLength) {
+      ctx.addIssue({
+        code: "custom",
+        message: "suggestedLength required for bolster",
+        path: ["suggestedLength"],
+      });
+    }
+  });
 
 async function sendTelegram(text: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
@@ -76,18 +100,18 @@ async function sendHeldEmail(opts: {
   resultId: string;
   accessToken: string;
   origin: string;
-  tier: string;
-  size: string;
+  productType: "pillow" | "bolster";
+  label: string;
   amount: number;
   currency: string;
 }) {
   const statusUrl = `${opts.origin}/results/${opts.resultId}?token=${opts.accessToken}`;
-  const subject = "Your Mpillow is under review";
+  const productName = opts.productType === "bolster" ? "Mbolster" : "Mpillow";
+  const subject = `Your ${productName} is under review`;
   const text = [
-    "Thanks for submitting your custom Mpillow.",
+    `Thanks for submitting your custom ${productName}.`,
     "",
-    `Suggested size: ${opts.size}`,
-    `Suggested tier: ${opts.tier}`,
+    opts.label,
     `Authorized amount: ${opts.currency} ${opts.amount.toFixed(2)} (not charged yet)`,
     "",
     "Track your review status:",
@@ -95,9 +119,8 @@ async function sendHeldEmail(opts: {
     "",
     "You will be able to accept or decline once an operator finishes review.",
   ].join("\n");
-  const html = `<p>Thanks for submitting your custom Mpillow.</p>
-<p>Suggested size: <strong>${opts.size}</strong><br/>
-Suggested tier: <strong>${opts.tier}</strong><br/>
+  const html = `<p>Thanks for submitting your custom ${productName}.</p>
+<p>${opts.label}<br/>
 Authorized amount: <strong>${opts.currency} ${opts.amount.toFixed(2)}</strong> (not charged yet)</p>
 <p><a href="${statusUrl}">Track your review status</a></p>
 <p>You will be able to accept or decline once an operator finishes review.</p>`;
@@ -126,6 +149,7 @@ export async function POST(req: Request) {
   const input = parsed.data;
   const admin = supabaseAdmin();
   const origin = new URL(req.url).origin;
+  const productType = input.productType;
 
   // Preference categories only (cover/case) — reject protector/filling at the boundary.
   for (const line of input.preferenceLines) {
@@ -141,31 +165,35 @@ export async function POST(req: Request) {
   const addonIds = input.addonLines.map((l) => l.item_id);
   const allItemIds = [...new Set([...prefIds, ...addonIds])];
 
-  const [{ data: items }, { data: prices }, { data: pillowProduct }, { data: shippingRow }] =
-    await Promise.all([
-      admin.from("items").select("id, category").in("id", allItemIds),
-      admin.from("item_prices").select("item_id, msrp").in("item_id", allItemIds),
-      admin
-        .from("pillow_products")
-        .select("id, size, kind")
-        .eq("size", input.suggestedSize)
-        .eq("kind", input.suggestedTier)
-        .eq("is_active", true)
-        .maybeSingle(),
-      admin
-        .from("shipping_methods")
-        .select("*")
-        .eq("id", input.shippingMethodId)
-        .eq("is_active", true)
-        .maybeSingle(),
-    ]);
-
-  if (!pillowProduct) {
-    return NextResponse.json(
-      { error: `No active composed sellable for size ${input.suggestedSize} tier ${input.suggestedTier}` },
-      { status: 400 },
-    );
+  const composed = await loadComposedSellable(
+    admin,
+    productType === "pillow"
+      ? {
+          productType: "pillow",
+          size: input.suggestedSize!,
+          tier: input.suggestedTier!,
+        }
+      : { productType: "bolster", length: input.suggestedLength! },
+  );
+  if (!composed.ok) {
+    return NextResponse.json({ error: composed.error }, { status: 400 });
   }
+
+  const [{ data: items }, { data: prices }, { data: shippingRow }] = await Promise.all([
+    allItemIds.length
+      ? admin.from("items").select("id, category").in("id", allItemIds)
+      : Promise.resolve({ data: [] as Array<{ id: number; category: string }> }),
+    allItemIds.length
+      ? admin.from("item_prices").select("item_id, msrp").in("item_id", allItemIds)
+      : Promise.resolve({ data: [] as Array<{ item_id: number; msrp: number | null }> }),
+    admin
+      .from("shipping_methods")
+      .select("*")
+      .eq("id", input.shippingMethodId)
+      .eq("is_active", true)
+      .maybeSingle(),
+  ]);
+
   if (!shippingRow) {
     return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
   }
@@ -201,20 +229,7 @@ export async function POST(req: Request) {
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  const { data: productPrice } = await admin
-    .from("product_prices")
-    .select("msrp, currency")
-    .eq("kind", "pillow")
-    .eq("product_id", pillowProduct.id)
-    .maybeSingle();
-
-  const composedMsrp = productPrice?.msrp != null ? Number(productPrice.msrp) : null;
-  if (composedMsrp == null) {
-    return NextResponse.json(
-      { error: "Composed sellable has no Costings MSRP" },
-      { status: 400 },
-    );
-  }
+  const composedMsrp = composed.sellable.msrp;
 
   for (const l of input.addonLines) {
     if (msrpByItem.get(l.item_id) == null) {
@@ -236,10 +251,6 @@ export async function POST(req: Request) {
   const prefSubtotal =
     preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
     addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
-  // Ballpark hold: composed sellable MSRP covers base build; prefs/add-ons add item MSRP.
-  // Cover/case on the composed sellable are already in composed MSRP — only charge
-  // preference lines when they are upgrades (msrp > 0 and treated as add-on price).
-  // ponytail: charge full preference MSRP for hold ballpark (may over-authorize slightly).
   const shippingAmount = calculateShippingRate(shippingMethod, composedMsrp + prefSubtotal);
   const taxRule = await resolveTaxRuleForRegion(input.shippingAddress.country);
   const tax = computeTax(
@@ -255,7 +266,7 @@ export async function POST(req: Request) {
     tax: tax.taxAmount,
   });
 
-  const currency = (productPrice?.currency as string) ?? "SGD";
+  const currency = composed.sellable.currency;
   const accessToken = randomUUID();
   const resultId = input.responseId ?? randomUUID();
 
@@ -285,9 +296,10 @@ export async function POST(req: Request) {
     data: input.measurements ?? {},
     is_final: true,
     measured_by_type: "by_user" as const,
-    product_type: "pillow",
-    suggested_size: input.suggestedSize,
-    suggested_tier: input.suggestedTier,
+    product_type: productType,
+    suggested_size: productType === "pillow" ? input.suggestedSize! : null,
+    suggested_tier: productType === "pillow" ? input.suggestedTier! : null,
+    suggested_length: productType === "bolster" ? input.suggestedLength! : null,
     preference_lines: preferenceLines,
     addon_lines: addonLines,
     shipping_method: shippingMethod.slug,
@@ -311,6 +323,16 @@ export async function POST(req: Request) {
 
   // No inventory reserve or deduct on hold (US36).
 
+  const cancelPath = productType === "bolster" ? "/mbolster-config" : "/mp-config";
+  const suggestLabel =
+    productType === "bolster"
+      ? `Length (suggested): ${input.suggestedLength}`
+      : `Size×tier (suggested): ${input.suggestedSize} × ${input.suggestedTier}`;
+  const description =
+    productType === "bolster"
+      ? `Mbolster ${input.suggestedLength} hold`
+      : `Mpillow ${input.suggestedSize} ${input.suggestedTier} hold`;
+
   let checkout: { sessionId: string; url: string };
   try {
     checkout = await createHoldCheckout({
@@ -319,8 +341,8 @@ export async function POST(req: Request) {
       customerEmail: input.email,
       resultId,
       successUrl: `${origin}/results/${resultId}?token=${accessToken}&session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}/mp-config?hold_cancelled=1`,
-      description: `Mpillow ${input.suggestedSize} ${input.suggestedTier} hold`,
+      cancelUrl: `${origin}${cancelPath}?hold_cancelled=1`,
+      description,
       metadata: { result_id: resultId },
       idempotencyKey: `result_hold_${resultId}`,
     });
@@ -337,7 +359,7 @@ export async function POST(req: Request) {
   const telegramStatus = await sendTelegram(
     [
       "💤 Held Result (online purchase) — review needed",
-      `Size×tier (suggested): ${input.suggestedSize} × ${input.suggestedTier}`,
+      suggestLabel,
       `Email: ${input.email}`,
       `Authorized: ${currency} ${priced.total.toFixed(2)}`,
       "",
@@ -350,8 +372,8 @@ export async function POST(req: Request) {
     resultId,
     accessToken,
     origin,
-    tier: input.suggestedTier,
-    size: input.suggestedSize,
+    productType,
+    label: suggestLabel,
     amount: priced.total,
     currency,
   });

@@ -36,7 +36,7 @@ const DEFAULT_SLA_FORM: SlaSettingsForm = {
   remindTelegram: true,
   remindEmail: true,
   opsEmail: "",
-  authExpiryBufferHours: 24,
+  authExpiryBufferHours: 48,
 };
 
 type YesNoEmpty = "yes" | "no" | "";
@@ -183,7 +183,7 @@ export default function ResultsPage() {
           remindTelegram: s.remindTelegram ?? true,
           remindEmail: s.remindEmail ?? true,
           opsEmail: s.opsEmail ?? "",
-          authExpiryBufferHours: s.authExpiryBufferHours ?? 24,
+          authExpiryBufferHours: s.authExpiryBufferHours ?? 48,
         });
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load SLA settings");
@@ -480,7 +480,7 @@ export default function ResultsPage() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="sla-buffer">Auth expiry buffer (hours)</Label>
+              <Label htmlFor="sla-buffer">Auth expiry buffer (hours, default 48)</Label>
               <Input
                 id="sla-buffer"
                 type="number"
@@ -494,6 +494,9 @@ export default function ResultsPage() {
                   }))
                 }
               />
+              <p className="text-[11px] text-muted-foreground">
+                Keep ≥48 while the SLA cron runs once daily (Vercel Hobby limit).
+              </p>
             </div>
             <div className="grid gap-1.5 sm:col-span-2">
               <Label htmlFor="sla-ops-email">Ops email for reminders</Label>

@@ -4,6 +4,11 @@ import { assembleBuild, findStockShortages, type BuildLine } from "@/lib/build-a
 import { priceResult, type PriceResultOutput } from "@/lib/result-pricing";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
+import {
+  isBolsterLength,
+  loadComposedSellable,
+  type BolsterLength,
+} from "@/lib/results/composed-sellable";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -47,28 +52,27 @@ export async function loadAssignedBuild(
     return { ok: false, error: "Result has no Filling Template" };
   }
 
-  let composedProductId: number | null = null;
+  let composedKey:
+    | { productType: "pillow"; size: string; tier: string }
+    | { productType: "bolster"; length: BolsterLength };
   if (productType === "pillow") {
     if (!row.assigned_size || !row.assigned_tier) {
       return { ok: false, error: "Pillow Result missing assigned size/tier" };
     }
-    const { data: pillowProduct } = await admin
-      .from("pillow_products")
-      .select("id")
-      .eq("size", row.assigned_size)
-      .eq("kind", row.assigned_tier)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (!pillowProduct) {
-      return {
-        ok: false,
-        error: `No active composed sellable for size ${row.assigned_size} tier ${row.assigned_tier}`,
-      };
+    composedKey = {
+      productType: "pillow",
+      size: row.assigned_size,
+      tier: row.assigned_tier,
+    };
+  } else {
+    if (!row.assigned_length || !isBolsterLength(row.assigned_length)) {
+      return { ok: false, error: "Bolster Result missing assigned length" };
     }
-    composedProductId = pillowProduct.id;
-  } else if (!row.assigned_length) {
-    return { ok: false, error: "Bolster Result missing assigned length" };
+    composedKey = { productType: "bolster", length: row.assigned_length };
   }
+
+  const composed = await loadComposedSellable(admin, composedKey);
+  if (!composed.ok) return composed;
 
   const preferenceLines = (row.preference_lines ?? []) as PrefLine[];
   const addonLines = (row.addon_lines ?? []) as AddonLine[];
@@ -79,24 +83,7 @@ export async function loadAssignedBuild(
     .eq("template_id", row.filling_template_id);
   if (linesErr) return { ok: false, error: linesErr.message };
 
-  let composedBomRaw: Array<{ item_id: number; quantity: number; category: string }> = [];
-  if (composedProductId != null) {
-    const { data: bomLines, error: bomErr } = await admin
-      .from("bom_lines")
-      .select("item_id, quantity, items!inner(category)")
-      .eq("product_id", composedProductId);
-    if (bomErr) return { ok: false, error: bomErr.message };
-    composedBomRaw = (bomLines ?? []).map((l) => {
-      const items = l.items as unknown as { category: string } | { category: string }[];
-      const category = Array.isArray(items) ? items[0]?.category : items?.category;
-      return {
-        item_id: l.item_id as number,
-        quantity: Number(l.quantity),
-        category: String(category ?? "unknown"),
-      };
-    });
-  }
-
+  const composedBomRaw = composed.sellable.bomLines;
   const fillItemIds = (tplLines ?? []).map((l) => l.item_id as number);
   const allItemIds = [
     ...new Set([
@@ -164,24 +151,7 @@ export async function loadAssignedBuild(
 
   const shortages = findStockShortages(assembled.lines, onHandByItem, nameByItem);
 
-  if (productType !== "pillow" || composedProductId == null) {
-    return {
-      ok: false,
-      error: "Bolster accept pricing is not available yet (slice 09)",
-    };
-  }
-
-  const { data: productPrice } = await admin
-    .from("product_prices")
-    .select("msrp, currency")
-    .eq("kind", "pillow")
-    .eq("product_id", composedProductId)
-    .maybeSingle();
-  const composedMsrp = productPrice?.msrp != null ? Number(productPrice.msrp) : null;
-  if (composedMsrp == null) {
-    return { ok: false, error: "Composed sellable has no Costings MSRP" };
-  }
-
+  const composedMsrp = composed.sellable.msrp;
   const preferencePriced = preferenceLines.map((l) => ({
     msrp: msrpByItem.get(l.item_id) ?? 0,
     quantity: l.quantity,

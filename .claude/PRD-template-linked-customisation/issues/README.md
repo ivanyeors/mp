@@ -14,7 +14,7 @@ Tracer-bullet breakdown of the PRD (`../template-linked-customisation-prd.md`). 
 | 06 | Operator assign + customer notify (platform only) | AFK | **done** | 05, 02 | 11, 12, 24–26, 29–30, 41 |
 | 07 | Customer accept / decline / top-up / capture → Order | AFK | **done** | 06 | 13–17, 19, 33, 37–38, 41 |
 | 08 | SLA reminders, settings, and auto-expiry | AFK | **done** | 05 | 21–23, 31–32 |
-| 09 | Mbolster hold path (mbolster-config) | AFK | not started | 07 | 4–8, 43 |
+| 09 | Mbolster hold path (mbolster-config) | AFK | **done** | 07 | 4–8, 43 |
 | 10 | Order build snapshot + fulfill wiring | AFK | not started | 07 | 33, 34 |
 | 11 | Post-delivery refund request + operator approve | AFK | not started | 10 | 17, 18, 35 |
 | 12 | Retire hardcoded fillings; LLM proposal field hooks | AFK | not started | 07, 02 | 6, 40 |

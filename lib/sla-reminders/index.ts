@@ -12,7 +12,10 @@ export type SlaSettings = {
   remindEmail: boolean;
   /** Operator inbox for email reminders (optional). */
   opsEmail: string | null;
-  /** Hours before Stripe auth expiry to force expire. Default 24. */
+  /**
+   * Hours before Stripe auth expiry to force expire.
+   * Default 48: daily Hobby cron (±1h jitter) must still expire before the hold dies.
+   */
   authExpiryBufferHours: number;
 };
 
@@ -22,7 +25,8 @@ export const DEFAULT_SLA_SETTINGS: SlaSettings = {
   remindTelegram: true,
   remindEmail: true,
   opsEmail: null,
-  authExpiryBufferHours: 24,
+  // ponytail: 48h so a once-daily Hobby cron (max ~25h lag) still beats Stripe's 7d auth.
+  authExpiryBufferHours: 48,
 };
 
 export const SLA_SETTING_KEYS = [

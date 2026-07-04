@@ -9,6 +9,11 @@ import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
+import {
+  BOLSTER_LENGTHS,
+  isBolsterLength,
+  loadComposedSellable,
+} from "@/lib/results/composed-sellable";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -19,7 +24,7 @@ const PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 const AssignSchema = z.object({
   assignedSize: z.enum(PILLOW_SIZES).optional(),
   assignedTier: z.enum(["basic", "premium"]).optional(),
-  assignedLength: z.string().min(1).max(40).optional(),
+  assignedLength: z.enum(BOLSTER_LENGTHS).optional(),
   fillingTemplateId: z.number().int().positive(),
 });
 
@@ -68,8 +73,9 @@ async function sendAssignedEmail(opts: {
       ].filter(Boolean)
     : [];
 
+  const productName = opts.productType === "bolster" ? "Mbolster" : "Mpillow";
   const text = [
-    "Your final Mpillow build is ready for review.",
+    `Your final ${productName} build is ready for review.`,
     "",
     sizeLine,
     `Fillings: ${opts.fillingSummary.join(", ") || "—"}`,
@@ -81,7 +87,7 @@ async function sendAssignedEmail(opts: {
     statusUrl,
   ].join("\n");
 
-  const html = `<p>Your final Mpillow build is ready for review.</p>
+  const html = `<p>Your final ${productName} build is ready for review.</p>
 <p>${sizeLine}<br/>
 Fillings: <strong>${opts.fillingSummary.join(", ") || "—"}</strong><br/>
 Preferences: <strong>${opts.preferences.join(", ") || "—"}</strong><br/>
@@ -146,10 +152,12 @@ export async function POST(
     productType === "pillow"
       ? (input.assignedTier ?? (row.suggested_tier as "basic" | "premium" | null))
       : null;
-  const assignedLength =
+  const assignedLengthRaw =
     productType === "bolster"
       ? (input.assignedLength ?? (row.suggested_length as string | null))
       : null;
+  const assignedLength =
+    assignedLengthRaw && isBolsterLength(assignedLengthRaw) ? assignedLengthRaw : null;
 
   if (productType === "pillow") {
     if (!assignedSize || !assignedTier) {
@@ -160,7 +168,7 @@ export async function POST(
     }
   } else if (!assignedLength) {
     return NextResponse.json(
-      { error: "Bolster assignment requires length" },
+      { error: "Bolster assignment requires length (short, medium, or long)" },
       { status: 400 },
     );
   }
@@ -209,25 +217,14 @@ export async function POST(
     return NextResponse.json({ error: lifecycle.error }, { status: 400 });
   }
 
-  // Composed sellable for assigned size×tier (pillow) or length (bolster).
-  let composedProductId: number | null = null;
-  if (productType === "pillow") {
-    const { data: pillowProduct } = await admin
-      .from("pillow_products")
-      .select("id")
-      .eq("size", assignedSize!)
-      .eq("kind", assignedTier!)
-      .eq("is_active", true)
-      .maybeSingle();
-    if (!pillowProduct) {
-      return NextResponse.json(
-        {
-          error: `No active composed sellable for size ${assignedSize} tier ${assignedTier}`,
-        },
-        { status: 400 },
-      );
-    }
-    composedProductId = pillowProduct.id;
+  const composed = await loadComposedSellable(
+    admin,
+    productType === "pillow"
+      ? { productType: "pillow", size: assignedSize!, tier: assignedTier! }
+      : { productType: "bolster", length: assignedLength! },
+  );
+  if (!composed.ok) {
+    return NextResponse.json({ error: composed.error }, { status: 400 });
   }
 
   const preferenceLines = (row.preference_lines ?? []) as PrefLine[];
@@ -239,23 +236,7 @@ export async function POST(
     .eq("template_id", input.fillingTemplateId);
   if (linesErr) return NextResponse.json({ error: linesErr.message }, { status: 500 });
 
-  let composedBomRaw: Array<{ item_id: number; quantity: number; category: string }> = [];
-  if (composedProductId != null) {
-    const { data: bomLines, error: bomErr } = await admin
-      .from("bom_lines")
-      .select("item_id, quantity, items!inner(category)")
-      .eq("product_id", composedProductId);
-    if (bomErr) return NextResponse.json({ error: bomErr.message }, { status: 500 });
-    composedBomRaw = (bomLines ?? []).map((l) => {
-      const items = l.items as unknown as { category: string } | { category: string }[];
-      const category = Array.isArray(items) ? items[0]?.category : items?.category;
-      return {
-        item_id: l.item_id as number,
-        quantity: Number(l.quantity),
-        category: String(category ?? "unknown"),
-      };
-    });
-  }
+  const composedBomRaw = composed.sellable.bomLines;
 
   const fillItemIds = (tplLines ?? []).map((l) => l.item_id as number);
   const allItemIds = [
@@ -335,21 +316,8 @@ export async function POST(
   } | null = null;
 
   const hasHold = row.payment_intent_id != null || row.authorized_amount != null;
-  if (hasHold && productType === "pillow" && composedProductId != null) {
-    const { data: productPrice } = await admin
-      .from("product_prices")
-      .select("msrp, currency")
-      .eq("kind", "pillow")
-      .eq("product_id", composedProductId)
-      .maybeSingle();
-    const composedMsrp = productPrice?.msrp != null ? Number(productPrice.msrp) : null;
-    if (composedMsrp == null) {
-      return NextResponse.json(
-        { error: "Composed sellable has no Costings MSRP" },
-        { status: 400 },
-      );
-    }
-
+  if (hasHold) {
+    const composedMsrp = composed.sellable.msrp;
     const preferencePriced = preferenceLines.map((l) => ({
       msrp: msrpByItem.get(l.item_id) ?? 0,
       quantity: l.quantity,
@@ -401,7 +369,7 @@ export async function POST(
       shipping: priced.shipping,
       tax: priced.tax,
       total: priced.total,
-      currency: (productPrice?.currency as string) ?? row.currency ?? "SGD",
+      currency: composed.sellable.currency ?? row.currency ?? "SGD",
       authorized:
         row.authorized_amount != null ? Number(row.authorized_amount) : null,
     };

@@ -27,7 +27,8 @@ Configurable ops reminders and automatic expiry for unassigned held Results.
 
 - `lib/sla-reminders` — working-day deadlines, `planHeldTick` (expire vs remind), expire-before-auth buffer
 - `GET/PUT /api/results/sla-settings` — Results settings (site_settings keys)
-- `GET/POST /api/cron/results-sla` — hourly tick (Vercel cron); release hold, expire, remind
+- `GET/POST /api/cron/results-sla` — daily tick at 02:00 UTC (Hobby free-tier max is once/day); release hold, expire, remind
+- Default auth buffer **48h** so a once-daily run (±1h Hobby jitter) still expires before Stripe’s 7d auth dies
 - Results settings UI: Review SLA panel
 - Migration `0047_result_sla.sql` — `last_reminder_at`
 - Tests: `lib/sla-reminders/__tests__/sla-reminders.test.ts`
