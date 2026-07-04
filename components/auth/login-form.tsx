@@ -16,11 +16,14 @@ import { Label } from "@/components/ui/label";
 export function LoginForm({
   nextPath,
   allowEmailLink = true,
+  initialEmail = "",
 }: {
   nextPath: string;
   allowEmailLink?: boolean;
+  /** Prefill email (e.g. from a Result hold submission). */
+  initialEmail?: string;
 }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState<"google" | "email" | null>(null);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
