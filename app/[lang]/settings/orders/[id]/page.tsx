@@ -61,6 +61,10 @@ import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-brea
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Order, OrderItem, OrderMargin, OrderTimelineEvent, OrderStatus, ShippingAddress } from "@/lib/types/ecommerce";
+import {
+    groupBuildLinesByRole,
+    isResultOrderBuildSnapshot,
+} from "@/lib/results/order-build-snapshot";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -745,13 +749,17 @@ export default function OrderDetailPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Customization Details & Inventory Status */}
-                    {(order.items ?? []).some((item: OrderItem) => item.customization_id) && (
+                    {/* Build snapshot / customization (Result path + legacy cart path) */}
+                    {(order.items ?? []).some(
+                        (item: OrderItem) =>
+                            item.customization_id ||
+                            isResultOrderBuildSnapshot(item.customization_snapshot),
+                    ) && (
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-base flex items-center gap-2">
                                     <ClipboardList className="h-4 w-4" />
-                                    Customization Details
+                                    Build snapshot
                                     {inventoryDeducted === true && (
                                         <Badge variant="outline" className="ml-auto text-xs text-green-600 border-green-300">
                                             Inventory deducted
@@ -766,9 +774,88 @@ export default function OrderDetailPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {(order.items ?? [])
-                                    .filter((item: OrderItem) => item.customization_id)
+                                    .filter(
+                                        (item: OrderItem) =>
+                                            item.customization_id ||
+                                            isResultOrderBuildSnapshot(item.customization_snapshot),
+                                    )
                                     .map((item: OrderItem) => {
                                         const snapshot = item.customization_snapshot;
+                                        const resultSnap = isResultOrderBuildSnapshot(snapshot)
+                                            ? snapshot
+                                            : null;
+
+                                        if (resultSnap) {
+                                            const assignment =
+                                                resultSnap.product_type === "bolster"
+                                                    ? `Length: ${resultSnap.assigned_length ?? "—"}`
+                                                    : `Size ${resultSnap.assigned_size ?? "—"} · ${resultSnap.assigned_tier ?? "—"} tier`;
+                                            const groups = groupBuildLinesByRole(resultSnap.build_lines);
+
+                                            return (
+                                                <div key={item.id} className="rounded-lg border p-4 space-y-3">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <div className="font-medium text-sm">
+                                                            {item.product_title}
+                                                            {item.variant_title ? ` — ${item.variant_title}` : ""}
+                                                        </div>
+                                                        <Badge variant="secondary" className="text-xs shrink-0">
+                                                            Result build
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="grid gap-2 sm:grid-cols-2 text-xs">
+                                                        <div>
+                                                            <span className="text-muted-foreground">Assignment</span>
+                                                            <div className="font-medium capitalize">{assignment}</div>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-muted-foreground">Filling Template</span>
+                                                            <div className="font-medium">
+                                                                {resultSnap.filling_template_name ??
+                                                                    `#${resultSnap.filling_template_id}`}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {groups.map((group) => (
+                                                        <div key={group.role}>
+                                                            <div className="text-xs font-medium text-muted-foreground mb-1">
+                                                                {group.label}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {group.lines.map((line) => (
+                                                                    <div
+                                                                        key={`${group.role}-${line.item_id}`}
+                                                                        className="flex justify-between text-xs gap-2"
+                                                                    >
+                                                                        <span>
+                                                                            {line.name ?? `Item #${line.item_id}`}
+                                                                            {line.category ? (
+                                                                                <span className="text-muted-foreground">
+                                                                                    {" "}
+                                                                                    ({line.category})
+                                                                                </span>
+                                                                            ) : null}
+                                                                        </span>
+                                                                        <span className="tabular-nums shrink-0">
+                                                                            ×{line.quantity}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <div className="flex flex-wrap items-center gap-3 pt-1 border-t text-xs">
+                                                        <Link
+                                                            href={to(`/settings/results/${resultSnap.result_id}`)}
+                                                            className="text-primary hover:underline inline-flex items-center gap-1"
+                                                        >
+                                                            Open Result
+                                                            <ExternalLink className="h-3 w-3" />
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
 
                                         return (
                                             <div key={item.id} className="rounded-lg border p-4 space-y-3">

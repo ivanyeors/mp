@@ -243,11 +243,42 @@ export interface Order {
 }
 
 export interface OrderItemCustomizationSnapshot {
+  /** Legacy shop-cart customization (customization_configs). */
   config_lines?: import("./customization").ConfigLine[];
   filling_lines?: import("./customization").FillingLine[];
   total_addon_price?: number;
   summary?: string;
   pillow_product_id?: number;
+  /** Result authorize-then-capture path (slice 07/10). */
+  result_id?: string;
+  product_type?: "pillow" | "bolster";
+  assigned_size?: string | null;
+  assigned_tier?: string | null;
+  assigned_length?: string | null;
+  filling_template_id?: number;
+  filling_template_name?: string | null;
+  preference_lines?: Array<{
+    item_id: number;
+    quantity: number;
+    role?: string;
+    category?: string;
+    name?: string;
+  }>;
+  addon_lines?: Array<{
+    item_id: number;
+    quantity: number;
+    role?: string;
+    name?: string;
+  }>;
+  build_lines?: Array<{
+    item_id: number;
+    quantity: number;
+    role: string;
+    category?: string;
+    name?: string;
+  }>;
+  cogs?: number;
+  pricing?: { subtotal: number; shipping: number; tax: number; total: number };
 }
 
 export interface OrderItem {

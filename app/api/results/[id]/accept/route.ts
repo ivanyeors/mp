@@ -10,6 +10,7 @@ import {
 } from "@/lib/authorization-hold";
 import { authorizeResultAccess } from "@/lib/results/access";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
+import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -212,19 +213,25 @@ export async function POST(
     );
   }
 
-  const snapshot = {
-    result_id: id,
-    product_type: productType,
-    assigned_size: row.assigned_size,
-    assigned_tier: row.assigned_tier,
-    assigned_length: row.assigned_length,
-    filling_template_id: row.filling_template_id,
-    preference_lines: row.preference_lines,
-    addon_lines: row.addon_lines,
-    build_lines: build.lines,
+  const { data: fillingTpl } = await admin
+    .from("bom_templates")
+    .select("name")
+    .eq("id", row.filling_template_id!)
+    .maybeSingle();
+
+  const snapshot = buildResultOrderSnapshot({
+    resultId: id,
+    productType: productType as "pillow" | "bolster",
+    assignedSize: row.assigned_size,
+    assignedTier: row.assigned_tier,
+    assignedLength: row.assigned_length,
+    fillingTemplateId: row.filling_template_id!,
+    fillingTemplateName: fillingTpl?.name ?? null,
+    buildLines: build.lines,
+    nameByItem: build.nameByItem,
     cogs: build.cogs,
     pricing: build.pricing,
-  };
+  });
 
   const { error: itemErr } = await admin.from("order_items").insert({
     order_id: order.id,

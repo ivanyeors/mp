@@ -15,10 +15,20 @@ Production-facing Order detail for customised builds, using existing fulfill cap
 
 ## Acceptance criteria
 
-- [ ] Captured customised Order detail shows complete build snapshot for production.
-- [ ] Operator can add tracking number/URL, send shipping notification, and mark fulfilled.
-- [ ] Customer receives shipping email when fulfilled (existing template path).
-- [ ] No regression for non-customised accessory orders fulfill.
+- [x] Captured customised Order detail shows complete build snapshot for production.
+- [x] Operator can add tracking number/URL, send shipping notification, and mark fulfilled.
+- [x] Customer receives shipping email when fulfilled (existing template path).
+- [x] No regression for non-customised accessory orders fulfill.
+
+## Status
+
+**Done** on `cursor/order-build-snapshot-fulfill`.
+
+- `lib/results/order-build-snapshot` — named build lines frozen at Accept (composed, Filling Template, prefs, add-ons)
+- Accept writes production snapshot with item names + Filling Template name
+- Operator order detail: **Build snapshot** card (Result path) + legacy cart customization unchanged
+- Fulfill: existing `POST /api/shop/orders/[id]/fulfill` (tracking, ship email, shipped status) — works for Result and accessory orders
+- Tests: `lib/results/__tests__/order-build-snapshot.test.ts`
 
 ## Blocked by
 
