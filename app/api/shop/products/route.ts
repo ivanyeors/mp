@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { attachStockAvailable } from "@/lib/ecommerce/products";
+import {
+  attachStockAvailable,
+  CUSTOM_COMPOSED_PRODUCT_TYPES,
+} from "@/lib/ecommerce/products";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -12,6 +15,7 @@ export async function GET(req: Request) {
   const product_type = searchParams.get("product_type");
   const featured = searchParams.get("featured");
   const search = searchParams.get("search");
+  const includeCustom = searchParams.get("include_custom") === "true";
   const page = parseInt(searchParams.get("page") ?? "1", 10);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
   const sort = searchParams.get("sort") ?? "newest";
@@ -28,6 +32,9 @@ export async function GET(req: Request) {
     const types = product_type.split(",").map((t) => t.trim()).filter(Boolean);
     if (types.length === 1) query = query.eq("product_type", types[0]);
     else if (types.length > 1) query = query.in("product_type", types);
+  } else if (!includeCustom) {
+    // Public catalog: accessories and other non-custom sellables only.
+    query = query.not("product_type", "in", `(${CUSTOM_COMPOSED_PRODUCT_TYPES.join(",")})`);
   }
   if (featured === "true") query = query.eq("featured", true);
   if (search) query = query.ilike("slug", `%${search}%`);

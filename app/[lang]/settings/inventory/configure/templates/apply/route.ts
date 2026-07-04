@@ -17,11 +17,18 @@ export async function POST(req: NextRequest) {
 
   const { data: tpl, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,kind,key,pillow_kind')
+    .select('id,kind,key,pillow_kind,role')
     .eq('id', parsed.data.templateId)
     .maybeSingle()
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
   if (!tpl) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+  // Filling Templates are sale-path only; warehouse Apply uses role=warehouse templates.
+  if (tpl.role === 'filling') {
+    return NextResponse.json(
+      { error: 'Filling Templates cannot be applied to the active warehouse BOM' },
+      { status: 400 },
+    )
+  }
 
   const { data: lines, error: lErr } = await admin
     .from('bom_template_lines')

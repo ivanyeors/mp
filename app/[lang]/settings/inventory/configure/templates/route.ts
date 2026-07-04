@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { validateFillingOnlyLines } from '@/lib/filling-templates'
 
 export const runtime = 'nodejs'
 
 const KindSchema = z.enum(['pillow', 'bolster'])
 const PillowKindSchema = z.enum(['basic', 'premium'])
 const PillowVariantSchema = z.enum(['linen', 'fibrecool'])
+const RoleSchema = z.enum(['warehouse', 'filling'])
+
+const TEMPLATE_SELECT =
+  'id,kind,key,pillow_kind,pillow_variant,name,notes,role,is_active,created_at,updated_at'
 
 const ListSchema = z.object({
   kind: KindSchema,
   key: z.string().min(1).max(40),
   pillowKind: PillowKindSchema.optional(),
   pillowVariant: PillowVariantSchema.optional(),
+  role: RoleSchema.default('warehouse'),
+  activeOnly: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => v === 'true'),
 })
 
 const CreateSchema = z.object({
@@ -22,6 +32,8 @@ const CreateSchema = z.object({
   pillowVariant: PillowVariantSchema.optional(),
   name: z.string().trim().min(1).max(120),
   notes: z.string().trim().max(500).optional(),
+  role: RoleSchema.default('warehouse'),
+  is_active: z.boolean().optional(),
   lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })).default([]),
 })
 
@@ -35,43 +47,64 @@ function dedupeLines<T extends { item_id: number; quantity: number }>(
   return Array.from(m.entries()).map(([item_id, quantity]) => ({ item_id, quantity }))
 }
 
+async function assertFillingLines(
+  admin: ReturnType<typeof supabaseAdmin>,
+  lines: Array<{ item_id: number; quantity: number }>,
+): Promise<string | null> {
+  if (!lines.length) return null
+  const ids = lines.map((l) => l.item_id)
+  const { data, error } = await admin.from('items').select('id,category').in('id', ids)
+  if (error) return error.message
+  const byId = new Map((data ?? []).map((r: { id: number; category: string }) => [r.id, r.category]))
+  const withCat = lines.map((l) => ({
+    item_id: l.item_id,
+    category: byId.get(l.item_id) ?? 'unknown',
+  }))
+  const missing = withCat.filter((l) => !byId.has(l.item_id))
+  if (missing.length) {
+    return `Unknown item_id: ${missing.map((m) => m.item_id).join(', ')}`
+  }
+  const result = validateFillingOnlyLines(withCat)
+  return result.ok ? null : result.error
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  // URLSearchParams.get() returns `null` for missing keys; Zod optional() expects undefined, not null.
   const pillowKindParam = searchParams.get('pillowKind') ?? undefined
   const pillowVariantParam = searchParams.get('pillowVariant') ?? undefined
+  const roleParam = searchParams.get('role') ?? undefined
+  const activeOnlyParam = searchParams.get('activeOnly') ?? undefined
   const parsed = ListSchema.safeParse({
     kind: searchParams.get('kind'),
     key: searchParams.get('key'),
     pillowKind: pillowKindParam,
     pillowVariant: pillowVariantParam,
+    role: roleParam ?? undefined,
+    activeOnly: activeOnlyParam ?? undefined,
   })
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const pillowKind =
-    parsed.data.kind === 'pillow'
-      ? (parsed.data.pillowKind ?? 'basic')
-      : null
-  const pillowVariant =
-    parsed.data.kind === 'pillow' && pillowKind === 'premium'
-      ? (parsed.data.pillowVariant ?? null)
-      : null
-
+  const role = parsed.data.role
   const admin = supabaseAdmin()
   let q = admin
     .from('bom_templates')
-    .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
+    .select(TEMPLATE_SELECT)
     .eq('kind', parsed.data.kind)
     .eq('key', parsed.data.key)
+    .eq('role', role)
     .order('updated_at', { ascending: false })
 
-  if (parsed.data.kind === 'pillow') {
+  if (role === 'filling') {
+    if (parsed.data.activeOnly) q = q.eq('is_active', true)
+  } else if (parsed.data.kind === 'pillow') {
+    const pillowKind = parsed.data.pillowKind ?? 'basic'
     q = q.eq('pillow_kind', pillowKind)
-    if (pillowKind === 'premium' && pillowVariant) {
-      q = q.eq('pillow_variant', pillowVariant)
+    if (pillowKind === 'premium' && parsed.data.pillowVariant) {
+      q = q.eq('pillow_variant', parsed.data.pillowVariant)
     }
+  } else {
+    q = q.is('pillow_kind', null)
   }
-  else q = q.is('pillow_kind', null)
 
   const { data, error } = await q
 
@@ -85,44 +118,53 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const admin = supabaseAdmin()
-  const { kind, key, name, notes, lines } = parsed.data
-  const pillowKind = kind === 'pillow' ? (parsed.data.pillowKind ?? 'basic') : null
-  const pillowVariant = kind === 'pillow' && pillowKind === 'premium' ? (parsed.data.pillowVariant ?? null) : null
+  const { kind, key, name, notes, lines, role } = parsed.data
+  const isActive = parsed.data.is_active ?? true
+  // Filling templates are size-scoped only (no tier).
+  const pillowKind = role === 'filling' ? null : kind === 'pillow' ? (parsed.data.pillowKind ?? 'basic') : null
+  const pillowVariant =
+    role === 'filling'
+      ? null
+      : kind === 'pillow' && pillowKind === 'premium'
+        ? (parsed.data.pillowVariant ?? null)
+        : null
 
-  // If a template already exists for the same (kind,key,pillow_kind,pillow_variant,name),
-  // update it in-place instead of failing the unique constraint or creating duplicates.
-  // This matches the UI expectation that re-saving with the same name "updates" the template.
+  const safeLines = dedupeLines(lines)
+
+  if (role === 'filling') {
+    const err = await assertFillingLines(admin, safeLines)
+    if (err) return NextResponse.json({ error: err }, { status: 400 })
+  }
+
   let existingQuery = admin
     .from('bom_templates')
-    .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
+    .select(TEMPLATE_SELECT)
     .eq('kind', kind)
     .eq('key', key)
     .eq('name', name)
+    .eq('role', role)
 
-  if (kind === 'pillow') {
+  if (role === 'warehouse' && kind === 'pillow') {
     existingQuery = existingQuery.eq('pillow_kind', pillowKind)
     if (pillowKind === 'premium' && pillowVariant) existingQuery = existingQuery.eq('pillow_variant', pillowVariant)
     else existingQuery = existingQuery.is('pillow_variant', null)
-  } else {
+  } else if (role === 'warehouse') {
     existingQuery = existingQuery.is('pillow_kind', null).is('pillow_variant', null)
   }
 
   const { data: existing, error: exErr } = await existingQuery.maybeSingle()
   if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
 
-  const safeLines = dedupeLines(lines)
-
   const templateId = existing?.id
   if (templateId) {
     const { data: updated, error: upErr } = await admin
       .from('bom_templates')
-      .update({ notes: notes ?? null })
+      .update({ notes: notes ?? null, is_active: isActive })
       .eq('id', templateId)
-      .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
+      .select(TEMPLATE_SELECT)
       .single()
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
 
-    // Replace lines for this template.
     const { error: delErr } = await admin.from('bom_template_lines').delete().eq('template_id', templateId)
     if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
     if (safeLines.length) {
@@ -136,8 +178,17 @@ export async function POST(req: NextRequest) {
 
   const { data: created, error: insErr } = await admin
     .from('bom_templates')
-    .insert({ kind, key, pillow_kind: pillowKind, pillow_variant: pillowVariant, name, notes: notes ?? null })
-    .select('id,kind,key,pillow_kind,pillow_variant,name,notes,created_at,updated_at')
+    .insert({
+      kind,
+      key,
+      pillow_kind: pillowKind,
+      pillow_variant: pillowVariant,
+      name,
+      notes: notes ?? null,
+      role,
+      is_active: isActive,
+    })
+    .select(TEMPLATE_SELECT)
     .single()
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
 
@@ -160,5 +211,3 @@ export async function DELETE(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
-
-

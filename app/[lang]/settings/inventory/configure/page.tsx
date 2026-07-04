@@ -12,8 +12,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+
+type FillingTemplateRow = {
+  id: number;
+  name: string;
+  notes: string | null;
+  is_active: boolean;
+};
 
 type Item = {
   id: number;
@@ -164,6 +172,17 @@ export default function ConfigureInventoryPage() {
   const [bolsterTemplateNotes, setBolsterTemplateNotes] = useState('');
   const [pillowDeleteOpen, setPillowDeleteOpen] = useState(false);
   const [bolsterDeleteOpen, setBolsterDeleteOpen] = useState(false);
+
+  // Filling Templates (sale path) — size-scoped, filling lines only.
+  const [ftKind, setFtKind] = useState<"pillow" | "bolster">("pillow");
+  const [ftKey, setFtKey] = useState<string>("M");
+  const [ftTemplates, setFtTemplates] = useState<FillingTemplateRow[]>([]);
+  const [ftSelectedId, setFtSelectedId] = useState<number | "">("");
+  const [ftName, setFtName] = useState("");
+  const [ftNotes, setFtNotes] = useState("");
+  const [ftActive, setFtActive] = useState(true);
+  const [ftLines, setFtLines] = useState<BomLine[]>([]);
+  const [ftSaving, setFtSaving] = useState(false);
 
   const getBolsterTemplateKey = useCallback((variant: NonNullable<typeof bolsterVariant>) => {
     return variant === 'Short (0.8m)' ? 'short' : variant === 'Long (1.2m)' ? 'long' : 'medium';
@@ -351,7 +370,7 @@ export default function ConfigureInventoryPage() {
       kind === 'pillow' && pillowKind === 'premium' && pillowVariant
         ? `&pillowVariant=${encodeURIComponent(pillowVariant)}`
         : '';
-    const url = settingsPath(`/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}${pillowKindParam}${pillowVariantParam}`)
+    const url = settingsPath(`/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}&role=warehouse${pillowKindParam}${pillowVariantParam}`)
     const res = await fetch(url, { method: 'GET' })
     if (!res.ok) {
       const payload = await res.json().catch(() => null)
@@ -361,6 +380,134 @@ export default function ConfigureInventoryPage() {
     const payload = await res.json().catch(() => null)
     return (payload?.templates ?? []) as Array<{ id: number; name: string; notes: string | null }>
   }
+
+  const loadFillingTemplates = useCallback(async (kind: "pillow" | "bolster", key: string) => {
+    const url = settingsPath(
+      `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}&role=filling`,
+    );
+    const res = await fetch(url, { method: "GET" });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null);
+      throw new Error(payload?.error ?? "Failed to load Filling Templates");
+    }
+    const payload = await res.json().catch(() => null);
+    return (payload?.templates ?? []) as FillingTemplateRow[];
+  }, [settingsPath]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await loadFillingTemplates(ftKind, ftKey);
+        if (cancelled) return;
+        setFtTemplates(list);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load Filling Templates");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ftKind, ftKey, loadFillingTemplates]);
+
+  const resetFillingEditor = () => {
+    setFtSelectedId("");
+    setFtName("");
+    setFtNotes("");
+    setFtActive(true);
+    setFtLines([]);
+  };
+
+  const selectFillingTemplate = async (id: number | "") => {
+    setFtSelectedId(id);
+    if (id === "") {
+      setFtName("");
+      setFtNotes("");
+      setFtActive(true);
+      setFtLines([]);
+      return;
+    }
+    const meta = ftTemplates.find((t) => t.id === id);
+    setFtName(meta?.name ?? "");
+    setFtNotes(meta?.notes ?? "");
+    setFtActive(meta?.is_active ?? true);
+    try {
+      const lines = await loadTemplateLines(id);
+      setFtLines(lines);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load template lines");
+    }
+  };
+
+  const saveFillingTemplate = async () => {
+    const name = ftName.trim();
+    if (!name) {
+      toast.message("Enter a Filling Template name");
+      return;
+    }
+    setFtSaving(true);
+    try {
+      const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: ftKind,
+          key: ftKey,
+          name,
+          notes: ftNotes.trim() || undefined,
+          role: "filling",
+          is_active: ftActive,
+          lines: buildPayloadLines(ftLines),
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to save Filling Template");
+      const list = await loadFillingTemplates(ftKind, ftKey);
+      setFtTemplates(list);
+      const savedId = payload?.template?.id as number | undefined;
+      if (savedId) {
+        setFtSelectedId(savedId);
+      }
+      toast.success(payload?.updatedExisting ? "Filling Template updated" : "Filling Template saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save Filling Template");
+    } finally {
+      setFtSaving(false);
+    }
+  };
+
+  const toggleFillingActive = async (id: number, is_active: boolean) => {
+    try {
+      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to update");
+      setFtTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, is_active } : t)));
+      if (ftSelectedId === id) setFtActive(is_active);
+      toast.success(is_active ? "Template activated" : "Template deactivated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  };
+
+  const deleteFillingTemplate = async () => {
+    if (ftSelectedId === "") return;
+    setFtSaving(true);
+    try {
+      await deleteTemplateById(ftSelectedId);
+      const list = await loadFillingTemplates(ftKind, ftKey);
+      setFtTemplates(list);
+      resetFillingEditor();
+      toast.success("Filling Template deleted");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setFtSaving(false);
+    }
+  };
 
   const loadTemplateLines = async (templateId: number) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), { method: 'GET' })
@@ -627,6 +774,156 @@ export default function ConfigureInventoryPage() {
         </div>
       </div>
 
+      <Separator />
+      <div className="space-y-4">
+        <div>
+          <div className="text-2xl font-semibold">Filling Templates</div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Filling-only recipes for operator assignment. Scoped by product type and size.
+            Packaging and protector stay on the composed sellable BOM above.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <div className="text-sm font-medium text-muted-foreground">Product type</div>
+            <Select
+              value={ftKind}
+              onValueChange={(v) => {
+                if (v !== "pillow" && v !== "bolster") return;
+                setFtKind(v);
+                setFtKey(v === "pillow" ? "M" : "medium");
+                resetFillingEditor();
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pillow">Pillow</SelectItem>
+                <SelectItem value="bolster">Bolster</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <div className="text-sm font-medium text-muted-foreground">
+              {ftKind === "pillow" ? "Size" : "Length"}
+            </div>
+            <Select
+              value={ftKey}
+              onValueChange={(v) => {
+                setFtKey(v);
+                resetFillingEditor();
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(ftKind === "pillow" ? SIZES : (["short", "medium", "long"] as const)).map((k) => (
+                  <SelectItem key={k} value={k}>
+                    {k}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <div className="text-sm font-medium text-muted-foreground">Template</div>
+            <Select
+              value={ftSelectedId === "" ? "" : String(ftSelectedId)}
+              onValueChange={(v) => {
+                void selectFillingTemplate(v ? Number(v) : "");
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="New template…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">New template…</SelectItem>
+                {ftTemplates.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                    {!t.is_active ? " (inactive)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input
+            placeholder="Filling Template name"
+            value={ftName}
+            onChange={(e) => setFtName(e.target.value)}
+          />
+          <Input
+            placeholder="Notes (optional)"
+            value={ftNotes}
+            onChange={(e) => setFtNotes(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <Switch checked={ftActive} onCheckedChange={setFtActive} />
+            Active (selectable on assign)
+          </label>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => void saveFillingTemplate()} disabled={ftSaving}>
+              {ftSaving ? "Saving…" : "Save Filling Template"}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={ftSelectedId === "" || ftSaving}
+              onClick={() => void deleteFillingTemplate()}
+            >
+              Delete
+            </Button>
+            <Button variant="outline" onClick={resetFillingEditor} disabled={ftSaving}>
+              Clear
+            </Button>
+          </div>
+        </div>
+        {ftTemplates.length > 0 && (
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Active</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ftTemplates.map((t) => (
+                  <TableRow key={t.id}>
+                    <TableCell>
+                      <button
+                        type="button"
+                        className="text-left font-medium hover:underline"
+                        onClick={() => void selectFillingTemplate(t.id)}
+                      >
+                        {t.name}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={t.is_active}
+                        onCheckedChange={(checked) => void toggleFillingActive(t.id, checked)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        <FillingLinesEditor
+          items={items}
+          lines={ftLines}
+          setLines={setFtLines}
+          sizeLabel={ftKey}
+        />
+      </div>
+
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full sm:max-w-xl">
           <SheetHeader>
@@ -727,6 +1024,7 @@ export default function ConfigureInventoryPage() {
                               pillowVariant: selectedPillowKind === 'premium' ? premiumVariant : undefined,
                               name,
                               notes: pillowTemplateNotes.trim() || undefined,
+                              role: 'warehouse',
                               lines: buildPayloadLines(bomByKind[selectedPillowKind][selectedSize] ?? []),
                             }),
                           });
@@ -886,6 +1184,7 @@ export default function ConfigureInventoryPage() {
                               key,
                               name,
                               notes: bolsterTemplateNotes.trim() || undefined,
+                              role: 'warehouse',
                               lines: buildPayloadLines(bolsterLines ?? []),
                             }),
                           });
@@ -1091,6 +1390,46 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
       )}
       <Separator />
     </div>
+  );
+}
+
+function FillingLinesEditor({
+  items,
+  lines,
+  setLines,
+  sizeLabel,
+}: {
+  items: Item[];
+  lines: BomLine[];
+  setLines: Dispatch<SetStateAction<BomLine[]>>;
+  sizeLabel: string;
+}) {
+  const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const fillings = useMemo(() => items.filter((i) => i.category === "filling"), [items]);
+
+  const upsert = (itemId: number, quantity: number) => {
+    setLines((prev) => {
+      const rest = prev.filter((l) => l.item_id !== itemId);
+      if (quantity <= 0) return rest;
+      return [...rest, { item_id: itemId, quantity }];
+    });
+  };
+  const remove = (itemId: number) => setLines((prev) => prev.filter((l) => l.item_id !== itemId));
+
+  return (
+    <DynamicPartSection
+      title="Fillings"
+      sizeLabel={sizeLabel}
+      lines={lines}
+      availableItems={fillings}
+      getItem={(id) => itemsById.get(id)}
+      upsert={upsert}
+      remove={remove}
+      variantResolver={(item, fallbackSize) =>
+        item.size ?? fallbackSize ?? normalizeNameOrFallback(item.subtype ?? item.name, "filling")
+      }
+      optionLabelResolver={(item) => getFillingDisplayLabel(item, sizeLabel)}
+    />
   );
 }
 

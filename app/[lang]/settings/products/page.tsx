@@ -245,6 +245,8 @@ export default function SettingsProductsPage() {
         if (categoryFilter !== "all") params.set("category_id", categoryFilter);
         params.set("page", String(page));
         params.set("limit", String(LIMIT));
+        // Admin list includes composed main products; public shop excludes them.
+        params.set("include_custom", "true");
 
         // Add product_type filter
         if (typeFilter === "pillow") params.set("product_type", "pillow");

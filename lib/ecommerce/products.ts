@@ -35,6 +35,13 @@ export async function attachStockAvailable<
   return products;
 }
 
+/** Composed main products — buyable only via customisation, not the shop catalog. */
+export const CUSTOM_COMPOSED_PRODUCT_TYPES = ["pillow", "bolster"] as const;
+
+export function isShopCatalogProduct(product: { product_type: string }): boolean {
+  return !(CUSTOM_COMPOSED_PRODUCT_TYPES as readonly string[]).includes(product.product_type);
+}
+
 export interface GetProductsOpts {
   status?: string;
   category_id?: string;
@@ -46,6 +53,8 @@ export interface GetProductsOpts {
   page?: number;
   limit?: number;
   sort?: string; // "newest" | "price-asc" | "price-desc" | "title"
+  /** When true (default), exclude pillow/bolster auto-generated main products. */
+  shopCatalogOnly?: boolean;
 }
 
 export async function getProducts(opts: GetProductsOpts = {}) {
@@ -60,6 +69,10 @@ export async function getProducts(opts: GetProductsOpts = {}) {
   if (opts.status) query = query.eq("status", opts.status);
   if (opts.category_id) query = query.eq("category_id", opts.category_id);
   if (opts.product_type) query = query.eq("product_type", opts.product_type);
+  // ponytail: filter at query; admin listings pass shopCatalogOnly: false
+  else if (opts.shopCatalogOnly !== false) {
+    query = query.not("product_type", "in", `(${CUSTOM_COMPOSED_PRODUCT_TYPES.join(",")})`);
+  }
   if (opts.featured !== undefined) query = query.eq("featured", opts.featured);
   if (opts.tags?.length) query = query.overlaps("tags", opts.tags);
   if (opts.search) query = query.or(`slug.ilike.%${opts.search}%,content->>'en-US'->>'title'.ilike.%${opts.search}%`);
@@ -124,6 +137,8 @@ export async function getProductBySlug(slug: string) {
     product_images: ProductImage[];
     product_options: ProductOption[];
   };
+  // Direct URLs for composed main products are not buyable in the shop.
+  if (!isShopCatalogProduct(row)) return null;
   await attachStockAvailable([row]);
   return {
     ...row,
@@ -163,6 +178,7 @@ export async function getFeaturedProducts(limit = 8) {
     .select("*, product_variants(*), product_images(*)")
     .eq("status", "active")
     .eq("featured", true)
+    .not("product_type", "in", `(${CUSTOM_COMPOSED_PRODUCT_TYPES.join(",")})`)
     .order("updated_at", { ascending: false })
     .limit(limit);
 

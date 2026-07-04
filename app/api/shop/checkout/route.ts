@@ -139,6 +139,23 @@ export async function POST(req: Request) {
   // Shim so the rest of the handler can keep referencing `cart.items`.
   const cart = { items: cartItems, currency: cartCurrency };
 
+  // Composed main products are not plain-buyable; entry is customisation only.
+  for (const item of cart.items) {
+    const productType = item.product?.product_type;
+    if (
+      (productType === "pillow" || productType === "bolster") &&
+      !item.customization_id
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Mpillow and mbolster are only available through customisation, not the shop cart.",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   // 5. Validate stock — branch on customization vs standard items
   const standardItems = cart.items.filter((item) => !item.customization_id);
   const customizedItems = cart.items.filter((item) => !!item.customization_id);
