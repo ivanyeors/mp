@@ -13,6 +13,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 
@@ -172,17 +173,8 @@ export default function ConfigureInventoryPage() {
   const [bolsterTemplateNotes, setBolsterTemplateNotes] = useState('');
   const [pillowDeleteOpen, setPillowDeleteOpen] = useState(false);
   const [bolsterDeleteOpen, setBolsterDeleteOpen] = useState(false);
-
-  // Filling Templates (sale path) — size-scoped, filling lines only.
-  const [ftKind, setFtKind] = useState<"pillow" | "bolster">("pillow");
-  const [ftKey, setFtKey] = useState<string>("M");
-  const [ftTemplates, setFtTemplates] = useState<FillingTemplateRow[]>([]);
-  const [ftSelectedId, setFtSelectedId] = useState<number | "">("");
-  const [ftName, setFtName] = useState("");
-  const [ftNotes, setFtNotes] = useState("");
-  const [ftActive, setFtActive] = useState(true);
-  const [ftLines, setFtLines] = useState<BomLine[]>([]);
-  const [ftSaving, setFtSaving] = useState(false);
+  const [pillowDrawerTab, setPillowDrawerTab] = useState<"product" | "filling">("product");
+  const [bolsterDrawerTab, setBolsterDrawerTab] = useState<"product" | "filling">("product");
 
   const getBolsterTemplateKey = useCallback((variant: NonNullable<typeof bolsterVariant>) => {
     return variant === 'Short (0.8m)' ? 'short' : variant === 'Long (1.2m)' ? 'long' : 'medium';
@@ -253,17 +245,6 @@ export default function ConfigureInventoryPage() {
   }, [loadAll]);
 
   useEffect(() => {
-    try {
-      // Load a default cache (medium) only once; specific variant will reload on open
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem('bolster_bom_lines:medium') : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as BomLine[];
-        setBolsterLines(Array.isArray(parsed) ? parsed : []);
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
     const loadVariant = async () => {
       if (!bolsterOpen || !bolsterVariant) return;
       const variant = bolsterVariant === 'Short (0.8m)'
@@ -275,23 +256,17 @@ export default function ConfigureInventoryPage() {
         .select('item_id,quantity')
         .eq('variant', variant);
       const rows = (data ?? []).map((l: LineRow) => ({ item_id: l.item_id, quantity: Number(l.quantity) }));
-      if (rows.length) {
-        setBolsterLines(rows);
-      } else {
-        try {
-          const raw = typeof window !== 'undefined' ? window.localStorage.getItem(`bolster_bom_lines:${variant}`) : null;
-          if (raw) {
-            const parsed = JSON.parse(raw) as BomLine[];
-            setBolsterLines(Array.isArray(parsed) ? parsed : []);
-          } else {
-            setBolsterLines([]);
-          }
-        } catch {
-          setBolsterLines([]);
-        }
-      }
+      setBolsterLines(rows);
     };
     loadVariant();
+  }, [bolsterOpen, bolsterVariant]);
+
+  useEffect(() => {
+    if (open) setPillowDrawerTab("product");
+  }, [open, selectedSize, selectedPillowKind]);
+
+  useEffect(() => {
+    if (bolsterOpen) setBolsterDrawerTab("product");
   }, [bolsterOpen, bolsterVariant]);
 
   useEffect(() => {
@@ -393,121 +368,6 @@ export default function ConfigureInventoryPage() {
     const payload = await res.json().catch(() => null);
     return (payload?.templates ?? []) as FillingTemplateRow[];
   }, [settingsPath]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const list = await loadFillingTemplates(ftKind, ftKey);
-        if (cancelled) return;
-        setFtTemplates(list);
-      } catch (e) {
-        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load Filling Templates");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [ftKind, ftKey, loadFillingTemplates]);
-
-  const resetFillingEditor = () => {
-    setFtSelectedId("");
-    setFtName("");
-    setFtNotes("");
-    setFtActive(true);
-    setFtLines([]);
-  };
-
-  const selectFillingTemplate = async (id: number | "") => {
-    setFtSelectedId(id);
-    if (id === "") {
-      setFtName("");
-      setFtNotes("");
-      setFtActive(true);
-      setFtLines([]);
-      return;
-    }
-    const meta = ftTemplates.find((t) => t.id === id);
-    setFtName(meta?.name ?? "");
-    setFtNotes(meta?.notes ?? "");
-    setFtActive(meta?.is_active ?? true);
-    try {
-      const lines = await loadTemplateLines(id);
-      setFtLines(lines);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load template lines");
-    }
-  };
-
-  const saveFillingTemplate = async () => {
-    const name = ftName.trim();
-    if (!name) {
-      toast.message("Enter a Filling Template name");
-      return;
-    }
-    setFtSaving(true);
-    try {
-      const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: ftKind,
-          key: ftKey,
-          name,
-          notes: ftNotes.trim() || undefined,
-          role: "filling",
-          is_active: ftActive,
-          lines: buildPayloadLines(ftLines),
-        }),
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to save Filling Template");
-      const list = await loadFillingTemplates(ftKind, ftKey);
-      setFtTemplates(list);
-      const savedId = payload?.template?.id as number | undefined;
-      if (savedId) {
-        setFtSelectedId(savedId);
-      }
-      toast.success(payload?.updatedExisting ? "Filling Template updated" : "Filling Template saved");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save Filling Template");
-    } finally {
-      setFtSaving(false);
-    }
-  };
-
-  const toggleFillingActive = async (id: number, is_active: boolean) => {
-    try {
-      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active }),
-      });
-      const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to update");
-      setFtTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, is_active } : t)));
-      if (ftSelectedId === id) setFtActive(is_active);
-      toast.success(is_active ? "Template activated" : "Template deactivated");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to update");
-    }
-  };
-
-  const deleteFillingTemplate = async () => {
-    if (ftSelectedId === "") return;
-    setFtSaving(true);
-    try {
-      await deleteTemplateById(ftSelectedId);
-      const list = await loadFillingTemplates(ftKind, ftKey);
-      setFtTemplates(list);
-      resetFillingEditor();
-      toast.success("Filling Template deleted");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to delete");
-    } finally {
-      setFtSaving(false);
-    }
-  };
 
   const loadTemplateLines = async (templateId: number) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), { method: 'GET' })
@@ -634,9 +494,6 @@ export default function ConfigureInventoryPage() {
           const payload = await res.json().catch(() => null)
           throw new Error(payload?.error ?? 'Failed to update template')
         }
-      }
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(`bolster_bom_lines:${variant}`, JSON.stringify(lines));
       }
       toast.success('Bolster configuration saved');
       notifyInventoryChange();
@@ -774,166 +631,27 @@ export default function ConfigureInventoryPage() {
         </div>
       </div>
 
-      <Separator />
-      <div className="space-y-4">
-        <div>
-          <div className="text-2xl font-semibold">Filling Templates</div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Filling-only recipes for operator assignment. Scoped by product type and size.
-            Packaging and protector stay on the composed sellable BOM above.
-          </p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
-            <div className="text-sm font-medium text-muted-foreground">Product type</div>
-            <Select
-              value={ftKind}
-              onValueChange={(v) => {
-                if (v !== "pillow" && v !== "bolster") return;
-                setFtKind(v);
-                setFtKey(v === "pillow" ? "M" : "medium");
-                resetFillingEditor();
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pillow">Pillow</SelectItem>
-                <SelectItem value="bolster">Bolster</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <div className="text-sm font-medium text-muted-foreground">
-              {ftKind === "pillow" ? "Size" : "Length"}
-            </div>
-            <Select
-              value={ftKey}
-              onValueChange={(v) => {
-                setFtKey(v);
-                resetFillingEditor();
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(ftKind === "pillow" ? SIZES : (["short", "medium", "long"] as const)).map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {k}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <div className="text-sm font-medium text-muted-foreground">Template</div>
-            <Select
-              value={ftSelectedId === "" ? "" : String(ftSelectedId)}
-              onValueChange={(v) => {
-                void selectFillingTemplate(v ? Number(v) : "");
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="New template…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">New template…</SelectItem>
-                {ftTemplates.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                    {!t.is_active ? " (inactive)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input
-            placeholder="Filling Template name"
-            value={ftName}
-            onChange={(e) => setFtName(e.target.value)}
-          />
-          <Input
-            placeholder="Notes (optional)"
-            value={ftNotes}
-            onChange={(e) => setFtNotes(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={ftActive} onCheckedChange={setFtActive} />
-            Active (selectable on assign)
-          </label>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => void saveFillingTemplate()} disabled={ftSaving}>
-              {ftSaving ? "Saving…" : "Save Filling Template"}
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={ftSelectedId === "" || ftSaving}
-              onClick={() => void deleteFillingTemplate()}
-            >
-              Delete
-            </Button>
-            <Button variant="outline" onClick={resetFillingEditor} disabled={ftSaving}>
-              Clear
-            </Button>
-          </div>
-        </div>
-        {ftTemplates.length > 0 && (
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Active</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ftTemplates.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell>
-                      <button
-                        type="button"
-                        className="text-left font-medium hover:underline"
-                        onClick={() => void selectFillingTemplate(t.id)}
-                      >
-                        {t.name}
-                      </button>
-                    </TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={t.is_active}
-                        onCheckedChange={(checked) => void toggleFillingActive(t.id, checked)}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-        <FillingLinesEditor
-          items={items}
-          lines={ftLines}
-          setLines={setFtLines}
-          sizeLabel={ftKey}
-        />
-      </div>
-
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetContent side="right" className="flex w-full flex-col sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>
               Configure {selectedPillowKind === 'premium' ? 'Premium' : 'Basic'} — Size {selectedSize ?? ''}
             </SheetTitle>
-            <SheetDescription>Adjust BOM quantities and save for this pillow size.</SheetDescription>
+            <SheetDescription>
+              Product tab: non-filling BOM and warehouse presets. Filling Config: filling mixes for this size.
+            </SheetDescription>
           </SheetHeader>
           {selectedSize && selectedPillowKind && (
-            <div className="mt-4 space-y-3 px-4">
+            <Tabs
+              value={pillowDrawerTab}
+              onValueChange={(v) => setPillowDrawerTab(v as "product" | "filling")}
+              className="mt-4 flex min-h-0 flex-1 flex-col px-4"
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
+                <TabsTrigger value="filling" className="flex-1">Filling Config</TabsTrigger>
+              </TabsList>
+              <TabsContent value="product" className="mt-4 space-y-3 overflow-y-auto">
               {selectedPillowKind === 'premium' && (
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Premium variant</div>
@@ -1080,10 +798,6 @@ export default function ConfigureInventoryPage() {
                 </DialogContent>
               </Dialog>
               <Separator />
-            </div>
-          )}
-          <div className="mt-4 space-y-4 px-4">
-            {selectedSize && selectedPillowKind && (
               <SizeEditor
                 size={selectedSize}
                 items={items}
@@ -1095,31 +809,57 @@ export default function ConfigureInventoryPage() {
                   }))
                 }}
               />
-            )}
-          </div>
-          <SheetFooter>
-            <Button
-              onClick={() => {
-                if (!selectedPillowKind || !selectedSize) return;
-                saveSelected(selectedPillowKind, selectedSize);
-              }}
-              disabled={saving}
-            >
-              {saving ? 'Saving…' : 'Save changes'}
-            </Button>
-          </SheetFooter>
+              </TabsContent>
+              <TabsContent value="filling" className="mt-4 overflow-y-auto">
+                <FillingConfigPanel
+                  kind="pillow"
+                  templateKey={selectedSize}
+                  items={items}
+                  settingsPath={settingsPath}
+                  loadFillingTemplates={loadFillingTemplates}
+                  loadTemplateLines={loadTemplateLines}
+                  deleteTemplateById={deleteTemplateById}
+                  buildPayloadLines={buildPayloadLines}
+                />
+              </TabsContent>
+            </Tabs>
+          )}
+          {pillowDrawerTab === "product" && (
+            <SheetFooter>
+              <Button
+                onClick={() => {
+                  if (!selectedPillowKind || !selectedSize) return;
+                  saveSelected(selectedPillowKind, selectedSize);
+                }}
+                disabled={saving}
+              >
+                {saving ? 'Saving…' : 'Save changes'}
+              </Button>
+            </SheetFooter>
+          )}
         </SheetContent>
       </Sheet>
 
       {/* Bolster Sheet */}
       <Sheet open={bolsterOpen} onOpenChange={setBolsterOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetContent side="right" className="flex w-full flex-col sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>Configure Bolster{bolsterVariant ? ` — ${bolsterVariant}` : ''}</SheetTitle>
-            <SheetDescription>Adjust components and quantities for the single-size bolster, including packaging.</SheetDescription>
+            <SheetDescription>
+              Product tab: non-filling BOM and warehouse presets. Filling Config: filling mixes for this length.
+            </SheetDescription>
           </SheetHeader>
           {bolsterVariant && (
-            <div className="mt-4 space-y-3 px-4">
+            <Tabs
+              value={bolsterDrawerTab}
+              onValueChange={(v) => setBolsterDrawerTab(v as "product" | "filling")}
+              className="mt-4 flex min-h-0 flex-1 flex-col px-4"
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
+                <TabsTrigger value="filling" className="flex-1">Filling Config</TabsTrigger>
+              </TabsList>
+              <TabsContent value="product" className="mt-4 space-y-3 overflow-y-auto">
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-1">
                   <div className="text-sm font-medium text-muted-foreground">Template</div>
@@ -1174,7 +914,7 @@ export default function ConfigureInventoryPage() {
                       onClick={async () => {
                         const name = bolsterTemplateName.trim();
                         if (!name) { toast.message('Enter a template name'); return; }
-                        const key = bolsterVariant ? getBolsterTemplateKey(bolsterVariant) : 'medium';
+                        const key = getBolsterTemplateKey(bolsterVariant);
                         try {
                           const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
                             method: 'POST',
@@ -1235,21 +975,255 @@ export default function ConfigureInventoryPage() {
                 </DialogContent>
               </Dialog>
               <Separator />
-            </div>
+              <BolsterEditor
+                items={items}
+                lines={bolsterLines}
+                setLines={setBolsterLines}
+                variant={bolsterVariant}
+              />
+              </TabsContent>
+              <TabsContent value="filling" className="mt-4 overflow-y-auto">
+                <FillingConfigPanel
+                  kind="bolster"
+                  templateKey={getBolsterTemplateKey(bolsterVariant)}
+                  items={items}
+                  settingsPath={settingsPath}
+                  loadFillingTemplates={loadFillingTemplates}
+                  loadTemplateLines={loadTemplateLines}
+                  deleteTemplateById={deleteTemplateById}
+                  buildPayloadLines={buildPayloadLines}
+                />
+              </TabsContent>
+            </Tabs>
           )}
-          <div className="mt-4 space-y-4 px-4">
-            <BolsterEditor
-              items={items}
-              lines={bolsterLines}
-              setLines={setBolsterLines}
-              variant={bolsterVariant}
-            />
-          </div>
-          <SheetFooter>
-            <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-          </SheetFooter>
+          {bolsterDrawerTab === "product" && (
+            <SheetFooter>
+              <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            </SheetFooter>
+          )}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function FillingConfigPanel({
+  kind,
+  templateKey,
+  items,
+  settingsPath,
+  loadFillingTemplates,
+  loadTemplateLines,
+  deleteTemplateById,
+  buildPayloadLines,
+}: {
+  kind: "pillow" | "bolster";
+  templateKey: string;
+  items: Item[];
+  settingsPath: (path: string) => string;
+  loadFillingTemplates: (kind: "pillow" | "bolster", key: string) => Promise<FillingTemplateRow[]>;
+  loadTemplateLines: (templateId: number) => Promise<BomLine[]>;
+  deleteTemplateById: (templateId: number) => Promise<void>;
+  buildPayloadLines: (lines: BomLine[]) => { item_id: number; quantity: number }[];
+}) {
+  const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
+  const [selectedId, setSelectedId] = useState<number | "">("");
+  const [name, setName] = useState("");
+  const [notes, setNotes] = useState("");
+  const [active, setActive] = useState(true);
+  const [lines, setLines] = useState<BomLine[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  const resetEditor = useCallback(() => {
+    setSelectedId("");
+    setName("");
+    setNotes("");
+    setActive(true);
+    setLines([]);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    resetEditor();
+    (async () => {
+      try {
+        const list = await loadFillingTemplates(kind, templateKey);
+        if (!cancelled) setTemplates(list);
+      } catch (e) {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load Filling Templates");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, templateKey, loadFillingTemplates, resetEditor]);
+
+  const selectTemplate = async (id: number | "") => {
+    setSelectedId(id);
+    if (id === "") {
+      setName("");
+      setNotes("");
+      setActive(true);
+      setLines([]);
+      return;
+    }
+    const meta = templates.find((t) => t.id === id);
+    setName(meta?.name ?? "");
+    setNotes(meta?.notes ?? "");
+    setActive(meta?.is_active ?? true);
+    try {
+      setLines(await loadTemplateLines(id));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load template lines");
+    }
+  };
+
+  const saveTemplate = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast.message("Enter a Filling Template name");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind,
+          key: templateKey,
+          name: trimmed,
+          notes: notes.trim() || undefined,
+          role: "filling",
+          is_active: active,
+          lines: buildPayloadLines(lines),
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to save Filling Template");
+      const list = await loadFillingTemplates(kind, templateKey);
+      setTemplates(list);
+      const savedId = payload?.template?.id as number | undefined;
+      if (savedId) setSelectedId(savedId);
+      toast.success(payload?.updatedExisting ? "Filling Template updated" : "Filling Template saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save Filling Template");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleActive = async (id: number, is_active: boolean) => {
+    try {
+      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to update");
+      setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, is_active } : t)));
+      if (selectedId === id) setActive(is_active);
+      toast.success(is_active ? "Template activated" : "Template deactivated");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update");
+    }
+  };
+
+  const deleteTemplate = async () => {
+    if (selectedId === "") return;
+    setSaving(true);
+    try {
+      await deleteTemplateById(selectedId);
+      const list = await loadFillingTemplates(kind, templateKey);
+      setTemplates(list);
+      resetEditor();
+      toast.success("Filling Template deleted");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Filling-only mixes for operator assignment. Scoped to {kind === "pillow" ? "size" : "length"}{" "}
+        <strong>{templateKey}</strong>.
+      </p>
+      <div className="space-y-1">
+        <div className="text-sm font-medium text-muted-foreground">Template</div>
+        <Select
+          value={selectedId === "" ? "" : String(selectedId)}
+          onValueChange={(v) => void selectTemplate(v ? Number(v) : "")}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="New template…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">New template…</SelectItem>
+            {templates.map((t) => (
+              <SelectItem key={t.id} value={String(t.id)}>
+                {t.name}
+                {!t.is_active ? " (inactive)" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input placeholder="Filling Template name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={active} onCheckedChange={setActive} />
+          Active (selectable on assign)
+        </label>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => void saveTemplate()} disabled={saving}>
+            {saving ? "Saving…" : "Save Filling Template"}
+          </Button>
+          <Button variant="destructive" disabled={selectedId === "" || saving} onClick={() => void deleteTemplate()}>
+            Delete
+          </Button>
+          <Button variant="outline" onClick={resetEditor} disabled={saving}>
+            Clear
+          </Button>
+        </div>
+      </div>
+      {templates.length > 0 && (
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Active</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {templates.map((t) => (
+                <TableRow key={t.id}>
+                  <TableCell>
+                    <button
+                      type="button"
+                      className="text-left font-medium hover:underline"
+                      onClick={() => void selectTemplate(t.id)}
+                    >
+                      {t.name}
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <Switch checked={t.is_active} onCheckedChange={(checked) => void toggleActive(t.id, checked)} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      <FillingLinesEditor items={items} lines={lines} setLines={setLines} sizeLabel={templateKey} />
     </div>
   );
 }
@@ -1262,14 +1236,12 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
   }, [items]);
 
   const sized = (category: Item["category"]) => items.filter((i) => i.category === category && i.size === size);
-  // Fillings are universal: available for all products (no size filtering).
-  const fillings = items.filter((i) => i.category === "filling");
   const packaging = items.filter(
     (i) => i.category === "packaging" && ((size === "XS" || size === "S" || size === "M") ? i.size === "S" : i.size === "L"),
   );
   const accessories = items.filter((i) => i.category === "accessories" && (!i.size || i.size === size));
   const other = items.filter((i) => i.category === "other" && (!i.size || i.size === size));
-  const lines = bom[size];
+  const lines = bom[size].filter((l) => itemsById.get(l.item_id)?.category !== "filling");
 
   const upsert = (item_id: number, quantity: number) => {
     const normalized = Number.isFinite(quantity) ? Math.max(0, Math.round(quantity)) : 0;
@@ -1333,18 +1305,6 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
-      />
-
-      <DynamicPartSection
-        title="Fillings"
-        sizeLabel={size}
-        lines={linesForCategory("filling")}
-        availableItems={fillings}
-        getItem={(id) => itemsById.get(id)}
-        upsert={upsert}
-        remove={remove}
-        variantResolver={(item, fallbackSize) => item.size ?? fallbackSize ?? normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
-        optionLabelResolver={(item) => getFillingDisplayLabel(item, size)}
       />
 
       <DynamicPartSection
@@ -1631,8 +1591,6 @@ function BolsterEditor({
     if (byVariantSize.length) return byVariantSize;
     return items.filter((i) => i.category === category && sizeEquals(i.size, "BOLSTER"));
   };
-  // Fillings are universal: available for all products (no size filtering).
-  const fillings = items.filter((i) => i.category === "filling");
   const packaging = items.filter((i) => i.category === "packaging" && i.size === "S");
   const accessories = items.filter(
     (i) =>
@@ -1670,6 +1628,7 @@ function BolsterEditor({
 
   const uncategorizedLines = lines.filter((l) => {
     const cat = itemsById.get(l.item_id)?.category;
+    if (cat === "filling") return false;
     return !cat || !KNOWN_CATEGORIES.includes(cat);
   });
 
@@ -1693,18 +1652,6 @@ function BolsterEditor({
         getItem={(id) => itemsById.get(id)}
         upsert={upsert}
         remove={remove}
-      />
-
-      <DynamicPartSection
-        title="Fillings"
-        sizeLabel={variantSize ?? "Bolster"}
-        lines={linesForCategory("filling")}
-        availableItems={fillings}
-        getItem={(id) => itemsById.get(id)}
-        upsert={upsert}
-        remove={remove}
-        variantResolver={(item, fallbackSize) => item.size ?? fallbackSize ?? normalizeNameOrFallback(item.subtype ?? item.name, "filling")}
-        optionLabelResolver={(item) => getFillingDisplayLabel(item, variantSize ?? "Bolster")}
       />
 
       <DynamicPartSection
