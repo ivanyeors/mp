@@ -25,8 +25,10 @@ const {
   toStripeAmountCents,
   createHold,
   createHoldCheckout,
+  createTopUpCheckout,
   captureHold,
   releaseHold,
+  planCapture,
 } = await import("@/lib/authorization-hold");
 
 describe("authorization-hold", () => {
@@ -79,5 +81,35 @@ describe("authorization-hold", () => {
     expect(capturePi).toHaveBeenCalledWith("pi_1", { amount_to_capture: 5000 });
     await releaseHold("pi_2");
     expect(cancelPi).toHaveBeenCalledWith("pi_2");
+  });
+
+  it("plans capture vs top-up without over-capturing the hold", () => {
+    expect(planCapture(80, 100)).toEqual({ kind: "capture", amount: 80 });
+    expect(planCapture(130, 100)).toEqual({
+      kind: "top_up",
+      holdCapture: 100,
+      topUp: 30,
+    });
+  });
+
+  it("creates immediate-capture top-up Checkout", async () => {
+    const result = await createTopUpCheckout({
+      amount: 25,
+      currency: "SGD",
+      customerEmail: "a@b.com",
+      resultId: "r1",
+      successUrl: "https://x/ok",
+      cancelUrl: "https://x/cancel",
+    });
+    expect(result.url).toContain("stripe.test");
+    const arg = createSession.mock.calls.at(-1)?.[0] as {
+      mode: string;
+      metadata: { purpose: string; result_id: string };
+      payment_intent_data?: unknown;
+    };
+    expect(arg.mode).toBe("payment");
+    expect(arg.metadata.purpose).toBe("result_topup");
+    expect(arg.metadata.result_id).toBe("r1");
+    expect(arg.payment_intent_data).toBeUndefined();
   });
 });

@@ -95,7 +95,7 @@ Tax: ${opts.pricing.currency} ${opts.pricing.tax.toFixed(2)}<br/>
     : ""
 }
 <p><a href="${statusUrl}">Review your final build</a></p>
-<p>Accept and Decline will be available on the status page when payment capture is enabled.</p>`;
+<p>Accept or decline on the status page. Accept captures payment; Decline releases your hold.</p>`;
 
   try {
     await getEmailTransport().send({

@@ -81,7 +81,7 @@ export async function createHoldCheckout(
   return { sessionId: session.id, url: session.url };
 }
 
-/** Capture up to the authorized amount (optional partial). */
+/** Capture up to the authorized amount (optional partial). Never pass amount > authorized. */
 export async function captureHold(paymentIntentId: string, amountMajor?: number) {
   const stripe = getStripe();
   return stripe.paymentIntents.capture(
@@ -96,4 +96,73 @@ export async function captureHold(paymentIntentId: string, amountMajor?: number)
 export async function releaseHold(paymentIntentId: string) {
   const stripe = getStripe();
   return stripe.paymentIntents.cancel(paymentIntentId);
+}
+
+export type CapturePlan =
+  | { kind: "capture"; amount: number }
+  | { kind: "top_up"; holdCapture: number; topUp: number };
+
+/**
+ * Decide how to settle final vs authorized hold.
+ * Never captures above authorized — excess requires a separate top-up payment.
+ */
+export function planCapture(finalAmount: number, authorizedAmount: number): CapturePlan {
+  if (finalAmount <= 0 || authorizedAmount <= 0) {
+    throw new Error("final and authorized amounts must be positive");
+  }
+  if (finalAmount <= authorizedAmount) {
+    return { kind: "capture", amount: finalAmount };
+  }
+  return {
+    kind: "top_up",
+    holdCapture: authorizedAmount,
+    topUp: Math.round((finalAmount - authorizedAmount) * 100) / 100,
+  };
+}
+
+export type CreateTopUpCheckoutInput = {
+  amount: number;
+  currency: string;
+  customerEmail: string;
+  resultId: string;
+  successUrl: string;
+  cancelUrl: string;
+  metadata?: Record<string, string>;
+  idempotencyKey?: string;
+};
+
+/** Immediate-capture Checkout for the amount above the authorization hold. */
+export async function createTopUpCheckout(
+  input: CreateTopUpCheckoutInput,
+): Promise<{ sessionId: string; url: string }> {
+  const stripe = getStripe();
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: "payment",
+      customer_email: input.customerEmail,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: input.currency.toLowerCase(),
+            unit_amount: toStripeAmountCents(input.amount),
+            product_data: {
+              name: "Final build top-up",
+              description: "Additional charge because the final total exceeds your authorization hold.",
+            },
+          },
+        },
+      ],
+      metadata: {
+        ...(input.metadata ?? {}),
+        result_id: input.resultId,
+        purpose: "result_topup",
+      },
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+    },
+    input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined,
+  );
+  if (!session.url) throw new Error("Checkout session missing url");
+  return { sessionId: session.id, url: session.url };
 }

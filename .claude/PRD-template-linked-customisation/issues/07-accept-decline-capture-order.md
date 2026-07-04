@@ -19,17 +19,28 @@ Close the money loop: customer Accept/Decline on the status page (magic link for
 
 ## Acceptance criteria
 
-- [ ] Accept with final ≤ hold captures payment and creates an Order linked to the Result with full build snapshot.
-- [ ] Stock is re-validated at Accept; failure blocks capture.
-- [ ] Inventory is deducted only on successful capture.
-- [ ] Accept with final > hold requires customer top-up approval before capture; no over-capture.
-- [ ] Decline shows a warning that the hold will be released and customisation must be restarted.
-- [ ] After Decline, hold is released, status is `declined`, no Order is created, and UI offers **Start customisation again** (links to the correct flow).
-- [ ] Guest can Accept/Decline via magic link; logged-in user can Accept/Decline from account Result page.
-- [ ] After Accept, customer cancel/refund APIs and UI are blocked until the Order is shipped/delivered.
-- [ ] Results without a payment intent cannot Accept or capture.
-- [ ] Customer-visible copy uses **tier**, not kind.
-- [ ] Behavior tests cover capture/top-up/release rules (mocked Stripe).
+- [x] Accept with final ≤ hold captures payment and creates an Order linked to the Result with full build snapshot.
+- [x] Stock is re-validated at Accept; failure blocks capture.
+- [x] Inventory is deducted only on successful capture.
+- [x] Accept with final > hold requires customer top-up approval before capture; no over-capture.
+- [x] Decline shows a warning that the hold will be released and customisation must be restarted.
+- [x] After Decline, hold is released, status is `declined`, no Order is created, and UI offers **Start customisation again** (links to the correct flow).
+- [x] Guest can Accept/Decline via magic link; logged-in user can Accept/Decline from account Result page.
+- [x] After Accept, customer cancel/refund APIs and UI are blocked until the Order is shipped/delivered.
+- [x] Results without a payment intent cannot Accept or capture.
+- [x] Customer-visible copy uses **tier**, not kind.
+- [x] Behavior tests cover capture/top-up/release rules (mocked Stripe).
+
+## Status
+
+**Done** on `cursor/accept-decline-capture-order`.
+
+- `POST /api/results/[id]/accept` — stock check, planCapture, top-up Checkout when needed, capture hold, Order + build snapshot, inventory deduct, `order_id` link
+- `POST /api/results/[id]/decline` — release hold, `declined`, blocks after accept/capture
+- `planCapture` + `createTopUpCheckout` in `authorization-hold`
+- Lifecycle: accept requires payment intent
+- Status page: Accept / Decline dialog / Start customisation again / post-accept cancel notice
+- Tests: `lib/result-lifecycle/__tests__/slice-07-accept.test.ts`, authorization-hold plan/top-up cases
 
 ## Blocked by
 

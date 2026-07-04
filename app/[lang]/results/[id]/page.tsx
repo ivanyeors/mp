@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams, usePathname, useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { LoginForm } from "@/components/auth/login-form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -141,19 +149,27 @@ function ResultStatusPage() {
   const [signedIn, setSignedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [myResults, setMyResults] = useState<ResultListRow[]>([]);
+  const [acting, setActing] = useState(false);
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const topupSessionId = searchParams.get("topup_session_id");
+
+  const reloadResult = async () => {
+    const qs = new URLSearchParams();
+    if (token) qs.set("token", token);
+    if (sessionId) qs.set("session_id", sessionId);
+    const res = await fetch(`/api/results/${id}?${qs.toString()}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? "Failed to load");
+    setResult(data.result);
+  };
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const qs = new URLSearchParams();
-        if (token) qs.set("token", token);
-        if (sessionId) qs.set("session_id", sessionId);
-        const res = await fetch(`/api/results/${id}?${qs.toString()}`);
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error ?? "Failed to load");
-        if (!cancelled) setResult(data.result);
+        await reloadResult();
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
@@ -163,7 +179,72 @@ function ResultStatusPage() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload on identity params only
   }, [id, token, sessionId]);
+
+  const accept = async (topupSession?: string | null) => {
+    setActing(true);
+    setActionMessage(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/results/${id}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(token ? { token } : {}),
+          ...(topupSession ? { topupSessionId: topupSession } : {}),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Accept failed");
+      if (data.needsTopUp && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl as string;
+        return;
+      }
+      setActionMessage(
+        data.orderNumber
+          ? `Payment captured. Order ${data.orderNumber} is in production.`
+          : "Payment captured. Your order is in production.",
+      );
+      await reloadResult();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Accept failed");
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const decline = async () => {
+    setActing(true);
+    setActionMessage(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/results/${id}/decline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(token ? { token } : {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Decline failed");
+      setDeclineOpen(false);
+      setActionMessage("Hold released. Start a new customisation anytime.");
+      await reloadResult();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Decline failed");
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const topupStarted = useRef(false);
+  // Resume accept after top-up Checkout returns.
+  useEffect(() => {
+    if (!topupSessionId || loading || !result || result.status !== "assigned") return;
+    if (topupStarted.current) return;
+    topupStarted.current = true;
+    void accept(topupSessionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when top-up session present
+  }, [topupSessionId, loading, result?.status]);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
@@ -339,19 +420,80 @@ function ResultStatusPage() {
 
       {status === "assigned" && (
         <div className="flex flex-wrap gap-2 border-t pt-3">
-          <Button disabled variant="default" size="sm">
-            Accept
+          <Button
+            variant="default"
+            size="sm"
+            disabled={acting}
+            onClick={() => void accept()}
+          >
+            {acting ? "Working…" : "Accept"}
           </Button>
-          <Button disabled variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={acting}
+            onClick={() => setDeclineOpen(true)}
+          >
             Decline
           </Button>
-          <p className="w-full text-xs text-muted-foreground">
-            Accept and Decline open in the next release.
-          </p>
+          {result.authorized_amount != null &&
+            result.final_amount != null &&
+            Number(result.final_amount) > Number(result.authorized_amount) && (
+              <p className="w-full text-xs text-muted-foreground">
+                Final total exceeds your hold — Accept will ask you to approve a top-up
+                before payment is captured.
+              </p>
+            )}
         </div>
+      )}
+
+      {(status === "declined" || status === "expired") && (
+        <div className="border-t pt-3">
+          <Button asChild size="sm">
+            <a href={withLocale(
+              result.product_type === "bolster" ? "/mbolster-config" : "/mp-config",
+              locale,
+            )}>
+              Start customisation again
+            </a>
+          </Button>
+        </div>
+      )}
+
+      {(status === "accepted" || status === "captured") && (
+        <p className="border-t pt-3 text-xs text-muted-foreground">
+          After Accept you cannot cancel before delivery. Refunds require an in-person
+          return and operator approval.
+        </p>
+      )}
+
+      {actionMessage && (
+        <p className="text-sm text-emerald-700 dark:text-emerald-300">{actionMessage}</p>
       )}
     </div>
   ) : null;
+
+  const declineDialog = (
+    <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Decline this build?</DialogTitle>
+          <DialogDescription>
+            Your card authorization hold will be released and you will need to start
+            customisation again. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" disabled={acting} onClick={() => setDeclineOpen(false)}>
+            Keep reviewing
+          </Button>
+          <Button variant="destructive" disabled={acting} onClick={() => void decline()}>
+            {acting ? "Releasing…" : "Release hold and decline"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   const resultsTable = showTable ? (
     <div className="overflow-hidden rounded-lg border">
@@ -443,6 +585,7 @@ function ResultStatusPage() {
             {details}
           </>
         )}
+        {declineDialog}
       </div>
     );
   }
@@ -484,6 +627,7 @@ function ResultStatusPage() {
           />
         </Card>
       </div>
+      {declineDialog}
     </div>
   );
 }

@@ -61,6 +61,13 @@ describe("transitionResult", () => {
     );
     expect(beforeAccept.ok).toBe(false);
 
+    const acceptNoPi = transitionResult(
+      { status: "assigned", filling_template_id: 1, payment_intent_id: null },
+      { action: "accept" },
+    );
+    expect(acceptNoPi.ok).toBe(false);
+    if (!acceptNoPi.ok) expect(acceptNoPi.error).toMatch(/payment intent/i);
+
     const accepted = transitionResult(
       { status: "assigned", filling_template_id: 1, payment_intent_id: "pi_abc" },
       { action: "accept" },

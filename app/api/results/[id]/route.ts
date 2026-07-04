@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getAuthUser } from "@/lib/auth/user";
 import { getStripe } from "@/lib/stripe/client";
 import { priceResult } from "@/lib/result-pricing";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
+import { authorizeResultAccess } from "@/lib/results/access";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -219,28 +219,7 @@ export async function GET(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  let allowed = false;
-  if (token && row.access_token && token === row.access_token) {
-    allowed = true;
-  } else {
-    const user = await getAuthUser();
-    if (user) {
-      const { data: customer } = await admin
-        .from("customers")
-        .select("id, email")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
-      if (
-        customer &&
-        (customer.id === row.customer_id ||
-          (row.customer_email &&
-            customer.email?.toLowerCase() === row.customer_email.toLowerCase()))
-      ) {
-        allowed = true;
-      }
-    }
-  }
-
+  const allowed = await authorizeResultAccess(row, token);
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

@@ -47,6 +47,12 @@ export function transitionResult(
       if (state.status !== "assigned") {
         return { ok: false, error: `Cannot accept from status ${state.status}` };
       }
+      if (!state.payment_intent_id) {
+        return {
+          ok: false,
+          error: "Accept requires a payment intent (review-only Results have no hold)",
+        };
+      }
       return { ok: true, status: "accepted", releaseHold: false };
     }
     case "decline": {
