@@ -272,6 +272,7 @@ export default function MbolsterConfigPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          purpose: "ballpark",
           bolster_preferences: {
             height_cm: heightNum,
             sleep_position: state.sleepPosition ?? "other",

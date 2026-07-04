@@ -15,11 +15,22 @@ Make Configure Filling Templates the only purchase-path filling source; leave LL
 
 ## Acceptance criteria
 
-- [ ] Online purchase path does not read hardcoded filling recipes for what gets sold or fulfilled.
-- [ ] Captured Orders’ filling lines always match the assigned Filling Template (+ prefs/add-ons), not `FILLING_SPECS`.
-- [ ] Customer flows still do not expose filling or protector pickers.
-- [ ] `proposed_*` columns/fields exist and remain null/unused in v1.
-- [ ] No LLM provider integration is added.
+- [x] Online purchase path does not read hardcoded filling recipes for what gets sold or fulfilled.
+- [x] Captured Orders' filling lines always match the assigned Filling Template (+ prefs/add-ons), not `FILLING_SPECS`.
+- [x] Customer flows still do not expose filling or protector pickers.
+- [x] `proposed_*` columns/fields exist and remain null/unused in v1.
+- [x] No LLM provider integration is added.
+
+## Status
+
+**Done** on `cursor/retire-hardcoded-fillings`.
+
+- `purpose: "ballpark"` on `/api/shop/customize` — mp-config/mbolster-config get size-only recommendations (no `FILLING_SPECS`)
+- `recommendSizeFromPreferences` / `recommendSizeFromMeasurements` — rule-based ballpark, empty `filling_lines`
+- `FILLING_SPECS` retained for mp-maker legacy `?action=apply` only (ponytail comment in `rules.ts`)
+- Capture/fulfill path unchanged: `loadAssignedBuild` → Filling Template via `assembleBuild`
+- `proposed_*` columns in `0044_results.sql`; no TS writers
+- Tests: `lib/results/__tests__/slice-12-no-hardcoded-fillings.test.ts`
 
 ## Blocked by
 

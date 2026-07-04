@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings } from "@/lib/shop/customization-llm";
+import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings, getSizeBallparkFromMeasurements, getSizeBallparkFromPreferences } from "@/lib/shop/customization-llm";
 import { getAvailableComponents, validateCustomizationConfig, calculateAddonPrice, getBolsterBaseQuantities } from "@/lib/shop/customization-inventory";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 
@@ -10,6 +10,8 @@ export const runtime = "nodejs";
 // ─── GET RECOMMENDATION ────────────────────────────────────
 
 const RecommendRequestSchema = z.object({
+  /** Online purchase path (mp-config/mbolster-config): size ballpark only, no hardcoded fillings. */
+  purpose: z.enum(["ballpark", "full"]).optional(),
   preferences: z.object({
     sleep_position: z.enum(["side", "back", "stomach", "mixed"]),
     body_type: z.enum(["petite", "average", "large"]),
@@ -19,6 +21,7 @@ const RecommendRequestSchema = z.object({
 });
 
 const MeasurementRecommendRequestSchema = z.object({
+  purpose: z.enum(["ballpark", "full"]).optional(),
   measurement_preferences: z.object({
     measurements: z.object({
       shoulder_length_cm: z.number().positive(),
@@ -205,9 +208,18 @@ async function handleRecommend(req: Request) {
     }
 
     // --- Pillow flow (measurement-based or simple preferences) ---
+    const ballpark =
+      measurementParsed.success
+        ? measurementParsed.data.purpose === "ballpark"
+        : simpleParsed.data!.purpose === "ballpark";
+
     const recommendation = measurementParsed.success
-      ? await getRecommendationFromMeasurements(measurementParsed.data.measurement_preferences)
-      : await getFillingRecommendation(simpleParsed.data!.preferences);
+      ? ballpark
+        ? getSizeBallparkFromMeasurements(measurementParsed.data.measurement_preferences)
+        : await getRecommendationFromMeasurements(measurementParsed.data.measurement_preferences)
+      : ballpark
+        ? getSizeBallparkFromPreferences(simpleParsed.data!.preferences)
+        : await getFillingRecommendation(simpleParsed.data!.preferences);
 
     // Resolve the pillow_product_id for the recommended size/kind
     const { data: pillowProduct } = await admin

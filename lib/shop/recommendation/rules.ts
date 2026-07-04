@@ -37,6 +37,8 @@ interface FillingSpec {
   quantities: Record<string, number>;
 }
 
+// ponytail: mp-maker / customize?action=apply legacy only — online purchase path uses
+// recommendSize* (empty filling_lines); sold fillings come from Filling Templates (slice 12).
 const FILLING_SPECS: Record<string, Record<string, FillingSpec>> = {
   XS: {
     soft: { subtypes: ["3D-S"], quantities: { "3D-S": 1 } },
@@ -109,7 +111,62 @@ function buildExplanation(prefs: CustomerPreferences, size: string, firmLabel: s
 }
 
 /**
+ * Size/tier ballpark for authorize-then-capture (mp-config / mbolster-config).
+ * No filling lines — operator Filling Template is authoritative after review.
+ */
+export function recommendSizeFromPreferences(
+  preferences: CustomerPreferences,
+): CustomizationResult {
+  const { sleep_position, body_type, firmness } = preferences;
+  const recommendedSize = SIZE_MAP[body_type]?.[sleep_position] ?? "M";
+  const recommendedKind = "basic";
+  const firmLabel = firmness.replace("-", " ");
+  return {
+    recommended_size: recommendedSize,
+    recommended_kind: recommendedKind,
+    filling_lines: [],
+    summary: `Size ${recommendedSize} — ${firmLabel}`,
+    explanation: buildExplanation(preferences, recommendedSize, firmLabel),
+  };
+}
+
+/**
+ * Measurement-based size ballpark — same as recommendSizeFromMeasurements inputs.
+ */
+export function recommendSizeFromMeasurements(
+  input: MeasurementBasedPreferences,
+): CustomizationResult {
+  const bodyType = shoulderToBodyType(input.measurements.shoulder_length_cm);
+  const sleepPosition = deriveSleepPosition(input.health.sleep_position_type);
+  const firmness = deriveFirmness(input.health.bed_firmness, input.health);
+  const recommendedSize = SIZE_MAP[bodyType]?.[sleepPosition] ?? "M";
+  const recommendedKind = "basic";
+  const firmLabel = firmness.replace("-", " ");
+
+  const reasons: string[] = [];
+  reasons.push(`Shoulder width ${input.measurements.shoulder_length_cm}cm → ${bodyType} build`);
+  reasons.push(`Sleep style: ${sleepPosition} sleeper`);
+  reasons.push(`Bed firmness "${input.health.bed_firmness}" → pillow firmness: ${firmLabel}`);
+  if (input.health.ear_discomfort_side_sleep) {
+    reasons.push("Adjusted softer for ear discomfort during side sleep");
+  }
+  if (input.health.acid_reflux) reasons.push("Adjusted firmer for acid reflux support");
+  if (input.health.sleep_pain_areas.length > 0) {
+    reasons.push(`Sleep issues noted: ${input.health.sleep_pain_areas.join(", ")}`);
+  }
+
+  return {
+    recommended_size: recommendedSize,
+    recommended_kind: recommendedKind,
+    filling_lines: [],
+    summary: `Size ${recommendedSize} — ${firmLabel}`,
+    explanation: `Based on your measurements and health profile, we recommend Size ${recommendedSize} (${recommendedKind}). ${reasons.join(". ")}.`,
+  };
+}
+
+/**
  * Simple-form recommendation: sleep position + body type + firmness.
+ * Legacy mp-maker path — includes hardcoded filling lines.
  */
 export function recommendFromPreferences(
   preferences: CustomerPreferences,

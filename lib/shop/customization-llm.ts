@@ -9,6 +9,8 @@ import { recommendWithFallback } from "@/lib/shop/recommendation/engine";
 import {
   recommendFromPreferences,
   recommendFromMeasurements,
+  recommendSizeFromPreferences,
+  recommendSizeFromMeasurements,
   recommendBolster,
 } from "@/lib/shop/recommendation/rules";
 
@@ -114,8 +116,23 @@ export async function getBomTemplates(kind: string, size: string): Promise<BomTe
 // the optional configured model endpoint and otherwise returns the guaranteed
 // rule-based recommendation (see lib/shop/recommendation/*).
 
+/** Size ballpark only — rule-based, no fillings (online purchase path, slice 12). */
+export function getSizeBallparkFromPreferences(
+  preferences: CustomerPreferences,
+): CustomizationResult {
+  return recommendSizeFromPreferences(preferences);
+}
+
+/** Measurement size ballpark only — rule-based, no fillings (online purchase path). */
+export function getSizeBallparkFromMeasurements(
+  input: MeasurementBasedPreferences,
+): CustomizationResult {
+  return recommendSizeFromMeasurements(input);
+}
+
 /**
  * Simple-form recommendation (sleep position + body type + firmness).
+ * Legacy mp-maker — includes hardcoded filling lines.
  */
 export async function getFillingRecommendation(
   preferences: CustomerPreferences,

@@ -556,6 +556,7 @@ export default function MpConfigPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          purpose: "ballpark",
           measurement_preferences: {
             measurements: {
               shoulder_length_cm: shoulderCm || 40,
