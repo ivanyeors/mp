@@ -67,9 +67,9 @@ type FilterMode = "all" | "in_use" | "unused";
 
 const LANDING_SLOTS: LandingSlot[] = [
     { key: "landing_hero", label: "Hero", defaultUrl: "/m-pillow-417953-web.webp" },
-    { key: "landing_size_matters", label: "Size Matters", defaultUrl: "https://www.mpillow.com/cdn/shop/files/m-pillow-317409-final-WEB.jpg?v=1662868268&width=1400" },
+    { key: "landing_size_matters", label: "Size Matters", defaultUrl: "/images/landing/size-matters.jpg" },
     { key: "landing_marquee", label: "Marquee", defaultUrl: "/3way-side-sleep.jpg" },
-    { key: "landing_ambassadors", label: "Ambassadors", defaultUrl: "https://www.mpillow.com/cdn/shop/files/DSC_2362-H-WEB_1200x_71b66f9b-3cce-4686-99be-34f774ddbe8a.webp?v=1667646766&width=900" },
+    { key: "landing_ambassadors", label: "Ambassadors", defaultUrl: "/images/landing/ambassadors-hero.webp" },
     { key: "landing_cervical_neck", label: "Cervical Neck", defaultUrl: "/mpillow-cervical-neck.webp" },
     { key: "landing_basic_pillow", label: "Basic Pillow", defaultUrl: "/basic-mpillow.webp" },
     { key: "landing_premium_pillow", label: "Premium Pillow", defaultUrl: "/DarkMpillowImage-WEB.jpg" },

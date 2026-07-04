@@ -1,6 +1,6 @@
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
 import { Button } from "@/components/ui/button";
-import { BookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { BookAppointmentSheet, BOOK_APPOINTMENT_URL } from "@/components/slide-in-pages/book-appointment-sheet";
 import { ChevronRight, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,9 +19,6 @@ interface HeroSectionProps {
 export function HeroSection({ section, messages: m, locale, images }: HeroSectionProps) {
   const c = section.content as HeroContent;
   const sep = locale === "zh-CN" ? "" : " ";
-  const appointmentUrl =
-    "https://calendar.google.com/calendar/appointments/schedules/AcZssZ0bNnrc_0CeREyaoByx0GDhuif5fJFTCyAQTkEJH14vNs5XT_zzqgv47CJ-FrUACncTtYs8yeas?gv=true";
-
   const heroImage = c.image ?? images.landing_hero;
   const titlePrefix = c.titlePrefix ?? m.home.hero.titlePrefix;
   const titleEmphasis = c.titleEmphasis ?? m.home.hero.titleEmphasis;
@@ -69,7 +66,7 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
                   </Link>
                 </Button>
                 <BookAppointmentSheet
-                  appointmentUrl={appointmentUrl}
+                  appointmentUrl={BOOK_APPOINTMENT_URL}
                   triggerVariant="outline"
                   triggerClassName="h-auto px-6 py-4 text-base"
                   triggerLabel={ctaBook}

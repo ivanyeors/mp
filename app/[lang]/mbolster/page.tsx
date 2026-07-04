@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BookAppointmentButton } from "@/components/book-appointment-button";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
@@ -36,24 +37,7 @@ export default async function MbolsterPage({ params }: { params: Promise<{ lang:
                     <Button asChild>
                       <Link href={configHref}>Customise</Link>
                     </Button>
-                    <Button asChild variant="secondary">
-                      <Link
-                        href="https://www.mpillow.com/pages/contact"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Book an appointment
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                      <Link
-                        href="https://www.mpillow.com/products/bolsters"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        View on mpillow.com
-                      </Link>
-                    </Button>
+                    <BookAppointmentButton>Book an appointment</BookAppointmentButton>
                   </div>
                 </div>
               </header>
@@ -131,9 +115,7 @@ export default async function MbolsterPage({ params }: { params: Promise<{ lang:
                     <div className="text-sm font-semibold text-foreground">Customised Bolster</div>
                     <div className="mt-1 text-sm text-muted-foreground">“My daughter loves the bolster!”</div>
                   </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    Based on a customer review on mpillow.com.
-                  </div>
+                  <div className="mt-3 text-xs text-muted-foreground">Based on a customer review.</div>
                 </div>
               </section>
 
@@ -152,19 +134,6 @@ export default async function MbolsterPage({ params }: { params: Promise<{ lang:
                   </p>
                 </div>
               </section>
-
-              <div className="text-xs text-muted-foreground">
-                Content duplicated from{" "}
-                <Link
-                  href="https://www.mpillow.com/products/bolsters"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-4"
-                >
-                  mpillow.com product page
-                </Link>
-                .
-              </div>
             </div>
           </div>
         </section>
@@ -172,4 +141,3 @@ export default async function MbolsterPage({ params }: { params: Promise<{ lang:
     </div>
   );
 }
-

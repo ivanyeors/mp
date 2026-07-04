@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
+import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
@@ -27,8 +28,6 @@ type ControlledSheetProps = {
 type Option = { value: string; label: string };
 type Media = { src: string; alt: string };
 
-// Images mapped from mpillow.com `/products/bolsters`, using local assets from `/public`.
-// Source: `https://www.mpillow.com/products/bolsters`
 const MBOLSTER_GALLERY: Media[] = [
   { src: "/MpillowIGPostMay2025.zip-2.webp", alt: "Customised Bolsters - Mbolster (gallery)" },
   { src: "/MpillowIGPostMay2025.zip-5.webp", alt: "Customised Bolsters - Mbolster (gallery)" },
@@ -211,25 +210,13 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
 
                         <div className="flex flex-wrap gap-3">
                           <Button asChild>
-                            <Link
-                              href="https://www.mpillow.com/products/bolsters"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {m.common.addToCart}
-                            </Link>
+                            <Link href={to("/mbolster-config")}>{m.common.addToCart}</Link>
                           </Button>
                           <Button asChild variant="secondary">
                             <Link href={to("/mbolster-config")}>{m.common.customise}</Link>
                           </Button>
-                          <Button asChild variant="outline">
-                            <Link
-                              href="https://www.mpillow.com/pages/contact"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {m.common.bookAppointment}
-                            </Link>
+                          <Button type="button" variant="outline" onClick={openBookAppointmentSheet}>
+                            {m.common.bookAppointment}
                           </Button>
                         </div>
                       </div>
@@ -270,12 +257,7 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
 
                       <div className="mt-4 text-sm text-muted-foreground leading-relaxed">
                         {m.slides.mbolster.purchaseNote}{" "}
-                        <Link
-                          className="underline underline-offset-4"
-                          href="https://www.mpillow.com/products/bolsters"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                        <Link className="underline underline-offset-4" href={to("/mbolster-config")}>
                           {m.slides.mbolster.purchaseLinkLabel}
                         </Link>
                         .
@@ -448,10 +430,8 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
                       <Button asChild>
                         <Link href={to("/mbolster-config")}>{m.common.customise}</Link>
                       </Button>
-                      <Button asChild variant="secondary">
-                        <Link href="https://www.mpillow.com/pages/contact" target="_blank" rel="noopener noreferrer">
-                          {m.common.bookAppointment}
-                        </Link>
+                      <Button type="button" variant="secondary" onClick={openBookAppointmentSheet}>
+                        {m.common.bookAppointment}
                       </Button>
                     </div>
                   </div>
@@ -514,13 +494,7 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
 
                     <div className="flex flex-wrap gap-3">
                       <Button asChild>
-                        <Link
-                          href="https://www.mpillow.com/products/bolsters"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {m.slides.mbolster.discoverButton}
-                        </Link>
+                        <Link href={to("/mbolster-config")}>{m.slides.mbolster.discoverButton}</Link>
                       </Button>
                     </div>
                   </div>
@@ -698,25 +672,13 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
 
                         <div className="flex flex-wrap gap-3">
                           <Button asChild>
-                            <Link
-                              href="https://www.mpillow.com/products/bolsters"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {m.common.addToCart}
-                            </Link>
+                            <Link href={to("/mbolster-config")}>{m.common.addToCart}</Link>
                           </Button>
                           <Button asChild variant="secondary">
                             <Link href={to("/mbolster-config")}>{m.common.customise}</Link>
                           </Button>
-                          <Button asChild variant="outline">
-                            <Link
-                              href="https://www.mpillow.com/pages/contact"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {m.common.bookAppointment}
-                            </Link>
+                          <Button type="button" variant="outline" onClick={openBookAppointmentSheet}>
+                            {m.common.bookAppointment}
                           </Button>
                         </div>
                       </div>
@@ -757,12 +719,7 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
 
                       <div className="mt-4 text-sm text-muted-foreground leading-relaxed">
                         {m.slides.mbolster.purchaseNote}{" "}
-                        <Link
-                          className="underline underline-offset-4"
-                          href="https://www.mpillow.com/products/bolsters"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
+                        <Link className="underline underline-offset-4" href={to("/mbolster-config")}>
                           {m.slides.mbolster.purchaseLinkLabel}
                         </Link>
                         .
@@ -935,10 +892,8 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
                       <Button asChild>
                         <Link href={to("/mbolster-config")}>{m.common.customise}</Link>
                       </Button>
-                      <Button asChild variant="secondary">
-                        <Link href="https://www.mpillow.com/pages/contact" target="_blank" rel="noopener noreferrer">
-                          {m.common.bookAppointment}
-                        </Link>
+                      <Button type="button" variant="secondary" onClick={openBookAppointmentSheet}>
+                        {m.common.bookAppointment}
                       </Button>
                     </div>
                   </div>
@@ -1001,13 +956,7 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
 
                     <div className="flex flex-wrap gap-3">
                       <Button asChild>
-                        <Link
-                          href="https://www.mpillow.com/products/bolsters"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {m.slides.mbolster.discoverButton}
-                        </Link>
+                        <Link href={to("/mbolster-config")}>{m.slides.mbolster.discoverButton}</Link>
                       </Button>
                     </div>
                   </div>

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Image from "next/image";
-import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -11,7 +10,6 @@ import { XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
 const OPEN_CERVICAL_NECK_SUPPORT_EVENT = "mpillow:open-cervical-neck-support";
-const SOURCE_URL = "https://www.mpillow.com/pages/cervical-support-pillow-customisable-pillow";
 
 export function openCervicalNeckSupportSheet() {
   if (typeof window === "undefined") return;
@@ -243,16 +241,9 @@ function CervicalNeckSupportSheetInner() {
 
         <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
           <div className="px-4 py-4 md:px-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <SheetClose asChild>
-                <Button className="h-auto py-4">Back</Button>
-              </SheetClose>
-              <Button asChild variant="outline" className="h-auto py-4">
-                <Link href={SOURCE_URL} target="_blank" rel="noopener noreferrer">
-                  {m.slides.cervicalNeckSupport.bottomViewSource}
-                </Link>
-              </Button>
-            </div>
+            <SheetClose asChild>
+              <Button className="h-auto w-full py-4">Back</Button>
+            </SheetClose>
           </div>
         </div>
       </div>

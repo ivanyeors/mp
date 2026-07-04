@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BookAppointmentButton } from "@/components/book-appointment-button";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { SupportContactForm } from "./support-contact-form";
@@ -36,15 +37,7 @@ export default async function SupportPage({ params }: { params: Promise<{ lang: 
             </a>
           </li>
           <li>
-            Book an appointment:{" "}
-            <a
-              className="underline underline-offset-4"
-              href="https://www.mpillow.com/pages/book-online"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              mpillow.com
-            </a>
+            Book an appointment: <BookAppointmentButton variant="link" className="h-auto p-0 underline underline-offset-4">schedule online</BookAppointmentButton>
           </li>
         </ul>
         <div className="pt-4">
@@ -56,4 +49,3 @@ export default async function SupportPage({ params }: { params: Promise<{ lang: 
     </main>
   );
 }
-

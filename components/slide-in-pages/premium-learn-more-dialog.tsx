@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FirmnessScale } from "@/components/firmness-scale";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { AppleCarouselCard, type AppleCarouselCardData, Carousel } from "@/components/ui/apple-cards-carousel";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -14,6 +14,7 @@ import { XIcon } from "lucide-react";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
+import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { openCervicalNeckSupportSheet } from "@/components/slide-in-pages/cervical-neck-support";
 
 type Props = {
@@ -196,18 +197,14 @@ function PremiumLearnMoreSheetInner() {
                       {m.slides.premiumMpillow.accessoryDescription}
                     </p>
                     <SheetClose asChild>
-                      <Link
-                        href="https://www.mpillow.com/pages/cervical-support-pillow-customisable-pillow"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          openCervicalNeckSupportSheet();
-                        }}
-                        className={cn(buttonVariants({ variant: "outline", className: "h-auto py-3" }))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-auto py-3"
+                        onClick={() => openCervicalNeckSupportSheet()}
                       >
                         {m.slides.premiumMpillow.accessoryButton}
-                      </Link>
+                      </Button>
                     </SheetClose>
                   </div>
                   <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
@@ -508,10 +505,8 @@ function PremiumLearnMoreSheetInner() {
               <Button asChild className="h-auto py-4">
                 <Link href={to("/mp-config")}>{m.common.customise}</Link>
               </Button>
-              <Button asChild variant="outline" className="h-auto py-4">
-                <Link href="https://www.mpillow.com/pages/book-online" target="_blank" rel="noopener noreferrer">
-                  {m.slides.premiumMpillow.bottomBookBespoke}
-                </Link>
+              <Button type="button" variant="outline" className="h-auto py-4" onClick={openBookAppointmentSheet}>
+                {m.slides.premiumMpillow.bottomBookBespoke}
               </Button>
             </div>
           </div>

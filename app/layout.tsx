@@ -7,6 +7,7 @@ import { SonnerProvider } from "@/components/ui/sonner-provider";
 import { RouteScope } from "@/components/route-scope";
 import { ApiRequestTracker } from "@/components/api-request-tracker";
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
+import { BookAppointmentHost } from "@/components/slide-in-pages/book-appointment-sheet";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 
@@ -76,6 +77,7 @@ export default async function RootLayout({
           <ApiRequestTracker />
           <TopLoadingBar />
           <RouteScope>{children}</RouteScope>
+          <BookAppointmentHost />
           <AppDock />
           <SonnerProvider />
         </ThemeProvider>

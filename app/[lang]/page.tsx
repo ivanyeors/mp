@@ -88,9 +88,9 @@ async function getBolsterFromPriceLabel(): Promise<string> {
 // Default images – overridable via Settings → Landing Site → Media
 const IMAGE_DEFAULTS: Record<string, string> = {
   landing_hero: "/m-pillow-417953-web.webp",
-  landing_size_matters: "https://www.mpillow.com/cdn/shop/files/m-pillow-317409-final-WEB.jpg?v=1662868268&width=1400",
+  landing_size_matters: "/images/landing/size-matters.jpg",
   landing_marquee: "/3way-side-sleep.jpg",
-  landing_ambassadors: "https://www.mpillow.com/cdn/shop/files/DSC_2362-H-WEB_1200x_71b66f9b-3cce-4686-99be-34f774ddbe8a.webp?v=1667646766&width=900",
+  landing_ambassadors: "/images/landing/ambassadors-hero.webp",
   landing_cervical_neck: "/mpillow-cervical-neck.webp",
   landing_basic_pillow: "/basic-mpillow.webp",
   landing_premium_pillow: "/DarkMpillowImage-WEB.jpg",

@@ -121,7 +121,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                     </>
                   }
                   image={{
-                    src: "https://www.mpillow.com/cdn/shop/files/4D59392A-66B4-48D5-BF29-AE4A7B2BD8FF.jpg?v=1676707876&width=1080",
+                    src: "/images/landing/ambassadors-1.jpg",
                     alt: "Mpillow ambassadors posture and fit",
                     sizes: "(min-width: 768px) 50vw, 100vw",
                   }}
@@ -142,7 +142,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                     </>
                   }
                   image={{
-                    src: "https://www.mpillow.com/cdn/shop/files/mpillow_4.png?v=1670166435&width=1080",
+                    src: "/images/landing/ambassadors-2.png",
                     alt: "Mpillow suited to different builds",
                     sizes: "(min-width: 768px) 50vw, 100vw",
                   }}
@@ -182,7 +182,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                     </div>
                   }
                   image={{
-                    src: "https://www.mpillow.com/cdn/shop/files/Screenshot_2022-12-04_at_11.27.10_PM.png?v=1670167661&width=2864",
+                    src: "/images/landing/ambassadors-3.png",
                     alt: "Skyjin and Piggie with customised Mpillows",
                     sizes: "(min-width: 768px) 50vw, 100vw",
                   }}
