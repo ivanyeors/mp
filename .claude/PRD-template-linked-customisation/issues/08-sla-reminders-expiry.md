@@ -15,11 +15,22 @@ Configurable ops reminders and automatic expiry for unassigned held Results.
 
 ## Acceptance criteria
 
-- [ ] Settings page can configure reminder channels and SLA working days (default 5).
-- [ ] Unassigned held Results generate Telegram and/or email reminders per settings.
-- [ ] After SLA, Result is `expired`, hold is released, customer is emailed to restart.
-- [ ] Expiry runs such that it does not rely on capturing after auth expiry.
-- [ ] `sla-reminders` has behavior tests for working-day deadline and expiry eligibility.
+- [x] Settings page can configure reminder channels and SLA working days (default 5).
+- [x] Unassigned held Results generate Telegram and/or email reminders per settings.
+- [x] After SLA, Result is `expired`, hold is released, customer is emailed to restart.
+- [x] Expiry runs such that it does not rely on capturing after auth expiry.
+- [x] `sla-reminders` has behavior tests for working-day deadline and expiry eligibility.
+
+## Status
+
+**Done** on `cursor/sla-reminders-expiry`.
+
+- `lib/sla-reminders` — working-day deadlines, `planHeldTick` (expire vs remind), expire-before-auth buffer
+- `GET/PUT /api/results/sla-settings` — Results settings (site_settings keys)
+- `GET/POST /api/cron/results-sla` — hourly tick (Vercel cron); release hold, expire, remind
+- Results settings UI: Review SLA panel
+- Migration `0047_result_sla.sql` — `last_reminder_at`
+- Tests: `lib/sla-reminders/__tests__/sla-reminders.test.ts`
 
 ## Blocked by
 
