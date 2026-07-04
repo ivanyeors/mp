@@ -4,6 +4,7 @@ import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
 interface SyncResult {
   pillows: { created: number; updated: number };
   bolsters: { created: number; updated: number };
+  items: { archived: number; adopted: number; legacy: number };
 }
 
 /**
@@ -278,10 +279,165 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
 }
 
 /**
- * Run full inventory sync — pillows + bolsters.
+ * Archive single-item products whose inventory item lost its MSRP or was deactivated.
+ * Re-activate (draft) when the item becomes sellable again.
+ * Never deletes — preserves history, images, and Stripe linkage.
+ */
+export async function archiveUnsellableItemProducts(): Promise<{ archived: number }> {
+  const admin = supabaseAdmin();
+
+  const { data: variants } = await admin
+    .from("product_variants")
+    .select("id, product_id, item_id")
+    .not("item_id", "is", null);
+
+  if (!variants?.length) return { archived: 0 };
+
+  const itemIds = [...new Set(variants.map((v: { item_id: number }) => v.item_id))];
+  const [{ data: items }, { data: prices }] = await Promise.all([
+    admin.from("items").select("id, is_active").in("id", itemIds),
+    admin.from("item_prices").select("item_id, msrp").in("item_id", itemIds),
+  ]);
+
+  const activeById = new Map((items ?? []).map((i: { id: number; is_active: boolean }) => [i.id, i.is_active]));
+  const msrpById = new Map(
+    (prices ?? [])
+      .filter((p: { msrp: string | number | null }) => p.msrp != null)
+      .map((p: { item_id: number }) => [p.item_id, true]),
+  );
+
+  const sellableByProduct = new Map<string, boolean>();
+  for (const v of variants as { product_id: string; item_id: number }[]) {
+    const active = activeById.get(v.item_id) === true;
+    const hasMsrp = msrpById.has(v.item_id);
+    // A product is sellable if ANY of its item-linked variants is sellable.
+    sellableByProduct.set(v.product_id, (sellableByProduct.get(v.product_id) ?? false) || (active && hasMsrp));
+  }
+
+  let archived = 0;
+  for (const [productId, sellable] of sellableByProduct) {
+    const { data: product } = await admin
+      .from("products")
+      .select("id, status")
+      .eq("id", productId)
+      .eq("is_auto_generated", true)
+      .single();
+    if (!product) continue;
+
+    if (!sellable && product.status !== "archived") {
+      const { error } = await admin.from("products").update({ status: "archived" }).eq("id", productId);
+      if (!error) archived++;
+    } else if (sellable && product.status === "archived") {
+      // Restore to draft so the operator can re-publish deliberately.
+      await admin.from("products").update({ status: "draft" }).eq("id", productId);
+      await syncVariantPricesFromCostings(productId).catch(() => {});
+    }
+  }
+
+  return { archived };
+}
+
+/**
+ * Adopt manual products that map to a sellable inventory item; leave the rest as legacy.
+ * Matching: existing item_id link, or case-insensitive title/sku/name match against sellable items.
+ */
+export async function adoptManualProducts(): Promise<{ adopted: number; legacy: number }> {
+  const admin = supabaseAdmin();
+
+  const { data: products } = await admin
+    .from("products")
+    .select("id, content, product_variants(id, item_id, sku, title, price_key)")
+    .eq("is_auto_generated", false);
+
+  if (!products?.length) return { adopted: 0, legacy: 0 };
+
+  const [{ data: items }, { data: prices }] = await Promise.all([
+    admin.from("items").select("id, name, subtype, size, is_active").eq("is_active", true),
+    admin.from("item_prices").select("item_id, msrp").not("msrp", "is", null),
+  ]);
+
+  const sellableIds = new Set((prices ?? []).map((p: { item_id: number }) => p.item_id));
+  const itemsById = new Map(
+    (items ?? [])
+      .filter((i: { id: number }) => sellableIds.has(i.id))
+      .map((i: { id: number; name: string; subtype: string | null; size: string | null }) => [i.id, i]),
+  );
+
+  // name / "name subtype" / "name size" → item_id
+  const itemsByName = new Map<string, number>();
+  for (const item of itemsById.values()) {
+    const keys = [
+      item.name,
+      [item.name, item.subtype].filter(Boolean).join(" "),
+      [item.name, item.size].filter(Boolean).join(" "),
+      [item.name, item.subtype, item.size].filter(Boolean).join(" "),
+    ];
+    for (const key of keys) {
+      if (key) itemsByName.set(key.toLowerCase().trim(), item.id);
+    }
+  }
+
+  let adopted = 0;
+  let legacy = 0;
+
+  for (const product of products) {
+    const variants = (product.product_variants ?? []) as Array<{
+      id: string;
+      item_id: number | null;
+      sku: string | null;
+      title: string | null;
+      price_key: string | null;
+    }>;
+
+    const content = product.content as Record<string, { title?: string }> | null;
+    const productTitle = (content?.["en-US"]?.title ?? content?.["en"]?.title ?? "").toLowerCase().trim();
+
+    let matchedItemId: number | null = null;
+    let matchedVariantId: string | null = null;
+
+    for (const v of variants) {
+      if (v.item_id != null && itemsById.has(v.item_id)) {
+        matchedItemId = v.item_id;
+        matchedVariantId = v.id;
+        break;
+      }
+      const candidates = [v.title, v.sku, productTitle].filter(Boolean) as string[];
+      for (const c of candidates) {
+        const id = itemsByName.get(c.toLowerCase().trim());
+        if (id != null) {
+          matchedItemId = id;
+          matchedVariantId = v.id;
+          break;
+        }
+      }
+      if (matchedItemId != null) break;
+    }
+
+    if (matchedItemId == null || matchedVariantId == null) {
+      legacy++;
+      continue;
+    }
+
+    await admin
+      .from("product_variants")
+      .update({ item_id: matchedItemId, price_key: `item:${matchedItemId}` })
+      .eq("id", matchedVariantId);
+
+    await admin.from("products").update({ is_auto_generated: true }).eq("id", product.id);
+    await syncVariantPricesFromCostings(product.id).catch(() => {});
+    adopted++;
+  }
+
+  return { adopted, legacy };
+}
+
+/**
+ * Run full inventory sync — pillows + bolsters + single-item lifecycle.
  */
 export async function syncAllProducts(): Promise<SyncResult> {
   const pillows = await syncPillowProducts();
   const bolsters = await syncBolsterProducts();
-  return { pillows, bolsters };
+  const { archived } = await archiveUnsellableItemProducts();
+  const { adopted, legacy } = await adoptManualProducts();
+  return { pillows, bolsters, items: { archived, adopted, legacy } };
 }

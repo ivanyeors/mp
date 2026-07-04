@@ -1,19 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { resolveVariantPrice, resolveVariantCost } from "@/lib/shop/price-sync";
+import {
+  resolveVariantPrice,
+  resolveVariantCost,
+  resolveVariantCompareAt,
+} from "@/lib/shop/price-sync";
 
 const priceByKey = new Map([
-  ["product:pillow:1", { msrp: "120.00" }],
-  ["product:pillow:2", { msrp: "150.00" }], // premium/linen override
-  ["product:bolster:short", { msrp: "80.00" }],
+  ["product:pillow:1", { msrp: "120.00", compare_at_price: "150.00" }],
+  ["product:pillow:2", { msrp: "150.00", compare_at_price: "180.00" }], // premium/linen override
+  ["product:bolster:short", { msrp: "80.00", compare_at_price: "100.00" }],
   ["product:bolster:medium", { msrp: "90.00" }],
+  ["item:99", { msrp: "35.00", compare_at_price: "45.00" }],
 ]);
 const priceByPillowProduct = new Map([
-  [1, { msrp: "120.00" }],
-  [2, { msrp: "150.00" }],
+  [1, { msrp: "120.00", compare_at_price: "150.00" }],
+  [2, { msrp: "150.00", compare_at_price: "180.00" }],
 ]);
 const priceByBolsterVariant = new Map([
-  ["short", { msrp: "80.00" }],
+  ["short", { msrp: "80.00", compare_at_price: "100.00" }],
   ["medium", { msrp: "90.00" }],
+]);
+const priceByItem = new Map([
+  [99, { msrp: "35.00", compare_at_price: "45.00" }],
+  [100, { msrp: "20.00" }], // no compare-at
 ]);
 
 const bomByPillow = new Map([
@@ -32,23 +41,60 @@ const costByItem = new Map([
 describe("resolveVariantPrice", () => {
   it("price_key takes priority over pillow_product_id", () => {
     // variant has both; price_key should win (linen override case)
-    const v = { price_key: "product:pillow:2", pillow_product_id: 1, option1: null };
-    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant)).toBe(150);
+    const v = { price_key: "product:pillow:2", pillow_product_id: 1, option1: null, item_id: null };
+    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(150);
   });
 
   it("falls back to pillow_product_id when price_key is null", () => {
-    const v = { price_key: null, pillow_product_id: 1, option1: null };
-    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant)).toBe(120);
+    const v = { price_key: null, pillow_product_id: 1, option1: null, item_id: null };
+    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(120);
   });
 
   it("resolves bolster variant by option1", () => {
-    const v = { price_key: null, pillow_product_id: null, option1: "short" };
-    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant)).toBe(80);
+    const v = { price_key: null, pillow_product_id: null, option1: "short", item_id: null };
+    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(80);
+  });
+
+  it("resolves single-item product via item_id → item_prices.msrp", () => {
+    const v = { price_key: null, pillow_product_id: null, option1: null, item_id: 99 };
+    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(35);
+  });
+
+  it("resolves single-item product via price_key item:{id}", () => {
+    const v = { price_key: "item:99", pillow_product_id: null, option1: null, item_id: 99 };
+    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(35);
   });
 
   it("returns null when no costing source resolves", () => {
-    const v = { price_key: null, pillow_product_id: null, option1: "accessory" };
-    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant)).toBeNull();
+    const v = { price_key: null, pillow_product_id: null, option1: "accessory", item_id: null };
+    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBeNull();
+  });
+
+  it("returns null when item_id has no MSRP", () => {
+    const v = { price_key: null, pillow_product_id: null, option1: null, item_id: 404 };
+    expect(resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBeNull();
+  });
+});
+
+describe("resolveVariantCompareAt", () => {
+  it("propagates compare-at from the same costing source as MSRP", () => {
+    const v = { price_key: "product:pillow:1", pillow_product_id: 1, option1: null, item_id: null };
+    expect(resolveVariantCompareAt(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(150);
+  });
+
+  it("propagates compare-at for single-item products", () => {
+    const v = { price_key: null, pillow_product_id: null, option1: null, item_id: 99 };
+    expect(resolveVariantCompareAt(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBe(45);
+  });
+
+  it("returns null when costing source has no compare-at", () => {
+    const v = { price_key: null, pillow_product_id: null, option1: null, item_id: 100 };
+    expect(resolveVariantCompareAt(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBeNull();
+  });
+
+  it("returns null when price is unresolvable", () => {
+    const v = { price_key: null, pillow_product_id: null, option1: null, item_id: 404 };
+    expect(resolveVariantCompareAt(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem)).toBeNull();
   });
 });
 

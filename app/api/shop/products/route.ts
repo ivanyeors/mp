@@ -1,27 +1,9 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { attachStockAvailable } from "@/lib/ecommerce/products";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
-
-const CreateProductSchema = z.object({
-  slug: z.string().trim().min(1).max(300).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  product_type: z.enum(["pillow", "bolster", "accessory", "bundle"]).default("pillow"),
-  status: z.enum(["draft", "active", "archived"]).default("draft"),
-  content: z.record(z.string(), z.object({
-    title: z.string().min(1),
-    description: z.string().optional().default(""),
-    body: z.string().optional().default(""),
-    seo_title: z.string().optional().default(""),
-    seo_description: z.string().optional().default(""),
-    seo_keywords: z.array(z.string()).optional().default([]),
-  })).default({}),
-  category_id: z.string().uuid().nullable().optional().default(null),
-  featured: z.boolean().optional().default(false),
-  tags: z.array(z.string()).optional().default([]),
-});
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -72,29 +54,17 @@ export async function GET(req: Request) {
   return NextResponse.json({ ok: true, rows, total: count ?? 0, page, limit });
 }
 
-export async function POST(req: Request) {
+export async function POST(_req: Request) {
   const denied = await requireAdmin("products");
   if (denied) return denied;
 
-  const body = await req.json().catch(() => null);
-  const parsed = CreateProductSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const admin = supabaseAdmin();
-  const row: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.status === "active") {
-    row.published_at = new Date().toISOString();
-  }
-
-  const { data, error } = await admin.from("products").insert(row).select("*").single();
-  if (error) {
-    const isDup = /duplicate key|unique/i.test(error.message);
-    return NextResponse.json(
-      { error: isDup ? "A product with this slug already exists" : error.message },
-      { status: isDup ? 409 : 500 }
-    );
-  }
-  return NextResponse.json({ ok: true, row: data });
+  // Free-form product creation is retired. Sellable products come from inventory:
+  // pillows/bolsters via sync, single items via POST /api/shop/products/from-inventory.
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "Free-form product creation is disabled. Use Add from inventory (or Sync from Inventory for pillows/bolsters).",
+    },
+    { status: 400 },
+  );
 }

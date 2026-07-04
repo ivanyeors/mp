@@ -1,15 +1,21 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
-import { Plus, Trash2, Package, Loader2, Search, RefreshCw } from "lucide-react";
+import { Plus, Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import {
     Select,
     SelectContent,
@@ -48,6 +54,9 @@ type ProductVariant = {
     stock_quantity: number | null;
     stock_available?: number | null;
     stripe_price_id?: string | null;
+    item_id?: number | null;
+    pillow_product_id?: number | null;
+    price_key?: string | null;
 };
 
 type ProductImage = {
@@ -61,12 +70,30 @@ type ProductRow = {
     slug: string;
     status: "draft" | "active" | "archived";
     product_type: string | null;
+    is_auto_generated?: boolean;
     content: Record<string, { title: string; description?: string }>;
     category_id: string | null;
     product_variants: ProductVariant[];
     product_images: ProductImage[];
     created_at: string;
 };
+
+type SellableItem = {
+    id: number;
+    name: string;
+    category: string;
+    subtype: string | null;
+    size: string | null;
+    msrp: number;
+    compare_at_price: number | null;
+};
+
+function isLegacyProduct(product: ProductRow): boolean {
+    if (product.is_auto_generated) return false;
+    return !(product.product_variants ?? []).some(
+        (v) => v.item_id != null || v.pillow_product_id != null || v.price_key != null,
+    );
+}
 
 type Category = {
     id: string;
@@ -172,6 +199,14 @@ export default function SettingsProductsPage() {
 
     // Sync state
     const [syncing, setSyncing] = useState(false);
+    const [resyncingPrices, setResyncingPrices] = useState(false);
+
+    // Add-from-inventory picker
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [sellableItems, setSellableItems] = useState<SellableItem[]>([]);
+    const [pickerLoading, setPickerLoading] = useState(false);
+    const [pickerSearch, setPickerSearch] = useState("");
+    const [publishingItemId, setPublishingItemId] = useState<number | null>(null);
 
     // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -255,6 +290,75 @@ export default function SettingsProductsPage() {
             setSyncing(false);
         }
     };
+
+    const resyncPrices = async () => {
+        setResyncingPrices(true);
+        try {
+            const res = await fetch("/api/shop/products/resync-prices", { method: "POST" });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json.error ?? "Resync failed");
+            toast.success(json.message ?? "Prices resynced from Costings");
+            if (json.unresolvable?.length) {
+                toast.warning(`${json.unresolvable.length} variant(s) have no costing source`);
+            }
+            fetchProducts();
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to resync prices");
+        } finally {
+            setResyncingPrices(false);
+        }
+    };
+
+    const openInventoryPicker = async () => {
+        setPickerOpen(true);
+        setPickerSearch("");
+        setPickerLoading(true);
+        try {
+            const res = await fetch("/api/shop/products/from-inventory");
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Failed to load items");
+            setSellableItems(json.rows ?? []);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to load sellable items");
+            setSellableItems([]);
+        } finally {
+            setPickerLoading(false);
+        }
+    };
+
+    const publishFromInventory = async (itemId: number) => {
+        setPublishingItemId(itemId);
+        try {
+            const res = await fetch("/api/shop/products/from-inventory", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ item_id: itemId }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json.error ?? "Failed to create product");
+            toast.success("Product created from inventory");
+            setPickerOpen(false);
+            if (json.product_id) {
+                router.push(to(`/settings/products/${json.product_id}`));
+            } else {
+                fetchProducts();
+            }
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Failed to create product");
+        } finally {
+            setPublishingItemId(null);
+        }
+    };
+
+    const filteredSellableItems = sellableItems.filter((item) => {
+        if (!pickerSearch.trim()) return true;
+        const q = pickerSearch.toLowerCase();
+        return (
+            item.name.toLowerCase().includes(q) ||
+            item.category.toLowerCase().includes(q) ||
+            (item.subtype ?? "").toLowerCase().includes(q)
+        );
+    });
 
     // ── Selection helpers ──
     const allSelected =
@@ -341,11 +445,9 @@ export default function SettingsProductsPage() {
                             : "No accessories yet. Add your first accessory to get started."}
                     </p>
                     {isAccessoriesTab && !debouncedSearch && statusFilter === "all" && categoryFilter === "all" && (
-                        <Button asChild size="sm" className="mt-4">
-                            <Link href={to("/settings/products/new?type=accessory")}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Accessory
-                            </Link>
+                        <Button size="sm" className="mt-4" onClick={openInventoryPicker}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add from inventory
                         </Button>
                     )}
                 </div>
@@ -446,6 +548,11 @@ export default function SettingsProductsPage() {
                                         <span className="block text-xs text-muted-foreground mt-0.5 font-mono">
                                             {product.slug}
                                         </span>
+                                        {isLegacyProduct(product) && (
+                                            <Badge variant="outline" className="mt-1 text-xs text-amber-700 border-amber-300">
+                                                Legacy / not inventory-linked
+                                            </Badge>
+                                        )}
                                     </TableCell>
 
                                     {/* Status */}
@@ -460,7 +567,7 @@ export default function SettingsProductsPage() {
                                         <span>{priceRange}</span>
                                         {priceWarn && (
                                             <Badge variant="outline" className="ml-2 text-xs text-amber-600 border-amber-300">
-                                                Price not set
+                                                {product.is_auto_generated ? "No costing source" : "Price not set"}
                                             </Badge>
                                         )}
                                         {stripeWarn && (
@@ -634,12 +741,12 @@ export default function SettingsProductsPage() {
                 <TabsContent value="products" className="mt-6 space-y-6">
                     {/* Actions bar */}
                     <div className="flex items-center justify-between gap-3">
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={syncFromInventory}
-                                disabled={syncing}
+                                disabled={syncing || resyncingPrices}
                             >
                                 {syncing ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -648,12 +755,23 @@ export default function SettingsProductsPage() {
                                 )}
                                 Sync from Inventory
                             </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={resyncPrices}
+                                disabled={syncing || resyncingPrices}
+                            >
+                                {resyncingPrices ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <DollarSign className="mr-2 h-4 w-4" />
+                                )}
+                                Resync prices
+                            </Button>
                         </div>
-                        <Button asChild size="sm">
-                            <Link href={to("/settings/products/new?type=accessory")}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Product
-                            </Link>
+                        <Button size="sm" onClick={openInventoryPicker}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add from inventory
                         </Button>
                     </div>
 
@@ -697,6 +815,65 @@ export default function SettingsProductsPage() {
                     <CategoriesManager />
                 </TabsContent>
             </Tabs>
+
+            <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+                <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+                    <DialogHeader>
+                        <DialogTitle>Add from inventory</DialogTitle>
+                        <DialogDescription>
+                            Pick a sellable item (has MSRP in Costings). Price, cost, and compare-at are locked to Costings.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <Input
+                        placeholder="Search items…"
+                        value={pickerSearch}
+                        onChange={(e) => setPickerSearch(e.target.value)}
+                        className="mb-2"
+                    />
+                    <div className="flex-1 overflow-y-auto min-h-0 border rounded-md">
+                        {pickerLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : filteredSellableItems.length === 0 ? (
+                            <div className="p-6 text-center text-sm text-muted-foreground">
+                                {sellableItems.length === 0
+                                    ? "No unpublished sellable items. Set an MSRP in Costings for an inventory item first."
+                                    : "No items match your search."}
+                            </div>
+                        ) : (
+                            <ul className="divide-y">
+                                {filteredSellableItems.map((item) => (
+                                    <li
+                                        key={item.id}
+                                        className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted/50"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="font-medium text-sm truncate">{item.name}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {item.category}
+                                                {item.msrp != null && ` · ${formatCurrency(item.msrp)}`}
+                                            </div>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            disabled={publishingItemId != null}
+                                            onClick={() => publishFromInventory(item.id)}
+                                        >
+                                            {publishingItemId === item.id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                "Add"
+                                            )}
+                                        </Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -48,8 +48,11 @@ export async function syncProductsFromInventory() {
   await requireAuth();
   const result = await syncAllProducts();
   revalidatePath("/settings/products");
-  return {
-    ok: true,
-    message: `Synced: ${result.pillows.created + result.bolsters.created} created, ${result.pillows.updated + result.bolsters.updated} updated`,
-  };
+  const created = result.pillows.created + result.bolsters.created;
+  const updated = result.pillows.updated + result.bolsters.updated;
+  const parts = [`${created} created`, `${updated} updated`];
+  if (result.items.archived) parts.push(`${result.items.archived} archived`);
+  if (result.items.adopted) parts.push(`${result.items.adopted} adopted`);
+  if (result.items.legacy) parts.push(`${result.items.legacy} legacy`);
+  return { ok: true, message: `Synced: ${parts.join(", ")}` };
 }

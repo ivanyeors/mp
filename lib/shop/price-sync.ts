@@ -15,30 +15,65 @@ type VariantRow = {
   price_key: string | null;
 };
 
-type PriceRow = { msrp: string | number | null };
+export type PriceRow = { msrp: string | number | null; compare_at_price?: string | number | null };
 type BomLine = { item_id: number; quantity: number };
 
 // ── Pure resolution functions (testable without DB) ────────────────────────
 
 /**
- * Resolve MSRP for a variant. Resolution order:
- *   1. price_key   → direct product_prices.key lookup (explicit override)
+ * Resolve the costing price row for a variant. Resolution order:
+ *   1. price_key   → direct product_prices / item:{id} lookup (explicit override)
  *   2. pillow_product_id → product_prices WHERE kind='pillow'
  *   3. option1 in ('short','medium','long') → product_prices WHERE kind='bolster'
+ *   4. item_id → item_prices (single-item / accessory products)
  */
-export function resolveVariantPrice(
-  variant: Pick<VariantRow, "price_key" | "pillow_product_id" | "option1">,
+export function resolveVariantPriceRow(
+  variant: Pick<VariantRow, "price_key" | "pillow_product_id" | "option1" | "item_id">,
   priceByKey: Map<string, PriceRow>,
   priceByPillowProduct: Map<number, PriceRow>,
   priceByBolsterVariant: Map<string, PriceRow>,
-): number | null {
+  priceByItem: Map<number, PriceRow> = new Map(),
+): PriceRow | null {
   const row =
     (variant.price_key ? priceByKey.get(variant.price_key) : null) ??
     (variant.pillow_product_id != null ? priceByPillowProduct.get(variant.pillow_product_id) : null) ??
-    (variant.option1 ? priceByBolsterVariant.get(variant.option1) : null);
+    (variant.option1 ? priceByBolsterVariant.get(variant.option1) : null) ??
+    (variant.item_id != null ? priceByItem.get(variant.item_id) : null);
 
   if (!row?.msrp) return null;
+  return row;
+}
+
+/**
+ * Resolve MSRP for a variant. See resolveVariantPriceRow for resolution order.
+ */
+export function resolveVariantPrice(
+  variant: Pick<VariantRow, "price_key" | "pillow_product_id" | "option1" | "item_id">,
+  priceByKey: Map<string, PriceRow>,
+  priceByPillowProduct: Map<number, PriceRow>,
+  priceByBolsterVariant: Map<string, PriceRow>,
+  priceByItem: Map<number, PriceRow> = new Map(),
+): number | null {
+  const row = resolveVariantPriceRow(variant, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem);
+  if (!row?.msrp) return null;
   const v = parseFloat(String(row.msrp));
+  return Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Resolve compare-at price from the same costing source as MSRP.
+ * Returns null when the source has no compare-at set.
+ */
+export function resolveVariantCompareAt(
+  variant: Pick<VariantRow, "price_key" | "pillow_product_id" | "option1" | "item_id">,
+  priceByKey: Map<string, PriceRow>,
+  priceByPillowProduct: Map<number, PriceRow>,
+  priceByBolsterVariant: Map<string, PriceRow>,
+  priceByItem: Map<number, PriceRow> = new Map(),
+): number | null {
+  const row = resolveVariantPriceRow(variant, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem);
+  if (!row?.compare_at_price) return null;
+  const v = parseFloat(String(row.compare_at_price));
   return Number.isFinite(v) ? v : null;
 }
 
@@ -79,8 +114,8 @@ export function resolveVariantCost(
 // ── DB-backed sync ─────────────────────────────────────────────────────────
 
 /**
- * Resolve MSRP + BOM cost from costings tables for all variants of a product,
- * write price / cost_price, then push to Stripe.
+ * Resolve MSRP + BOM cost + compare-at from costings tables for all variants of a product,
+ * write price / cost_price / compare_at_price, then push to Stripe.
  *
  * ponytail: loads full BOM + item_prices tables (small, < 500 rows).
  * Upgrade path: filter by relevant item IDs if tables grow large.
@@ -101,19 +136,20 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
     { data: bolsterLines },
     { data: itemPrices },
   ] = await Promise.all([
-    admin.from("product_prices").select("key, kind, product_id, variant, msrp"),
+    admin.from("product_prices").select("key, kind, product_id, variant, msrp, compare_at_price"),
     admin.from("bom_lines").select("product_id, item_id, quantity"),
     admin.from("bolster_bom_lines").select("variant, item_id, quantity"),
-    admin.from("item_prices").select("item_id, cost_price"),
+    admin.from("item_prices").select("item_id, cost_price, msrp, compare_at_price"),
   ]);
 
   const priceByKey = new Map<string, PriceRow>();
   const priceByPillowProduct = new Map<number, PriceRow>();
   const priceByBolsterVariant = new Map<string, PriceRow>();
   for (const p of productPrices ?? []) {
-    priceByKey.set(p.key, p);
-    if (p.kind === "pillow" && p.product_id != null) priceByPillowProduct.set(p.product_id, p);
-    if (p.kind === "bolster" && p.variant) priceByBolsterVariant.set(p.variant, p);
+    const row: PriceRow = { msrp: p.msrp, compare_at_price: p.compare_at_price };
+    priceByKey.set(p.key, row);
+    if (p.kind === "pillow" && p.product_id != null) priceByPillowProduct.set(p.product_id, row);
+    if (p.kind === "bolster" && p.variant) priceByBolsterVariant.set(p.variant, row);
   }
 
   const bomByPillow = new Map<number, BomLine[]>();
@@ -131,21 +167,30 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
   }
 
   const costByItem = new Map<number, number>();
+  const priceByItem = new Map<number, PriceRow>();
   for (const ip of itemPrices ?? []) {
     if (ip.cost_price != null) costByItem.set(ip.item_id, parseFloat(String(ip.cost_price)));
+    const row: PriceRow = { msrp: ip.msrp, compare_at_price: ip.compare_at_price };
+    priceByItem.set(ip.item_id, row);
+    // price_key = 'item:{id}' resolves via the same map as product_prices keys.
+    priceByKey.set(`item:${ip.item_id}`, row);
   }
 
   let synced = 0;
   const unresolvable: string[] = [];
 
   for (const v of variants as VariantRow[]) {
-    const price = resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant);
+    const price = resolveVariantPrice(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem);
     if (price === null) {
       unresolvable.push(v.id);
       continue;
     }
     const cost = resolveVariantCost(v, bomByPillow, bomByBolster, costByItem);
-    const update: Record<string, unknown> = { price };
+    const compareAt = resolveVariantCompareAt(v, priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem);
+    const update: Record<string, unknown> = {
+      price,
+      compare_at_price: compareAt,
+    };
     if (cost !== null) update.cost_price = cost;
 
     const { error } = await admin.from("product_variants").update(update).eq("id", v.id);

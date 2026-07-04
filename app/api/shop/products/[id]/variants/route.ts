@@ -57,8 +57,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   ]);
 
   const variantData = { ...parsed.data };
-  // Price is managed by price-sync for auto-generated products; ignore client value.
-  if (product?.is_auto_generated) variantData.price = 0;
+  // Price/cost/compare-at are managed by price-sync for auto-generated products; ignore client values.
+  if (product?.is_auto_generated) {
+    variantData.price = 0;
+    variantData.cost_price = null;
+    variantData.compare_at_price = null;
+  }
 
   const row = { ...variantData, product_id: id, position: variantData.position || (count ?? 0) };
 

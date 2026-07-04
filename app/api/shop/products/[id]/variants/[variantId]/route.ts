@@ -38,12 +38,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const admin = supabaseAdmin();
 
-  // Price is managed by price-sync for auto-generated products; strip to prevent drift.
+  // Price/cost/compare-at are managed by price-sync for auto-generated products; strip to prevent drift.
   const { data: product } = await admin.from("products").select("is_auto_generated").eq("id", id).single();
   const update = { ...parsed.data };
   if (product?.is_auto_generated) {
     delete update.price;
     delete update.cost_price;
+    delete update.compare_at_price;
   }
 
   const { data, error } = await admin
