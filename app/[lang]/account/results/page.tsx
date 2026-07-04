@@ -29,12 +29,13 @@ export default async function AccountResultsPage({
     assigned_size: string | null;
     assigned_tier: string | null;
     authorized_amount: number | null;
+    final_amount: number | null;
     currency: string | null;
     access_token: string | null;
     created_at: string;
   };
   const selectCols =
-    "id, status, suggested_size, suggested_tier, assigned_size, assigned_tier, authorized_amount, currency, access_token, created_at";
+    "id, status, suggested_size, suggested_tier, assigned_size, assigned_tier, authorized_amount, final_amount, currency, access_token, created_at";
   const [{ data: byCustomer }, { data: byEmail }] = await Promise.all([
     admin
       .from("mp_config_responses")
@@ -105,8 +106,8 @@ export default async function AccountResultsPage({
                   </div>
                 </div>
                 <div className="text-sm tabular-nums text-muted-foreground">
-                  {r.authorized_amount != null
-                    ? `${r.currency ?? "SGD"} ${Number(r.authorized_amount).toFixed(2)}`
+                  {(r.final_amount ?? r.authorized_amount) != null
+                    ? `${r.currency ?? "SGD"} ${Number(r.final_amount ?? r.authorized_amount).toFixed(2)}`
                     : ""}
                 </div>
               </Link>

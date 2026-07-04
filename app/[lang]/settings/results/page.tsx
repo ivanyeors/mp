@@ -46,6 +46,12 @@ type MpConfigResponseRow = {
   order_number?: string | null;
   created_at: string;
   updated_at: string;
+  status?: string | null;
+  suggested_size?: string | null;
+  suggested_tier?: string | null;
+  assigned_size?: string | null;
+  assigned_tier?: string | null;
+  customer_email?: string | null;
 };
 
 type StaffRow = {
@@ -222,12 +228,23 @@ export default function ResultsPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const scope = tab === "active" ? rows.filter((r) => !r.is_final) : rows.filter((r) => r.is_final);
+    // Purchase-path held/assigned Results stay in Active until the customer decides.
+    const inQueue = (r: MpConfigResponseRow) =>
+      r.status === "held" || r.status === "assigned";
+    const scope =
+      tab === "active"
+        ? rows.filter((r) => !r.is_final || inQueue(r))
+        : rows.filter((r) => r.is_final && !inQueue(r));
     if (!q) return scope;
     return scope.filter((row) => {
       const d = row.data ?? {};
       const name = safeString(d.name).toLowerCase();
-      return row.id.toLowerCase().includes(q) || name.includes(q);
+      const email = safeString(row.customer_email).toLowerCase();
+      return (
+        row.id.toLowerCase().includes(q) ||
+        name.includes(q) ||
+        email.includes(q)
+      );
     });
   }, [rows, search, tab]);
 
@@ -385,6 +402,7 @@ export default function ResultsPage() {
               <TableRow>
                 <TableHead className="w-[120px]">Updated</TableHead>
                 <TableHead className="w-[220px]">Name</TableHead>
+                <TableHead className="w-[100px]">Status</TableHead>
                 <TableHead className="w-[80px]">Source</TableHead>
                 <TableHead className="w-[140px]">Order</TableHead>
                 <TableHead className="w-[120px]">Gender</TableHead>
@@ -399,7 +417,7 @@ export default function ResultsPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={12} className="py-10 text-center text-sm text-muted-foreground">
                     {tab === "active" ? "No active results yet." : "No released results yet."}
                   </TableCell>
                 </TableRow>
@@ -431,10 +449,31 @@ export default function ResultsPage() {
                       }}
                     >
                       <TableCell className="text-xs text-muted-foreground">{updated}</TableCell>
-                      <TableCell className="font-medium">{name}</TableCell>
+                      <TableCell className="font-medium">
+                        {row.customer_email || name}
+                        {(row.assigned_size ?? row.suggested_size) && (
+                          <div className="text-xs font-normal text-muted-foreground capitalize">
+                            {(row.assigned_size ?? row.suggested_size) ?? "—"} ·{" "}
+                            {(row.assigned_tier ?? row.suggested_tier) ?? "—"} tier
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {row.status ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">
+                            {row.status}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          {row.source === "online_customization" ? "Online" : "In-store"}
+                          {row.source === "online_purchase"
+                            ? "Purchase"
+                            : row.source === "online_customization"
+                              ? "Online"
+                              : "In-store"}
                         </Badge>
                       </TableCell>
                       <TableCell

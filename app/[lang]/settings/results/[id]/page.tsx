@@ -29,6 +29,9 @@ type MeasurementData = {
   neckLength: string;
 };
 
+type PillowSize = "XS" | "S" | "M" | "L" | "XL";
+type PillowTier = "basic" | "premium";
+
 type MpConfigResponseRow = {
   id: string;
   data: Partial<MeasurementData> | null;
@@ -38,6 +41,23 @@ type MpConfigResponseRow = {
   order_item_id?: string | null;
   created_at: string;
   updated_at: string;
+  status?: string | null;
+  product_type?: string | null;
+  suggested_size?: string | null;
+  suggested_tier?: string | null;
+  suggested_length?: string | null;
+  assigned_size?: string | null;
+  assigned_tier?: string | null;
+  assigned_length?: string | null;
+  filling_template_id?: number | null;
+  preference_lines?: unknown;
+  addon_lines?: unknown;
+  shipping_method?: string | null;
+  authorized_amount?: number | null;
+  final_amount?: number | null;
+  currency?: string | null;
+  payment_intent_id?: string | null;
+  customer_email?: string | null;
 };
 
 type BomLine = {
@@ -46,10 +66,19 @@ type BomLine = {
 };
 
 type MpConfigSuggestion = {
-  recommended: { size: "XS" | "S" | "M" | "L" | "XL"; kind: "basic" | "premium" };
-  product: { id: number; size: "XS" | "S" | "M" | "L" | "XL"; kind: "basic" | "premium" } | null;
+  recommended: { size: PillowSize; tier: PillowTier };
+  product: { id: number; size: PillowSize; tier: PillowTier } | null;
   bom: BomLine[];
   reasons: string[];
+};
+
+type FillingTemplateOption = {
+  id: number;
+  name: string;
+  key: string;
+  kind: string;
+  role: string;
+  is_active: boolean;
 };
 
 const safeString = (value: unknown): string => (typeof value === "string" ? value : value == null ? "" : String(value));
@@ -89,6 +118,14 @@ export default function ResultDetailPage() {
 
   const [draft, setDraft] = useState<MeasurementData>(() => normalizeMeasurement(null));
 
+  const [assignSize, setAssignSize] = useState<PillowSize>("M");
+  const [assignTier, setAssignTier] = useState<PillowTier>("basic");
+  const [assignLength, setAssignLength] = useState("");
+  const [fillingTemplateId, setFillingTemplateId] = useState<string>("");
+  const [fillingTemplates, setFillingTemplates] = useState<FillingTemplateOption[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+
   useSettingsBreadcrumbDetail(draft.name.trim() || orderNumber || null);
 
   const headerMeta = useMemo(() => {
@@ -109,8 +146,26 @@ export default function ResultDetailPage() {
       const response = payload?.response as MpConfigResponseRow | null;
       setRow(response);
       setOrderNumber((payload?.order_number as string) ?? null);
-      setSuggestion((payload?.suggestion ?? null) as MpConfigSuggestion | null);
+      const sug = (payload?.suggestion ?? null) as MpConfigSuggestion | null;
+      setSuggestion(sug);
       setDraft(normalizeMeasurement(response?.data ?? null));
+
+      const size =
+        (response?.assigned_size as PillowSize | null) ??
+        (response?.suggested_size as PillowSize | null) ??
+        sug?.recommended.size ??
+        "M";
+      const tier =
+        (response?.assigned_tier as PillowTier | null) ??
+        (response?.suggested_tier as PillowTier | null) ??
+        sug?.recommended.tier ??
+        "basic";
+      setAssignSize(size);
+      setAssignTier(tier);
+      setAssignLength(response?.assigned_length ?? response?.suggested_length ?? "");
+      setFillingTemplateId(
+        response?.filling_template_id != null ? String(response.filling_template_id) : "",
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load result");
       setRow(null);
@@ -119,6 +174,92 @@ export default function ResultDetailPage() {
       setLoading(false);
     }
   }, [id]);
+
+  const productType = row?.product_type === "bolster" ? "bolster" : "pillow";
+  const sizeKey = productType === "bolster" ? assignLength : assignSize;
+  const canAssign = row?.status === "held";
+
+  const loadFillingTemplates = useCallback(async () => {
+    if (!sizeKey) {
+      setFillingTemplates([]);
+      return;
+    }
+    setTemplatesLoading(true);
+    try {
+      const qs = new URLSearchParams({
+        kind: productType,
+        key: sizeKey,
+        role: "filling",
+        activeOnly: "true",
+      });
+      const res = await fetch(to(`/settings/inventory/configure/templates?${qs.toString()}`));
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to load Filling Templates");
+      const list = (payload?.templates ?? payload ?? []) as FillingTemplateOption[];
+      setFillingTemplates(Array.isArray(list) ? list : []);
+      setFillingTemplateId((prev) => {
+        if (prev && list.some((t) => String(t.id) === prev)) return prev;
+        return "";
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load Filling Templates");
+      setFillingTemplates([]);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  }, [productType, sizeKey, to]);
+
+  useEffect(() => {
+    if (!row || !canAssign) return;
+    void loadFillingTemplates();
+  }, [row, canAssign, loadFillingTemplates]);
+
+  const assign = useCallback(async () => {
+    if (!id) return;
+    if (!fillingTemplateId) {
+      toast.error("Select a Filling Template");
+      return;
+    }
+    setAssigning(true);
+    try {
+      const body =
+        productType === "bolster"
+          ? {
+              assignedLength: assignLength,
+              fillingTemplateId: Number(fillingTemplateId),
+            }
+          : {
+              assignedSize: assignSize,
+              assignedTier: assignTier,
+              fillingTemplateId: Number(fillingTemplateId),
+            };
+      const res = await fetch(`/api/results/${encodeURIComponent(id)}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to assign");
+      toast.success(
+        payload?.emailStatus === "sent"
+          ? "Assigned and customer notified"
+          : "Assigned",
+      );
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to assign");
+    } finally {
+      setAssigning(false);
+    }
+  }, [
+    id,
+    fillingTemplateId,
+    productType,
+    assignLength,
+    assignSize,
+    assignTier,
+    load,
+  ]);
 
   useEffect(() => {
     load();
@@ -228,6 +369,151 @@ export default function ResultDetailPage() {
           </Button>
         </div>
       </div>
+
+      {/* Purchase-path assignment (held Results) */}
+      {(row.status === "held" || row.status === "assigned") && (
+        <Card className="p-4 space-y-4">
+          <div>
+            <div className="text-sm font-medium">Assignment</div>
+            <p className="text-sm text-muted-foreground">
+              Confirm or override size×tier and select a Filling Template. Customer is emailed on save.
+            </p>
+          </div>
+
+          {row.status === "assigned" ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              {productType === "bolster" ? (
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <div className="text-xs text-muted-foreground">Length</div>
+                  <div className="font-medium">{row.assigned_length ?? "—"}</div>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Size</div>
+                    <div className="font-medium">{row.assigned_size ?? "—"}</div>
+                  </div>
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Tier</div>
+                    <div className="font-medium capitalize">{row.assigned_tier ?? "—"}</div>
+                  </div>
+                </>
+              )}
+              <div className="rounded-md border bg-muted/30 p-3">
+                <div className="text-xs text-muted-foreground">Filling Template</div>
+                <div className="font-medium">#{row.filling_template_id ?? "—"}</div>
+              </div>
+              <div className="rounded-md border bg-muted/30 p-3">
+                <div className="text-xs text-muted-foreground">Final amount</div>
+                <div className="font-medium tabular-nums">
+                  {row.final_amount != null
+                    ? `${row.currency ?? "SGD"} ${Number(row.final_amount).toFixed(2)}`
+                    : "—"}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {productType === "bolster" ? (
+                <Field label="Length">
+                  <Input
+                    value={assignLength}
+                    onChange={(e) => setAssignLength(e.target.value)}
+                    placeholder="e.g. medium"
+                  />
+                </Field>
+              ) : (
+                <>
+                  <Field label="Size">
+                    <Select
+                      value={assignSize}
+                      onValueChange={(v) => setAssignSize(v as PillowSize)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["XS", "S", "M", "L", "XL"] as const).map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Tier">
+                    <Select
+                      value={assignTier}
+                      onValueChange={(v) => setAssignTier(v as PillowTier)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="basic">basic</SelectItem>
+                        <SelectItem value="premium">premium</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </>
+              )}
+              <Field label="Filling Template">
+                <Select
+                  value={fillingTemplateId}
+                  onValueChange={setFillingTemplateId}
+                >
+                  <SelectTrigger disabled={templatesLoading || !sizeKey}>
+                    <SelectValue
+                      placeholder={
+                        templatesLoading
+                          ? "Loading…"
+                          : fillingTemplates.length
+                            ? "Select template…"
+                            : "No templates for this size"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fillingTemplates.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <div className="flex items-end">
+                <Button onClick={assign} disabled={assigning || !fillingTemplateId}>
+                  {assigning ? "Assigning…" : "Save assignment"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {(row.authorized_amount != null || row.customer_email) && (
+            <div className="grid gap-3 sm:grid-cols-2 text-sm border-t pt-3">
+              {row.authorized_amount != null && (
+                <div>
+                  <span className="text-muted-foreground">Authorized hold: </span>
+                  <span className="tabular-nums">
+                    {row.currency ?? "SGD"} {Number(row.authorized_amount).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              {row.customer_email && (
+                <div>
+                  <span className="text-muted-foreground">Customer: </span>
+                  {row.customer_email}
+                </div>
+              )}
+              <div>
+                <span className="text-muted-foreground">Status: </span>
+                <span className="font-medium">{row.status}</span>
+              </div>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Order link banner */}
       {row.order_id && orderNumber && (
@@ -375,8 +661,8 @@ export default function ResultDetailPage() {
           <Card className="p-4 space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border bg-muted/30 p-3">
-                <div className="text-xs text-muted-foreground">Recommended kind</div>
-                <div className="text-lg font-semibold">{suggestion.recommended.kind}</div>
+                <div className="text-xs text-muted-foreground">Recommended tier</div>
+                <div className="text-lg font-semibold capitalize">{suggestion.recommended.tier}</div>
               </div>
               <div className="rounded-md border bg-muted/30 p-3">
                 <div className="text-xs text-muted-foreground">Recommended size</div>
@@ -388,7 +674,7 @@ export default function ResultDetailPage() {
               <div className="text-xs text-muted-foreground">Matched active product</div>
               <div className="text-sm">
                 {suggestion.product
-                  ? `Product #${suggestion.product.id} (${suggestion.product.kind} · ${suggestion.product.size})`
+                  ? `Product #${suggestion.product.id} (${suggestion.product.tier} · ${suggestion.product.size})`
                   : "—"}
               </div>
             </div>

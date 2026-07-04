@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assembleBuild } from "@/lib/build-assembly";
+import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
 
 const costs = new Map<number, number>([
   [1, 2], // packaging
@@ -103,5 +103,30 @@ describe("assembleBuild", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toContain("2");
+  });
+});
+
+describe("findStockShortages", () => {
+  it("returns empty when all lines are covered", () => {
+    expect(
+      findStockShortages(
+        [
+          { item_id: 1, quantity: 2, role: "composed" },
+          { item_id: 1, quantity: 1, role: "filling" },
+        ],
+        new Map([[1, 3]]),
+      ),
+    ).toEqual([]);
+  });
+
+  it("reports shortages with names", () => {
+    const shortages = findStockShortages(
+      [{ item_id: 4, quantity: 5, role: "filling" }],
+      new Map([[4, 2]]),
+      new Map([[4, "Soft fill"]]),
+    );
+    expect(shortages).toEqual([
+      { item_id: 4, name: "Soft fill", needed: 5, available: 2 },
+    ]);
   });
 });

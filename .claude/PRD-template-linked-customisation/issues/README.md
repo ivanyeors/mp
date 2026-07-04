@@ -11,7 +11,7 @@ Tracer-bullet breakdown of the PRD (`../template-linked-customisation-prd.md`). 
 | 03 | Accessories-only shop catalog | AFK | **done** | 01 | 1, 2 |
 | 04 | Result model + lifecycle + pricing modules | AFK | **done** | 01, 02 | 28, 36–40 |
 | 05 | Mpillow hold path (mp-config → auth hold → Result held) | AFK | **done** (`f18e8e30`) | 04, 03 | 3, 5–10, 20, 41, 43 |
-| 06 | Operator assign + customer notify (platform only) | AFK | not started | 05, 02 | 11, 12, 24–26, 29–30, 41 |
+| 06 | Operator assign + customer notify (platform only) | AFK | **done** | 05, 02 | 11, 12, 24–26, 29–30, 41 |
 | 07 | Customer accept / decline / top-up / capture → Order | AFK | not started | 06 | 13–17, 19, 33, 37–38, 41 |
 | 08 | SLA reminders, settings, and auto-expiry | AFK | not started | 05 | 21–23, 31–32 |
 | 09 | Mbolster hold path (mbolster-config) | AFK | not started | 07 | 4–8, 43 |

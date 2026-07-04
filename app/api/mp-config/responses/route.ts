@@ -197,7 +197,7 @@ export async function GET(req: Request) {
   const admin = supabaseAdmin();
   const { data, error, count } = await admin
     .from("mp_config_responses")
-    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,created_at,updated_at", { count: "exact" })
+    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email", { count: "exact" })
     .order("updated_at", { ascending: false })
     .range(offset, offset + limit - 1);
 

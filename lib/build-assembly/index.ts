@@ -105,3 +105,35 @@ export function assembleBuild(input: AssembleBuildInput): AssembleBuildResult {
 
   return { ok: true, lines, cogs };
 }
+
+export type StockShortage = {
+  item_id: number;
+  name: string;
+  needed: number;
+  available: number;
+};
+
+/** Pure stock check over assembled build lines. */
+export function findStockShortages(
+  lines: BuildLine[],
+  onHandByItem: Map<number, number>,
+  nameByItem: Map<number, string> = new Map(),
+): StockShortage[] {
+  const needed = new Map<number, number>();
+  for (const l of lines) {
+    needed.set(l.item_id, (needed.get(l.item_id) ?? 0) + l.quantity);
+  }
+  const shortages: StockShortage[] = [];
+  for (const [itemId, qty] of needed) {
+    const available = onHandByItem.get(itemId) ?? 0;
+    if (available < qty) {
+      shortages.push({
+        item_id: itemId,
+        name: nameByItem.get(itemId) ?? `Item #${itemId}`,
+        needed: qty,
+        available,
+      });
+    }
+  }
+  return shortages;
+}

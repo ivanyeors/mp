@@ -17,15 +17,27 @@ Operators assign size×tier (or length) and Filling Template on the platform; cu
 
 ## Acceptance criteria
 
-- [ ] Operator can confirm the suggested size×tier / length **or override** it to a different valid size×tier / length.
-- [ ] Operator cannot save assignment without a Filling Template.
-- [ ] Filling Template picker lists only active templates for the Result’s product type and the **selected** size (filter updates when size is overridden).
-- [ ] Assignment updates Result to `assigned` with composed sellable + filling template ids and final amount (when hold exists).
-- [ ] Stock validation failure blocks assignment with a clear error.
-- [ ] Customer receives email with link to status page showing size, tier/length, filling summary, preferences, add-ons, and price breakdown.
-- [ ] Status page (and account area if logged in) shows the same final build summary.
-- [ ] Operator-facing UI uses **tier**, not kind.
-- [ ] No Telegram reply handling is introduced; assignment is only via platform UI/API.
+- [x] Operator can confirm the suggested size×tier / length **or override** it to a different valid size×tier / length.
+- [x] Operator cannot save assignment without a Filling Template.
+- [x] Filling Template picker lists only active templates for the Result’s product type and the **selected** size (filter updates when size is overridden).
+- [x] Assignment updates Result to `assigned` with composed sellable + filling template ids and final amount (when hold exists).
+- [x] Stock validation failure blocks assignment with a clear error.
+- [x] Customer receives email with link to status page showing size, tier/length, filling summary, preferences, add-ons, and price breakdown.
+- [x] Status page (and account area if logged in) shows the same final build summary.
+- [x] Operator-facing UI uses **tier**, not kind.
+- [x] No Telegram reply handling is introduced; assignment is only via platform UI/API.
+
+## Status
+
+**Done** on `cursor/operator-assign-customer-notify`.
+
+- `POST /api/results/[id]/assign` — validate template + stock, lifecycle `held`→`assigned`, reprice when hold exists, email customer
+- `findStockShortages` in `lib/build-assembly`
+- Operator Results detail: Assignment card (size×tier / length + Filling Template picker)
+- Results list: status badge; held/assigned stay in Active queue
+- Customer status page: final build summary; Accept/Decline disabled until slice 07
+- Public `GET /api/results/[id]` returns `build` summary when assigned
+- Tests: `lib/result-lifecycle/__tests__/slice-06-assign.test.ts`
 
 ## Blocked by
 

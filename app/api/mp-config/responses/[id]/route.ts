@@ -64,7 +64,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const admin = supabaseAdmin();
   const { data: responseRow, error: rErr } = await admin
     .from("mp_config_responses")
-    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at")
+    .select(
+      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,customer_email",
+    )
     .eq("id", parsedParams.data.id)
     .maybeSingle();
 
@@ -128,9 +130,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     suggestion: {
       recommended: {
         size: sizeGuess.size,
-        kind: kindGuess.kind,
+        tier: kindGuess.kind,
       },
-      product: product ? { id: product.id, size: product.size, kind: product.kind } : null,
+      product: product
+        ? { id: product.id, size: product.size, tier: product.kind }
+        : null,
       bom: bomLines,
       reasons: [...sizeGuess.reasons, ...kindGuess.reasons, ...productReasons],
     },

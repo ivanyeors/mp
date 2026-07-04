@@ -9,14 +9,29 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { usePathname } from "next/navigation";
 
+type BuildSummary = {
+  fillingTemplateName: string | null;
+  fillingSummary: string[];
+  preferences: string[];
+  addons: string[];
+  pricing: {
+    subtotal: number;
+    shipping: number;
+    tax: number;
+    total: number;
+  } | null;
+};
+
 type ResultPublic = {
   id: string;
   status: string | null;
   product_type: string | null;
   suggested_size: string | null;
   suggested_tier: string | null;
+  suggested_length: string | null;
   assigned_size: string | null;
   assigned_tier: string | null;
+  assigned_length: string | null;
   preference_lines: unknown;
   addon_lines: unknown;
   shipping_method: string | null;
@@ -24,6 +39,7 @@ type ResultPublic = {
   final_amount: number | null;
   currency: string | null;
   payment_intent_id: string | null;
+  build: BuildSummary | null;
 };
 
 const STATUS_COPY: Record<string, { title: string; body: string }> = {
@@ -33,7 +49,7 @@ const STATUS_COPY: Record<string, { title: string; body: string }> = {
   },
   assigned: {
     title: "Ready for your decision",
-    body: "Your final build is ready. Accept or decline from this page when available.",
+    body: "Your final build is ready. Accept and Decline will be available here shortly.",
   },
   accepted: {
     title: "Accepted",
@@ -95,6 +111,8 @@ export default function ResultStatusPage() {
   const tier = result?.assigned_tier ?? result?.suggested_tier;
   const amount = result?.final_amount ?? result?.authorized_amount;
   const currency = result?.currency ?? "SGD";
+  const build = result?.build;
+  const showFinalBuild = status === "assigned" || status === "accepted" || status === "captured";
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-12">
@@ -110,26 +128,120 @@ export default function ResultStatusPage() {
 
         {result && (
           <div className="space-y-2 rounded-md border bg-muted/40 p-4 text-sm">
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Size</span>
-              <span className="font-medium">{size ?? "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">Tier</span>
-              <span className="font-medium capitalize">{tier ?? "—"}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">
-                {status === "held" ? "Authorized (not charged)" : "Amount"}
-              </span>
-              <span className="font-medium tabular-nums">
-                {amount != null ? `${currency} ${Number(amount).toFixed(2)}` : "—"}
-              </span>
-            </div>
+            {result.product_type === "bolster" ? (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Length</span>
+                <span className="font-medium">
+                  {result.assigned_length ?? result.suggested_length ?? "—"}
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Size</span>
+                  <span className="font-medium">{size ?? "—"}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Tier</span>
+                  <span className="font-medium capitalize">{tier ?? "—"}</span>
+                </div>
+              </>
+            )}
+
+            {showFinalBuild && build && (
+              <>
+                <div className="pt-2">
+                  <div className="text-muted-foreground">Fillings</div>
+                  <ul className="mt-1 list-disc pl-4">
+                    {(build.fillingSummary.length
+                      ? build.fillingSummary
+                      : [build.fillingTemplateName ?? "—"]
+                    ).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Preferences</div>
+                  <ul className="mt-1 list-disc pl-4">
+                    {(build.preferences.length ? build.preferences : ["—"]).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Add-ons</div>
+                  <ul className="mt-1 list-disc pl-4">
+                    {(build.addons.length ? build.addons : ["—"]).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+                {build.pricing && (
+                  <div className="space-y-1 border-t pt-2">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="tabular-nums">
+                        {currency} {build.pricing.subtotal.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Shipping</span>
+                      <span className="tabular-nums">
+                        {currency} {build.pricing.shipping.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Tax</span>
+                      <span className="tabular-nums">
+                        {currency} {build.pricing.tax.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4 font-medium">
+                      <span>Total</span>
+                      <span className="tabular-nums">
+                        {currency} {build.pricing.total.toFixed(2)}
+                      </span>
+                    </div>
+                    {result.authorized_amount != null && (
+                      <div className="flex justify-between gap-4 text-xs text-muted-foreground">
+                        <span>Authorized hold</span>
+                        <span className="tabular-nums">
+                          {currency} {Number(result.authorized_amount).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {!showFinalBuild && (
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Authorized (not charged)</span>
+                <span className="font-medium tabular-nums">
+                  {amount != null ? `${currency} ${Number(amount).toFixed(2)}` : "—"}
+                </span>
+              </div>
+            )}
+
             {status === "held" && (
               <p className="pt-2 text-xs text-muted-foreground">
                 Accept will be available after an operator assigns your final build.
               </p>
+            )}
+            {status === "assigned" && (
+              <div className="flex flex-wrap gap-2 border-t pt-3">
+                <Button disabled variant="default" size="sm">
+                  Accept
+                </Button>
+                <Button disabled variant="outline" size="sm">
+                  Decline
+                </Button>
+                <p className="w-full text-xs text-muted-foreground">
+                  Accept and Decline open in the next release.
+                </p>
+              </div>
             )}
           </div>
         )}
