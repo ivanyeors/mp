@@ -12,6 +12,12 @@ import {
   orderStatusBadgeClass,
   orderStatusLabel,
 } from "@/lib/shop/order-display";
+import {
+  customerRefundRequestDeniedReason,
+  isPostDelivery,
+  isResultCustomisedOrder,
+} from "@/lib/results/post-delivery-refund";
+import { OrderRefundActions } from "./refund-actions";
 
 export default async function AccountOrderDetailPage({
   params,
@@ -30,6 +36,10 @@ export default async function AccountOrderDetailPage({
 
   const items = order.items ?? [];
   const address = order.shipping_address;
+  const isResultOrder = isResultCustomisedOrder(items);
+  const canRequestRefund =
+    isResultOrder && customerRefundRequestDeniedReason(order, items) === null;
+  const refundRequestStatus = order.refund_request_status ?? null;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -150,6 +160,20 @@ export default async function AccountOrderDetailPage({
           </div>
         </div>
       </section>
+
+      {isResultOrder && !isPostDelivery(order) && !refundRequestStatus ? (
+        <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+          This customised order cannot be cancelled after Accept. You can request a
+          refund after delivery if you return the product in person.
+        </div>
+      ) : null}
+      {isResultOrder ? (
+        <OrderRefundActions
+          orderNumber={order.order_number}
+          canRequest={canRequestRefund}
+          requestStatus={refundRequestStatus}
+        />
+      ) : null}
 
       {/* Shipping address */}
       {address ? (

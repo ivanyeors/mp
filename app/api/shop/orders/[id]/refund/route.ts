@@ -8,6 +8,7 @@ import {
   refundableAmount,
   refundIdempotencyKey,
 } from "@/lib/ecommerce/admin-refund";
+import { directRefundDeniedReason } from "@/lib/results/post-delivery-refund";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,8 @@ const RefundSchema = z.object({
   /** Major units (e.g. dollars). Omit for a full refund of the remaining balance. */
   amount: z.number().positive().optional(),
   reason: z.enum(["duplicate", "fraudulent", "requested_by_customer"]).optional(),
+  /** Required for Result (customised) orders — use refund-request approve instead. */
+  in_person_return_acknowledged: z.boolean().optional(),
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -31,12 +34,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const admin = supabaseAdmin();
   const { data: order, error } = await admin
     .from("orders")
-    .select("id, order_number, payment_reference, total, amount_refunded, currency, status")
+    .select(
+      "id, order_number, payment_reference, total, amount_refunded, currency, status, shipped_at, delivered_at, refund_request_status, items:order_items(customization_snapshot)",
+    )
     .eq("id", orderId)
     .single();
 
   if (error || !order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
+
+  const resultGate = directRefundDeniedReason(
+    order,
+    order.items ?? [],
+    parsed.data.in_person_return_acknowledged === true,
+  );
+  if (resultGate) {
+    return NextResponse.json(
+      {
+        error: `${resultGate} Use POST /refund-request with action=approve.`,
+      },
+      { status: 400 },
+    );
   }
 
   if (!order.payment_reference) {
@@ -66,6 +85,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const amountCents = Math.round(refundAmount * 100);
   const isFullRefund = amountCents >= Math.round(remaining * 100);
+  const now = new Date().toISOString();
 
   const stripeRefund = await refundPayment({
     paymentIntentId: order.payment_reference,
@@ -74,6 +94,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     reason: parsed.data.reason,
     metadata: { order_id: orderId },
   });
+
+  if (order.refund_request_status === "requested") {
+    await admin
+      .from("orders")
+      .update({
+        refund_request_status: "approved",
+        refund_return_acknowledged_at: now,
+      })
+      .eq("id", orderId);
+  }
 
   // Ledger row is written by the Stripe webhook — single source of truth.
   await addOrderTimelineEvent(

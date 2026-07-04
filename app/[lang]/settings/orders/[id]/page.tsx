@@ -65,6 +65,7 @@ import {
     groupBuildLinesByRole,
     isResultOrderBuildSnapshot,
 } from "@/lib/results/order-build-snapshot";
+import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -200,6 +201,8 @@ export default function OrderDetailPage() {
     const [restockQty, setRestockQty] = useState<Record<string, string>>({});
     const [restocking, setRestocking] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
+    const [returnAcknowledged, setReturnAcknowledged] = useState(false);
+    const [decidingRefund, setDecidingRefund] = useState(false);
 
     const fetchOrder = useCallback(async () => {
         setLoading(true);
@@ -414,17 +417,25 @@ export default function OrderDetailPage() {
         ? Math.max(0, Number(order.total) - Number(order.amount_refunded ?? 0))
         : 0;
 
+    const isResultOrder = order
+        ? isResultCustomisedOrder(order.items ?? [])
+        : false;
+    const pendingRefundRequest = order?.refund_request_status === "requested";
+
+    // Accessory orders: direct staff refund. Result orders: only via request approve.
     const canRefund =
         !!order?.payment_reference &&
         order.status !== "refunded" &&
         order.status !== "pending" &&
         order.status !== "payment_failed" &&
-        refundableRemaining > 0;
+        refundableRemaining > 0 &&
+        !isResultOrder;
 
     const canCancel =
         !!order &&
         order.status !== "cancelled" &&
-        order.status !== "refunded";
+        order.status !== "refunded" &&
+        !isResultOrder;
 
     const canRestock =
         !!order &&
@@ -476,6 +487,31 @@ export default function OrderDetailPage() {
             setActionError(e instanceof Error ? e.message : "Cancel failed");
         } finally {
             setCancelling(false);
+        }
+    };
+
+    const handleRefundRequestDecide = async (action: "approve" | "reject") => {
+        setDecidingRefund(true);
+        setActionError(null);
+        try {
+            const res = await fetch(`/api/shop/orders/${orderId}/refund-request`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action,
+                    in_person_return_acknowledged:
+                        action === "approve" ? returnAcknowledged : undefined,
+                }),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Request failed");
+            setReturnAcknowledged(false);
+            await fetchOrder();
+            await fetchTimeline();
+        } catch (e) {
+            setActionError(e instanceof Error ? e.message : "Request failed");
+        } finally {
+            setDecidingRefund(false);
         }
     };
 
@@ -1361,6 +1397,72 @@ export default function OrderDetailPage() {
                                         {formatSGD(Number(order.amount_refunded))}
                                     </span>
                                 </div>
+                            )}
+                            {isResultOrder && order.refund_request_status && (
+                                <div className="rounded-md border p-3 space-y-2 text-sm">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="font-medium">Refund request</span>
+                                        <Badge variant="secondary" className="text-xs capitalize">
+                                            {order.refund_request_status}
+                                        </Badge>
+                                    </div>
+                                    {order.refund_requested_at && (
+                                        <p className="text-xs text-muted-foreground">
+                                            Requested {formatDate(order.refund_requested_at)}
+                                        </p>
+                                    )}
+                                    {order.refund_request_note && (
+                                        <p className="text-xs">{order.refund_request_note}</p>
+                                    )}
+                                    {pendingRefundRequest && (
+                                        <>
+                                            <label className="flex items-start gap-2 text-xs cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="mt-0.5"
+                                                    checked={returnAcknowledged}
+                                                    onChange={(e) =>
+                                                        setReturnAcknowledged(e.target.checked)
+                                                    }
+                                                />
+                                                <span>
+                                                    Customer returned the product in person
+                                                </span>
+                                            </label>
+                                            {actionError && (
+                                                <p className="text-sm text-destructive">{actionError}</p>
+                                            )}
+                                            <div className="flex flex-col gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    className="w-full"
+                                                    disabled={decidingRefund || !returnAcknowledged}
+                                                    onClick={() => handleRefundRequestDecide("approve")}
+                                                >
+                                                    {decidingRefund ? (
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    ) : null}
+                                                    Approve refund
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="w-full"
+                                                    disabled={decidingRefund}
+                                                    onClick={() => handleRefundRequestDecide("reject")}
+                                                >
+                                                    Reject request
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            {isResultOrder && !order.refund_request_status && (
+                                <p className="text-xs text-muted-foreground pt-1">
+                                    Customised orders: customer requests refund after delivery;
+                                    approve only after in-person return.
+                                </p>
                             )}
                             {actionError && (refundOpen || cancelOpen) && (
                                 <p className="text-sm text-destructive pt-1">{actionError}</p>
