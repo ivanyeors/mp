@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { getAuthUser } from "@/lib/auth/user";
 import { linkCustomerToAuthUser } from "@/lib/auth/customer-identity";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 
 /** Entry point: open the latest Result status page (or empty state). */
 export default async function ResultsIndexPage({
@@ -57,16 +55,11 @@ export default async function ResultsIndexPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-xl px-4 py-12 md:py-16">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">My results</h1>
-        <p className="text-sm text-muted-foreground">No results yet.</p>
+    <div className="space-y-6 max-w-xl">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Results</h1>
+        <p className="mt-2 text-sm text-muted-foreground">No results yet.</p>
       </div>
-      <div className="mt-8">
-        <Button asChild variant="outline" size="sm">
-          <Link href={withLocale("/account", locale)}>Account</Link>
-        </Button>
-      </div>
-    </main>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ChevronLeft, Package, ExternalLink } from "lucide-react";
+import { Package, ExternalLink } from "lucide-react";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { getAuthUser } from "@/lib/auth/user";
@@ -33,20 +33,16 @@ export default async function AccountOrdersPage({
   const orders = await getCustomerOrders();
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">
-      <div className="space-y-1">
-        <Link
-          href={withLocale("/account", locale)}
-          className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ChevronLeft className="mr-1 h-4 w-4" />
-          Account
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Order history</h1>
+    <div className="space-y-6 max-w-3xl">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Order history, status, and tracking.
+        </p>
       </div>
 
       {orders.length === 0 ? (
-        <div className="mt-10 flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-16 text-center">
           <Package className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             You don&apos;t have any orders yet.
@@ -59,7 +55,7 @@ export default async function AccountOrdersPage({
           </Link>
         </div>
       ) : (
-        <ul className="mt-8 space-y-4">
+        <ul className="space-y-4">
           {orders.map((order) => {
             const itemCount = (order.items ?? []).reduce(
               (sum, item) => sum + item.quantity,
@@ -111,6 +107,6 @@ export default async function AccountOrdersPage({
           })}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

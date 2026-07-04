@@ -1,7 +1,6 @@
-import Link from "next/link";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft, ExternalLink, Package, Truck } from "lucide-react";
+import { ExternalLink, Package, Truck } from "lucide-react";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { getAuthUser } from "@/lib/auth/user";
@@ -33,35 +32,26 @@ export default async function AccountOrderDetailPage({
   const address = order.shipping_address;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-12 md:py-16">
-      <div className="space-y-1">
-        <Link
-          href={withLocale("/account/orders", locale)}
-          className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ChevronLeft className="mr-1 h-4 w-4" />
-          Order history
-        </Link>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Order {order.order_number}
-            </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Placed {formatOrderDate(order.created_at)}
-            </p>
-          </div>
-          <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${orderStatusBadgeClass(order.status)}`}
-          >
-            {orderStatusLabel(order.status)}
-          </span>
+    <div className="space-y-6 max-w-3xl">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Order {order.order_number}
+          </h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Placed {formatOrderDate(order.created_at)}
+          </p>
         </div>
+        <span
+          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${orderStatusBadgeClass(order.status)}`}
+        >
+          {orderStatusLabel(order.status)}
+        </span>
       </div>
 
       {/* Tracking */}
       {order.status === "shipped" && order.tracking_number ? (
-        <div className="mt-6 rounded-lg border bg-muted/30 p-4">
+        <div className="rounded-lg border bg-muted/30 p-4">
           <div className="flex items-start gap-3">
             <Truck className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
@@ -89,7 +79,7 @@ export default async function AccountOrderDetailPage({
       ) : null}
 
       {/* Items */}
-      <section className="mt-8 rounded-lg border">
+      <section className="rounded-lg border">
         <div className="divide-y">
           {items.map((item) => (
             <div key={item.id} className="flex gap-4 p-4">
@@ -163,7 +153,7 @@ export default async function AccountOrderDetailPage({
 
       {/* Shipping address */}
       {address ? (
-        <section className="mt-6 rounded-lg border p-4">
+        <section className="rounded-lg border p-4">
           <h2 className="text-sm font-medium">Shipping address</h2>
           <address className="mt-2 text-sm not-italic leading-relaxed text-muted-foreground">
             {address.recipient}
@@ -184,6 +174,6 @@ export default async function AccountOrderDetailPage({
           </address>
         </section>
       ) : null}
-    </main>
+    </div>
   );
 }
