@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
+import { ProfileMenu } from "@/components/auth/profile-menu";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
 import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { withLocale } from "@/lib/i18n/routing";
@@ -126,6 +127,7 @@ export function HomeHeader() {
             </div>
             <div className="flex justify-end gap-2">
               <LanguageToggle />
+              <ProfileMenu />
               <ModeToggle />
             </div>
           </div>
