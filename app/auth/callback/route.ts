@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/ssr-server";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { getRequestOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,8 @@ export const runtime = "nodejs";
  * `next` param controls the post-login destination.
  */
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = getRequestOrigin(request);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? `/${DEFAULT_LOCALE}`;
   const error = searchParams.get("error_description") ?? searchParams.get("error");

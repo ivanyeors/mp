@@ -507,7 +507,8 @@ export async function POST(req: Request) {
   }
 
   // 14. Create Stripe Checkout Session
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const { getSiteOrigin } = await import("@/lib/site-url");
+  const siteUrl = getSiteOrigin();
 
   let stripeSession: { sessionId: string; url: string | null };
   try {

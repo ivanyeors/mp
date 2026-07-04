@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
+import { authCallbackUrl } from "@/lib/site-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,16 +37,13 @@ export function LoginForm({
     if (initialEmail) setEmail(initialEmail);
   }, [initialEmail]);
 
-  const callbackUrl = () =>
-    `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
-
   const signInWithGoogle = async () => {
     setError(null);
     setLoading("google");
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: callbackUrl() },
+      options: { redirectTo: authCallbackUrl(nextPath) },
     });
     if (error) {
       setError(error.message);
@@ -60,7 +58,7 @@ export function LoginForm({
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: callbackUrl() },
+      options: { emailRedirectTo: authCallbackUrl(nextPath) },
     });
     setLoading(null);
     if (error) {

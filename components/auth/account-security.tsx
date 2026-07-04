@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { authCallbackUrl } from "@/lib/site-url";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,8 +36,6 @@ export function AccountSecurity({ email, googleLinked: initialGoogleLinked }: Pr
   }, [initialGoogleLinked]);
 
   const accountPath = withLocale("/account", locale);
-  const callbackUrl = () =>
-    `${window.location.origin}/auth/callback?next=${encodeURIComponent(accountPath)}`;
 
   const setNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +68,7 @@ export function AccountSecurity({ email, googleLinked: initialGoogleLinked }: Pr
     setLoading("reset");
     const supabase = createSupabaseBrowserClient();
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: callbackUrl(),
+      redirectTo: authCallbackUrl(accountPath),
     });
     setLoading(null);
     if (err) {
@@ -86,7 +85,7 @@ export function AccountSecurity({ email, googleLinked: initialGoogleLinked }: Pr
     const supabase = createSupabaseBrowserClient();
     const { error: err } = await supabase.auth.linkIdentity({
       provider: "google",
-      options: { redirectTo: callbackUrl() },
+      options: { redirectTo: authCallbackUrl(accountPath) },
     });
     if (err) {
       setError(err.message);
