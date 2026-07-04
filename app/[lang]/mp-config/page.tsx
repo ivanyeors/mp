@@ -47,6 +47,11 @@ import {
   CustomizationStepComponents,
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
+import {
+  SavedAddressSelect,
+  useSavedShippingPrefill,
+  type HoldShippingAddress,
+} from "@/components/shop/saved-address-select";
 
 /** Prefer BOM default, else first in-stock option, else first row. */
 function pickDefaultComponent(
@@ -152,7 +157,7 @@ export default function MpConfigPage() {
   const [selectedAddons, setSelectedAddons] = useState<Set<number>>(new Set());
   const [addons, setAddons] = useState<{ item_id: number; name: string; msrp: number; currency: string }[]>([]);
   const [holdEmail, setHoldEmail] = useState("");
-  const [holdAddress, setHoldAddress] = useState({
+  const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>({
     recipient: "",
     line1: "",
     line2: "",
@@ -160,6 +165,12 @@ export default function MpConfigPage() {
     postal_code: "",
     country: "SG",
   });
+  const {
+    signedIn: shippingSignedIn,
+    savedAddresses,
+    selectedAddressId,
+    handleSelectAddress,
+  } = useSavedShippingPrefill(setHoldEmail, setHoldAddress);
   const [shippingMethods, setShippingMethods] = useState<
     { id: string; slug: string; base_rate: number; free_above: number | null; content: Record<string, { name?: string }> }[]
   >([]);
@@ -343,7 +354,7 @@ export default function MpConfigPage() {
     setSelectedCover(null);
     setSelectedCase(null);
     setSelectedAddons(new Set());
-    setHoldEmail("");
+    // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
   };
 
@@ -595,10 +606,9 @@ export default function MpConfigPage() {
       suggestion?.recommended?.size ??
       suggestion?.product?.size ??
       "";
-    const addonsUrl = size
-      ? `/api/results/addons?size=${encodeURIComponent(size)}`
-      : "/api/results/addons";
-    fetch(addonsUrl)
+    const qs = new URLSearchParams({ productType: "pillow" });
+    if (size) qs.set("size", size);
+    fetch(`/api/results/addons?${qs.toString()}`)
       .then((r) => r.json())
       .then((d: { addons?: { item_id: number; name: string; msrp: number; currency: string }[] }) => {
         const list = d.addons ?? [];
@@ -922,7 +932,9 @@ export default function MpConfigPage() {
 
                 {addons.length > 0 && (
                   <div className="space-y-3">
-                    <Label className="text-base font-semibold">Add-ons (optional)</Label>
+                    <Label className="text-base font-semibold">
+                      Add-ons for your Mpillow (optional)
+                    </Label>
                     <div className="space-y-2">
                       {addons.map((a) => {
                         const on = selectedAddons.has(a.item_id);
@@ -956,6 +968,12 @@ export default function MpConfigPage() {
 
                 <div className="space-y-3">
                   <Label className="text-base font-semibold">Shipping</Label>
+                  <SavedAddressSelect
+                    signedIn={shippingSignedIn}
+                    addresses={savedAddresses}
+                    value={selectedAddressId}
+                    onValueChange={handleSelectAddress}
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="hold-email">Email</Label>
                     <Input

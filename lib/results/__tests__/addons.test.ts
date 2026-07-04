@@ -1,0 +1,78 @@
+import { describe, it, expect } from "vitest";
+import {
+  accessoryFitsProduct,
+  addonMatchRank,
+  suggestAddons,
+} from "@/lib/results/addons";
+
+const prices = new Map([
+  [1, { msrp: 20, currency: "SGD" }],
+  [2, { msrp: 22, currency: "SGD" }],
+  [3, { msrp: 18, currency: "SGD" }],
+  [4, { msrp: 15, currency: "SGD" }],
+  [5, { msrp: 12, currency: "SGD" }],
+  [6, { msrp: 30, currency: "SGD" }],
+  [7, { msrp: 25, currency: "SGD" }],
+]);
+
+const catalog = [
+  { id: 1, name: "Cervical Neck Support", size: null },
+  { id: 2, name: "Cervical Neck Support", size: "M" },
+  { id: 3, name: "Travel Pouch", size: "XS" },
+  { id: 4, name: "Bolster Sleeve", size: "BOLSTER" },
+  { id: 5, name: "Bolster Sleeve", size: "medium" },
+  { id: 6, name: "Knee Support", size: "S" },
+  { id: 7, name: "Bolster Tie", size: "long" },
+];
+
+describe("accessoryFitsProduct", () => {
+  it("keeps one-size and matching pillow size; drops other sizes and bolster tags", () => {
+    expect(accessoryFitsProduct({ size: null }, "pillow", "M")).toBe(true);
+    expect(accessoryFitsProduct({ size: "M" }, "pillow", "M")).toBe(true);
+    expect(accessoryFitsProduct({ size: "XS" }, "pillow", "M")).toBe(false);
+    expect(accessoryFitsProduct({ size: "BOLSTER" }, "pillow", "M")).toBe(false);
+    expect(accessoryFitsProduct({ size: "medium" }, "pillow", "M")).toBe(false);
+  });
+
+  it("keeps bolster length / BOLSTER only; drops pillow sizes and one-size", () => {
+    expect(accessoryFitsProduct({ size: "BOLSTER" }, "bolster", "medium")).toBe(true);
+    expect(accessoryFitsProduct({ size: "medium" }, "bolster", "medium")).toBe(true);
+    expect(accessoryFitsProduct({ size: "M" }, "bolster", "medium")).toBe(false);
+    expect(accessoryFitsProduct({ size: "long" }, "bolster", "medium")).toBe(false);
+    expect(accessoryFitsProduct({ size: null }, "bolster", "medium")).toBe(false);
+    expect(accessoryFitsProduct({ size: "XS" }, "bolster", "medium")).toBe(false);
+  });
+});
+
+describe("suggestAddons", () => {
+  it("suggests pillow add-ons sized to the recommendation (prefers exact size)", () => {
+    const addons = suggestAddons(catalog, prices, { productType: "pillow", sizeKey: "M" });
+    expect(addons.map((a) => a.name).sort()).toEqual(["Cervical Neck Support"]);
+    // Exact M beats one-size for the same name
+    expect(addons.find((a) => a.name === "Cervical Neck Support")?.item_id).toBe(2);
+    expect(addons.find((a) => a.name === "Cervical Neck Support")?.msrp).toBe(22);
+    // XS-only and bolster-only rows excluded
+    expect(addons.some((a) => a.name === "Travel Pouch")).toBe(false);
+    expect(addons.some((a) => a.name.includes("Bolster"))).toBe(false);
+  });
+
+  it("suggests bolster add-ons for length, not pillow one-size accessories", () => {
+    const addons = suggestAddons(catalog, prices, {
+      productType: "bolster",
+      sizeKey: "medium",
+    });
+    // Bolster Sleeve (medium), Knee Support (S letter only for short — excluded), Bolster Tie is long
+    expect(addons.map((a) => a.name).sort()).toEqual(["Bolster Sleeve"]);
+    // Prefer exact length over BOLSTER for same name
+    expect(addons.find((a) => a.name === "Bolster Sleeve")?.item_id).toBe(5);
+    // Cervical (one-size / pillow) excluded
+    expect(addons.some((a) => a.name === "Cervical Neck Support")).toBe(false);
+    expect(addons.some((a) => a.name === "Travel Pouch")).toBe(false);
+  });
+
+  it("ranks exact length above BOLSTER", () => {
+    expect(addonMatchRank({ size: "medium" }, "bolster", "medium")).toBeGreaterThan(
+      addonMatchRank({ size: "BOLSTER" }, "bolster", "medium"),
+    );
+  });
+});

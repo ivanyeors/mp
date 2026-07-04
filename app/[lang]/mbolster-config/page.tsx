@@ -22,6 +22,11 @@ import {
   type RecommendationResponseData,
   CustomizationStepComponents,
 } from "@/components/shop/customization-steps";
+import {
+  SavedAddressSelect,
+  useSavedShippingPrefill,
+  type HoldShippingAddress,
+} from "@/components/shop/saved-address-select";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type HeightUnit = "cm" | "m";
@@ -124,7 +129,7 @@ export default function MbolsterConfigPage() {
     { item_id: number; name: string; msrp: number; currency: string }[]
   >([]);
   const [holdEmail, setHoldEmail] = React.useState("");
-  const [holdAddress, setHoldAddress] = React.useState({
+  const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",
     line1: "",
     line2: "",
@@ -132,6 +137,12 @@ export default function MbolsterConfigPage() {
     postal_code: "",
     country: "SG",
   });
+  const {
+    signedIn: shippingSignedIn,
+    savedAddresses,
+    selectedAddressId,
+    handleSelectAddress,
+  } = useSavedShippingPrefill(setHoldEmail, setHoldAddress);
   const [shippingMethods, setShippingMethods] = React.useState<
     {
       id: string;
@@ -229,15 +240,7 @@ export default function MbolsterConfigPage() {
     setSelectedCase(null);
     setSelectedAddons(new Set());
     setAddons([]);
-    setHoldEmail("");
-    setHoldAddress({
-      recipient: "",
-      line1: "",
-      line2: "",
-      city: "",
-      postal_code: "",
-      country: "SG",
-    });
+    // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     try {
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.removeItem("mbolster_config_v3");
@@ -299,11 +302,14 @@ export default function MbolsterConfigPage() {
     }
   }, [heightNum, state.sleepPosition]);
 
-  // Load add-ons + shipping when entering the cover/purchase preview (same as mp-config).
+  // Load bolster-specific add-ons + shipping when entering the cover/purchase preview.
   React.useEffect(() => {
     if (state.step !== "preview") return;
 
-    fetch("/api/results/addons")
+    const length = shopRecommendation?.bolster_variant ?? "";
+    const qs = new URLSearchParams({ productType: "bolster" });
+    if (length) qs.set("length", length);
+    fetch(`/api/results/addons?${qs.toString()}`)
       .then((r) => r.json())
       .then((d: { addons?: typeof addons }) => {
         const list = d.addons ?? [];
@@ -330,7 +336,7 @@ export default function MbolsterConfigPage() {
         );
       })
       .catch(() => setShippingMethods([]));
-  }, [state.step, holdAddress.country]);
+  }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant]);
 
   const handleAuthorizeHold = React.useCallback(async () => {
     if (!suggestedLength) {
@@ -537,7 +543,9 @@ export default function MbolsterConfigPage() {
 
               {addons.length > 0 && (
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">Add-ons (optional)</Label>
+                  <Label className="text-base font-semibold">
+                    Add-ons for your Mbolster (optional)
+                  </Label>
                   <div className="space-y-2">
                     {addons.map((a) => {
                       const on = selectedAddons.has(a.item_id);
@@ -571,6 +579,12 @@ export default function MbolsterConfigPage() {
 
               <div className="space-y-3">
                 <Label className="text-base font-semibold">Shipping</Label>
+                <SavedAddressSelect
+                  signedIn={shippingSignedIn}
+                  addresses={savedAddresses}
+                  value={selectedAddressId}
+                  onValueChange={handleSelectAddress}
+                />
                 <div className="space-y-2">
                   <Label htmlFor="hold-email">Email</Label>
                   <Input
