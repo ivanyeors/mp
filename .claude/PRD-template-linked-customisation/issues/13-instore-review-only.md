@@ -28,12 +28,12 @@ Walk-in / in-store measurement finalization creates a **Result without a Stripe 
 
 ## Status
 
-**In progress** on `cursor/slice-13-instore-review-only`.
+**Done** (`2ad838b6` on `main`, verified on `cursor/slice-13-verify-complete`).
 
 - `buildInstoreReviewOnlyPatch` on first `isFinal` in `/api/mp-config/responses` — `status: held`, ballpark size×tier, no PI/authorized amount
 - SLA cron skips held rows without `payment_intent_id`
 - Assign skips customer email when no hold; Accept/Decline hidden on status page without PI
-- Tests: `lib/results/__tests__/slice-13-instore-review-only.test.ts`
+- Tests: `lib/results/__tests__/slice-13-instore-review-only.test.ts` (6 tests, all green)
 
 ## Blocked by
 

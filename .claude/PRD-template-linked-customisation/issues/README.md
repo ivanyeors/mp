@@ -18,7 +18,7 @@ Tracer-bullet breakdown of the PRD (`../template-linked-customisation-prd.md`). 
 | 10 | Order build snapshot + fulfill wiring | AFK | **done** | 07 | 33, 34 |
 | 11 | Post-delivery refund request + operator approve | AFK | **done** | 10 | 17, 18, 35 |
 | 12 | Retire hardcoded fillings; LLM proposal field hooks | AFK | **done** (`cursor/retire-hardcoded-fillings`) | 07, 02 | 6, 40 |
-| 13 | In-store measurement-only Results (no Stripe hold) | AFK | **in progress** (`cursor/slice-13-instore-review-only`) | 04, 06 | 42, 24–26, 29–30 |
+| 13 | In-store measurement-only Results (no Stripe hold) | AFK | **done** (`2ad838b6`) | 04, 06 | 42, 24–26, 29–30 |
 
 ## User story coverage (all 43)
 
