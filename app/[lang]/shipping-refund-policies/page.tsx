@@ -1,5 +1,9 @@
-import { MarketingStubPage } from "@/components/marketing/marketing-stub-page";
+import { ReturnsWarrantyPage } from "@/components/marketing/returns-warranty-page";
 
-export default function ShippingRefundPoliciesPage({ params }: { params: Promise<{ lang: string }> }) {
-  return <MarketingStubPage title="Returns & Warranty" params={params} />;
+export default function ShippingRefundPoliciesPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  return <ReturnsWarrantyPage params={params} />;
 }
