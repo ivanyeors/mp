@@ -150,7 +150,7 @@ function BasicMpillowLearnMoreSheetInner() {
                   }
                   cta={
                     <Button asChild className="h-auto py-3">
-                      <Link href={to("/mp-config")}>{m.slides.basicMpillow.bottomCustomise}</Link>
+                      <Link href={to("/mp-basic")}>{m.slides.basicMpillow.bottomCustomise}</Link>
                     </Button>
                   }
                   image={{
@@ -281,7 +281,7 @@ function BasicMpillowLearnMoreSheetInner() {
           <div className="px-4 py-4 md:px-6">
             <div className="grid gap-3 sm:grid-cols-2 md:flex md:flex-wrap md:gap-3">
               <Button asChild className="h-auto py-4 md:h-9 md:py-2">
-                <Link href={to("/mp-config")}>{m.slides.basicMpillow.bottomCustomise}</Link>
+                <Link href={to("/mp-basic")}>{m.slides.basicMpillow.bottomCustomise}</Link>
               </Button>
               <Button
                 type="button"

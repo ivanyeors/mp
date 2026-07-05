@@ -125,7 +125,7 @@ export function PickMpillowSection({ section, messages: m, locale, images, price
                     <div className="flex w-full items-center gap-2">
                       <BasicMpillowLearnMoreSheet className="flex-1" />
                       <Button asChild className="flex-1">
-                        <Link href={withLocale("/mp-config", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
+                        <Link href={withLocale("/mp-basic", locale)}>{m.home.pickYourMpillow.buttonCustomise}</Link>
                       </Button>
                     </div>
                   ) : (

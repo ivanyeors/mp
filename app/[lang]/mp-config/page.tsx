@@ -52,6 +52,13 @@ import {
   useSavedShippingPrefill,
   type HoldShippingAddress,
 } from "@/components/shop/saved-address-select";
+import {
+  configPathFor,
+  sessionKeyFor,
+  stepOrderFor,
+  variantFromPathname,
+  type MpConfigVariant,
+} from "@/lib/mp-config/flow-variant";
 
 /** Prefer BOM default, else first in-stock option, else first row. */
 function pickDefaultComponent(
@@ -107,12 +114,14 @@ type MpConfigSuggestion = {
   reasons: string[];
 };
 
-const sessionStorageKey = "mp_config_response_id";
-
 export default function MpConfigPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+  const variant: MpConfigVariant = variantFromPathname(pathname);
+  const isBasic = variant === "basic";
+  const sessionStorageKey = sessionKeyFor(variant);
+  const configPath = configPathFor(variant);
   const to = (href: string) => withLocale(href, locale);
 
   const isMobile = useIsMobile();
@@ -189,17 +198,7 @@ export default function MpConfigPage() {
     side: false,
   });
 
-  const stepOrder: Step[] = [
-    "welcome",
-    "what-to-expect",
-    "name",
-    "shoulder-length",
-    "neck-to-back",
-    "head-to-back",
-    "neck-length",
-    "customize",
-    "preview",
-  ];
+  const stepOrder = stepOrderFor(variant) as Step[];
 
   const clearTransitionTimers = () => {
     if (transitionTimeoutRef.current !== null) {
@@ -304,7 +303,7 @@ export default function MpConfigPage() {
         // Best-effort only; never block the UI.
       }
     })();
-  }, []);
+  }, [sessionStorageKey]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -542,7 +541,7 @@ export default function MpConfigPage() {
     measurementData.sleepPositionType.length > 0 &&
     measurementData.usesBolster !== "";
 
-  // Fetch shop recommendation from customize API
+  // Fetch shop recommendation from customize API (full mp-config path)
   const fetchShopRecommendation = useCallback(async () => {
     setShopLoading(true);
     try {
@@ -598,6 +597,50 @@ export default function MpConfigPage() {
     }
   }, [measurementData]);
 
+  const fetchBasicRecommendation = useCallback(async (): Promise<RecommendationResponseData | null> => {
+    setShopLoading(true);
+    try {
+      const res = await fetch("/api/mp-basic/recommend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(measurementData),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(getApiErrorMessage(err.error, `Failed to get recommendation (${res.status})`));
+      }
+
+      const data: RecommendationResponseData = await res.json();
+      setShopRecommendation(data);
+      setSelectedCover(pickDefaultComponent(data.components.covers));
+      setSelectedCase(pickDefaultComponent(data.components.cases));
+      return data;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to get basic recommendation");
+      return null;
+    } finally {
+      setShopLoading(false);
+    }
+  }, [measurementData]);
+
+  const fetchRecommendation = isBasic ? fetchBasicRecommendation : fetchShopRecommendation;
+
+  // Prefetch basic recommendation when entering customize with shoulder set.
+  useEffect(() => {
+    if (!isBasic || currentStep !== "customize") return;
+    if (!measurementData.shoulderLength) return;
+    if (shopRecommendation || shopLoading) return;
+    void fetchBasicRecommendation();
+  }, [
+    isBasic,
+    currentStep,
+    measurementData.shoulderLength,
+    shopRecommendation,
+    shopLoading,
+    fetchBasicRecommendation,
+  ]);
+
   // Load size-scoped add-ons + shipping when entering purchase preview.
   useEffect(() => {
     if (currentStep !== "preview") return;
@@ -649,10 +692,11 @@ export default function MpConfigPage() {
       shopRecommendation?.pillow_product?.size ??
       suggestion?.recommended?.size ??
       suggestion?.product?.size;
-    const tier =
-      (shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
-      suggestion?.recommended?.kind ??
-      suggestion?.product?.kind;
+    const tier = isBasic
+      ? ("basic" as const)
+      : ((shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
+        suggestion?.recommended?.kind ??
+        suggestion?.product?.kind);
 
     if (!size || !tier) {
       toast.error("Missing size or tier suggestion");
@@ -697,6 +741,7 @@ export default function MpConfigPage() {
             ...holdAddress,
             recipient: holdAddress.recipient || measurementData.name,
           },
+          cancelPath: configPath,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -721,6 +766,8 @@ export default function MpConfigPage() {
     responseId,
     measurementData,
     upsertToDb,
+    isBasic,
+    configPath,
   ]);
 
   const saveLabel:
@@ -813,7 +860,7 @@ export default function MpConfigPage() {
               >
                 <ArrowLeft className="size-4" />
               </Button>
-              <h1 className="text-sm font-semibold">Your Custom Mpillow</h1>
+              <h1 className="text-sm font-semibold">{isBasic ? "Your Basic Mpillow" : "Your Custom Mpillow"}</h1>
               <Button
                 variant="ghost"
                 size="icon"
@@ -925,7 +972,7 @@ export default function MpConfigPage() {
                         ? "Loading options…"
                         : "No recommendation yet. Go back and generate results."}
                     </p>
-                    <Button variant="secondary" size="sm" onClick={() => void fetchShopRecommendation()}>
+                    <Button variant="secondary" size="sm" onClick={() => void fetchRecommendation()}>
                       Retry
                     </Button>
                   </div>
@@ -1155,19 +1202,19 @@ export default function MpConfigPage() {
       )}
 
       {/* Content Container */}
-      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+      <div className="relative z-10 flex min-h-screen w-full items-center justify-center p-4 md:p-6">
         <div
-          className={`w-full max-w-2xl transition-all duration-300 ${
+          className={`w-full max-w-[1400px] transition-all duration-300 ${
             isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100"
           }`}
         >
           {/* Progress Indicator */}
           {currentStep !== "welcome" && (
-            <div className="mb-6 flex justify-center">
+            <div className="mb-6">
               <Progress
                 value={progressValue}
                 aria-label="Configuration progress"
-                className="w-full max-w-2xl"
+                className="w-full"
               />
             </div>
           )}
@@ -1185,10 +1232,13 @@ export default function MpConfigPage() {
                   priority
                 />
                 <h1 className="text-6xl font-bold tracking-tight">
-                  Customise <span className="text-primary">Mpillow</span>
+                  Customise{" "}
+                  <span className="text-primary">{isBasic ? "Basic Mpillow" : "Mpillow"}</span>
                 </h1>
                 <p className="text-xl text-muted-foreground">
-                  Let&apos;s create your perfect pillow, customized just for you
+                  {isBasic
+                    ? "A quick fit for Basic Mpillow — one measurement, then checkout"
+                    : "Let's create your perfect pillow, customized just for you"}
                 </p>
               </div>
               <Button size="lg" onClick={handleStart} className="group">
@@ -1225,7 +1275,9 @@ export default function MpConfigPage() {
                   <div>
                     <h3 className="font-semibold">Take measurements</h3>
                     <p className="text-sm text-muted-foreground">
-                      We&apos;ll guide you through 4 simple measurements
+                      {isBasic
+                        ? "We'll guide you through 1 simple measurement"
+                        : "We'll guide you through 4 simple measurements"}
                     </p>
                   </div>
                 </div>
@@ -1442,7 +1494,7 @@ export default function MpConfigPage() {
           )}
 
           {/* Neck to Back Measurement */}
-          {currentStep === "neck-to-back" && (
+          {!isBasic && currentStep === "neck-to-back" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Image
@@ -1523,7 +1575,7 @@ export default function MpConfigPage() {
           )}
 
           {/* Head to Back Measurement */}
-          {currentStep === "head-to-back" && (
+          {!isBasic && currentStep === "head-to-back" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Image
@@ -1604,7 +1656,7 @@ export default function MpConfigPage() {
           )}
 
           {/* Neck Length Measurement */}
-          {currentStep === "neck-length" && (
+          {!isBasic && currentStep === "neck-length" && (
             <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
               <div className="text-center space-y-2">
                 <Image
@@ -1691,37 +1743,43 @@ export default function MpConfigPage() {
                 <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
                 <h2 className="text-3xl font-bold">Great job, {measurementData.name}!</h2>
                 <p className="text-muted-foreground">
-                  All measurements collected. Ready to see your custom pillow?
+                  {isBasic
+                    ? "Almost there — confirm your fit and finish your Basic Mpillow"
+                    : "All measurements collected. Ready to see your custom pillow?"}
                 </p>
               </div>
 
               <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
                 <h3 className="font-semibold text-lg mb-2">Your Measurements:</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className={`grid gap-3 ${isBasic ? "grid-cols-1" : "grid-cols-2"}`}>
                   <div>
                     <p className="text-sm text-muted-foreground">Shoulder Length</p>
                     <p className="text-lg font-medium">
                       {toDisplayValue(measurementData.shoulderLength)} {measurementUnit}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Neck to Back</p>
-                    <p className="text-lg font-medium">
-                      {toDisplayValue(measurementData.neckToBack)} {measurementUnit}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Head to Back</p>
-                    <p className="text-lg font-medium">
-                      {toDisplayValue(measurementData.headToBack)} {measurementUnit}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Neck Length</p>
-                    <p className="text-lg font-medium">
-                      {toDisplayValue(measurementData.neckLength)} {measurementUnit}
-                    </p>
-                  </div>
+                  {!isBasic && (
+                    <>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Neck to Back</p>
+                        <p className="text-lg font-medium">
+                          {toDisplayValue(measurementData.neckToBack)} {measurementUnit}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Head to Back</p>
+                        <p className="text-lg font-medium">
+                          {toDisplayValue(measurementData.headToBack)} {measurementUnit}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Neck Length</p>
+                        <p className="text-lg font-medium">
+                          {toDisplayValue(measurementData.neckLength)} {measurementUnit}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -2010,7 +2068,12 @@ export default function MpConfigPage() {
                   <Button
                     onClick={async () => {
                       await upsertToDb();
-                      await Promise.all([loadSuggestion(), fetchShopRecommendation()]);
+                      if (isBasic) {
+                        const rec = shopRecommendation ?? (await fetchBasicRecommendation());
+                        if (!rec) return;
+                      } else {
+                        await Promise.all([loadSuggestion(), fetchShopRecommendation()]);
+                      }
                       goToNextStep();
                     }}
                     disabled={!hasAnsweredAdditionalQuestions || photoUploading.front || photoUploading.side || shopLoading}
@@ -2018,7 +2081,7 @@ export default function MpConfigPage() {
                     className="group"
                   >
                     <Sparkles className="mr-2 h-5 w-5" />
-                    Generate Results
+                    {isBasic ? "See your Basic Mpillow" : "Generate Results"}
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </div>

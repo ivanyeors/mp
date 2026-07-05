@@ -61,6 +61,8 @@ const HoldSchema = z
     addonLines: z.array(AddonLineSchema).default([]),
     shippingMethodId: z.string().uuid(),
     shippingAddress: AddressSchema,
+    /** Locale-less return path when Stripe checkout is cancelled (default: /mp-config or /mbolster-config). */
+    cancelPath: z.string().regex(/^\//).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.productType === "pillow") {
@@ -323,7 +325,9 @@ export async function POST(req: Request) {
 
   // No inventory reserve or deduct on hold (US36).
 
-  const cancelPath = productType === "bolster" ? "/mbolster-config" : "/mp-config";
+  const cancelPath =
+    input.cancelPath ??
+    (productType === "bolster" ? "/mbolster-config" : "/mp-config");
   const suggestLabel =
     productType === "bolster"
       ? `Length (suggested): ${input.suggestedLength}`

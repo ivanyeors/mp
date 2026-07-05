@@ -14,6 +14,7 @@ export default function robots(): MetadataRoute.Robots {
           "/api/",
           "/*/settings/",
           "/*/mp-config",
+          "/*/mp-basic",
           "/*/mbolster-config",
           "/*/shop/checkout",
         ],
