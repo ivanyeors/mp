@@ -273,38 +273,6 @@ function BasicMpillowLearnMoreSheetInner() {
                     </div>
                   </div>
                 </section>
-
-                <LeftContentRightImgSection
-                  className="space-y-3"
-                  gridClassName="md:items-start"
-                  headerClassName="space-y-2"
-                  title={m.slides.basicMpillow.aftercareTitle}
-                  titleAs="h3"
-                  titleClassName="text-lg font-semibold tracking-tight md:text-xl"
-                  description={
-                    <>
-                      <p>{m.slides.basicMpillow.aftercareParagraphs[0]}</p>
-                      <p>{m.slides.basicMpillow.aftercareParagraphs[1]}</p>
-                    </>
-                  }
-                  cta={
-                    <Button asChild variant="secondary" className="h-auto py-2.5">
-                      <Link href={to("/mp-care")}>
-                        {m.slides.basicMpillow.careButton}
-                      </Link>
-                    </Button>
-                  }
-                  right={
-                    <div className="overflow-hidden rounded-xl border bg-card">
-                      <div className="relative aspect-video bg-muted/20">
-                        <YouTubeAutoplayOnView
-                          videoId="dsuB9ndOixY"
-                          title="Mpillow aftercare video (Basic)"
-                        />
-                      </div>
-                    </div>
-                  }
-                />
             </div>
           </div>
         </div>

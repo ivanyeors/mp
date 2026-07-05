@@ -1,3 +1,4 @@
+import { MpCareAftercareSection } from "@/components/mp-care/aftercare-section";
 import {
   Menubar,
   MenubarContent,
@@ -111,6 +112,10 @@ export default function MpCarePage() {
             <p className="text-lg text-muted-foreground">
               Learn how to properly care for and maintain your custom pillows to ensure they last for years.
             </p>
+          </div>
+
+          <div className="mb-10">
+            <MpCareAftercareSection />
           </div>
 
           {/* Care Categories Grid */}
