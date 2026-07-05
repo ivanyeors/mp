@@ -63,6 +63,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry("/mp-maker", { changeFrequency: "monthly", priority: 0.7 }),
     entry("/mp-care", { changeFrequency: "monthly", priority: 0.5 }),
     entry("/support", { changeFrequency: "monthly", priority: 0.4 }),
+    entry("/our-partners", { changeFrequency: "monthly", priority: 0.3 }),
+    entry("/privacy-policy", { changeFrequency: "monthly", priority: 0.3 }),
+    entry("/shipping-refund-policies", { changeFrequency: "monthly", priority: 0.3 }),
+    entry("/terms-of-service", { changeFrequency: "monthly", priority: 0.3 }),
+    entry("/faq", { changeFrequency: "monthly", priority: 0.3 }),
   ];
 
   let productEntries: MetadataRoute.Sitemap = [];

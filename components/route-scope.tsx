@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
+import { stripLocale } from "@/lib/i18n/routing";
 
 type RouteScopeProps = {
   children: React.ReactNode;
@@ -13,7 +14,8 @@ type RouteScopeProps = {
  */
 export function RouteScope({ children }: RouteScopeProps) {
   const pathname = usePathname() ?? "";
-  const isSettingsRoute = pathname === "/settings" || pathname.startsWith("/settings/");
+  const basePathname = stripLocale(pathname);
+  const isSettingsRoute = basePathname === "/settings" || basePathname.startsWith("/settings/");
 
   React.useEffect(() => {
     // Ensure portaled UI (Radix Sheet/Dialog) is covered by the scope too.
