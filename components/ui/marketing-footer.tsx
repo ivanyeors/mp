@@ -15,7 +15,7 @@ const FOOTER_LINKS = [
   { label: "Our Partners", href: "/our-partners" },
   { label: "Blog", href: "/blog" },
   { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Shipping, Refund & Other Policies", href: "/shipping-refund-policies" },
+  { label: "Returns & Warranty", href: "/shipping-refund-policies" },
   { label: "Terms of Service", href: "/terms-of-service" },
   { label: "Contact Us", href: "/support" },
   { label: "FAQ", href: "/faq" },

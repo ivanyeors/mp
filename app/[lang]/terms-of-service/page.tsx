@@ -128,7 +128,7 @@ export default async function TermsOfServicePage({
           <p className="leading-relaxed text-muted-foreground">
             Returns, refunds, exchanges, and warranty-related matters are governed by our{" "}
             <Link href={policiesHref} className="underline underline-offset-4">
-              Shipping, Refund &amp; Other Policies
+              Returns &amp; Warranty
             </Link>
             , which are incorporated into these Terms by reference. Customised or personalised
             products may be subject to additional restrictions.
