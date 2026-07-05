@@ -701,7 +701,7 @@ export default function MbolsterConfigPage() {
                   onClick={() => void handleAuthorizeHold()}
                   disabled={holdSubmitting || shopLoading || !shopRecommendation}
                 >
-                  {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
+                  {holdSubmitting ? "Redirecting…" : "Proceed"}
                   <ArrowRight className="size-4" />
                 </Button>
               </div>

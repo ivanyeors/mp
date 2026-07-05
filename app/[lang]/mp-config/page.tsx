@@ -1154,7 +1154,7 @@ export default function MpConfigPage() {
                     onClick={() => void handleAuthorizeHold()}
                     disabled={holdSubmitting || shopLoading || !shopRecommendation}
                   >
-                    {holdSubmitting ? "Redirecting…" : "Authorize & submit for review"}
+                    {holdSubmitting ? "Redirecting…" : "Proceed"}
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>
@@ -1202,19 +1202,19 @@ export default function MpConfigPage() {
       )}
 
       {/* Content Container */}
-      <div className="relative z-10 flex min-h-screen w-full items-center justify-center p-4 md:p-6">
+      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
         <div
-          className={`w-full max-w-[1400px] transition-all duration-300 ${
+          className={`w-full max-w-2xl transition-all duration-300 ${
             isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100"
           }`}
         >
           {/* Progress Indicator */}
           {currentStep !== "welcome" && (
-            <div className="mb-6">
+            <div className="mb-6 flex justify-center">
               <Progress
                 value={progressValue}
                 aria-label="Configuration progress"
-                className="w-full"
+                className="w-full max-w-2xl"
               />
             </div>
           )}
