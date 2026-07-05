@@ -14,8 +14,6 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
-import dynamic from "next/dynamic";
-const Aurora = dynamic(() => import("@/components/effects/Aurora"), { ssr: false });
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
@@ -131,10 +129,7 @@ function BasicMpillowLearnMoreSheetInner() {
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="p-0">
-            <div className="relative space-y-10 pb-28">
-              <Aurora colorStops={["#105ef9", "#1ffbff", "#00058f"]} amplitude={0.9} blend={0.6} speed={0.8} />
-
-              <div className="relative z-10 space-y-10 !mt-0">
+            <div className="space-y-10 pb-28">
                 <LeftContentRightImgSection
                   title={m.slides.basicMpillow.heroTitle}
                   description={
@@ -310,7 +305,6 @@ function BasicMpillowLearnMoreSheetInner() {
                     </div>
                   }
                 />
-              </div>
             </div>
           </div>
         </div>
