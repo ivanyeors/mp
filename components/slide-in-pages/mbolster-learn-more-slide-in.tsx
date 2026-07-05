@@ -143,7 +143,7 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
 
           {/* Content area fills remaining height */}
           <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <div className="px-4 py-5 md:px-8 md:py-8">
+            <div className="px-4 py-5 pb-28 md:px-8 md:py-8">
               <main className="min-w-0">
                 {/* Hero (matches product page top content) */}
                 <section className="py-10 md:py-16">
@@ -426,14 +426,6 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
                       />
                     </AspectRatio>
 
-                    <div className="flex flex-wrap gap-3">
-                      <Button asChild>
-                        <Link href={to("/mbolster-config")}>{m.common.customise}</Link>
-                      </Button>
-                      <Button type="button" variant="secondary" onClick={openBookAppointmentSheet}>
-                        {m.common.bookAppointment}
-                      </Button>
-                    </div>
                   </div>
                 </section>
 
@@ -492,15 +484,28 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
                       />
                     </AspectRatio>
 
-                    <div className="flex flex-wrap gap-3">
-                      <Button asChild>
-                        <Link href={to("/mbolster-config")}>{m.slides.mbolster.discoverButton}</Link>
-                      </Button>
-                    </div>
                   </div>
                 </section>
 
               </main>
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+            <div className="px-4 py-4 md:px-6">
+              <div className="grid gap-3 sm:grid-cols-2 md:flex md:flex-wrap md:gap-3">
+                <Button asChild className="h-auto py-4 md:h-9 md:py-2">
+                  <Link href={to("/mbolster-config")}>{m.slides.mbolster.discoverButton}</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto py-4 md:h-9 md:py-2"
+                  onClick={openBookAppointmentSheet}
+                >
+                  {m.common.bookAppointment}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -605,7 +610,7 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
 
           {/* Content area fills remaining height */}
           <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <div className="px-4 py-5 md:px-8 md:py-8">
+            <div className="px-4 py-5 pb-28 md:px-8 md:py-8">
               <main className="min-w-0">
                 {/* Hero (matches product page top content) */}
                 <section className="py-10 md:py-16">
@@ -888,14 +893,6 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
                       />
                     </AspectRatio>
 
-                    <div className="flex flex-wrap gap-3">
-                      <Button asChild>
-                        <Link href={to("/mbolster-config")}>{m.common.customise}</Link>
-                      </Button>
-                      <Button type="button" variant="secondary" onClick={openBookAppointmentSheet}>
-                        {m.common.bookAppointment}
-                      </Button>
-                    </div>
                   </div>
                 </section>
 
@@ -954,14 +951,27 @@ export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetPr
                       />
                     </AspectRatio>
 
-                    <div className="flex flex-wrap gap-3">
-                      <Button asChild>
-                        <Link href={to("/mbolster-config")}>{m.slides.mbolster.discoverButton}</Link>
-                      </Button>
-                    </div>
                   </div>
                 </section>
               </main>
+            </div>
+          </div>
+
+          <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+            <div className="px-4 py-4 md:px-6">
+              <div className="grid gap-3 sm:grid-cols-2 md:flex md:flex-wrap md:gap-3">
+                <Button asChild className="h-auto py-4 md:h-9 md:py-2">
+                  <Link href={to("/mbolster-config")}>{m.slides.mbolster.discoverButton}</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-auto py-4 md:h-9 md:py-2"
+                  onClick={openBookAppointmentSheet}
+                >
+                  {m.common.bookAppointment}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

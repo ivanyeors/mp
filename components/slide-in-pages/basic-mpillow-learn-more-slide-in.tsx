@@ -317,14 +317,17 @@ function BasicMpillowLearnMoreSheetInner() {
 
         <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
           <div className="px-4 py-4 md:px-6">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Button asChild className="h-auto py-4">
+            <div className="grid gap-3 sm:grid-cols-2 md:flex md:flex-wrap md:gap-3">
+              <Button asChild className="h-auto py-4 md:h-9 md:py-2">
                 <Link href={to("/mp-config")}>{m.slides.basicMpillow.bottomCustomise}</Link>
               </Button>
-              <Button asChild variant="outline" className="h-auto py-4">
-                <button type="button" onClick={openBookAppointmentSheet}>
-                  {m.slides.basicMpillow.bookAdjustment}
-                </button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto py-4 md:h-9 md:py-2"
+                onClick={openBookAppointmentSheet}
+              >
+                {m.slides.basicMpillow.bookAdjustment}
               </Button>
             </div>
           </div>
