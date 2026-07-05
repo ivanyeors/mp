@@ -146,7 +146,7 @@
 }
 
 .bubble-menu-backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: oklch(from var(--background) l c h / 0.72);
   pointer-events: auto;
@@ -253,7 +253,8 @@
     align-items: flex-start;
     padding-top: 120px;
     overflow-y: auto;
-    overscroll-behavior: contain;
+    overscroll-behavior: none;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
     max-height: 100dvh;
     padding-bottom: calc(var(--mobile-bottom-clearance) + 1rem);
