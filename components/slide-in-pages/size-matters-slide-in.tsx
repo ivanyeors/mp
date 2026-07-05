@@ -12,8 +12,6 @@ import { LeftContentRightImgSection } from "@/components/sections/left-content-r
 import SpotlightCard from "@/components/effects/SpotlightCard";
 import { cn } from "@/lib/utils";
 import { XIcon } from "lucide-react";
-import dynamic from "next/dynamic";
-const Aurora = dynamic(() => import("@/components/effects/Aurora"), { ssr: false });
 import { useI18n } from "@/lib/i18n/use-i18n";
 
 type Props = {
@@ -96,14 +94,8 @@ export function SizeMattersSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="flex-1 overflow-y-auto">
-            <div className="relative overflow-hidden px-4 py-5 md:px-6 md:py-6">
-              <Aurora
-                colorStops={["#105ef9", "#1ffbff", "#00058f"]}
-                blend={0.55}
-                amplitude={0.8}
-                speed={0.6}
-              />
-              <main className="relative z-10 min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
+            <div className="px-4 py-5 md:px-6 md:py-6">
+              <main className="min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
                 <section
                   aria-labelledby="press-quote-heading"
                   className="mx-auto max-w-3xl py-[42px] animate-in fade-in duration-700 space-y-3 text-center"
@@ -121,7 +113,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                       loopDelay={5000}
                     />
                   </p>
-                  <footer className="text-sm text-[var(--color-white)]">{m.slides.sizeMatters.pressQuote.attribution}</footer>
+                  <footer className="text-sm text-muted-foreground">{m.slides.sizeMatters.pressQuote.attribution}</footer>
                 </section>
 
                 <section aria-labelledby="size-matters-heading" className="grid gap-6 md:grid-cols-2 md:items-center">

@@ -242,7 +242,9 @@ function CervicalNeckSupportSheetInner() {
         <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
           <div className="px-4 py-4 md:px-6">
             <SheetClose asChild>
-              <Button className="h-auto w-full py-4">Back</Button>
+              <Button variant="outline" className="h-auto py-4 md:h-9 md:py-2">
+                Back
+              </Button>
             </SheetClose>
           </div>
         </div>
