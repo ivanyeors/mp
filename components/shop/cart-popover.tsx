@@ -10,6 +10,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { getMessages } from "@/lib/i18n/messages";
 import { CartContent } from "@/components/shop/cart/cart-content";
 import { Button } from "@/components/ui/button";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface CartPopoverProps {
@@ -68,7 +69,7 @@ export function CartPopover({ trigger }: CartPopoverProps) {
             size="icon"
             aria-label={messages.closeCart}
             onClick={() => toggleCart(false)}
-            className="shrink-0 -mr-1 size-8"
+            className="hidden shrink-0 -mr-1 size-8 md:inline-flex"
           >
             <X className="size-4" />
           </Button>
@@ -94,6 +95,14 @@ export function CartPopover({ trigger }: CartPopoverProps) {
             checkoutHref={checkoutHref}
             />
           </div>
+
+        <div className="flex justify-end border-t px-3 py-2 md:hidden">
+          <OverlayDismissButton
+            label={messages.closeCart}
+            variant="inline"
+            onClick={() => toggleCart(false)}
+          />
+        </div>
       </PopoverContent>
     </Popover>
   );

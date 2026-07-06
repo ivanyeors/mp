@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { XIcon } from "lucide-react";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
 const OPEN_CERVICAL_NECK_SUPPORT_EVENT = "mpillow:open-cervical-neck-support";
@@ -103,18 +103,12 @@ function CervicalNeckSupportSheetInner() {
       {/* Framed shell: inner rounded panel */}
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
         <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-          <SheetHeader className="relative pr-12 px-4 py-4 md:px-8 md:py-6">
+          <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
             <SheetTitle>{m.slides.cervicalNeckSupport.title}</SheetTitle>
             <SheetDescription>{m.slides.cervicalNeckSupport.description}</SheetDescription>
 
             <SheetClose asChild>
-              <button
-                type="button"
-                className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
-              >
-                <XIcon className="size-4" />
-                <span className="sr-only">{m.common.close}</span>
-              </button>
+              <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
             </SheetClose>
           </SheetHeader>
 

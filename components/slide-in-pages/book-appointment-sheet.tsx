@@ -30,10 +30,10 @@ function useBookAppointmentOpen() {
 function AppointmentIframe({ appointmentUrl, label }: { appointmentUrl: string; label: string }) {
   return (
     <>
-      <SheetHeader className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur pr-12">
+      <SheetHeader className="sticky top-0 z-10 shrink-0 border-b bg-background/80 backdrop-blur md:pr-12">
         <SheetTitle>{label}</SheetTitle>
       </SheetHeader>
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <iframe
           src={appointmentUrl}
           style={{ border: 0 }}
@@ -59,7 +59,9 @@ export function BookAppointmentHost() {
         mobilePreset="full"
         className="w-full md:w-[70vw] max-w-none sm:max-w-none p-0 overflow-hidden"
       >
-        <AppointmentIframe appointmentUrl={BOOK_APPOINTMENT_URL} label={m.slides.bookAppointment.trigger} />
+        <div className="flex h-[100dvh] flex-col overflow-hidden">
+          <AppointmentIframe appointmentUrl={BOOK_APPOINTMENT_URL} label={m.slides.bookAppointment.trigger} />
+        </div>
       </SheetContent>
     </Sheet>
   );
@@ -94,7 +96,9 @@ export function BookAppointmentSheet({
         mobilePreset="full"
         className="w-full md:w-[70vw] max-w-none sm:max-w-none p-0 overflow-hidden"
       >
-        <AppointmentIframe appointmentUrl={appointmentUrl} label={label} />
+        <div className="flex h-[100dvh] flex-col overflow-hidden">
+          <AppointmentIframe appointmentUrl={appointmentUrl} label={label} />
+        </div>
       </SheetContent>
     </Sheet>
   );

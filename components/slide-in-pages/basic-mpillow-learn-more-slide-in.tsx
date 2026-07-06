@@ -11,8 +11,8 @@ import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appoi
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { cn } from "@/lib/utils";
-import { XIcon } from "lucide-react";
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
@@ -105,20 +105,14 @@ function BasicMpillowLearnMoreSheetInner() {
       {/* Framed shell: inner rounded panel */}
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
         <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-          <SheetHeader className="relative pr-12 px-4 py-4 md:px-8 md:py-6">
+          <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
             <SheetTitle>{m.slides.basicMpillow.title}</SheetTitle>
             <SheetDescription>
               {m.slides.basicMpillow.description}
             </SheetDescription>
 
             <SheetClose asChild>
-              <button
-                type="button"
-                className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
-              >
-                <XIcon className="size-4" />
-                <span className="sr-only">{m.common.close}</span>
-              </button>
+              <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
             </SheetClose>
           </SheetHeader>
 
@@ -278,20 +272,23 @@ function BasicMpillowLearnMoreSheetInner() {
         </div>
 
         <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <div className="px-4 py-4 md:px-6">
-            <div className="grid gap-3 sm:grid-cols-2 md:flex md:flex-wrap md:gap-3">
-              <Button asChild className="h-auto py-4 md:h-9 md:py-2">
+          <div className="flex items-center gap-2 px-4 py-3 md:gap-3 md:px-6 md:py-4">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <Button asChild className="h-auto shrink-0 px-4 py-3 text-sm md:h-9 md:py-2 md:text-base">
                 <Link href={to("/mp-basic")}>{m.slides.basicMpillow.bottomCustomise}</Link>
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="h-auto py-4 md:h-9 md:py-2"
+                className="h-auto shrink-0 px-4 py-3 text-sm md:h-9 md:py-2 md:text-base"
                 onClick={openBookAppointmentSheet}
               >
                 {m.slides.basicMpillow.bookAdjustment}
               </Button>
             </div>
+            <SheetClose asChild>
+              <OverlayDismissButton label={m.common.close} variant="inline" className="md:hidden shrink-0" />
+            </SheetClose>
           </div>
         </div>
       </div>

@@ -365,7 +365,7 @@ export function PillowCustomizer({
         hideClose={false}
         className="w-full sm:max-w-lg overflow-y-auto"
       >
-        <SheetHeader className="pr-10">
+        <SheetHeader className="md:pr-10">
           <SheetTitle>Customize Your Pillow</SheetTitle>
         </SheetHeader>
 

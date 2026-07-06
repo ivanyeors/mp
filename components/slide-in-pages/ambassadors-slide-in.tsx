@@ -8,7 +8,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { LeftContentRightImgSection } from "@/components/sections/left-content-right-img-section";
 import { Progress } from "@/components/ui/progress";
-import { ChevronDown, ChevronUp, XIcon } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import dynamic from "next/dynamic";
 const TextType = dynamic(() => import("@/components/effects/TextType"), { ssr: false });
 import { YouTubeAutoplayOnView } from "@/components/effects/youtube-autoplay-on-view";
@@ -22,6 +22,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 
 type Props = {
   className?: string;
@@ -83,18 +84,12 @@ export function AmbassadorsSlideIn({ className }: Props) {
       >
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
           <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-            <SheetHeader className="relative pr-12">
+            <SheetHeader className="relative px-4 py-4 md:px-6 md:pb-5 md:pr-12">
               <SheetTitle>{m.slides.ambassadors.title}</SheetTitle>
               <SheetDescription>{m.slides.ambassadors.description}</SheetDescription>
 
               <SheetClose asChild>
-                <button
-                  type="button"
-                  className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
-                >
-                  <XIcon className="size-4" />
-                  <span className="sr-only">{m.common.close}</span>
-                </button>
+                <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
               </SheetClose>
             </SheetHeader>
 
@@ -235,6 +230,12 @@ export function AmbassadorsSlideIn({ className }: Props) {
                 />
               </main>
             </div>
+          </div>
+
+          <div className="sticky bottom-0 z-10 flex justify-end border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:hidden">
+            <SheetClose asChild>
+              <OverlayDismissButton label={m.common.close} variant="inline" />
+            </SheetClose>
           </div>
         </div>
       </SheetContent>

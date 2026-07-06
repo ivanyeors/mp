@@ -12,11 +12,13 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -199,7 +201,14 @@ function Sidebar({
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <div className="flex h-full w-full flex-col">
+            {children}
+            <div className="mt-auto flex justify-end border-t p-3 md:hidden">
+              <SheetClose asChild>
+                <OverlayDismissButton variant="inline" />
+              </SheetClose>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
     )

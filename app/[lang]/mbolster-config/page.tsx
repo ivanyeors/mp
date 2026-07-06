@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
 import { toast } from "sonner";
+import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
 import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 
 import { getApiErrorMessage } from "@/lib/utils";
@@ -109,7 +109,6 @@ export default function MbolsterConfigPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
-  const mbolsterHref = withLocale("/mbolster", locale);
   const homeHref = withLocale("/", locale);
 
   const [state, setState] = React.useState<State>({
@@ -738,9 +737,7 @@ export default function MbolsterConfigPage() {
               <Button size="lg" onClick={goNext}>
                 Get started
               </Button>
-              <Button variant="secondary" size="lg" asChild>
-                <Link href={mbolsterHref}>Learn more</Link>
-              </Button>
+              <MbolsterLearnMoreSlideIn className="h-11 px-8 text-base" triggerLabel="Learn more" />
             </div>
           </div>
         ) : null}

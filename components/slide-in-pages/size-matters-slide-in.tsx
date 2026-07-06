@@ -7,11 +7,11 @@ import { Card, Carousel, MeasureTile } from "@/components/ui/apple-cards-carouse
 import { CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import DecryptedText from "@/components/effects/DecryptedText";
 import { LeftContentRightImgSection } from "@/components/sections/left-content-right-img-section";
 import SpotlightCard from "@/components/effects/SpotlightCard";
 import { cn } from "@/lib/utils";
-import { XIcon } from "lucide-react";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
 type Props = {
@@ -74,18 +74,12 @@ export function SizeMattersSlideIn({ className }: Props) {
         {/* Framed shell: inner rounded panel */}
         <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
           <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-            <SheetHeader className="relative pr-12 px-4 py-4 md:px-8 md:py-6">
+            <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
               <SheetTitle>{m.slides.sizeMatters.title}</SheetTitle>
               <SheetDescription>{m.slides.sizeMatters.description}</SheetDescription>
 
               <SheetClose asChild>
-                <button
-                  type="button"
-                  className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"
-                >
-                  <XIcon className="size-4" />
-                  <span className="sr-only">{m.common.close}</span>
-                </button>
+                <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
               </SheetClose>
             </SheetHeader>
             <div className="px-4 pb-4 md:px-8 md:pb-5">
@@ -288,6 +282,12 @@ export function SizeMattersSlideIn({ className }: Props) {
 
               </main>
             </div>
+          </div>
+
+          <div className="sticky bottom-0 z-10 flex justify-end border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:hidden">
+            <SheetClose asChild>
+              <OverlayDismissButton label={m.common.close} variant="inline" />
+            </SheetClose>
           </div>
         </div>
       </SheetContent>

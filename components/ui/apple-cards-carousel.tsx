@@ -269,7 +269,8 @@ export const AppleCarouselCard = ({ card, index, layout = false, variant = "over
             >
               <button
                 type="button"
-                className="sticky top-4 right-0 ml-auto flex h-8 w-8 items-center justify-center rounded-full bg-black dark:bg-white"
+                aria-label="Close"
+                className="fixed bottom-[calc(1rem+var(--safe-bottom))] right-4 z-[70] flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black md:sticky md:top-4 md:right-0 md:ml-auto md:h-8 md:w-8 md:min-h-0 md:min-w-0 dark:bg-white"
                 onClick={handleClose}
               >
                 <IconX className="h-6 w-6 text-neutral-100 dark:text-neutral-900" />
