@@ -1,10 +1,7 @@
+import { CustomiseTierPicker } from "@/components/customise-tier-picker";
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
-import { Button } from "@/components/ui/button";
 import { BookAppointmentSheet, BOOK_APPOINTMENT_URL } from "@/components/slide-in-pages/book-appointment-sheet";
-import { ChevronRight, Sparkles } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
-import { withLocale } from "@/lib/i18n/routing";
 import type { Messages } from "@/lib/i18n/messages/types";
 import type { Locale } from "@/lib/i18n/locales";
 import type { LandingSection, HeroContent } from "@/lib/types/landing-sections";
@@ -58,13 +55,13 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
               </div>
 
               <div className="pointer-events-auto flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button asChild className="h-auto px-6 py-4 text-base">
-                  <Link href={withLocale("/mp-config", locale)}>
-                    <Sparkles className="mr-2 h-5 w-5" />
-                    {ctaCustomise}
-                    <ChevronRight className="ml-2 h-5 w-5" />
-                  </Link>
-                </Button>
+                <CustomiseTierPicker
+                  locale={locale}
+                  images={images}
+                  basicLabel={m.home.pickYourMpillow.products.basic.title}
+                  premiumLabel={m.home.pickYourMpillow.products.premium.title}
+                  triggerLabel={ctaCustomise}
+                />
                 <BookAppointmentSheet
                   appointmentUrl={BOOK_APPOINTMENT_URL}
                   triggerVariant="outline"
