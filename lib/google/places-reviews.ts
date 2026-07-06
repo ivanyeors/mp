@@ -69,6 +69,7 @@ export async function getGooglePlaceTestimonials(opts?: {
 
   const url = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`);
   if (languageCode) url.searchParams.set("languageCode", languageCode);
+  // ponytail: no reviews_sort param — API returns most-relevant order; client sorts by rating, keeping index as tiebreaker.
 
   const res = await fetch(url.toString(), {
     headers: {

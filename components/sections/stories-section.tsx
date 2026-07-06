@@ -15,7 +15,7 @@ export async function StoriesSection() {
   return (
     <StoriesSectionClient
       title="Hear from our customers"
-      subtitle="Latest reviews from Google."
+      subtitle="Top reviews from Google."
       testimonials={testimonials.length ? testimonials : FALLBACK_TESTIMONIALS}
       writeReviewUrl={DEFAULT_WRITE_REVIEW_URL}
     />

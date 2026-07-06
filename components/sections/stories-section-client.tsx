@@ -6,20 +6,15 @@ import type { Testimonial } from "@/lib/google/fallback-testimonials";
 import { Button } from "@/components/ui/button";
 import { TestimonialsGridWithAdd } from "@/components/ui/testimonials-grid-with-add";
 
-function sortOldestToNewest(items: Testimonial[]): Testimonial[] {
-  const withDates = items.filter((i) => typeof i.publishedAt === "string" && i.publishedAt.length > 0);
-  if (withDates.length === 0) return items;
-
-  return [...items].sort((a, b) => {
-    const ta = a.publishedAt ? Date.parse(a.publishedAt) : Number.NaN;
-    const tb = b.publishedAt ? Date.parse(b.publishedAt) : Number.NaN;
-    const aOk = Number.isFinite(ta);
-    const bOk = Number.isFinite(tb);
-    if (!aOk && !bOk) return 0;
-    if (!aOk) return 1;
-    if (!bOk) return -1;
-    return ta - tb;
-  });
+function sortByRatingThenRelevance(items: Testimonial[]): Testimonial[] {
+  return items
+    .map((item, relevanceRank) => ({ item, relevanceRank }))
+    .sort((a, b) => {
+      const ratingDiff = (b.item.rating ?? 0) - (a.item.rating ?? 0);
+      if (ratingDiff !== 0) return ratingDiff;
+      return a.relevanceRank - b.relevanceRank;
+    })
+    .map(({ item }) => item);
 }
 
 export function StoriesSectionClient({
@@ -35,7 +30,7 @@ export function StoriesSectionClient({
   writeReviewUrl: string;
   batchSize?: number;
 }) {
-  const ordered = useMemo(() => sortOldestToNewest(testimonials), [testimonials]);
+  const ordered = useMemo(() => sortByRatingThenRelevance(testimonials), [testimonials]);
   const initialVisibleCount = useMemo(() => {
     // Prefer showing as many as we have (up to batchSize) so the section doesn't look sparse.
     // The Places API typically returns a small subset anyway (commonly ~5).
@@ -44,10 +39,8 @@ export function StoriesSectionClient({
 
   const [visibleCount, setVisibleCount] = useState(initialVisibleCount);
 
-  const startIdx = Math.max(0, ordered.length - visibleCount);
-  const visible = ordered.slice(startIdx);
-
-  const canViewMore = startIdx > 0;
+  const visible = ordered.slice(0, visibleCount);
+  const canViewMore = visibleCount < ordered.length;
 
   return (
     <div className="space-y-8">
@@ -71,4 +64,3 @@ export function StoriesSectionClient({
     </div>
   );
 }
-
