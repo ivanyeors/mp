@@ -1,5 +1,9 @@
-import { MarketingStubPage } from "@/components/marketing/marketing-stub-page";
+import { PartnersPage } from "@/components/marketing/partners-page";
 
-export default function OurPartnersPage({ params }: { params: Promise<{ lang: string }> }) {
-  return <MarketingStubPage title="Our Partners" params={params} />;
+export default function OurPartnersPage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  return <PartnersPage params={params} />;
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
-  Users, Newspaper, Image, LayoutDashboard, ShoppingBag,
+  Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
   ShieldCheck, ScrollText,
 } from "lucide-react";
@@ -101,6 +101,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Landing Site",
     items: [
       { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard, perm: "page-builder" },
+      { href: "/settings/partners", label: "Partners", tooltip: "Partners page content", Icon: Handshake, perm: "page-builder" },
       { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper, perm: "blogs" },
       { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image, perm: "media" },
     ],
