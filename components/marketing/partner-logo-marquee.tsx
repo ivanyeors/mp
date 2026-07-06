@@ -9,12 +9,18 @@ type PartnerLogoMarqueeProps = {
   durationSeconds?: number;
 };
 
-function LogoStrip({ partners }: { partners: ResolvedPartner[] }) {
+function LogoStrip({
+  partners,
+  stripId,
+}: {
+  partners: ResolvedPartner[];
+  stripId: string;
+}) {
   return (
     <>
-      {partners.map((partner) => (
+      {partners.map((partner, index) => (
         <div
-          key={partner.id}
+          key={`${stripId}-${index}`}
           className="mx-6 flex h-16 w-36 shrink-0 items-center justify-center rounded-xl border bg-card/40 px-4 backdrop-blur-sm"
         >
           {partner.logoUrl ? (
@@ -59,8 +65,8 @@ export function PartnerLogoMarquee({
           } as React.CSSProperties
         }
       >
-        <LogoStrip partners={items} />
-        <LogoStrip partners={items} />
+        <LogoStrip partners={items} stripId="0" />
+        <LogoStrip partners={items} stripId="1" />
       </div>
     </div>
   );
