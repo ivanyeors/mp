@@ -7,7 +7,7 @@ import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
-  ShieldCheck, ScrollText,
+  ShieldCheck, ScrollText, HelpCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -103,6 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard, perm: "page-builder" },
       { href: "/settings/partners", label: "Partners", tooltip: "Partners page content", Icon: Handshake, perm: "page-builder" },
       { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper, perm: "blogs" },
+      { href: "/settings/faq", label: "FAQ", tooltip: "FAQ Management", Icon: HelpCircle, perm: "page-builder" },
       { href: "/settings/media", label: "Media", tooltip: "Media Gallery", Icon: Image, perm: "media" },
     ],
   },

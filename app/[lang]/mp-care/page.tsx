@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MpCareAftercareSection } from "@/components/mp-care/aftercare-section";
 import {
   Menubar,
@@ -19,8 +20,19 @@ import {
   CheckCircle,
   Clock,
 } from "lucide-react";
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
 
-export default function MpCarePage() {
+export default async function MpCarePage({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}) {
+  const { lang } = await params;
+  const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+  const faqHref = withLocale("/faq", locale);
+  const supportHref = withLocale("/support", locale);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -93,9 +105,13 @@ export default function MpCarePage() {
                   <AlertTriangle className="mr-2 h-4 w-4" />
                   Common Issues
                 </MenubarItem>
-                <MenubarItem>FAQ</MenubarItem>
+                <MenubarItem asChild>
+                  <Link href={faqHref}>FAQ</Link>
+                </MenubarItem>
                 <MenubarSeparator />
-                <MenubarItem>Contact Support</MenubarItem>
+                <MenubarItem asChild>
+                  <Link href={supportHref}>Contact Support</Link>
+                </MenubarItem>
                 <MenubarItem>Warranty Information</MenubarItem>
               </MenubarContent>
             </MenubarMenu>

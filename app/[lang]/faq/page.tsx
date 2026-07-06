@@ -1,5 +1,12 @@
-import { MarketingStubPage } from "@/components/marketing/marketing-stub-page";
+import { MarketingFaqPage, generateFaqMetadata } from "@/components/marketing/faq-page";
 
-export default function FaqPage({ params }: { params: Promise<{ lang: string }> }) {
-  return <MarketingStubPage title="FAQ" params={params} />;
+export const generateMetadata = generateFaqMetadata;
+
+type Props = {
+  params: Promise<{ lang: string }>;
+  searchParams?: Promise<{ q?: string }>;
+};
+
+export default function FaqPage(props: Props) {
+  return <MarketingFaqPage {...props} />;
 }
