@@ -223,6 +223,12 @@ export const zhCN: Messages = {
         "你可以到店由 Mpillow 团队为你现场定制，按你的偏好进行调整。我们的专家会当场为你配置并让你试躺，直到你满意后再带回家。",
         "海外顾客可以在线提交测量数据，并参考下方指南完成每一项测量，以获得更准确的贴合。",
       ],
+      trustStrip: [
+        { label: "可水洗" },
+        { label: "10 年保固" },
+        { label: "到店定制" },
+        { label: "60 天内复调" },
+      ],
       overseasTitle: "海外顾客",
       overseasDescription: "在线提交测量数据。我们的流程会逐步引导你在家完成测量。",
       whoItsForTitle: "适合人群",

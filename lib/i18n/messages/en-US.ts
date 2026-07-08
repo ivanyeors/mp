@@ -225,6 +225,12 @@ export const enUS: Messages = {
         "Get your pillow customised in person by our Mpillow team — we can build it the way you like it. Watch our experts customise your pillow and try it on the spot until you're satisfied with the fit before taking it home.",
         "For overseas customers, submit your measurements online and follow the guide below for an accurate measurement of each section.",
       ],
+      trustStrip: [
+        { label: "Fully washable" },
+        { label: "10-year warranty" },
+        { label: "In-store customisation" },
+        { label: "60-day readjustment" },
+      ],
       overseasTitle: "For overseas customers",
       overseasDescription: "Submit your measurements online. Our step-by-step flow will guide you with each measurement — in the comfort of your own home.",
       whoItsForTitle: "Who it's for",

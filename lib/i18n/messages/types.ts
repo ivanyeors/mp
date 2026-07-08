@@ -154,6 +154,7 @@ export type Messages = {
       description: string;
       heroSubtitle: string;
       heroParagraphs: string[];
+      trustStrip: Array<{ label: string }>;
       overseasTitle: string;
       overseasDescription: string;
       whoItsForTitle: string;
