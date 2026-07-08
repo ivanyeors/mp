@@ -21,10 +21,10 @@ Use this pattern when you want an **inline popup experience** that feels like a 
 
 ### Required component support (already added)
 We extended `components/ui/sheet.tsx` with:
-- **`disableMobileBottom?: boolean`** on `SheetContent`
-  - When `true`, mobile keeps the drawer on the **right** (instead of switching to bottom-sheet).
-- **`hideClose?: boolean`** on `SheetContent`
-  - When `true`, hides the default close button so you can render a header-scoped close action.
+- **`mobilePreset="full"`** on `SheetContent` — keeps the drawer on the right on mobile (replaces deprecated `disableMobileBottom`).
+- **`insetTopPadding?: boolean`** on `SheetContent` — auto-enabled for `mobilePreset="full"`; use on flush (`p-0`) sheets. Framed slide-ins should pass `insetTopPadding={false}` and pad sticky chrome instead.
+- **`hideClose?: boolean`** on `SheetContent` — hides the default close button so you can render a header-scoped close action.
+- **`sheetStickyTopClassName` / `sheetStickyBottomClassName`** — exported sticky chrome classes that respect `--mobile-top-clearance` and `--safe-bottom` on mobile (`md:pt-0` / `md:pb-0` on desktop).
 
 ### Copy/paste template (recommended)
 Use this template for any “open drawer from the right” UI.
@@ -35,14 +35,24 @@ When this drawer is used as a **page-like flow**, it should include:
 - **Full-screen height**: use dynamic viewport height on mobile (`100dvh`) to avoid iOS address-bar issues.
 - **Framed shell (outer gutter + inner panel)**:
   - Put **outer padding on the sheet content** (gutter): `p-3 md:p-6 bg-transparent border-0 shadow-none`
+  - Pass **`insetTopPadding={false}`** on framed shells — safe area is handled on the inner sticky header, not the sheet root.
   - Render an **inner rounded panel**: `rounded-2xl border bg-background shadow-sm overflow-hidden`
-- **Outer padding (content padding)**: apply padding to the *scrollable content area* (not the sheet root) so the header stays flush/sticky.
+- **Safe-area sticky chrome**: wrap header + progress in `sheetStickyTopClassName`; mobile footer/close bars use `sheetStickyBottomClassName` (import from `@/components/ui/sheet`).
+- **Outer padding (content padding)**: apply padding to the *scrollable content area* (not the sheet root) so the header stays sticky below the notch/Dynamic Island.
 - **Progress bar**: if the content is a multi-step flow, show progress as a sticky bar under the header.
 - **Features block**: show a “features / benefits” list alongside (desktop) or below (mobile) to reinforce context.
 
 ```tsx
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  sheetStickyTopClassName,
+} from "@/components/ui/sheet"
 import { Progress } from "@/components/ui/progress"
 import { XIcon } from "lucide-react"
 
@@ -55,13 +65,14 @@ export function ExampleDrawer() {
 
       <SheetContent
         side="right"
-        disableMobileBottom
+        mobilePreset="full"
+        insetTopPadding={false}
         hideClose
         className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >
         {/* Framed shell: inner rounded panel */}
         <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
-          <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+          <div className={sheetStickyTopClassName}>
             <SheetHeader className="relative pr-12">
               <SheetTitle>Drawer title</SheetTitle>
 
@@ -119,13 +130,14 @@ export function ExampleDrawer() {
   - SheetContent gutter: `p-3 md:p-6 bg-transparent border-0 shadow-none`
   - Inner panel: `rounded-2xl border bg-background shadow-sm overflow-hidden`
 - Put padding on the **scrollable content container** (`px-4 py-5 md:px-8 md:py-8`) so:
-  - header/progress stay aligned and sticky
+  - header/progress stay aligned and sticky below the safe top inset
   - content remains readable on large screens
-- If you add sticky header + sticky progress, ensure they are **theme-adaptive** (`bg-background/80 backdrop-blur border-b`).
+- Sticky header/footer must use **`sheetStickyTopClassName` / `sheetStickyBottomClassName`** — never bare `sticky top-0` on mobile full sheets (titles will sit under the Dynamic Island).
+- If you add sticky header + sticky progress, ensure they are **theme-adaptive** (`bg-background/80 backdrop-blur border-b` is included in the exported top class).
 - If you want a **true full-screen drawer**, keep `w-full`. If you want to preserve more of the underlying page, add `md:w-[70vw]`.
 
 ### If embedding an external page (iframe)
-To make it feel “full-page”, ensure the iframe takes full height of the content area.
+To make it feel “full-page”, ensure the iframe takes full height of the content area. Use `sheetStickyTopClassName` on `SheetHeader` and `sheetStickyBottomClassName` on the mobile dismiss bar (flush `p-0` sheet — do not rely on body safe-area padding).
 
 ```tsx
 <div className="flex-1 overflow-hidden">
@@ -146,13 +158,13 @@ To make it feel “full-page”, ensure the iframe takes full height of the cont
   - Fix: add `sm:max-w-none max-w-none` to your `SheetContent` className.
 - **Mobile drawer appears from bottom**:
   - Cause: `SheetContent` auto-converts left/right → bottom on mobile.
-  - Fix: pass `disableMobileBottom`.
+  - Fix: pass `mobilePreset="full"`.
 - **Close (X) disappears**:
   - Cause: sticky headers / iframe layering can cover it.
   - Fix: ensure the close button has a high z-index (we set `z-50` in `SheetContent`).
-- **Content feels cramped**:
-  - Cause: inner padding wrappers like `p-6`.
-  - Fix: remove extra wrappers and use `p-0` on the sheet; add padding only where you truly want it.
+- **Title hidden under notch / Dynamic Island**:
+  - Cause: `sticky top-0` without safe-area padding inside a portaled sheet.
+  - Fix: use `sheetStickyTopClassName` on the sticky header wrapper (framed shells) or `insetTopPadding` on flush `p-0` sheets.
 
 ### When to choose this layout
 - **Use the drawer** when:

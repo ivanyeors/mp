@@ -21,6 +21,8 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  sheetStickyBottomClassName,
+  sheetStickyTopClassName,
 } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 
@@ -79,11 +81,12 @@ export function AmbassadorsSlideIn({ className }: Props) {
       <SheetContent
         side="right"
         mobilePreset="full"
+        insetTopPadding={false}
         hideClose
         className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
-          <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+          <div className={sheetStickyTopClassName}>
             <SheetHeader className="relative px-4 py-4 md:px-6 md:pb-5 md:pr-12">
               <SheetTitle>{m.slides.ambassadors.title}</SheetTitle>
               <SheetDescription>{m.slides.ambassadors.description}</SheetDescription>
@@ -232,7 +235,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
             </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 flex justify-end border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:hidden">
+          <div className={cn(sheetStickyBottomClassName, "flex justify-end px-4 pt-3 md:hidden")}>
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} variant="inline" />
             </SheetClose>

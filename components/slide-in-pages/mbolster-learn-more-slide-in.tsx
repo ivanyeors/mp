@@ -7,7 +7,7 @@ import { ProductSlideSectionRenderer } from "@/components/product-sections/produ
 import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { cn } from "@/lib/utils";
 import { withLocale } from "@/lib/i18n/routing";
@@ -69,12 +69,13 @@ function MbolsterLearnMoreSheetInner() {
     <SheetContent
       side="right"
       mobilePreset="full"
+      insetTopPadding={false}
       animation="fade-up"
       hideClose
       className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
     >
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
-        <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+        <div className={sheetStickyTopClassName}>
           <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
             <SheetTitle>{m.slides.mbolster.title}</SheetTitle>
             <SheetDescription>{m.slides.mbolster.description}</SheetDescription>
@@ -100,7 +101,7 @@ function MbolsterLearnMoreSheetInner() {
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className={sheetStickyBottomClassName}>
           <div className="flex items-center gap-2 px-4 py-3 md:gap-3 md:px-6 md:py-4">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <Button asChild className="h-auto shrink-0 px-4 py-3 text-sm md:h-9 md:py-2 md:text-base">

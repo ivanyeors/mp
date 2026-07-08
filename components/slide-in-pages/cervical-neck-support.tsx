@@ -5,7 +5,7 @@ import * as React from "react";
 import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { cervicalNeckSupportSlideSections } from "@/lib/product-slide-sections/configs/cervical-neck-support";
@@ -61,12 +61,13 @@ function CervicalNeckSupportSheetInner() {
     <SheetContent
       side="right"
       mobilePreset="full"
+      insetTopPadding={false}
       animation="fade-up"
       hideClose
       className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
     >
       <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
-        <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+        <div className={sheetStickyTopClassName}>
           <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
             <SheetTitle>{m.slides.cervicalNeckSupport.title}</SheetTitle>
             <SheetDescription>{m.slides.cervicalNeckSupport.description}</SheetDescription>
@@ -90,7 +91,7 @@ function CervicalNeckSupportSheetInner() {
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className={sheetStickyBottomClassName}>
           <div className="px-4 py-4 md:px-6">
             <SheetClose asChild>
               <Button variant="outline" className="h-auto py-4 md:h-9 md:py-2">

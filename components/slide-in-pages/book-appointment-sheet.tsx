@@ -4,7 +4,8 @@ import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/use-i18n";
 
 const OPEN_BOOK_APPOINTMENT_EVENT = "mpillow:open-book-appointment";
@@ -39,7 +40,7 @@ function AppointmentIframe({
 }) {
   return (
     <>
-      <SheetHeader className="sticky top-0 z-10 shrink-0 border-b bg-background/80 backdrop-blur md:pr-12">
+      <SheetHeader className={cn(sheetStickyTopClassName, "shrink-0 md:pr-12")}>
         <SheetTitle>{label}</SheetTitle>
         <SheetClose asChild>
           <OverlayDismissButton label={closeLabel} className="hidden md:inline-flex" />
@@ -56,7 +57,7 @@ function AppointmentIframe({
         />
       </div>
       {/* ponytail: iframe swallows the default corner close on mobile — keep dismiss outside the iframe */}
-      <div className="sticky bottom-0 z-10 flex shrink-0 justify-end border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:hidden">
+      <div className={cn(sheetStickyBottomClassName, "flex shrink-0 justify-end px-4 pt-3 md:hidden")}>
         <SheetClose asChild>
           <OverlayDismissButton label={closeLabel} variant="inline" />
         </SheetClose>
@@ -75,6 +76,7 @@ export function BookAppointmentHost() {
       <SheetContent
         side="right"
         mobilePreset="full"
+        insetTopPadding={false}
         hideClose
         className="w-full md:w-[70vw] max-w-none sm:max-w-none p-0 overflow-hidden"
       >
@@ -117,6 +119,7 @@ export function BookAppointmentSheet({
       <SheetContent
         side="right"
         mobilePreset="full"
+        insetTopPadding={false}
         hideClose
         className="w-full md:w-[70vw] max-w-none sm:max-w-none p-0 overflow-hidden"
       >

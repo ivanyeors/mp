@@ -4,10 +4,15 @@ import * as React from "react"
 import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss"
+import {
+  resolveSheetInsetBottomPadding,
+  resolveSheetInsetTopPadding,
+  sheetContentTopInsetClassName,
+  type SheetMobilePreset,
+} from "@/lib/sheet/safe-area"
 import { cn } from "@/lib/utils"
 
 type SheetSide = "top" | "right" | "bottom" | "left"
-type SheetMobilePreset = "auto" | "quick" | "full"
 type SheetDismissBehavior = "default" | "locked"
 type SheetAnimation = "slide" | "fade-up"
 
@@ -56,6 +61,7 @@ function SheetContent({
   mobilePreset,
   animation = "slide",
   showDragHandle,
+  insetTopPadding,
   insetBottomPadding,
   dismissBehavior = "default",
   disableMobileBottom = false,
@@ -69,6 +75,7 @@ function SheetContent({
   mobilePreset?: SheetMobilePreset
   animation?: SheetAnimation
   showDragHandle?: boolean
+  insetTopPadding?: boolean
   insetBottomPadding?: boolean
   dismissBehavior?: SheetDismissBehavior
   /**
@@ -94,7 +101,15 @@ function SheetContent({
   const isMobileBottomSheet = isMobile && resolvedSide === "bottom"
   const shouldShowDragHandle =
     showDragHandle ?? (isMobileBottomSheet && resolvedMobilePreset === "quick")
-  const shouldInsetBottomPadding = insetBottomPadding ?? isMobileBottomSheet
+  const shouldInsetTopPadding = resolveSheetInsetTopPadding(
+    insetTopPadding,
+    isMobile,
+    resolvedMobilePreset
+  )
+  const shouldInsetBottomPadding = resolveSheetInsetBottomPadding(
+    insetBottomPadding,
+    isMobileBottomSheet
+  )
   const isDismissLocked = dismissBehavior === "locked"
 
   const handleEscapeKeyDown: React.ComponentProps<
@@ -157,6 +172,7 @@ function SheetContent({
           isFadeUp &&
             "data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-bottom-4 data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-4",
           isMobileBottomSheet && "rounded-t-2xl",
+          shouldInsetTopPadding && sheetContentTopInsetClassName,
           shouldInsetBottomPadding && "pb-[calc(0.75rem+var(--safe-bottom))]",
           className
         )}
@@ -233,6 +249,11 @@ function SheetDescription({
     />
   )
 }
+
+export {
+  sheetStickyBottomClassName,
+  sheetStickyTopClassName,
+} from "@/lib/sheet/safe-area"
 
 export {
   Sheet,

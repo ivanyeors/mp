@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Carousel, MeasureTile } from "@/components/ui/apple-cards-carousel";
 import { CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import DecryptedText from "@/components/effects/DecryptedText";
 import { LeftContentRightImgSection } from "@/components/sections/left-content-right-img-section";
@@ -68,12 +68,13 @@ export function SizeMattersSlideIn({ className }: Props) {
       <SheetContent
         side="right"
         mobilePreset="full"
+        insetTopPadding={false}
         hideClose
         className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >
         {/* Framed shell: inner rounded panel */}
         <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
-          <div className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+          <div className={sheetStickyTopClassName}>
             <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
               <SheetTitle>{m.slides.sizeMatters.title}</SheetTitle>
               <SheetDescription>{m.slides.sizeMatters.description}</SheetDescription>
@@ -284,7 +285,7 @@ export function SizeMattersSlideIn({ className }: Props) {
             </div>
           </div>
 
-          <div className="sticky bottom-0 z-10 flex justify-end border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 md:hidden">
+          <div className={cn(sheetStickyBottomClassName, "flex justify-end px-4 pt-3 md:hidden")}>
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} variant="inline" />
             </SheetClose>
