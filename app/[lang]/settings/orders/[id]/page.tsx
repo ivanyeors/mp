@@ -96,6 +96,20 @@ function formatDate(dateStr: string): string {
     }).format(new Date(dateStr));
 }
 
+function orderHasRestockableLines(order: Order): boolean {
+    return (order.items ?? []).some(
+        (item) => item.quantity - (item.returned_quantity ?? 0) > 0
+    );
+}
+
+function shouldPromptRestock(order: Order): boolean {
+    const refunded =
+        order.status === "refunded" ||
+        order.status === "partially_refunded" ||
+        Number(order.amount_refunded ?? 0) > 0;
+    return refunded && orderHasRestockableLines(order);
+}
+
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
 function orderStatusBadgeVariant(status: OrderStatus): BadgeVariant {
@@ -193,7 +207,7 @@ export default function OrderDetailPage() {
     const [returnAcknowledged, setReturnAcknowledged] = useState(false);
     const [decidingRefund, setDecidingRefund] = useState(false);
 
-    const fetchOrder = useCallback(async () => {
+    const fetchOrder = useCallback(async (): Promise<Order | null> => {
         setLoading(true);
         try {
             const res = await fetch(`/api/shop/orders/${orderId}`);
@@ -207,9 +221,11 @@ export default function OrderDetailPage() {
             setMargin(json.margin ?? null);
             setInternalNotes(normalized.internal_notes ?? "");
             setNewStatus(normalized.status ?? "");
+            return normalized;
         } catch {
             setOrder(null);
             setMargin(null);
+            return null;
         } finally {
             setLoading(false);
         }
@@ -438,8 +454,11 @@ export default function OrderDetailPage() {
             if (!res.ok) throw new Error(json.error ?? "Refund failed");
             setRefundOpen(false);
             setRefundAmount("");
-            await fetchOrder();
+            const updated = await fetchOrder();
             await fetchTimeline();
+            if (updated && shouldPromptRestock(updated)) {
+                setRestockOpen(true);
+            }
         } catch (e) {
             setActionError(e instanceof Error ? e.message : "Refund failed");
         } finally {
@@ -482,8 +501,11 @@ export default function OrderDetailPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error ?? "Request failed");
             setReturnAcknowledged(false);
-            await fetchOrder();
+            const updated = await fetchOrder();
             await fetchTimeline();
+            if (action === "approve" && updated && shouldPromptRestock(updated)) {
+                setRestockOpen(true);
+            }
         } catch (e) {
             setActionError(e instanceof Error ? e.message : "Request failed");
         } finally {
@@ -707,6 +729,7 @@ export default function OrderDetailPage() {
                                         </DialogHeader>
                                         <p className="text-sm text-muted-foreground">
                                             Manual restock — inventory is not restored automatically on refund.
+                                            Confirming restores each product&apos;s BOM parts back into inventory.
                                         </p>
                                         <div className="space-y-3 py-2">
                                             {(order.items ?? []).map((item) => {

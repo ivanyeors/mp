@@ -35,6 +35,7 @@ import {
   listShopifySalesQueue,
   listShopifySalesQueueArchived,
   listTemplates,
+  listFillingTemplates,
   commitShopifySales,
   addInventoryItem,
   deleteInventoryItem,
@@ -178,6 +179,8 @@ export default function InventoryPage() {
     label: string;
     templateId: number | null;
     templateName: string | null;
+    fillingTemplateId: number | null;
+    fillingTemplateName: string | null;
     quantity: number;
     pillowKind?: PillowKind;
     pillowSize?: string;
@@ -358,6 +361,10 @@ export default function InventoryPage() {
   const [sellDrawerTemplateId, setSellDrawerTemplateId] = useState<number | "">("");
   const [sellDrawerTemplateName, setSellDrawerTemplateName] = useState<string | null>(null);
   const [sellDrawerLines, setSellDrawerLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [sellDrawerFillingTemplates, setSellDrawerFillingTemplates] = useState<Array<{ id: number; name: string }>>([]);
+  const [sellDrawerFillingTemplateId, setSellDrawerFillingTemplateId] = useState<number | "">("");
+  const [sellDrawerFillingTemplateName, setSellDrawerFillingTemplateName] = useState<string | null>(null);
+  const [sellDrawerFillingLines, setSellDrawerFillingLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [sellDrawerQty, setSellDrawerQty] = useState<string>("1");
 
   const itemsById = useMemo(() => {
@@ -571,15 +578,24 @@ export default function InventoryPage() {
     setSellDrawerPremiumVariant(premiumVariant);
     setSellDrawerTemplateId("");
     setSellDrawerTemplateName(null);
+    setSellDrawerFillingTemplateId("");
+    setSellDrawerFillingTemplateName(null);
     setSellDrawerQty("1");
     setSellDrawerLines([]);
+    setSellDrawerFillingLines([]);
     setSellDrawerTemplates([]);
+    setSellDrawerFillingTemplates([]);
     setSellDrawerOpen(true);
     try {
-      const payload = await listTemplates('pillow', size, pillowKind, pillowKind === "premium" ? premiumVariant : undefined);
+      const [warehousePayload, fillingPayload] = await Promise.all([
+        listTemplates('pillow', size, pillowKind, pillowKind === "premium" ? premiumVariant : undefined),
+        listFillingTemplates('pillow', size),
+      ]);
       type TemplateRow = { id: number; name: string };
-      const list = (payload.templates ?? []) as TemplateRow[];
+      const list = (warehousePayload.templates ?? []) as TemplateRow[];
+      const fillingList = (fillingPayload.templates ?? []) as TemplateRow[];
       setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
+      setSellDrawerFillingTemplates(fillingList.map((t) => ({ id: Number(t.id), name: String(t.name) })));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load templates");
     }
@@ -590,15 +606,24 @@ export default function InventoryPage() {
     setSellDrawerBolsterVariant(variant);
     setSellDrawerTemplateId("");
     setSellDrawerTemplateName(null);
+    setSellDrawerFillingTemplateId("");
+    setSellDrawerFillingTemplateName(null);
     setSellDrawerQty("1");
     setSellDrawerLines([]);
+    setSellDrawerFillingLines([]);
     setSellDrawerTemplates([]);
+    setSellDrawerFillingTemplates([]);
     setSellDrawerOpen(true);
     try {
-      const payload = await listTemplates('bolster', variant);
+      const [warehousePayload, fillingPayload] = await Promise.all([
+        listTemplates('bolster', variant),
+        listFillingTemplates('bolster', variant),
+      ]);
       type TemplateRow = { id: number; name: string };
-      const list = (payload.templates ?? []) as TemplateRow[];
+      const list = (warehousePayload.templates ?? []) as TemplateRow[];
+      const fillingList = (fillingPayload.templates ?? []) as TemplateRow[];
       setSellDrawerTemplates(list.map((t) => ({ id: Number(t.id), name: String(t.name) })));
+      setSellDrawerFillingTemplates(fillingList.map((t) => ({ id: Number(t.id), name: String(t.name) })));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load templates");
     }
@@ -613,6 +638,17 @@ export default function InventoryPage() {
     setSellDrawerLines(lines);
     const name = payload?.template?.name ? String(payload.template.name) : null;
     setSellDrawerTemplateName(name);
+  }, []);
+
+  const loadSelectedFillingTemplateLines = useCallback(async (templateId: number) => {
+    const res = await fetch(`/settings/inventory/configure/templates/${templateId}`);
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(payload?.error ?? "Failed to load filling template");
+    type LineRow = { item_id: number | string; quantity: number | string };
+    const lines = ((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) }));
+    setSellDrawerFillingLines(lines);
+    const name = payload?.template?.name ? String(payload.template.name) : null;
+    setSellDrawerFillingTemplateName(name);
   }, []);
 
   const loadShopifySalesQueue = useCallback(async () => {
@@ -1285,7 +1321,15 @@ export default function InventoryPage() {
       for (const line of pillowLines) {
         if (line.quantity <= 0) continue;
         if (line.templateId) {
-          await sellFromTemplate({ templateId: line.templateId, quantity: line.quantity });
+          if (!line.fillingTemplateId) {
+            toast.error('Cart line missing filling template');
+            return;
+          }
+          await sellFromTemplate({
+            templateId: line.templateId,
+            fillingTemplateId: line.fillingTemplateId,
+            quantity: line.quantity,
+          });
           continue;
         }
         if (line.kind === 'bolster') {
@@ -1314,13 +1358,9 @@ export default function InventoryPage() {
     }
   };
 
-  const onReceive = async (
-    itemId: number,
-    qty: number,
-    link?: { orderId?: string; orderItemId?: string; returnUnits?: number }
-  ) => {
+  const onReceive = async (itemId: number, qty: number) => {
     if (!qty || qty <= 0) return;
-    await receiveStock({ itemId, quantity: qty, ...link });
+    await receiveStock({ itemId, quantity: qty });
     await load();
     toast.success(`Received ${qty} unit(s)`);
   };
@@ -1492,23 +1532,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
       <section className="space-y-2">
         <div className="text-sm text-muted-foreground">Select premium pillows</div>
-        <div className="flex items-center gap-2">
-          <div className="text-xs text-muted-foreground">Variant</div>
-          <Select
-            value={sellDrawerPremiumVariant}
-            onValueChange={(value) => {
-              if (value === "linen" || value === "fibrecool") setSellDrawerPremiumVariant(value);
-            }}
-          >
-            <SelectTrigger className="h-8 w-[160px]">
-              <SelectValue placeholder="Select variant…" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="linen">Linen</SelectItem>
-              <SelectItem value="fibrecool">Fibrecool</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {['XS','S','M','L','XL'].map(sz => {
             const available = Number(premiumBuildable[sz] ?? 0);
@@ -1520,18 +1543,15 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                 role="button"
                 aria-disabled={disabled}
                 tabIndex={0}
-                onClick={() => { if (!disabled) openSellDrawerForPillow(sz, "premium", sellDrawerPremiumVariant); }}
+                onClick={() => { if (!disabled) openSellDrawerForPillow(sz, "premium", "linen"); }}
                 onKeyDown={(e) => {
                   if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
-                    openSellDrawerForPillow(sz, "premium", sellDrawerPremiumVariant);
+                    openSellDrawerForPillow(sz, "premium", "linen");
                   }
                 }}
               >
                 <div className="text-xs text-muted-foreground">{sz}</div>
                 <div className="text-2xl font-semibold">{available}</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {sellDrawerPremiumVariant === "fibrecool" ? "Fibrecool" : "Linen"}
-                </div>
               </div>
             );
           })}
@@ -1829,7 +1849,11 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                   <div key={line.id} className="flex items-center justify-between rounded border p-2">
                     <div>
                       <div className="font-medium">{line.label}</div>
-                      <div className="text-xs text-muted-foreground">Qty: {line.quantity}{line.templateName ? ` · Template: ${line.templateName}` : ''}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Qty: {line.quantity}
+                        {line.templateName ? ` · Template: ${line.templateName}` : ''}
+                        {line.fillingTemplateName ? ` · Filling: ${line.fillingTemplateName}` : ''}
+                      </div>
                     </div>
                     <Button size="sm" variant="secondary" onClick={() => undoCartLine("pillow", line.id)}>Remove</Button>
                   </div>
@@ -1875,7 +1899,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                   }${sellDrawerSize}`
                 : `Sell bolster — ${sellDrawerBolsterVariant}`}
             </SheetTitle>
-            <SheetDescription>Select a template (optional) and add to cart.</SheetDescription>
+            <SheetDescription>Select warehouse template and filling mix, then add to cart.</SheetDescription>
           </SheetHeader>
           <div className="mt-4 space-y-4 px-4">
             <div className="space-y-2">
@@ -1932,18 +1956,49 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">
+                Filling mix
+                {!sellDrawerFillingTemplateId && <span className="text-destructive"> · Confirm required</span>}
+              </div>
+              <Select
+                value={sellDrawerFillingTemplateId === '' ? '' : String(sellDrawerFillingTemplateId)}
+                onValueChange={(value) => {
+                  const next: number | '' = value ? Number(value) : '';
+                  setSellDrawerFillingTemplateId(next);
+                  if (next === '') { setSellDrawerFillingLines([]); setSellDrawerFillingTemplateName(null); return; }
+                  loadSelectedFillingTemplateLines(next).catch((err) => toast.error(err instanceof Error ? err.message : 'Failed to load filling template'));
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select filling mix…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Select filling mix…</SelectItem>
+                  {sellDrawerFillingTemplates.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="text-xs text-muted-foreground">
                 Available: {(() => {
-                  if (sellDrawerTemplateId === '') {
-                    if (sellDrawerKind === 'pillow') {
-                      return sellDrawerPillowKind === 'premium'
-                        ? Number(premiumBuildable[sellDrawerSize] ?? 0)
-                        : Number(buildable[sellDrawerSize] ?? 0);
+                  if (sellDrawerTemplateId === '' || sellDrawerFillingTemplateId === '') {
+                    if (sellDrawerTemplateId === '' && sellDrawerFillingTemplateId === '') {
+                      if (sellDrawerKind === 'pillow') {
+                        return sellDrawerPillowKind === 'premium'
+                          ? Number(premiumBuildable[sellDrawerSize] ?? 0)
+                          : Number(buildable[sellDrawerSize] ?? 0);
+                      }
+                      const v = sellDrawerBolsterVariant;
+                      return v === 'short' ? Number(buildableBolsterShort ?? 0) : v === 'long' ? Number(buildableBolsterLong ?? 0) : Number(buildableBolsterMedium ?? 0);
                     }
-                    const v = sellDrawerBolsterVariant;
-                    return v === 'short' ? Number(buildableBolsterShort ?? 0) : v === 'long' ? Number(buildableBolsterLong ?? 0) : Number(buildableBolsterMedium ?? 0);
+                    const partial = sellDrawerTemplateId !== '' ? sellDrawerLines : sellDrawerFillingLines;
+                    return computeBuildableFromLines(partial);
                   }
-                  return computeBuildableFromLines(sellDrawerLines);
+                  return computeBuildableFromLines([...sellDrawerLines, ...sellDrawerFillingLines]);
                 })()}
               </div>
             </div>
@@ -1958,9 +2013,12 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
               onClick={() => {
                 const qty = Math.max(1, parseInt((sellDrawerQty || '1'), 10));
                 const templateId = sellDrawerTemplateId === '' ? null : Number(sellDrawerTemplateId);
+                const fillingTemplateId = sellDrawerFillingTemplateId === '' ? null : Number(sellDrawerFillingTemplateId);
                 if (!templateId) { toast.error('Select a template'); return; }
+                if (!fillingTemplateId) { toast.error('Select a filling mix'); return; }
                 const templateName = (sellDrawerTemplateName ?? null);
-                const id = `${sellDrawerKind}:${sellDrawerKind === 'pillow' ? sellDrawerSize : sellDrawerBolsterVariant}:${templateId ?? 'active'}:${Date.now()}`;
+                const fillingTemplateName = (sellDrawerFillingTemplateName ?? null);
+                const id = `${sellDrawerKind}:${sellDrawerKind === 'pillow' ? sellDrawerSize : sellDrawerBolsterVariant}:${templateId}:${fillingTemplateId}:${Date.now()}`;
                 const label = sellDrawerKind === 'pillow'
                   ? `Pillow ${sellDrawerSize}`
                   : `Bolster ${sellDrawerBolsterVariant === 'short' ? 'S (0.8m)' : sellDrawerBolsterVariant === 'long' ? 'L (1.2m)' : 'M (1m)'}`;
@@ -1974,6 +2032,8 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                       label,
                       templateId,
                       templateName,
+                      fillingTemplateId,
+                      fillingTemplateName,
                       quantity: qty,
                       pillowKind: sellDrawerKind === 'pillow' ? sellDrawerPillowKind : undefined,
                       pillowSize: sellDrawerKind === 'pillow' ? sellDrawerSize : undefined,
@@ -3087,11 +3147,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   onOpenChange: (open: boolean) => void;
   group: Group | null;
   balances: Record<number, number>;
-  onReceive: (
-    itemId: number,
-    qty: number,
-    link?: { orderId?: string; orderItemId?: string; returnUnits?: number }
-  ) => Promise<void>;
+  onReceive: (itemId: number, qty: number) => Promise<void>;
   onSell: (itemId: number, qty: number) => Promise<void>;
   onSelectVariant: (itemId: number) => void;
   onDelete: (itemId: number) => Promise<void>;
@@ -3105,9 +3161,6 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   const [renameValue, setRenameValue] = useState("");
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
-  const [linkOrderId, setLinkOrderId] = useState("");
-  const [linkOrderItemId, setLinkOrderItemId] = useState("");
-  const [linkReturnUnits, setLinkReturnUnits] = useState("");
 
   const sortedVariants = useMemo(() => {
     const list: Item[] = group?.items ?? [];
@@ -3230,23 +3283,10 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
     if (entriesIn.length === 0 && entriesOut.length === 0) return;
     setSaving(true);
     try {
-      const link =
-        linkOrderItemId.trim().length > 0
-          ? {
-              ...(linkOrderId.trim() ? { orderId: linkOrderId.trim() } : {}),
-              orderItemId: linkOrderItemId.trim(),
-              ...(linkReturnUnits.trim()
-                ? { returnUnits: Number.parseInt(linkReturnUnits, 10) }
-                : {}),
-            }
-          : undefined;
-      for (const e of entriesIn) await onReceive(e.id, e.qty, link);
+      for (const e of entriesIn) await onReceive(e.id, e.qty);
       for (const e of entriesOut) await onSell(e.id, e.qty);
       setQtyByItem({});
       setOutQtyByItem({});
-      setLinkOrderId("");
-      setLinkOrderItemId("");
-      setLinkReturnUnits("");
       onOpenChange(false);
     } finally {
       setSaving(false);
@@ -3424,29 +3464,6 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
               </div>
             </Collapsible>
           ))}
-          <div className="rounded border p-3 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Link receive to order return (optional)</p>
-            <Input
-              placeholder="Order ID (uuid)"
-              value={linkOrderId}
-              onChange={(e) => setLinkOrderId(e.target.value)}
-              className="h-8 text-xs"
-            />
-            <Input
-              placeholder="Order item ID (uuid)"
-              value={linkOrderItemId}
-              onChange={(e) => setLinkOrderItemId(e.target.value)}
-              className="h-8 text-xs"
-            />
-            <Input
-              placeholder="Product units returned (optional)"
-              value={linkReturnUnits}
-              onChange={(e) => setLinkReturnUnits(e.target.value)}
-              className="h-8 text-xs"
-              type="number"
-              min={1}
-            />
-          </div>
         </div>
         <SheetFooter>
           <div className="flex w-full gap-2">

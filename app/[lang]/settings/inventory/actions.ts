@@ -8,16 +8,12 @@ import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
 import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
 import { shopifyListPaidOrders } from '@/lib/shopify/orders'
 import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
+import { aggregateSignedQuantities, combineTemplateSaleLines } from '@/lib/inventory/template-sale-lines'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({
   itemId: z.number().int().positive(),
   quantity: z.number().int().positive(),
-  orderId: z.string().uuid().optional(),
-  orderItemId: z.string().uuid().optional(),
-  stripeRefundId: z.string().optional(),
-  /** Product units returned (bumps order_items.returned_quantity when orderItemId set). */
-  returnUnits: z.number().int().positive().optional(),
 })
 const DeleteItemSchema = z.object({ itemId: z.number().int().positive() })
 const RenameItemSchema = z.object({
@@ -36,6 +32,7 @@ const SellBolsterSchema = z.object({
 
 const SellFromTemplateSchema = z.object({
   templateId: z.number().int().positive(),
+  fillingTemplateId: z.number().int().positive(),
   quantity: z.number().int().positive(),
 })
 
@@ -170,18 +167,6 @@ async function resolveEffectiveStockItemIds(admin: ReturnType<typeof supabaseAdm
     if (!out.has(id)) out.set(id, id)
   })
   return out
-}
-
-function aggregateSignedQuantities(rows: Array<{ item_id: number; quantity_signed: number }>) {
-  const byId = new Map<number, number>()
-  rows.forEach((r) => {
-    const id = Number(r.item_id)
-    const qty = Number(r.quantity_signed)
-    if (!Number.isFinite(id) || id <= 0) return
-    if (!Number.isFinite(qty) || qty === 0) return
-    byId.set(id, (byId.get(id) ?? 0) + qty)
-  })
-  return Array.from(byId.entries()).map(([item_id, quantity_signed]) => ({ item_id, quantity_signed }))
 }
 
 type ShopifyCommitMeta = {
@@ -347,38 +332,10 @@ export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
   const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
   const effectiveId = effectiveById.get(parsed.itemId) ?? parsed.itemId
 
-  const metadata: Record<string, unknown> = {}
-  if (parsed.orderId) metadata.order_id = parsed.orderId
-  if (parsed.orderItemId) metadata.order_item_id = parsed.orderItemId
-  if (parsed.stripeRefundId) metadata.stripe_refund_id = parsed.stripeRefundId
-  if (parsed.orderItemId) metadata.restock = true
-
-  if (parsed.orderItemId && parsed.returnUnits) {
-    const { data: line } = await admin
-      .from('order_items')
-      .select('id, quantity, returned_quantity, order_id')
-      .eq('id', parsed.orderItemId)
-      .maybeSingle()
-    if (!line) throw new Error('Order item not found')
-    if (parsed.orderId && line.order_id !== parsed.orderId) {
-      throw new Error('Order item does not belong to this order')
-    }
-    const next = line.returned_quantity + parsed.returnUnits
-    if (next > line.quantity) {
-      throw new Error(`Cannot link ${parsed.returnUnits} unit(s): only ${line.quantity - line.returned_quantity} remaining`)
-    }
-    const { error: bumpErr } = await admin
-      .from('order_items')
-      .update({ returned_quantity: next })
-      .eq('id', parsed.orderItemId)
-    if (bumpErr) throw new Error(bumpErr.message)
-  }
-
   const { error } = await admin.from('inventory_transactions').insert({
     item_id: effectiveId,
     quantity_signed: parsed.quantity,
     reason: 'receive',
-    ...(Object.keys(metadata).length ? { metadata } : {}),
   })
   if (error) throw new Error(error.message)
   return { ok: true }
@@ -436,32 +393,65 @@ export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSch
 
   const { data: template, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,kind,key,name')
+    .select('id,kind,key,name,role')
     .eq('id', parsed.templateId)
     .maybeSingle()
   if (tErr) throw new Error(tErr.message)
   if (!template) throw new Error('Template not found')
+  if (template.role !== 'warehouse') throw new Error('Template must be a warehouse template')
 
-  const { data: lines, error: lErr } = await admin
-    .from('bom_template_lines')
-    .select('item_id,quantity')
-    .eq('template_id', parsed.templateId)
+  const { data: fillingTemplate, error: fErr } = await admin
+    .from('bom_templates')
+    .select('id,kind,key,name,role')
+    .eq('id', parsed.fillingTemplateId)
+    .maybeSingle()
+  if (fErr) throw new Error(fErr.message)
+  if (!fillingTemplate) throw new Error('Filling template not found')
+  if (fillingTemplate.role !== 'filling') throw new Error('Filling template must have role=filling')
+  if (fillingTemplate.kind !== template.kind || fillingTemplate.key !== template.key) {
+    throw new Error('Filling template does not match product size/length')
+  }
+
+  const [{ data: warehouseLines, error: wErr }, { data: fillingLines, error: lErr }] = await Promise.all([
+    admin.from('bom_template_lines').select('item_id,quantity').eq('template_id', parsed.templateId),
+    admin.from('bom_template_lines').select('item_id,quantity').eq('template_id', parsed.fillingTemplateId),
+  ])
+  if (wErr) throw new Error(wErr.message)
   if (lErr) throw new Error(lErr.message)
-  if (!lines?.length) throw new Error('Template has no lines')
+  if (!warehouseLines?.length) throw new Error('Warehouse template has no lines')
+  if (!fillingLines?.length) throw new Error('Filling template has no lines')
 
-  const ids = lines.map((l: { item_id: number | string }) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
+  const combined = combineTemplateSaleLines(
+    warehouseLines.map((l: { item_id: number | string; quantity: number | string }) => ({
+      item_id: Number(l.item_id),
+      quantity: Number(l.quantity),
+    })),
+    fillingLines.map((l: { item_id: number | string; quantity: number | string }) => ({
+      item_id: Number(l.item_id),
+      quantity: Number(l.quantity),
+    })),
+    parsed.quantity,
+  )
+
+  const ids = combined.map((l) => l.item_id).filter((id) => Number.isFinite(id) && id > 0)
   const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
   const aggregated = aggregateSignedQuantities(
-    lines.map((l: { item_id: number | string; quantity: number | string }) => {
-      const originalId = Number(l.item_id)
-      const effectiveId = effectiveById.get(originalId) ?? originalId
-      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * parsed.quantity }
-    }),
+    combined.map((l) => ({
+      item_id: effectiveById.get(l.item_id) ?? l.item_id,
+      quantity_signed: l.quantity_signed,
+    })),
   )
   const txns = aggregated.map((t) => ({
     ...t,
     reason: 'sale' as const,
-    metadata: { template_id: parsed.templateId, template_kind: template.kind, template_key: template.key, template_name: template.name },
+    metadata: {
+      template_id: parsed.templateId,
+      template_kind: template.kind,
+      template_key: template.key,
+      template_name: template.name,
+      filling_template_id: parsed.fillingTemplateId,
+      filling_template_name: fillingTemplate.name,
+    },
   }))
   const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
   if (insErr) throw new Error(insErr.message)
@@ -639,6 +629,8 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
     .select('id,name,kind,key,pillow_kind,pillow_variant')
     .eq('kind', kind)
     .eq('key', key)
+    .eq('role', 'warehouse')
+    .eq('is_active', true)
     .order('updated_at', { ascending: false })
 
   if (kind === 'pillow') {
@@ -651,6 +643,20 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
   else q = q.is('pillow_kind', null)
 
   const { data, error } = await q
+  if (error) throw new Error(error.message)
+  return { ok: true, templates: data ?? [] }
+}
+
+export async function listFillingTemplates(kind: 'pillow' | 'bolster', key: string) {
+  const admin = supabaseAdmin()
+  const { data, error } = await admin
+    .from('bom_templates')
+    .select('id,name,kind,key')
+    .eq('kind', kind)
+    .eq('key', key)
+    .eq('role', 'filling')
+    .eq('is_active', true)
+    .order('updated_at', { ascending: false })
   if (error) throw new Error(error.message)
   return { ok: true, templates: data ?? [] }
 }
