@@ -140,26 +140,37 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
         };
         if (!res.ok) throw new Error(json.error ?? "Failed to load events");
         success(
-          (json.events ?? []).map((e) => ({
-            id: e.id,
-            // Mirror GCal title as-is (don't invent "Guest — summary")
-            title: e.summary,
-            start: e.startsAt,
-            end: e.endsAt,
-            allDay: e.allDay,
-            backgroundColor: e.allDay
-              ? "#64748b"
-              : e.appointmentType === "readjustment"
-                ? "#7c3aed"
-                : "#2563eb",
-            borderColor: e.allDay
-              ? "#475569"
-              : e.appointmentType === "readjustment"
-                ? "#6d28d9"
-                : "#1d4ed8",
-            editable: false,
-            extendedProps: { kind: "appointment", event: e },
-          })),
+          (json.events ?? []).map((e) => {
+            const isBusy = e.kind === "busy";
+            const title =
+              isBusy && e.description
+                ? e.description.split("\n")[0]!.trim() || e.summary
+                : e.summary;
+            return {
+              id: e.id,
+              title,
+              start: e.startsAt,
+              end: e.endsAt,
+              allDay: e.allDay,
+              backgroundColor: isBusy
+                ? "rgba(148, 163, 184, 0.45)"
+                : e.appointmentType === "readjustment"
+                  ? "#7c3aed"
+                  : "#2563eb",
+              borderColor: isBusy
+                ? "rgba(100, 116, 139, 0.55)"
+                : e.appointmentType === "readjustment"
+                  ? "#6d28d9"
+                  : "#1d4ed8",
+              textColor: isBusy ? "#334155" : undefined,
+              classNames: isBusy ? ["fc-gcal-busy-event"] : ["fc-gcal-appointment"],
+              editable: false,
+              extendedProps: {
+                kind: isBusy ? "gcal-busy" : "appointment",
+                event: e,
+              },
+            };
+          }),
         );
       } catch (e) {
         failure(e instanceof Error ? e : new Error("Failed to load events"));
@@ -236,7 +247,7 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
       await applyPatch({ blockedRanges });
       return;
     }
-    if (kind === "appointment") {
+    if (kind === "appointment" || kind === "gcal-busy") {
       setAppointmentDetail(info.event.extendedProps.event as CalendarRangeEvent);
     }
   };
@@ -363,15 +374,15 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-sm bg-red-500/40 ring-1 ring-red-500/60" />
-            Blocked
+            Blocked (local)
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2.5 rounded-sm bg-slate-400/50 ring-1 ring-slate-500/50" />
+            Google busy / block
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-sm bg-blue-500" />
-            Google Calendar
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-2.5 rounded-sm bg-slate-500" />
-            All-day
+            Appointment
           </span>
           <span className="sm:ml-auto">
             Drag to block or set hours · click day chips or headers to toggle
@@ -388,8 +399,9 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
           timeZone="Asia/Singapore"
           locale="en-gb"
           firstDay={0}
-          slotMinTime="08:00:00"
-          slotMaxTime="21:00:00"
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
+          scrollTime={`${padHour(settings.openHour)}:00:00`}
           allDaySlot
           nowIndicator
           selectable
@@ -467,7 +479,11 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{appointmentDetail?.summary ?? "Appointment"}</DialogTitle>
-            <DialogDescription>Google Calendar event (read-only)</DialogDescription>
+            <DialogDescription>
+              {appointmentDetail?.kind === "busy"
+                ? "Google Calendar busy / blocked time (read-only)"
+                : "Google Calendar event (read-only)"}
+            </DialogDescription>
           </DialogHeader>
           {appointmentDetail ? (
             <dl className="grid gap-2 text-sm">
@@ -494,6 +510,12 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                     : `${formatSlotLabelSgt(appointmentDetail.startsAt)} – ${formatSlotLabelSgt(appointmentDetail.endsAt)}`}
                 </dd>
               </div>
+              {appointmentDetail.description ? (
+                <div>
+                  <dt className="text-muted-foreground">Description</dt>
+                  <dd className="whitespace-pre-wrap">{appointmentDetail.description}</dd>
+                </div>
+              ) : null}
               {appointmentDetail.typeLabel ? (
                 <div>
                   <dt className="text-muted-foreground">Type</dt>

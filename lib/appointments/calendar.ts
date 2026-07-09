@@ -1,6 +1,6 @@
 import { getGoogleAccessToken } from "./google-auth";
 import { normalizePhone } from "./phone";
-import { resolveAppointmentType } from "./type";
+import { matchAppointmentType, resolveAppointmentType } from "./type";
 import type { AppointmentSettings, AppointmentType } from "./settings";
 import type { BusyInterval } from "./slots";
 import { addSgtDays, sgtLocalToUtcMs, sgtParts } from "./slots";
@@ -28,6 +28,11 @@ export type CalendarRangeEvent = {
   startsAt: string;
   endsAt: string;
   allDay: boolean;
+  /** Known Mpillow appointment vs other GCal busy/block time. */
+  kind: "appointment" | "busy";
+  /** Plain-text description from GCal (HTML stripped). */
+  description: string | null;
+  eventType: string | null;
   location: string | null;
   guestName: string | null;
   phone: string | null;
@@ -41,10 +46,38 @@ type GCalEvent = {
   summary?: string;
   location?: string;
   description?: string;
+  eventType?: string;
+  transparency?: string;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
   attendees?: Array<{ displayName?: string; email?: string; self?: boolean }>;
 };
+
+/** Strip simple HTML from GCal descriptions for UI labels. */
+export function plainDescription(html: string | null | undefined): string | null {
+  if (!html?.trim()) return null;
+  const text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+  return text || null;
+}
+
+function isGCalBusyKind(ev: GCalEvent, matched: boolean): boolean {
+  if (matched) return false;
+  const t = (ev.eventType ?? "default").toLowerCase();
+  if (t === "outofoffice" || t === "focustime") return true;
+  // Transparent ("show as free") still listed, but not a busy block for styling
+  if (ev.transparency === "transparent") return false;
+  // Anything else on the calendar that isn't a known appointment → busy/block
+  return true;
+}
 
 /** Map one GCal events.list item for the admin mirror view. Skips cancelled / incomplete. */
 export function mapGCalItemToRangeEvent(
@@ -53,6 +86,14 @@ export function mapGCalItemToRangeEvent(
 ): CalendarRangeEvent | null {
   if (!ev.id) return null;
   if (ev.status === "cancelled") return null;
+
+  const eventType = (ev.eventType ?? "default").toLowerCase();
+  // Not blocks — skip noise from status/location calendars
+  if (eventType === "workinglocation" || eventType === "birthday") return null;
+
+  const matched = matchAppointmentType(ev.summary, settings);
+  // Free-time markers aren't blocked off
+  if (!matched && ev.transparency === "transparent") return null;
 
   const allDay = Boolean(ev.start?.date && !ev.start.dateTime);
   let startsAt: string;
@@ -67,23 +108,27 @@ export function mapGCalItemToRangeEvent(
     endsAt = ev.end.dateTime;
   }
 
+  const busy = isGCalBusyKind(ev, matched != null);
   const phone = extractPhoneFromEvent(ev);
   const guestName = extractGuestName(ev);
-  const resolved = ev.summary
-    ? resolveAppointmentType(ev.summary, settings)
-    : null;
+  const description = plainDescription(ev.description);
+  const summary =
+    ev.summary?.trim() || description?.split("\n")[0]?.trim() || "(No title)";
 
   return {
     id: ev.id,
-    summary: ev.summary?.trim() || "(No title)",
+    summary,
     startsAt,
     endsAt,
     allDay,
+    kind: busy ? "busy" : "appointment",
+    description,
+    eventType: ev.eventType ?? null,
     location: ev.location?.trim() || null,
     guestName,
     phone,
-    appointmentType: resolved?.type ?? null,
-    typeLabel: resolved?.label ?? null,
+    appointmentType: matched?.type ?? null,
+    typeLabel: matched?.label ?? null,
   };
 }
 

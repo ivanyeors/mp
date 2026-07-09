@@ -8,7 +8,7 @@ import {
   appointmentSettingsToStored,
   parseAppointmentSettings,
 } from "@/lib/appointments/settings";
-import { resolveAppointmentType } from "@/lib/appointments/type";
+import { resolveAppointmentType, matchAppointmentType } from "@/lib/appointments/type";
 import {
   blockedRangesToBusy,
   offerSlots,
@@ -19,7 +19,12 @@ import {
   isMorningOfEligible,
   transitionReminder,
 } from "@/lib/appointments/state";
-import { extractPhoneFromEvent, extractGuestName, mapGCalItemToRangeEvent } from "@/lib/appointments/calendar";
+import {
+  extractPhoneFromEvent,
+  extractGuestName,
+  mapGCalItemToRangeEvent,
+  plainDescription,
+} from "@/lib/appointments/calendar";
 
 describe("appointment-phone", () => {
   it("normalizes SG formats to E.164", () => {
@@ -80,6 +85,12 @@ describe("appointment-type", () => {
     const r = resolveAppointmentType("Mystery booking", settings);
     expect(r.type).toBe("customisation");
     expect(r.bookingUrl).toBe(settings.customisationBookingUrl);
+  });
+
+  it("matchAppointmentType returns null for non-appointment busy blocks", () => {
+    expect(matchAppointmentType("Out of office", settings)).toBeNull();
+    expect(matchAppointmentType("Blocked", settings)).toBeNull();
+    expect(matchAppointmentType("Focus time", settings)).toBeNull();
   });
 });
 
@@ -238,6 +249,7 @@ describe("calendar extract helpers", () => {
     expect(timed).toMatchObject({
       id: "t1",
       allDay: false,
+      kind: "appointment",
       summary: "Alice - Mpillow Customisation",
       appointmentType: "customisation",
     });
@@ -246,6 +258,7 @@ describe("calendar extract helpers", () => {
       {
         id: "a1",
         summary: "Out of office",
+        eventType: "outOfOffice",
         start: { date: "2026-07-11" },
         end: { date: "2026-07-12" },
       },
@@ -254,14 +267,52 @@ describe("calendar extract helpers", () => {
     expect(allDay).toMatchObject({
       id: "a1",
       allDay: true,
+      kind: "busy",
       startsAt: "2026-07-11",
       endsAt: "2026-07-12",
       summary: "Out of office",
+      appointmentType: null,
     });
+
+    const blocked = mapGCalItemToRangeEvent(
+      {
+        id: "b1",
+        summary: "Blocked",
+        description: "Staff meeting / prep<br>Do not book",
+        start: { dateTime: "2026-07-10T04:00:00Z" },
+        end: { dateTime: "2026-07-10T06:00:00Z" },
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+    );
+    expect(blocked).toMatchObject({
+      kind: "busy",
+      summary: "Blocked",
+      description: "Staff meeting / prep\nDo not book",
+      appointmentType: null,
+    });
+    expect(plainDescription("A<br>B")).toBe("A\nB");
 
     expect(
       mapGCalItemToRangeEvent(
-        { id: "c1", status: "cancelled", start: { dateTime: "x" }, end: { dateTime: "y" } },
+        {
+          id: "c1",
+          status: "cancelled",
+          start: { dateTime: "x" },
+          end: { dateTime: "y" },
+        },
+        DEFAULT_APPOINTMENT_SETTINGS,
+      ),
+    ).toBeNull();
+
+    expect(
+      mapGCalItemToRangeEvent(
+        {
+          id: "w1",
+          eventType: "workingLocation",
+          summary: "Office",
+          start: { date: "2026-07-11" },
+          end: { date: "2026-07-12" },
+        },
         DEFAULT_APPOINTMENT_SETTINGS,
       ),
     ).toBeNull();

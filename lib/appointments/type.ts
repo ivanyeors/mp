@@ -7,13 +7,13 @@ export type ResolvedAppointmentType = {
 };
 
 /**
- * Infer Customisation vs Re-adjustment from event summary + settings match strings.
- * Unclear → customisation (fallback rebook URL).
+ * Strict match: Customisation / Re-adjustment from summary + settings strings.
+ * Returns null when the event is not a known Mpillow appointment (e.g. busy/OOO).
  */
-export function resolveAppointmentType(
+export function matchAppointmentType(
   summary: string | null | undefined,
   settings: AppointmentSettings,
-): ResolvedAppointmentType {
+): ResolvedAppointmentType | null {
   const s = (summary ?? "").toLowerCase();
   const readj = settings.readjustmentSummaryMatch.toLowerCase();
   const cust = settings.customisationSummaryMatch.toLowerCase();
@@ -40,9 +40,28 @@ export function resolveAppointmentType(
       label: "Re-adjustment",
     };
   }
-  return {
-    type: "customisation",
-    bookingUrl: settings.customisationBookingUrl,
-    label: "Customisation",
-  };
+  if (s.includes("customisation") || s.includes("customization")) {
+    return {
+      type: "customisation",
+      bookingUrl: settings.customisationBookingUrl,
+      label: "Customisation",
+    };
+  }
+  return null;
+}
+
+/**
+ * Infer type for WhatsApp rebook flows. Unclear → customisation (fallback URL).
+ */
+export function resolveAppointmentType(
+  summary: string | null | undefined,
+  settings: AppointmentSettings,
+): ResolvedAppointmentType {
+  return (
+    matchAppointmentType(summary, settings) ?? {
+      type: "customisation",
+      bookingUrl: settings.customisationBookingUrl,
+      label: "Customisation",
+    }
+  );
 }

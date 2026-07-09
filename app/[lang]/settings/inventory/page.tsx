@@ -1441,7 +1441,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
       <div className="flex items-center justify-between">
         <h1>Inventory</h1>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={load}>Refresh</Button>
+          <Button variant="secondary" onClick={() => void load()}>Refresh</Button>
           <Button onClick={() => setAddDrawerOpen(true)} aria-label="Add inventory item">
             Add inventory
           </Button>
