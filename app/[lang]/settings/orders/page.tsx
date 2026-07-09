@@ -38,6 +38,8 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ShopifySalesSection } from "@/components/settings/shopify-sales-section";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
@@ -172,6 +174,7 @@ export default function SettingsOrdersPage() {
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
     const [page, setPage] = useState(1);
+    const [ordersTab, setOrdersTab] = useState<"platform" | "shopify">("platform");
 
     // Data state
     const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -309,6 +312,16 @@ export default function SettingsOrdersPage() {
                 />
             </div>
 
+            <Tabs
+                value={ordersTab}
+                onValueChange={(v) => setOrdersTab(v === "shopify" ? "shopify" : "platform")}
+            >
+                <TabsList>
+                    <TabsTrigger value="platform">Orders</TabsTrigger>
+                    <TabsTrigger value="shopify">Shopify Sales</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="platform" className="space-y-6 mt-6">
             {/* Toolbar */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
                 <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -500,6 +513,12 @@ export default function SettingsOrdersPage() {
                     </Pagination>
                 </div>
             )}
+                </TabsContent>
+
+                <TabsContent value="shopify" className="mt-6">
+                    <ShopifySalesSection />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

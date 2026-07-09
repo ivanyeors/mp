@@ -73,7 +73,7 @@ export async function PATCH(
     );
   }
 
-  revalidateTag("categories");
+  revalidateTag("categories", "max");
   return NextResponse.json({ ok: true, row: data });
 }
 
@@ -95,6 +95,6 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidateTag("categories");
+  revalidateTag("categories", "max");
   return NextResponse.json({ ok: true });
 }

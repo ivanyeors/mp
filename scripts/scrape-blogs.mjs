@@ -40,7 +40,7 @@ async function extractBlogData(url) {
                 if (json['@type'] === 'Article') {
                     jsonLdData = json;
                 }
-            } catch (e) {
+            } catch {
                 // Ignore JSON parse errors
             }
         });

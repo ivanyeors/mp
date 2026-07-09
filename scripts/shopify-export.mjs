@@ -161,8 +161,6 @@ function uniq(arr) {
 
 function buildCurrentSection(product) {
   const title = product?.title ?? '(Untitled)'
-  const handle = product?.handle ?? null
-  const pid = product?.id ?? null
 
   const variants = Array.isArray(product?.variants) ? product.variants : []
   const variantLines = variants.map((v) => {

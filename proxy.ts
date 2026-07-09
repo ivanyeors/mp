@@ -33,7 +33,7 @@ function pickLocaleFromAcceptLanguage(headerValue: string | null): Locale {
   return DEFAULT_LOCALE;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip Next internals, API, auth callback, and direct file requests.
@@ -52,7 +52,7 @@ export async function middleware(request: NextRequest) {
 
   // If the URL already has a locale, keep it and ensure cookie matches.
   if (pathLocale) {
-    // ponytail: middleware redirects beat stale static caches for moved settings routes
+    // ponytail: proxy redirects beat stale static caches for moved settings routes
     if (pathname.endsWith("/settings/inventory/shopify")) {
       const url = request.nextUrl.clone();
       url.pathname = pathname.replace("/settings/inventory/shopify", "/settings/integrations/shopify");

@@ -76,7 +76,9 @@ function resolveScaleTitles(
     if (!title) {
       throw new Error(`ProductSlideSectionRenderer: missing firmness scale title for "${scale.label}"`);
     }
-    const { titleKey: _titleKey, ...rest } = scale;
+    // ponytail: titleKey resolved above; omit from spread
+    const { titleKey: _omit, ...rest } = scale;
+    void _omit;
     return { ...rest, title };
   });
 }

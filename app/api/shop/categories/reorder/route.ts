@@ -42,7 +42,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: firstError.error.message }, { status: 500 });
   }
 
-  revalidateTag("categories");
+  revalidateTag("categories", "max");
   return NextResponse.json({
     ok: true,
     rows: updates.map((r) => r.data),

@@ -52,6 +52,6 @@ export async function POST(req: Request) {
     );
   }
 
-  revalidateTag("categories");
+  revalidateTag("categories", "max");
   return NextResponse.json({ ok: true, row: data });
 }
