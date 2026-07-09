@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState, Fragment, type Dispatch, type SetStateAction } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { collectLowStockCategories } from "@/lib/inventory/part-category-low-stock";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
@@ -171,6 +173,7 @@ export default function InventoryPage() {
     pillows: CartPillowLine[];
     parts: Record<number, number>;
   }>({ pillows: [], parts: {} });
+  const [pillowBomByProductId, setPillowBomByProductId] = useState<Record<number, Array<{ item_id: number; quantity: number }>>>({});
   const [bolsterLinesByVariant, setBolsterLinesByVariant] = useState<Record<'short'|'medium'|'long', Array<{ item_id: number; quantity: number }>>>({ short: [], medium: [], long: [] });
   const [customPillowSize, setCustomPillowSize] = useState<string>('M');
   const [customPillowQty, setCustomPillowQty] = useState<string>('');
@@ -247,14 +250,18 @@ export default function InventoryPage() {
 
     const nextBuildable: Record<string, number> = {};
     const nextPremiumBuildable: Record<string, number> = {};
+    const nextPillowBom: Record<number, Array<{ item_id: number; quantity: number }>> = {};
     nextProducts.forEach((p) => {
       const kind = p.kind === "premium" ? "premium" : "basic";
       const size = String(p.size);
-      const lines = linesByProduct.get(Number(p.id)) ?? [];
+      const productId = Number(p.id);
+      const lines = linesByProduct.get(productId) ?? [];
+      nextPillowBom[productId] = lines;
       const b = computeBuildable(lines);
       if (kind === "premium") nextPremiumBuildable[size] = b;
       else nextBuildable[size] = b;
     });
+    setPillowBomByProductId(nextPillowBom);
     setBuildable(nextBuildable);
     setPremiumBuildable(nextPremiumBuildable);
 
@@ -790,12 +797,20 @@ export default function InventoryPage() {
     }
   }, [items, partDrawerGroup, partDrawerOpen, partGroups]);
 
-  const lowStock = useMemo(() => {
-    return items.filter((i) => {
-      const balanceId = i.category === "filling" && i.alteration_of_item_id ? i.alteration_of_item_id : i.id;
-      return (balances[balanceId] ?? 0) <= 0;
+  const lowStockCategories = useMemo(() => {
+    const boms = [
+      ...Object.values(pillowBomByProductId),
+      bolsterLinesByVariant.short,
+      bolsterLinesByVariant.medium,
+      bolsterLinesByVariant.long,
+    ];
+    return collectLowStockCategories({
+      categories: ITEM_CATEGORIES,
+      boms,
+      categoryOfItem: (itemId) => itemsById.get(Number(itemId))?.category,
+      buildableFromLines: computeBuildableFromLines,
     });
-  }, [items, balances]);
+  }, [pillowBomByProductId, bolsterLinesByVariant, itemsById, computeBuildableFromLines]);
 
   const incrementPillowSelection = (size: string) => {
     let available = 0;
@@ -1466,6 +1481,8 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
           {partGroups.map(group => {
             const totalOnHand = group.items.reduce((sum, it) => sum + (Number(balances[it.id] ?? 0)), 0);
+            const category = group.key.startsWith("category:") ? group.key.slice("category:".length) : null;
+            const hasLowStock = category != null && lowStockCategories.has(category);
             return (
               <div
                 key={group.key}
@@ -1475,9 +1492,12 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { setPartDrawerGroup(group); setPartDrawerOpen(true); } }}
               >
-                <div className="flex-1">
-                  <div className="font-medium">{group.title}</div>
-                  <div className="text-xs text-muted-foreground">On hand: {totalOnHand}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <div className="font-medium">{group.title}</div>
+                    <div className="text-xs text-muted-foreground">On hand: {totalOnHand}</div>
+                  </div>
+                  {hasLowStock ? <Badge variant="destructive">Low stock</Badge> : null}
                 </div>
               </div>
             );
@@ -1626,17 +1646,6 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
         <div className="text-sm text-muted-foreground">Inventory management</div>
         {/* Use the Select sections above to open the drawer for stock-in per variant */}
       </section>
-
-      {lowStock.length > 0 && (
-        <section className="space-y-2">
-          <div className="text-sm text-red-600">Low or zero stock</div>
-          <ul className="list-disc pl-6 text-sm">
-            {lowStock.map(it => (
-              <li key={it.id}>{getInventoryItemDisplayLabel(it)} — {balances[it.id] ?? 0}</li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {/* Cart Drawer */}
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
