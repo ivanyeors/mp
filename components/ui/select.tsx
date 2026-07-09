@@ -13,6 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  SELECT_ITEM_MARK,
+  collectSelectItemLabels,
+  resolveSelectDisplay,
+} from "@/components/ui/select-labels";
 
 type SelectContextValue = {
   value?: string;
@@ -21,7 +26,6 @@ type SelectContextValue = {
   setOpen: (open: boolean) => void;
   isMobile: boolean;
   labels: Record<string, string>;
-  registerLabel: (value: string, label: string) => void;
   closeOnSelect: boolean;
 };
 
@@ -53,9 +57,9 @@ function Select({
   const isMobile = useIsMobile();
   const [open, setOpen] = React.useState(false);
   const [internalValue, setInternalValue] = React.useState<string | undefined>(defaultValue);
-  const [labels, setLabels] = React.useState<Record<string, string>>({});
 
   const value = valueProp ?? internalValue;
+  const labels = React.useMemo(() => collectSelectItemLabels(children), [children]);
 
   const setValue = React.useCallback(
     (next: string) => {
@@ -65,13 +69,6 @@ function Select({
     [onValueChange],
   );
 
-  const registerLabel = React.useCallback((optionValue: string, label: string) => {
-    setLabels((prev) => {
-      if (prev[optionValue] === label) return prev;
-      return { ...prev, [optionValue]: label };
-    });
-  }, []);
-
   const contextValue = React.useMemo(
     () => ({
       value,
@@ -80,10 +77,9 @@ function Select({
       setOpen,
       isMobile,
       labels,
-      registerLabel,
       closeOnSelect,
     }),
-    [closeOnSelect, isMobile, labels, open, registerLabel, setValue, value],
+    [closeOnSelect, isMobile, labels, open, setValue, value],
   );
 
   return (
@@ -137,7 +133,7 @@ type SelectValueProps = {
 
 function SelectValue({ placeholder, className }: SelectValueProps) {
   const { value, labels } = useSelectContext();
-  const display = value ? labels[value] ?? value : placeholder ?? "Select";
+  const display = resolveSelectDisplay(value, labels, placeholder);
   return <span className={cn("block truncate", className)}>{display}</span>;
 }
 
@@ -198,7 +194,6 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
       value,
       className,
       disabled,
-      textValue,
       inset,
       variant,
       asChild,
@@ -212,20 +207,9 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
     void variant;
     void asChild;
 
-    const { setValue, setOpen, registerLabel, closeOnSelect, value: selectedValue } =
-      useSelectContext();
+    const { setValue, setOpen, closeOnSelect, value: selectedValue } = useSelectContext();
     const { isMobile } = useSelectContext();
     const isSelected = selectedValue === value;
-
-    const label = React.useMemo(() => {
-      if (typeof textValue === "string") return textValue;
-      if (typeof children === "string") return children;
-      return value;
-    }, [children, textValue, value]);
-
-    React.useEffect(() => {
-      registerLabel(value, String(label));
-    }, [label, registerLabel, value]);
 
     const handleSelect = (event: Event | React.SyntheticEvent) => {
       event.preventDefault();
@@ -287,6 +271,6 @@ const SelectItem = React.forwardRef<React.ElementRef<typeof DropdownMenuItem>, S
   },
 );
 SelectItem.displayName = "SelectItem";
+(SelectItem as unknown as { [SELECT_ITEM_MARK]: true })[SELECT_ITEM_MARK] = true;
 
 export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
-

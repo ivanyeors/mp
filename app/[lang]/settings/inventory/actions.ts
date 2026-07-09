@@ -588,13 +588,14 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
 
   let q = admin
     .from('bom_templates')
-    .select('id,name,kind,key,pillow_kind')
+    .select('id,name,kind,key,pillow_kind,pillow_variant')
     .eq('kind', kind)
     .eq('key', key)
     .order('updated_at', { ascending: false })
 
   if (kind === 'pillow') {
     q = q.eq('pillow_kind', effectivePillowKind)
+    // When pillowVariant is passed, filter; otherwise return all variants so UI can price by selection.
     if (effectivePillowKind === 'premium' && effectivePillowVariant) {
       q = q.eq('pillow_variant', effectivePillowVariant)
     }

@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { collectLowStockCategories } from "@/lib/inventory/part-category-low-stock";
+import {
+  groupShopifyTemplatesByKey,
+  type ShopifyTemplateOption,
+} from "@/lib/inventory/shopify-templates-by-key";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
@@ -39,6 +43,8 @@ import {
 } from "./actions";
 import { toast } from "sonner";
 import { groupShopifyQueueByOrder } from "@/lib/shopify/shopify-sales-queue-group";
+import { resolveShopifyQueueLineMsrp } from "@/lib/shopify/queue-line-price";
+import { formatCurrency } from "@/lib/i18n/currencies";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { DateRange } from "react-day-picker";
@@ -187,8 +193,8 @@ export default function InventoryPage() {
   const [customBolsterLines, setCustomBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
     const [
       { data: itemsData },
       { data: balancesData },
@@ -316,7 +322,7 @@ export default function InventoryPage() {
 
   // Listen for inventory changes broadcast from other pages (e.g. Configure).
   useEffect(() => {
-    const onChanged = () => { load(); };
+    const onChanged = () => { load({ silent: true }); };
     if (typeof window !== 'undefined') {
       window.addEventListener('inventory:changed', onChanged);
       let bc: BroadcastChannel | null = null;
@@ -374,8 +380,19 @@ export default function InventoryPage() {
   };
   const [shopifyQueue, setShopifyQueue] = useState<ShopifyQueueRow[]>([]);
   const [shopifyQueueArchived, setShopifyQueueArchived] = useState<ShopifyQueueRow[]>([]);
-  const [shopifyTemplatesByKey, setShopifyTemplatesByKey] = useState<Record<string, Array<{ id: number; name: string }>>>({});
+  const [bomTemplateRows, setBomTemplateRows] = useState<
+    Array<{
+      id: number | string;
+      name: string;
+      kind: string;
+      key: string;
+      pillow_kind?: string | null;
+      pillow_variant?: string | null;
+    }>
+  >([]);
   const [shopifyTemplateChoice, setShopifyTemplateChoice] = useState<Record<number, number | "">>({});
+  const [shopifyProductMsrpByKey, setShopifyProductMsrpByKey] = useState<Record<string, number | string | null>>({});
+  const [shopifyItemMsrpById, setShopifyItemMsrpById] = useState<Record<number, number | string | null>>({});
   const [loadingShopifySales, setLoadingShopifySales] = useState(false);
   const [savingShopifySales, setSavingShopifySales] = useState(false);
   const [shopifySalesTab, setShopifySalesTab] = useState<'active' | 'archived'>('active');
@@ -664,32 +681,86 @@ export default function InventoryPage() {
     loadShopifySalesQueue();
   }, [loadShopifySalesQueue]);
 
-  // Load templates for keys present in queue (pillow sizes + bolster variants)
+  // Costings MSRPs + BOM templates for Shopify Sales (one read each; no per-key server actions).
   useEffect(() => {
-    const load = async () => {
-      const needed: Array<{ kind: 'pillow' | 'bolster'; key: string; pillowKind?: 'basic' | 'premium' }> = [];
-      shopifyQueue.forEach((row) => {
-        if (row.kind === 'pillow' && row.pillow_size) needed.push({ kind: 'pillow', key: row.pillow_size, pillowKind: row.pillow_kind ?? 'basic' });
-        if (row.kind === 'bolster' && row.bolster_variant) needed.push({ kind: 'bolster', key: row.bolster_variant });
+    let cancelled = false;
+    (async () => {
+      const [{ data: productPrices }, { data: itemPrices }, { data: templates }] = await Promise.all([
+        supabaseClient.from("product_prices").select("key,msrp"),
+        supabaseClient.from("item_prices").select("item_id,msrp"),
+        supabaseClient
+          .from("bom_templates")
+          .select("id,name,kind,key,pillow_kind,pillow_variant")
+          .order("updated_at", { ascending: false }),
+      ]);
+      if (cancelled) return;
+      const nextProduct: Record<string, number | string | null> = {};
+      (productPrices ?? []).forEach((p: { key: string; msrp: number | string | null }) => {
+        nextProduct[String(p.key)] = p.msrp ?? null;
       });
-      const unique = new Map<string, { kind: 'pillow' | 'bolster'; key: string; pillowKind?: 'basic' | 'premium' }>();
-      needed.forEach((n) => unique.set(`${n.kind}:${n.kind === 'pillow' ? (n.pillowKind ?? 'basic') : ''}:${n.key}`, n));
-      for (const entry of unique.values()) {
-        const cacheKey = entry.kind === 'pillow' ? `pillow:${entry.pillowKind ?? 'basic'}:${entry.key}` : `bolster:${entry.key}`;
-        if (shopifyTemplatesByKey[cacheKey]) continue;
-        try {
-          const payload = await listTemplates(entry.kind, entry.key, entry.kind === 'pillow' ? (entry.pillowKind ?? 'basic') : undefined);
-          setShopifyTemplatesByKey((prev) => ({
-            ...prev,
-            [cacheKey]: ((payload.templates ?? []) as Array<{ id: number; name: string }>).map((t) => ({ id: Number(t.id), name: String(t.name) })),
-          }));
-        } catch {
-          // ignore; will show empty dropdown
-        }
-      }
+      const nextItem: Record<number, number | string | null> = {};
+      (itemPrices ?? []).forEach((r: { item_id: number | string; msrp: number | string | null }) => {
+        nextItem[Number(r.item_id)] = r.msrp ?? null;
+      });
+      setShopifyProductMsrpByKey(nextProduct);
+      setShopifyItemMsrpById(nextItem);
+      setBomTemplateRows(templates ?? []);
+    })().catch(() => {
+      // leave maps empty; price cells show —
+    });
+    return () => {
+      cancelled = true;
     };
-    load();
-  }, [shopifyQueue, shopifyTemplatesByKey]);
+  }, []);
+
+  const shopifyTemplatesByKey = useMemo(
+    () => groupShopifyTemplatesByKey(bomTemplateRows),
+    [bomTemplateRows],
+  );
+
+  const pillowProductIdByKindSize = useMemo(() => {
+    const m: Record<string, number> = {};
+    products.forEach((p) => {
+      const kind = p.kind === "premium" ? "premium" : "basic";
+      m[`${kind}:${p.size}`] = Number(p.id);
+    });
+    return m;
+  }, [products]);
+
+  const shopifyTemplateMetaById = useMemo(() => {
+    const m = new Map<number, ShopifyTemplateOption>();
+    Object.values(shopifyTemplatesByKey).forEach((list) => {
+      list.forEach((t) => m.set(t.id, t));
+    });
+    return m;
+  }, [shopifyTemplatesByKey]);
+
+  const resolveQueueLinePriceLabel = useCallback(
+    (row: ShopifyQueueRow, templateId: number | "" | null) => {
+      const tpl =
+        templateId !== null && templateId !== undefined && templateId !== ""
+          ? shopifyTemplateMetaById.get(Number(templateId))
+          : undefined;
+      const templatePillowVariant =
+        tpl?.pillow_variant === "linen" || tpl?.pillow_variant === "fibrecool"
+          ? tpl.pillow_variant
+          : null;
+      const msrp = resolveShopifyQueueLineMsrp({
+        kind: row.kind,
+        pillowSize: row.pillow_size,
+        pillowKind: row.pillow_kind,
+        bolsterVariant: row.bolster_variant,
+        itemId: row.item_id,
+        variantTitle: row.variant_title,
+        templatePillowVariant,
+        pillowProductIdByKindSize,
+        productMsrpByKey: shopifyProductMsrpByKey,
+        itemMsrpById: shopifyItemMsrpById,
+      });
+      return msrp == null ? "—" : formatCurrency(msrp);
+    },
+    [pillowProductIdByKindSize, shopifyItemMsrpById, shopifyProductMsrpByKey, shopifyTemplateMetaById],
+  );
 
   const handleCreateItem = async (draft: AddInventoryDraft) => {
     try {
@@ -870,7 +941,7 @@ export default function InventoryPage() {
     try {
       await commitShopifySales({ commits })
       toast.success('Shopify sales committed')
-      await load()
+      await load({ silent: true })
       await loadShopifySalesQueue()
       notifyInventoryChange()
     } catch (e) {
@@ -897,7 +968,7 @@ export default function InventoryPage() {
           : Number(shopifyTemplateChoice[row.id]);
       await commitShopifySales({ commits: [{ queueId: row.id, templateId }] });
       toast.success('Stocked out');
-      await load();
+      await load({ silent: true });
       await loadShopifySalesQueue();
       if (shopifySalesTab === 'archived') await loadShopifySalesQueueArchived();
       notifyInventoryChange();
@@ -927,7 +998,7 @@ export default function InventoryPage() {
     try {
       await commitShopifySales({ commits });
       toast.success("Stocked out");
-      await load();
+      await load({ silent: true });
       await loadShopifySalesQueue();
       if (shopifySalesTab === "archived") await loadShopifySalesQueueArchived();
       notifyInventoryChange();
@@ -957,7 +1028,7 @@ export default function InventoryPage() {
             <TableRow>
               <TableHead className="w-[120px]">Date</TableHead>
               <TableHead>Order</TableHead>
-              <TableHead className="w-[160px]">Fulfillment</TableHead>
+              <TableHead className="w-[120px]">Price</TableHead>
               <TableHead>Item</TableHead>
               <TableHead className="w-[90px]">Qty</TableHead>
               <TableHead className="w-[260px]">Template</TableHead>
@@ -970,7 +1041,6 @@ export default function InventoryPage() {
               const orderLabel =
                 group.orderName?.trim() ||
                 (group.orderId ? `#${group.orderId}` : "—");
-              const fulfillment = (group.fulfillmentStatus ?? "unfulfilled").toString().toUpperCase();
 
               const renderLineRow = (row: ShopifyQueueRow) => {
                 const key =
@@ -981,6 +1051,13 @@ export default function InventoryPage() {
                       : null;
                 const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
                 const needsTemplate = row.kind === "pillow" || row.kind === "bolster";
+                const selectedTemplateId =
+                  mode === "archived"
+                    ? (row.chosen_template_id ?? "")
+                    : shopifyTemplateChoice[row.id] === undefined
+                      ? (row.chosen_template_id ?? "")
+                      : shopifyTemplateChoice[row.id];
+                const priceLabel = resolveQueueLinePriceLabel(row, selectedTemplateId);
                 const partItem =
                   row.kind === "part" && row.item_id ? (itemsById.get(row.item_id) ?? null) : null;
                 const label =
@@ -996,7 +1073,7 @@ export default function InventoryPage() {
                   <TableRow key={row.id} className="border-t-0">
                     <TableCell />
                     <TableCell />
-                    <TableCell />
+                    <TableCell className="text-sm whitespace-nowrap tabular-nums">{priceLabel}</TableCell>
                     <TableCell className="text-sm">
                       {row.kind === "part" && partItem ? (
                         <>
@@ -1027,13 +1104,7 @@ export default function InventoryPage() {
                     <TableCell>
                       {needsTemplate ? (
                         <Select
-                          value={
-                            mode === "archived"
-                              ? String(row.chosen_template_id ?? "")
-                              : shopifyTemplateChoice[row.id] === undefined
-                                ? ""
-                                : String(shopifyTemplateChoice[row.id] ?? "")
-                          }
+                          value={String(selectedTemplateId ?? "")}
                           onValueChange={(value) =>
                             setShopifyTemplateChoice((prev) => ({
                               ...prev,
@@ -1080,7 +1151,7 @@ export default function InventoryPage() {
                         {group.lines.length} item{group.lines.length === 1 ? "" : "s"}
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">{fulfillment}</TableCell>
+                    <TableCell />
                     <TableCell colSpan={3} />
                     <TableCell>
                       {mode === "active" ? (
