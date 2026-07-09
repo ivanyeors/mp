@@ -24,6 +24,8 @@ import {
   extractGuestName,
   mapGCalItemToRangeEvent,
   plainDescription,
+  toGCalRfc3339,
+  formatGoogleCalendarError,
 } from "@/lib/appointments/calendar";
 
 describe("appointment-phone", () => {
@@ -218,6 +220,27 @@ describe("appointment-settings parse", () => {
     };
     const stored = appointmentSettingsToStored(settings);
     expect(parseAppointmentSettings(stored).blockedRanges).toEqual([{ start, end }]);
+  });
+});
+
+describe("calendar RFC3339 + errors", () => {
+  it("appends SGT offset to floating FullCalendar times", () => {
+    expect(toGCalRfc3339("2026-07-05T00:00:00")).toBe("2026-07-05T00:00:00+08:00");
+    expect(toGCalRfc3339("2026-07-05T00:00:00Z")).toBe("2026-07-05T00:00:00Z");
+    expect(toGCalRfc3339("2026-07-05T00:00:00+08:00")).toBe("2026-07-05T00:00:00+08:00");
+  });
+
+  it("explains disabled Calendar API", () => {
+    const msg = formatGoogleCalendarError(
+      403,
+      JSON.stringify({
+        error: {
+          message:
+            "Google Calendar API has not been used in project 418363243665 before or it is disabled.",
+        },
+      }),
+    );
+    expect(msg).toMatch(/calendar-json\.googleapis\.com/);
   });
 });
 

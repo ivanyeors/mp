@@ -44,6 +44,11 @@
   color: var(--foreground);
 }
 
+.appointments-calendar .fc-timegrid-slot-label-cushion {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
+}
+
 .appointments-calendar .fc-toolbar-title {
   font-size: 1.125rem;
   font-weight: 600;

@@ -136,6 +136,19 @@ function calendarId(): string {
   return process.env.GOOGLE_CALENDAR_ID?.trim() || "primary";
 }
 
+/**
+ * FullCalendar with timeZone=Asia/Singapore sends `2026-07-05T00:00:00` (no offset).
+ * Google Calendar API requires RFC3339 with Z or ±offset.
+ */
+export function toGCalRfc3339(iso: string): string {
+  const s = iso.trim();
+  if (/[zZ]$|[+-]\d{2}:\d{2}$/.test(s)) return s;
+  // Floating SGT wall time from our admin calendar
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) return `${s}+08:00`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00+08:00`;
+  return s;
+}
+
 async function calFetch(path: string, init?: RequestInit): Promise<Response> {
   const token = await getGoogleAccessToken();
   return fetch(`${CAL_BASE}${path}`, {
@@ -147,6 +160,30 @@ async function calFetch(path: string, init?: RequestInit): Promise<Response> {
     },
     cache: "no-store",
   });
+}
+
+/** Prefer Google's message; call out disabled Calendar API. */
+export function formatGoogleCalendarError(status: number, body: string): string {
+  let message = body.slice(0, 400);
+  try {
+    const json = JSON.parse(body) as { error?: { message?: string } };
+    if (json.error?.message) message = json.error.message;
+  } catch {
+    /* keep raw */
+  }
+  if (
+    status === 403 &&
+    /Calendar API has not been used|has been disabled|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(
+      message,
+    )
+  ) {
+    return (
+      "Google Calendar API is disabled (or missing scope) on the OAuth GCP project. " +
+      "Enable calendar-json.googleapis.com for that project, then retry. " +
+      `(${message})`
+    );
+  }
+  return `Calendar list failed (${status}): ${message}`;
 }
 
 /** Extract phone from description / summary / location free text. */
@@ -215,7 +252,7 @@ export async function listDayEvents(
   });
   const res = await calFetch(`/calendars/${id}/events?${qs}`);
   if (!res.ok) {
-    throw new Error(`Calendar list failed (${res.status}): ${await res.text()}`);
+    throw new Error(formatGoogleCalendarError(res.status, await res.text()));
   }
   const json = (await res.json()) as { items?: GCalEvent[] };
   const out: CalendarGuestEvent[] = [];
@@ -254,15 +291,15 @@ export async function listRangeEvents(
 ): Promise<CalendarRangeEvent[]> {
   const id = encodeURIComponent(calendarId());
   const qs = new URLSearchParams({
-    timeMin: timeMinIso,
-    timeMax: timeMaxIso,
+    timeMin: toGCalRfc3339(timeMinIso),
+    timeMax: toGCalRfc3339(timeMaxIso),
     singleEvents: "true",
     orderBy: "startTime",
     maxResults: "250",
   });
   const res = await calFetch(`/calendars/${id}/events?${qs}`);
   if (!res.ok) {
-    throw new Error(`Calendar list failed (${res.status}): ${await res.text()}`);
+    throw new Error(formatGoogleCalendarError(res.status, await res.text()));
   }
   const json = (await res.json()) as { items?: GCalEvent[] };
   const out: CalendarRangeEvent[] = [];
@@ -281,13 +318,13 @@ export async function freeBusy(
   const res = await calFetch("/freeBusy", {
     method: "POST",
     body: JSON.stringify({
-      timeMin: timeMinIso,
-      timeMax: timeMaxIso,
+      timeMin: toGCalRfc3339(timeMinIso),
+      timeMax: toGCalRfc3339(timeMaxIso),
       items: [{ id: calendarId() }],
     }),
   });
   if (!res.ok) {
-    throw new Error(`freeBusy failed (${res.status}): ${await res.text()}`);
+    throw new Error(formatGoogleCalendarError(res.status, await res.text()));
   }
   const json = (await res.json()) as {
     calendars?: Record<string, { busy?: Array<{ start: string; end: string }> }>;

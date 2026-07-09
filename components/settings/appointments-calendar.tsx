@@ -173,7 +173,9 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
           }),
         );
       } catch (e) {
-        failure(e instanceof Error ? e : new Error("Failed to load events"));
+        const err = e instanceof Error ? e : new Error("Failed to load events");
+        toast.error(err.message.slice(0, 280));
+        failure(err);
       }
     },
     [],
@@ -402,6 +404,16 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
           slotMinTime="00:00:00"
           slotMaxTime="24:00:00"
           scrollTime={`${padHour(settings.openHour)}:00:00`}
+          slotLabelFormat={{
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }}
+          eventTimeFormat={{
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }}
           allDaySlot
           nowIndicator
           selectable
