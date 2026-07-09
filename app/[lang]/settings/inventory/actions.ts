@@ -435,8 +435,9 @@ export async function listShopifySalesQueue() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
+    .select('id,shopify_order_id,shopify_order_name,shopify_order_created_at,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
     .eq('status', 'pending')
+    .order('shopify_order_created_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return { ok: true, rows: data ?? [] }
@@ -446,8 +447,9 @@ export async function listShopifySalesQueueArchived() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
+    .select('id,shopify_order_id,shopify_order_name,shopify_order_created_at,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
     .eq('status', 'archived')
+    .order('shopify_order_created_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
   if (error) throw new Error(error.message)
   return { ok: true, rows: data ?? [] }
@@ -481,9 +483,16 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
   const createdAtMax = input?.to?.trim() ? input.to.trim() : undefined
 
   const orders = await shopifyListPaidOrders({ limit, createdAtMin, createdAtMax })
-  const orderMetaById = new Map<number, { fulfillment_status: string | null }>()
+  const orderMetaById = new Map<
+    number,
+    { fulfillment_status: string | null; name: string | null; created_at: string | null }
+  >()
   orders.forEach((o) => {
-    orderMetaById.set(Number(o.id), { fulfillment_status: o.fulfillment_status ?? null })
+    orderMetaById.set(Number(o.id), {
+      fulfillment_status: o.fulfillment_status ?? null,
+      name: o.name ?? null,
+      created_at: o.created_at ?? null,
+    })
   })
 
   const lineItems = orders.flatMap((o) =>
@@ -536,9 +545,15 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
       continue
     }
     mapped += 1
-    const orderMeta = orderMetaById.get(Number(li.order_id)) ?? { fulfillment_status: null }
+    const orderMeta = orderMetaById.get(Number(li.order_id)) ?? {
+      fulfillment_status: null,
+      name: null,
+      created_at: null,
+    }
     queueRows.push({
       shopify_order_id: li.order_id,
+      shopify_order_name: orderMeta.name,
+      shopify_order_created_at: orderMeta.created_at,
       shopify_line_item_id: li.line_item_id,
       shopify_variant_id: Number(mapping.shopify_variant_id),
       kind: mapping.kind,
@@ -559,7 +574,6 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
   if (queueRows.length) {
     const { error: qErr } = await admin.from('shopify_sales_queue').upsert(queueRows, {
       onConflict: 'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind',
-      ignoreDuplicates: true,
     })
     if (qErr) throw new Error(qErr.message)
   }

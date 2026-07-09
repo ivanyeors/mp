@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, Fragment, type Dispatch, type SetStateAction } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ import {
   refreshShopifySalesQueueFromShopify,
 } from "./actions";
 import { toast } from "sonner";
+import { groupShopifyQueueByOrder } from "@/lib/shopify/shopify-sales-queue-group";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { DateRange } from "react-day-picker";
@@ -348,6 +349,8 @@ export default function InventoryPage() {
   type ShopifyQueueRow = {
     id: number;
     shopify_order_id: number;
+    shopify_order_name: string | null;
+    shopify_order_created_at: string | null;
     shopify_line_item_id: number | null;
     shopify_variant_id: number | null;
     kind: "pillow" | "bolster" | "part";
@@ -379,29 +382,54 @@ export default function InventoryPage() {
   const [shopifyActivePage, setShopifyActivePage] = useState(1);
   const [shopifyArchivedPage, setShopifyArchivedPage] = useState(1);
 
-  const normalizedShopifySalesSearch = useMemo(() => shopifySalesSearch.replace(/\D/g, '').trim(), [shopifySalesSearch]);
+  const normalizedShopifySalesSearch = useMemo(() => shopifySalesSearch.trim().toLowerCase(), [shopifySalesSearch]);
+  const normalizedShopifySalesDigits = useMemo(
+    () => shopifySalesSearch.replace(/\D/g, "").trim(),
+    [shopifySalesSearch],
+  );
+  const matchesShopifySalesSearch = useCallback(
+    (row: ShopifyQueueRow) => {
+      if (!normalizedShopifySalesSearch) return true;
+      const name = (row.shopify_order_name ?? "").toLowerCase();
+      if (name.includes(normalizedShopifySalesSearch)) return true;
+      if (normalizedShopifySalesDigits && String(row.shopify_order_id).includes(normalizedShopifySalesDigits)) {
+        return true;
+      }
+      return false;
+    },
+    [normalizedShopifySalesSearch, normalizedShopifySalesDigits],
+  );
   const filteredShopifyQueue = useMemo(() => {
     if (!normalizedShopifySalesSearch) return shopifyQueue;
-    return shopifyQueue.filter((r) => String(r.shopify_order_id).includes(normalizedShopifySalesSearch));
-  }, [normalizedShopifySalesSearch, shopifyQueue]);
+    return shopifyQueue.filter(matchesShopifySalesSearch);
+  }, [normalizedShopifySalesSearch, shopifyQueue, matchesShopifySalesSearch]);
   const filteredShopifyQueueArchived = useMemo(() => {
     if (!normalizedShopifySalesSearch) return shopifyQueueArchived;
-    return shopifyQueueArchived.filter((r) => String(r.shopify_order_id).includes(normalizedShopifySalesSearch));
-  }, [normalizedShopifySalesSearch, shopifyQueueArchived]);
+    return shopifyQueueArchived.filter(matchesShopifySalesSearch);
+  }, [normalizedShopifySalesSearch, shopifyQueueArchived, matchesShopifySalesSearch]);
+
+  const groupedShopifyQueue = useMemo(
+    () => groupShopifyQueueByOrder(filteredShopifyQueue),
+    [filteredShopifyQueue],
+  );
+  const groupedShopifyQueueArchived = useMemo(
+    () => groupShopifyQueueByOrder(filteredShopifyQueueArchived),
+    [filteredShopifyQueueArchived],
+  );
 
   useEffect(() => {
     setShopifyActivePage(1);
     setShopifyArchivedPage(1);
   }, [normalizedShopifySalesSearch]);
 
-  const pagedShopifyQueue = useMemo(() => {
+  const pagedShopifyOrderGroups = useMemo(() => {
     const start = (shopifyActivePage - 1) * PAGE_SIZE_SHOPIFY_SALES;
-    return filteredShopifyQueue.slice(start, start + PAGE_SIZE_SHOPIFY_SALES);
-  }, [filteredShopifyQueue, shopifyActivePage]);
-  const pagedShopifyQueueArchived = useMemo(() => {
+    return groupedShopifyQueue.slice(start, start + PAGE_SIZE_SHOPIFY_SALES);
+  }, [groupedShopifyQueue, shopifyActivePage]);
+  const pagedShopifyOrderGroupsArchived = useMemo(() => {
     const start = (shopifyArchivedPage - 1) * PAGE_SIZE_SHOPIFY_SALES;
-    return filteredShopifyQueueArchived.slice(start, start + PAGE_SIZE_SHOPIFY_SALES);
-  }, [filteredShopifyQueueArchived, shopifyArchivedPage]);
+    return groupedShopifyQueueArchived.slice(start, start + PAGE_SIZE_SHOPIFY_SALES);
+  }, [groupedShopifyQueueArchived, shopifyArchivedPage]);
 
   const renderPagination = (args: { total: number; page: number; setPage: (n: number) => void }) => {
     const totalPages = Math.max(1, Math.ceil(args.total / PAGE_SIZE_SHOPIFY_SALES));
@@ -559,6 +587,8 @@ export default function InventoryPage() {
       const normalized = rows.map((r) => ({
         id: Number(r.id),
         shopify_order_id: Number(r.shopify_order_id),
+        shopify_order_name: (r as ShopifyQueueRow).shopify_order_name ?? null,
+        shopify_order_created_at: (r as ShopifyQueueRow).shopify_order_created_at ?? null,
         shopify_line_item_id: r.shopify_line_item_id === null ? null : Number(r.shopify_line_item_id),
         shopify_variant_id: r.shopify_variant_id === null ? null : Number(r.shopify_variant_id),
         kind: r.kind as ShopifyQueueRow["kind"],
@@ -599,6 +629,8 @@ export default function InventoryPage() {
       const normalized = rows.map((r) => ({
         id: Number(r.id),
         shopify_order_id: Number(r.shopify_order_id),
+        shopify_order_name: (r as ShopifyQueueRow).shopify_order_name ?? null,
+        shopify_order_created_at: (r as ShopifyQueueRow).shopify_order_created_at ?? null,
         shopify_line_item_id: r.shopify_line_item_id === null ? null : Number(r.shopify_line_item_id),
         shopify_variant_id: r.shopify_variant_id === null ? null : Number(r.shopify_variant_id),
         kind: r.kind as ShopifyQueueRow["kind"],
@@ -861,8 +893,41 @@ export default function InventoryPage() {
     }
   };
 
-  const renderShopifySalesTable = (rows: ShopifyQueueRow[], mode: 'active' | 'archived') => {
-    if (rows.length === 0) {
+  const stockOutOrderGroup = async (lines: ShopifyQueueRow[]) => {
+    const commits: Array<{ queueId: number; templateId: number | null }> = [];
+    for (const row of lines) {
+      if (row.kind === "part") {
+        commits.push({ queueId: row.id, templateId: null });
+        continue;
+      }
+      const chosen = shopifyTemplateChoice[row.id];
+      if (chosen === undefined || chosen === "") {
+        toast.error("Select a template for every pillow/bolster line before stocking out");
+        return;
+      }
+      commits.push({ queueId: row.id, templateId: Number(chosen) });
+    }
+
+    setSavingShopifySales(true);
+    try {
+      await commitShopifySales({ commits });
+      toast.success("Stocked out");
+      await load();
+      await loadShopifySalesQueue();
+      if (shopifySalesTab === "archived") await loadShopifySalesQueueArchived();
+      notifyInventoryChange();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to stock out");
+    } finally {
+      setSavingShopifySales(false);
+    }
+  };
+
+  const renderShopifySalesTable = (
+    groups: ReturnType<typeof groupShopifyQueueByOrder<ShopifyQueueRow>>,
+    mode: "active" | "archived",
+  ) => {
+    if (groups.length === 0) {
       return (
         <div className="rounded border p-3 text-sm text-muted-foreground">
           {mode === 'active' ? 'No pending Shopify sales.' : 'No archived Shopify sales.'}
@@ -885,102 +950,135 @@ export default function InventoryPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => {
-              const key =
-                row.kind === 'pillow'
-                  ? `pillow:${row.pillow_kind ?? 'basic'}:${row.pillow_size ?? ''}`
-                  : row.kind === 'bolster'
-                    ? `bolster:${row.bolster_variant ?? ''}`
-                    : null;
-              const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
-              const needsTemplate = row.kind === 'pillow' || row.kind === 'bolster';
-              const partItem = row.kind === 'part' && row.item_id ? (itemsById.get(row.item_id) ?? null) : null;
-              const label =
-                row.kind === 'pillow'
-                  ? `${row.pillow_kind === 'premium' ? 'Premium' : 'Basic'} Pillow ${row.pillow_size ?? ''}`
-                  : row.kind === 'bolster'
-                    ? `Bolster ${row.bolster_variant ?? ''}`
-                    : partItem
-                      ? getInventoryItemDisplayLabel(partItem)
-                      : `Part ${row.item_id ?? ''}`;
-              return (
-                <TableRow key={row.id}>
-                  <TableCell className="text-sm whitespace-nowrap">
-                    {formatQueueDate(row.created_at)}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <div className="font-medium">#{row.shopify_order_id}</div>
-                    <div className="text-xs text-muted-foreground">{row.sku ?? ''}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {(row.variant_title ?? '').trim() ? `${String(row.variant_title).trim()} — ` : ''}
-                      {row.shopify_variant_id ?? '—'}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm whitespace-nowrap">
-                    {(row.fulfillment_status ?? 'unfulfilled').toString().toUpperCase()}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {row.kind === 'part' && partItem ? (
-                      <>
-                        <InventoryItemLabel item={partItem} />
-                        <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <div className="font-medium">{label}</div>
-                          {row.kind === 'part' && row.item_id && !partItem ? (
-                            <span className="inline-flex items-center rounded border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                              Unmapped
-                            </span>
+            {groups.map((group) => {
+              const orderDate = formatQueueDate(group.orderCreatedAt ?? "");
+              const orderLabel =
+                group.orderName?.trim() ||
+                (group.orderId ? `#${group.orderId}` : "—");
+              const fulfillment = (group.fulfillmentStatus ?? "unfulfilled").toString().toUpperCase();
+
+              const renderLineRow = (row: ShopifyQueueRow) => {
+                const key =
+                  row.kind === "pillow"
+                    ? `pillow:${row.pillow_kind ?? "basic"}:${row.pillow_size ?? ""}`
+                    : row.kind === "bolster"
+                      ? `bolster:${row.bolster_variant ?? ""}`
+                      : null;
+                const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
+                const needsTemplate = row.kind === "pillow" || row.kind === "bolster";
+                const partItem =
+                  row.kind === "part" && row.item_id ? (itemsById.get(row.item_id) ?? null) : null;
+                const label =
+                  row.kind === "pillow"
+                    ? `${row.pillow_kind === "premium" ? "Premium" : "Basic"} Pillow ${row.pillow_size ?? ""}`
+                    : row.kind === "bolster"
+                      ? `Bolster ${row.bolster_variant ?? ""}`
+                      : partItem
+                        ? getInventoryItemDisplayLabel(partItem)
+                        : `Part ${row.item_id ?? ""}`;
+
+                return (
+                  <TableRow key={row.id} className="border-t-0">
+                    <TableCell />
+                    <TableCell />
+                    <TableCell />
+                    <TableCell className="text-sm">
+                      {row.kind === "part" && partItem ? (
+                        <>
+                          <InventoryItemLabel item={partItem} />
+                          <div className="text-xs text-muted-foreground">{row.variant_title ?? ""}</div>
+                          {row.sku ? (
+                            <div className="text-xs text-muted-foreground">{row.sku}</div>
                           ) : null}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{row.variant_title ?? ''}</div>
-                      </>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-sm">{row.quantity}</TableCell>
-                  <TableCell>
-                    {needsTemplate ? (
-                      <Select
-                        value={
-                          mode === 'archived'
-                            ? String(row.chosen_template_id ?? '')
-                            : (shopifyTemplateChoice[row.id] === undefined ? '' : String(shopifyTemplateChoice[row.id] ?? ''))
-                        }
-                        onValueChange={(value) =>
-                          setShopifyTemplateChoice((prev) => ({
-                            ...prev,
-                            [row.id]: value ? Number(value) : '',
-                          }))
-                        }
-                      >
-                        <SelectTrigger className="w-full" disabled={mode === 'archived'}>
-                          <SelectValue placeholder="Select template…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Select template…</SelectItem>
-                          {options.map((t) => (
-                            <SelectItem key={t.id} value={String(t.id)}>
-                              {t.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">—</div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {mode === 'active' ? (
-                      <Button size="sm" onClick={() => stockOutQueueRow(row)}>
-                        Stock out
-                      </Button>
-                    ) : (
-                      <div className="text-sm text-muted-foreground">—</div>
-                    )}
-                  </TableCell>
-                </TableRow>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium">{label}</div>
+                            {row.kind === "part" && row.item_id && !partItem ? (
+                              <span className="inline-flex items-center rounded border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                                Unmapped
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{row.variant_title ?? ""}</div>
+                          {row.sku ? (
+                            <div className="text-xs text-muted-foreground">{row.sku}</div>
+                          ) : null}
+                        </>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">{row.quantity}</TableCell>
+                    <TableCell>
+                      {needsTemplate ? (
+                        <Select
+                          value={
+                            mode === "archived"
+                              ? String(row.chosen_template_id ?? "")
+                              : shopifyTemplateChoice[row.id] === undefined
+                                ? ""
+                                : String(shopifyTemplateChoice[row.id] ?? "")
+                          }
+                          onValueChange={(value) =>
+                            setShopifyTemplateChoice((prev) => ({
+                              ...prev,
+                              [row.id]: value ? Number(value) : "",
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="w-full" disabled={mode === "archived"}>
+                            <SelectValue placeholder="Select template…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Select template…</SelectItem>
+                            {options.map((t) => (
+                              <SelectItem key={t.id} value={String(t.id)}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">—</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {mode === "active" ? (
+                        <Button size="sm" onClick={() => stockOutQueueRow(row)}>
+                          Stock out
+                        </Button>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">—</div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              };
+
+              return (
+                <Fragment key={group.orderId}>
+                  <TableRow className="bg-muted/30">
+                    <TableCell className="text-sm whitespace-nowrap font-medium">{orderDate}</TableCell>
+                    <TableCell className="text-sm">
+                      <div className="font-medium">{orderLabel}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {group.lines.length} item{group.lines.length === 1 ? "" : "s"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm whitespace-nowrap">{fulfillment}</TableCell>
+                    <TableCell colSpan={3} />
+                    <TableCell>
+                      {mode === "active" ? (
+                        <Button size="sm" variant="secondary" onClick={() => stockOutOrderGroup(group.lines)}>
+                          Stock out all
+                        </Button>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">—</div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  {group.lines.map(renderLineRow)}
+                </Fragment>
               );
             })}
           </TableBody>
@@ -1504,16 +1602,20 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           }}
         >
           <TabsList>
-            <TabsTrigger value="active">Active ({filteredShopifyQueue.length})</TabsTrigger>
-            <TabsTrigger value="archived">Archived ({filteredShopifyQueueArchived.length})</TabsTrigger>
+            <TabsTrigger value="active">Active ({groupedShopifyQueue.length})</TabsTrigger>
+            <TabsTrigger value="archived">Archived ({groupedShopifyQueueArchived.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="active">
-            {renderShopifySalesTable(pagedShopifyQueue, 'active')}
-            {renderPagination({ total: filteredShopifyQueue.length, page: shopifyActivePage, setPage: setShopifyActivePage })}
+            {renderShopifySalesTable(pagedShopifyOrderGroups, "active")}
+            {renderPagination({ total: groupedShopifyQueue.length, page: shopifyActivePage, setPage: setShopifyActivePage })}
           </TabsContent>
           <TabsContent value="archived">
-            {renderShopifySalesTable(pagedShopifyQueueArchived, 'archived')}
-            {renderPagination({ total: filteredShopifyQueueArchived.length, page: shopifyArchivedPage, setPage: setShopifyArchivedPage })}
+            {renderShopifySalesTable(pagedShopifyOrderGroupsArchived, "archived")}
+            {renderPagination({
+              total: groupedShopifyQueueArchived.length,
+              page: shopifyArchivedPage,
+              setPage: setShopifyArchivedPage,
+            })}
           </TabsContent>
         </Tabs>
       </section>

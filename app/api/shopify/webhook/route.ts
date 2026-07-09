@@ -7,6 +7,8 @@ export const runtime = 'nodejs'
 
 type ShopifyOrder = {
   id: number
+  name?: string | null
+  created_at?: string | null
   fulfillment_status?: string | null
   line_items?: Array<{
     id: number
@@ -120,6 +122,8 @@ export async function POST(req: NextRequest) {
       const m = line.mapping
       return {
         shopify_order_id: order.id,
+        shopify_order_name: order.name ?? null,
+        shopify_order_created_at: order.created_at ?? null,
         shopify_line_item_id: line.lineItemId,
         shopify_variant_id: Number(m.shopify_variant_id),
         kind: m.kind,
@@ -139,7 +143,6 @@ export async function POST(req: NextRequest) {
     if (queueRows.length) {
       const { error: qErr } = await admin.from('shopify_sales_queue').upsert(queueRows, {
         onConflict: 'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind',
-        ignoreDuplicates: true,
       })
       if (qErr) throw new Error(qErr.message)
     }

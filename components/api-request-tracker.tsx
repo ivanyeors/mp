@@ -28,24 +28,36 @@ function resolveFetchMethod(input: RequestInfo | URL, init?: RequestInit): strin
   return "GET";
 }
 
-function shouldTrackApiRequest(input: RequestInfo | URL, init?: RequestInit): boolean {
-  if (typeof window === "undefined") return false;
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-  const method = resolveFetchMethod(input, init);
-  if (method === "HEAD" || method === "OPTIONS") return false;
-
-  const rawUrl = resolveFetchUrl(input);
-  if (!rawUrl) return false;
+/** Pure predicate for tests; pageOrigin is typically window.location.origin. */
+export function shouldTrackFetchRequest(
+  rawUrl: string,
+  method: string,
+  pageOrigin: string,
+): boolean {
+  const upperMethod = method.toUpperCase();
+  if (upperMethod === "HEAD" || upperMethod === "OPTIONS") return false;
 
   let url: URL;
   try {
-    url = new URL(rawUrl, window.location.href);
+    url = new URL(rawUrl, pageOrigin);
   } catch {
     return false;
   }
 
-  if (url.origin !== window.location.origin) return false;
+  if (url.origin !== pageOrigin) return false;
+  if (MUTATING_METHODS.has(upperMethod)) return true;
   return url.pathname.startsWith("/api/");
+}
+
+function shouldTrackApiRequest(input: RequestInfo | URL, init?: RequestInit): boolean {
+  if (typeof window === "undefined") return false;
+
+  const rawUrl = resolveFetchUrl(input);
+  if (!rawUrl) return false;
+
+  return shouldTrackFetchRequest(rawUrl, resolveFetchMethod(input, init), window.location.origin);
 }
 
 export function ApiRequestTracker() {
