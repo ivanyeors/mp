@@ -82,6 +82,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
         side="right"
         mobilePreset="full"
         insetTopPadding={false}
+        animation="fade-up"
         hideClose
         className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >

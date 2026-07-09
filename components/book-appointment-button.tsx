@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { openBookAppointmentSheet } from "@/lib/book-appointment";
 import { cn } from "@/lib/utils";
 
 type Props = {

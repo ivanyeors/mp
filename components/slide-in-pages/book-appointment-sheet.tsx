@@ -5,17 +5,9 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
+import { BOOK_APPOINTMENT_URL, OPEN_BOOK_APPOINTMENT_EVENT } from "@/lib/book-appointment";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/use-i18n";
-
-const OPEN_BOOK_APPOINTMENT_EVENT = "mpillow:open-book-appointment";
-
-export const BOOK_APPOINTMENT_URL =
-  "https://calendar.google.com/calendar/appointments/schedules/AcZssZ0bNnrc_0CeREyaoByx0GDhuif5fJFTCyAQTkEJH14vNs5XT_zzqgv47CJ-FrUACncTtYs8yeas?gv=true";
-
-export function openBookAppointmentSheet() {
-  window.dispatchEvent(new Event(OPEN_BOOK_APPOINTMENT_EVENT));
-}
 
 function useBookAppointmentOpen() {
   const [open, setOpen] = React.useState(false);

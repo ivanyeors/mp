@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { openBookAppointmentSheet } from "@/lib/book-appointment";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {

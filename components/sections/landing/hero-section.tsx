@@ -1,6 +1,7 @@
 import { CustomiseTierPicker } from "@/components/customise-tier-picker";
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
-import { BookAppointmentSheet, BOOK_APPOINTMENT_URL } from "@/components/slide-in-pages/book-appointment-sheet";
+import { BookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { BOOK_APPOINTMENT_URL } from "@/lib/book-appointment";
 import Image from "next/image";
 import type { Messages } from "@/lib/i18n/messages/types";
 import type { Locale } from "@/lib/i18n/locales";

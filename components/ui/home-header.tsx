@@ -9,7 +9,7 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
-import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { openBookAppointmentSheet } from "@/lib/book-appointment";
 
 export function HomeHeader() {
   const [isCompact, setIsCompact] = React.useState(false);

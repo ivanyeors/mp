@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 
 import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
-import { openBookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { openBookAppointmentSheet } from "@/lib/book-appointment";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
