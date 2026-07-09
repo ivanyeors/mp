@@ -119,8 +119,9 @@ export default function AppointmentSettingsPage() {
         <div>
           <h1 className="text-xl font-semibold">Appointments</h1>
           <p className="text-sm text-muted-foreground">
-            Manage bookable hours and blocks on the calendar. Google Calendar
-            appointments appear alongside your availability.
+            Manage bookable hours and blocks on the calendar. Events from your
+            connected Google Calendar (including all-day) appear alongside your
+            availability.
             {savingAvailability ? " Saving…" : null}
           </p>
         </div>

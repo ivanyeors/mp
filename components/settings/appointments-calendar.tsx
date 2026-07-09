@@ -63,6 +63,15 @@ function formatHourLabel(h: number): string {
   return `${String(h).padStart(2, "0")}:00`;
 }
 
+/** GCal all-day end is exclusive YYYY-MM-DD — show inclusive range. */
+function formatAllDayLabel(startDate: string, endDateExclusive: string): string {
+  const end = new Date(`${endDateExclusive}T00:00:00Z`);
+  end.setUTCDate(end.getUTCDate() - 1);
+  const endInclusive = end.toISOString().slice(0, 10);
+  if (endInclusive === startDate) return `All day · ${startDate}`;
+  return `All day · ${startDate} – ${endInclusive}`;
+}
+
 /** Last bookable start → wall-clock end of that slot. */
 function hoursEndLabel(closeHour: number, durationMinutes: number): string {
   const end = Math.min(closeHour + Math.max(1, Math.ceil(durationMinutes / 60)), 24);
@@ -133,13 +142,21 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
         success(
           (json.events ?? []).map((e) => ({
             id: e.id,
-            title: e.guestName ? `${e.guestName} — ${e.summary}` : e.summary,
+            // Mirror GCal title as-is (don't invent "Guest — summary")
+            title: e.summary,
             start: e.startsAt,
             end: e.endsAt,
-            backgroundColor:
-              e.appointmentType === "readjustment" ? "#7c3aed" : "#2563eb",
-            borderColor:
-              e.appointmentType === "readjustment" ? "#6d28d9" : "#1d4ed8",
+            allDay: e.allDay,
+            backgroundColor: e.allDay
+              ? "#64748b"
+              : e.appointmentType === "readjustment"
+                ? "#7c3aed"
+                : "#2563eb",
+            borderColor: e.allDay
+              ? "#475569"
+              : e.appointmentType === "readjustment"
+                ? "#6d28d9"
+                : "#1d4ed8",
             editable: false,
             extendedProps: { kind: "appointment", event: e },
           })),
@@ -350,7 +367,11 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-sm bg-blue-500" />
-            Appointment
+            Google Calendar
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2.5 rounded-sm bg-slate-500" />
+            All-day
           </span>
           <span className="sm:ml-auto">
             Drag to block or set hours · click day chips or headers to toggle
@@ -369,7 +390,7 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
           firstDay={0}
           slotMinTime="08:00:00"
           slotMaxTime="21:00:00"
-          allDaySlot={false}
+          allDaySlot
           nowIndicator
           selectable
           selectMirror
@@ -465,8 +486,12 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
               <div>
                 <dt className="text-muted-foreground">When</dt>
                 <dd>
-                  {formatSlotLabelSgt(appointmentDetail.startsAt)} –{" "}
-                  {formatSlotLabelSgt(appointmentDetail.endsAt)}
+                  {appointmentDetail.allDay
+                    ? formatAllDayLabel(
+                        appointmentDetail.startsAt,
+                        appointmentDetail.endsAt,
+                      )
+                    : `${formatSlotLabelSgt(appointmentDetail.startsAt)} – ${formatSlotLabelSgt(appointmentDetail.endsAt)}`}
                 </dd>
               </div>
               {appointmentDetail.typeLabel ? (

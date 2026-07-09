@@ -19,7 +19,7 @@ import {
   isMorningOfEligible,
   transitionReminder,
 } from "@/lib/appointments/state";
-import { extractPhoneFromEvent, extractGuestName } from "@/lib/appointments/calendar";
+import { extractPhoneFromEvent, extractGuestName, mapGCalItemToRangeEvent } from "@/lib/appointments/calendar";
 
 describe("appointment-phone", () => {
   it("normalizes SG formats to E.164", () => {
@@ -223,5 +223,47 @@ describe("calendar extract helpers", () => {
         attendees: [],
       }),
     ).toBe("Alice Tan");
+  });
+
+  it("maps timed and all-day GCal items for admin mirror", () => {
+    const timed = mapGCalItemToRangeEvent(
+      {
+        id: "t1",
+        summary: "Alice - Mpillow Customisation",
+        start: { dateTime: "2026-07-10T02:00:00Z" },
+        end: { dateTime: "2026-07-10T03:00:00Z" },
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+    );
+    expect(timed).toMatchObject({
+      id: "t1",
+      allDay: false,
+      summary: "Alice - Mpillow Customisation",
+      appointmentType: "customisation",
+    });
+
+    const allDay = mapGCalItemToRangeEvent(
+      {
+        id: "a1",
+        summary: "Out of office",
+        start: { date: "2026-07-11" },
+        end: { date: "2026-07-12" },
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+    );
+    expect(allDay).toMatchObject({
+      id: "a1",
+      allDay: true,
+      startsAt: "2026-07-11",
+      endsAt: "2026-07-12",
+      summary: "Out of office",
+    });
+
+    expect(
+      mapGCalItemToRangeEvent(
+        { id: "c1", status: "cancelled", start: { dateTime: "x" }, end: { dateTime: "y" } },
+        DEFAULT_APPOINTMENT_SETTINGS,
+      ),
+    ).toBeNull();
   });
 });

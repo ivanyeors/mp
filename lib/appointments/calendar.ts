@@ -24,8 +24,10 @@ export type CalendarGuestEvent = {
 export type CalendarRangeEvent = {
   id: string;
   summary: string;
+  /** Timed: ISO datetime. All-day: YYYY-MM-DD (GCal exclusive end). */
   startsAt: string;
   endsAt: string;
+  allDay: boolean;
   location: string | null;
   guestName: string | null;
   phone: string | null;
@@ -43,6 +45,47 @@ type GCalEvent = {
   end?: { dateTime?: string; date?: string };
   attendees?: Array<{ displayName?: string; email?: string; self?: boolean }>;
 };
+
+/** Map one GCal events.list item for the admin mirror view. Skips cancelled / incomplete. */
+export function mapGCalItemToRangeEvent(
+  ev: GCalEvent,
+  settings: AppointmentSettings,
+): CalendarRangeEvent | null {
+  if (!ev.id) return null;
+  if (ev.status === "cancelled") return null;
+
+  const allDay = Boolean(ev.start?.date && !ev.start.dateTime);
+  let startsAt: string;
+  let endsAt: string;
+  if (allDay) {
+    if (!ev.start?.date || !ev.end?.date) return null;
+    startsAt = ev.start.date;
+    endsAt = ev.end.date; // GCal exclusive end date
+  } else {
+    if (!ev.start?.dateTime || !ev.end?.dateTime) return null;
+    startsAt = ev.start.dateTime;
+    endsAt = ev.end.dateTime;
+  }
+
+  const phone = extractPhoneFromEvent(ev);
+  const guestName = extractGuestName(ev);
+  const resolved = ev.summary
+    ? resolveAppointmentType(ev.summary, settings)
+    : null;
+
+  return {
+    id: ev.id,
+    summary: ev.summary?.trim() || "(No title)",
+    startsAt,
+    endsAt,
+    allDay,
+    location: ev.location?.trim() || null,
+    guestName,
+    phone,
+    appointmentType: resolved?.type ?? null,
+    typeLabel: resolved?.label ?? null,
+  };
+}
 
 function calendarId(): string {
   return process.env.GOOGLE_CALENDAR_ID?.trim() || "primary";
@@ -180,28 +223,8 @@ export async function listRangeEvents(
   const out: CalendarRangeEvent[] = [];
 
   for (const ev of json.items ?? []) {
-    if (!ev.id) continue;
-    if (ev.status === "cancelled") continue;
-    if (ev.start?.date && !ev.start.dateTime) continue;
-    if (!ev.start?.dateTime || !ev.end?.dateTime) continue;
-
-    const phone = extractPhoneFromEvent(ev);
-    const guestName = extractGuestName(ev);
-    const resolved = ev.summary
-      ? resolveAppointmentType(ev.summary, settings)
-      : null;
-
-    out.push({
-      id: ev.id,
-      summary: ev.summary ?? "(No title)",
-      startsAt: ev.start.dateTime,
-      endsAt: ev.end.dateTime,
-      location: ev.location?.trim() || null,
-      guestName,
-      phone,
-      appointmentType: resolved?.type ?? null,
-      typeLabel: resolved?.label ?? null,
-    });
+    const mapped = mapGCalItemToRangeEvent(ev, settings);
+    if (mapped) out.push(mapped);
   }
   return out;
 }
