@@ -7,7 +7,7 @@ import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
-  ShieldCheck, ScrollText, HelpCircle,
+  ShieldCheck, ScrollText, HelpCircle, CalendarDays,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -72,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
         Icon: Settings2,
         items: [
           { href: "/settings/general", label: "API Configs", tooltip: "API Configurations", Icon: KeyRound, perm: "api-configs" },
+          { href: "/settings/appointments", label: "Appointments", tooltip: "Appointment reminders", Icon: CalendarDays, perm: "results" },
           { href: "/settings/admins", label: "Admin Users", tooltip: "Admin users & roles", Icon: ShieldCheck, perm: "staff" },
           { href: "/settings/staff-management", label: "Staff Management", tooltip: "Manufacturing staff", Icon: Users, perm: "results" },
         ],

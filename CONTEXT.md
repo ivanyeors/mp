@@ -57,6 +57,21 @@ An accessory (or optional extra) line at item **MSRP**, chosen during customisat
 **Authorization hold**:
 An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
 
+**Appointment**:
+A scheduled in-store Customisation or Re-adjustment session booked via Google Appointment Scheduling (Calendar Events on `admin@mpillow.com`).
+_Avoid_: Order, Result, Customer journey (appointments are not linked to Orders in v1)
+
+**Appointment reminder**:
+A WhatsApp utility message for an **Appointment** — day-before Confirm/Reschedule, optional morning-of nudge, or cancel + rebook link.
+_Avoid_: Result SLA reminder (operator-facing held-Result reminders)
+
+**Customisation appointment**:
+An **Appointment** for first-time pillow/bolster customisation; type inferred from calendar event summary match strings.
+_Avoid_: mp-config **Result** (digital submission flow)
+
+**Re-adjustment appointment**:
+An **Appointment** for post-purchase fitting/adjustment; type inferred from calendar event summary match strings.
+
 ## Relationships
 
 - An **Item** may be a **Sellable item** when it has an MSRP
