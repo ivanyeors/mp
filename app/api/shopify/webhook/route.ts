@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyWebhookSecret } from '@/lib/shopify/env'
 import { verifyShopifyWebhookHmac } from '@/lib/shopify/verify'
+import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
 
 export const runtime = 'nodejs'
 
@@ -118,13 +119,13 @@ export async function POST(req: NextRequest) {
 
   // Enqueue mapped lines for manual template selection / commit in the platform UI.
   try {
-    const queueRows = mappedLines.map((line) => {
+    const queueRows = mappedLines.map((line, lineIndex) => {
       const m = line.mapping
       return {
         shopify_order_id: order.id,
         shopify_order_name: order.name ?? null,
         shopify_order_created_at: order.created_at ?? null,
-        shopify_line_item_id: line.lineItemId,
+        shopify_line_item_id: resolveShopifyQueueLineItemId(order.id, lineIndex, line.lineItemId),
         shopify_variant_id: Number(m.shopify_variant_id),
         kind: m.kind,
         pillow_size: m.kind === 'pillow' ? m.pillow_size : null,

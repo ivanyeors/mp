@@ -43,7 +43,7 @@ import {
 } from "./actions";
 import { toast } from "sonner";
 import { groupShopifyQueueByOrder } from "@/lib/shopify/shopify-sales-queue-group";
-import { resolveShopifyQueueLineMsrp } from "@/lib/shopify/queue-line-price";
+import { resolveShopifyQueueLineMsrp, parseReplaceLinesFromMetadata, sumReplaceLinesMsrp } from "@/lib/shopify/queue-line-price";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -132,6 +132,14 @@ const createDefaultEntry = (): AddInventoryEntry => ({
 });
 
 const PAGE_SIZE_SHOPIFY_SALES = 100;
+const SHOPIFY_REPLACE_SELECT_VALUE = "__replace__";
+type ShopifyTemplateChoice = number | "" | "replace";
+type ShopifyReplaceLine = { item_id: number; quantity: number };
+type ShopifyQueueCommit = {
+  queueId: number;
+  templateId: number | null;
+  replaceLines?: ShopifyReplaceLine[];
+};
 
 const formatQueueDate = (createdAt: string) => {
   const d = new Date(createdAt);
@@ -377,6 +385,7 @@ export default function InventoryPage() {
     created_at: string;
     chosen_template_id: number | null;
     fulfillment_status: string | null;
+    metadata: unknown;
   };
   const [shopifyQueue, setShopifyQueue] = useState<ShopifyQueueRow[]>([]);
   const [shopifyQueueArchived, setShopifyQueueArchived] = useState<ShopifyQueueRow[]>([]);
@@ -390,7 +399,10 @@ export default function InventoryPage() {
       pillow_variant?: string | null;
     }>
   >([]);
-  const [shopifyTemplateChoice, setShopifyTemplateChoice] = useState<Record<number, number | "">>({});
+  const [shopifyTemplateChoice, setShopifyTemplateChoice] = useState<Record<number, ShopifyTemplateChoice>>({});
+  const [shopifyReplaceLines, setShopifyReplaceLines] = useState<Record<number, ShopifyReplaceLine[]>>({});
+  const [shopifyReplaceDrawerRowId, setShopifyReplaceDrawerRowId] = useState<number | null>(null);
+  const [shopifyReplaceDraftLines, setShopifyReplaceDraftLines] = useState<ShopifyReplaceLine[]>([]);
   const [shopifyProductMsrpByKey, setShopifyProductMsrpByKey] = useState<Record<string, number | string | null>>({});
   const [shopifyItemMsrpById, setShopifyItemMsrpById] = useState<Record<number, number | string | null>>({});
   const [loadingShopifySales, setLoadingShopifySales] = useState(false);
@@ -626,14 +638,26 @@ export default function InventoryPage() {
         created_at: String(r.created_at),
         chosen_template_id: r.chosen_template_id === null ? null : Number(r.chosen_template_id),
         fulfillment_status: (r as unknown as { fulfillment_status?: string | null }).fulfillment_status ?? null,
+        metadata: (r as { metadata?: unknown }).metadata ?? null,
       })) as ShopifyQueueRow[];
       setShopifyQueue(normalized);
+      setShopifyReplaceLines((prev) => {
+        const next = { ...prev };
+        normalized.forEach((row) => {
+          const lines = parseReplaceLinesFromMetadata(row.metadata);
+          if (lines) next[row.id] = lines;
+        });
+        return next;
+      });
       // initialize template choice state
       setShopifyTemplateChoice((prev) => {
         const next = { ...prev };
         normalized.forEach((row) => {
           if (row.kind === 'pillow' || row.kind === 'bolster') {
-            if (next[row.id] === undefined) next[row.id] = row.chosen_template_id ?? '';
+            if (next[row.id] === undefined) {
+              const replaceLines = parseReplaceLinesFromMetadata(row.metadata);
+              next[row.id] = replaceLines ? 'replace' : (row.chosen_template_id ?? '');
+            }
           }
         });
         return next;
@@ -668,6 +692,7 @@ export default function InventoryPage() {
         created_at: String(r.created_at),
         chosen_template_id: r.chosen_template_id === null ? null : Number(r.chosen_template_id),
         fulfillment_status: (r as unknown as { fulfillment_status?: string | null }).fulfillment_status ?? null,
+        metadata: (r as { metadata?: unknown }).metadata ?? null,
       })) as ShopifyQueueRow[];
       setShopifyQueueArchived(normalized);
     } catch (e) {
@@ -736,11 +761,19 @@ export default function InventoryPage() {
   }, [shopifyTemplatesByKey]);
 
   const resolveQueueLinePriceLabel = useCallback(
-    (row: ShopifyQueueRow, templateId: number | "" | null) => {
-      const tpl =
-        templateId !== null && templateId !== undefined && templateId !== ""
-          ? shopifyTemplateMetaById.get(Number(templateId))
-          : undefined;
+    (
+      row: ShopifyQueueRow,
+      choice: ShopifyTemplateChoice | null | undefined,
+      replaceLines: ShopifyReplaceLine[] = [],
+    ) => {
+      if (choice === "replace") {
+        const unitMsrp = sumReplaceLinesMsrp(replaceLines, shopifyItemMsrpById);
+        if (unitMsrp == null) return "—";
+        return formatCurrency(unitMsrp * Number(row.quantity));
+      }
+      const templateId =
+        choice !== null && choice !== undefined && choice !== "" ? Number(choice) : null;
+      const tpl = templateId != null ? shopifyTemplateMetaById.get(templateId) : undefined;
       const templatePillowVariant =
         tpl?.pillow_variant === "linen" || tpl?.pillow_variant === "fibrecool"
           ? tpl.pillow_variant
@@ -761,6 +794,39 @@ export default function InventoryPage() {
     },
     [pillowProductIdByKindSize, shopifyItemMsrpById, shopifyProductMsrpByKey, shopifyTemplateMetaById],
   );
+
+  const buildShopifyQueueCommit = useCallback(
+    (row: ShopifyQueueRow, choice: ShopifyTemplateChoice | undefined): ShopifyQueueCommit | { error: string } => {
+      if (row.kind === "part") {
+        return { queueId: row.id, templateId: null };
+      }
+      if (choice === undefined || choice === "") {
+        return { error: "Select a template or Replace for every pillow/bolster line" };
+      }
+      if (choice === "replace") {
+        const lines = (shopifyReplaceLines[row.id] ?? []).filter((line) => line.quantity > 0);
+        if (!lines.length) {
+          return { error: "Select parts for Replace before continuing" };
+        }
+        return { queueId: row.id, templateId: null, replaceLines: lines };
+      }
+      return { queueId: row.id, templateId: Number(choice) };
+    },
+    [shopifyReplaceLines],
+  );
+
+  const openShopifyReplaceDrawer = useCallback((rowId: number) => {
+    setShopifyReplaceDrawerRowId(rowId);
+    setShopifyReplaceDraftLines(shopifyReplaceLines[rowId] ?? []);
+  }, [shopifyReplaceLines]);
+
+  const confirmShopifyReplace = useCallback(() => {
+    if (shopifyReplaceDrawerRowId == null) return;
+    const lines = shopifyReplaceDraftLines.filter((line) => line.quantity > 0);
+    setShopifyReplaceLines((prev) => ({ ...prev, [shopifyReplaceDrawerRowId]: lines }));
+    setShopifyTemplateChoice((prev) => ({ ...prev, [shopifyReplaceDrawerRowId]: "replace" }));
+    setShopifyReplaceDrawerRowId(null);
+  }, [shopifyReplaceDraftLines, shopifyReplaceDrawerRowId]);
 
   const handleCreateItem = async (draft: AddInventoryDraft) => {
     try {
@@ -910,26 +976,15 @@ export default function InventoryPage() {
   };
 
   const commitQueuedShopifySales = async () => {
-    const commits: Array<{ queueId: number; templateId: number | null }> = []
+    const commits: ShopifyQueueCommit[] = []
     for (const row of shopifyQueue) {
-      if (row.kind === 'part') {
-        commits.push({ queueId: row.id, templateId: null })
-        continue
+      const choice = shopifyTemplateChoice[row.id]
+      const built = buildShopifyQueueCommit(row, choice)
+      if ("error" in built) {
+        toast.error(built.error)
+        return
       }
-      const chosen = shopifyTemplateChoice[row.id]
-      if (chosen === undefined || chosen === '') continue
-      commits.push({ queueId: row.id, templateId: Number(chosen) })
-    }
-
-    // Ensure all pillow/bolster rows have a template selected
-    const missing = shopifyQueue.filter(
-      (r) =>
-        (r.kind === 'pillow' || r.kind === 'bolster') &&
-        (shopifyTemplateChoice[r.id] === undefined || shopifyTemplateChoice[r.id] === ''),
-    )
-    if (missing.length) {
-      toast.error('Select a template for every pillow/bolster sale line before saving')
-      return
+      commits.push(built)
     }
 
     if (!commits.length) {
@@ -952,21 +1007,15 @@ export default function InventoryPage() {
   }
 
   const stockOutQueueRow = async (row: ShopifyQueueRow) => {
-    if (row.kind === 'pillow' || row.kind === 'bolster') {
-      const chosen = shopifyTemplateChoice[row.id];
-      if (chosen === undefined || chosen === '') {
-        toast.error('Select a template before stocking out');
-        return;
-      }
+    const built = buildShopifyQueueCommit(row, shopifyTemplateChoice[row.id])
+    if ("error" in built) {
+      toast.error(built.error);
+      return
     }
 
     setSavingShopifySales(true);
     try {
-      const templateId =
-        row.kind === 'part'
-          ? null
-          : Number(shopifyTemplateChoice[row.id]);
-      await commitShopifySales({ commits: [{ queueId: row.id, templateId }] });
+      await commitShopifySales({ commits: [built] });
       toast.success('Stocked out');
       await load({ silent: true });
       await loadShopifySalesQueue();
@@ -980,18 +1029,14 @@ export default function InventoryPage() {
   };
 
   const stockOutOrderGroup = async (lines: ShopifyQueueRow[]) => {
-    const commits: Array<{ queueId: number; templateId: number | null }> = [];
+    const commits: ShopifyQueueCommit[] = [];
     for (const row of lines) {
-      if (row.kind === "part") {
-        commits.push({ queueId: row.id, templateId: null });
-        continue;
-      }
-      const chosen = shopifyTemplateChoice[row.id];
-      if (chosen === undefined || chosen === "") {
-        toast.error("Select a template for every pillow/bolster line before stocking out");
-        return;
-      }
-      commits.push({ queueId: row.id, templateId: Number(chosen) });
+      const built = buildShopifyQueueCommit(row, shopifyTemplateChoice[row.id]);
+    if ("error" in built) {
+      toast.error(built.error);
+      return;
+    }
+      commits.push(built);
     }
 
     setSavingShopifySales(true);
@@ -1051,13 +1096,18 @@ export default function InventoryPage() {
                       : null;
                 const options = key ? (shopifyTemplatesByKey[key] ?? []) : [];
                 const needsTemplate = row.kind === "pillow" || row.kind === "bolster";
-                const selectedTemplateId =
+                const archivedReplaceLines = parseReplaceLinesFromMetadata(row.metadata);
+                const rowChoice: ShopifyTemplateChoice =
                   mode === "archived"
-                    ? (row.chosen_template_id ?? "")
+                    ? (archivedReplaceLines ? "replace" : (row.chosen_template_id ?? ""))
                     : shopifyTemplateChoice[row.id] === undefined
-                      ? (row.chosen_template_id ?? "")
+                      ? (archivedReplaceLines ? "replace" : (row.chosen_template_id ?? ""))
                       : shopifyTemplateChoice[row.id];
-                const priceLabel = resolveQueueLinePriceLabel(row, selectedTemplateId);
+                const replaceLines =
+                  mode === "archived"
+                    ? (archivedReplaceLines ?? [])
+                    : (shopifyReplaceLines[row.id] ?? []);
+                const priceLabel = resolveQueueLinePriceLabel(row, rowChoice, replaceLines);
                 const partItem =
                   row.kind === "part" && row.item_id ? (itemsById.get(row.item_id) ?? null) : null;
                 const label =
@@ -1103,27 +1153,54 @@ export default function InventoryPage() {
                     <TableCell className="text-sm">{row.quantity}</TableCell>
                     <TableCell>
                       {needsTemplate ? (
-                        <Select
-                          value={String(selectedTemplateId ?? "")}
-                          onValueChange={(value) =>
-                            setShopifyTemplateChoice((prev) => ({
-                              ...prev,
-                              [row.id]: value ? Number(value) : "",
-                            }))
-                          }
-                        >
-                          <SelectTrigger className="w-full" disabled={mode === "archived"}>
-                            <SelectValue placeholder="Select template…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="">Select template…</SelectItem>
-                            {options.map((t) => (
-                              <SelectItem key={t.id} value={String(t.id)}>
-                                {t.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        mode === "archived" ? (
+                          <div className="text-sm text-muted-foreground">
+                            {rowChoice === "replace"
+                              ? "Replace"
+                              : rowChoice
+                                ? (options.find((t) => t.id === Number(rowChoice))?.name ?? `Template #${rowChoice}`)
+                                : "—"}
+                          </div>
+                        ) : (
+                          <Select
+                            value={
+                              rowChoice === "replace"
+                                ? SHOPIFY_REPLACE_SELECT_VALUE
+                                : String(rowChoice ?? "")
+                            }
+                            onValueChange={(value) => {
+                              if (value === SHOPIFY_REPLACE_SELECT_VALUE) {
+                                setShopifyTemplateChoice((prev) => ({ ...prev, [row.id]: "replace" }));
+                                openShopifyReplaceDrawer(row.id);
+                                return;
+                              }
+                              setShopifyTemplateChoice((prev) => ({
+                                ...prev,
+                                [row.id]: value ? Number(value) : "",
+                              }));
+                              if (value) {
+                                setShopifyReplaceLines((prev) => {
+                                  const next = { ...prev };
+                                  delete next[row.id];
+                                  return next;
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select template…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Select template…</SelectItem>
+                              {options.map((t) => (
+                                <SelectItem key={t.id} value={String(t.id)}>
+                                  {t.name}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value={SHOPIFY_REPLACE_SELECT_VALUE}>Replace</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )
                       ) : (
                         <div className="text-sm text-muted-foreground">—</div>
                       )}
@@ -1659,18 +1736,23 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
                 }
                 setLoadingShopifySales(true);
                 try {
-                  await refreshShopifySalesQueueFromShopify({
+                  const result = await refreshShopifySalesQueueFromShopify({
                     from: toStartOfDayIso(from),
                     to: toEndOfDayIso(to),
                     limit: shopifyRefreshLimit,
                   });
+                  setShopifyActivePage(1);
+                  await loadShopifySalesQueue();
+                  toast.success(
+                    result.enqueued
+                      ? `Refreshed ${result.enqueued} sale line${result.enqueued === 1 ? "" : "s"}`
+                      : "Refresh complete — no new mapped lines in range",
+                  );
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : 'Failed to fetch Shopify orders');
                 } finally {
                   setLoadingShopifySales(false);
                 }
-                setShopifyActivePage(1);
-                await loadShopifySalesQueue();
               }}
               disabled={loadingShopifySales || savingShopifySales}
             >
@@ -1710,6 +1792,17 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
           </TabsContent>
         </Tabs>
       </section>
+
+      <ShopifyReplaceDrawer
+        open={shopifyReplaceDrawerRowId != null}
+        onOpenChange={(open) => {
+          if (!open) setShopifyReplaceDrawerRowId(null);
+        }}
+        partGroups={partGroups}
+        lines={shopifyReplaceDraftLines}
+        setLines={setShopifyReplaceDraftLines}
+        onConfirm={confirmShopifyReplace}
+      />
 
       <Separator />
 
@@ -3722,6 +3815,92 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
           <div className="flex w-full gap-2">
             <Button onClick={onSell} disabled={saving} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
             <Button onClick={onAdd} variant="secondary" className="w-28" aria-label="Add to cart">Add another</Button>
+          </div>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function ShopifyReplaceDrawer({
+  open,
+  onOpenChange,
+  partGroups,
+  lines,
+  setLines,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  partGroups: Array<{ key: string; title: string; items: Item[] }>;
+  lines: ShopifyReplaceLine[];
+  setLines: Dispatch<SetStateAction<ShopifyReplaceLine[]>>;
+  onConfirm: () => void;
+}) {
+  const getQty = (itemId: number) => lines.find((line) => line.item_id === itemId)?.quantity ?? 0;
+
+  const upsert = (item_id: number, quantity: number) => {
+    setLines((prev) => {
+      if (quantity <= 0) return prev.filter((line) => line.item_id !== item_id);
+      const idx = prev.findIndex((line) => line.item_id === item_id);
+      if (idx === -1) return [...prev, { item_id, quantity }];
+      return prev.map((line) => (line.item_id === item_id ? { ...line, quantity } : line));
+    });
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+        <SheetHeader>
+          <SheetTitle>Replace parts</SheetTitle>
+          <SheetDescription>Select inventory parts and quantities for this sale line.</SheetDescription>
+        </SheetHeader>
+        <div className="mt-4 space-y-6 px-4">
+          {partGroups.map((group) => (
+            <div key={group.key} className="space-y-2">
+              <div className="text-sm font-medium text-muted-foreground">{group.title}</div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="w-[140px]">Qty</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {group.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <InventoryItemLabel item={item} />
+                      </TableCell>
+                      <TableCell className="w-[140px]">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={getQty(item.id)}
+                          onChange={(e) =>
+                            upsert(item.id, Math.max(0, Number.parseInt(e.target.value || "0", 10)))
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ))}
+        </div>
+        <SheetFooter>
+          <div className="flex w-full gap-2">
+            <Button variant="secondary" className="flex-1" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={onConfirm}
+              disabled={!lines.some((line) => line.quantity > 0)}
+            >
+              Confirm
+            </Button>
           </div>
         </SheetFooter>
       </SheetContent>

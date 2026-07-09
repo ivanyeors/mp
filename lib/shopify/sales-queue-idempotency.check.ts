@@ -7,6 +7,7 @@
  */
 import assert from 'node:assert/strict'
 import { groupShopifyQueueByOrder } from './shopify-sales-queue-group'
+import { resolveShopifyQueueLineItemId } from './queue-line-item-id'
 
 export const SHOPIFY_QUEUE_UPSERT_ON_CONFLICT =
   'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind' as const
@@ -91,6 +92,9 @@ assert.equal(grouped[0]?.orderId, 1)
 assert.equal(grouped[0]?.lines.length, 2)
 assert.equal(grouped[1]?.orderId, 2)
 assert.equal(grouped[1]?.lines.length, 1)
+
+assert.equal(resolveShopifyQueueLineItemId(1001, 0, 55), 55)
+assert.equal(resolveShopifyQueueLineItemId(1001, 2, null), -(1001 * 10_000 + 3))
 
 console.log('sales-queue-idempotency.check.ts ok', {
   upsertOnConflict: SHOPIFY_QUEUE_UPSERT_ON_CONFLICT,

@@ -2,7 +2,12 @@
  * Run: npx tsx lib/shopify/queue-line-price.check.ts
  */
 import assert from "node:assert/strict";
-import { detectPremiumVariantFromTitle, resolveShopifyQueueLineMsrp } from "./queue-line-price";
+import {
+  detectPremiumVariantFromTitle,
+  parseReplaceLinesFromMetadata,
+  resolveShopifyQueueLineMsrp,
+  sumReplaceLinesMsrp,
+} from "./queue-line-price";
 
 assert.equal(detectPremiumVariantFromTitle("Premium Fibrecool M"), "fibrecool");
 assert.equal(detectPremiumVariantFromTitle("Linen / Sage"), "linen");
@@ -96,5 +101,18 @@ assert.equal(
   }),
   219,
 );
+
+assert.equal(
+  sumReplaceLinesMsrp([{ item_id: 42, quantity: 2 }], itemMsrp),
+  30,
+);
+
+assert.equal(sumReplaceLinesMsrp([{ item_id: 42, quantity: 1 }], itemMsrp), 15);
+assert.equal(sumReplaceLinesMsrp([{ item_id: 999, quantity: 1 }], itemMsrp), null);
+
+assert.deepEqual(parseReplaceLinesFromMetadata({ replace_lines: [{ item_id: 42, quantity: 2 }] }), [
+  { item_id: 42, quantity: 2 },
+]);
+assert.equal(parseReplaceLinesFromMetadata({}), null);
 
 console.log("queue-line-price.check.ts: ok");

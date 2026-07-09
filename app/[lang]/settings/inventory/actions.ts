@@ -7,6 +7,7 @@ import { syncShopifyInventoryFromBuildable, syncShopifyInventoryForDepletedItems
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
 import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
 import { shopifyListPaidOrders } from '@/lib/shopify/orders'
+import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({
@@ -38,10 +39,16 @@ const SellFromTemplateSchema = z.object({
   quantity: z.number().int().positive(),
 })
 
+const ReplaceLineSchema = z.object({
+  item_id: z.number().int().positive(),
+  quantity: z.number().positive(),
+})
+
 const CommitShopifySalesSchema = z.object({
   commits: z.array(z.object({
     queueId: z.number().int().positive(),
     templateId: z.number().int().positive().nullable(),
+    replaceLines: z.array(ReplaceLineSchema).optional(),
   })).min(1),
 })
 
@@ -263,6 +270,36 @@ async function sellFromTemplateForShopifyCommit(
   return { skipped: false as const }
 }
 
+async function sellFromReplaceLinesForShopifyCommit(
+  admin: ReturnType<typeof supabaseAdmin>,
+  input: { lines: Array<{ item_id: number; quantity: number }>; quantity: number } & ShopifyCommitMeta,
+) {
+  if (await hasShopifyQueueInventoryDeduction(admin, input.shopify_queue_id)) return { skipped: true as const }
+  if (!input.lines.length) throw new Error('Replace lines required')
+
+  const ids = input.lines.map((l) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
+  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
+  const aggregated = aggregateSignedQuantities(
+    input.lines.map((l) => {
+      const originalId = Number(l.item_id)
+      const effectiveId = effectiveById.get(originalId) ?? originalId
+      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * input.quantity }
+    }),
+  )
+  const txns = aggregated.map((t) => ({
+    ...t,
+    reason: 'sale' as const,
+    metadata: {
+      ...shopifyCommitMetadata(input),
+      replace: 'true',
+      replace_lines: JSON.stringify(input.lines),
+    },
+  }))
+  const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
+  if (insErr) throw new Error(insErr.message)
+  return { skipped: false as const }
+}
+
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
   const parsed = SellPillowSchema.parse(input)
   const admin = supabaseAdmin()
@@ -435,7 +472,7 @@ export async function listShopifySalesQueue() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_order_name,shopify_order_created_at,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
+    .select('id,shopify_order_id,shopify_order_name,shopify_order_created_at,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status,metadata')
     .eq('status', 'pending')
     .order('shopify_order_created_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -447,7 +484,7 @@ export async function listShopifySalesQueueArchived() {
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
-    .select('id,shopify_order_id,shopify_order_name,shopify_order_created_at,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status')
+    .select('id,shopify_order_id,shopify_order_name,shopify_order_created_at,shopify_line_item_id,shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,variant_title,sku,created_at,status,chosen_template_id,fulfillment_status,metadata')
     .eq('status', 'archived')
     .order('shopify_order_created_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
@@ -496,9 +533,9 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
   })
 
   const lineItems = orders.flatMap((o) =>
-    (o.line_items ?? []).map((li) => ({
+    (o.line_items ?? []).map((li, lineIndex) => ({
       order_id: o.id,
-      line_item_id: li.id,
+      line_item_id: resolveShopifyQueueLineItemId(o.id, lineIndex, li.id),
       variant_id: li.variant_id,
       sku: li.sku ?? null,
       title: li.title ?? null,
@@ -508,6 +545,12 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
 
   const variantIds = Array.from(
     new Set(lineItems.map((li) => li.variant_id).filter((v): v is number => typeof v === 'number' && Number.isFinite(v))),
+  )
+
+  const { data: templateRows, error: templateErr } = await admin.from('bom_templates').select('id')
+  if (templateErr) throw new Error(templateErr.message)
+  const validTemplateIds = new Set(
+    (templateRows ?? []).map((row: { id: number | string }) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0),
   )
 
   type MappingRow = {
@@ -550,6 +593,10 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
       name: null,
       created_at: null,
     }
+    const defaultTemplateId =
+      mapping.default_template_id != null && validTemplateIds.has(Number(mapping.default_template_id))
+        ? Number(mapping.default_template_id)
+        : null
     queueRows.push({
       shopify_order_id: li.order_id,
       shopify_order_name: orderMeta.name,
@@ -565,7 +612,8 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
       product_title: null,
       variant_title: li.title,
       sku: li.sku,
-      chosen_template_id: mapping.kind === 'pillow' || mapping.kind === 'bolster' ? (mapping.default_template_id ?? null) : null,
+      chosen_template_id:
+        mapping.kind === 'pillow' || mapping.kind === 'bolster' ? defaultTemplateId : null,
       fulfillment_status: orderMeta.fulfillment_status,
       metadata: { source: 'manual_refresh', created_at_min: createdAtMin, created_at_max: createdAtMax ?? null },
     })
@@ -634,23 +682,24 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
   }
   const byId = new Map<number, QueueRow>(((rows ?? []) as QueueRow[]).map(r => [Number(r.id), r]))
 
-  // Guard: ensure part item_ids still exist + are active (helps catch wrong/outdated mappings early).
-  const partItemIds = Array.from(
-    new Set(
-      Array.from(byId.values())
+  // Guard: ensure part + replace item_ids still exist + are active.
+  const itemIdsToValidate = Array.from(
+    new Set([
+      ...Array.from(byId.values())
         .filter((r) => r.kind === 'part' && r.status === 'pending' && r.item_id)
         .map((r) => Number(r.item_id)),
-    ),
+      ...parsed.commits.flatMap((c) => (c.replaceLines ?? []).map((l) => l.item_id)),
+    ]),
   )
-  if (partItemIds.length) {
+  if (itemIdsToValidate.length) {
     const { data: activeItems, error: iErr } = await admin
       .from('items')
       .select('id')
       .eq('is_active', true)
-      .in('id', partItemIds)
+      .in('id', itemIdsToValidate)
     if (iErr) throw new Error(iErr.message)
     const active = new Set<number>((activeItems ?? []).map((r: { id: number | string }) => Number(r.id)))
-    const missing = partItemIds.filter((id) => !active.has(id))
+    const missing = itemIdsToValidate.filter((id) => !active.has(id))
     if (missing.length) {
       throw new Error(`Cannot stock out: mapped inventory item(s) missing/inactive: ${missing.join(', ')}`)
     }
@@ -685,6 +734,21 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
         ...commitMeta,
       })
       if (!skipped) depletedItemIds.add(Number(row.item_id))
+    } else if (c.replaceLines?.length) {
+      const { skipped } = await sellFromReplaceLinesForShopifyCommit(admin, {
+        lines: c.replaceLines,
+        quantity: Number(row.quantity),
+        ...commitMeta,
+      })
+      if (!skipped) {
+        c.replaceLines.forEach((l) => depletedItemIds.add(l.item_id))
+        if (row.kind === 'pillow' && row.pillow_size) {
+          pillowKeysFromCommit.push({ kind: String(row.pillow_kind || 'basic'), size: String(row.pillow_size) })
+        }
+        if (row.kind === 'bolster' && row.bolster_variant) {
+          bolsterVariantsFromCommit.push(String(row.bolster_variant))
+        }
+      }
     } else {
       if (!c.templateId) throw new Error(`Template is required for ${row.kind} row ${c.queueId}`)
       const { skipped } = await sellFromTemplateForShopifyCommit(admin, {
@@ -703,9 +767,22 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
       }
     }
 
+    const archivePatch = c.replaceLines?.length
+      ? {
+          status: 'archived' as const,
+          chosen_template_id: null,
+          committed_at: new Date().toISOString(),
+          metadata: { replace_lines: c.replaceLines },
+        }
+      : {
+          status: 'archived' as const,
+          chosen_template_id: c.templateId,
+          committed_at: new Date().toISOString(),
+        }
+
     const { error: upErr } = await admin
       .from('shopify_sales_queue')
-      .update({ status: 'archived', chosen_template_id: c.templateId, committed_at: new Date().toISOString() })
+      .update(archivePatch)
       .eq('id', c.queueId)
       .eq('status', 'pending')
     if (upErr) throw new Error(upErr.message)

@@ -74,9 +74,7 @@ export async function shopifyListPaidOrders(args?: {
   qs.set('status', 'any')
   qs.set('financial_status', 'paid')
   qs.set('limit', String(limit))
-  // Keep payload small; line_items is needed for mapping.
-  // Include line_items.price for revenue aggregations.
-  qs.set('fields', 'id,name,created_at,financial_status,fulfillment_status,currency,line_items')
+  // Full order payload — `fields=` can strip line_items[].id and break queue upsert idempotency.
   if (args?.createdAtMin) qs.set('created_at_min', args.createdAtMin)
   if (args?.createdAtMax) qs.set('created_at_max', args.createdAtMax)
 

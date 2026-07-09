@@ -62,3 +62,39 @@ export function resolveShopifyQueueLineMsrp(args: {
 
   return null;
 }
+
+export type ReplaceLine = { item_id: number; quantity: number };
+
+export function parseReplaceLinesFromMetadata(metadata: unknown): ReplaceLine[] | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const raw = (metadata as { replace_lines?: unknown }).replace_lines;
+  if (!Array.isArray(raw) || !raw.length) return null;
+  const lines = raw
+    .map((line) => {
+      if (!line || typeof line !== "object") return null;
+      const item_id = Number((line as { item_id?: unknown }).item_id);
+      const quantity = Number((line as { quantity?: unknown }).quantity);
+      if (!Number.isFinite(item_id) || item_id <= 0) return null;
+      if (!Number.isFinite(quantity) || quantity <= 0) return null;
+      return { item_id, quantity };
+    })
+    .filter((line): line is ReplaceLine => line != null);
+  return lines.length ? lines : null;
+}
+
+/** Unit MSRP for one product from replace BOM lines; null if any line lacks MSRP. */
+export function sumReplaceLinesMsrp(
+  lines: ReplaceLine[],
+  itemMsrpById: Map<number, number | string | null> | Record<number, number | string | null>,
+): number | null {
+  if (!lines.length) return null;
+  let total = 0;
+  for (const line of lines) {
+    const m = itemMsrpById;
+    const raw = m instanceof Map ? m.get(line.item_id) : m[line.item_id];
+    const msrp = parseMsrp(raw);
+    if (msrp == null) return null;
+    total += msrp * line.quantity;
+  }
+  return total;
+}
