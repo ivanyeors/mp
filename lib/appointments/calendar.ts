@@ -20,6 +20,19 @@ export type CalendarGuestEvent = {
   typeLabel: string;
 };
 
+/** Admin calendar view — includes events without parsed phone/guest. */
+export type CalendarRangeEvent = {
+  id: string;
+  summary: string;
+  startsAt: string;
+  endsAt: string;
+  location: string | null;
+  guestName: string | null;
+  phone: string | null;
+  appointmentType: AppointmentType | null;
+  typeLabel: string | null;
+};
+
 type GCalEvent = {
   id?: string;
   status?: string;
@@ -141,6 +154,53 @@ export async function listDayEvents(
       appointmentType: resolved.type,
       bookingUrl: resolved.bookingUrl,
       typeLabel: resolved.label,
+    });
+  }
+  return out;
+}
+
+export async function listRangeEvents(
+  timeMinIso: string,
+  timeMaxIso: string,
+  settings: AppointmentSettings,
+): Promise<CalendarRangeEvent[]> {
+  const id = encodeURIComponent(calendarId());
+  const qs = new URLSearchParams({
+    timeMin: timeMinIso,
+    timeMax: timeMaxIso,
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "250",
+  });
+  const res = await calFetch(`/calendars/${id}/events?${qs}`);
+  if (!res.ok) {
+    throw new Error(`Calendar list failed (${res.status}): ${await res.text()}`);
+  }
+  const json = (await res.json()) as { items?: GCalEvent[] };
+  const out: CalendarRangeEvent[] = [];
+
+  for (const ev of json.items ?? []) {
+    if (!ev.id) continue;
+    if (ev.status === "cancelled") continue;
+    if (ev.start?.date && !ev.start.dateTime) continue;
+    if (!ev.start?.dateTime || !ev.end?.dateTime) continue;
+
+    const phone = extractPhoneFromEvent(ev);
+    const guestName = extractGuestName(ev);
+    const resolved = ev.summary
+      ? resolveAppointmentType(ev.summary, settings)
+      : null;
+
+    out.push({
+      id: ev.id,
+      summary: ev.summary ?? "(No title)",
+      startsAt: ev.start.dateTime,
+      endsAt: ev.end.dateTime,
+      location: ev.location?.trim() || null,
+      guestName,
+      phone,
+      appointmentType: resolved?.type ?? null,
+      typeLabel: resolved?.label ?? null,
     });
   }
   return out;

@@ -70,6 +70,15 @@ export function addSgtDays(y: number, m: number, d: number, days: number): {
   };
 }
 
+/** ponytail: O(n) scan per slot; fine for small admin block lists. */
+export function blockedRangesToBusy(
+  ranges: { start: string; end: string }[],
+): BusyInterval[] {
+  return ranges
+    .map((r) => ({ startMs: Date.parse(r.start), endMs: Date.parse(r.end) }))
+    .filter((r) => Number.isFinite(r.startMs) && Number.isFinite(r.endMs) && r.startMs < r.endMs);
+}
+
 /**
  * Carve up to `settings.slotOfferCount` free starts from freeBusy busy intervals.
  * Rules: bookable days, openHour–closeHour last start, durationMinutes, lookahead.
@@ -83,7 +92,8 @@ export function offerSlots(
   const durationMs = settings.durationMinutes * 60 * 1000;
   const nowMs = now.getTime();
   const parts = sgtParts(nowMs);
-  let cursor = { y: parts.y, m: parts.m, d: parts.d };
+  const cursor = { y: parts.y, m: parts.m, d: parts.d };
+  const allBusy = [...busy, ...blockedRangesToBusy(settings.blockedRanges)];
 
   // Start from today; skip past hours on the first day.
   const out: SlotOffer[] = [];
@@ -98,7 +108,7 @@ export function offerSlots(
       const startMs = sgtLocalToUtcMs(y, m, d, hour, 0);
       const endMs = startMs + durationMs;
       if (startMs <= nowMs) continue;
-      if (overlaps(startMs, endMs, busy)) continue;
+      if (overlaps(startMs, endMs, allBusy)) continue;
 
       const startIso = new Date(startMs).toISOString();
       out.push({

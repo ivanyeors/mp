@@ -1,32 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Settings } from "lucide-react";
 import { toast } from "sonner";
+import { AppointmentsCalendar } from "@/components/settings/appointments-calendar";
+import { AppointmentsSettingsSheet } from "@/components/settings/appointments-settings-sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DEFAULT_APPOINTMENT_SETTINGS,
   type AppointmentSettings,
 } from "@/lib/appointments/settings";
-
-const DAY_LABELS: { value: number; label: string }[] = [
-  { value: 0, label: "Sun" },
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-];
 
 export default function AppointmentSettingsPage() {
   const [settings, setSettings] = useState<AppointmentSettings>(
     DEFAULT_APPOINTMENT_SETTINGS,
   );
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [savingAvailability, setSavingAvailability] = useState(false);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  // Serialize availability writes so rapid toggles don't clobber each other
+  const saveChain = useRef(Promise.resolve());
 
   useEffect(() => {
     let cancelled = false;
@@ -51,233 +46,109 @@ export default function AppointmentSettingsPage() {
     };
   }, []);
 
-  const save = useCallback(async () => {
-    setSaving(true);
-    try {
-      const res = await fetch("/api/settings/appointments", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
-      const json = (await res.json()) as {
-        ok?: boolean;
-        settings?: AppointmentSettings;
-        error?: unknown;
-      };
-      if (!res.ok) {
-        throw new Error(
-          typeof json.error === "string"
-            ? json.error
-            : "Invalid settings",
-        );
+  const saveAvailability = useCallback((patch: Partial<AppointmentSettings>) => {
+    const run = async () => {
+      const previous = settingsRef.current;
+      const optimistic = { ...previous, ...patch };
+      setSettings(optimistic);
+      settingsRef.current = optimistic;
+      setSavingAvailability(true);
+      try {
+        const res = await fetch("/api/settings/appointments", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        const json = (await res.json()) as {
+          ok?: boolean;
+          settings?: AppointmentSettings;
+          error?: unknown;
+        };
+        if (!res.ok) {
+          throw new Error(
+            typeof json.error === "string" ? json.error : "Invalid settings",
+          );
+        }
+        // Apply only this patch's keys from the server onto whatever is current
+        // (later queued writes may have updated other fields already).
+        if (json.settings) {
+          const after = { ...settingsRef.current };
+          for (const key of Object.keys(patch) as (keyof AppointmentSettings)[]) {
+            if (patch[key] !== undefined) {
+              (after as Record<string, unknown>)[key] = json.settings[key];
+            }
+          }
+          setSettings(after);
+          settingsRef.current = after;
+        }
+        toast.success("Availability updated");
+      } catch (e) {
+        const rolled = { ...settingsRef.current };
+        for (const key of Object.keys(patch) as (keyof AppointmentSettings)[]) {
+          (rolled as Record<string, unknown>)[key] = previous[key];
+        }
+        setSettings(rolled);
+        settingsRef.current = rolled;
+        toast.error(e instanceof Error ? e.message : "Save failed");
+        throw e;
+      } finally {
+        setSavingAvailability(false);
       }
-      if (json.settings) setSettings(json.settings);
-      toast.success("Appointment settings saved");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  }, [settings]);
+    };
 
-  const toggleDay = (day: number, on: boolean) => {
-    setSettings((prev) => {
-      const set = new Set(prev.bookableDays);
-      if (on) set.add(day);
-      else set.delete(day);
-      const bookableDays = [...set].sort((a, b) => a - b);
-      return { ...prev, bookableDays: bookableDays.length ? bookableDays : prev.bookableDays };
-    });
-  };
+    const next = saveChain.current.then(run, run);
+    saveChain.current = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }, []);
 
   if (loading) {
     return (
       <div className="p-6">
-        <p className="text-sm text-muted-foreground">Loading appointment settings…</p>
+        <p className="text-sm text-muted-foreground">Loading appointment calendar…</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Appointments</h1>
-        <p className="text-sm text-muted-foreground">
-          Venue, hours, and booking links for WhatsApp appointment reminders.
-          WhatsApp and Google credentials stay in environment variables.
-        </p>
+    <div className="flex flex-col p-4 md:p-6">
+      <style data-fullcalendar />
+      <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">Appointments</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage bookable hours and blocks on the calendar. Google Calendar
+            appointments appear alongside your availability.
+            {savingAvailability ? " Saving…" : null}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label="Appointment settings"
+          onClick={() => setSheetOpen(true)}
+        >
+          <Settings className="size-4" />
+        </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-1.5 sm:col-span-2">
-          <Label htmlFor="venue">Default venue</Label>
-          <Input
-            id="venue"
-            value={settings.venue}
-            onChange={(e) => setSettings((p) => ({ ...p, venue: e.target.value }))}
-          />
-        </div>
+      <AppointmentsCalendar
+        settings={settings}
+        onAvailabilityChange={saveAvailability}
+      />
 
-        <div className="grid gap-1.5">
-          <Label htmlFor="duration">Duration (minutes)</Label>
-          <Input
-            id="duration"
-            type="number"
-            min={15}
-            max={240}
-            value={settings.durationMinutes}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                durationMinutes: Number(e.target.value) || 60,
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label>Bookable days</Label>
-          <div className="flex flex-wrap gap-3 pt-1">
-            {DAY_LABELS.map((d) => (
-              <label key={d.value} className="flex items-center gap-1.5 text-sm">
-                <Checkbox
-                  checked={settings.bookableDays.includes(d.value)}
-                  onCheckedChange={(v) => toggleDay(d.value, v === true)}
-                />
-                {d.label}
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="open">Open hour (first start, SGT)</Label>
-          <Input
-            id="open"
-            type="number"
-            min={0}
-            max={23}
-            value={settings.openHour}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                openHour: Number(e.target.value),
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="close">Close hour (last start, SGT)</Label>
-          <Input
-            id="close"
-            type="number"
-            min={0}
-            max={23}
-            value={settings.closeHour}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                closeHour: Number(e.target.value),
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5 sm:col-span-2">
-          <Label htmlFor="cust-url">Customisation booking URL</Label>
-          <Input
-            id="cust-url"
-            value={settings.customisationBookingUrl}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                customisationBookingUrl: e.target.value,
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5 sm:col-span-2">
-          <Label htmlFor="readj-url">Re-adjustment booking URL</Label>
-          <Input
-            id="readj-url"
-            value={settings.readjustmentBookingUrl}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                readjustmentBookingUrl: e.target.value,
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="cust-match">Customisation summary match</Label>
-          <Input
-            id="cust-match"
-            value={settings.customisationSummaryMatch}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                customisationSummaryMatch: e.target.value,
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="readj-match">Re-adjustment summary match</Label>
-          <Input
-            id="readj-match"
-            value={settings.readjustmentSummaryMatch}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                readjustmentSummaryMatch: e.target.value,
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="lookahead">Slot lookahead (days)</Label>
-          <Input
-            id="lookahead"
-            type="number"
-            min={1}
-            max={60}
-            value={settings.slotLookaheadDays}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                slotLookaheadDays: Number(e.target.value) || 14,
-              }))
-            }
-          />
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label htmlFor="offer-count">Slots offered</Label>
-          <Input
-            id="offer-count"
-            type="number"
-            min={1}
-            max={10}
-            value={settings.slotOfferCount}
-            onChange={(e) =>
-              setSettings((p) => ({
-                ...p,
-                slotOfferCount: Number(e.target.value) || 3,
-              }))
-            }
-          />
-        </div>
-      </div>
-
-      <Button type="button" disabled={saving} onClick={() => void save()}>
-        {saving ? "Saving…" : "Save"}
-      </Button>
+      <AppointmentsSettingsSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        settings={settings}
+        onSaved={(s) => {
+          setSettings(s);
+          settingsRef.current = s;
+        }}
+      />
     </div>
   );
 }

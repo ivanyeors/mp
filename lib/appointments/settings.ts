@@ -2,6 +2,8 @@
 
 export type AppointmentType = "customisation" | "readjustment";
 
+export type BlockedRange = { start: string; end: string };
+
 export type AppointmentSettings = {
   /** Default venue when calendar event has no location. */
   venue: string;
@@ -25,6 +27,8 @@ export type AppointmentSettings = {
   slotLookaheadDays: number;
   /** Max slots offered in one WhatsApp interactive list. */
   slotOfferCount: number;
+  /** Admin-blocked intervals (ISO datetimes); excluded from slot offers. */
+  blockedRanges: BlockedRange[];
 };
 
 export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
@@ -39,6 +43,7 @@ export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
   readjustmentSummaryMatch: "Mpillow Re-adjustment",
   slotLookaheadDays: 14,
   slotOfferCount: 3,
+  blockedRanges: [],
 };
 
 export const APPOINTMENT_SETTING_KEYS = [
@@ -53,6 +58,7 @@ export const APPOINTMENT_SETTING_KEYS = [
   "appointments_readjustment_summary_match",
   "appointments_slot_lookahead_days",
   "appointments_slot_offer_count",
+  "appointments_blocked_ranges",
 ] as const;
 
 function parsePositiveInt(v: string | undefined, fallback: number): number {
@@ -76,6 +82,29 @@ function parseBookableDays(v: string | undefined, fallback: number[]): number[] 
     .map((s) => Number(s.trim()))
     .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
   return days.length > 0 ? [...new Set(days)].sort((a, b) => a - b) : fallback;
+}
+
+function parseBlockedRanges(v: string | undefined, fallback: BlockedRange[]): BlockedRange[] {
+  if (v == null || v.trim() === "") return fallback;
+  try {
+    const raw = JSON.parse(v) as unknown;
+    if (!Array.isArray(raw)) return fallback;
+    const out: BlockedRange[] = [];
+    for (const item of raw) {
+      if (
+        item &&
+        typeof item === "object" &&
+        typeof (item as BlockedRange).start === "string" &&
+        typeof (item as BlockedRange).end === "string" &&
+        Date.parse((item as BlockedRange).start) < Date.parse((item as BlockedRange).end)
+      ) {
+        out.push({ start: (item as BlockedRange).start, end: (item as BlockedRange).end });
+      }
+    }
+    return out;
+  } catch {
+    return fallback;
+  }
 }
 
 /** Merge stored site_settings key/values with defaults. */
@@ -115,6 +144,10 @@ export function parseAppointmentSettings(
       stored.appointments_slot_offer_count,
       d.slotOfferCount,
     ),
+    blockedRanges: parseBlockedRanges(
+      stored.appointments_blocked_ranges,
+      d.blockedRanges,
+    ),
   };
 }
 
@@ -133,5 +166,6 @@ export function appointmentSettingsToStored(
     appointments_readjustment_summary_match: s.readjustmentSummaryMatch,
     appointments_slot_lookahead_days: String(s.slotLookaheadDays),
     appointments_slot_offer_count: String(s.slotOfferCount),
+    appointments_blocked_ranges: JSON.stringify(s.blockedRanges),
   };
 }

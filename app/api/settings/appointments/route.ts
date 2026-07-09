@@ -23,6 +23,20 @@ const PutSchema = z.object({
   readjustmentSummaryMatch: z.string().min(1).max(200).optional(),
   slotLookaheadDays: z.number().int().min(1).max(60).optional(),
   slotOfferCount: z.number().int().min(1).max(10).optional(),
+  blockedRanges: z
+    .array(
+      z
+        .object({
+          start: z.string().min(1),
+          end: z.string().min(1),
+        })
+        .refine(
+          (r) => Date.parse(r.start) < Date.parse(r.end),
+          "start must be before end",
+        ),
+    )
+    .max(200)
+    .optional(),
 });
 
 export async function GET() {
@@ -77,6 +91,7 @@ export async function PUT(req: Request) {
         readjustmentSummaryMatch: input.readjustmentSummaryMatch,
         slotLookaheadDays: input.slotLookaheadDays,
         slotOfferCount: input.slotOfferCount,
+        blockedRanges: input.blockedRanges,
       }).filter(([, v]) => v !== undefined),
     ),
   };

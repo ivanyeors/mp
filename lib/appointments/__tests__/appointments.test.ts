@@ -5,10 +5,12 @@ import {
 } from "@/lib/appointments/phone";
 import {
   DEFAULT_APPOINTMENT_SETTINGS,
+  appointmentSettingsToStored,
   parseAppointmentSettings,
 } from "@/lib/appointments/settings";
 import { resolveAppointmentType } from "@/lib/appointments/type";
 import {
+  blockedRangesToBusy,
   offerSlots,
   sgtLocalToUtcMs,
   type BusyInterval,
@@ -117,6 +119,24 @@ describe("appointment-slots", () => {
       expect(dow).not.toBe(1); // not Monday
     }
   });
+
+  it("skips admin-blocked ranges", () => {
+    const now = new Date(sgtLocalToUtcMs(2026, 7, 8, 9, 0));
+    const blockStart = new Date(sgtLocalToUtcMs(2026, 7, 8, 11, 0)).toISOString();
+    const blockEnd = new Date(sgtLocalToUtcMs(2026, 7, 8, 13, 0)).toISOString();
+    const settings = {
+      ...DEFAULT_APPOINTMENT_SETTINGS,
+      blockedRanges: [{ start: blockStart, end: blockEnd }],
+    };
+    const slots = offerSlots([], settings, now);
+    expect(slots.length).toBe(3);
+    for (const s of slots) {
+      const start = Date.parse(s.startIso);
+      const end = Date.parse(s.endIso);
+      const blocked = blockedRangesToBusy(settings.blockedRanges)[0]!;
+      expect(start >= blocked.endMs || end <= blocked.startMs).toBe(true);
+    }
+  });
 });
 
 describe("appointment-reminder-state", () => {
@@ -167,6 +187,26 @@ describe("appointment-reminder-state", () => {
 describe("appointment-settings parse", () => {
   it("merges defaults", () => {
     expect(parseAppointmentSettings({})).toEqual(DEFAULT_APPOINTMENT_SETTINGS);
+  });
+
+  it("parses blocked ranges JSON", () => {
+    const start = new Date(sgtLocalToUtcMs(2026, 7, 10, 14, 0)).toISOString();
+    const end = new Date(sgtLocalToUtcMs(2026, 7, 10, 16, 0)).toISOString();
+    const parsed = parseAppointmentSettings({
+      appointments_blocked_ranges: JSON.stringify([{ start, end }]),
+    });
+    expect(parsed.blockedRanges).toEqual([{ start, end }]);
+  });
+
+  it("round-trips blocked ranges via stored keys", () => {
+    const start = new Date(sgtLocalToUtcMs(2026, 7, 11, 10, 0)).toISOString();
+    const end = new Date(sgtLocalToUtcMs(2026, 7, 11, 12, 0)).toISOString();
+    const settings = {
+      ...DEFAULT_APPOINTMENT_SETTINGS,
+      blockedRanges: [{ start, end }],
+    };
+    const stored = appointmentSettingsToStored(settings);
+    expect(parseAppointmentSettings(stored).blockedRanges).toEqual([{ start, end }]);
   });
 });
 
