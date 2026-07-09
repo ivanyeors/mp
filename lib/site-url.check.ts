@@ -34,7 +34,6 @@ Object.defineProperty(globalThis, "window", {
   value: { location: { hostname: "localhost", origin: "http://localhost:3001" } },
   configurable: true,
 });
-process.env.NODE_ENV = "development";
 assert.equal(getClientSiteOrigin(), "http://localhost:3001");
 
 console.log("site-url.check.ts ok");
