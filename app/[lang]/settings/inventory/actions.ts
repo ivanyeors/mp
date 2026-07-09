@@ -1,8 +1,9 @@
 "use server";
 
+import { after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
-import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
+import { syncShopifyInventoryFromBuildable, syncShopifyInventoryForDepletedItems } from '@/lib/shopify/sync'
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
 import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
 import { shopifyListPaidOrders } from '@/lib/shopify/orders'
@@ -174,6 +175,92 @@ function aggregateSignedQuantities(rows: Array<{ item_id: number; quantity_signe
     byId.set(id, (byId.get(id) ?? 0) + qty)
   })
   return Array.from(byId.entries()).map(([item_id, quantity_signed]) => ({ item_id, quantity_signed }))
+}
+
+type ShopifyCommitMeta = {
+  shopify_queue_id: number
+  shopify_order_id?: number
+  shopify_line_item_id?: number | null
+}
+
+function shopifyCommitMetadata(meta: ShopifyCommitMeta): Record<string, string> {
+  const out: Record<string, string> = { shopify_queue_id: String(meta.shopify_queue_id) }
+  if (meta.shopify_order_id != null) out.shopify_order_id = String(meta.shopify_order_id)
+  if (meta.shopify_line_item_id != null) out.shopify_line_item_id = String(meta.shopify_line_item_id)
+  return out
+}
+
+async function hasShopifyQueueInventoryDeduction(admin: ReturnType<typeof supabaseAdmin>, queueId: number) {
+  const { count, error } = await admin
+    .from('inventory_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('metadata->>shopify_queue_id', String(queueId))
+  if (error) throw new Error(error.message)
+  return (count ?? 0) > 0
+}
+
+async function sellPartForShopifyCommit(
+  admin: ReturnType<typeof supabaseAdmin>,
+  input: { itemId: number; quantity: number } & ShopifyCommitMeta,
+) {
+  if (await hasShopifyQueueInventoryDeduction(admin, input.shopify_queue_id)) return { skipped: true as const }
+
+  const effectiveById = await resolveEffectiveStockItemIds(admin, [input.itemId])
+  const effectiveId = effectiveById.get(input.itemId) ?? input.itemId
+  const { error } = await admin.from('inventory_transactions').insert({
+    item_id: effectiveId,
+    quantity_signed: -input.quantity,
+    reason: 'sale',
+    metadata: shopifyCommitMetadata(input),
+  })
+  if (error) throw new Error(error.message)
+  return { skipped: false as const }
+}
+
+async function sellFromTemplateForShopifyCommit(
+  admin: ReturnType<typeof supabaseAdmin>,
+  input: { templateId: number; quantity: number } & ShopifyCommitMeta,
+) {
+  if (await hasShopifyQueueInventoryDeduction(admin, input.shopify_queue_id)) return { skipped: true as const }
+
+  const { data: template, error: tErr } = await admin
+    .from('bom_templates')
+    .select('id,kind,key,name')
+    .eq('id', input.templateId)
+    .maybeSingle()
+  if (tErr) throw new Error(tErr.message)
+  if (!template) throw new Error('Template not found')
+
+  const { data: lines, error: lErr } = await admin
+    .from('bom_template_lines')
+    .select('item_id,quantity')
+    .eq('template_id', input.templateId)
+  if (lErr) throw new Error(lErr.message)
+  if (!lines?.length) throw new Error('Template has no lines')
+
+  const ids = lines.map((l: { item_id: number | string }) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
+  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
+  const aggregated = aggregateSignedQuantities(
+    lines.map((l: { item_id: number | string; quantity: number | string }) => {
+      const originalId = Number(l.item_id)
+      const effectiveId = effectiveById.get(originalId) ?? originalId
+      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * input.quantity }
+    }),
+  )
+  const txns = aggregated.map((t) => ({
+    ...t,
+    reason: 'sale' as const,
+    metadata: {
+      ...shopifyCommitMetadata(input),
+      template_id: input.templateId,
+      template_kind: template.kind,
+      template_key: template.key,
+      template_name: template.name,
+    },
+  }))
+  const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
+  if (insErr) throw new Error(insErr.message)
+  return { skipped: false as const }
 }
 
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
@@ -463,7 +550,6 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
       product_title: null,
       variant_title: li.title,
       sku: li.sku,
-      status: 'pending',
       chosen_template_id: mapping.kind === 'pillow' || mapping.kind === 'bolster' ? (mapping.default_template_id ?? null) : null,
       fulfillment_status: orderMeta.fulfillment_status,
       metadata: { source: 'manual_refresh', created_at_min: createdAtMin, created_at_max: createdAtMax ?? null },
@@ -473,6 +559,7 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
   if (queueRows.length) {
     const { error: qErr } = await admin.from('shopify_sales_queue').upsert(queueRows, {
       onConflict: 'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind',
+      ignoreDuplicates: true,
     })
     if (qErr) throw new Error(qErr.message)
   }
@@ -513,7 +600,7 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
   const ids = parsed.commits.map(c => c.queueId)
   const { data: rows, error: qErr } = await admin
     .from('shopify_sales_queue')
-    .select('id,kind,pillow_size,bolster_variant,item_id,quantity,status')
+    .select('id,kind,pillow_size,pillow_kind,bolster_variant,item_id,quantity,status,shopify_variant_id,shopify_order_id,shopify_line_item_id')
     .in('id', ids)
   if (qErr) throw new Error(qErr.message)
 
@@ -521,10 +608,14 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
     id: number
     kind: 'pillow' | 'bolster' | 'part'
     pillow_size: string | null
+    pillow_kind: string | null
     bolster_variant: string | null
     item_id: number | null
     quantity: number | string
     status: 'pending' | 'committed' | 'cancelled' | string
+    shopify_variant_id: number | string | null
+    shopify_order_id: number | string
+    shopify_line_item_id: number | string | null
   }
   const byId = new Map<number, QueueRow>(((rows ?? []) as QueueRow[]).map(r => [Number(r.id), r]))
 
@@ -550,18 +641,51 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
     }
   }
 
+  const depletedItemIds = new Set<number>()
+  const alwaysIncludeVariantIds = new Set<number>()
+  const templateIdsNeedingLines = new Set<number>()
+  const pillowKeysFromCommit: Array<{ kind: string; size: string }> = []
+  const bolsterVariantsFromCommit: string[] = []
+
   // Commit each line (template required for pillow/bolster). After committing, move to archived.
   for (const c of parsed.commits) {
     const row = byId.get(c.queueId)
     if (!row) throw new Error(`Queue row not found: ${c.queueId}`)
     if (row.status !== 'pending') continue
 
+    const variantId = row.shopify_variant_id == null ? null : Number(row.shopify_variant_id)
+    if (variantId && Number.isFinite(variantId) && variantId > 0) alwaysIncludeVariantIds.add(variantId)
+
+    const commitMeta: ShopifyCommitMeta = {
+      shopify_queue_id: c.queueId,
+      shopify_order_id: Number(row.shopify_order_id),
+      shopify_line_item_id: row.shopify_line_item_id == null ? null : Number(row.shopify_line_item_id),
+    }
+
     if (row.kind === 'part') {
       if (!row.item_id) throw new Error(`Missing item_id for part row ${c.queueId}`)
-      await sellPart({ itemId: Number(row.item_id), quantity: Number(row.quantity) })
+      const { skipped } = await sellPartForShopifyCommit(admin, {
+        itemId: Number(row.item_id),
+        quantity: Number(row.quantity),
+        ...commitMeta,
+      })
+      if (!skipped) depletedItemIds.add(Number(row.item_id))
     } else {
       if (!c.templateId) throw new Error(`Template is required for ${row.kind} row ${c.queueId}`)
-      await sellFromTemplate({ templateId: c.templateId, quantity: Number(row.quantity) })
+      const { skipped } = await sellFromTemplateForShopifyCommit(admin, {
+        templateId: c.templateId,
+        quantity: Number(row.quantity),
+        ...commitMeta,
+      })
+      if (!skipped) {
+        templateIdsNeedingLines.add(c.templateId)
+        if (row.kind === 'pillow' && row.pillow_size) {
+          pillowKeysFromCommit.push({ kind: String(row.pillow_kind || 'basic'), size: String(row.pillow_size) })
+        }
+        if (row.kind === 'bolster' && row.bolster_variant) {
+          bolsterVariantsFromCommit.push(String(row.bolster_variant))
+        }
+      }
     }
 
     const { error: upErr } = await admin
@@ -572,11 +696,42 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
     if (upErr) throw new Error(upErr.message)
   }
 
-  // After committing, sync Shopify inventory to reflect new balances/buildable.
-  try {
-    await syncShopifyInventoryFromBuildable()
-  } catch {
-    // non-fatal; user can run manual sync
+  if (templateIdsNeedingLines.size) {
+    const { data: tLines, error: tlErr } = await admin
+      .from('bom_template_lines')
+      .select('item_id')
+      .in('template_id', Array.from(templateIdsNeedingLines))
+    if (tlErr) throw new Error(tlErr.message)
+    ;(tLines ?? []).forEach((r: { item_id: number | string }) => {
+      const id = Number(r.item_id)
+      if (Number.isFinite(id) && id > 0) depletedItemIds.add(id)
+    })
+  }
+
+  // Altered fillings stock out from their base item — include both ids for BOM/part matching.
+  const depletedRaw = Array.from(depletedItemIds)
+  if (depletedRaw.length) {
+    const effectiveById = await resolveEffectiveStockItemIds(admin, depletedRaw)
+    for (const [original, effective] of effectiveById) {
+      depletedItemIds.add(original)
+      depletedItemIds.add(effective)
+    }
+  }
+
+  // Supabase is source of truth — return immediately. Shopify is a background mirror.
+  const depleted = Array.from(depletedItemIds)
+  const variants = Array.from(alwaysIncludeVariantIds)
+  if (depleted.length || variants.length || pillowKeysFromCommit.length || bolsterVariantsFromCommit.length) {
+    after(() => {
+      void syncShopifyInventoryForDepletedItems({
+        depletedItemIds: depleted,
+        alwaysIncludeVariantIds: variants,
+        pillowKeys: pillowKeysFromCommit,
+        bolsterVariants: bolsterVariantsFromCommit,
+      }).catch((e) => {
+        console.error('[shopify-sync] scoped push after commit failed (non-fatal)', e)
+      })
+    })
   }
 
   return { ok: true }

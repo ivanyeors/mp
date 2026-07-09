@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyWebhookSecret } from '@/lib/shopify/env'
 import { verifyShopifyWebhookHmac } from '@/lib/shopify/verify'
-import { syncShopifyInventoryFromBuildable } from '@/lib/shopify/sync'
 
 export const runtime = 'nodejs'
 
@@ -132,7 +131,6 @@ export async function POST(req: NextRequest) {
         product_title: null,
         variant_title: line.variantTitle,
         sku: line.sku,
-        status: 'pending',
         chosen_template_id: (m.kind === 'pillow' || m.kind === 'bolster') ? (m.default_template_id ?? null) : null,
         fulfillment_status: (order.fulfillment_status ?? null),
         metadata: { shopify_topic: topic, shop_domain: shopDomain, webhook_id: webhookId },
@@ -141,6 +139,7 @@ export async function POST(req: NextRequest) {
     if (queueRows.length) {
       const { error: qErr } = await admin.from('shopify_sales_queue').upsert(queueRows, {
         onConflict: 'shopify_order_id,shopify_line_item_id,shopify_variant_id,kind',
+        ignoreDuplicates: true,
       })
       if (qErr) throw new Error(qErr.message)
     }
@@ -155,14 +154,7 @@ export async function POST(req: NextRequest) {
     })
     if (insErr) throw new Error(insErr.message)
 
-    // Best-effort: keep Shopify in sync for non-template parts and overall availability.
-    // Note: inventory will only change after the queued sales are committed in the UI, so this is mainly a no-op here.
-    try {
-      await syncShopifyInventoryFromBuildable()
-    } catch (e) {
-      console.error('Shopify sync failed (non-fatal)', e)
-    }
-
+    // Inventory on Shopify only changes after stock-out in the UI (scoped push).
     return NextResponse.json({ ok: true, mapped: mappedLines.length, unmapped: unmappedLines.length })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Webhook processing failed'
