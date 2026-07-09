@@ -29,11 +29,12 @@ export function getSiteOrigin(): string {
   return LOCAL_DEV_ORIGIN;
 }
 
-/** Browser auth redirects — live localhost tab wins over configured origin. */
+/** Browser auth redirects — live tab wins in local dev over configured origin. */
 export function getClientSiteOrigin(): string {
   if (
     typeof window !== "undefined" &&
-    isLocalHost(window.location.hostname)
+    (isLocalHost(window.location.hostname) ||
+      process.env.NODE_ENV === "development")
   ) {
     return window.location.origin;
   }
@@ -46,7 +47,12 @@ export function getClientSiteOrigin(): string {
 /** Proxy-aware origin for auth route handlers on Vercel. */
 export function getRequestOrigin(request: NextRequest | Request): string {
   const requestUrl = new URL(request.url);
-  if (isLocalHost(requestUrl.hostname)) return requestUrl.origin;
+  if (
+    isLocalHost(requestUrl.hostname) ||
+    process.env.NODE_ENV === "development"
+  ) {
+    return requestUrl.origin;
+  }
 
   const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
   if (configured) return configured;

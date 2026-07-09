@@ -40,10 +40,14 @@ export function LoginForm({
   const signInWithGoogle = async () => {
     setError(null);
     setLoading("google");
+    const redirectTo = authCallbackUrl(nextPath);
+    if (process.env.NODE_ENV === "development") {
+      console.info("[auth] OAuth redirectTo:", redirectTo);
+    }
     const supabase = createSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: authCallbackUrl(nextPath) },
+      options: { redirectTo },
     });
     if (error) {
       setError(error.message);
