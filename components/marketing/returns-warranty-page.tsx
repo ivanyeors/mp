@@ -104,17 +104,7 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
         <p className="text-sm text-muted-foreground">Last updated: {LAST_UPDATED}</p>
         <p className="w-full leading-relaxed text-muted-foreground">
           Everything you need to know about shipping timelines, returns, exchanges, adjustments, and
-          product warranties for Basic Mpillow, Premium Mpillow, and Mbolster. Policies below are
-          based on our current{" "}
-          <a
-            href="https://www.mpillow.com/pages/heightguarantee"
-            className="underline underline-offset-4"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            shipping, refund, and other policies
-          </a>
-          .
+          product warranties for Basic Mpillow, Premium Mpillow, and Mbolster.
         </p>
       </div>
 

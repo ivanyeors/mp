@@ -14,10 +14,11 @@ User stories covered: 36, 37
 
 ## Acceptance criteria
 
-- [ ] GTM or gtag loads in production when env var set
-- [ ] `.env.example` documents analytics + GSC verification env vars
-- [ ] OPS checklist includes GSC property setup + sitemap resubmit steps
-- [ ] Site verification meta tag renders when env set
+- [x] GTM or gtag loads in production when env var set
+- [x] `.env.example` documents analytics + GSC verification env vars (`GTM-TPB9LV2`)
+- [x] OPS checklist includes GSC property setup + sitemap resubmit steps
+- [x] Site verification meta tag renders when env set
+- [ ] Vercel Production has `NEXT_PUBLIC_GTM_ID=GTM-TPB9LV2` (manual OPS)
 
 ## Blocked by
 

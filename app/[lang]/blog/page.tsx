@@ -5,6 +5,8 @@ import { Metadata } from "next";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { BlogFilters } from "@/components/blog/blog-filters";
+import { localeUrl } from "@/lib/seo";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
 
 export const metadata: Metadata = {
     title: "Mpillow Blogs | Better Sleep Guidance from the Experts",
@@ -212,20 +214,17 @@ export default async function BlogHubPage(props: Props) {
         "@type": "CollectionPage",
         name: "Mpillow Blogs",
         description: metadata.description,
-        url: "https://www.mpillow.com/blog",
+        url: localeUrl(locale, "/blog"),
         hasPart: allPosts.slice(0, 10).map((post) => ({
             "@type": "Article",
             headline: post.title,
-            url: `https://www.mpillow.com/blog/${post.slug}`,
+            url: localeUrl(locale, `/blog/${post.slug}`),
         })),
     };
 
     return (
         <div className="space-y-12">
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-            />
+            <JsonLdScript data={jsonLd} />
 
             <section className="text-center max-w-3xl mx-auto mb-12">
                 <h1 className="text-5xl font-extrabold tracking-tight mb-6 mt-12">

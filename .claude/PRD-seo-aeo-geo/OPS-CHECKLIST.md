@@ -39,5 +39,7 @@ Parent: Slice 00 (`issues/00-domain-migration.md`)
 
 ## Analytics (Slice 11)
 
-- [ ] Set `NEXT_PUBLIC_GTM_ID` or `NEXT_PUBLIC_GA_MEASUREMENT_ID` in Vercel prod
-- [ ] Confirm pageviews in GA4/GTM realtime after deploy
+- [ ] Set `NEXT_PUBLIC_GTM_ID=GTM-TPB9LV2` in Vercel Production (legacy Shopify container)
+- [ ] Skip `NEXT_PUBLIC_GA_MEASUREMENT_ID` unless you need gtag outside GTM
+- [ ] Confirm pageviews in GTM/GA realtime after deploy
+- [x] Root layout loads GTM/gtag in production when env is set (`components/seo/google-analytics.tsx`)
