@@ -552,8 +552,8 @@ export function CategoriesManager() {
                                 </div>
                                 <div className="flex flex-col gap-1.5">
                                     <ImagePicker
-                                        onSelect={(url) =>
-                                            setForm((prev) => ({ ...prev, image_url: url }))
+                                        onSelect={(s) =>
+                                            setForm((prev) => ({ ...prev, image_url: s.url }))
                                         }
                                     />
                                     {form.image_url && (

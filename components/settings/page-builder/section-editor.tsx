@@ -44,7 +44,7 @@ function ImageField({
           placeholder="Image URL or pick from media..."
           className="flex-1"
         />
-        <ImagePicker onSelect={(url) => onChange(url)}>
+        <ImagePicker onSelect={(s) => onChange(s.url)}>
           <Button type="button" variant="outline" size="sm">Browse</Button>
         </ImagePicker>
       </div>

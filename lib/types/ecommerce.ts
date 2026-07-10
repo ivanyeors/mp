@@ -119,6 +119,8 @@ export interface ProductImage {
   variant_id: string | null;
   url: string;
   alt_text: string | null;
+  /** Hybrid DAM ref; null on legacy url-only rows. */
+  media_asset_id?: string | null;
   position: number;
   created_at: string;
 }

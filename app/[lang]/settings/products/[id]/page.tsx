@@ -296,7 +296,7 @@ export default function ProductEditorPage() {
     };
 
     // ── Images ──
-    const addImage = async (url: string) => {
+    const addImage = async (selection: { assetId: string; url: string; alt?: string | null }) => {
         if (isNew) {
             toast.error("Save the product first before adding images");
             return;
@@ -305,7 +305,11 @@ export default function ProductEditorPage() {
             const res = await fetch(`/api/shop/products/${id}/images`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ url, alt_text: null }),
+                body: JSON.stringify({
+                    url: selection.url,
+                    alt_text: selection.alt ?? null,
+                    media_asset_id: selection.assetId,
+                }),
             });
             const data = await res.json();
             if (data.ok) {

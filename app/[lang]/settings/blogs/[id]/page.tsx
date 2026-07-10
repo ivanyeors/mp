@@ -322,7 +322,7 @@ export default function BlogEditorPage() {
                             placeholder="https://... or /images/blogs/..."
                             className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                         />
-                        <ImagePicker onSelect={(url) => setImageUrl(url)} />
+                        <ImagePicker onSelect={(s) => setImageUrl(s.url)} />
                     </div>
                 </div>
 

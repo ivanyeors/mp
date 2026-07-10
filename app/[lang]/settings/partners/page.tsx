@@ -341,7 +341,7 @@ export default function PartnersSettingsPage() {
                     placeholder="Image URL or pick from media..."
                     className="flex-1"
                   />
-                  <ImagePicker onSelect={setHeroImage}>
+                  <ImagePicker onSelect={(s) => setHeroImage(s.url)}>
                     <Button type="button" variant="outline" size="sm">
                       Browse
                     </Button>
@@ -578,7 +578,7 @@ export default function PartnersSettingsPage() {
                   placeholder="Image URL..."
                   className="flex-1"
                 />
-                <ImagePicker onSelect={(url) => setPartnerForm((f) => ({ ...f, logo_url: url }))}>
+                <ImagePicker onSelect={(s) => setPartnerForm((f) => ({ ...f, logo_url: s.url }))}>
                   <Button type="button" variant="outline" size="sm">
                     Browse
                   </Button>

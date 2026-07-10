@@ -16,9 +16,9 @@ New **Asset picker** component (evolve `ImagePicker`): browse library, search, f
 
 ## Acceptance criteria
 
-- [ ] Product editor Browse opens Asset picker; selection adds gallery image with asset id persisted.
-- [ ] Legacy product rows with url-only still display and count as used via URL scan.
-- [ ] Picker requires admin auth; lists Assets from registry API.
+- [x] Product editor Browse opens Asset picker; selection adds gallery image with asset id persisted.
+- [x] Legacy product rows with url-only still display and count as used via URL scan.
+- [x] Picker requires admin auth; lists Assets from registry API.
 
 ## Blocked by
 

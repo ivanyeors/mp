@@ -9,6 +9,7 @@ export const runtime = "nodejs";
 const CreateImageSchema = z.object({
   url: z.string().min(1),
   alt_text: z.string().nullable().optional().default(null),
+  media_asset_id: z.string().uuid().nullable().optional().default(null),
   variant_id: z.string().uuid().nullable().optional().default(null),
   position: z.number().int().optional(),
 });
@@ -58,9 +59,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  if (parsed.data.url.startsWith("http")) {
-    await touchLastUsed({ urls: [parsed.data.url] }).catch(() => {});
-  }
+  await touchLastUsed({
+    urls: parsed.data.url.startsWith("http") ? [parsed.data.url] : [],
+    assetIds: parsed.data.media_asset_id ? [parsed.data.media_asset_id] : [],
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, row: data });
 }

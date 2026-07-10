@@ -276,7 +276,7 @@ async function fetchConsumerRows(): Promise<UsageConsumerRows> {
     admin.from("blog_posts").select("id, slug, image_url, content"),
     admin.from("site_settings").select("key, value").like("key", "landing_%"),
     admin.from("landing_sections").select("id, slug, content"),
-    admin.from("product_images").select("id, product_id, url"),
+    admin.from("product_images").select("id, product_id, url, media_asset_id"),
     admin.from("product_variants").select("id, product_id, image_url"),
     admin.from("categories").select("id, slug, image_url"),
     admin.from("partners").select("id, name, logo_url"),
