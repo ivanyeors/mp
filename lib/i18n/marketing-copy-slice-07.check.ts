@@ -42,22 +42,25 @@ assert.match(zhCN.home.stories.title, /新加坡/);
 
 // --- Claims/SEO gate over SEO-flagged samples ---
 const hero = enUS.home.hero;
-const h1 = `${hero.titlePrefix} ${hero.titleEmphasis} ${hero.titleSuffix}`;
+const h1 = [hero.titlePrefix, hero.titleEmphasis, hero.titleSuffix].filter(Boolean).join(" ");
 const gated = [
-  { label: "hero.h1", text: h1 },
-  { label: "hero.subtitle", text: hero.subtitle, requireSingaporeOrCervical: true },
+  { label: "hero.h1", text: h1 }, // tagline OK; SEM intents live in seoAnswer
   { label: "hero.seoAnswer", text: hero.seoAnswer, requireSingaporeOrCervical: true },
   { label: "home.neckPains", text: `${enUS.home.neckPains.title} ${enUS.home.neckPains.description}`, requireSingaporeOrCervical: true },
   { label: "home.mbolster", text: `${enUS.home.mbolster.description} ${enUS.home.mbolster.subtitle}` },
   { label: "home.stories", text: `${enUS.home.stories.title} ${enUS.home.stories.subtitle}`, requireSingaporeOrCervical: true },
   {
     label: "slides.cervical",
-    text: `${enUS.slides.cervicalNeckSupport.heroTitle} ${enUS.slides.cervicalNeckSupport.whyDescription}`,
+    text: `${enUS.slides.cervicalNeckSupport.heroTitle} ${enUS.slides.cervicalNeckSupport.heroDescription} ${enUS.slides.cervicalNeckSupport.techNeckTitle} ${enUS.slides.cervicalNeckSupport.techNeckParagraphs.join(" ")}`,
     requireSingaporeOrCervical: true,
   },
 ];
 
-assertMarketingCopySafe(gated, { heroSeoAnswer: hero.seoAnswer });
+assertMarketingCopySafe(gated, {
+  heroH1: h1,
+  heroSubtitle: hero.subtitle,
+  heroSeoAnswer: hero.seoAnswer,
+});
 
 // Helper must fail on banned verbs
 let threw = false;

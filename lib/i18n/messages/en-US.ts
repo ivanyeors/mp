@@ -17,20 +17,19 @@ export const enUS: Messages = {
   },
   home: {
     hero: {
-      titlePrefix: "Science of Sleep —",
-      titleEmphasis: "Customised Cervical Pillow",
-      titleSuffix: "for Neck Pain Relief in Singapore",
-      subtitle:
-        "Modular cervical support fitted to your neck curve, sleep position, and body build — so overnight alignment matches how you actually sleep.",
+      titlePrefix: "Sleep right,",
+      titleEmphasis: "don't sleep tight",
+      titleSuffix: "",
+      subtitle: "",
       ctaCustomise: "Customise",
       ctaBookAppointment: "Book an appointment",
       seoAnswer:
-        "Mpillow is Singapore's Science of Sleep brand for fully customisable cervical pillows. We measure in-store for chronic neck stiffness and fit each pillow to your neck curve, preferred sleep position, and body build, then handcraft modular layers for lasting overnight support. Choose Basic or Premium Mpillow, or add an Mbolster support bolster, when you want cervical alignment and sleep comfort instead of one-size-fits-all foam. Start your configuration online, then book an appointment so every layer is sized to you.",
+        "Mpillow is Singapore's made-to-measure Science of Sleep brand for every body shape and size. Designed for chronic neck stiffness and sleep posture, with customisable cervical fit measured in-store.",
     },
     sizeMatters: {
-      title: "Shoulder length sets your pillow height — measurement science for better sleep",
+      title: "Why size matters for a customised cervical pillow in Singapore",
       description:
-        "Your shoulder length determines Mpillow loft and size. Learn how we measure and configure cervical support to your body build before you customise.",
+        "Shoulder length sets pillow height — see how Mpillow's modular layers are measured to your neck curve and sleep position.",
     },
     ambassadors: {
       title: "How you stand is how you sleep — real body builds",
@@ -47,13 +46,13 @@ export const enUS: Messages = {
       products: {
         basic: {
           title: "Basic",
-          description: "Entry customisation for occasional neck tension and everyday sleep support",
+          description: "Entry custom-fit cervical pillow for occasional neck tension",
           badge: "Standard Fit",
         },
         premium: {
           title: "Premium",
           description:
-            "Consultative fitting for chronic neck pain, with a path to cervical neck support accessories",
+            "Consultative in-store fit for chronic neck pain — FibreCool options + cervical neck support accessory",
           badge: "Custom Fit",
         },
       },

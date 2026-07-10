@@ -30,7 +30,7 @@ From the visitor's perspective:
 
 ### Affluent Wellness / Pain Sufferer (home + Premium path)
 
-1. As an Affluent Pain visitor on the first viewport, I want the H1 to name customised cervical pillow / neck pain relief / Singapore / Science of Sleep, so that I know this is a clinical-fit brand not a gift shop.
+1. As an Affluent Pain visitor on the first viewport, I want a punchy H1 in **≤2 lines** (brand tagline OK) and a **≤4-line** Answer lede that still names Science of Sleep / Singapore / cervical / chronic neck stiffness, so that conversion chrome stays clean without dropping SEM/AEO intent.
 2. As an Affluent Pain visitor, I want the Answer lede to open with Science of Sleep and in-store measurement for chronic neck stiffness, so that AEO and humans get the same fact-dense story.
 3. As an Affluent Pain visitor, I want the hero subtitle to describe modular cervical support fitted to neck curve, sleep position, and body build, so that the promise is concrete.
 4. As an Affluent Pain visitor, I want Size Matters landing copy to explain shoulder length → pillow height, so that measurement science is visible before the slide-in.
@@ -111,7 +111,8 @@ From the visitor's perspective:
 | Structure | May add a section inside Cervical slide-in; no new routes |
 | Locale | en-US only |
 | Crawler | llms.txt + robots already updated; protect from regression |
-| Source of truth | Canvas Recommended column |
+| Source of truth | Canvas Recommended column (keyword intent); **Copy fit** bands win on length — compress, don’t drop required intents |
+| Copy fit (hero) | H1: **≤2 lines** (6–8 words, ≤55 chars, `line-clamp-2`) · subtitle ≤12 words · Answer lede: **≤4 lines** (28–40 words, `line-clamp-4`). Non-hero Answer ledes may still use 40–60. Canvas intent + compress |
 
 ### Modules
 
@@ -147,7 +148,7 @@ Good tests assert **external behavior** of the claims/SEO gate and that critical
 
 | Module | Test |
 |--------|------|
-| Claims/SEO gate | Assert banned verbs absent; SEO-flagged samples include Singapore or cervical/neck intent where required; Answer lede length band for hero seoAnswer |
+| Claims/SEO gate | Assert banned verbs absent; SEO-flagged samples include Singapore or cervical/neck intent where required; hero H1 ≤2 lines (≤55 chars / ≤8 words); Answer lede ≤4 lines (28–40 words) |
 | Cervical Tech Neck section | Config includes new section id; i18n keys resolve (lightweight assert) |
 | Other copy modules | Manual / staging HITL (slice 08); no per-string unit tests |
 

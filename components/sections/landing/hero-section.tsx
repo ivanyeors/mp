@@ -43,20 +43,32 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
           <div className="mx-auto w-full max-w-6xl px-4 pt-12 pb-[calc(3rem+var(--mobile-bottom-clearance,4.5rem))] md:py-16 md:pb-16">
             <div className="max-w-xl space-y-6">
               <div className="space-y-3">
-                <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-6xl">
+                <h1 className="line-clamp-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-6xl">
                   {titlePrefix}
-                  {sep}
-                  <span className="text-primary">{titleEmphasis}</span>
-                  {sep}
-                  {titleSuffix}
+                  {titleSuffix ? (
+                    <>
+                      {titlePrefix ? sep : null}
+                      <span className="text-primary">{titleEmphasis}</span>
+                      {sep}
+                      {titleSuffix}
+                    </>
+                  ) : (
+                    <>
+                      {/* Tagline: force line 2 to start with the emphasis (e.g. "don't…") */}
+                      <br />
+                      <span className="text-primary">{titleEmphasis}</span>
+                    </>
+                  )}
                 </h1>
-                {/* Keep Answer lede in DOM for AEO; clamp on mobile so H1/subtitle/CTAs win the first viewport */}
-                <p className="line-clamp-3 text-base leading-relaxed text-foreground/85 sm:line-clamp-none sm:text-lg sm:text-muted-foreground max-w-prose">
+                {/* Answer lede for AEO; hard ≤4 lines so hero never walls the product image */}
+                <p className="line-clamp-4 text-base leading-relaxed text-foreground/85 sm:text-lg sm:text-muted-foreground max-w-prose">
                   {m.home.hero.seoAnswer}
                 </p>
-                <p className="text-base leading-relaxed text-foreground/90 sm:text-lg sm:text-muted-foreground md:text-xl">
-                  {subtitle}
-                </p>
+                {subtitle ? (
+                  <p className="text-base leading-relaxed text-foreground/90 sm:text-lg sm:text-muted-foreground md:text-xl">
+                    {subtitle}
+                  </p>
+                ) : null}
               </div>
 
               <div className="pointer-events-auto flex flex-col gap-3 sm:flex-row sm:items-center">

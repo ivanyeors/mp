@@ -14,7 +14,7 @@ User stories covered: 33, 38–39
 
 - [x] Stories title/subtitle come from i18n messages (en-US).
 - [x] Self-check script fails if treat/cure/prescribe/rehab appear in gated string list.
-- [x] Self-check fails if hero seoAnswer leaves the ~60–120 word band.
+- [x] Self-check fails if hero seoAnswer leaves the CONTEXT.md copy-fit band (28–40 words / ≤4 lines).
 - [x] Self-check confirms llms index still includes Science of Sleep.
 - [x] Check is runnable locally (e.g. `tsx …check.ts`) without a new test framework.
 

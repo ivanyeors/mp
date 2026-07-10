@@ -18,8 +18,8 @@ Do not invent fees or new offers. Leave CMS `landing_sections` overrides untouch
 
 ## Acceptance criteria
 
-- [x] Hero H1 no longer leads with gift framing; names cervical / neck pain / Singapore / Science of Sleep intent.
-- [x] Answer lede still ~60–120 words, claim-safe, and visible (mobile clamp may apply).
+- [x] Hero H1 is the brand tagline in **≤2 lines** (`line-clamp-2`); no gift framing.
+- [x] Answer lede **≤4 lines** (28–40 words, `line-clamp-4`), claim-safe, carries Science of Sleep / Singapore / cervical / chronic neck stiffness / in-store.
 - [x] Size Matters landing copy references measurement (shoulder → height), not only “handcrafted”.
 - [x] Basic and Premium pick-card descriptions differentiate entry vs consultative chronic-pain path.
 - [x] Customise + Book appointment CTAs unchanged in behavior.
@@ -27,7 +27,9 @@ Do not invent fees or new offers. Leave CMS `landing_sections` overrides untouch
 
 **CMS note:** Defaults in `lib/i18n/messages/en-US.ts` only. Prod `landing_sections.content` overrides for hero title/subtitle and Size Matters title/description are left alone — live homepage may still show old strings until CMS is cleared/re-seeded. `seoAnswer` and pick-card blurbs always resolve from i18n.
 
-**Proof:** `npx tsx lib/i18n/marketing-copy-slice-01.check.ts`
+**Copy fit:** See CONTEXT.md “Copy fit” + PRD locked decision. Canvas Recommended supplies keyword intent; length bands win — compress, don’t drop required intents.
+
+**Proof:** `npx tsx lib/i18n/marketing-copy-slice-01.check.ts` (also covered by slice 07 claims gate on hero H1/lede).
 
 ## Blocked by
 
