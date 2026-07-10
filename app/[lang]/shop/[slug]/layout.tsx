@@ -8,8 +8,10 @@ import {
   buildPageMetadata,
   buildProductJsonLd,
   buildProductBreadcrumbJsonLd,
+  buildFaqPageJsonLd,
   getReviewAggregate,
 } from "@/lib/seo";
+import { getPageFaq, productSurfaceKey, stripMarkdownForSchema } from "@/lib/page-faq";
 import { JsonLdScript } from "@/components/seo/json-ld-script";
 import type { Locale } from "@/lib/i18n/locales";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
@@ -85,10 +87,23 @@ export default async function ProductLayout({ params, children }: Props) {
     categoryName,
   });
 
+  // ponytail: FAQPage must live in layout with Product JSON-LD — page-level scripts stream into RSC flight only
+  const pageFaqSet = await getPageFaq(productSurfaceKey(product.id), locale);
+  const faqJsonLd =
+    pageFaqSet && pageFaqSet.items.length > 0
+      ? buildFaqPageJsonLd(
+          pageFaqSet.items.map((item) => ({
+            question: item.question,
+            answer: stripMarkdownForSchema(item.answer),
+          }))
+        )
+      : null;
+
   return (
     <>
       <JsonLdScript data={productJsonLd} />
       <JsonLdScript data={breadcrumbJsonLd} />
+      {faqJsonLd ? <JsonLdScript data={faqJsonLd} /> : null}
       {children}
     </>
   );

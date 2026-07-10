@@ -24,23 +24,28 @@ export function PageFaqSectionView({
   title,
   items,
   locale,
+  withJsonLd = true,
 }: {
   title: string;
   items: PageFaqSectionItem[];
   locale: Locale;
+  /** Set false when parent already emits FAQPage JSON-LD (e.g. PDP server page). */
+  withJsonLd?: boolean;
 }) {
   if (items.length === 0) return null;
 
-  const jsonLd = buildFaqPageJsonLd(
-    items.map((item) => ({
-      question: item.question,
-      answer: stripMarkdownForSchema(item.answer),
-    }))
-  );
+  const jsonLd = withJsonLd
+    ? buildFaqPageJsonLd(
+        items.map((item) => ({
+          question: item.question,
+          answer: stripMarkdownForSchema(item.answer),
+        }))
+      )
+    : null;
 
   return (
     <>
-      <JsonLdScript data={jsonLd} />
+      {jsonLd ? <JsonLdScript data={jsonLd} /> : null}
       <section className="relative" data-page-faq="">
         <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">

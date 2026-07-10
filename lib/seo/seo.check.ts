@@ -28,10 +28,13 @@ const meta = buildPageMetadata({
 });
 assert.equal(String(meta.alternates?.canonical), "https://custom.mpillow.com/en-US/shop/foo");
 
-// llms index curated (no blog bodies)
+// llms index curated (no blog bodies) + Science of Sleep positioning
 const llms = buildLlmsIndex([{ slug: "cervical-support", title: "Cervical Support" }]);
 assert.ok(llms.length < 10_000);
 assert.ok(llms.includes("Product taxonomy"));
+assert.ok(llms.includes("Science of Sleep"));
+assert.ok(llms.includes("our-partners"));
+assert.ok(llms.includes("tech neck pillow Singapore"));
 assert.ok(!llms.includes("### Full Content"));
 
 // product jsonld — no rating when count=0

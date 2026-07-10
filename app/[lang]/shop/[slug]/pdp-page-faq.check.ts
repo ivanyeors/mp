@@ -17,12 +17,13 @@ function read(rel: string) {
   return readFileSync(join(ROOT, rel), "utf8");
 }
 
-// --- Wiring: page loads product:{id}; slot after tabs; layout keeps Product JSON-LD ---
+// --- Wiring: accordion in page client slot; FAQPage JSON-LD in layout (crawlable) ---
 const pageSrc = read("app/[lang]/shop/[slug]/page.tsx");
-assert.match(pageSrc, /PageFaqSection/);
+assert.match(pageSrc, /PageFaqSectionView|PageFaqSection/);
 assert.match(pageSrc, /productSurfaceKey\(product\.id\)/);
 assert.match(pageSrc, /pageFaq=/);
 assert.match(pageSrc, /resolveAnswerLede/);
+assert.match(pageSrc, /withJsonLd=\{false\}/);
 
 const clientSrc = read("app/[lang]/shop/[slug]/product-detail-client.tsx");
 assert.match(clientSrc, /pageFaq\?:/);
@@ -37,7 +38,9 @@ assert.ok(
 
 const layoutSrc = read("app/[lang]/shop/[slug]/layout.tsx");
 assert.match(layoutSrc, /buildProductJsonLd/);
+assert.match(layoutSrc, /buildFaqPageJsonLd/);
 assert.match(layoutSrc, /JsonLdScript/);
+assert.match(layoutSrc, /productSurfaceKey/);
 
 // Empty set → no FAQ chrome
 assert.equal(PageFaqSectionView({ title: "FAQs", items: [], locale: "en-US" }), null);

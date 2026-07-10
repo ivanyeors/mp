@@ -131,6 +131,34 @@ A named non-filling BOM preset (`role: warehouse`) for Apply-to-active-BOM. Must
 
 ## Marketing
 
+**Science of Sleep**:
+Mpillow's brand umbrella: clinical engineering for cervical alignment, modular custom fit, and lasting overnight support. Gift/customisation language is a conversion tactic (CTAs, product cards), not the primary brand story.
+_Avoid_: leading every surface with gift/lifestyle framing when the page's job is clinical sleep fit
+
+**Affluent Wellness / Pain Sufferer**:
+Primary home-hero persona — high-intent buyers with chronic neck pain or stiffness who value consultative in-store fitting and Premium customisation.
+_Avoid_: treating this as interchangeable with Tech Neck or Families messaging on the first viewport
+
+**Tech Neck professional**:
+PMEB / desk-device strain persona. Weave only into the **Cervical Neck Support** learn-more slide-in (and its Neck Pains trigger) — may add a section inside that slide-in; no new routes.
+_Avoid_: inventing a tech-neck landing page; medical treat/cure claims
+
+**Multi-generational family**:
+Household / seniors / kids-height persona. Weave only into **Mbolster** surfaces (home card, slide-in, mbolster-config). Do not invent Family Sleep Bundles unless a live bundle offer exists.
+_Avoid_: new family landing pages; claiming bundles that are not sellable
+
+**Elusive Sleeper**:
+Shared pain pattern under all three personas — failed one-size pillows, Goldilocks frustration, willingness to invest in a real fit. Not a fourth competing audience.
+_Avoid_: using Elusive Sleeper as the sole marketing persona doc
+
+**Consumer ambassador**:
+Lifestyle/social-proof ambassadors on the home ambassadors surface (e.g. Skyjin & Piggie). Distinct from clinical partners.
+_Avoid_: calling consumer ambassadors "Local Ambassadors"
+
+**Local Ambassador (clinical)**:
+Chiropractors, physiotherapists, and wellness coaches addressed on `/our-partners` and clinical proof surfaces (credibility, clinician review) — not the celebrity ambassadors section.
+_Avoid_: renaming Skyjin/Piggie to Local Ambassadors; inventing referral-voucher programs in copy before they exist
+
 **Media Asset**:
 A first-class library record for a managed photo, video, PDF, or external link. Staff manage these in Settings → Media. Not a raw storage-bucket object alone — the Asset owns display name, alt text, kind, provenance, and usage metadata.
 _Avoid_: "media" when you mean a landing-page image slot override or a hard-coded slide-in path; those are consumers, not Assets
@@ -231,3 +259,5 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - "media" / landing slot images vs **Media Asset** — slot overrides and slide-in config paths are consumers; the library record is the **Media Asset**. Hybrid refs: new attachments prefer Asset id; legacy URL strings still count toward **Used**.
 - “TL;DR” / key takeaways vs **Answer lede** — resolved: same pattern; industry synonym only, no second UI.
 - “FAQ” alone is ambiguous — resolved: **Global FAQ** = `/faq` catalog; **Page FAQ** = per-**FAQ surface** embed. Independent catalogs in v1.
+- Marketing “ambassador” was overloaded — resolved: **Consumer ambassador** (home/Skyjin & Piggie) vs **Local Ambassador (clinical)** (`/our-partners`).
+- Single “Elusive Sleeper” persona vs roadmap trio — resolved: Elusive Sleeper is the shared pain pattern; canonical audiences are **Affluent Wellness / Pain Sufferer**, **Tech Neck professional**, **Multi-generational family**.

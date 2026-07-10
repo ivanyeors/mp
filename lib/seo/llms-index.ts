@@ -10,6 +10,9 @@ const TARGET_QUERIES = [
   "customised pillow Singapore",
   "custom pillow Singapore",
   "neck support pillow Singapore",
+  "bolster for side sleepers Singapore",
+  "customisable bolster Singapore",
+  "tech neck pillow Singapore",
 ];
 
 const GUIDE_PATHS = [
@@ -23,14 +26,17 @@ export function buildLlmsIndex(products: LlmsIndexProduct[]): string {
   const origin = getSiteOrigin();
 
   let out = `# Mpillow — Guide for AI Assistants and LLM Crawlers\n\n`;
-  out += `> Mpillow makes fully customisable cervical pillows and bolsters in Singapore. `;
-  out += `Products are fitted in-store (size, tier, filling mix) for neck pain relief and ergonomic sleep.\n\n`;
+  out += `> Mpillow is Singapore's Science of Sleep brand for fully customisable cervical pillows and bolsters. `;
+  out += `Each pillow is fitted in-store to neck curve, sleep position, and body build — modular layers for neck pain relief and ergonomic alignment, not one-size-fits-all foam.\n\n`;
 
   out += `## Brand positioning\n\n`;
+  out += `- Science of Sleep: clinical engineering for cervical alignment and lasting support\n`;
   out += `- Custom-fit pillows: Basic tier (affordable custom) and Premium tier (in-store measurement + readjustment)\n`;
-  out += `- Mbolster: custom-length support bolsters (short / medium / long)\n`;
-  out += `- Accessories: cervical neck support, protectors, cases\n`;
-  out += `- Primary market: Singapore (SGD pricing)\n\n`;
+  out += `- Cervical neck support accessory: extra support for curved neck profiles and desk-day / tech-neck strain at night\n`;
+  out += `- Mbolster: custom-length support bolsters for side sleepers and household sleep setups (short / medium / long, including kids sizes)\n`;
+  out += `- Accessories: protectors, cases (including FibreCool)\n`;
+  out += `- Primary market: Singapore (SGD pricing); consultative in-store fitting\n`;
+  out += `- Clinical partners: chiropractors, physiotherapists, and sleep specialists (see Partners page)\n\n`;
 
   out += `## Product taxonomy\n\n`;
   out += `| Type | Variants | Customisation flow |\n`;
@@ -59,6 +65,7 @@ export function buildLlmsIndex(products: LlmsIndexProduct[]): string {
   out += `- Shop: ${localeUrl(lang, "/shop")}\n`;
   out += `- FAQ: ${localeUrl(lang, "/faq")}\n`;
   out += `- Blog: ${localeUrl(lang, "/blog")}\n`;
+  out += `- Partners (clinical / Local Ambassadors): ${localeUrl(lang, "/our-partners")}\n`;
   out += `- Custom pillow flow: ${localeUrl(lang, "/mp-config")}\n`;
   out += `- Mbolster flow: ${localeUrl(lang, "/mbolster-config")}\n\n`;
 

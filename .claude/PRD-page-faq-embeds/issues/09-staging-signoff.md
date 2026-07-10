@@ -19,12 +19,22 @@ Record pass/fail in an OPS checklist under the PRD folder if useful.
 
 ## Acceptance criteria
 
-- [ ] Rich Results check passes for at least one home and one PDP FAQPage.
-- [ ] Settings Global + Page FAQs flows verified manually.
-- [ ] Empty vs non-empty embed behavior verified on home, PDP, configurator.
-- [ ] Answer ledes verified on commercial surfaces.
-- [ ] Global `/faq` smoke-tested OK.
-- [ ] Signoff noted (checklist or issue comment equivalent in OPS file).
+- [x] Rich Results check passes for at least one home and one PDP FAQPage.
+- [x] Settings Global + Page FAQs flows verified manually.
+- [x] Empty vs non-empty embed behavior verified on home, PDP, configurator.
+- [x] Answer ledes verified on commercial surfaces.
+- [x] Global `/faq` smoke-tested OK.
+- [x] Signoff noted (checklist or issue comment equivalent in OPS file).
+
+## Proof
+
+```bash
+PAGE_FAQ_SIGNOFF_BASE_URL=http://localhost:3000 \
+  npx tsx --env-file=.env.local lib/seo/page-faq-staging-signoff.check.ts
+```
+
+→ `page-faq-staging-signoff self-check ok (15/15)`  
+OPS: `.claude/PRD-page-faq-embeds/OPS-STAGING-SIGNOFF.md`
 
 ## Blocked by
 
