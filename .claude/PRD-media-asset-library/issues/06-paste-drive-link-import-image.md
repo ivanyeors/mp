@@ -17,10 +17,10 @@ Modules: 3, 4, 2, 7
 
 ## Acceptance criteria
 
-- [ ] Staff pastes Shared Drive image link, sees preview, imports → Asset with hosted_url and Drive provenance.
-- [ ] Imported image is optimized WebP in Supabase (same pipeline as slice 04).
-- [ ] Re-importing same drive_file_id is handled idempotently.
-- [ ] Orchestrator kind-branch tests pass.
+- [x] Staff pastes Shared Drive image link, sees preview, imports → Asset with hosted_url and Drive provenance.
+- [x] Imported image is optimized WebP in Supabase (same pipeline as slice 04).
+- [x] Re-importing same drive_file_id is handled idempotently.
+- [x] Orchestrator kind-branch tests pass.
 
 ## Blocked by
 

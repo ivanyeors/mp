@@ -15,6 +15,8 @@ import {
     LayoutDashboard,
     ExternalLink,
     AlertTriangle,
+    FileText,
+    Film,
 } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,10 +43,28 @@ import { toast } from "sonner";
 
 interface MediaFile {
     name: string;
-    url: string;
+    url: string | null;
     id: string;
     created_at: string;
     kind?: string;
+    drive_url?: string | null;
+}
+
+interface DrivePreview {
+    id: string;
+    name: string;
+    mimeType: string;
+    thumbnailLink: string | null;
+    size: number | null;
+    webViewLink: string | null;
+    isFolder: boolean;
+}
+
+function kindFromMime(mimeType: string): "image" | "video" | "pdf" | "other" {
+    if (mimeType.startsWith("image/")) return "image";
+    if (mimeType.startsWith("video/")) return "video";
+    if (mimeType === "application/pdf") return "pdf";
+    return "other";
 }
 
 interface LandingSlot {
@@ -116,6 +136,12 @@ export default function MediaPage() {
     const [deleteConfirm, setDeleteConfirm] = useState<{ file: MediaFile; usages: UsageEntry[] } | null>(null);
     const [deleting, setDeleting] = useState(false);
 
+    /* Drive paste import */
+    const [driveUrl, setDriveUrl] = useState("");
+    const [drivePreview, setDrivePreview] = useState<DrivePreview | null>(null);
+    const [drivePreviewing, setDrivePreviewing] = useState(false);
+    const [driveImporting, setDriveImporting] = useState(false);
+
     /* ---------------------------------------------------------------- */
     /* Data loaders                                                      */
     /* ---------------------------------------------------------------- */
@@ -137,15 +163,23 @@ export default function MediaPage() {
             }
             if (data.ok && Array.isArray(data.assets)) {
                 setFiles(
-                    data.assets
-                        .filter((a: { hosted_url?: string | null }) => a.hosted_url)
-                        .map((a: { id: string; name: string; hosted_url: string; created_at: string; kind: string }) => ({
+                    data.assets.map(
+                        (a: {
+                            id: string;
+                            name: string;
+                            hosted_url?: string | null;
+                            drive_url?: string | null;
+                            created_at: string;
+                            kind: string;
+                        }) => ({
                             id: a.id,
                             name: a.name,
-                            url: a.hosted_url,
+                            url: a.hosted_url ?? null,
+                            drive_url: a.drive_url ?? null,
                             created_at: a.created_at,
                             kind: a.kind,
-                        })),
+                        }),
+                    ),
                 );
             } else {
                 toast.error(getApiErrorMessage(data.error, "Failed to load media assets"));
@@ -246,9 +280,87 @@ export default function MediaPage() {
         }
     };
 
+    const handleDrivePreview = async () => {
+        const url = driveUrl.trim();
+        if (!url) {
+            toast.error("Paste a Google Drive link first");
+            return;
+        }
+        setDrivePreviewing(true);
+        setDrivePreview(null);
+        try {
+            const res = await fetch(`/api/media/drive/resolve?url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                toast.error(getApiErrorMessage(data.error, "Could not resolve Drive link"));
+                return;
+            }
+            if (data.file.isFolder) {
+                toast.error("Folders cannot be imported — paste a file link");
+                return;
+            }
+            setDrivePreview(data.file as DrivePreview);
+        } catch (error) {
+            console.error("Drive preview error", error);
+            toast.error("Could not resolve Drive link");
+        } finally {
+            setDrivePreviewing(false);
+        }
+    };
+
+    const handleDriveImport = async () => {
+        if (!drivePreview) return;
+        setDriveImporting(true);
+        try {
+            const res = await fetch("/api/media/import/drive", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fileId: drivePreview.id }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                toast.error(getApiErrorMessage(data.error, "Import failed"));
+                return;
+            }
+            const kind = data.asset?.kind ?? kindFromMime(drivePreview.mimeType);
+            if (data.existing) {
+                toast.success("Already in library — opened existing Asset");
+            } else if (kind === "image") {
+                toast.success("Imported image from Drive");
+            } else {
+                toast.success(`Imported ${kind} as Drive link (not hosted)`);
+            }
+            setDrivePreview(null);
+            setDriveUrl("");
+            loadFiles();
+        } catch (error) {
+            console.error("Drive import error", error);
+            toast.error("Import failed");
+        } finally {
+            setDriveImporting(false);
+        }
+    };
+
     const handleDelete = async (file: MediaFile, force = false) => {
         try {
-            const url = `/api/media/${encodeURIComponent(file.name)}${force ? "?force=true" : ""}`;
+            // Link-only Assets have no storage object — delete via registry.
+            if (!file.url) {
+                const res = await fetch(`/api/media-assets/${file.id}`, { method: "DELETE" });
+                const data = await res.json();
+                if (data.ok) {
+                    setFiles((prev) => prev.filter((f) => f.id !== file.id));
+                    setDetailFile(null);
+                    setDeleteConfirm(null);
+                    toast.success("Asset deleted");
+                } else {
+                    toast.error(getApiErrorMessage(data.error, "Delete failed"));
+                }
+                return;
+            }
+
+            // Storage object key is the last path segment of the public URL (not display name).
+            const storagePath = file.url.split("/").pop() || file.name;
+            const url = `/api/media/${encodeURIComponent(storagePath)}${force ? "?force=true" : ""}`;
             const res = await fetch(url, { method: "DELETE" });
             const data = await res.json();
 
@@ -259,7 +371,7 @@ export default function MediaPage() {
             }
 
             if (data.ok) {
-                setFiles((prev) => prev.filter((f) => f.name !== file.name));
+                setFiles((prev) => prev.filter((f) => f.id !== file.id));
                 setDetailFile(null);
                 setDeleteConfirm(null);
                 toast.success("Image deleted");
@@ -373,7 +485,19 @@ export default function MediaPage() {
     /* Helpers                                                           */
     /* ---------------------------------------------------------------- */
 
-    const getUsageCount = (url: string) => usageMap[url]?.length ?? 0;
+    const getUsageCount = (url: string | null | undefined) =>
+        url ? (usageMap[url]?.length ?? 0) : 0;
+
+    const kindIcon = (kind?: string) => {
+        switch (kind) {
+            case "video":
+                return <Film className="h-10 w-10 text-muted-foreground opacity-60" />;
+            case "pdf":
+                return <FileText className="h-10 w-10 text-muted-foreground opacity-60" />;
+            default:
+                return <ImageIcon className="h-10 w-10 text-muted-foreground opacity-60" />;
+        }
+    };
 
     const usageIcon = (type: string) => {
         switch (type) {
@@ -483,11 +607,11 @@ export default function MediaPage() {
 
             {/* ===== Full Media Gallery ===== */}
             <section className="space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
                         <h2 className="text-2xl font-bold tracking-tight">Media Library</h2>
                         <p className="text-muted-foreground text-sm mt-1">
-                            Company Media Assets — images hosted for the site; Drive video/PDF come later.
+                            Company Media Assets — upload images or import from Google Drive.
                         </p>
                     </div>
 
@@ -505,6 +629,79 @@ export default function MediaPage() {
                             {uploading ? "Uploading..." : "Upload Image"}
                         </Button>
                     </div>
+                </div>
+
+                {/* Drive paste import */}
+                <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
+                    <div className="text-sm font-medium">Import from Google Drive</div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                            type="url"
+                            placeholder="Paste Google Drive file link…"
+                            value={driveUrl}
+                            onChange={(e) => {
+                                setDriveUrl(e.target.value);
+                                setDrivePreview(null);
+                            }}
+                            className="flex-1 px-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <Button
+                            variant="outline"
+                            onClick={handleDrivePreview}
+                            disabled={drivePreviewing || !driveUrl.trim()}
+                        >
+                            {drivePreviewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Preview
+                        </Button>
+                    </div>
+                    {drivePreview && (
+                        <div className="flex flex-col sm:flex-row gap-3 items-start border rounded-lg p-3 bg-background">
+                            <div className="w-24 h-24 shrink-0 rounded-md overflow-hidden border bg-muted flex items-center justify-center">
+                                {drivePreview.thumbnailLink ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                        src={drivePreview.thumbnailLink}
+                                        alt={drivePreview.name}
+                                        className="object-cover w-full h-full"
+                                        referrerPolicy="no-referrer"
+                                    />
+                                ) : (
+                                    kindIcon(kindFromMime(drivePreview.mimeType))
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0 space-y-1">
+                                <div className="text-sm font-medium truncate" title={drivePreview.name}>
+                                    {drivePreview.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                                    {kindFromMime(drivePreview.mimeType)}
+                                    {drivePreview.size != null ? ` · ${(drivePreview.size / 1024).toFixed(1)} KB` : ""}
+                                </div>
+                                {kindFromMime(drivePreview.mimeType) !== "image" &&
+                                    kindFromMime(drivePreview.mimeType) !== "other" && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Will import as a Drive link (not copied to site storage).
+                                    </p>
+                                )}
+                                {kindFromMime(drivePreview.mimeType) === "other" && (
+                                    <p className="text-xs text-destructive">
+                                        This file type cannot be imported.
+                                    </p>
+                                )}
+                            </div>
+                            <Button
+                                onClick={handleDriveImport}
+                                disabled={
+                                    driveImporting ||
+                                    kindFromMime(drivePreview.mimeType) === "other" ||
+                                    drivePreview.isFolder
+                                }
+                            >
+                                {driveImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Import
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Search & Filter Bar */}
@@ -566,22 +763,26 @@ export default function MediaPage() {
                             const count = getUsageCount(file.url);
                             return (
                                 <div
-                                    key={file.name}
+                                    key={file.id}
                                     className="group relative border rounded-lg overflow-hidden bg-background shadow-sm hover:shadow-md transition-all cursor-pointer"
                                     onClick={() => setDetailFile(file)}
                                 >
                                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img
-                                            src={file.url}
-                                            alt={file.name}
-                                            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                                            loading="lazy"
-                                        />
+                                        {file.url ? (
+                                            // eslint-disable-next-line @next/next/no-img-element
+                                            <img
+                                                src={file.url}
+                                                alt={file.name}
+                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            kindIcon(file.kind)
+                                        )}
                                     </div>
 
                                     {/* Usage badge */}
-                                    {!usageLoading && (
+                                    {!usageLoading && file.url && (
                                         <div className="absolute top-2 left-2">
                                             {count > 0 ? (
                                                 <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/90 text-white px-2 py-0.5 text-[10px] font-medium shadow-sm backdrop-blur-sm">
@@ -597,16 +798,32 @@ export default function MediaPage() {
 
                                     {/* Quick actions overlay */}
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
-                                        <Button
-                                            size="icon"
-                                            variant="secondary"
-                                            className="h-8 w-8 rounded-full"
-                                            onClick={(e) => { e.stopPropagation(); copyToClipboard(file.url); }}
-                                            title="Copy URL"
-                                        >
-                                            <LinkIcon className="h-4 w-4" />
-                                        </Button>
-                                        {count > 0 && (
+                                        {file.url && (
+                                            <Button
+                                                size="icon"
+                                                variant="secondary"
+                                                className="h-8 w-8 rounded-full"
+                                                onClick={(e) => { e.stopPropagation(); copyToClipboard(file.url!); }}
+                                                title="Copy URL"
+                                            >
+                                                <LinkIcon className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {file.drive_url && (
+                                            <Button
+                                                size="icon"
+                                                variant="secondary"
+                                                className="h-8 w-8 rounded-full"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    window.open(file.drive_url!, "_blank", "noopener,noreferrer");
+                                                }}
+                                                title="Open in Drive"
+                                            >
+                                                <ExternalLink className="h-4 w-4" />
+                                            </Button>
+                                        )}
+                                        {count > 0 && file.url && (
                                             <Button
                                                 size="icon"
                                                 variant="secondary"
@@ -622,7 +839,7 @@ export default function MediaPage() {
                                             variant="destructive"
                                             className="h-8 w-8 rounded-full"
                                             onClick={(e) => { e.stopPropagation(); handleDelete(file); }}
-                                            title="Delete Image"
+                                            title="Delete"
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -660,31 +877,58 @@ export default function MediaPage() {
 
                             <div className="px-4 pb-4 space-y-6 overflow-y-auto flex-1">
                                 {/* Preview */}
-                                <div className="rounded-lg overflow-hidden border bg-muted">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                        src={detailFile.url}
-                                        alt={detailFile.name}
-                                        className="w-full h-auto object-contain max-h-64"
-                                    />
+                                <div className="rounded-lg overflow-hidden border bg-muted flex items-center justify-center min-h-32">
+                                    {detailFile.url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={detailFile.url}
+                                            alt={detailFile.name}
+                                            className="w-full h-auto object-contain max-h-64"
+                                        />
+                                    ) : (
+                                        <div className="py-10 flex flex-col items-center gap-2">
+                                            {kindIcon(detailFile.kind)}
+                                            <span className="text-xs text-muted-foreground">Drive link only</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* URL */}
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-medium text-muted-foreground">URL</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            readOnly
-                                            value={detailFile.url}
-                                            className="flex-1 text-xs border rounded-md px-2 py-1.5 bg-muted/50 truncate"
-                                        />
-                                        <Button size="sm" variant="outline" onClick={() => copyToClipboard(detailFile.url)}>
-                                            <LinkIcon className="h-3.5 w-3.5" />
+                                {detailFile.url && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground">URL</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                readOnly
+                                                value={detailFile.url}
+                                                className="flex-1 text-xs border rounded-md px-2 py-1.5 bg-muted/50 truncate"
+                                            />
+                                            <Button size="sm" variant="outline" onClick={() => copyToClipboard(detailFile.url!)}>
+                                                <LinkIcon className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {detailFile.drive_url && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground">Google Drive</label>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full justify-start"
+                                            onClick={() =>
+                                                window.open(detailFile.drive_url!, "_blank", "noopener,noreferrer")
+                                            }
+                                        >
+                                            <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                                            Open in Drive
                                         </Button>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Usage list */}
+                                {detailFile.url && (
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium text-muted-foreground">
                                         Used in ({getUsageCount(detailFile.url)} {getUsageCount(detailFile.url) === 1 ? "place" : "places"})
@@ -725,10 +969,11 @@ export default function MediaPage() {
                                         </div>
                                     )}
                                 </div>
+                                )}
 
                                 {/* Actions */}
                                 <div className="flex flex-col gap-2 pt-2 border-t">
-                                    {getUsageCount(detailFile.url) > 0 && (
+                                    {getUsageCount(detailFile.url) > 0 && detailFile.url && (
                                         <Button
                                             variant="outline"
                                             className="w-full justify-start"
@@ -750,7 +995,7 @@ export default function MediaPage() {
                                         }}
                                     >
                                         <Trash2 className="mr-2 h-4 w-4" />
-                                        Delete Image
+                                        Delete
                                     </Button>
                                 </div>
                             </div>
@@ -782,23 +1027,23 @@ export default function MediaPage() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                {files.map((file) => {
+                                {files.filter((f) => f.url).map((file) => {
                                     const isSelected = pickerSlot && overrides[pickerSlot.key] === file.url;
 
                                     return (
                                         <button
-                                            key={file.name}
+                                            key={file.id}
                                             type="button"
                                             className={[
                                                 "relative aspect-square rounded-lg overflow-hidden border-2 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                                                 isSelected ? "border-primary ring-2 ring-primary/30" : "border-transparent hover:border-muted-foreground/30",
                                             ].join(" ")}
-                                            onClick={() => pickerSlot && setSlotImage(pickerSlot, file.url)}
+                                            onClick={() => pickerSlot && file.url && setSlotImage(pickerSlot, file.url)}
                                             disabled={!!savingSlot}
                                         >
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
-                                                src={file.url}
+                                                src={file.url!}
                                                 alt={file.name}
                                                 className="object-cover w-full h-full"
                                                 loading="lazy"
@@ -828,12 +1073,12 @@ export default function MediaPage() {
                     <DialogHeader>
                         <DialogTitle>Replace Image Everywhere</DialogTitle>
                         <DialogDescription>
-                            Choose a new image to replace <strong>{replaceFile?.name}</strong> in all {getUsageCount(replaceFile?.url ?? "")} {getUsageCount(replaceFile?.url ?? "") === 1 ? "place" : "places"} it&apos;s used.
+                            Choose a new image to replace <strong>{replaceFile?.name}</strong> in all {getUsageCount(replaceFile?.url)} {getUsageCount(replaceFile?.url) === 1 ? "place" : "places"} it&apos;s used.
                         </DialogDescription>
                     </DialogHeader>
 
                     {/* Usage summary */}
-                    {replaceFile && usageMap[replaceFile.url] && (
+                    {replaceFile?.url && usageMap[replaceFile.url] && (
                         <div className="px-6 -mt-2">
                             <div className="flex flex-wrap gap-1.5">
                                 {usageMap[replaceFile.url].map((usage, i) => (
@@ -857,18 +1102,22 @@ export default function MediaPage() {
                         ) : (
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                                 {files
-                                    .filter((f) => f.url !== replaceFile?.url)
+                                    .filter((f) => f.url && f.url !== replaceFile?.url)
                                     .map((file) => (
                                         <button
-                                            key={file.name}
+                                            key={file.id}
                                             type="button"
                                             className="relative aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                                            onClick={() => replaceFile && handleReplace(replaceFile.url, file.url)}
+                                            onClick={() =>
+                                                replaceFile?.url &&
+                                                file.url &&
+                                                handleReplace(replaceFile.url, file.url)
+                                            }
                                             disabled={replacing}
                                         >
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
-                                                src={file.url}
+                                                src={file.url!}
                                                 alt={file.name}
                                                 className="object-cover w-full h-full"
                                                 loading="lazy"

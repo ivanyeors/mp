@@ -13,6 +13,9 @@ export async function ingestImageAsset(opts: {
   originalName?: string;
   altText?: string | null;
   createdBy?: string | null;
+  drive_file_id?: string | null;
+  drive_url?: string | null;
+  imported_at?: string | null;
 }): Promise<IngestImageResult> {
   const optimized = await optimizeImageForWeb(opts.bytes);
   const storagePath = optimizedStorageName(opts.originalName);
@@ -33,10 +36,13 @@ export async function ingestImageAsset(opts: {
     name: opts.originalName?.trim() || storagePath,
     alt_text: opts.altText ?? null,
     hosted_url: pub.publicUrl,
+    drive_file_id: opts.drive_file_id ?? null,
+    drive_url: opts.drive_url ?? null,
     mime_type: optimized.mimeType,
     byte_size: optimized.byteSize,
     width: optimized.width,
     height: optimized.height,
+    imported_at: opts.imported_at ?? null,
     created_by: opts.createdBy ?? null,
   });
 

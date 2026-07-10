@@ -32,6 +32,8 @@ export {
   resolveUrl,
 } from "./drive";
 export type { DriveFileMeta, DriveFolderListing, DriveSharedDrive } from "./drive";
+export { ImportDriveError, importFromDrive } from "./import-drive";
+export type { ImportDriveResult } from "./import-drive";
 
 function admin() {
   return supabaseAdmin();
@@ -61,6 +63,20 @@ export async function getMediaAsset(id: string): Promise<MediaAsset | null> {
     .from("media_assets")
     .select("*")
     .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data as MediaAsset | null;
+}
+
+export async function getMediaAssetByDriveFileId(
+  driveFileId: string,
+): Promise<MediaAsset | null> {
+  const id = driveFileId.trim();
+  if (!id) return null;
+  const { data, error } = await admin()
+    .from("media_assets")
+    .select("*")
+    .eq("drive_file_id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data as MediaAsset | null;
