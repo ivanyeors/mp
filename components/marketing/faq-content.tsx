@@ -22,7 +22,7 @@ type FaqContentProps = {
   initialSlug?: string;
 };
 
-function FaqAnswer({ answer, locale }: { answer: string; locale: Locale }) {
+export function FaqAnswer({ answer, locale }: { answer: string; locale: Locale }) {
   return (
     <ReactMarkdown
       components={{

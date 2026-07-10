@@ -21,12 +21,14 @@ Demoable outcome: given a seeded surface, the section renders accordion + valid 
 
 ## Acceptance criteria
 
-- [ ] Compact accordion matches landing section spacing/typography conventions.
-- [ ] Empty visible list → component returns null / no section chrome.
-- [ ] Non-empty → `FAQPage` JSON-LD in page output with Question/Answer pairs.
-- [ ] Answer text is in HTML without requiring accordion open.
-- [ ] Link to `/faq` present when section shows.
-- [ ] Locale selects correct bilingual content.
+- [x] Compact accordion matches landing section spacing/typography conventions.
+- [x] Empty visible list → component returns null / no section chrome.
+- [x] Non-empty → `FAQPage` JSON-LD in page output with Question/Answer pairs.
+- [x] Answer text is in HTML without requiring accordion open.
+- [x] Link to `/faq` present when section shows.
+- [x] Locale selects correct bilingual content.
+
+Proof: `npx tsx --env-file=.env.local components/page-faq/page-faq-section.check.ts` → `page-faq-section self-check ok`
 
 ## Blocked by
 
