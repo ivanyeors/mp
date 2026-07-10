@@ -197,6 +197,8 @@ export type Messages = {
       heroEyebrow: string;
       heroTitle: string;
       heroDescription: string;
+      techNeckTitle: string;
+      techNeckParagraphs: string[];
       whyTitle: string;
       whyDescription: string;
       benefitsTitle: string;

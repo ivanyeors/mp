@@ -51,6 +51,12 @@ const SPLIT_HERO_EXTRACTORS: Record<string, SplitHeroExtractor> = {
       paragraphs: [requireString(messages, "whyDescription")],
     };
   },
+  techNeck(messages) {
+    return {
+      title: requireString(messages, "techNeckTitle"),
+      paragraphs: requireStringArray(messages, "techNeckParagraphs"),
+    };
+  },
   mbolsterAbout(messages) {
     return {
       eyebrow: optionalString(messages, "viewDetailsLabel"),

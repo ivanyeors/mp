@@ -18,12 +18,16 @@ No new routes. No treat/cure language.
 
 ## Acceptance criteria
 
-- [ ] Neck Pains title/description mention desk/device or tech-neck strain and path into cervical support.
-- [ ] Cervical slide-in heroDescription is non-empty and claim-safe.
-- [ ] New Tech Neck section renders in Cervical Neck Support learn-more between existing sections (order documented in PR).
-- [ ] Banned clinical verbs (prescribe/treat/cure/rehab) absent from new copy.
-- [ ] `openCervicalNeckSupportSheet` / Back footer behavior unchanged.
-- [ ] Mobile Learn More path still reachable.
+- [x] Neck Pains title/description mention desk/device or tech-neck strain and path into cervical support.
+- [x] Cervical slide-in heroDescription is non-empty and claim-safe.
+- [x] New Tech Neck section renders in Cervical Neck Support learn-more between existing sections (order documented in PR).
+- [x] Banned clinical verbs (prescribe/treat/cure/rehab) absent from new copy.
+- [x] `openCervicalNeckSupportSheet` / Back footer behavior unchanged.
+- [x] Mobile Learn More path still reachable.
+
+**Section order:** `media_intro:hero` → `split_hero:techNeck` → `split_hero:why` → `full_bleed_media` → `feature_card_grid:benefits` → `text_callout_block:difference`
+
+**Proof:** `npx tsx lib/i18n/marketing-copy-slice-02.check.ts`
 
 ## Blocked by
 
