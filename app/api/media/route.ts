@@ -7,6 +7,9 @@ import { ingestImageAsset } from "@/lib/media-assets/ingest";
 export const runtime = "nodejs";
 
 export async function GET() {
+    const denied = await requireAdmin("media");
+    if (denied) return denied;
+
     // Prefer Asset registry; fall back to bucket list if registry empty (pre-backfill).
     try {
         const assets = await listMediaAssets();

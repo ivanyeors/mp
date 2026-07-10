@@ -62,7 +62,7 @@ With `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` loaded:
 
 See `.env.example`. Two refresh tokens; one client id/secret.
 
-## 6. Signoff
+## 6. Signoff (slice 02 — Drive ops)
 
 - [x] Drive API enabled on GCP project
 - [x] Drive scope on consent screen; Open URL / Drive UI integration skipped
@@ -71,3 +71,38 @@ See `.env.example`. Two refresh tokens; one client id/secret.
 - [x] Shared Drive name/id recorded above
 - [x] Smoke steps 1–6 pass (local `.env.local`)
 - [ ] Staging then production env updated (`GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN`)
+
+## 7. Staging E2E signoff (slice 18)
+
+User story 47. Run against the same Supabase + Drive env as `.env.local` (staging DB), with auth HTTP checks against `NEXT_PUBLIC_SITE_URL` (or `MEDIA_SMOKE_BASE_URL`).
+
+**Executed:** 2026-07-10 — `SMOKE_OK 14/14` + vitest **73/73**.
+
+**Automated runner:**
+
+```bash
+npx tsx --env-file=.env.local scripts/smoke-staging-e2e-signoff.ts
+npx vitest run lib/media lib/media-assets lib/product-slide-sections
+```
+
+| # | Criterion | Proof script / notes | Result |
+|---|-----------|----------------------|--------|
+| 1 | Direct image upload → optimized Asset in grid | `smoke-direct-upload.ts` (WebP + live HEAD) | **PASS** |
+| 2 | Paste Drive link → preview → import | `smoke-drive-import.ts` | **PASS** |
+| 3 | Select from Drive → folder nav → import | `smoke-drive-browse-import.ts` | **PASS** |
+| 4 | Video/PDF link import + preview | `smoke-drive-video-pdf.ts` | **PASS** |
+| 5 | Rename, alt, Open in Drive, re-import | `smoke-drive-asset-detail.ts` | **PASS** |
+| 6 | Used/unused badges + attachment list | `smoke-usage-resolver.ts` | **PASS** |
+| 7 | Delete guard on used Asset | `smoke-drive-asset-detail.ts` (`force_deleted: ok`) | **PASS** |
+| 8 | Asset picker on product + rolled-out consumer | `smoke-asset-picker-products.ts` + `smoke-asset-picker-rollout.ts` | **PASS** |
+| 9 | Folder assign + filter | `smoke-media-folders.ts` | **PASS** |
+| 10 | Tag + kind filter | `smoke-media-tags-kind.ts` | **PASS** |
+| 11 | Replace-everywhere on test Asset | `smoke-replace-everywhere.ts` | **PASS** |
+| 12 | Spot-check migrated `/public` (+ slides) | `smoke-migrate-public-images.ts` + `smoke-migrate-slide-images.ts` | **PASS** |
+| 13 | Admin-only API auth (no public Asset list) | `smoke-media-auth.ts` — locked `GET /api/media` + `GET /api/media/usage` | **PASS** |
+
+**Blockers / follow-ups:** none open for scope 1 core flows. Signoff fix: `GET /api/media` and `GET /api/media/usage` now require `media` admin (were public).
+
+**UI spot-check (optional, Settings → Media):** grid shows upload + Drive paste + Select from Drive; detail sheet rename/alt; badges match usage smoke. API paths above cover the same code.
+
+**Ops leftover (slice 02, not a library blocker):** staging/prod Vercel env still needs `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` if not already set.

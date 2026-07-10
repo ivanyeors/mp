@@ -212,4 +212,5 @@ Prior art: existing media usage route patterns, `sync-scope.check.ts`, vitest te
 - **ADR `0004-slide-config-asset-adoption.md`:** product slide configs + ambassadors gallery adopted onto Assets via committed resolved map (`slideImage` + migrate). Live replace-everywhere for slides deferred (ops re-migrate / upgrade to site_settings).
 - Ops slice 02 must complete before Drive connector integration tests against live API.
 - Existing `GET /api/media` unauthenticated listing should be closed or restricted when Asset API ships.
+- **Slice 18:** closed — `GET /api/media` and `GET /api/media/usage` require admin `media`; full E2E matrix in `OPS-CHECKLIST.md` §7 (`SMOKE_OK 14/14`).
 - Env: `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` (`sg@` Drive); keep `GOOGLE_OAUTH_REFRESH_TOKEN` for `admin@` Calendar/Contacts.

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { listMediaAssets } from "@/lib/media-assets";
 import { buildUsageMap } from "@/lib/media/image-usages";
 
@@ -9,6 +10,9 @@ export const runtime = "nodejs";
  * Returns map of hosted_url → UsageEntry[]. Optional ?url= filter.
  */
 export async function GET(req: Request) {
+  const denied = await requireAdmin("media");
+  if (denied) return denied;
+
   try {
     const { searchParams } = new URL(req.url);
     const filterUrl = searchParams.get("url");

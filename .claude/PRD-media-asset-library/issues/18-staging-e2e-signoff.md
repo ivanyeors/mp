@@ -27,9 +27,44 @@ Checklist must cover:
 
 ## Acceptance criteria
 
-- [ ] Checklist committed and executed on staging with pass/fail notes.
-- [ ] All critical paths signed off or filed as follow-up with issue reference.
-- [ ] No blocker bugs open for scope 1 core flows before production promotion.
+- [x] Checklist committed and executed on staging with pass/fail notes.
+- [x] All critical paths signed off or filed as follow-up with issue reference.
+- [x] No blocker bugs open for scope 1 core flows before production promotion.
+
+## How it works
+
+- Checklist lives in `.claude/PRD-media-asset-library/OPS-CHECKLIST.md` §7.
+- Runner: `scripts/smoke-staging-e2e-signoff.ts` executes all automated proofs and prints a pass/fail matrix.
+- Signoff fix: `GET /api/media` and `GET /api/media/usage` now call `requireAdmin("media")` (were publicly listable).
+
+## Proof
+
+| Criterion | Proof |
+|-----------|--------|
+| Checklist committed | `OPS-CHECKLIST.md` §7 |
+| Upload → WebP Asset | `smoke-direct-upload.ts` |
+| Drive paste / browse / video-PDF | `smoke-drive-import.ts`, `smoke-drive-browse-import.ts`, `smoke-drive-video-pdf.ts` |
+| Detail + delete guard | `smoke-drive-asset-detail.ts` |
+| Usage badges | `smoke-usage-resolver.ts` |
+| Picker products + rollout | `smoke-asset-picker-products.ts`, `smoke-asset-picker-rollout.ts` |
+| Folders / tags+kind | `smoke-media-folders.ts`, `smoke-media-tags-kind.ts` |
+| Replace-everywhere | `smoke-replace-everywhere.ts` |
+| Migrated `/public` + slides | `smoke-migrate-public-images.ts`, `smoke-migrate-slide-images.ts` |
+| Admin-only auth | `smoke-media-auth.ts` (401 on list/usage/assets/folders/drive) |
+| Unit tests | **73/73** (`lib/media` + `lib/media-assets` + slide sections) |
+| Smoke matrix | **`SMOKE_OK 14/14`** (`scripts/smoke-staging-e2e-signoff.ts`) |
+
+Re-run:
+
+```bash
+npx tsx --env-file=.env.local scripts/smoke-staging-e2e-signoff.ts
+npx vitest run lib/media lib/media-assets lib/product-slide-sections
+```
+
+## Follow-ups (non-blocking)
+
+- Slice 02 leftover: confirm `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` on Vercel staging/prod if not already set.
+- Optional UI walkthrough in Settings → Media (API paths above cover the same code).
 
 ## Blocked by
 
