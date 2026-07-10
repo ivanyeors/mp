@@ -13,9 +13,9 @@ User stories covered: 4, 6
 
 ## Acceptance criteria
 
-- [ ] Root layout exports `metadataBase: new URL(getSiteOrigin())`
-- [ ] Homepage renders Organization + WebSite JSON-LD in view source
-- [ ] OG relative URLs resolve against metadataBase
+- [x] Root layout exports `metadataBase: new URL(getSiteOrigin())`
+- [x] Homepage renders Organization + WebSite JSON-LD in view source
+- [x] OG relative URLs resolve against metadataBase
 
 ## Blocked by
 

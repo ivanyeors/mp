@@ -14,11 +14,11 @@ User stories covered: 5, 13, 14, 15, 21, 22
 
 ## Acceptance criteria
 
-- [ ] `/llms.txt` response < 10KB with brand, taxonomy, key URLs, target queries
-- [ ] No full blog bodies in llms.txt
-- [ ] mp-config and mbolster-config allowed in robots.txt
-- [ ] mp-basic still disallowed
-- [ ] `llms-index` test passes
+- [x] `/llms.txt` response < 10KB with brand, taxonomy, key URLs, target queries
+- [x] No full blog bodies in llms.txt
+- [x] mp-config and mbolster-config allowed in robots.txt
+- [x] mp-basic still disallowed
+- [x] `llms-index` test passes
 
 ## Blocked by
 

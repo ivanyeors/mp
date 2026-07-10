@@ -14,9 +14,9 @@ User stories covered: 22, 24, 30
 
 ## Acceptance criteria
 
-- [ ] View source on `/en-US/mbolster-config` shows metadata + H1 + answer lede
-- [ ] Client bolster wizard functions below intro
-- [ ] Page crawlable in robots.txt
+- [x] View source on `/en-US/mbolster-config` shows metadata + H1 + answer lede
+- [x] Client bolster wizard functions below intro
+- [x] Page crawlable in robots.txt
 
 ## Blocked by
 

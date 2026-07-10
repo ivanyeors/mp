@@ -15,9 +15,9 @@ User stories covered: 31, 33, 34, 35
 
 ## Acceptance criteria
 
-- [ ] `/en-US/shop` has title, description, canonical
-- [ ] Accessory cards show star rating when reviews exist
-- [ ] Cart/checkout/account pages have `robots: { index: false }`
+- [x] `/en-US/shop` has title, description, canonical
+- [x] Accessory cards show star rating when reviews exist
+- [x] Cart/checkout/account pages have `robots: { index: false }`
 
 ## Blocked by
 

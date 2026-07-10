@@ -33,8 +33,19 @@ function pickLocaleFromAcceptLanguage(headerValue: string | null): Locale {
   return DEFAULT_LOCALE;
 }
 
+const LEGACY_HOST = "work.mpillow.com";
+const CANONICAL_ORIGIN = "https://custom.mpillow.com";
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Domain migration: proxy runs before next.config redirects, so host
+  // cutover must live here or locale 307 wins and work. never 301s.
+  const host = request.headers.get("host")?.split(":")[0]?.toLowerCase();
+  if (host === LEGACY_HOST) {
+    const dest = new URL(pathname + request.nextUrl.search, CANONICAL_ORIGIN);
+    return NextResponse.redirect(dest, 301);
+  }
 
   // Skip Next internals, API, auth callback, and direct file requests.
   if (

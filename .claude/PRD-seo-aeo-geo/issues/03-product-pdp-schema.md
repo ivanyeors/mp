@@ -15,11 +15,11 @@ User stories covered: 7, 8, 9, 10, 17, 19, 32
 
 ## Acceptance criteria
 
-- [ ] PDP JSON-LD includes BreadcrumbList and variant SKU
-- [ ] AggregateRating present only when approved review count ≥ 1
-- [ ] Answer lede visible under product H1 (from seo_answer or fallback)
-- [ ] Product settings has seo_answer textarea per locale
-- [ ] `jsonld-product` test passes
+- [x] PDP JSON-LD includes BreadcrumbList and variant SKU
+- [x] AggregateRating present only when approved review count ≥ 1
+- [x] Answer lede visible under product H1 (from seo_answer or fallback)
+- [x] Product settings has seo_answer textarea per locale
+- [x] `jsonld-product` test passes
 
 ## Blocked by
 

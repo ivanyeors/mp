@@ -19,10 +19,10 @@ Each hub: H1, answer lede, internal links (blogs, PDPs, mp-config/mbolster-confi
 
 ## Acceptance criteria
 
-- [ ] Three guide pages render with answer lede + FAQ JSON-LD
-- [ ] Commercial CTAs link to mp-config or mbolster-config (no duplicate commercial pages)
-- [ ] Guide pages in sitemap.xml
-- [ ] llms.txt links to guide URLs
+- [x] Three guide pages render with answer lede + FAQ JSON-LD
+- [x] Commercial CTAs link to mp-config or mbolster-config (no duplicate commercial pages)
+- [x] Guide pages in sitemap.xml
+- [x] llms.txt links to guide URLs
 
 ## Blocked by
 

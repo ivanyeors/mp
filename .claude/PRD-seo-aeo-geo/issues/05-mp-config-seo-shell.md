@@ -15,10 +15,10 @@ User stories covered: 21, 24, 30
 
 ## Acceptance criteria
 
-- [ ] View source on `/en-US/mp-config` shows title, description, H1, answer lede before JS
-- [ ] Product/Offer JSON-LD present in initial HTML
-- [ ] Client wizard still functions unchanged below intro
-- [ ] Page is crawlable (not in robots disallow)
+- [x] View source on `/en-US/mp-config` shows title, description, H1, answer lede before JS
+- [x] Product/Offer JSON-LD present in initial HTML
+- [x] Client wizard still functions unchanged below intro
+- [x] Page is crawlable (not in robots disallow)
 
 ## Blocked by
 

@@ -7,6 +7,7 @@ Parent: Slice 00 (`issues/00-domain-migration.md`)
 - [x] `lib/site-url.ts` prod fallback → `https://custom.mpillow.com`
 - [x] `.env.example` documents `NEXT_PUBLIC_SITE_URL=https://custom.mpillow.com`
 - [x] `next.config.ts` 301 redirect from `work.mpillow.com` to `custom.mpillow.com`
+- [x] `proxy.ts` host 301 (middleware runs before next.config — required for curl -I)
 
 ## Vercel / DNS (manual)
 

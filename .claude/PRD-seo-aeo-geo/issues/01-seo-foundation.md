@@ -17,10 +17,10 @@ Centralize SEO helpers and eliminate hardcoded URL drift across the app.
 
 ## Acceptance criteria
 
-- [ ] No hardcoded `www.mpillow.com`, `work.mpillow.com`, or bare `mpillow.com` in SEO code paths
-- [ ] `buildPageMetadata()` produces canonical + hreflang for any locale-prefixed path
-- [ ] `resolveAnswerLede()` falls back seo_answer → seo_description → description
-- [ ] Tests pass for seo module self-checks
+- [x] No hardcoded `www.mpillow.com`, `work.mpillow.com`, or bare `mpillow.com` in SEO code paths
+- [x] `buildPageMetadata()` produces canonical + hreflang for any locale-prefixed path
+- [x] `resolveAnswerLede()` falls back seo_answer → seo_description → description
+- [x] Tests pass for seo module self-checks
 
 ## Blocked by
 
