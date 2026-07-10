@@ -104,4 +104,4 @@ graph TD
 
 Grill-with-docs session (Jul 2026). Key terms: **Media Asset**, Drive provenance, one-time import, hybrid references, used/unused, last used — see `CONTEXT.md` after slice 01.
 
-**Hard constraints:** Images hosted in Supabase for fast display; video/PDF Drive-linked only; no Drive sync; workspace OAuth only (`admin@mpillow.com` + Shared Drives).
+**Hard constraints:** Images hosted in Supabase for fast display; video/PDF Drive-linked only; no Drive sync; Drive OAuth as `sg@mpillow.com` (Shared Drives); appointments OAuth stays `admin@mpillow.com`.

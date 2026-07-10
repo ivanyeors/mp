@@ -16,9 +16,9 @@ Parent: Slice 00 (`issues/00-domain-migration.md`) + Slice 11 (`issues/11-gsc-an
 - [x] `work.mpillow.com` also on Vercel (keep attached for 301 window)
 - [x] `NEXT_PUBLIC_SITE_URL` set in Vercel Production + Preview (robots Host already `https://custom.mpillow.com`)
 - [x] `NEXT_PUBLIC_GTM_ID` set in Vercel Production + Preview
-- [ ] **Unblock production deploy** — latest `main` deploy `dpl_Bw4EuuvrHSzSQEE8YcPp2sU2mrRd` **ERROR** (TS on `lib/seo/seo.check.ts`). Live prod still on older READY deploy without host 301 / new robots.
-- [ ] After green deploy: `curl -I https://work.mpillow.com` → **301** → `https://custom.mpillow.com/...`
-- [ ] After green deploy: `/robots.txt` no longer disallows `mp-config` / `mbolster-config`; `/llms.txt` is curated (<10KB)
+- [x] **Unblock production deploy** — green on `ced12dbf` (`dpl_GDjQDgAk2aPpViroe2A96bpnppLN`)
+- [x] After green deploy: `curl -I https://work.mpillow.com` → permanent redirect → `https://custom.mpillow.com/` (308 from Next permanent redirect; SEO-equivalent to 301)
+- [x] After green deploy: `/robots.txt` allows mp-config/mbolster-config; `/llms.txt` curated (~2KB)
 
 ## Supabase Auth (manual dashboard)
 
@@ -28,22 +28,22 @@ Parent: Slice 00 (`issues/00-domain-migration.md`) + Slice 11 (`issues/11-gsc-an
 
 ## Google Search Console (Slice 11 — manual)
 
-- [ ] Add property for `https://custom.mpillow.com`
-- [ ] Verify via DNS TXT or HTML meta (`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` — not set in Vercel yet; add when you have the token)
-- [ ] Submit sitemap: `https://custom.mpillow.com/sitemap.xml`
-- [ ] Use Change of Address tool if migrating from a `work.` property
+- [x] Add property for `https://custom.mpillow.com`
+- [x] Verify via DNS TXT or HTML meta (`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`)
+- [x] Submit sitemap: `https://custom.mpillow.com/sitemap.xml`
+- [x] Use Change of Address tool if migrating from a `work.` property (or N/A)
 
 ## Post-deploy verification
 
-- [ ] `curl -I https://custom.mpillow.com` → 200/307 locale
-- [ ] `curl -I https://work.mpillow.com` → 301 → custom
-- [ ] `/robots.txt` sitemap host matches custom; configurators allowed
-- [ ] `/llms.txt` URLs use custom + locale prefix; no full FAQ dump
-- [ ] Rich Results Test on a product PDP passes
+- [x] `curl -I https://custom.mpillow.com` → 200/307 locale
+- [x] `curl -I https://work.mpillow.com` → permanent → custom
+- [x] `/robots.txt` sitemap host matches custom; configurators allowed
+- [x] `/llms.txt` URLs use custom + locale prefix; no full FAQ dump
+- [ ] Rich Results Test on a product PDP passes (optional spot-check)
 
 ## Analytics (Slice 11)
 
 - [x] Set `NEXT_PUBLIC_GTM_ID=GTM-TPB9LV2` in Vercel Production (legacy Shopify container)
 - [x] Skip `NEXT_PUBLIC_GA_MEASUREMENT_ID` unless you need gtag outside GTM
-- [ ] Confirm pageviews in GTM/GA realtime after green deploy
+- [x] Confirm pageviews in GTM/GA realtime after green deploy
 - [x] Root layout loads GTM/gtag in production when env is set (`components/seo/google-analytics.tsx`)

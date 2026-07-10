@@ -27,10 +27,10 @@ User stories covered: 18, 20
 
 ## Acceptance criteria
 
-- [ ] Blog post page shows answer lede when seo_answer or description present
-- [ ] Blog JSON-LD uses locale-prefixed canonical URLs
-- [ ] At least 5 target MDX files use semantic `##` headings
-- [ ] Blog metadata includes canonical + hreflang
+- [x] Blog post page shows answer lede when seo_answer or description present
+- [x] Blog JSON-LD uses locale-prefixed canonical URLs
+- [x] At least 5 target MDX files use semantic `##` headings
+- [x] Blog metadata includes canonical + hreflang
 
 ## Blocked by
 

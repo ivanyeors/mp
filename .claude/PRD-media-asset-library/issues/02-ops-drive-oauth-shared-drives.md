@@ -7,21 +7,23 @@ User stories covered: 28, 47
 
 ## What to build
 
-Complete manual Google Workspace setup so engineering can call Drive API as the workspace identity (`admin@mpillow.com`). Document an ops checklist in-repo (e.g. `OPS-CHECKLIST.md` under the PRD folder) mirroring the WhatsApp appointment confirm pattern.
+Complete manual Google Workspace setup so engineering can call Drive API as **`sg@mpillow.com`** (main media identity). Appointments keep **`admin@mpillow.com`** on the existing refresh token.
 
 - Enable **Google Drive API** on the same GCP project as existing Calendar/Contacts OAuth.
 - Add Drive scope to OAuth consent (`https://www.googleapis.com/auth/drive.readonly` minimum; `drive` if download requires it).
-- Re-run one-time OAuth consent for `admin@mpillow.com`; update `GOOGLE_OAUTH_REFRESH_TOKEN` in staging/prod env.
-- Confirm workspace account is a member of company **Shared Drives** where `sg@` team stores media (files must be reachable via Shared Drives, not separate per-user OAuth).
-- Smoke test: list Shared Drives, list one folder, download one test image, resolve a paste URL.
-- Update `.env.example` with Drive scope comment on existing `GOOGLE_OAUTH_*` block.
+- Skip Drive UI Integration / Open URL (API-only).
+- One-time OAuth consent as **`sg@mpillow.com`** with Drive scope only → store `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN`.
+- Do **not** replace `GOOGLE_OAUTH_REFRESH_TOKEN` (stays `admin@` for Calendar + Contacts).
+- Confirm `sg@` is a member of company **Shared Drives** that hold marketing media.
+- Smoke test: list Shared Drives, list one folder, download one test image, resolve a paste URL; appointments still work.
+- Document in `.env.example` and `OPS-CHECKLIST.md`.
 
 ## Acceptance criteria
 
-- [ ] Drive API enabled; refresh token works for `files.list`, Shared Drives list, and file download.
-- [ ] At least one production Shared Drive visible to `admin@mpillow.com` documented by name/id.
+- [ ] Drive API enabled; Drive refresh token works for `files.list`, Shared Drives list, and file download as `sg@`.
+- [ ] At least one production Shared Drive visible to `sg@mpillow.com` documented by name/id.
 - [x] Ops checklist committed under `.claude/PRD-media-asset-library/`.
-- [x] `.env.example` documents Drive scope requirement; no duplicate secret vars introduced.
+- [x] `.env.example` documents `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN`; appointments token unchanged.
 
 ## Blocked by
 

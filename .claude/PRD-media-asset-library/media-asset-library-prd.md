@@ -23,7 +23,7 @@ Build a phased **Media Asset Library** — a modular, reusable DAM centered on t
 
 **Locked behaviors:**
 
-- Drive ingest uses one workspace OAuth identity (`admin@mpillow.com` + Drive scopes); company media lives in Shared Drives reachable by that account (`sg@` files must be in those drives).
+- Drive ingest uses workspace OAuth as **`sg@mpillow.com`** (`GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` + Drive scopes). Appointments stay on **`admin@mpillow.com`** (`GOOGLE_OAUTH_REFRESH_TOKEN`). Company media lives in Shared Drives reachable by `sg@`.
 - Drive import is **one-time** — after download the Asset is app-owned; Drive URL kept for provenance, Open in Drive, and manual re-import.
 - **Images only** are copied into Supabase `media` and normalized (WebP master, long-edge cap); **`next/image`** handles responsive delivery.
 - **Video and PDF** Assets store Drive links + preview metadata; not copied into app storage.
@@ -61,7 +61,7 @@ Build a phased **Media Asset Library** — a modular, reusable DAM centered on t
 25. As a developer, I want image ingest to produce a normalized WebP master (long-edge cap, quality target), so that storage and CDN bytes are predictable.
 26. As a developer, I want storefront and admin image tags to use `next/image` against hosted URLs, so that responsive sizes and formats are automatic at serve time.
 27. As a developer, I want a Drive connector module that lists Shared Drives, folders, and files and resolves paste URLs, so that UI and import logic share one API.
-28. As a developer, I want Drive access via the existing workspace OAuth refresh token with added Drive scopes, so that we do not build per-staff Google login.
+28. As a developer, I want Drive access via a dedicated `sg@mpillow.com` refresh token (same OAuth client as appointments), so that we do not build per-staff Google login and appointments stay on `admin@`.
 29. As a developer, I want a Drive import orchestrator that branches on MIME kind (image → download+optimize+Asset; video/PDF → link Asset), so that import rules stay in one place.
 30. As a developer, I want a usage resolver that scans landing settings, blogs, page builder, products, categories, and partners for Asset ids and hosted URLs, so that used/unused is accurate for hybrid refs.
 31. As a developer, I want `last_used_at` updated when a consumer attaches or replaces an Asset, so that last-used reflects admin activity not page views.
@@ -109,8 +109,8 @@ Phased delivery across three scopes. Deep modules (simple interface, testable in
 
 ### Module 3 — Drive connector
 
-- Extend existing workspace OAuth client (`admin@mpillow.com` refresh token) with Drive API scope (`drive.readonly` or `drive` as needed for download).
-- Ops prerequisite (HITL slice 02): enable Drive API on GCP project, re-consent refresh token, confirm Shared Drive membership for workspace account.
+- Same OAuth client id/secret; separate refresh token for Drive as `sg@mpillow.com` (`drive.readonly` or `drive` if download requires it). Appointments token stays `admin@`.
+- Ops prerequisite (HITL slice 02): enable Drive API, consent Drive as `sg@`, confirm Shared Drive membership for `sg@`.
 - Operations: resolve paste URL → file id + metadata; list Shared Drives; list folder children (folders + files); download file bytes for import; fetch thumbnail link for preview where available.
 - No Asset writes — pure I/O adapter.
 
@@ -211,4 +211,4 @@ Prior art: existing media usage route patterns, `sync-scope.check.ts`, vitest te
 - Consider ADR `0004-media-asset-hybrid-references.md` if hybrid ref + one-time Drive import needs explicit rationale for future readers.
 - Ops slice 02 must complete before Drive connector integration tests against live API.
 - Existing `GET /api/media` unauthenticated listing should be closed or restricted when Asset API ships.
-- Env: extend `.env.example` with Drive scope note on existing `GOOGLE_OAUTH_*` vars; no new secrets if same refresh token re-consented.
+- Env: `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` (`sg@` Drive); keep `GOOGLE_OAUTH_REFRESH_TOKEN` for `admin@` Calendar/Contacts.

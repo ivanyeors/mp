@@ -20,7 +20,7 @@ Migrate canonical production domain from `work.mpillow.com` to `custom.mpillow.c
 - [x] `.env.example` documents `https://custom.mpillow.com` as production value
 - [x] `next.config.ts` redirects `work.mpillow.com` host to `custom.mpillow.com` with 301
 - [x] OPS checklist file exists with DNS/Vercel/GSC steps
-- [ ] `curl -I https://work.mpillow.com` returns 301 to custom (after deploy — manual OPS)
+- [x] `curl -I https://work.mpillow.com` returns 301 to custom (after deploy — manual OPS)
 
 ## Blocked by
 
