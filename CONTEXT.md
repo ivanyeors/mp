@@ -154,6 +154,30 @@ _Avoid_: inline copy in config files; untyped i18n blobs wired to templates
 
 **Agent catalog**: TypeScript types in `lib/product-slide-sections/` (source of truth) + agent playbook at `.cursor/marketing-page/product-slide-sections.md`. Templates are reusable code blocks; future scope (not now) may expose them in settings for drag/edit like the landing page builder.
 
+**Answer lede**:
+A 60–120 word direct-answer block immediately after the page H1 (or H2 on sectioned pages). Stored as optional `seo_answer` on **Storefront product** and blog content; falls back to `seo_description` then `description`. Primary pattern for AEO/GEO fact density.
+_Avoid_: burying the answer below fold or inside client-only modals
+
+**Editorial hub**:
+An indexable `/guides/{topic}` marketing page for mid-funnel queries (e.g. neck pain Singapore). Contains answer lede, curated internal links, and FAQ JSON-LD. Commercial CTAs point to `mp-config` / `mbolster-config` — not duplicate shop landing pages.
+_Avoid_: using hubs as a second customisation funnel
+
+**SEO shell**:
+Server-rendered crawlable intro (H1, answer lede, JSON-LD) prepended above a client-heavy configurator (`mp-config`, `mbolster-config`). Metadata via server `generateMetadata`.
+_Avoid_: noindexing the actual conversion path
+
+**Curated llms index**:
+The `/llms.txt` file as a concise AI crawler guide (brand, product taxonomy, key URLs, target queries) — not a full mirror of blog/FAQ bodies.
+_Avoid_: dumping entire blog content into llms.txt
+
+**AEO**:
+Answer Engine Optimization — structuring pages so AI answer engines (Perplexity, ChatGPT search, Google AI Overviews) can extract direct, cite-worthy facts.
+_Avoid_: conflating with paid ads or traditional link-building only
+
+**GEO**:
+Generative Engine Optimization — same goal as AEO for generative search citations; share answer-first content and JSON-LD infrastructure.
+_Avoid_: treating GEO as a separate codebase from SEO
+
 **Slide-in template architecture (approved)**:
 Shared React components in `components/sections/product/` receive JSONB-serializable content props. Code config files now (`lib/product-slide-sections/`); same `{ type, content }` shape can move to DB/settings later. May reuse layout patterns from landing components but **do not modify landing pages** — slide-in refactor only.
 _Avoid_: changing `components/sections/landing/`, homepage page builder, or `landing_sections` in this exercise

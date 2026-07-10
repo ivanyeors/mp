@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PriceDisplay } from "@/components/shop/price-display";
+import { ProductRatingBadge } from "@/components/shop/review-stars";
 import { useCart } from "@/lib/shop/cart-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
@@ -24,9 +25,10 @@ interface ProductCardProps {
     images?: { url: string; alt_text?: string | null }[];
   };
   locale?: string;
+  reviewAggregate?: { average: number; count: number };
 }
 
-export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
+export function ProductCard({ product, locale = "en-US", reviewAggregate }: ProductCardProps) {
   const { addItem } = useCart();
   const isMobile = useIsMobile();
 
@@ -163,6 +165,10 @@ export function ProductCard({ product, locale = "en-US" }: ProductCardProps) {
           <p className="text-sm font-medium leading-snug line-clamp-2 text-foreground">
             {title}
           </p>
+
+          {!isCustomizable && reviewAggregate ? (
+            <ProductRatingBadge aggregate={reviewAggregate} size={12} />
+          ) : null}
 
           {cheapestVariant ? (
             <div className="text-sm">

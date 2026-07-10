@@ -9,15 +9,15 @@ import {
   getSiteOrigin,
 } from "./site-url";
 
-process.env.NEXT_PUBLIC_SITE_URL = "https://mpillow.com/";
+process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com/";
 delete process.env.VERCEL_URL;
-assert.equal(getSiteOrigin(), "https://mpillow.com");
+assert.equal(getSiteOrigin(), "https://custom.mpillow.com");
 assert.equal(
   authCallbackUrl("/en-US/settings"),
-  "https://mpillow.com/auth/callback?next=%2Fen-US%2Fsettings",
+  "https://custom.mpillow.com/auth/callback?next=%2Fen-US%2Fsettings",
 );
 
-process.env.NEXT_PUBLIC_SITE_URL = "https://work.mpillow.com";
+process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 const localCallback = new Request(
   "http://localhost:3000/auth/callback?code=x&next=%2Fen-US%2Fsettings",
 );
@@ -39,6 +39,7 @@ assert.equal(getClientSiteOrigin(), "http://localhost:3001");
 console.log("site-url.check.ts ok");
 console.log(
   "Supabase Auth > URL Configuration > Redirect URLs should include:",
+  "https://custom.mpillow.com/**",
   "http://localhost:3000/**",
   "http://localhost:3001/**",
   "http://127.0.0.1:3000/**",

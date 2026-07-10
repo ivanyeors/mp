@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { BasicMpillowLearnMoreSheet } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
 import { PremiumLearnMoreSheet } from "@/components/slide-in-pages/premium-learn-more-dialog";
+import { ProductRatingBadge } from "@/components/shop/review-stars";
+import type { ReviewAggregate } from "@/lib/seo/review-aggregate";
 import { SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,15 +19,17 @@ interface PickMpillowSectionProps {
   locale: Locale;
   images: Record<string, string>;
   prices: { basicXsFromPrice: string; premiumXsFromPrice: string };
+  ratings?: { basic?: ReviewAggregate; premium?: ReviewAggregate };
 }
 
-export function PickMpillowSection({ section, messages: m, locale, images, prices }: PickMpillowSectionProps) {
+export function PickMpillowSection({ section, messages: m, locale, images, prices, ratings }: PickMpillowSectionProps) {
   const c = section.content as PickYourMpillowContent;
   const title = c.title ?? m.home.pickYourMpillow.title;
   const subtitle = c.subtitle ?? m.home.pickYourMpillow.subtitle;
 
   const cards = [
     {
+      key: "basic" as const,
       title: m.home.pickYourMpillow.products.basic.title,
       desc: m.home.pickYourMpillow.products.basic.description,
       imageSrc: images.landing_basic_pillow,
@@ -37,6 +41,7 @@ export function PickMpillowSection({ section, messages: m, locale, images, price
       ],
     },
     {
+      key: "premium" as const,
       title: m.home.pickYourMpillow.products.premium.title,
       desc: m.home.pickYourMpillow.products.premium.description,
       imageSrc: images.landing_premium_pillow,
@@ -85,6 +90,11 @@ export function PickMpillowSection({ section, messages: m, locale, images, price
 
                 <CardContent className="p-4">
                   <h3 className="font-semibold">{card.desc}</h3>
+                  {ratings?.[card.key] ? (
+                    <div className="mt-2">
+                      <ProductRatingBadge aggregate={ratings[card.key]!} />
+                    </div>
+                  ) : null}
                   <div className="mt-4 space-y-2">
                     {card.specs.map((s) => (
                       <div

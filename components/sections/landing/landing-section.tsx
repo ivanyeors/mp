@@ -18,6 +18,8 @@ import { CustomRichTextSection } from "./custom-rich-text-section";
 import { FeaturedProductsSection } from "./featured-products-section";
 import { ShopCtaSection } from "./shop-cta-section";
 
+import type { LandingRatings } from "@/lib/seo/review-aggregate";
+
 export interface LandingSectionProps {
   section: LandingSectionType;
   messages: Messages;
@@ -28,9 +30,10 @@ export interface LandingSectionProps {
     premiumXsFromPrice: string;
     bolsterFromPrice: string;
   };
+  landingRatings?: LandingRatings;
 }
 
-export function LandingSection({ section, messages, locale, images, prices }: LandingSectionProps) {
+export function LandingSection({ section, messages, locale, images, prices, landingRatings }: LandingSectionProps) {
   switch (section.section_type) {
     case "hero":
       return <HeroSection section={section} messages={messages} locale={locale} images={images} />;
@@ -52,6 +55,10 @@ export function LandingSection({ section, messages, locale, images, prices }: La
           locale={locale}
           images={images}
           prices={{ basicXsFromPrice: prices.basicXsFromPrice, premiumXsFromPrice: prices.premiumXsFromPrice }}
+          ratings={{
+            basic: landingRatings?.basic,
+            premium: landingRatings?.premium,
+          }}
         />
       );
 
@@ -69,6 +76,7 @@ export function LandingSection({ section, messages, locale, images, prices }: La
           locale={locale}
           images={images}
           prices={{ bolsterFromPrice: prices.bolsterFromPrice }}
+          bolsterRating={landingRatings?.bolster}
         />
       );
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Star, Loader2, CheckCircle2 } from "lucide-react";
+import { ReviewStars } from "@/components/shop/review-stars";
 import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,37 +11,10 @@ import { Label } from "@/components/ui/label";
 import type { ProductReview } from "@/lib/types/ecommerce";
 
 // ---------------------------------------------------------------------------
-// Star display
+// Star display — see components/shop/review-stars.tsx
 // ---------------------------------------------------------------------------
 
-export function ReviewStars({
-  rating,
-  size = 16,
-  className = "",
-}: {
-  rating: number;
-  size?: number;
-  className?: string;
-}) {
-  return (
-    <div className={`flex items-center gap-0.5 ${className}`} aria-hidden>
-      {[1, 2, 3, 4, 5].map((n) => {
-        const filled = n <= Math.round(rating);
-        return (
-          <Star
-            key={n}
-            style={{ width: size, height: size }}
-            className={
-              filled
-                ? "text-amber-400 fill-amber-400"
-                : "text-muted-foreground/30"
-            }
-          />
-        );
-      })}
-    </div>
-  );
-}
+export { ReviewStars } from "@/components/shop/review-stars";
 
 // ---------------------------------------------------------------------------
 // Hook: fetch approved reviews for a product

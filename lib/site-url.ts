@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
 const LOCAL_DEV_ORIGIN = "http://localhost:3000";
-const PROD_FALLBACK_ORIGIN = "https://work.mpillow.com";
+const PROD_FALLBACK_ORIGIN = "https://custom.mpillow.com";
 
 function normalizeOrigin(url: string | undefined | null): string | null {
   const trimmed = url?.trim().replace(/\/$/, "");

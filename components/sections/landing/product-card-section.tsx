@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
+import { ProductRatingBadge } from "@/components/shop/review-stars";
+import type { ReviewAggregate } from "@/lib/seo/review-aggregate";
 import { SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -15,9 +17,10 @@ interface ProductCardSectionProps {
   locale: Locale;
   images: Record<string, string>;
   prices: { bolsterFromPrice: string };
+  bolsterRating?: ReviewAggregate;
 }
 
-export function ProductCardSection({ section, messages: m, locale, images, prices }: ProductCardSectionProps) {
+export function ProductCardSection({ section, messages: m, locale, images, prices, bolsterRating }: ProductCardSectionProps) {
   const c = section.content as ProductCardContent;
   const title = c.title ?? m.home.mbolster.title;
   const description = c.description ?? m.home.mbolster.description;
@@ -44,6 +47,11 @@ export function ProductCardSection({ section, messages: m, locale, images, price
                 <div className="space-y-2">
                   <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">{title}</h2>
                   <p className="text-muted-foreground leading-relaxed">{description}</p>
+                  {bolsterRating ? (
+                    <div className="pt-1">
+                      <ProductRatingBadge aggregate={bolsterRating} />
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="mt-4">

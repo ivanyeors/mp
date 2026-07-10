@@ -7,6 +7,13 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import {
+    buildPageMetadata,
+    buildArticleJsonLd,
+    buildArticleBreadcrumbJsonLd,
+    resolveAnswerLede,
+} from "@/lib/seo";
+import { JsonLdScript } from "@/components/seo/json-ld-script";
+import {
     Breadcrumb,
     BreadcrumbItem,
     BreadcrumbLink,
@@ -30,19 +37,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const post = await getBlogPostBySlugFromDb(slug, locale);
     if (!post) return {};
 
-    return {
+    return buildPageMetadata({
         title: post.title,
         description: post.description,
-        openGraph: {
-            title: post.title,
-            description: post.description,
-            type: "article",
-            publishedTime: post.published_at ?? undefined,
-            modifiedTime: post.updated_at,
-            authors: [post.author],
-            images: post.image_url ? [{ url: post.image_url }] : [],
-        },
-    };
+        path: `/blog/${slug}`,
+        lang: locale,
+        image: post.image_url,
+        keywords: post.seo_keywords,
+        type: "article",
+    });
 }
 
 export default async function BlogPostPage({ params }: Props) {
@@ -52,44 +55,33 @@ export default async function BlogPostPage({ params }: Props) {
 
     if (!post) notFound();
 
-    const jsonLd = {
-        "@context": "https://schema.org",
-        "@type": "Article",
-        headline: post.title,
+    const answerLede = resolveAnswerLede({
+        seo_answer: post.seo_answer,
+        seo_description: post.description,
         description: post.description,
-        image: post.image_url ? [post.image_url] : [],
-        datePublished: post.published_at,
-        dateModified: post.updated_at,
-        author: { "@type": "Person", name: post.author },
-        publisher: {
-            "@type": "Organization",
-            name: "Mpillow",
-            logo: { "@type": "ImageObject", url: "https://www.mpillow.com/logo.png" },
-        },
-    };
+    });
 
-    const breadcrumbJsonLd = {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: "https://www.mpillow.com" },
-            { "@type": "ListItem", position: 2, name: "Blogs", item: "https://www.mpillow.com/blog" },
-            {
-                "@type": "ListItem",
-                position: 3,
-                name: post.title,
-                item: `https://www.mpillow.com/blog/${slug}`,
-            },
-        ],
-    };
+    const articleJsonLd = buildArticleJsonLd({
+        lang: locale,
+        slug,
+        title: post.title,
+        description: post.description,
+        imageUrl: post.image_url,
+        publishedAt: post.published_at,
+        updatedAt: post.updated_at,
+        author: post.author,
+    });
+
+    const breadcrumbJsonLd = buildArticleBreadcrumbJsonLd({
+        lang: locale,
+        slug,
+        title: post.title,
+    });
 
     return (
         <article className="max-w-4xl mx-auto py-8 lg:py-16 px-4 sm:px-6">
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-            />
+            <JsonLdScript data={articleJsonLd} />
+            <JsonLdScript data={breadcrumbJsonLd} />
 
             <Breadcrumb className="mb-8">
                 <BreadcrumbList>
@@ -117,53 +109,42 @@ export default async function BlogPostPage({ params }: Props) {
                 <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
                     {post.title}
                 </h1>
+                {answerLede ? (
+                    <p className="text-lg leading-relaxed text-muted-foreground mb-4">{answerLede}</p>
+                ) : null}
                 {post.sub_header && (
                     <p className="text-xl text-muted-foreground mb-6">{post.sub_header}</p>
                 )}
-
-                <div className="flex items-center space-x-4 text-muted-foreground mb-8">
-                    <div className="flex items-center space-x-2">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
-                            {post.author.charAt(0)}
-                        </div>
-                        <div>
-                            <p className="font-semibold text-foreground">{post.author}</p>
-                            {post.published_at && (
-                                <time dateTime={post.published_at} className="text-sm">
-                                    {new Date(post.published_at).toLocaleDateString("en-US", {
-                                        year: "numeric",
-                                        month: "long",
-                                        day: "numeric",
-                                    })}
-                                </time>
-                            )}
-                        </div>
-                    </div>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>{post.author}</span>
+                    {post.published_at && (
+                        <time dateTime={post.published_at}>
+                            {new Date(post.published_at).toLocaleDateString(locale, {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                            })}
+                        </time>
+                    )}
                 </div>
-
-                {post.image_url && (
-                    <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl mb-12">
-                        <Image src={post.image_url} alt={post.title} fill className="object-cover" priority />
-                    </div>
-                )}
             </header>
 
-            <div className="prose prose-lg dark:prose-invert prose-headings:font-bold prose-a:text-primary hover:prose-a:text-primary/80 prose-img:rounded-xl prose-img:shadow-lg max-w-none">
+            {post.image_url && (
+                <div className="relative aspect-[16/9] mb-12 rounded-2xl overflow-hidden">
+                    <Image
+                        src={post.image_url}
+                        alt={post.title}
+                        fill
+                        className="object-cover"
+                        priority
+                        sizes="(min-width: 1024px) 896px, 100vw"
+                    />
+                </div>
+            )}
+
+            <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold">
                 <MDXRemote source={post.body} />
             </div>
-
-            <footer className="mt-24 pt-12 border-t flex justify-between items-center">
-                <div>
-                    <h3 className="text-2xl font-bold mb-4">Enjoyed this article?</h3>
-                    <p className="text-muted-foreground">Check out more insights on our main blog page.</p>
-                </div>
-                <Link
-                    href={withLocale("/blog", locale)}
-                    className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-all shadow-md hover:shadow-xl"
-                >
-                    Back to Blogs
-                </Link>
-            </footer>
         </article>
     );
 }

@@ -23,6 +23,8 @@ export const enUS: Messages = {
       subtitle: "A cervical neck support pillow to maintain the perfect posture for every sleep position.",
       ctaCustomise: "Customise",
       ctaBookAppointment: "Book an appointment",
+      seoAnswer:
+        "Mpillow is Singapore's fully customisable cervical pillow — fitted in-store for your neck, sleep position, and body build. We make Basic and Premium tiers plus Mbolster support bolsters, designed for neck pain relief and ergonomic alignment rather than one-size-fits-all foam.",
     },
     sizeMatters: {
       title: "Customised pillow from Singapore, handcrafted for a perfect night’s sleep",

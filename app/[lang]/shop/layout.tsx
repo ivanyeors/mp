@@ -1,21 +1,27 @@
-import { CartProvider } from "@/lib/shop/cart-context";
-import { CurrencyProvider } from "@/lib/shop/currency-context";
-import { CartShell } from "@/components/shop/cart-shell";
-import { ShopHeader } from "@/components/shop/shop-header";
-import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { getMessages } from "@/lib/i18n/messages";
 
-export default function ShopLayout({ children }: { children: ReactNode }) {
-  return (
-    <CurrencyProvider>
-      <CartProvider>
-        <div className="min-h-screen bg-background">
-          <ShopHeader />
-          <main className="max-w-7xl mx-auto px-4 py-8">
-            {children}
-          </main>
-        </div>
-        <CartShell />
-      </CartProvider>
-    </CurrencyProvider>
-  );
+type Props = {
+  params: Promise<{ lang: string }>;
+  children: React.ReactNode;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { lang } = await params;
+  const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+  const m = getMessages(locale);
+
+  return buildPageMetadata({
+    title: `${m.shop.title} | Mpillow Singapore`,
+    description: m.shop.subtitle,
+    path: "/shop",
+    lang: locale,
+    keywords: ["Mpillow shop", "pillow accessories Singapore", "cervical support"],
+  });
+}
+
+export default function ShopLayout({ children }: { children: React.ReactNode }) {
+  return children;
 }

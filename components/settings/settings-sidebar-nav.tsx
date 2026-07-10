@@ -118,7 +118,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Integration",
     items: [
-      { href: "/settings/integrations/shopify", label: "Shopify Admin", tooltip: "Shopify Admin", Icon: Store, perm: "inventory" },
+      { href: "/settings/integrations/shopify", label: "Shopify Link", tooltip: "Shopify Link", Icon: Store, perm: "inventory" },
     ],
   },
 ];

@@ -223,7 +223,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="text-xl font-semibold">Shopify Admin</div>
+          <div className="text-xl font-semibold">Shopify Link</div>
           <div className="text-sm text-muted-foreground">
             Shopify variants (active + inactive). Price + compare-at are synced from <span className="font-medium">Costings</span>; override SKU here.
           </div>

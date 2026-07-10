@@ -34,7 +34,7 @@ const NAV: BreadcrumbNavGroup[] = [
   },
   {
     label: "Integration",
-    items: [{ href: "/settings/integrations/shopify", label: "Shopify Admin" }],
+    items: [{ href: "/settings/integrations/shopify", label: "Shopify Link" }],
   },
 ];
 
@@ -72,7 +72,7 @@ assertEqual(labels("/settings/general"), ["Settings", "API Configs"], "nav label
 assertEqual(labels("/settings/admins"), ["Settings", "Admin Users"], "nav label for admins");
 assertEqual(
   labels("/settings/integrations/shopify"),
-  ["Settings", "Shopify Admin"],
+  ["Settings", "Shopify Link"],
   "nav label for shopify",
 );
 

@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mpillow.com";
+import { getSiteOrigin } from "@/lib/site-url";
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getSiteOrigin();
+
   return {
     rules: [
       {
@@ -13,14 +14,14 @@ export default function robots(): MetadataRoute.Robots {
         disallow: [
           "/api/",
           "/*/settings/",
-          "/*/mp-config",
           "/*/mp-basic",
-          "/*/mbolster-config",
           "/*/shop/checkout",
+          "/*/shop/cart",
+          "/*/account/",
         ],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }

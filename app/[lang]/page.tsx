@@ -3,8 +3,56 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getLandingSections } from "@/lib/landing-sections";
 import { LandingSection } from "@/components/sections/landing/landing-section";
+import { SiteJsonLd } from "@/components/seo/site-json-ld";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { getReviewAggregates, type LandingRatings } from "@/lib/seo/review-aggregate";
+import { getProductBySlug } from "@/lib/ecommerce/products";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { getMessages } from "@/lib/i18n/messages";
+import type { Metadata } from "next";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string }>;
+}): Promise<Metadata> {
+  const { lang } = await params;
+  const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+  const m = getMessages(locale);
+
+  return buildPageMetadata({
+    title: "Mpillow | Custom Pillow Singapore",
+    description: m.home.hero.seoAnswer,
+    path: "",
+    lang: locale,
+    keywords: [
+      "custom pillow Singapore",
+      "customised pillow Singapore",
+      "neck pain pillow Singapore",
+      "cervical pillow Singapore",
+    ],
+  });
+}
+
+async function getLandingRatings(): Promise<LandingRatings> {
+  const empty = { average: 0, count: 0 };
+  try {
+    const [basic, premium, bolster] = await Promise.all([
+      getProductBySlug("mpillow-basic"),
+      getProductBySlug("mpillow-premium"),
+      getProductBySlug("mbolster"),
+    ]);
+    const ids = [basic?.id, premium?.id, bolster?.id].filter(Boolean) as string[];
+    const aggregates = await getReviewAggregates(ids);
+    return {
+      basic: basic ? aggregates[basic.id] ?? empty : empty,
+      premium: premium ? aggregates[premium.id] ?? empty : empty,
+      bolster: bolster ? aggregates[bolster.id] ?? empty : empty,
+    };
+  } catch {
+    return { basic: empty, premium: empty, bolster: empty };
+  }
+}
 
 type PillowKind = "basic" | "premium";
 
@@ -103,12 +151,14 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const m = getMessages(locale);
 
-  const [basicXsFromPrice, premiumXsFromPrice, bolsterFromPrice, siteOverrides, sections] = await Promise.all([
+  const [basicXsFromPrice, premiumXsFromPrice, bolsterFromPrice, siteOverrides, sections, landingRatings] =
+    await Promise.all([
     getPillowXsFromPriceLabel("basic"),
     getPillowXsFromPriceLabel("premium"),
     getBolsterFromPriceLabel(),
     getSiteSettings(Object.keys(IMAGE_DEFAULTS)),
     getLandingSections(),
+    getLandingRatings(),
   ]);
 
   // Merge image overrides with defaults
@@ -118,6 +168,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
   return (
     <div className="min-h-screen bg-background relative">
+      <SiteJsonLd lang={locale} />
       <HomeHeader />
 
       <main className="relative overflow-x-hidden">
@@ -129,6 +180,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
             locale={locale}
             images={img}
             prices={prices}
+            landingRatings={landingRatings}
           />
         ))}
       </main>

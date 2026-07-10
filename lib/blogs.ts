@@ -8,6 +8,7 @@ export type BlogLocalizedContent = {
     sub_header?: string;
     description: string;
     body: string;
+    seo_answer?: string;
     seo_keywords?: string[];
 };
 
@@ -39,6 +40,7 @@ export type BlogPost = {
     created_at: string;
     updated_at: string;
     seo_keywords: string[];
+    seo_answer?: string;
     labels: string[];
 };
 
@@ -54,6 +56,7 @@ function resolveLocale(row: BlogPostRow, locale: string): BlogPost {
         sub_header: loc?.sub_header ?? '',
         description: loc?.description ?? '',
         body: loc?.body ?? '',
+        seo_answer: loc?.seo_answer,
         image_url: row.image_url,
         author: row.author,
         published_at: row.published_at,

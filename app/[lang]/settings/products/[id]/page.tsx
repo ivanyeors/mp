@@ -1044,6 +1044,16 @@ export default function ProductEditorPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
+                                        <Label htmlFor="seo-answer-en">Answer lede (EN) — 60–120 words for AEO</Label>
+                                        <Textarea
+                                            id="seo-answer-en"
+                                            value={content["en-US"]?.seo_answer ?? ""}
+                                            onChange={(e) => updateContent("en-US", "seo_answer", e.target.value)}
+                                            placeholder="Direct answer shown under product H1"
+                                            rows={3}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
                                         <Label htmlFor="seo-desc-en">SEO Description (EN)</Label>
                                         <Textarea
                                             id="seo-desc-en"
@@ -1060,6 +1070,15 @@ export default function ProductEditorPage() {
                                             value={content["zh-CN"]?.seo_title ?? ""}
                                             onChange={(e) => updateContent("zh-CN", "seo_title", e.target.value)}
                                             placeholder="Defaults to product title"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="seo-answer-zh">Answer lede (ZH)</Label>
+                                        <Textarea
+                                            id="seo-answer-zh"
+                                            value={content["zh-CN"]?.seo_answer ?? ""}
+                                            onChange={(e) => updateContent("zh-CN", "seo_answer", e.target.value)}
+                                            rows={3}
                                         />
                                     </div>
                                     <div className="space-y-1.5">

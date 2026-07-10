@@ -5,6 +5,7 @@ import { ProductGrid } from "@/components/shop/product-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
 import { ShopSearchForm, ShopClearFilters } from "@/components/shop/shop-search-form";
 import { getProducts } from "@/lib/ecommerce/products";
+import { getReviewAggregates } from "@/lib/seo/review-aggregate";
 import { getMessages } from "@/lib/i18n/messages";
 import type { Locale } from "@/lib/i18n/locales";
 
@@ -34,6 +35,11 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
       page,
       limit: PAGE_SIZE,
     });
+
+  const accessoryIds = products
+    .filter((p) => p.product_type === "accessory" || p.product_type === "bundle")
+    .map((p) => p.id);
+  const reviewAggregates = await getReviewAggregates(accessoryIds);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const hasFilters = !!(category || search || sort !== "newest");
@@ -68,7 +74,12 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
       ) : (
         <ProductGrid>
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} locale={lang} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              locale={lang}
+              reviewAggregate={reviewAggregates[product.id]}
+            />
           ))}
         </ProductGrid>
       )}

@@ -15,7 +15,8 @@ import { getFaqPageData, stripMarkdownForSchema } from "@/lib/faq";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://mpillow.com";
+import { getSiteOrigin } from "@/lib/site-url";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 const META: Record<Locale, { title: string; description: string; intro: string; cta: string }> = {
   "en-US": {
@@ -45,11 +46,12 @@ export async function generateFaqMetadata({ params }: FaqPageProps): Promise<Met
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const meta = META[locale];
-  const faqUrl = `${SITE_URL}/${locale}/faq`;
 
-  return {
+  return buildPageMetadata({
     title: meta.title,
     description: meta.description,
+    path: "/faq",
+    lang: locale,
     keywords: [
       "Mpillow FAQ",
       "custom pillow Singapore",
@@ -58,25 +60,7 @@ export async function generateFaqMetadata({ params }: FaqPageProps): Promise<Met
       "pillow shipping",
       "Mpillow care",
     ],
-    openGraph: {
-      title: meta.title,
-      description: meta.description,
-      url: faqUrl,
-      type: "website",
-    },
-    twitter: {
-      card: "summary",
-      title: meta.title,
-      description: meta.description,
-    },
-    alternates: {
-      canonical: faqUrl,
-      languages: {
-        "en-US": `${SITE_URL}/en-US/faq`,
-        "zh-CN": `${SITE_URL}/zh-CN/faq`,
-      },
-    },
-  };
+  });
 }
 
 export async function MarketingFaqPage({ params, searchParams }: FaqPageProps) {
@@ -84,6 +68,7 @@ export async function MarketingFaqPage({ params, searchParams }: FaqPageProps) {
   const sp = searchParams ? await searchParams : {};
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const meta = META[locale];
+  const siteOrigin = getSiteOrigin();
   const homeHref = withLocale("/", locale);
   const supportHref = withLocale("/support", locale);
   const initialSlug = typeof sp.q === "string" ? sp.q : undefined;
@@ -108,8 +93,8 @@ export async function MarketingFaqPage({ params, searchParams }: FaqPageProps) {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/${locale}` },
-      { "@type": "ListItem", position: 2, name: "FAQ", item: `${SITE_URL}/${locale}/faq` },
+      { "@type": "ListItem", position: 1, name: "Home", item: `${siteOrigin}/${locale}` },
+      { "@type": "ListItem", position: 2, name: "FAQ", item: `${siteOrigin}/${locale}/faq` },
     ],
   };
 

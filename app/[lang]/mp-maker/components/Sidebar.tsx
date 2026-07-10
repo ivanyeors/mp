@@ -107,7 +107,7 @@ export default function MpMakerSidebar() {
                       <SidebarMenuSubButton asChild>
                         <a href={to("/settings/inventory/shopify")}>
                           <Settings />
-                          <span>Shopify Admin</span>
+                          <span>Shopify Link</span>
                         </a>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>

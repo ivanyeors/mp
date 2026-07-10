@@ -19,6 +19,7 @@ export interface LocalizedProductContent {
   body?: string;
   seo_title?: string;
   seo_description?: string;
+  seo_answer?: string;
   seo_keywords?: string[];
 }
 

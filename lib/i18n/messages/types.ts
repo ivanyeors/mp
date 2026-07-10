@@ -21,6 +21,7 @@ export type Messages = {
       subtitle: string;
       ctaCustomise: string;
       ctaBookAppointment: string;
+      seoAnswer: string;
     };
     sizeMatters: {
       title: string;

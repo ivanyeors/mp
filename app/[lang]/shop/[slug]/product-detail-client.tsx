@@ -92,9 +92,10 @@ interface ProductDetailClientProps {
   product: Product;
   relatedProducts: Product[];
   lang: string;
+  answerLede?: string | null;
 }
 
-export function ProductDetailClient({ product, relatedProducts, lang }: ProductDetailClientProps) {
+export function ProductDetailClient({ product, relatedProducts, lang, answerLede }: ProductDetailClientProps) {
   const { addItem } = useCart();
   const isMobile = useIsMobile();
 
@@ -269,6 +270,10 @@ export function ProductDetailClient({ product, relatedProducts, lang }: ProductD
             </Breadcrumb>
 
             <h1 className="text-2xl lg:text-3xl font-bold leading-tight">{title}</h1>
+
+            {answerLede ? (
+              <p className="text-base leading-relaxed text-muted-foreground">{answerLede}</p>
+            ) : null}
 
             <div className="text-xl">
               <PriceDisplay

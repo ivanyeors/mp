@@ -1952,7 +1952,7 @@ function AddInventoryDrawer({ open, onOpenChange, onCreate, items }: {
   );
 }
 
-/* (moved) Shopify Admin is now a full page at /settings/inventory/shopify
+/* (moved) Shopify Link is now a full page at /settings/inventory/shopify
 function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -2052,7 +2052,7 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-3xl">
         <SheetHeader>
-          <SheetTitle>Shopify Admin</SheetTitle>
+          <SheetTitle>Shopify Link</SheetTitle>
           <SheetDescription>
             Manage Shopify variant mappings and per-variant overrides (SKU/price/compare-at). Then press “Sync Shopify”.
           </SheetDescription>

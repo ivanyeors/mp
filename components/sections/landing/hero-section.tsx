@@ -50,6 +50,9 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
                   {sep}
                   {titleSuffix}
                 </h1>
+                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg max-w-prose">
+                  {m.home.hero.seoAnswer}
+                </p>
                 <p className="text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
                   {subtitle}
                 </p>

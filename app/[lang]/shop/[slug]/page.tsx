@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
-import { getProductBySlug, getProducts } from "@/lib/ecommerce/products";
+import { getProductBySlug, getProducts, resolveProductContent } from "@/lib/ecommerce/products";
+import { resolveAnswerLede } from "@/lib/seo/answer-lede";
+import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { ProductDetailClient } from "./product-detail-client";
 import type { Product } from "@/lib/types/ecommerce";
 
@@ -14,6 +16,14 @@ export default async function ProductDetailPage({ params }: Props) {
   if (!product || product.status !== "active") {
     notFound();
   }
+
+  const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
+  const content = resolveProductContent(product, locale);
+  const answerLede = resolveAnswerLede({
+    seo_answer: content.seo_answer,
+    seo_description: content.seo_description,
+    description: content.description,
+  });
 
   // Fetch related products from the same category
   let relatedProducts: Product[] = [];
@@ -33,6 +43,7 @@ export default async function ProductDetailPage({ params }: Props) {
       product={product}
       relatedProducts={relatedProducts}
       lang={lang}
+      answerLede={answerLede}
     />
   );
 }
