@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-faq-embeds` (`.claude/PRD-page-faq-embeds/page-faq-embeds-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 1–3
 
 ## What to build
@@ -18,10 +18,10 @@ Demoable outcome: glossary terms present; no product code required.
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` defines **Page FAQ** and **FAQ surface** with Avoid notes where useful.
-- [ ] **Answer lede** entry notes TL;DR as an alias / industry synonym, not a new UI.
-- [ ] Global FAQ vs Page FAQ boundary is explicit (independent catalogs).
-- [ ] Example dialogue or flagged ambiguities updated if needed for clarity.
+- [x] `CONTEXT.md` defines **Page FAQ** and **FAQ surface** with Avoid notes where useful.
+- [x] **Answer lede** entry notes TL;DR as an alias / industry synonym, not a new UI.
+- [x] Global FAQ vs Page FAQ boundary is explicit (independent catalogs).
+- [x] Example dialogue or flagged ambiguities updated if needed for clarity.
 
 ## Blocked by
 

@@ -169,4 +169,4 @@ Prior art: Global FAQ self-check (`lib/faq` defaults count, bilingual presence, 
 
 - Complements PRD Technical SEO / AEO / GEO: that PRD established Answer lede, Global FAQ schema, guides, and configurator SEO shells; this PRD adds page-local FAQ embeds on commercial URLs and Settings UX for them.
 - Prefer 3–8 Page FAQ items per surface (enough for AEO, not a dump of Global FAQ).
-- See `issues/README.md` for vertical slice breakdown and build order (after to-issues publish).
+- See [`issues/README.md`](issues/README.md) for vertical slice breakdown and build order.

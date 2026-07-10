@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-faq-embeds` (`.claude/PRD-page-faq-embeds/page-faq-embeds-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 33–37, 39
 
 ## What to build
@@ -18,12 +18,12 @@ Demoable outcome: migration applies; seed populates sets; self-check passes; Glo
 
 ## Acceptance criteria
 
-- [ ] Migration creates `faq_page_sets` / `faq_page_items` with unique `surface_key`.
-- [ ] `surface_key` validation accepts only `home` | `mp-config` | `mbolster-config` | `product:{uuid}`.
-- [ ] `getPageFaq(surface, locale)` returns visible items in position order (or empty).
-- [ ] Lazy seed-when-empty creates bilingual starter items for agreed surfaces.
-- [ ] Self-check fails if seed missing en-US/zh-CN or duplicate slugs.
-- [ ] Global `faq_categories` / `faq_items` behavior unchanged.
+- [x] Migration creates `faq_page_sets` / `faq_page_items` with unique `surface_key`.
+- [x] `surface_key` validation accepts only `home` | `mp-config` | `mbolster-config` | `product:{uuid}`.
+- [x] `getPageFaq(surface, locale)` returns visible items in position order (or empty).
+- [x] Lazy seed-when-empty creates bilingual starter items for agreed surfaces.
+- [x] Self-check fails if seed missing en-US/zh-CN or duplicate slugs.
+- [x] Global `faq_categories` / `faq_items` behavior unchanged.
 
 ## Blocked by
 
