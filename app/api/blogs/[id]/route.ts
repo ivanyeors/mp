@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
@@ -64,6 +65,11 @@ export async function PATCH(req: Request, { params }: RouteParams) {
             { status: isDup ? 409 : 500 }
         );
     }
+
+    if (typeof parsed.data.image_url === "string" && parsed.data.image_url.startsWith("http")) {
+        await touchLastUsed({ urls: [parsed.data.image_url] }).catch(() => {});
+    }
+
     return NextResponse.json({ ok: true, row: data });
 }
 

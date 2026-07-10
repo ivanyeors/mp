@@ -54,6 +54,7 @@ interface MediaFile {
     alt_text?: string | null;
     drive_url?: string | null;
     drive_file_id?: string | null;
+    last_used_at?: string | null;
 }
 
 interface DrivePreview {
@@ -80,13 +81,27 @@ interface LandingSlot {
 }
 
 interface UsageEntry {
-    type: "blog_featured" | "blog_inline" | "landing_slot";
+    type: string;
     label: string;
     ref_id: string;
 }
 
 type UsageMap = Record<string, UsageEntry[]>;
 type FilterMode = "all" | "in_use" | "unused";
+
+function relativeUsed(iso: string | null | undefined): string | null {
+    if (!iso) return null;
+    const ms = Date.now() - new Date(iso).getTime();
+    if (Number.isNaN(ms) || ms < 0) return null;
+    const mins = Math.floor(ms / 60_000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(iso).toLocaleDateString();
+}
 
 /* ------------------------------------------------------------------ */
 /* Landing page image slot definitions                                 */
@@ -123,9 +138,11 @@ export default function MediaPage() {
     /* Picker dialog state (for landing slots) */
     const [pickerSlot, setPickerSlot] = useState<LandingSlot | null>(null);
 
-    /* Usage data */
+    /* Usage data (URL map for grid; detailUsages for open sheet) */
     const [usageMap, setUsageMap] = useState<UsageMap>({});
+    const [usageByAssetId, setUsageByAssetId] = useState<UsageMap>({});
     const [usageLoading, setUsageLoading] = useState(true);
+    const [detailUsages, setDetailUsages] = useState<UsageEntry[] | null>(null);
 
     /* Image detail sheet */
     const [detailFile, setDetailFile] = useState<MediaFile | null>(null);
@@ -184,6 +201,7 @@ export default function MediaPage() {
                             drive_file_id?: string | null;
                             created_at: string;
                             kind: string;
+                            last_used_at?: string | null;
                         }) => ({
                             id: a.id,
                             name: a.name,
@@ -193,6 +211,7 @@ export default function MediaPage() {
                             drive_file_id: a.drive_file_id ?? null,
                             created_at: a.created_at,
                             kind: a.kind,
+                            last_used_at: a.last_used_at ?? null,
                         }),
                     ),
                 );
@@ -239,6 +258,14 @@ export default function MediaPage() {
     }, []);
 
     useEffect(() => {
+        const byId: UsageMap = {};
+        for (const f of files) {
+            if (f.url && usageMap[f.url]) byId[f.id] = usageMap[f.url];
+        }
+        setUsageByAssetId(byId);
+    }, [files, usageMap]);
+
+    useEffect(() => {
         loadFiles();
         loadOverrides();
         loadUsages();
@@ -247,6 +274,14 @@ export default function MediaPage() {
     /* ---------------------------------------------------------------- */
     /* Filtered files                                                    */
     /* ---------------------------------------------------------------- */
+
+    const getFileUsages = useCallback(
+        (file: MediaFile): UsageEntry[] => {
+            if (file.url && usageMap[file.url]?.length) return usageMap[file.url];
+            return usageByAssetId[file.id] ?? [];
+        },
+        [usageMap, usageByAssetId],
+    );
 
     const filteredFiles = useMemo(() => {
         let result = files;
@@ -259,13 +294,13 @@ export default function MediaPage() {
 
         // Usage filter
         if (filterMode === "in_use") {
-            result = result.filter((f) => (usageMap[f.url]?.length ?? 0) > 0);
+            result = result.filter((f) => getFileUsages(f).length > 0);
         } else if (filterMode === "unused") {
-            result = result.filter((f) => !usageMap[f.url] || usageMap[f.url].length === 0);
+            result = result.filter((f) => getFileUsages(f).length === 0);
         }
 
         return result;
-    }, [files, searchQuery, filterMode, usageMap]);
+    }, [files, searchQuery, filterMode, getFileUsages]);
 
     /* ---------------------------------------------------------------- */
     /* Actions                                                           */
@@ -360,6 +395,21 @@ export default function MediaPage() {
         setDetailFile(file);
         setEditName(file.name);
         setEditAlt(file.alt_text ?? "");
+        setDetailUsages(null);
+        void (async () => {
+            try {
+                const res = await fetch(`/api/media-assets/${file.id}/usage`);
+                const data = await res.json();
+                if (data.ok && Array.isArray(data.usages)) {
+                    setDetailUsages(data.usages);
+                    if (data.usages.length > 0) {
+                        setUsageByAssetId((prev) => ({ ...prev, [file.id]: data.usages }));
+                    }
+                }
+            } catch {
+                /* grid map is fallback */
+            }
+        })();
     };
 
     const handleSaveMeta = async () => {
@@ -554,8 +604,8 @@ export default function MediaPage() {
     /* Helpers                                                           */
     /* ---------------------------------------------------------------- */
 
-    const getUsageCount = (url: string | null | undefined) =>
-        url ? (usageMap[url]?.length ?? 0) : 0;
+    const getUsageCount = (file: MediaFile | null | undefined) =>
+        file ? getFileUsages(file).length : 0;
 
     const kindIcon = (kind?: string) => {
         switch (kind) {
@@ -574,9 +624,11 @@ export default function MediaPage() {
             case "blog_inline":
                 return <Newspaper className="h-3.5 w-3.5 shrink-0" />;
             case "landing_slot":
+            case "landing_section":
+            case "partners_page":
                 return <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />;
             default:
-                return null;
+                return <ImageIcon className="h-3.5 w-3.5 shrink-0" />;
         }
     };
 
@@ -585,6 +637,12 @@ export default function MediaPage() {
             case "blog_featured": return "Featured in";
             case "blog_inline": return "Inline in";
             case "landing_slot": return "Landing Page";
+            case "landing_section": return "Page builder";
+            case "product_image": return "Product";
+            case "product_variant": return "Variant";
+            case "category": return "Category";
+            case "partner": return "Partner";
+            case "partners_page": return "Partners page";
             default: return type;
         }
     };
@@ -834,7 +892,8 @@ export default function MediaPage() {
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                         {filteredFiles.map((file) => {
-                            const count = getUsageCount(file.url);
+                            const count = getUsageCount(file);
+                            const usedLabel = relativeUsed(file.last_used_at);
                             return (
                                 <div
                                     key={file.id}
@@ -856,7 +915,7 @@ export default function MediaPage() {
                                     </div>
 
                                     {/* Usage badge */}
-                                    {!usageLoading && file.url && (
+                                    {!usageLoading && (
                                         <div className="absolute top-2 left-2">
                                             {count > 0 ? (
                                                 <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/90 text-white px-2 py-0.5 text-[10px] font-medium shadow-sm backdrop-blur-sm">
@@ -926,7 +985,7 @@ export default function MediaPage() {
                                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                             <span className="uppercase tracking-wide">{file.kind ?? "image"}</span>
                                             <span>·</span>
-                                            <span>{new Date(file.created_at).toLocaleDateString()}</span>
+                                            <span>{usedLabel ? `Used ${usedLabel}` : new Date(file.created_at).toLocaleDateString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -937,7 +996,15 @@ export default function MediaPage() {
             </section>
 
             {/* ===== Image Detail Sheet ===== */}
-            <Sheet open={!!detailFile} onOpenChange={(open) => !open && setDetailFile(null)}>
+            <Sheet
+                open={!!detailFile}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDetailFile(null);
+                        setDetailUsages(null);
+                    }
+                }}
+            >
                 <SheetContent side="right" className="w-full sm:max-w-md">
                     {detailFile && (
                         <>
@@ -1069,22 +1136,22 @@ export default function MediaPage() {
                                 </div>
 
                                 {/* Usage list */}
-                                {detailFile.url && (
                                 <div className="space-y-2">
                                     <label className="text-xs font-medium text-muted-foreground">
-                                        Used in ({getUsageCount(detailFile.url)} {getUsageCount(detailFile.url) === 1 ? "place" : "places"})
+                                        Used in ({(detailUsages ?? getFileUsages(detailFile)).length}{" "}
+                                        {(detailUsages ?? getFileUsages(detailFile)).length === 1 ? "place" : "places"})
                                     </label>
-                                    {usageLoading ? (
+                                    {usageLoading && detailUsages === null ? (
                                         <div className="flex justify-center py-4">
                                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                         </div>
-                                    ) : getUsageCount(detailFile.url) === 0 ? (
+                                    ) : (detailUsages ?? getFileUsages(detailFile)).length === 0 ? (
                                         <p className="text-xs text-muted-foreground py-2">
-                                            This image is not used anywhere.
+                                            This asset is not used anywhere.
                                         </p>
                                     ) : (
                                         <div className="space-y-1.5">
-                                            {usageMap[detailFile.url]?.map((usage, i) => (
+                                            {(detailUsages ?? getFileUsages(detailFile)).map((usage, i) => (
                                                 <div
                                                     key={`${usage.ref_id}-${usage.type}-${i}`}
                                                     className="flex items-center gap-2 text-sm border rounded-md px-3 py-2 bg-muted/30"
@@ -1109,8 +1176,12 @@ export default function MediaPage() {
                                             ))}
                                         </div>
                                     )}
+                                    {relativeUsed(detailFile.last_used_at) && (
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Last used {relativeUsed(detailFile.last_used_at)}
+                                        </p>
+                                    )}
                                 </div>
-                                )}
 
                                 {/* Actions */}
                                 <div className="flex flex-col gap-2 pt-2 border-t">
@@ -1130,7 +1201,7 @@ export default function MediaPage() {
                                             Re-import from Drive
                                         </Button>
                                     )}
-                                    {getUsageCount(detailFile.url) > 0 && detailFile.url && (
+                                    {getUsageCount(detailFile) > 0 && detailFile.url && (
                                         <Button
                                             variant="outline"
                                             className="w-full justify-start"
@@ -1229,7 +1300,7 @@ export default function MediaPage() {
                     <DialogHeader>
                         <DialogTitle>Replace Image Everywhere</DialogTitle>
                         <DialogDescription>
-                            Choose a new image to replace <strong>{replaceFile?.name}</strong> in all {getUsageCount(replaceFile?.url)} {getUsageCount(replaceFile?.url) === 1 ? "place" : "places"} it&apos;s used.
+                            Choose a new image to replace <strong>{replaceFile?.name}</strong> in all {getUsageCount(replaceFile)} {getUsageCount(replaceFile) === 1 ? "place" : "places"} it&apos;s used.
                         </DialogDescription>
                     </DialogHeader>
 

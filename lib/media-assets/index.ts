@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
-  listImageUsages,
+  listAssetUsages,
   type ImageUsageEntry,
 } from "@/lib/media/image-usages";
 import { storagePathFromHostedUrl } from "@/lib/media-assets/ingest";
@@ -182,8 +182,11 @@ export async function deleteMediaAssetGuarded(
   const asset = await getMediaAsset(id);
   if (!asset) throw new Error("Not found");
 
-  if (asset.hosted_url && !opts?.force) {
-    const usages = await listImageUsages(asset.hosted_url);
+  if (!opts?.force) {
+    const usages = await listAssetUsages({
+      id: asset.id,
+      hosted_url: asset.hosted_url,
+    });
     if (usages.length > 0) throw new MediaAssetInUseError(usages);
   }
 
@@ -195,6 +198,34 @@ export async function deleteMediaAssetGuarded(
   }
 
   await deleteMediaAsset(id);
+}
+
+/** Mark Assets as last-used when a consumer attaches/saves them. */
+export async function touchLastUsed(opts: {
+  urls?: string[];
+  assetIds?: string[];
+}): Promise<void> {
+  const urls = (opts.urls ?? []).map((u) => u.trim()).filter(Boolean);
+  const assetIds = (opts.assetIds ?? []).map((u) => u.trim()).filter(Boolean);
+  if (urls.length === 0 && assetIds.length === 0) return;
+
+  const now = new Date().toISOString();
+  const db = admin();
+
+  if (urls.length > 0) {
+    const { error } = await db
+      .from("media_assets")
+      .update({ last_used_at: now })
+      .in("hosted_url", urls);
+    if (error) throw new Error(error.message);
+  }
+  if (assetIds.length > 0) {
+    const { error } = await db
+      .from("media_assets")
+      .update({ last_used_at: now })
+      .in("id", assetIds);
+    if (error) throw new Error(error.message);
+  }
 }
 
 /** Register existing `media` bucket objects as image Assets. Idempotent on hosted_url. */

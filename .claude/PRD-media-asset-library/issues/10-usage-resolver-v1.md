@@ -20,10 +20,10 @@ Modules: 5, 7
 
 ## Acceptance criteria
 
-- [ ] Used Asset shows attachment locations in detail sheet.
-- [ ] Unused Asset shows unused badge; filter works.
-- [ ] last_used_at updates when product image attached via picker (after slice 11) or landing slot saved.
-- [ ] Usage resolver tests pass for URL and id matching.
+- [x] Used Asset shows attachment locations in detail sheet.
+- [x] Unused Asset shows unused badge; filter works.
+- [x] last_used_at updates when product image attached via picker (after slice 11) or landing slot saved.
+- [x] Usage resolver tests pass for URL and id matching.
 
 ## Blocked by
 

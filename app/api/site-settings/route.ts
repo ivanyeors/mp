@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
@@ -58,6 +59,11 @@ export async function PUT(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Slice 10: landing slot save bumps last_used_at on matching Asset
+    if (key.startsWith("landing_") && value.startsWith("http")) {
+      await touchLastUsed({ urls: [value] }).catch(() => {});
     }
 
     return NextResponse.json({ ok: true });

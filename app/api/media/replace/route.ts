@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
@@ -120,6 +121,8 @@ export async function POST(req: Request) {
                 summary.landingSlots.push(setting.key);
             }
         }
+
+        await touchLastUsed({ urls: [newUrl] }).catch(() => {});
 
         return NextResponse.json({ ok: true, summary });
     } catch (err) {
