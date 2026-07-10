@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,7 @@ const CreateCategorySchema = z.object({
   ).default({}),
   parent_id: z.string().uuid().nullable().optional().default(null),
   image_url: z.string().url().nullable().optional().default(null),
+  media_asset_id: z.string().uuid().nullable().optional().default(null),
   position: z.number().int().nonnegative().optional().default(0),
   is_active: z.boolean().optional().default(true),
 });
@@ -51,6 +53,14 @@ export async function POST(req: Request) {
       { status: isDup ? 409 : 500 }
     );
   }
+
+  await touchLastUsed({
+    urls:
+      typeof parsed.data.image_url === "string" && parsed.data.image_url.startsWith("http")
+        ? [parsed.data.image_url]
+        : [],
+    assetIds: parsed.data.media_asset_id ? [parsed.data.media_asset_id] : [],
+  }).catch(() => {});
 
   revalidateTag("categories", "max");
   return NextResponse.json({ ok: true, row: data });

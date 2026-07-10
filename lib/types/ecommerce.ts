@@ -44,6 +44,7 @@ export interface ProductCategory {
   slug: string;
   content: Record<string, LocalizedCategoryContent>;
   image_url: string | null;
+  media_asset_id?: string | null;
   position: number;
   is_active: boolean;
   created_at: string;

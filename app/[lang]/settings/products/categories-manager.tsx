@@ -55,6 +55,7 @@ interface FormState {
     content: { "en-US": LocaleContent; "zh-CN": LocaleContent };
     slug: string;
     image_url: string;
+    media_asset_id: string | null;
     parent_id: string;
     is_active: boolean;
 }
@@ -66,6 +67,7 @@ const EMPTY_FORM: FormState = {
     },
     slug: "",
     image_url: "",
+    media_asset_id: null,
     parent_id: "",
     is_active: true,
 };
@@ -315,6 +317,7 @@ export function CategoriesManager() {
             },
             slug: cat.slug ?? "",
             image_url: cat.image_url ?? "",
+            media_asset_id: cat.media_asset_id ?? null,
             parent_id: cat.parent_id ?? "",
             is_active: cat.is_active ?? true,
         });
@@ -355,6 +358,7 @@ export function CategoriesManager() {
                 content: form.content,
                 slug: form.slug,
                 image_url: form.image_url || null,
+                media_asset_id: form.media_asset_id,
                 parent_id: form.parent_id || null,
                 is_active: form.is_active,
             };
@@ -553,7 +557,11 @@ export function CategoriesManager() {
                                 <div className="flex flex-col gap-1.5">
                                     <ImagePicker
                                         onSelect={(s) =>
-                                            setForm((prev) => ({ ...prev, image_url: s.url }))
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                image_url: s.url,
+                                                media_asset_id: s.assetId,
+                                            }))
                                         }
                                     />
                                     {form.image_url && (
@@ -562,7 +570,11 @@ export function CategoriesManager() {
                                             size="sm"
                                             className="text-destructive hover:text-destructive px-0 justify-start h-auto"
                                             onClick={() =>
-                                                setForm((prev) => ({ ...prev, image_url: "" }))
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    image_url: "",
+                                                    media_asset_id: null,
+                                                }))
                                             }
                                         >
                                             Remove image

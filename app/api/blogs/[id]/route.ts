@@ -17,6 +17,7 @@ const UpdateBlogSchema = z.object({
         seo_keywords: z.array(z.string()).optional().default([]),
     })).optional(),
     image_url: z.string().nullable().optional(),
+    media_asset_id: z.string().uuid().nullable().optional(),
     author: z.string().optional(),
     published_at: z.string().nullable().optional(),
     labels: z.array(z.string()).optional(),
@@ -66,8 +67,15 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         );
     }
 
-    if (typeof parsed.data.image_url === "string" && parsed.data.image_url.startsWith("http")) {
-        await touchLastUsed({ urls: [parsed.data.image_url] }).catch(() => {});
+    const imageUrl = parsed.data.image_url;
+    if (
+        (typeof imageUrl === "string" && imageUrl.startsWith("http")) ||
+        parsed.data.media_asset_id
+    ) {
+        await touchLastUsed({
+            urls: typeof imageUrl === "string" && imageUrl.startsWith("http") ? [imageUrl] : [],
+            assetIds: parsed.data.media_asset_id ? [parsed.data.media_asset_id] : [],
+        }).catch(() => {});
     }
 
     return NextResponse.json({ ok: true, row: data });

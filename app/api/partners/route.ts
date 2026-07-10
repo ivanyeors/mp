@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
 const CreateSchema = z.object({
   name: z.string().min(1).max(200),
   logo_url: z.string().nullable().optional(),
+  media_asset_id: z.string().uuid().nullable().optional().default(null),
   website_url: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   visible: z.boolean().optional().default(true),
@@ -50,6 +52,7 @@ export async function POST(req: Request) {
       .insert({
         name: parsed.name,
         logo_url: parsed.logo_url ?? null,
+        media_asset_id: parsed.media_asset_id ?? null,
         website_url: parsed.website_url ?? null,
         description: parsed.description ?? null,
         visible: parsed.visible,
@@ -61,6 +64,14 @@ export async function POST(req: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await touchLastUsed({
+      urls:
+        typeof parsed.logo_url === "string" && parsed.logo_url.startsWith("http")
+          ? [parsed.logo_url]
+          : [],
+      assetIds: parsed.media_asset_id ? [parsed.media_asset_id] : [],
+    }).catch(() => {});
 
     return NextResponse.json({ ok: true, partner: data }, { status: 201 });
   } catch (err) {

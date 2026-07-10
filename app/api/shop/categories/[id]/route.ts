@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ const UpdateCategorySchema = z.object({
   ).optional(),
   parent_id: z.string().uuid().nullable().optional(),
   image_url: z.string().url().nullable().optional(),
+  media_asset_id: z.string().uuid().nullable().optional(),
   position: z.number().int().nonnegative().optional(),
   is_active: z.boolean().optional(),
 });
@@ -71,6 +73,17 @@ export async function PATCH(
       { error: isDup ? "A category with this slug already exists" : error.message },
       { status: isDup ? 409 : 500 }
     );
+  }
+
+  const imageUrl = parsed.data.image_url;
+  if (
+    (typeof imageUrl === "string" && imageUrl.startsWith("http")) ||
+    parsed.data.media_asset_id
+  ) {
+    await touchLastUsed({
+      urls: typeof imageUrl === "string" && imageUrl.startsWith("http") ? [imageUrl] : [],
+      assetIds: parsed.data.media_asset_id ? [parsed.data.media_asset_id] : [],
+    }).catch(() => {});
   }
 
   revalidateTag("categories", "max");

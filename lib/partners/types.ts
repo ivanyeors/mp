@@ -7,6 +7,7 @@ export type BenefitCard = {
 
 export type WorkWithUsContent = {
   heroImage?: string;
+  media_asset_id?: string | null;
   title?: string;
   subtitle?: string;
   body?: string;
@@ -28,6 +29,7 @@ export type PartnerRow = {
   id: string;
   name: string;
   logo_url: string | null;
+  media_asset_id?: string | null;
   website_url: string | null;
   description: string | null;
   position: number;

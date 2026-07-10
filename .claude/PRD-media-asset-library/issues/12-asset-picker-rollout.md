@@ -19,9 +19,9 @@ Each save path dual-writes Asset id where schema allows (nullable column or sett
 
 ## Acceptance criteria
 
-- [ ] All four surfaces use Asset picker instead of legacy ImagePicker for new selections.
-- [ ] Existing url-only references still work and appear in usage resolver.
-- [ ] No regression in blog/category/partner/page-builder save flows.
+- [x] All four surfaces use Asset picker instead of legacy ImagePicker for new selections.
+- [x] Existing url-only references still work and appear in usage resolver.
+- [x] No regression in blog/category/partner/page-builder save flows.
 
 ## Blocked by
 

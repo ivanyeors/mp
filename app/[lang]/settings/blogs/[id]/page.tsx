@@ -53,6 +53,7 @@ export default function BlogEditorPage() {
     const [status, setStatus] = useState<string>("draft");
     const [author, setAuthor] = useState("Mpillow");
     const [imageUrl, setImageUrl] = useState("");
+    const [imageAssetId, setImageAssetId] = useState<string | null>(null);
     const [labels, setLabels] = useState<string[]>([]);
     const [content, setContent] = useState<Record<string, LocaleContent>>({
         "en-US": emptyContent(),
@@ -95,6 +96,7 @@ export default function BlogEditorPage() {
             setStatus(row.status);
             setAuthor(row.author);
             setImageUrl(row.image_url ?? "");
+            setImageAssetId(row.media_asset_id ?? null);
             setLabels(row.labels ?? []);
             // Merge existing content with empty defaults
             const merged: Record<string, LocaleContent> = {};
@@ -115,6 +117,7 @@ export default function BlogEditorPage() {
             status: publishOverride ?? status,
             author,
             image_url: imageUrl || null,
+            media_asset_id: imageAssetId,
             labels,
             content,
         };
@@ -318,11 +321,19 @@ export default function BlogEditorPage() {
                         <input
                             type="text"
                             value={imageUrl}
-                            onChange={(e) => setImageUrl(e.target.value)}
+                            onChange={(e) => {
+                                setImageUrl(e.target.value);
+                                setImageAssetId(null);
+                            }}
                             placeholder="https://... or /images/blogs/..."
                             className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                         />
-                        <ImagePicker onSelect={(s) => setImageUrl(s.url)} />
+                        <ImagePicker
+                            onSelect={(s) => {
+                                setImageUrl(s.url);
+                                setImageAssetId(s.assetId);
+                            }}
+                        />
                     </div>
                 </div>
 

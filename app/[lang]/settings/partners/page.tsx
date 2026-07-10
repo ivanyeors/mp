@@ -64,6 +64,7 @@ type PartnerForm = {
   id?: string;
   name: string;
   logo_url: string;
+  media_asset_id: string | null;
   website_url: string;
   description: string;
   visible: boolean;
@@ -72,6 +73,7 @@ type PartnerForm = {
 const emptyPartnerForm = (): PartnerForm => ({
   name: "",
   logo_url: "",
+  media_asset_id: null,
   website_url: "",
   description: "",
   visible: true,
@@ -88,6 +90,7 @@ export default function PartnersSettingsPage() {
   const [activeLocale, setActiveLocale] = useState<Locale>("en-US");
   const [content, setContent] = useState<Record<string, WorkWithUsContent>>({});
   const [heroImage, setHeroImage] = useState("");
+  const [heroAssetId, setHeroAssetId] = useState<string | null>(null);
 
   const [partners, setPartners] = useState<PartnerRow[]>([]);
   const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
@@ -118,6 +121,7 @@ export default function PartnersSettingsPage() {
 
       const enHero = pageJson.row?.content?.["en-US"]?.heroImage ?? "";
       setHeroImage(enHero);
+      setHeroAssetId(pageJson.row?.content?.["en-US"]?.media_asset_id ?? null);
 
       if (partnersJson.ok) {
         setPartners(partnersJson.partners ?? []);
@@ -155,6 +159,8 @@ export default function PartnersSettingsPage() {
             {
               ...content[loc],
               heroImage: loc === "en-US" ? heroImage : content[loc]?.heroImage ?? heroImage,
+              media_asset_id:
+                loc === "en-US" ? heroAssetId : content[loc]?.media_asset_id ?? heroAssetId,
             },
           ]),
         ),
@@ -183,6 +189,7 @@ export default function PartnersSettingsPage() {
         id: partner.id,
         name: partner.name,
         logo_url: partner.logo_url ?? "",
+        media_asset_id: partner.media_asset_id ?? null,
         website_url: partner.website_url ?? "",
         description: partner.description ?? "",
         visible: partner.visible,
@@ -204,6 +211,7 @@ export default function PartnersSettingsPage() {
       const payload = {
         name: partnerForm.name.trim(),
         logo_url: partnerForm.logo_url || null,
+        media_asset_id: partnerForm.media_asset_id,
         website_url: partnerForm.website_url || null,
         description: partnerForm.description || null,
         visible: partnerForm.visible,
@@ -337,11 +345,19 @@ export default function PartnersSettingsPage() {
                 <div className="flex items-center gap-2">
                   <Input
                     value={heroImage}
-                    onChange={(e) => setHeroImage(e.target.value)}
+                    onChange={(e) => {
+                      setHeroImage(e.target.value);
+                      setHeroAssetId(null);
+                    }}
                     placeholder="Image URL or pick from media..."
                     className="flex-1"
                   />
-                  <ImagePicker onSelect={(s) => setHeroImage(s.url)}>
+                  <ImagePicker
+                    onSelect={(s) => {
+                      setHeroImage(s.url);
+                      setHeroAssetId(s.assetId);
+                    }}
+                  >
                     <Button type="button" variant="outline" size="sm">
                       Browse
                     </Button>
@@ -574,11 +590,21 @@ export default function PartnersSettingsPage() {
               <div className="flex items-center gap-2">
                 <Input
                   value={partnerForm.logo_url}
-                  onChange={(e) => setPartnerForm((f) => ({ ...f, logo_url: e.target.value }))}
+                  onChange={(e) =>
+                    setPartnerForm((f) => ({ ...f, logo_url: e.target.value, media_asset_id: null }))
+                  }
                   placeholder="Image URL..."
                   className="flex-1"
                 />
-                <ImagePicker onSelect={(s) => setPartnerForm((f) => ({ ...f, logo_url: s.url }))}>
+                <ImagePicker
+                  onSelect={(s) =>
+                    setPartnerForm((f) => ({
+                      ...f,
+                      logo_url: s.url,
+                      media_asset_id: s.assetId,
+                    }))
+                  }
+                >
                   <Button type="button" variant="outline" size="sm">
                     Browse
                   </Button>

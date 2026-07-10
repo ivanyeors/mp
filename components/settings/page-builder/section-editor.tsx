@@ -32,7 +32,7 @@ function ImageField({
 }: {
   label: string;
   value: string;
-  onChange: (v: string) => void;
+  onChange: (url: string, assetId: string | null) => void;
 }) {
   return (
     <div className="space-y-1.5">
@@ -40,11 +40,11 @@ function ImageField({
       <div className="flex items-center gap-2">
         <Input
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value, null)}
           placeholder="Image URL or pick from media..."
           className="flex-1"
         />
-        <ImagePicker onSelect={(s) => onChange(s.url)}>
+        <ImagePicker onSelect={(s) => onChange(s.url, s.assetId)}>
           <Button type="button" variant="outline" size="sm">Browse</Button>
         </ImagePicker>
       </div>
@@ -139,6 +139,10 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
     setContent((prev) => ({ ...prev, [key]: value }));
   };
 
+  const setImage = (url: string, assetId: string | null) => {
+    setContent((prev) => ({ ...prev, image: url, media_asset_id: assetId }));
+  };
+
   const handleSave = async () => {
     try {
       const res = await fetch(`/api/landing-sections/${section.id}`, {
@@ -177,7 +181,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "hero":
         return (
           <>
-            <ImageField label="Hero Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+            <ImageField label="Hero Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title Prefix"><Input value={(content.titlePrefix as string) ?? ""} onChange={(e) => set("titlePrefix", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Title Emphasis"><Input value={(content.titleEmphasis as string) ?? ""} onChange={(e) => set("titleEmphasis", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Title Suffix"><Input value={(content.titleSuffix as string) ?? ""} onChange={(e) => set("titleSuffix", e.target.value)} placeholder="i18n default" /></Field>
@@ -188,7 +192,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "text_image":
         return (
           <>
-            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title"><Input value={(content.title as string) ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Description"><Textarea value={(content.description as string) ?? ""} onChange={(e) => set("description", e.target.value)} placeholder="i18n default" rows={3} /></Field>
           </>
@@ -196,7 +200,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
 
       case "marquee":
         return (
-          <ImageField label="Marquee Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+          <ImageField label="Marquee Image" value={(content.image as string) ?? ""} onChange={setImage} />
         );
 
       case "stories":
@@ -214,7 +218,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "neck_pains":
         return (
           <>
-            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title"><Input value={(content.title as string) ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Description"><Textarea value={(content.description as string) ?? ""} onChange={(e) => set("description", e.target.value)} placeholder="i18n default" rows={3} /></Field>
           </>
@@ -245,7 +249,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "product_card":
         return (
           <>
-            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title"><Input value={(content.title as string) ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Description"><Textarea value={(content.description as string) ?? ""} onChange={(e) => set("description", e.target.value)} placeholder="i18n default" rows={3} /></Field>
             <Field label="Subtitle"><Input value={(content.subtitle as string) ?? ""} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" /></Field>
@@ -285,7 +289,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "founder_note":
         return (
           <>
-            <ImageField label="Founder Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+            <ImageField label="Founder Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title"><Input value={(content.title as string) ?? ""} onChange={(e) => set("title", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Subtitle"><Input value={(content.subtitle as string) ?? ""} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" /></Field>
             <ParagraphsEditor
@@ -302,7 +306,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "custom_text_image":
         return (
           <>
-            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title"><Input value={(content.title as string) ?? ""} onChange={(e) => set("title", e.target.value)} /></Field>
             <Field label="Description"><Textarea value={(content.description as string) ?? ""} onChange={(e) => set("description", e.target.value)} rows={3} /></Field>
           </>
@@ -311,7 +315,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "custom_full_width_image":
         return (
           <>
-            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={(v) => set("image", v)} />
+            <ImageField label="Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Alt Text"><Input value={(content.alt as string) ?? ""} onChange={(e) => set("alt", e.target.value)} /></Field>
           </>
         );

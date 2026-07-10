@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,15 @@ export async function PATCH(
 
     if (!data) {
       return NextResponse.json({ error: "Section not found" }, { status: 404 });
+    }
+
+    if (parsed.content) {
+      const image = parsed.content.image;
+      const assetId = parsed.content.media_asset_id;
+      await touchLastUsed({
+        urls: typeof image === "string" && image.startsWith("http") ? [image] : [],
+        assetIds: typeof assetId === "string" ? [assetId] : [],
+      }).catch(() => {});
     }
 
     return NextResponse.json({ ok: true, section: data });

@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getPartnersPageRow } from "@/lib/partners";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,7 @@ const BenefitCardSchema = z.object({
 
 const WorkWithUsContentSchema = z.object({
   heroImage: z.string().optional(),
+  media_asset_id: z.string().uuid().nullable().optional(),
   title: z.string().optional(),
   subtitle: z.string().optional(),
   body: z.string().optional(),
@@ -44,32 +46,43 @@ export async function PATCH(req: Request) {
 
     const existing = await getPartnersPageRow();
 
+    let data;
     if (existing) {
-      const { data, error } = await admin
+      const result = await admin
         .from("partners_page")
         .update({ content: parsed.content })
         .eq("id", existing.id)
         .select("*")
         .single();
 
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+      if (result.error) {
+        return NextResponse.json({ error: result.error.message }, { status: 500 });
       }
+      data = result.data;
+    } else {
+      const result = await admin
+        .from("partners_page")
+        .insert({ content: parsed.content })
+        .select("*")
+        .single();
 
-      return NextResponse.json({ ok: true, row: data });
+      if (result.error) {
+        return NextResponse.json({ error: result.error.message }, { status: 500 });
+      }
+      data = result.data;
     }
 
-    const { data, error } = await admin
-      .from("partners_page")
-      .insert({ content: parsed.content })
-      .select("*")
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const urls: string[] = [];
+    const assetIds: string[] = [];
+    for (const loc of Object.values(parsed.content)) {
+      if (typeof loc.heroImage === "string" && loc.heroImage.startsWith("http")) {
+        urls.push(loc.heroImage);
+      }
+      if (loc.media_asset_id) assetIds.push(loc.media_asset_id);
     }
+    await touchLastUsed({ urls, assetIds }).catch(() => {});
 
-    return NextResponse.json({ ok: true, row: data }, { status: 201 });
+    return NextResponse.json({ ok: true, row: data }, { status: existing ? 200 : 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: err.issues }, { status: 400 });

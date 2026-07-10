@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
 const UpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   logo_url: z.string().nullable().optional(),
+  media_asset_id: z.string().uuid().nullable().optional(),
   website_url: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   visible: z.boolean().optional(),
@@ -36,6 +38,17 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+
+    const logoUrl = parsed.logo_url;
+    if (
+      (typeof logoUrl === "string" && logoUrl.startsWith("http")) ||
+      parsed.media_asset_id
+    ) {
+      await touchLastUsed({
+        urls: typeof logoUrl === "string" && logoUrl.startsWith("http") ? [logoUrl] : [],
+        assetIds: parsed.media_asset_id ? [parsed.media_asset_id] : [],
+      }).catch(() => {});
     }
 
     return NextResponse.json({ ok: true, partner: data });
