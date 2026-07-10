@@ -17,19 +17,20 @@ export const enUS: Messages = {
   },
   home: {
     hero: {
-      titlePrefix: "Gift A Good Night’s Sleep With A",
-      titleEmphasis: "100% Customised",
-      titleSuffix: "Pillow",
-      subtitle: "A cervical neck support pillow to maintain the perfect posture for every sleep position.",
+      titlePrefix: "Science of Sleep —",
+      titleEmphasis: "Customised Cervical Pillow",
+      titleSuffix: "for Neck Pain Relief in Singapore",
+      subtitle:
+        "Modular cervical support fitted to your neck curve, sleep position, and body build — so overnight alignment matches how you actually sleep.",
       ctaCustomise: "Customise",
       ctaBookAppointment: "Book an appointment",
       seoAnswer:
-        "Mpillow is Singapore's fully customisable cervical pillow brand. We fit each pillow in-store to your neck curve, preferred sleep position, and body build, then handcraft modular layers for lasting support. Choose Basic or Premium Mpillow, or add an Mbolster support bolster, when you want neck pain relief and ergonomic alignment instead of one-size-fits-all foam. Start your configuration online, then book an appointment so every layer is sized to you.",
+        "Mpillow is Singapore's Science of Sleep brand for fully customisable cervical pillows. We measure in-store for chronic neck stiffness and fit each pillow to your neck curve, preferred sleep position, and body build, then handcraft modular layers for lasting overnight support. Choose Basic or Premium Mpillow, or add an Mbolster support bolster, when you want cervical alignment and sleep comfort instead of one-size-fits-all foam. Start your configuration online, then book an appointment so every layer is sized to you.",
     },
     sizeMatters: {
-      title: "Customised pillow from Singapore, handcrafted for a perfect night’s sleep",
+      title: "Shoulder length sets your pillow height — measurement science for better sleep",
       description:
-        "Learn why proper sizing and configuration matter for sleep posture — and how Mpillow is adjusted to fit your unique body build.",
+        "Your shoulder length determines Mpillow loft and size. Learn how we measure and configure cervical support to your body build before you customise.",
     },
     ambassadors: {
       title: "Customisable pillows for any body build",
@@ -45,12 +46,13 @@ export const enUS: Messages = {
       products: {
         basic: {
           title: "Basic",
-          description: "Basic customisation to try out",
+          description: "Entry customisation for occasional neck tension and everyday sleep support",
           badge: "Standard Fit",
         },
         premium: {
           title: "Premium",
-          description: "Premium customisation for the best fit",
+          description:
+            "Consultative fitting for chronic neck pain, with a path to cervical neck support accessories",
           badge: "Custom Fit",
         },
       },

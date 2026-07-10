@@ -18,12 +18,16 @@ Do not invent fees or new offers. Leave CMS `landing_sections` overrides untouch
 
 ## Acceptance criteria
 
-- [ ] Hero H1 no longer leads with gift framing; names cervical / neck pain / Singapore / Science of Sleep intent.
-- [ ] Answer lede still ~60–120 words, claim-safe, and visible (mobile clamp may apply).
-- [ ] Size Matters landing copy references measurement (shoulder → height), not only “handcrafted”.
-- [ ] Basic and Premium pick-card descriptions differentiate entry vs consultative chronic-pain path.
-- [ ] Customise + Book appointment CTAs unchanged in behavior.
-- [ ] en-US only; zh-CN untouched.
+- [x] Hero H1 no longer leads with gift framing; names cervical / neck pain / Singapore / Science of Sleep intent.
+- [x] Answer lede still ~60–120 words, claim-safe, and visible (mobile clamp may apply).
+- [x] Size Matters landing copy references measurement (shoulder → height), not only “handcrafted”.
+- [x] Basic and Premium pick-card descriptions differentiate entry vs consultative chronic-pain path.
+- [x] Customise + Book appointment CTAs unchanged in behavior.
+- [x] en-US only; zh-CN untouched.
+
+**CMS note:** Defaults in `lib/i18n/messages/en-US.ts` only. Prod `landing_sections.content` overrides for hero title/subtitle and Size Matters title/description are left alone — live homepage may still show old strings until CMS is cleared/re-seeded. `seoAnswer` and pick-card blurbs always resolve from i18n.
+
+**Proof:** `npx tsx lib/i18n/marketing-copy-slice-01.check.ts`
 
 ## Blocked by
 
