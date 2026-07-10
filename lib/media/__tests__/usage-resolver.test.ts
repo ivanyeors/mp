@@ -149,4 +149,24 @@ describe("usage resolver", () => {
     };
     expect(resolveUsages(ASSET, rows)).toHaveLength(0);
   });
+
+  it("matches slide_media from resolved map rows", () => {
+    const rows: UsageConsumerRows = {
+      slideMedia: [
+        {
+          publicPath: "/wash-care.webp",
+          src: ASSET.hosted_url!,
+          assetId: ASSET.id,
+          consumer: "basic/premium/mbolster",
+        },
+      ],
+    };
+    expect(resolveUsages(ASSET, rows)).toEqual([
+      {
+        type: "slide_media",
+        label: "Slide (basic/premium/mbolster)",
+        ref_id: "/wash-care.webp",
+      },
+    ]);
+  });
 });

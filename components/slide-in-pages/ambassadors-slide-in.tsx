@@ -25,6 +25,7 @@ import {
   sheetStickyTopClassName,
 } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
+import { slideImage } from "@/lib/media/slide-media";
 
 type Props = {
   className?: string;
@@ -119,11 +120,10 @@ export function AmbassadorsSlideIn({ className }: Props) {
                       <p>{m.slides.ambassadors.heroDescription}</p>
                     </>
                   }
-                  image={{
-                    src: "/images/landing/ambassadors-1.jpg",
+                  image={slideImage("/images/landing/ambassadors-1.jpg", {
                     alt: "Mpillow ambassadors posture and fit",
                     sizes: "(min-width: 768px) 50vw, 100vw",
-                  }}
+                  })}
                   imageWrapperClassName="border-0 bg-muted/20"
                 />
 
@@ -140,11 +140,10 @@ export function AmbassadorsSlideIn({ className }: Props) {
                       ))}
                     </>
                   }
-                  image={{
-                    src: "/images/landing/ambassadors-2.png",
+                  image={slideImage("/images/landing/ambassadors-2.png", {
                     alt: "Mpillow suited to different builds",
                     sizes: "(min-width: 768px) 50vw, 100vw",
-                  }}
+                  })}
                   imageWrapperClassName="border-0 bg-muted/20"
                 />
 
@@ -180,11 +179,10 @@ export function AmbassadorsSlideIn({ className }: Props) {
                       </div>
                     </div>
                   }
-                  image={{
-                    src: "/images/landing/ambassadors-3.png",
+                  image={slideImage("/images/landing/ambassadors-3.png", {
                     alt: "Skyjin and Piggie with customised Mpillows",
                     sizes: "(min-width: 768px) 50vw, 100vw",
-                  }}
+                  })}
                   imageWrapperClassName="border-0 bg-muted/20"
                 />
 

@@ -65,8 +65,7 @@ All `blog_posts` rows whose `image_url` was `/images/blogs/*.jpg` → optimized 
 
 ### Intentionally left static (slice 17)
 
-- Ambassadors slide-in gallery: `/images/landing/ambassadors-{1,2,3}.*`
-- Product slide section configs under `lib/product-slide-sections/configs/*` (basic / premium / mbolster / cervical) — see `DEFERRED_PUBLIC_PATHS` in `lib/media/migrate-public.ts` (32 paths).
+~~Ambassadors + slide configs~~ — **adopted in slice 17** (`SLIDE_PUBLIC_PATHS`, ADR 0004).
 
 ### Unreferenced `/public` files
 

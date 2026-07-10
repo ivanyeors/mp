@@ -3,6 +3,8 @@
  * Matches hosted_url and media_asset_id. Does not scan order_items.
  */
 
+import { getSlideMediaMap, SLIDE_PUBLIC_PATHS } from "@/lib/media/slide-media";
+
 export type ImageUsageEntry = {
   type:
     | "blog_featured"
@@ -13,7 +15,8 @@ export type ImageUsageEntry = {
     | "product_variant"
     | "category"
     | "partner"
-    | "partners_page";
+    | "partners_page"
+    | "slide_media";
   label: string;
   ref_id: string;
 };
@@ -55,6 +58,13 @@ export type UsageConsumerRows = {
     media_asset_id?: string | null;
   }>;
   partnersPages?: Array<{ id: string; content: unknown }>;
+  /** Slide configs + ambassadors (slice 17 resolved map). */
+  slideMedia?: Array<{
+    publicPath: string;
+    src: string;
+    assetId: string;
+    consumer?: string;
+  }>;
   /** Intentionally unused — order snapshots must never count as usage. */
   orderItems?: Array<{ id: string; image_url: string | null }>;
 };
@@ -253,6 +263,16 @@ export function resolveUsages(
     }
   }
 
+  for (const slide of rows.slideMedia ?? []) {
+    if (refsMatch(asset, { url: slide.src, assetId: slide.assetId })) {
+      usages.push({
+        type: "slide_media",
+        label: slide.consumer ? `Slide (${slide.consumer})` : "Slide media",
+        ref_id: slide.publicPath,
+      });
+    }
+  }
+
   return dedupe(usages);
 }
 
@@ -314,9 +334,20 @@ export async function listImageUsages(url: string): Promise<ImageUsageEntry[]> {
   return listAssetUsages({ id: "", hosted_url: url });
 }
 
+function slideMediaRowsFromMap(): UsageConsumerRows["slideMedia"] {
+  const consumerByPath = new Map(SLIDE_PUBLIC_PATHS.map((p) => [p.publicPath, p.consumer]));
+  return Object.entries(getSlideMediaMap()).map(([publicPath, v]) => ({
+    publicPath,
+    src: v.src,
+    assetId: v.assetId,
+    consumer: consumerByPath.get(publicPath),
+  }));
+}
+
 /** Full Asset usage (URL + id matching). */
 export async function listAssetUsages(asset: AssetRef): Promise<ImageUsageEntry[]> {
   const rows = await fetchConsumerRows();
+  rows.slideMedia = slideMediaRowsFromMap();
   return resolveUsages(asset, rows);
 }
 
@@ -325,5 +356,6 @@ export async function buildUsageMap(
   assets: AssetRef[],
 ): Promise<Record<string, ImageUsageEntry[]>> {
   const rows = await fetchConsumerRows();
+  rows.slideMedia = slideMediaRowsFromMap();
   return indexUsages(assets, rows).byUrl;
 }

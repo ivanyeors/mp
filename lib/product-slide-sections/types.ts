@@ -2,6 +2,8 @@
 export type ImageMediaConfig = {
   src: string;
   alt: string;
+  /** Media Asset id when resolved via slide migrate (slice 17). */
+  assetId?: string;
   sizes?: string;
   className?: string;
   priority?: boolean;

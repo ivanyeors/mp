@@ -209,6 +209,7 @@ Prior art: existing media usage route patterns, `sync-scope.check.ts`, vitest te
 
 - Domain glossary terms (**Media Asset**, kinds, used/unused, last used, Drive provenance) land in slice 01 (`CONTEXT.md` Marketing section).
 - Consider ADR `0004-media-asset-hybrid-references.md` if hybrid ref + one-time Drive import needs explicit rationale for future readers.
+- **ADR `0004-slide-config-asset-adoption.md`:** product slide configs + ambassadors gallery adopted onto Assets via committed resolved map (`slideImage` + migrate). Live replace-everywhere for slides deferred (ops re-migrate / upgrade to site_settings).
 - Ops slice 02 must complete before Drive connector integration tests against live API.
 - Existing `GET /api/media` unauthenticated listing should be closed or restricted when Asset API ships.
 - Env: `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` (`sg@` Drive); keep `GOOGLE_OAUTH_REFRESH_TOKEN` for `admin@` Calendar/Contacts.

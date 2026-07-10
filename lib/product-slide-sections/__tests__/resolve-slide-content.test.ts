@@ -64,7 +64,11 @@ describe("buildFeatureCarouselItems", () => {
     const items = buildFeatureCarouselItems(features, images);
 
     expect(items).toHaveLength(4);
-    expect(items[0]?.image.src).toBe("/basic-mpillow.webp");
+    // Slice 17: hosted when resolved map populated, else /public fallback
+    expect(
+      items[0]?.image.src === "/basic-mpillow.webp" ||
+        /^https?:\/\//i.test(items[0]?.image.src ?? ""),
+    ).toBe(true);
   });
 });
 

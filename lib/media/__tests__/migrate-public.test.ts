@@ -145,8 +145,7 @@ describe("migrate-public (slice 16)", () => {
     expect(map.has("public:/images/b.jpg")).toBe(false);
   });
 
-  it("exposes deferred slide/ambassadors inventory", () => {
-    expect(DEFERRED_PUBLIC_PATHS.length).toBeGreaterThan(10);
-    expect(DEFERRED_PUBLIC_PATHS.every((d) => d.reason.includes("slice 17"))).toBe(true);
+  it("has empty deferred list after slice 17 adopt", () => {
+    expect(DEFERRED_PUBLIC_PATHS).toEqual([]);
   });
 });

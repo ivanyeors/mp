@@ -28,8 +28,9 @@ async function main() {
   if (dry.plan.landing.length !== LANDING_PUBLIC_DEFAULTS.length) {
     throw new Error("dry-run missing landing slots");
   }
-  if (dry.plan.deferred.length === 0) {
-    throw new Error("dry-run should list deferred slide paths");
+  // Slice 17 adopted slide paths — deferred inventory is empty
+  if (dry.plan.deferred.length !== 0) {
+    throw new Error(`dry-run unexpected deferred: ${dry.plan.deferred.length}`);
   }
   console.log("dry_run: ok");
 

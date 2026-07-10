@@ -3,7 +3,7 @@
  *
  * Landing: write site_settings URL + companion `*_asset_id` (slice 15 dual-write).
  * Blogs: rewrite featured `image_url` (+ `media_asset_id`).
- * Slide configs / ambassadors gallery: inventoried but deferred to slice 17.
+ * Slide configs / ambassadors: adopted in slice 17 (`SLIDE_PUBLIC_PATHS` / slide migrate).
  *
  * Idempotency: Assets tagged `public:<lowercase-path>`; re-run reuses them.
  */
@@ -23,44 +23,8 @@ export const LANDING_PUBLIC_DEFAULTS: Array<{ slotKey: string; publicPath: strin
   { slotKey: "landing_founder", publicPath: "/Darrenyeo-profileshoot_2.webp" },
 ];
 
-/**
- * Paths still hard-coded in slide configs / ambassadors slide-in.
- * Intentionally left static until slice 17.
- */
-export const DEFERRED_PUBLIC_PATHS: Array<{ publicPath: string; reason: string }> = [
-  { publicPath: "/images/landing/ambassadors-1.jpg", reason: "ambassadors slide-in (slice 17)" },
-  { publicPath: "/images/landing/ambassadors-2.png", reason: "ambassadors slide-in (slice 17)" },
-  { publicPath: "/images/landing/ambassadors-3.png", reason: "ambassadors slide-in (slice 17)" },
-  { publicPath: "/m-pillow-317460-final---H-WEB.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/m-pillow-317409-final---H-WEB.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/NeckDepth.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/3_compartment.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/m-pillow-518057-final-V-WEB.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/wash-care.webp", reason: "slide configs (slice 17)" },
-  { publicPath: "/fillings.webp", reason: "slide configs (slice 17)" },
-  { publicPath: "/shoulderlength_800x.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/NeckDepth_800x.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/HeadDepth_800x.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/necklength_800x.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/m-pillow-417804-final-WEB.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/DSC03705.webp", reason: "premium slide config (slice 17)" },
-  { publicPath: "/m-pillow-518001-final-WEB.webp", reason: "basic slide config (slice 17)" },
-  { publicPath: "/Square_3waysleep.webp", reason: "basic slide config (slice 17)" },
-  { publicPath: "/001.webp", reason: "basic slide config (slice 17)" },
-  { publicPath: "/sizecomparison.webp", reason: "basic slide config (slice 17)" },
-  { publicPath: "/MpillowIGPostMay2025.zip-2.webp", reason: "mbolster slide config (slice 17)" },
-  { publicPath: "/MpillowIGPostMay2025.zip-5.webp", reason: "mbolster slide config (slice 17)" },
-  { publicPath: "/Mpillow_IG_Post_May_2025.webp", reason: "mbolster slide config (slice 17)" },
-  { publicPath: "/IMG_5097.jpg", reason: "mbolster slide config (slice 17)" },
-  { publicPath: "/IMG_5110.webp", reason: "mbolster slide config (slice 17)" },
-  { publicPath: "/bolster_mbolster_size.webp", reason: "mbolster slide config (slice 17)" },
-  { publicPath: "/Bolster_Fillings_gif.webp", reason: "mbolster slide config (slice 17)" },
-  { publicPath: "/bev-back-sleep.png", reason: "cervical slide config (slice 17)" },
-  { publicPath: "/cns-pouch.png", reason: "cervical slide config (slice 17)" },
-  { publicPath: "/round-flat-head-comp.png", reason: "cervical slide config (slice 17)" },
-  { publicPath: "/cns-insert.png", reason: "cervical slide config (slice 17)" },
-  { publicPath: "/cns-contact-point.png", reason: "cervical slide config (slice 17)" },
-];
+/** @deprecated Slice 17 adopted slides — kept empty for plan shape compatibility. */
+export const DEFERRED_PUBLIC_PATHS: Array<{ publicPath: string; reason: string }> = [];
 
 /** Tag used for idempotent lookup (`public:/path`, lowercased). */
 export function publicPathTag(publicPath: string): string {
