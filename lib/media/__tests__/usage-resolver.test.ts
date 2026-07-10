@@ -129,6 +129,19 @@ describe("usage resolver", () => {
     expect(jsonRefsAsset({ image: OTHER.hosted_url }, ASSET)).toBe(false);
   });
 
+  it("matches landing_*_asset_id dual-write companion", () => {
+    const rows: UsageConsumerRows = {
+      settings: [
+        { key: "landing_hero", value: "https://cdn.example/display.webp" },
+        { key: "landing_hero_asset_id", value: ASSET.id },
+      ],
+    };
+    const usages = resolveUsages(ASSET, rows);
+    expect(usages).toEqual([
+      { type: "landing_slot", label: "Hero", ref_id: "landing_hero" },
+    ]);
+  });
+
   it("unused asset returns empty", () => {
     const rows: UsageConsumerRows = {
       settings: [{ key: "landing_hero", value: OTHER.hosted_url! }],

@@ -31,6 +31,8 @@ function asset(partial: Partial<MediaAsset> & Pick<MediaAsset, "id" | "kind" | "
     byte_size: null,
     width: null,
     height: null,
+    folder_id: null,
+    tags: [],
     imported_at: null,
     last_used_at: null,
     created_by: null,

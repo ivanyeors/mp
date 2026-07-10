@@ -28,12 +28,15 @@ type PickerAsset = {
   alt: string | null;
   created_at: string;
   folder_id: string | null;
+  kind: string;
+  tags: string[];
 };
 
 type PickerFolder = { id: string; name: string };
 
 type FilterMode = "all" | "in_use" | "unused";
 type FolderFilter = "all" | "unfiled" | string;
+type KindFilter = "all" | "image" | "video" | "pdf";
 
 interface ImagePickerProps {
   onSelect: (selection: AssetSelection) => void;
@@ -52,6 +55,8 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [folders, setFolders] = useState<PickerFolder[]>([]);
   const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
+  const [kindFilter, setKindFilter] = useState<KindFilter>(imageOnly ? "image" : "all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
@@ -59,6 +64,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
   const loadAssets = useCallback(async () => {
     setLoading(true);
     try {
+      // ponytail: load all kinds when picker allows; imageOnly still requests kind=image
       const q = imageOnly ? "?kind=image" : "";
       const [assetsRes, usageRes, foldersRes] = await Promise.all([
         fetch(`/api/media-assets${q}`),
@@ -82,6 +88,8 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
           hosted_url?: string | null;
           created_at: string;
           folder_id?: string | null;
+          kind?: string;
+          tags?: string[];
         }>)
           .filter((a) => a.hosted_url)
           .map((a) => ({
@@ -91,6 +99,8 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             alt: a.alt_text ?? null,
             created_at: a.created_at,
             folder_id: a.folder_id ?? null,
+            kind: a.kind ?? "image",
+            tags: Array.isArray(a.tags) ? a.tags : [],
           })),
       );
 
@@ -117,8 +127,10 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
       setSearchQuery("");
       setFilterMode("all");
       setFolderFilter("all");
+      setKindFilter(imageOnly ? "image" : "all");
+      setTagFilter("all");
     }
-  }, [open, loadAssets]);
+  }, [open, loadAssets, imageOnly]);
 
   const uploadFile = async (file: File) => {
     setUploading(true);
@@ -137,6 +149,8 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             alt: data.asset.alt_text ?? null,
             created_at: data.asset.created_at,
             folder_id: data.asset.folder_id ?? null,
+            kind: data.asset.kind ?? "image",
+            tags: Array.isArray(data.asset.tags) ? data.asset.tags : [],
           },
           ...prev,
         ]);
@@ -151,6 +165,8 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             alt: null,
             created_at: new Date().toISOString(),
             folder_id: null,
+            kind: "image",
+            tags: [],
           },
           ...prev,
         ]);
@@ -216,10 +232,22 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
     [usageByUrl],
   );
 
+  const knownTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const a of assets) {
+      for (const t of a.tags) set.add(t);
+    }
+    return [...set].sort();
+  }, [assets]);
+
   const filtered = useMemo(() => {
     let list = assets;
     if (folderFilter === "unfiled") list = list.filter((a) => !a.folder_id);
     else if (folderFilter !== "all") list = list.filter((a) => a.folder_id === folderFilter);
+    if (!imageOnly && kindFilter !== "all") {
+      list = list.filter((a) => a.kind === kindFilter);
+    }
+    if (tagFilter !== "all") list = list.filter((a) => a.tags.includes(tagFilter));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((a) => a.name.toLowerCase().includes(q));
@@ -227,7 +255,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
     if (filterMode === "in_use") list = list.filter(isUsed);
     else if (filterMode === "unused") list = list.filter((a) => !isUsed(a));
     return list;
-  }, [assets, folderFilter, searchQuery, filterMode, isUsed]);
+  }, [assets, folderFilter, kindFilter, tagFilter, searchQuery, filterMode, isUsed, imageOnly]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -307,20 +335,57 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
               ))}
             </div>
           </div>
-          <select
-            value={folderFilter}
-            onChange={(e) => setFolderFilter(e.target.value as FolderFilter)}
-            className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:max-w-xs"
-            aria-label="Filter by folder"
-          >
-            <option value="all">All folders</option>
-            <option value="unfiled">Unfiled</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
+          {!imageOnly && (
+            <div className="flex flex-wrap gap-1">
+              {(
+                [
+                  ["all", "All kinds"],
+                  ["image", "Images"],
+                  ["video", "Videos"],
+                  ["pdf", "PDFs"],
+                ] as const
+              ).map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={kindFilter === value ? "default" : "outline"}
+                  onClick={() => setKindFilter(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select
+              value={folderFilter}
+              onChange={(e) => setFolderFilter(e.target.value as FolderFilter)}
+              className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:max-w-xs"
+              aria-label="Filter by folder"
+            >
+              <option value="all">All folders</option>
+              <option value="unfiled">Unfiled</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:max-w-xs"
+              aria-label="Filter by tag"
+            >
+              <option value="all">All tags</option>
+              {knownTags.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-2 min-h-[300px] relative">

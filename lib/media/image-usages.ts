@@ -166,6 +166,20 @@ export function resolveUsages(
 
   for (const setting of rows.settings ?? []) {
     if (!setting.key.startsWith("landing_")) continue;
+
+    // Dual-write companion: landing_*_asset_id → same slot ref_id as URL key
+    if (setting.key.endsWith("_asset_id")) {
+      const baseKey = setting.key.slice(0, -"_asset_id".length);
+      if (setting.value === asset.id) {
+        usages.push({
+          type: "landing_slot",
+          label: SLOT_LABELS[baseKey] ?? baseKey,
+          ref_id: baseKey,
+        });
+      }
+      continue;
+    }
+
     if (
       refsMatch(asset, { url: setting.value }) ||
       setting.value === asset.id ||

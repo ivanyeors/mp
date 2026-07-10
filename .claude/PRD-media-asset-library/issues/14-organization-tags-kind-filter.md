@@ -17,10 +17,10 @@ Modules: 8, 7
 
 ## Acceptance criteria
 
-- [ ] Staff adds tags to an Asset; filter by tag narrows grid.
-- [ ] Kind filter shows only images, videos, or PDFs.
-- [ ] Combined filters work together without empty-state bugs.
-- [ ] Tag/kind filters available in Asset picker.
+- [x] Staff adds tags to an Asset; filter by tag narrows grid.
+- [x] Kind filter shows only images, videos, or PDFs.
+- [x] Combined filters work together without empty-state bugs.
+- [x] Tag/kind filters available in Asset picker.
 
 ## Blocked by
 

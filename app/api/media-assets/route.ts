@@ -17,6 +17,7 @@ export async function GET(req: Request) {
   const kind = searchParams.get("kind") ?? undefined;
   const folder_id = searchParams.get("folder_id") ?? undefined;
   const unfiled = searchParams.get("unfiled") === "true";
+  const tag = searchParams.get("tag") ?? undefined;
 
   try {
     const assets = await listMediaAssets({
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
       kind: kind || undefined,
       folder_id: folder_id || undefined,
       unfiled: unfiled || undefined,
+      tag: tag || undefined,
     });
     return NextResponse.json({ ok: true, assets });
   } catch (err) {

@@ -7,18 +7,23 @@
  */
 import { seedFaqDatabase } from "../lib/faq/seed";
 
-const force = process.argv.includes("--force");
+async function main() {
+  const force = process.argv.includes("--force");
+  const result = await seedFaqDatabase({ force });
 
-const result = await seedFaqDatabase({ force });
-
-if (result.ok) {
-  console.log(result.message);
-  if (result.seeded) {
-    console.log(`  categories: ${result.categories}`);
-    console.log(`  items: ${result.items}`);
+  if (result.ok) {
+    console.log(result.message);
+    if (result.seeded) {
+      console.log(`  categories: ${result.categories}`);
+      console.log(`  items: ${result.items}`);
+    }
+    return;
   }
-  process.exit(0);
-} else {
   console.error("FAQ seed failed:", result.message);
   process.exit(1);
 }
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

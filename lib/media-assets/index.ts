@@ -11,6 +11,7 @@ import {
   type MediaFolder,
   type UpdateMediaAssetInput,
   type UpdateMediaFolderInput,
+  normalizeTags,
   planBucketBackfill,
   validateCreateMediaAsset,
   validateCreateMediaFolder,
@@ -32,6 +33,9 @@ export {
   displayNameFromStoragePath,
   isMediaAssetKind,
   matchesFolderFilter,
+  matchesKindFilter,
+  matchesTagFilter,
+  normalizeTags,
   planBucketBackfill,
   validateCreateMediaAsset,
   validateCreateMediaFolder,
@@ -72,6 +76,7 @@ export async function listMediaAssets(opts?: {
   kind?: string;
   folder_id?: string;
   unfiled?: boolean;
+  tag?: string;
   limit?: number;
 }): Promise<MediaAsset[]> {
   let q = admin()
@@ -83,6 +88,7 @@ export async function listMediaAssets(opts?: {
   if (opts?.search?.trim()) q = q.ilike("name", `%${opts.search.trim()}%`);
   if (opts?.unfiled) q = q.is("folder_id", null);
   else if (opts?.folder_id) q = q.eq("folder_id", opts.folder_id);
+  if (opts?.tag?.trim()) q = q.contains("tags", [opts.tag.trim().toLowerCase()]);
   if (opts?.limit) q = q.limit(opts.limit);
 
   const { data, error } = await q;
@@ -151,6 +157,7 @@ export async function updateMediaAsset(
   if (input.folder_id !== undefined) {
     patch.folder_id = input.folder_id === null ? null : input.folder_id.trim();
   }
+  if (input.tags !== undefined) patch.tags = normalizeTags(input.tags) ?? [];
 
   const { data, error } = await admin()
     .from("media_assets")

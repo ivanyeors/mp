@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   isMediaAssetKind,
   matchesFolderFilter,
+  matchesKindFilter,
+  matchesTagFilter,
+  normalizeTags,
   planBucketBackfill,
   validateCreateMediaAsset,
   validateCreateMediaFolder,
@@ -54,6 +57,19 @@ describe("media-assets registry", () => {
     expect(validateUpdateMediaAsset({ folder_id: null })).toBeNull();
     expect(validateUpdateMediaAsset({ folder_id: "  " })).toBe("Invalid folder_id");
     expect(validateUpdateMediaAsset({ folder_id: "abc" })).toBeNull();
+    expect(validateUpdateMediaAsset({ tags: ["Hero", "hero", "  "] })).toBeNull();
+    expect(validateUpdateMediaAsset({ tags: "hero" as unknown as string[] })).toBe("Invalid tags");
+    expect(validateUpdateMediaAsset({ tags: [1 as unknown as string] })).toBe("Invalid tags");
+    expect(validateUpdateMediaAsset({ tags: [] })).toBeNull();
+  });
+
+  it("normalizes tags", () => {
+    expect(normalizeTags([" Hero ", "HERO", "2026-campaign", ""])).toEqual([
+      "hero",
+      "2026-campaign",
+    ]);
+    expect(normalizeTags([])).toEqual([]);
+    expect(normalizeTags(null)).toBeNull();
   });
 
   it("validates folder create/rename", () => {
@@ -69,6 +85,23 @@ describe("media-assets registry", () => {
     expect(matchesFolderFilter("f2", { folder_id: "f1" })).toBe(false);
     expect(matchesFolderFilter(null, { unfiled: true })).toBe(true);
     expect(matchesFolderFilter("f1", { unfiled: true })).toBe(false);
+  });
+
+  it("matches kind filter", () => {
+    expect(matchesKindFilter("image")).toBe(true);
+    expect(matchesKindFilter("image", "all")).toBe(true);
+    expect(matchesKindFilter("image", "image")).toBe(true);
+    expect(matchesKindFilter("video", "image")).toBe(false);
+    expect(matchesKindFilter("pdf", "pdf")).toBe(true);
+  });
+
+  it("matches tag filter", () => {
+    expect(matchesTagFilter(["hero", "2026"])).toBe(true);
+    expect(matchesTagFilter(["hero", "2026"], "hero")).toBe(true);
+    expect(matchesTagFilter(["hero"], "Hero")).toBe(true);
+    expect(matchesTagFilter(["hero"], "campaign")).toBe(false);
+    expect(matchesTagFilter(null, "hero")).toBe(false);
+    expect(matchesTagFilter([], "")).toBe(true);
   });
 
   it("backfill skips known hosted_urls (idempotent)", () => {

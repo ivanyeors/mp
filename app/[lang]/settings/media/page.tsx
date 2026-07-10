@@ -19,6 +19,7 @@ import {
     Film,
 } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +57,7 @@ interface MediaFile {
     drive_file_id?: string | null;
     last_used_at?: string | null;
     folder_id?: string | null;
+    tags?: string[];
 }
 
 interface MediaFolderRow {
@@ -96,6 +98,7 @@ type UsageMap = Record<string, UsageEntry[]>;
 type FilterMode = "all" | "in_use" | "unused";
 /** all = no folder filter; unfiled = folder_id null; else folder uuid */
 type FolderFilter = "all" | "unfiled" | string;
+type KindFilter = "all" | "image" | "video" | "pdf";
 
 function relativeUsed(iso: string | null | undefined): string | null {
     if (!iso) return null;
@@ -162,11 +165,15 @@ export default function MediaPage() {
     /* Search & filter */
     const [searchQuery, setSearchQuery] = useState("");
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
+    const [kindFilter, setKindFilter] = useState<KindFilter>("all");
+    const [tagFilter, setTagFilter] = useState<string>("all");
     const [folders, setFolders] = useState<MediaFolderRow[]>([]);
     const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
     const [newFolderName, setNewFolderName] = useState("");
     const [folderBusy, setFolderBusy] = useState(false);
     const [editFolderId, setEditFolderId] = useState<string | null>(null);
+    const [editTags, setEditTags] = useState<string[]>([]);
+    const [tagInput, setTagInput] = useState("");
 
     /* Replace dialog */
     const [replaceFile, setReplaceFile] = useState<MediaFile | null>(null);
@@ -216,6 +223,7 @@ export default function MediaPage() {
                             kind: string;
                             last_used_at?: string | null;
                             folder_id?: string | null;
+                            tags?: string[];
                         }) => ({
                             id: a.id,
                             name: a.name,
@@ -227,6 +235,7 @@ export default function MediaPage() {
                             kind: a.kind,
                             last_used_at: a.last_used_at ?? null,
                             folder_id: a.folder_id ?? null,
+                            tags: Array.isArray(a.tags) ? a.tags : [],
                         }),
                     ),
                 );
@@ -320,6 +329,14 @@ export default function MediaPage() {
             result = result.filter((f) => f.folder_id === folderFilter);
         }
 
+        if (kindFilter !== "all") {
+            result = result.filter((f) => (f.kind ?? "image") === kindFilter);
+        }
+
+        if (tagFilter !== "all") {
+            result = result.filter((f) => (f.tags ?? []).includes(tagFilter));
+        }
+
         // Search filter
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
@@ -334,7 +351,15 @@ export default function MediaPage() {
         }
 
         return result;
-    }, [files, folderFilter, searchQuery, filterMode, getFileUsages]);
+    }, [files, folderFilter, kindFilter, tagFilter, searchQuery, filterMode, getFileUsages]);
+
+    const knownTags = useMemo(() => {
+        const set = new Set<string>();
+        for (const f of files) {
+            for (const t of f.tags ?? []) set.add(t);
+        }
+        return [...set].sort();
+    }, [files]);
 
     /* ---------------------------------------------------------------- */
     /* Actions                                                           */
@@ -430,6 +455,8 @@ export default function MediaPage() {
         setEditName(file.name);
         setEditAlt(file.alt_text ?? "");
         setEditFolderId(file.folder_id ?? null);
+        setEditTags([...(file.tags ?? [])]);
+        setTagInput("");
         setDetailUsages(null);
         void (async () => {
             try {
@@ -529,6 +556,7 @@ export default function MediaPage() {
                     name,
                     alt_text: (detailFile.kind ?? "image") === "image" ? editAlt : undefined,
                     folder_id: editFolderId,
+                    tags: editTags,
                 }),
             });
             const data = await res.json();
@@ -541,9 +569,11 @@ export default function MediaPage() {
                 name: data.asset.name,
                 alt_text: data.asset.alt_text ?? null,
                 folder_id: data.asset.folder_id ?? null,
+                tags: Array.isArray(data.asset.tags) ? data.asset.tags : [],
             };
             setDetailFile(updated);
             setEditFolderId(updated.folder_id ?? null);
+            setEditTags([...(updated.tags ?? [])]);
             setFiles((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
             toast.success("Saved");
         } catch (error) {
@@ -620,14 +650,18 @@ export default function MediaPage() {
         toast.success("URL copied to clipboard");
     };
 
-    /** Set a landing-page image override */
-    const setSlotImage = async (slot: LandingSlot, url: string) => {
+    /** Set a landing-page image override (URL + Asset id dual-write) */
+    const setSlotImage = async (slot: LandingSlot, url: string, assetId?: string) => {
         setSavingSlot(slot.key);
         try {
             const res = await fetch("/api/site-settings", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ key: slot.key, value: url }),
+                body: JSON.stringify({
+                    key: slot.key,
+                    value: url,
+                    media_asset_id: assetId ?? null,
+                }),
             });
             const data = await res.json();
             if (data.ok) {
@@ -672,23 +706,45 @@ export default function MediaPage() {
         }
     };
 
-    /** Replace an image everywhere */
-    const handleReplace = async (oldUrl: string, newUrl: string) => {
+    /** Replace an image everywhere (URL + Asset id across all consumers) */
+    const handleReplace = async (oldFile: MediaFile, newFile: MediaFile) => {
+        if (!oldFile.url || !newFile.url) return;
         setReplacing(true);
         try {
             const res = await fetch("/api/media/replace", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ oldUrl, newUrl }),
+                body: JSON.stringify({
+                    oldUrl: oldFile.url,
+                    newUrl: newFile.url,
+                    oldAssetId: oldFile.id,
+                    newAssetId: newFile.id,
+                }),
             });
             const data = await res.json();
             if (data.ok) {
-                const { blogFeatured, blogInline, landingSlots } = data.summary;
+                const s = data.summary as {
+                    blogFeatured: number;
+                    blogInline: number;
+                    landingSlots: string[];
+                    landingSections: number;
+                    productImages: number;
+                    productVariants: number;
+                    categories: number;
+                    partners: number;
+                    partnersPages: number;
+                };
                 const parts: string[] = [];
-                if (blogFeatured > 0) parts.push(`${blogFeatured} blog featured image${blogFeatured > 1 ? "s" : ""}`);
-                if (blogInline > 0) parts.push(`${blogInline} blog inline reference${blogInline > 1 ? "s" : ""}`);
-                if (landingSlots.length > 0) parts.push(`${landingSlots.length} landing slot${landingSlots.length > 1 ? "s" : ""}`);
-                toast.success(`Replaced in ${parts.join(", ")}`);
+                if (s.blogFeatured > 0) parts.push(`${s.blogFeatured} blog featured`);
+                if (s.blogInline > 0) parts.push(`${s.blogInline} blog inline`);
+                if (s.landingSlots?.length > 0) parts.push(`${s.landingSlots.length} landing slot${s.landingSlots.length > 1 ? "s" : ""}`);
+                if (s.landingSections > 0) parts.push(`${s.landingSections} page builder`);
+                if (s.productImages > 0) parts.push(`${s.productImages} product image${s.productImages > 1 ? "s" : ""}`);
+                if (s.productVariants > 0) parts.push(`${s.productVariants} variant${s.productVariants > 1 ? "s" : ""}`);
+                if (s.categories > 0) parts.push(`${s.categories} categor${s.categories > 1 ? "ies" : "y"}`);
+                if (s.partners > 0) parts.push(`${s.partners} partner${s.partners > 1 ? "s" : ""}`);
+                if (s.partnersPages > 0) parts.push(`${s.partnersPages} partners page`);
+                toast.success(parts.length > 0 ? `Replaced in ${parts.join(", ")}` : "No references found to replace");
                 setReplaceFile(null);
                 setDetailFile(null);
                 loadUsages();
@@ -973,6 +1029,27 @@ export default function MediaPage() {
                             ))}
                         </div>
                     </div>
+                    <div className="flex flex-wrap gap-1 border rounded-lg p-1 w-fit">
+                        {([
+                            { value: "all", label: "All kinds" },
+                            { value: "image", label: "Images" },
+                            { value: "video", label: "Videos" },
+                            { value: "pdf", label: "PDFs" },
+                        ] as const).map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setKindFilter(opt.value)}
+                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                                    kindFilter === opt.value
+                                        ? "bg-primary text-primary-foreground"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
                     <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                         <select
                             value={folderFilter}
@@ -985,6 +1062,19 @@ export default function MediaPage() {
                             {folders.map((f) => (
                                 <option key={f.id} value={f.id}>
                                     {f.name}
+                                </option>
+                            ))}
+                        </select>
+                        <select
+                            value={tagFilter}
+                            onChange={(e) => setTagFilter(e.target.value)}
+                            className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[160px]"
+                            aria-label="Filter by tag"
+                        >
+                            <option value="all">All tags</option>
+                            {knownTags.map((t) => (
+                                <option key={t} value={t}>
+                                    {t}
                                 </option>
                             ))}
                         </select>
@@ -1041,7 +1131,7 @@ export default function MediaPage() {
                 ) : filteredFiles.length === 0 ? (
                     <div className="text-center py-12 border rounded-lg bg-muted/20">
                         <Search className="mx-auto h-10 w-10 text-muted-foreground opacity-50 mb-3" />
-                        <h3 className="text-lg font-medium">No matching images</h3>
+                        <h3 className="text-lg font-medium">No matching assets</h3>
                         <p className="text-muted-foreground text-sm mt-1">
                             Try a different search term or filter.
                         </p>
@@ -1296,6 +1386,50 @@ export default function MediaPage() {
                                             ))}
                                         </select>
                                     </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="asset-tag-input" className="text-xs text-muted-foreground">
+                                            Tags
+                                        </Label>
+                                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                            {editTags.map((tag) => (
+                                                <Badge key={tag} variant="secondary" className="gap-1 text-xs">
+                                                    {tag}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setEditTags((prev) => prev.filter((t) => t !== tag))
+                                                        }
+                                                        className="ml-0.5 hover:text-destructive transition-colors"
+                                                        aria-label={`Remove tag ${tag}`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                        <Input
+                                            id="asset-tag-input"
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key !== "Enter") return;
+                                                e.preventDefault();
+                                                const val = tagInput.trim().toLowerCase();
+                                                if (val && !editTags.includes(val)) {
+                                                    setEditTags((prev) => [...prev, val]);
+                                                }
+                                                setTagInput("");
+                                            }}
+                                            list="media-known-tags"
+                                            placeholder="Type a tag and press Enter"
+                                            className="text-sm"
+                                        />
+                                        <datalist id="media-known-tags">
+                                            {knownTags.map((t) => (
+                                                <option key={t} value={t} />
+                                            ))}
+                                        </datalist>
+                                    </div>
                                     <Button
                                         size="sm"
                                         onClick={handleSaveMeta}
@@ -1303,7 +1437,9 @@ export default function MediaPage() {
                                             savingMeta ||
                                             (editName.trim() === detailFile.name &&
                                                 editAlt === (detailFile.alt_text ?? "") &&
-                                                (editFolderId ?? null) === (detailFile.folder_id ?? null))
+                                                (editFolderId ?? null) === (detailFile.folder_id ?? null) &&
+                                                JSON.stringify(editTags) ===
+                                                    JSON.stringify(detailFile.tags ?? []))
                                         }
                                     >
                                         {savingMeta ? (
@@ -1443,7 +1579,11 @@ export default function MediaPage() {
                                                 "relative aspect-square rounded-lg overflow-hidden border-2 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                                                 isSelected ? "border-primary ring-2 ring-primary/30" : "border-transparent hover:border-muted-foreground/30",
                                             ].join(" ")}
-                                            onClick={() => pickerSlot && file.url && setSlotImage(pickerSlot, file.url)}
+                                            onClick={() =>
+                                                pickerSlot &&
+                                                file.url &&
+                                                setSlotImage(pickerSlot, file.url, file.id)
+                                            }
                                             disabled={!!savingSlot}
                                         >
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1483,10 +1623,10 @@ export default function MediaPage() {
                     </DialogHeader>
 
                     {/* Usage summary */}
-                    {replaceFile?.url && usageMap[replaceFile.url] && (
+                    {replaceFile && getFileUsages(replaceFile).length > 0 && (
                         <div className="px-6 -mt-2">
                             <div className="flex flex-wrap gap-1.5">
-                                {usageMap[replaceFile.url].map((usage, i) => (
+                                {getFileUsages(replaceFile).map((usage, i) => (
                                     <span
                                         key={`${usage.ref_id}-${i}`}
                                         className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
@@ -1514,9 +1654,9 @@ export default function MediaPage() {
                                             type="button"
                                             className="relative aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-primary transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                             onClick={() =>
-                                                replaceFile?.url &&
+                                                replaceFile &&
                                                 file.url &&
-                                                handleReplace(replaceFile.url, file.url)
+                                                handleReplace(replaceFile, file)
                                             }
                                             disabled={replacing}
                                         >

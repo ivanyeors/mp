@@ -23,6 +23,7 @@ export type MediaAsset = {
   width: number | null;
   height: number | null;
   folder_id: string | null;
+  tags: string[];
   imported_at: string | null;
   last_used_at: string | null;
   created_by: string | null;
@@ -50,6 +51,8 @@ export type UpdateMediaAssetInput = {
   alt_text?: string | null;
   /** Assign folder, or null to unfile. */
   folder_id?: string | null;
+  /** Replace tags (normalized lowercase). Empty clears. */
+  tags?: string[];
 };
 
 export type CreateMediaFolderInput = { name: string };
@@ -73,18 +76,37 @@ export function validateCreateMediaAsset(input: CreateMediaAssetInput): string |
   return null;
 }
 
+/** Trim, lowercase, dedupe — empty strings dropped. */
+export function normalizeTags(tags: unknown): string[] | null {
+  if (!Array.isArray(tags)) return null;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of tags) {
+    if (typeof t !== "string") return null;
+    const v = t.trim().toLowerCase();
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
+}
+
 /** Validate update payload; returns error message or null. */
 export function validateUpdateMediaAsset(input: UpdateMediaAssetInput): string | null {
   if (input.name !== undefined && !input.name.trim()) return "Name cannot be empty";
   if (
     input.name === undefined &&
     input.alt_text === undefined &&
-    input.folder_id === undefined
+    input.folder_id === undefined &&
+    input.tags === undefined
   ) {
     return "No fields to update";
   }
   if (input.folder_id !== undefined && input.folder_id !== null && !input.folder_id.trim()) {
     return "Invalid folder_id";
+  }
+  if (input.tags !== undefined && normalizeTags(input.tags) === null) {
+    return "Invalid tags";
   }
   return null;
 }
@@ -107,6 +129,24 @@ export function matchesFolderFilter(
   if (opts?.unfiled) return folderId == null;
   if (opts?.folder_id) return folderId === opts.folder_id;
   return true;
+}
+
+/** Pure kind filter (`all` / empty = no filter). */
+export function matchesKindFilter(
+  kind: string,
+  kindFilter?: string | null,
+): boolean {
+  if (!kindFilter || kindFilter === "all") return true;
+  return kind === kindFilter;
+}
+
+/** Pure tag filter (asset must include tag). */
+export function matchesTagFilter(
+  tags: string[] | null | undefined,
+  tag?: string | null,
+): boolean {
+  if (!tag?.trim()) return true;
+  return (tags ?? []).includes(tag.trim().toLowerCase());
 }
 
 /** Display name from a storage object path (strip random prefix when present). */

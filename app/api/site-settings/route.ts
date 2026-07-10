@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
+import { landingAssetIdKey } from "@/lib/media/replace";
 
 export const runtime = "nodejs";
 
@@ -34,8 +35,10 @@ export async function GET(req: Request) {
 
 /**
  * PUT /api/site-settings
- * Body: { key: string, value: string }
- * Upserts a single setting.
+ * Body: { key: string, value: string, media_asset_id?: string | null }
+ *
+ * Landing slots (`landing_*`): value = hosted URL; optional media_asset_id
+ * dual-writes companion key `landing_*_asset_id` (slice 15).
  */
 export async function PUT(req: Request) {
   const denied = await requireAdmin("page-builder");
@@ -43,7 +46,11 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
-    const { key, value } = body as { key?: string; value?: string };
+    const { key, value, media_asset_id } = body as {
+      key?: string;
+      value?: string;
+      media_asset_id?: string | null;
+    };
 
     if (!key || typeof key !== "string") {
       return NextResponse.json({ error: "Missing or invalid 'key'" }, { status: 400 });
@@ -53,24 +60,46 @@ export async function PUT(req: Request) {
     }
 
     const admin = supabaseAdmin();
+    const now = new Date().toISOString();
     const { error } = await admin
       .from("site_settings")
-      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      .upsert({ key, value, updated_at: now }, { onConflict: "key" });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Slice 10: landing slot save bumps last_used_at on matching Asset
+    // Dual-write Asset id for landing slots
+    if (key.startsWith("landing_") && !key.endsWith("_asset_id")) {
+      const idKey = landingAssetIdKey(key);
+      if (typeof media_asset_id === "string" && media_asset_id.length > 0) {
+        const { error: idErr } = await admin
+          .from("site_settings")
+          .upsert(
+            { key: idKey, value: media_asset_id, updated_at: now },
+            { onConflict: "key" },
+          );
+        if (idErr) {
+          return NextResponse.json({ error: idErr.message }, { status: 500 });
+        }
+      } else if (media_asset_id === null) {
+        await admin.from("site_settings").delete().eq("key", idKey);
+      }
+    }
+
     if (key.startsWith("landing_") && value.startsWith("http")) {
-      await touchLastUsed({ urls: [value] }).catch(() => {});
+      await touchLastUsed({
+        urls: [value],
+        assetIds:
+          typeof media_asset_id === "string" && media_asset_id ? [media_asset_id] : [],
+      }).catch(() => {});
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -78,6 +107,7 @@ export async function PUT(req: Request) {
 /**
  * DELETE /api/site-settings?key=landing_hero
  * Removes a setting so the default is used again.
+ * Also clears companion landing_*_asset_id when resetting a landing slot.
  */
 export async function DELETE(req: Request) {
   const denied = await requireAdmin("page-builder");
@@ -91,7 +121,12 @@ export async function DELETE(req: Request) {
   }
 
   const admin = supabaseAdmin();
-  const { error } = await admin.from("site_settings").delete().eq("key", key);
+  const keys = [key];
+  if (key.startsWith("landing_") && !key.endsWith("_asset_id")) {
+    keys.push(landingAssetIdKey(key));
+  }
+
+  const { error } = await admin.from("site_settings").delete().in("key", keys);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -17,10 +17,28 @@ Modules: 5, 9
 
 ## Acceptance criteria
 
-- [ ] Replace updates references in all listed consumer types.
-- [ ] Landing slots store Asset id + url on save.
-- [ ] Usage resolver reflects new attachments after replace.
-- [ ] Order item snapshots unchanged by replace.
+- [x] Replace updates references in all listed consumer types.
+- [x] Landing slots store Asset id + url on save.
+- [x] Usage resolver reflects new attachments after replace.
+- [x] Order item snapshots unchanged by replace.
+
+## Dual-write shape (landing slots)
+
+- URL stays at `landing_*` (e.g. `landing_hero`) — public page / `getSiteSettings` unchanged.
+- Asset id at companion key `landing_*_asset_id` (e.g. `landing_hero_asset_id`).
+- `PUT /api/site-settings` accepts optional `media_asset_id`; `DELETE` clears both keys.
+- Replace swaps both URL and companion id when `oldAssetId` / `newAssetId` provided.
+
+## Proof
+
+| Criterion | Proof |
+|-----------|--------|
+| Replace all consumers | `planReplaceEverywhere` + `runReplaceEverywhere`; smoke `replace_consumers: ok` |
+| Landing dual-write | Media page `setSlotImage` → PUT with `media_asset_id`; smoke `landing_dual_write: ok` / `landing_ids_swapped: ok` |
+| Usage after replace | smoke `old_unused: ok` / `usage_after_replace: ok` |
+| Order snapshots | unit + smoke `order_exclusion: ok` |
+| Unit tests | **52/52** (`lib/media` + `lib/media-assets`) |
+| Smoke | **`SMOKE_OK`** (`scripts/smoke-replace-everywhere.ts`) |
 
 ## Blocked by
 
