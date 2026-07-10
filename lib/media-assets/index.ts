@@ -1,5 +1,10 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
+  listImageUsages,
+  type ImageUsageEntry,
+} from "@/lib/media/image-usages";
+import { storagePathFromHostedUrl } from "@/lib/media-assets/ingest";
+import {
   type CreateMediaAssetInput,
   type MediaAsset,
   type UpdateMediaAssetInput,
@@ -33,8 +38,19 @@ export {
   resolveUrl,
 } from "./drive";
 export type { DriveFileMeta, DriveFolderListing, DriveSharedDrive } from "./drive";
-export { ImportDriveError, importFromDrive } from "./import-drive";
+export {
+  ImportDriveError,
+  importFromDrive,
+  reimportImageFromDrive,
+} from "./import-drive";
 export type { ImportDriveResult } from "./import-drive";
+
+export class MediaAssetInUseError extends Error {
+  constructor(public readonly usages: ImageUsageEntry[]) {
+    super("Asset is in use");
+    this.name = "MediaAssetInUseError";
+  }
+}
 
 function admin() {
   return supabaseAdmin();
@@ -131,6 +147,54 @@ export async function updateMediaAsset(
 export async function deleteMediaAsset(id: string): Promise<void> {
   const { error } = await admin().from("media_assets").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+/** Patch hosted-file metadata after re-import (internal). */
+export async function patchMediaAssetHosted(
+  id: string,
+  patch: {
+    hosted_url: string;
+    mime_type: string;
+    byte_size: number;
+    width: number;
+    height: number;
+    imported_at: string;
+  },
+): Promise<MediaAsset> {
+  const { data, error } = await admin()
+    .from("media_assets")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as MediaAsset;
+}
+
+/**
+ * Delete Asset (+ hosted storage object). Blocks with usages unless force.
+ * Video/PDF preview thumbs in the bucket are removed when hosted_url is set.
+ */
+export async function deleteMediaAssetGuarded(
+  id: string,
+  opts?: { force?: boolean },
+): Promise<void> {
+  const asset = await getMediaAsset(id);
+  if (!asset) throw new Error("Not found");
+
+  if (asset.hosted_url && !opts?.force) {
+    const usages = await listImageUsages(asset.hosted_url);
+    if (usages.length > 0) throw new MediaAssetInUseError(usages);
+  }
+
+  if (asset.hosted_url) {
+    const path = storagePathFromHostedUrl(asset.hosted_url);
+    if (path) {
+      await admin().storage.from("media").remove([path]);
+    }
+  }
+
+  await deleteMediaAsset(id);
 }
 
 /** Register existing `media` bucket objects as image Assets. Idempotent on hosted_url. */

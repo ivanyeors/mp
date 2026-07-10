@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Dialog,
     DialogContent,
@@ -48,6 +51,7 @@ interface MediaFile {
     id: string;
     created_at: string;
     kind?: string;
+    alt_text?: string | null;
     drive_url?: string | null;
     drive_file_id?: string | null;
 }
@@ -125,6 +129,10 @@ export default function MediaPage() {
 
     /* Image detail sheet */
     const [detailFile, setDetailFile] = useState<MediaFile | null>(null);
+    const [editName, setEditName] = useState("");
+    const [editAlt, setEditAlt] = useState("");
+    const [savingMeta, setSavingMeta] = useState(false);
+    const [reimporting, setReimporting] = useState(false);
 
     /* Search & filter */
     const [searchQuery, setSearchQuery] = useState("");
@@ -170,6 +178,7 @@ export default function MediaPage() {
                         (a: {
                             id: string;
                             name: string;
+                            alt_text?: string | null;
                             hosted_url?: string | null;
                             drive_url?: string | null;
                             drive_file_id?: string | null;
@@ -178,6 +187,7 @@ export default function MediaPage() {
                         }) => ({
                             id: a.id,
                             name: a.name,
+                            alt_text: a.alt_text ?? null,
                             url: a.hosted_url ?? null,
                             drive_url: a.drive_url ?? null,
                             drive_file_id: a.drive_file_id ?? null,
@@ -346,31 +356,85 @@ export default function MediaPage() {
         }
     };
 
-    const handleDelete = async (file: MediaFile, force = false) => {
+    const openDetail = (file: MediaFile) => {
+        setDetailFile(file);
+        setEditName(file.name);
+        setEditAlt(file.alt_text ?? "");
+    };
+
+    const handleSaveMeta = async () => {
+        if (!detailFile) return;
+        const name = editName.trim();
+        if (!name) {
+            toast.error("Name cannot be empty");
+            return;
+        }
+        setSavingMeta(true);
         try {
-            // Link-only Assets have no storage object — delete via registry.
-            if (!file.url) {
-                const res = await fetch(`/api/media-assets/${file.id}`, { method: "DELETE" });
-                const data = await res.json();
-                if (data.ok) {
-                    setFiles((prev) => prev.filter((f) => f.id !== file.id));
-                    setDetailFile(null);
-                    setDeleteConfirm(null);
-                    toast.success("Asset deleted");
-                } else {
-                    toast.error(getApiErrorMessage(data.error, "Delete failed"));
-                }
+            const res = await fetch(`/api/media-assets/${detailFile.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name,
+                    alt_text: (detailFile.kind ?? "image") === "image" ? editAlt : undefined,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                toast.error(getApiErrorMessage(data.error, "Save failed"));
                 return;
             }
+            const updated: MediaFile = {
+                ...detailFile,
+                name: data.asset.name,
+                alt_text: data.asset.alt_text ?? null,
+            };
+            setDetailFile(updated);
+            setFiles((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
+            toast.success("Saved");
+        } catch (error) {
+            console.error("Save meta error", error);
+            toast.error("Save failed");
+        } finally {
+            setSavingMeta(false);
+        }
+    };
 
-            // Storage object key is the last path segment of the public URL (not display name).
-            const storagePath = file.url.split("/").pop() || file.name;
-            const url = `/api/media/${encodeURIComponent(storagePath)}${force ? "?force=true" : ""}`;
+    const handleReimport = async () => {
+        if (!detailFile) return;
+        setReimporting(true);
+        try {
+            const res = await fetch(`/api/media-assets/${detailFile.id}/reimport`, {
+                method: "POST",
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                toast.error(getApiErrorMessage(data.error, "Re-import failed"));
+                return;
+            }
+            const updated: MediaFile = {
+                ...detailFile,
+                url: data.asset.hosted_url ?? detailFile.url,
+                name: data.asset.name ?? detailFile.name,
+            };
+            setDetailFile(updated);
+            setFiles((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
+            toast.success("Re-imported from Drive");
+        } catch (error) {
+            console.error("Re-import error", error);
+            toast.error("Re-import failed");
+        } finally {
+            setReimporting(false);
+        }
+    };
+
+    const handleDelete = async (file: MediaFile, force = false) => {
+        try {
+            const url = `/api/media-assets/${file.id}${force ? "?force=true" : ""}`;
             const res = await fetch(url, { method: "DELETE" });
             const data = await res.json();
 
             if (res.status === 409 && data.usages) {
-                // Image is in use — show confirmation dialog
                 setDeleteConfirm({ file, usages: data.usages });
                 return;
             }
@@ -379,7 +443,7 @@ export default function MediaPage() {
                 setFiles((prev) => prev.filter((f) => f.id !== file.id));
                 setDetailFile(null);
                 setDeleteConfirm(null);
-                toast.success("Image deleted");
+                toast.success("Asset deleted");
                 loadUsages();
             } else {
                 toast.error(getApiErrorMessage(data.error, "Delete failed"));
@@ -775,7 +839,7 @@ export default function MediaPage() {
                                 <div
                                     key={file.id}
                                     className="group relative border rounded-lg overflow-hidden bg-background shadow-sm hover:shadow-md transition-all cursor-pointer"
-                                    onClick={() => setDetailFile(file)}
+                                    onClick={() => openDetail(file)}
                                 >
                                     <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
                                         {file.url ? (
@@ -962,6 +1026,48 @@ export default function MediaPage() {
                                     </div>
                                 )}
 
+                                {/* Rename + alt */}
+                                <div className="space-y-3">
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="asset-name" className="text-xs text-muted-foreground">
+                                            Name
+                                        </Label>
+                                        <Input
+                                            id="asset-name"
+                                            value={editName}
+                                            onChange={(e) => setEditName(e.target.value)}
+                                        />
+                                    </div>
+                                    {(detailFile.kind ?? "image") === "image" && (
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="asset-alt" className="text-xs text-muted-foreground">
+                                                Alt text
+                                            </Label>
+                                            <Textarea
+                                                id="asset-alt"
+                                                value={editAlt}
+                                                onChange={(e) => setEditAlt(e.target.value)}
+                                                rows={2}
+                                                placeholder="Describe the image for accessibility"
+                                            />
+                                        </div>
+                                    )}
+                                    <Button
+                                        size="sm"
+                                        onClick={handleSaveMeta}
+                                        disabled={
+                                            savingMeta ||
+                                            (editName.trim() === detailFile.name &&
+                                                editAlt === (detailFile.alt_text ?? ""))
+                                        }
+                                    >
+                                        {savingMeta ? (
+                                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                                        ) : null}
+                                        Save
+                                    </Button>
+                                </div>
+
                                 {/* Usage list */}
                                 {detailFile.url && (
                                 <div className="space-y-2">
@@ -1008,6 +1114,22 @@ export default function MediaPage() {
 
                                 {/* Actions */}
                                 <div className="flex flex-col gap-2 pt-2 border-t">
+                                    {(detailFile.kind ?? "image") === "image" &&
+                                        detailFile.drive_file_id && (
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-start"
+                                            onClick={handleReimport}
+                                            disabled={reimporting}
+                                        >
+                                            {reimporting ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <RotateCcw className="mr-2 h-4 w-4" />
+                                            )}
+                                            Re-import from Drive
+                                        </Button>
+                                    )}
                                     {getUsageCount(detailFile.url) > 0 && detailFile.url && (
                                         <Button
                                             variant="outline"
@@ -1025,7 +1147,6 @@ export default function MediaPage() {
                                         variant="destructive"
                                         className="w-full justify-start"
                                         onClick={() => {
-                                            setDetailFile(null);
                                             handleDelete(detailFile);
                                         }}
                                     >

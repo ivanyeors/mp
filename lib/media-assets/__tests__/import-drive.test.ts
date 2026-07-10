@@ -2,10 +2,13 @@ import { describe, it, expect, vi } from "vitest";
 import {
   ImportDriveError,
   importFromDrive,
+  reimportImageFromDrive,
   type ImportDriveDeps,
   type DriveFileMetaLike,
 } from "@/lib/media-assets/import-drive";
 import type { MediaAsset } from "@/lib/media-assets/types";
+import { storagePathFromHostedUrl } from "@/lib/media-assets/ingest";
+import { MediaAssetInUseError } from "@/lib/media-assets";
 
 function meta(partial: Partial<DriveFileMetaLike> & Pick<DriveFileMetaLike, "id" | "mimeType">): DriveFileMetaLike {
   return {
@@ -44,8 +47,11 @@ function deps(overrides: Partial<ImportDriveDeps> = {}): ImportDriveDeps {
     downloadThumbnail: vi.fn().mockResolvedValue(null),
     ingestImageAsset: vi.fn(),
     hostPreviewImage: vi.fn(),
+    replaceHostedImage: vi.fn(),
     createMediaAsset: vi.fn(),
     getMediaAssetByDriveFileId: vi.fn().mockResolvedValue(null),
+    getMediaAsset: vi.fn().mockResolvedValue(null),
+    patchMediaAssetHosted: vi.fn(),
     ...overrides,
   };
 }
@@ -258,5 +264,89 @@ describe("importFromDrive", () => {
     });
 
     await expect(importFromDrive({ fileId: "fold1" }, d)).rejects.toBeInstanceOf(ImportDriveError);
+  });
+});
+
+describe("reimportImageFromDrive", () => {
+  it("re-downloads, upserts same storage path, patches hosted metadata", async () => {
+    const existing = asset({
+      id: "a1",
+      kind: "image",
+      name: "hero.png",
+      drive_file_id: "img1",
+      hosted_url: "https://cdn.example/media/hero_1.webp",
+    });
+    const patched = asset({
+      ...existing,
+      byte_size: 99,
+      width: 10,
+      height: 8,
+      imported_at: "2026-07-10T12:00:00Z",
+    });
+    const d = deps({
+      getMediaAsset: vi.fn().mockResolvedValue(existing),
+      downloadFile: vi.fn().mockResolvedValue(Buffer.from("raw")),
+      replaceHostedImage: vi.fn().mockResolvedValue({
+        publicUrl: "https://cdn.example/media/hero_1.webp",
+        storagePath: "hero_1.webp",
+        mimeType: "image/webp",
+        byteSize: 99,
+        width: 10,
+        height: 8,
+      }),
+      patchMediaAssetHosted: vi.fn().mockResolvedValue(patched),
+    });
+
+    const result = await reimportImageFromDrive("a1", d);
+
+    expect(d.downloadFile).toHaveBeenCalledWith("img1");
+    expect(d.replaceHostedImage).toHaveBeenCalledWith({
+      bytes: Buffer.from("raw"),
+      storagePath: "hero_1.webp",
+    });
+    expect(d.patchMediaAssetHosted).toHaveBeenCalledWith(
+      "a1",
+      expect.objectContaining({
+        hosted_url: "https://cdn.example/media/hero_1.webp",
+        mime_type: "image/webp",
+        byte_size: 99,
+        imported_at: expect.any(String),
+      }),
+    );
+    expect(result).toEqual(patched);
+  });
+
+  it("rejects video/PDF and assets without Drive id", async () => {
+    const d = deps({
+      getMediaAsset: vi.fn().mockResolvedValue(
+        asset({ id: "v1", kind: "video", name: "clip", drive_file_id: "vid1" }),
+      ),
+    });
+    await expect(reimportImageFromDrive("v1", d)).rejects.toMatchObject({
+      code: "not_reimportable",
+    });
+    expect(d.downloadFile).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing asset", async () => {
+    const d = deps({ getMediaAsset: vi.fn().mockResolvedValue(null) });
+    await expect(reimportImageFromDrive("missing", d)).rejects.toMatchObject({
+      code: "not_found",
+    });
+  });
+});
+
+describe("slice 09 helpers", () => {
+  it("storagePathFromHostedUrl takes last segment", () => {
+    expect(storagePathFromHostedUrl("https://cdn/media/foo_1.webp")).toBe("foo_1.webp");
+    expect(storagePathFromHostedUrl("https://cdn/media/foo_1.webp?v=2")).toBe("foo_1.webp");
+  });
+
+  it("MediaAssetInUseError carries usages", () => {
+    const err = new MediaAssetInUseError([
+      { type: "landing_slot", label: "Hero", ref_id: "landing_hero" },
+    ]);
+    expect(err.usages).toHaveLength(1);
+    expect(err.message).toBe("Asset is in use");
   });
 });

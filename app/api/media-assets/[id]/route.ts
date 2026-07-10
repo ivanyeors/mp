@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
-  deleteMediaAsset,
+  deleteMediaAssetGuarded,
   getMediaAsset,
+  MediaAssetInUseError,
   updateMediaAsset,
 } from "@/lib/media-assets";
 
@@ -48,22 +49,27 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const denied = await requireAdmin("media");
   if (denied) return denied;
 
   const { id } = await params;
+  const force = new URL(req.url).searchParams.get("force") === "true";
+
   try {
-    const asset = await getMediaAsset(id);
-    if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
-    await deleteMediaAsset(id);
+    await deleteMediaAssetGuarded(id, { force });
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Delete failed" },
-      { status: 500 },
-    );
+    if (err instanceof MediaAssetInUseError) {
+      return NextResponse.json(
+        { error: "Asset is in use", usages: err.usages },
+        { status: 409 },
+      );
+    }
+    const message = err instanceof Error ? err.message : "Delete failed";
+    const status = message === "Not found" ? 404 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

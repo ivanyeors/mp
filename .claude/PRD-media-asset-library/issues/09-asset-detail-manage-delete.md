@@ -18,10 +18,10 @@ Asset **detail sheet** on Media page: full metadata edit and safe delete.
 
 ## Acceptance criteria
 
-- [ ] Detail sheet opens from grid; rename and alt persist.
-- [ ] Open in Drive opens correct file for imported Assets.
-- [ ] Delete blocked with usage list when Asset is attached.
-- [ ] Re-import from Drive replaces hosted image bytes for image Assets.
+- [x] Detail sheet opens from grid; rename and alt persist.
+- [x] Open in Drive opens correct file for imported Assets.
+- [x] Delete blocked with usage list when Asset is attached.
+- [x] Re-import from Drive replaces hosted image bytes for image Assets.
 
 ## Blocked by
 

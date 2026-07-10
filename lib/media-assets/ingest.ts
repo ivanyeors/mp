@@ -76,3 +76,44 @@ export async function hostPreviewImage(opts: {
   const { data: pub } = admin.storage.from("media").getPublicUrl(storagePath);
   return { publicUrl: pub.publicUrl, storagePath };
 }
+
+/** Re-optimize and upsert over an existing storage object (keeps public URL stable). */
+export async function replaceHostedImage(opts: {
+  bytes: Buffer;
+  storagePath: string;
+}): Promise<{
+  publicUrl: string;
+  storagePath: string;
+  mimeType: string;
+  byteSize: number;
+  width: number;
+  height: number;
+}> {
+  const optimized = await optimizeImageForWeb(opts.bytes);
+  const admin = supabaseAdmin();
+
+  const { error: uploadError } = await admin.storage
+    .from("media")
+    .upload(opts.storagePath, optimized.buffer, {
+      contentType: optimized.mimeType,
+      cacheControl: "31536000",
+      upsert: true,
+    });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data: pub } = admin.storage.from("media").getPublicUrl(opts.storagePath);
+  return {
+    publicUrl: pub.publicUrl,
+    storagePath: opts.storagePath,
+    mimeType: optimized.mimeType,
+    byteSize: optimized.byteSize,
+    width: optimized.width,
+    height: optimized.height,
+  };
+}
+
+/** Storage object key from a public media URL (last path segment). */
+export function storagePathFromHostedUrl(hostedUrl: string): string | null {
+  const path = hostedUrl.split("/").pop()?.split("?")[0];
+  return path || null;
+}

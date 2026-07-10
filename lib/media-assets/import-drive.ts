@@ -8,15 +8,22 @@ import {
 import {
   hostPreviewImage,
   ingestImageAsset,
+  replaceHostedImage,
+  storagePathFromHostedUrl,
   type IngestImageResult,
 } from "@/lib/media-assets/ingest";
+import { optimizedStorageName } from "@/lib/media-assets/optimize";
 
 export type DriveFileMetaLike = Pick<
   DriveFileMeta,
   "id" | "name" | "mimeType" | "thumbnailLink" | "size" | "webViewLink" | "isFolder"
 >;
 
-export type ImportDriveErrorCode = "unsupported_kind" | "invalid_input";
+export type ImportDriveErrorCode =
+  | "unsupported_kind"
+  | "invalid_input"
+  | "not_found"
+  | "not_reimportable";
 
 export class ImportDriveError extends Error {
   constructor(
@@ -50,8 +57,31 @@ export type ImportDriveDeps = {
     bytes: Buffer;
     originalName?: string;
   }) => Promise<{ publicUrl: string; storagePath: string }>;
+  replaceHostedImage: (opts: {
+    bytes: Buffer;
+    storagePath: string;
+  }) => Promise<{
+    publicUrl: string;
+    storagePath: string;
+    mimeType: string;
+    byteSize: number;
+    width: number;
+    height: number;
+  }>;
   createMediaAsset: (input: CreateMediaAssetInput) => Promise<MediaAsset>;
   getMediaAssetByDriveFileId: (driveFileId: string) => Promise<MediaAsset | null>;
+  getMediaAsset: (id: string) => Promise<MediaAsset | null>;
+  patchMediaAssetHosted: (
+    id: string,
+    patch: {
+      hosted_url: string;
+      mime_type: string;
+      byte_size: number;
+      width: number;
+      height: number;
+      imported_at: string;
+    },
+  ) => Promise<MediaAsset>;
 };
 
 async function defaultDeps(): Promise<ImportDriveDeps> {
@@ -63,8 +93,11 @@ async function defaultDeps(): Promise<ImportDriveDeps> {
     downloadThumbnail,
     ingestImageAsset,
     hostPreviewImage,
+    replaceHostedImage,
     createMediaAsset: registry.createMediaAsset,
     getMediaAssetByDriveFileId: registry.getMediaAssetByDriveFileId,
+    getMediaAsset: registry.getMediaAsset,
+    patchMediaAssetHosted: registry.patchMediaAssetHosted,
   };
 }
 
@@ -142,4 +175,38 @@ export async function importFromDrive(
     created_by: opts.createdBy ?? null,
   });
   return { asset, existing: false };
+}
+
+/**
+ * Re-download an image Asset from Drive, re-optimize, upsert same storage path
+ * (public URL stays stable so existing attachments keep working).
+ */
+export async function reimportImageFromDrive(
+  assetId: string,
+  deps?: ImportDriveDeps,
+): Promise<MediaAsset> {
+  const d = deps ?? (await defaultDeps());
+  const asset = await d.getMediaAsset(assetId);
+  if (!asset) throw new ImportDriveError("not_found", "Asset not found");
+  if (asset.kind !== "image" || !asset.drive_file_id) {
+    throw new ImportDriveError(
+      "not_reimportable",
+      "Only image Assets with Drive provenance can be re-imported",
+    );
+  }
+
+  const bytes = await d.downloadFile(asset.drive_file_id);
+  const storagePath =
+    (asset.hosted_url && storagePathFromHostedUrl(asset.hosted_url)) ||
+    optimizedStorageName(asset.name);
+
+  const hosted = await d.replaceHostedImage({ bytes, storagePath });
+  return d.patchMediaAssetHosted(assetId, {
+    hosted_url: hosted.publicUrl,
+    mime_type: hosted.mimeType,
+    byte_size: hosted.byteSize,
+    width: hosted.width,
+    height: hosted.height,
+    imported_at: new Date().toISOString(),
+  });
 }
