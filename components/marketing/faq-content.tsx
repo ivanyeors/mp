@@ -64,7 +64,8 @@ export function FaqAnswer({ answer, locale }: { answer: string; locale: Locale }
 
 export function FaqContent({ categories, locale, initialSlug }: FaqContentProps) {
   const [query, setQuery] = useState("");
-  const [openSlug, setOpenSlug] = useState<string | undefined>(initialSlug);
+  // Always controlled ("" = all collapsed) — avoids uncontrolled↔controlled warning
+  const [openSlug, setOpenSlug] = useState(initialSlug ?? "");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
