@@ -26,7 +26,7 @@ const meta = buildPageMetadata({
   path: "/shop/foo",
   lang: "en-US",
 });
-assert.ok(meta.alternates?.canonical?.includes("custom.mpillow.com/en-US/shop/foo"));
+assert.equal(String(meta.alternates?.canonical), "https://custom.mpillow.com/en-US/shop/foo");
 
 // llms index curated (no blog bodies)
 const llms = buildLlmsIndex([{ slug: "cervical-support", title: "Cervical Support" }]);
