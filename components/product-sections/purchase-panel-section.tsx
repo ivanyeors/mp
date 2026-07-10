@@ -131,14 +131,19 @@ export function PurchasePanelSection({
               <div className="mt-1 text-sm text-muted-foreground">{m.reviewCountLabel}</div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Button asChild>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+              <Button asChild className="w-full sm:w-auto">
                 <Link href={resolveHref("/mbolster-config")}>{commonMessages.addToCart}</Link>
               </Button>
-              <Button asChild variant="secondary">
+              <Button asChild variant="secondary" className="w-full sm:w-auto">
                 <Link href={resolveHref("/mbolster-config")}>{commonMessages.customise}</Link>
               </Button>
-              <Button type="button" variant="outline" onClick={openBookAppointmentSheet}>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={openBookAppointmentSheet}
+              >
                 {commonMessages.bookAppointment}
               </Button>
             </div>

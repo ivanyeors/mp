@@ -29,6 +29,39 @@ export function NeckPainsSection({ section, messages: m, images }: NeckPainsSect
     description: c.feelUpkeep?.description ?? m.home.neckPains.feelUpkeep.description,
   };
 
+  const feelCard = (
+    <div className="rounded-2xl border bg-card/40 p-6 shadow-sm backdrop-blur-sm">
+      <div className="text-sm font-semibold tracking-tight">{feelTitle}</div>
+      <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+        <div className="flex items-start gap-3">
+          <Sparkles className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+          <p>
+            <span className="font-medium text-foreground">{feelSupported.label}</span>{" "}
+            {feelSupported.description}
+          </p>
+        </div>
+        <div className="flex items-start gap-3">
+          <SlidersHorizontal className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+          <p>
+            <span className="font-medium text-foreground">{feelFit.label}</span>{" "}
+            {feelFit.description}
+          </p>
+        </div>
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
+          <p>
+            <span className="font-medium text-foreground">{feelUpkeep.label}</span>{" "}
+            {feelUpkeep.description}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <CervicalNeckSupportLearnMoreCta className="w-full" />
+      </div>
+    </div>
+  );
+
   return (
     <section id="why" className="relative">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
@@ -38,41 +71,10 @@ export function NeckPainsSection({ section, messages: m, images }: NeckPainsSect
             <p className="text-muted-foreground leading-relaxed">{description}</p>
           </div>
 
-          <div className="hidden md:block">
-            <div className="rounded-2xl border bg-card/40 p-6 shadow-sm backdrop-blur-sm">
-              <div className="text-sm font-semibold tracking-tight">{feelTitle}</div>
-              <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
-                  <p>
-                    <span className="font-medium text-foreground">{feelSupported.label}</span>{" "}
-                    {feelSupported.description}
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <SlidersHorizontal className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
-                  <p>
-                    <span className="font-medium text-foreground">{feelFit.label}</span>{" "}
-                    {feelFit.description}
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
-                  <p>
-                    <span className="font-medium text-foreground">{feelUpkeep.label}</span>{" "}
-                    {feelUpkeep.description}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5">
-                <CervicalNeckSupportLearnMoreCta className="w-full" />
-              </div>
-            </div>
-          </div>
+          <div className="hidden md:block">{feelCard}</div>
         </div>
 
-        <div className="relative mt-8 overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:mt-10 aspect-[3/4] md:aspect-[1048/444]">
+        <div className="relative mt-8 overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:mt-10 aspect-[4/3] md:aspect-[1048/444]">
           <Image
             src={image}
             alt="Mpillow cervical neck support"
@@ -81,6 +83,9 @@ export function NeckPainsSection({ section, messages: m, images }: NeckPainsSect
             sizes="(min-width: 1280px) 1120px, (min-width: 768px) calc(100vw - 2rem), 100vw"
           />
         </div>
+
+        {/* Mobile: feel + Learn more below image so Tech Neck path is reachable */}
+        <div className="mt-6 md:hidden">{feelCard}</div>
       </div>
     </section>
   );

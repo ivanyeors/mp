@@ -104,7 +104,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-            <div className="p-4 md:p-6">
+            <div className="p-4 pb-24 md:p-6 md:pb-6">
               <main className="space-y-8" aria-label="Mpillow ambassadors">
                 <LeftContentRightImgSection
                   sectionProps={{ "aria-labelledby": "ambassadors-hero-heading", className: "px-0 md:px-0" }}
@@ -196,7 +196,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                     </h2>
                     <TextType
                       as="h2"
-                      className="text-sm leading-relaxed font-normal text-[var(--color-white)]"
+                      className="text-sm leading-relaxed font-normal text-foreground"
                       text={m.slides.ambassadors.testimonialQuote}
                       typingSpeed={22}
                       pauseDuration={1500}
@@ -207,7 +207,7 @@ export function AmbassadorsSlideIn({ className }: Props) {
                       cursorBlinkDuration={0.5}
                       startOnVisible
                     />
-                    <h2 className="text-xs font-extralight text-[var(--color-white)]">
+                    <h2 className="text-xs font-extralight text-muted-foreground">
                       {m.slides.ambassadors.testimonialAttribution}
                     </h2>
                   </section>

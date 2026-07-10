@@ -35,14 +35,14 @@ export function PartnersWorkWithUsSection({ content, locale }: PartnersWorkWithU
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background via-background/40 to-background/10" />
           <div className="absolute inset-0 flex items-end md:items-center">
-            <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
+            <div className="mx-auto w-full max-w-6xl px-4 pt-12 pb-[calc(3rem+var(--mobile-bottom-clearance,4.5rem))] md:py-16 md:pb-16">
               <div className="max-w-2xl space-y-6">
                 <div className="space-y-3">
-                  <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
+                  <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
                     {content.title}
                   </h1>
                   {content.subtitle ? (
-                    <p className="text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
+                    <p className="text-base leading-relaxed text-foreground/90 sm:text-lg sm:text-muted-foreground md:text-xl">
                       {content.subtitle}
                     </p>
                   ) : null}

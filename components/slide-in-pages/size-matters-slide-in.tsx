@@ -90,7 +90,7 @@ export function SizeMattersSlideIn({ className }: Props) {
           </div>
 
           <div ref={setViewportNode} className="flex-1 overflow-y-auto">
-            <div className="px-4 py-5 md:px-6 md:py-6">
+            <div className="px-4 py-5 pb-24 md:px-6 md:py-6 md:pb-6">
               <main className="min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
                 <section
                   aria-labelledby="press-quote-heading"
@@ -148,7 +148,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                         items={[
                           <SpotlightCard
                             key="measure-shoulder"
-                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
                             data-ui="size-matters-measurement-card"
                           >
                             <MeasureTile
@@ -159,7 +159,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                           </SpotlightCard>,
                           <SpotlightCard
                             key="measure-neck-length"
-                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
                             data-ui="size-matters-measurement-card"
                           >
                             <MeasureTile
@@ -170,7 +170,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                           </SpotlightCard>,
                           <SpotlightCard
                             key="measure-neck-depth"
-                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
                             data-ui="size-matters-measurement-card"
                           >
                             <MeasureTile
@@ -181,7 +181,7 @@ export function SizeMattersSlideIn({ className }: Props) {
                           </SpotlightCard>,
                           <SpotlightCard
                             key="measure-head-depth"
-                            className="flex w-[450px] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
+                            className="flex w-[min(100%,22rem)] flex-col rounded-3xl bg-muted/20 p-6 min-h-[10.5rem] md:w-[36rem] md:min-h-[12rem]"
                             data-ui="size-matters-measurement-card"
                           >
                             <MeasureTile

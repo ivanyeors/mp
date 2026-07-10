@@ -38,22 +38,23 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
         />
 
         <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-background/85 via-background/25 to-transparent" />
-        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/40 via-black/15 to-transparent md:hidden dark:hidden" />
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/25 to-transparent md:hidden" />
         <div className="absolute inset-0 z-10 flex items-end md:items-center">
-          <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
+          <div className="mx-auto w-full max-w-6xl px-4 pt-12 pb-[calc(3rem+var(--mobile-bottom-clearance,4.5rem))] md:py-16 md:pb-16">
             <div className="max-w-xl space-y-6">
               <div className="space-y-3">
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-6xl">
+                <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-6xl">
                   {titlePrefix}
                   {sep}
                   <span className="text-primary">{titleEmphasis}</span>
                   {sep}
                   {titleSuffix}
                 </h1>
-                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg max-w-prose">
+                {/* Keep Answer lede in DOM for AEO; clamp on mobile so H1/subtitle/CTAs win the first viewport */}
+                <p className="line-clamp-3 text-base leading-relaxed text-foreground/85 sm:line-clamp-none sm:text-lg sm:text-muted-foreground max-w-prose">
                   {m.home.hero.seoAnswer}
                 </p>
-                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
+                <p className="text-base leading-relaxed text-foreground/90 sm:text-lg sm:text-muted-foreground md:text-xl">
                   {subtitle}
                 </p>
               </div>

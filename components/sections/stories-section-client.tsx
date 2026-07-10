@@ -44,15 +44,15 @@ export function StoriesSectionClient({
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="space-y-2">
-          <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">{title}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">{title}</h2>
           {subtitle ? <p className="text-muted-foreground">{subtitle}</p> : null}
         </div>
 
         <Button
           variant="outline"
-          className="shrink-0"
+          className="w-full shrink-0 sm:w-auto"
           disabled={!canViewMore}
           onClick={() => setVisibleCount((c) => Math.min(ordered.length, c + batchSize))}
         >

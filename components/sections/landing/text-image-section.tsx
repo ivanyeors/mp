@@ -44,7 +44,7 @@ export function TextImageSection({ section, messages: m, images }: TextImageSect
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
           <div className="space-y-4">
-            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+            <h2 className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl md:text-4xl">
               {title}
             </h2>
             <p className="text-muted-foreground leading-relaxed">

@@ -133,7 +133,7 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="secondary" className={cn("h-9 px-4 py-2", className)}>
+        <Button variant="secondary" className={cn("h-auto px-4 py-3", className)}>
           {label}
         </Button>
       </SheetTrigger>
