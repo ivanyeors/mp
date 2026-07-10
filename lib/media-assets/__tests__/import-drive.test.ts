@@ -41,7 +41,9 @@ function deps(overrides: Partial<ImportDriveDeps> = {}): ImportDriveDeps {
   return {
     resolveUrl: vi.fn(),
     downloadFile: vi.fn(),
+    downloadThumbnail: vi.fn().mockResolvedValue(null),
     ingestImageAsset: vi.fn(),
+    hostPreviewImage: vi.fn(),
     createMediaAsset: vi.fn(),
     getMediaAssetByDriveFileId: vi.fn().mockResolvedValue(null),
     ...overrides,
@@ -113,13 +115,56 @@ describe("importFromDrive", () => {
     expect(result.asset.kind).toBe("video");
     expect(d.downloadFile).not.toHaveBeenCalled();
     expect(d.ingestImageAsset).not.toHaveBeenCalled();
+    expect(d.hostPreviewImage).not.toHaveBeenCalled();
     expect(d.createMediaAsset).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: "video",
         drive_file_id: "vid1",
         drive_url: file.webViewLink,
         mime_type: "video/mp4",
+        hosted_url: null,
         imported_at: expect.any(String),
+      }),
+    );
+  });
+
+  it("video with Drive thumbnail hosts durable preview without downloading the video", async () => {
+    const file = meta({
+      id: "vid2",
+      name: "clip.mp4",
+      mimeType: "video/mp4",
+      thumbnailLink: "https://example.com/thumb.jpg",
+    });
+    const created = asset({
+      id: "a2b",
+      kind: "video",
+      name: "clip.mp4",
+      drive_file_id: "vid2",
+      hosted_url: "https://cdn.example/preview.webp",
+    });
+    const d = deps({
+      resolveUrl: vi.fn().mockResolvedValue(file),
+      downloadThumbnail: vi.fn().mockResolvedValue(Buffer.from("thumb")),
+      hostPreviewImage: vi.fn().mockResolvedValue({
+        publicUrl: "https://cdn.example/preview.webp",
+        storagePath: "preview.webp",
+      }),
+      createMediaAsset: vi.fn().mockResolvedValue(created),
+    });
+
+    await importFromDrive({ fileId: "vid2" }, d);
+
+    expect(d.downloadFile).not.toHaveBeenCalled();
+    expect(d.ingestImageAsset).not.toHaveBeenCalled();
+    expect(d.downloadThumbnail).toHaveBeenCalledWith(file.thumbnailLink);
+    expect(d.hostPreviewImage).toHaveBeenCalledWith(
+      expect.objectContaining({ bytes: Buffer.from("thumb"), originalName: "clip.mp4" }),
+    );
+    expect(d.createMediaAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "video",
+        hosted_url: "https://cdn.example/preview.webp",
+        mime_type: "video/mp4",
       }),
     );
   });
@@ -139,9 +184,32 @@ describe("importFromDrive", () => {
     await importFromDrive({ fileId: "pdf1" }, d);
 
     expect(d.createMediaAsset).toHaveBeenCalledWith(
-      expect.objectContaining({ kind: "pdf", drive_file_id: "pdf1" }),
+      expect.objectContaining({ kind: "pdf", drive_file_id: "pdf1", hosted_url: null }),
     );
     expect(d.downloadFile).not.toHaveBeenCalled();
+  });
+
+  it("PDF thumb host failure still creates link Asset", async () => {
+    const file = meta({
+      id: "pdf2",
+      name: "spec.pdf",
+      mimeType: "application/pdf",
+      thumbnailLink: "https://example.com/thumb.jpg",
+    });
+    const created = asset({ id: "a3b", kind: "pdf", name: "spec.pdf", drive_file_id: "pdf2" });
+    const d = deps({
+      resolveUrl: vi.fn().mockResolvedValue(file),
+      downloadThumbnail: vi.fn().mockResolvedValue(Buffer.from("thumb")),
+      hostPreviewImage: vi.fn().mockRejectedValue(new Error("upload failed")),
+      createMediaAsset: vi.fn().mockResolvedValue(created),
+    });
+
+    await importFromDrive({ fileId: "pdf2" }, d);
+
+    expect(d.downloadFile).not.toHaveBeenCalled();
+    expect(d.createMediaAsset).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "pdf", hosted_url: null }),
+    );
   });
 
   it("duplicate drive_file_id returns existing Asset without ingest", async () => {

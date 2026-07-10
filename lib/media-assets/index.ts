@@ -25,6 +25,7 @@ export {
 export {
   DriveError,
   downloadFile,
+  downloadThumbnail,
   driveErrorStatus,
   listFolder,
   listSharedDrives,

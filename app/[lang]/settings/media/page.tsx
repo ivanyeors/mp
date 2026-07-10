@@ -49,6 +49,7 @@ interface MediaFile {
     created_at: string;
     kind?: string;
     drive_url?: string | null;
+    drive_file_id?: string | null;
 }
 
 interface DrivePreview {
@@ -171,6 +172,7 @@ export default function MediaPage() {
                             name: string;
                             hosted_url?: string | null;
                             drive_url?: string | null;
+                            drive_file_id?: string | null;
                             created_at: string;
                             kind: string;
                         }) => ({
@@ -178,6 +180,7 @@ export default function MediaPage() {
                             name: a.name,
                             url: a.hosted_url ?? null,
                             drive_url: a.drive_url ?? null,
+                            drive_file_id: a.drive_file_id ?? null,
                             created_at: a.created_at,
                             kind: a.kind,
                         }),
@@ -805,7 +808,7 @@ export default function MediaPage() {
 
                                     {/* Quick actions overlay */}
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
-                                        {file.url && (
+                                        {file.url && (file.kind ?? "image") === "image" && (
                                             <Button
                                                 size="icon"
                                                 variant="secondary"
@@ -830,7 +833,7 @@ export default function MediaPage() {
                                                 <ExternalLink className="h-4 w-4" />
                                             </Button>
                                         )}
-                                        {count > 0 && file.url && (
+                                        {count > 0 && file.url && (file.kind ?? "image") === "image" && (
                                             <Button
                                                 size="icon"
                                                 variant="secondary"
@@ -885,7 +888,15 @@ export default function MediaPage() {
                             <div className="px-4 pb-4 space-y-6 overflow-y-auto flex-1">
                                 {/* Preview */}
                                 <div className="rounded-lg overflow-hidden border bg-muted flex items-center justify-center min-h-32">
-                                    {detailFile.url ? (
+                                    {detailFile.drive_file_id &&
+                                    (detailFile.kind === "video" || detailFile.kind === "pdf") ? (
+                                        <iframe
+                                            src={`https://drive.google.com/file/d/${detailFile.drive_file_id}/preview`}
+                                            title={detailFile.name}
+                                            className="w-full aspect-video bg-background"
+                                            allow="autoplay"
+                                        />
+                                    ) : detailFile.url ? (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img
                                             src={detailFile.url}
@@ -900,8 +911,25 @@ export default function MediaPage() {
                                     )}
                                 </div>
 
-                                {/* URL */}
-                                {detailFile.url && (
+                                {detailFile.url &&
+                                    (detailFile.kind === "video" || detailFile.kind === "pdf") && (
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-medium text-muted-foreground">
+                                            Preview thumbnail
+                                        </label>
+                                        <div className="rounded-md overflow-hidden border bg-muted w-28 h-28">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={detailFile.url}
+                                                alt=""
+                                                className="object-cover w-full h-full"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* URL — hosted image masters only */}
+                                {detailFile.url && detailFile.kind === "image" && (
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-medium text-muted-foreground">URL</label>
                                         <div className="flex gap-2">
@@ -1034,7 +1062,7 @@ export default function MediaPage() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                                {files.filter((f) => f.url).map((file) => {
+                                {files.filter((f) => f.url && (f.kind ?? "image") === "image").map((file) => {
                                     const isSelected = pickerSlot && overrides[pickerSlot.key] === file.url;
 
                                     return (
@@ -1109,7 +1137,7 @@ export default function MediaPage() {
                         ) : (
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                                 {files
-                                    .filter((f) => f.url && f.url !== replaceFile?.url)
+                                    .filter((f) => f.url && (f.kind ?? "image") === "image" && f.url !== replaceFile?.url)
                                     .map((file) => (
                                         <button
                                             key={file.id}

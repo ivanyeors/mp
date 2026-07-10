@@ -83,9 +83,11 @@ async function main() {
     if (result.asset.mime_type !== "image/webp") throw new Error("expected WebP");
     if (!result.asset.hosted_url) throw new Error("expected hosted_url");
   } else {
-    if (result.asset.hosted_url) throw new Error("link-only should have null hosted_url");
     if (result.asset.kind !== "video" && result.asset.kind !== "pdf") {
       throw new Error(`unexpected kind ${result.asset.kind}`);
+    }
+    if (result.asset.mime_type?.startsWith("image/")) {
+      throw new Error("link-only mime must stay video/pdf");
     }
   }
 

@@ -1,10 +1,15 @@
 import type { CreateMediaAssetInput, MediaAsset } from "@/lib/media-assets/types";
 import {
   downloadFile,
+  downloadThumbnail,
   resolveUrl,
   type DriveFileMeta,
 } from "@/lib/media-assets/drive";
-import { ingestImageAsset, type IngestImageResult } from "@/lib/media-assets/ingest";
+import {
+  hostPreviewImage,
+  ingestImageAsset,
+  type IngestImageResult,
+} from "@/lib/media-assets/ingest";
 
 export type DriveFileMetaLike = Pick<
   DriveFileMeta,
@@ -31,6 +36,7 @@ export type ImportDriveResult = {
 export type ImportDriveDeps = {
   resolveUrl: (pasteUrl: string) => Promise<DriveFileMetaLike>;
   downloadFile: (fileId: string) => Promise<Buffer>;
+  downloadThumbnail: (thumbnailLink: string | null | undefined) => Promise<Buffer | null>;
   ingestImageAsset: (opts: {
     bytes: Buffer;
     originalName?: string;
@@ -40,6 +46,10 @@ export type ImportDriveDeps = {
     drive_url?: string | null;
     imported_at?: string | null;
   }) => Promise<IngestImageResult>;
+  hostPreviewImage: (opts: {
+    bytes: Buffer;
+    originalName?: string;
+  }) => Promise<{ publicUrl: string; storagePath: string }>;
   createMediaAsset: (input: CreateMediaAssetInput) => Promise<MediaAsset>;
   getMediaAssetByDriveFileId: (driveFileId: string) => Promise<MediaAsset | null>;
 };
@@ -50,7 +60,9 @@ async function defaultDeps(): Promise<ImportDriveDeps> {
   return {
     resolveUrl,
     downloadFile,
+    downloadThumbnail,
     ingestImageAsset,
+    hostPreviewImage,
     createMediaAsset: registry.createMediaAsset,
     getMediaAssetByDriveFileId: registry.getMediaAssetByDriveFileId,
   };
@@ -105,9 +117,23 @@ export async function importFromDrive(
     return { asset, existing: false };
   }
 
+  // Video/PDF: link-only Asset; optional durable preview thumb (never the full file).
+  let previewUrl: string | null = null;
+  const thumbBytes = await d.downloadThumbnail(file.thumbnailLink);
+  if (thumbBytes) {
+    try {
+      const hosted = await d.hostPreviewImage({ bytes: thumbBytes, originalName: name });
+      previewUrl = hosted.publicUrl;
+    } catch {
+      // ponytail: thumb host failure is non-fatal; Asset still imports as Drive link
+    }
+  }
+
   const asset = await d.createMediaAsset({
     kind,
     name,
+    // ponytail: hosted_url = durable preview thumb for video/PDF; full file stays on Drive
+    hosted_url: previewUrl,
     drive_file_id: file.id,
     drive_url: driveUrl,
     mime_type: file.mimeType,

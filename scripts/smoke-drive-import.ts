@@ -113,11 +113,15 @@ async function main() {
       kind: link.asset.kind,
       hosted_url: link.asset.hosted_url,
       drive_file_id: link.asset.drive_file_id,
+      mime_type: link.asset.mime_type,
     });
-    if (link.asset.hosted_url) throw new Error("link-only should have no hosted_url");
-    if (!link.asset.drive_file_id) throw new Error("missing drive_file_id on link asset");
+    // hosted_url may be a durable preview thumb; must not be the full video/PDF re-hosted as image kind
     if (link.asset.kind !== "video" && link.asset.kind !== "pdf") {
       throw new Error(`unexpected kind ${link.asset.kind}`);
+    }
+    if (!link.asset.drive_file_id) throw new Error("missing drive_file_id on link asset");
+    if (link.asset.mime_type?.startsWith("image/")) {
+      throw new Error("link asset mime must stay video/pdf");
     }
     await deleteMediaAsset(link.asset.id);
   } else {

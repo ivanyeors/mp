@@ -215,6 +215,28 @@ export async function downloadFile(fileId: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
+/**
+ * Download a Drive thumbnailLink with the workspace OAuth token.
+ * Returns null when the link is missing or the fetch fails (preview is optional).
+ */
+export async function downloadThumbnail(thumbnailLink: string | null | undefined): Promise<Buffer | null> {
+  const url = thumbnailLink?.trim();
+  if (!url) return null;
+  try {
+    const token = await getDriveAccessToken();
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+      redirect: "follow",
+    });
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return buf.byteLength > 0 ? buf : null;
+  } catch {
+    return null;
+  }
+}
+
 export function driveErrorStatus(err: DriveError): number {
   switch (err.code) {
     case "invalid_url":

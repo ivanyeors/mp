@@ -17,10 +17,10 @@ Extend Drive import orchestrator and Media UI for **video** and **PDF** Assets: 
 
 ## Acceptance criteria
 
-- [ ] Importing a Drive PDF creates link-only Asset with in-library preview affordance.
-- [ ] Importing a Drive video creates link-only Asset with thumbnail/preview.
-- [ ] No large video/PDF bytes written to Supabase bucket.
-- [ ] Orchestrator tests cover video/PDF branch.
+- [x] Importing a Drive PDF creates link-only Asset with in-library preview affordance.
+- [x] Importing a Drive video creates link-only Asset with thumbnail/preview.
+- [x] No large video/PDF bytes written to Supabase bucket.
+- [x] Orchestrator tests cover video/PDF branch.
 
 ## Blocked by
 

@@ -48,3 +48,31 @@ export async function ingestImageAsset(opts: {
 
   return { asset, storagePath };
 }
+
+/**
+ * Optimize + upload a small preview image (e.g. Drive video/PDF thumb).
+ * Does not create a Media Asset — caller stores the URL on an existing record.
+ */
+export async function hostPreviewImage(opts: {
+  bytes: Buffer;
+  originalName?: string;
+}): Promise<{ publicUrl: string; storagePath: string }> {
+  // ponytail: 800px cap for thumbs; bump if library grid goes retina-heavy
+  const optimized = await optimizeImageForWeb(opts.bytes, { longEdgeCap: 800 });
+  const storagePath = optimizedStorageName(
+    opts.originalName ? `${opts.originalName}-preview` : "preview",
+  );
+  const admin = supabaseAdmin();
+
+  const { error: uploadError } = await admin.storage
+    .from("media")
+    .upload(storagePath, optimized.buffer, {
+      contentType: optimized.mimeType,
+      cacheControl: "31536000",
+      upsert: false,
+    });
+  if (uploadError) throw new Error(uploadError.message);
+
+  const { data: pub } = admin.storage.from("media").getPublicUrl(storagePath);
+  return { publicUrl: pub.publicUrl, storagePath };
+}
