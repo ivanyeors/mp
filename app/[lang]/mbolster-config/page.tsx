@@ -1,3 +1,4 @@
+import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
@@ -9,12 +10,12 @@ const INTRO: Record<Locale, { h1: string; lede: string }> = {
   "en-US": {
     h1: "Customise Your Mbolster",
     lede:
-      "Mbolster is Mpillow's custom-length support bolster for side sleepers in Singapore. Pick short, medium, or long to match your body, choose your case fabric, and order online. Designed for hip–spine alignment and hug-sleep comfort — the same ergonomic philosophy behind our cervical pillows.",
+      "Customise your Mbolster — Mpillow's custom-length support bolster for side sleepers in Singapore. Choose short, medium, or long to match your torso, pick a washable case fabric, and order online with delivery. Mbolster is built for hip–spine alignment and hug-sleep comfort, using the same ergonomic philosophy as our cervical pillows so your whole sleep setup stays consistent.",
   },
   "zh-CN": {
     h1: "定制您的 Mbolster",
     lede:
-      "Mbolster 是 Mpillow 为新加坡侧睡者设计的定制长度支撑抱枕。选择短、中或长尺寸，挑选面料，在线下单。",
+      "定制您的 Mbolster——Mpillow 为新加坡侧睡者设计的定制长度支撑抱枕。按身长选择短、中或长尺寸，挑选可洗面料后在线下单。Mbolster 面向髋部与脊柱对齐及环抱睡姿舒适，理念与我们的颈椎枕一致，让整套睡眠配置保持统一。",
   },
 };
 
@@ -40,6 +41,7 @@ export default async function MbolsterConfigPage({ params }: Props) {
   return (
     <>
       <ConfiguratorSeoIntro h1={intro.h1} answerLede={intro.lede} jsonLd={jsonLd} />
+      <PageFaqSection surfaceKey="mbolster-config" locale={locale} />
       <MbolsterConfigClient />
     </>
   );

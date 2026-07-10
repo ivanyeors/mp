@@ -77,6 +77,10 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
               body: "",
               seo_title: `${titleEn} - Custom Pillow`,
               seo_description: `Build your perfect ${kind} pillow with our customization system`,
+              seo_answer:
+                kind === "premium"
+                  ? "Mpillow Premium is Singapore's full custom-fit cervical pillow, measured and adjusted in-store for your neck curve, sleep style, and body build. Choose size, cover, and support options, then book a fitting for precise cervical alignment. Built for neck pain relief, modular serviceability, and long-term comfort that goes well beyond one-size foam."
+                  : "Mpillow Basic is Singapore's entry customisable cervical pillow for everyday neck support and better sleep posture. Configure core size and fit options online, then refine in-store if you want a guided fitting with our team. It is designed for ergonomic alignment and washable modular upkeep — a practical custom pillow when you are ready to leave one-size foam behind.",
             },
             "zh-CN": {
               title: titleZh,
@@ -84,6 +88,10 @@ export async function syncPillowProducts(): Promise<{ created: number; updated: 
               body: "",
               seo_title: `${titleZh} - 定制枕头`,
               seo_description: `使用我们的定制系统打造您的完美枕头`,
+              seo_answer:
+                kind === "premium"
+                  ? "Mpillow Premium 是新加坡全贴合定制颈椎枕，按颈曲、睡姿与体型在店内测量并微调。可选尺寸、面料与支撑配件，再预约试配以获得更精准对齐。专为缓解颈椎不适、模块化维护与长期舒适而设计，超越一刀切泡沫枕。"
+                  : "Mpillow Basic 是新加坡入门级可定制颈椎枕，适合日常颈托需求与更好睡姿。可先在线配置核心尺寸与贴合选项，需要时再到店由顾问微调。面向人体工学对齐与可水洗模块化维护——当你准备告别一刀切泡沫枕时的实用定制选择。",
             },
           },
         })
@@ -212,6 +220,8 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
             body: "",
             seo_title: "Mbolster - Support Bolster",
             seo_description: "Premium support bolster available in three lengths",
+            seo_answer:
+              "Mbolster is Mpillow's custom-length support bolster for side sleepers in Singapore who want hug-sleep comfort with real structure. Pick short, medium, or long to match your body, choose a washable case, and order online for delivery. It supports hip–spine alignment using the same ergonomic approach as our cervical pillows so your sleep setup stays consistent.",
           },
           "zh-CN": {
             title: "定制抱枕",
@@ -219,6 +229,8 @@ export async function syncBolsterProducts(): Promise<{ created: number; updated:
             body: "",
             seo_title: "定制抱枕 - 支撑抱枕",
             seo_description: "三种长度可选的高级支撑抱枕",
+            seo_answer:
+              "Mbolster 是 Mpillow 为新加坡侧睡者推出的定制长度支撑抱枕，适合需要结构感的环抱睡姿。按身形选择短、中或长，挑选可洗面料后在线下单。用于髋部与脊柱对齐，理念与我们的颈椎枕一致，让整套睡眠配置保持统一。",
           },
         },
       })

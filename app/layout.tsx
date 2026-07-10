@@ -3,6 +3,7 @@ import { JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppDock } from "@/components/ui/app-dock";
+import { HomeHeader } from "@/components/ui/home-header";
 import { MarketingFooter } from "@/components/ui/marketing-footer";
 import { SonnerProvider } from "@/components/ui/sonner-provider";
 import { RouteScope } from "@/components/route-scope";
@@ -94,6 +95,7 @@ export default async function RootLayout({
         >
           <ApiRequestTracker />
           <TopLoadingBar />
+          <HomeHeader />
           <RouteScope>{children}</RouteScope>
           <MarketingFooter />
           <BookAppointmentHost />

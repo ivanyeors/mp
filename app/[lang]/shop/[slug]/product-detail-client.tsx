@@ -93,9 +93,17 @@ interface ProductDetailClientProps {
   relatedProducts: Product[];
   lang: string;
   answerLede?: string | null;
+  /** Server-rendered Page FAQ (after tabs). Null/empty when surface has no visible items. */
+  pageFaq?: React.ReactNode;
 }
 
-export function ProductDetailClient({ product, relatedProducts, lang, answerLede }: ProductDetailClientProps) {
+export function ProductDetailClient({
+  product,
+  relatedProducts,
+  lang,
+  answerLede,
+  pageFaq,
+}: ProductDetailClientProps) {
   const { addItem } = useCart();
   const isMobile = useIsMobile();
 
@@ -494,6 +502,8 @@ export function ProductDetailClient({ product, relatedProducts, lang, answerLede
               />
             </TabsContent>
           </Tabs>
+
+          {pageFaq}
 
           {relatedProducts.length > 0 && (
             <section>

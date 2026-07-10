@@ -3,6 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
@@ -10,8 +11,12 @@ import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
 import { openBookAppointmentSheet } from "@/lib/book-appointment";
+import { stripLocale } from "@/lib/i18n/routing";
+import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 
 export function HomeHeader() {
+  const pathname = usePathname() ?? "/";
+  const basePathname = stripLocale(pathname);
   const [isCompact, setIsCompact] = React.useState(false);
 
   React.useEffect(() => {
@@ -23,6 +28,8 @@ export function HomeHeader() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  if (!isMarketingRoute(basePathname)) return null;
 
   return (
     <>

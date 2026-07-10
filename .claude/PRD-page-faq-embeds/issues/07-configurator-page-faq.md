@@ -19,11 +19,13 @@ Demoable outcome: view source / load `/en-US/mp-config` and `/en-US/mbolster-con
 
 ## Acceptance criteria
 
-- [ ] `mp-config` renders its Page FAQ set when non-empty.
-- [ ] `mbolster-config` renders its Page FAQ set when non-empty.
-- [ ] Empty set → no FAQ chrome.
-- [ ] FAQPage JSON-LD present when FAQs show.
-- [ ] Existing ConfiguratorSeoIntro (H1, answer lede, Product JSON-LD) unchanged in behavior.
+- [x] `mp-config` renders its Page FAQ set when non-empty.
+- [x] `mbolster-config` renders its Page FAQ set when non-empty.
+- [x] Empty set → no FAQ chrome.
+- [x] FAQPage JSON-LD present when FAQs show.
+- [x] Existing ConfiguratorSeoIntro (H1, answer lede, Product JSON-LD) unchanged in behavior.
+
+Proof: `npx tsx --env-file=.env.local app/[lang]/mp-config/configurator-page-faq.check.ts` → `configurator-page-faq self-check ok`
 
 ## Blocked by
 

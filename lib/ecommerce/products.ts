@@ -137,8 +137,8 @@ export async function getProductBySlug(slug: string) {
     product_images: ProductImage[];
     product_options: ProductOption[];
   };
-  // Direct URLs for composed main products are not buyable in the shop.
-  if (!isShopCatalogProduct(row)) return null;
+  // ponytail: PDP/SEO still resolve pillow|bolster by slug (FAQ + Product JSON-LD).
+  // Listing stays accessories-only via getProducts; checkout rejects plain composed lines.
   await attachStockAvailable([row]);
   return {
     ...row,

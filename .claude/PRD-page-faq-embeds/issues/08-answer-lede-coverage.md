@@ -20,10 +20,14 @@ Demoable outcome: view source on home, a main PDP, and both configurators shows 
 
 ## Acceptance criteria
 
-- [ ] Audit list of commercial surfaces completed (home, PDPs, both configs).
-- [ ] Missing/weak ledes filled in the existing CMS/i18n fields.
-- [ ] No new TL;DR component introduced.
-- [ ] Blogs / guides / slide-ins not required for this slice.
+- [x] Audit list of commercial surfaces completed (home, PDPs, both configs).
+- [x] Missing/weak ledes filled in the existing CMS/i18n fields.
+- [x] No new TL;DR component introduced.
+- [x] Blogs / guides / slide-ins not required for this slice.
+
+Proof: `npx tsx --env-file=.env.local lib/seo/answer-lede-coverage.check.ts` → `answer-lede-coverage self-check ok`
+
+Audit note: `.claude/PRD-page-faq-embeds/OPS-ANSWER-LEDE.md`
 
 ## Blocked by
 

@@ -24,7 +24,7 @@ export const zhCN: Messages = {
       ctaCustomise: "开始定制",
       ctaBookAppointment: "预约咨询",
       seoAnswer:
-        "Mpillow 是新加坡全定制颈椎枕——根据您的颈部、睡姿和体型在店内量身配置。我们提供基础款和高级款枕头以及 Mbolster 支撑抱枕，专为缓解颈椎痛和人体工学对齐而设计。",
+        "Mpillow 是新加坡全定制颈椎枕品牌。我们会根据您的颈曲、睡姿与体型在店内量身试配，并以模块化层次手工打造持久承托。可选基础款或高级款 Mpillow，也可搭配 Mbolster 支撑抱枕，专为缓解颈椎不适与人体工学对齐，而非一刀切泡沫枕。可先在线选配，再预约到店，让每一层承托都贴合您。",
     },
     sizeMatters: {
       title: "新加坡手工定制枕头，打造一夜好眠",

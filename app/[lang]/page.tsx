@@ -1,4 +1,3 @@
-import { HomeHeader } from "@/components/ui/home-header";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getSiteSettings } from "@/lib/site-settings";
 import { getLandingSections } from "@/lib/landing-sections";
@@ -169,7 +168,6 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
   return (
     <div className="min-h-screen bg-background relative">
       <SiteJsonLd lang={locale} />
-      <HomeHeader />
 
       <main className="relative overflow-x-hidden">
         {sections.map((section) => (

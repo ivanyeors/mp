@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 import { getProductBySlug, getProducts, resolveProductContent } from "@/lib/ecommerce/products";
+import { productSurfaceKey } from "@/lib/page-faq";
 import { resolveAnswerLede } from "@/lib/seo/answer-lede";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { ProductDetailClient } from "./product-detail-client";
@@ -44,6 +46,9 @@ export default async function ProductDetailPage({ params }: Props) {
       relatedProducts={relatedProducts}
       lang={lang}
       answerLede={answerLede}
+      pageFaq={
+        <PageFaqSection surfaceKey={productSurfaceKey(product.id)} locale={locale} />
+      }
     />
   );
 }

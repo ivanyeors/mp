@@ -19,11 +19,13 @@ Demoable outcome: open a seeded product PDP → FAQ accordion + JSON-LD; open a 
 
 ## Acceptance criteria
 
-- [ ] PDP with visible Page FAQs shows accordion below fold.
-- [ ] PDP without visible items shows no FAQ section.
-- [ ] FAQPage JSON-LD on PDP when FAQs show; omitted when hidden.
-- [ ] Locale matches page locale.
-- [ ] No regression to existing Product JSON-LD / answer lede.
+- [x] PDP with visible Page FAQs shows accordion below fold.
+- [x] PDP without visible items shows no FAQ section.
+- [x] FAQPage JSON-LD on PDP when FAQs show; omitted when hidden.
+- [x] Locale matches page locale.
+- [x] No regression to existing Product JSON-LD / answer lede.
+
+Proof: `npx tsx --env-file=.env.local app/[lang]/shop/[slug]/pdp-page-faq.check.ts` → `pdp-page-faq self-check ok`
 
 ## Blocked by
 

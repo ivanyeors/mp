@@ -7,6 +7,8 @@ import { withLocale } from "@/lib/i18n/routing";
 import type { ResolvedPartnersPage } from "@/lib/partners";
 
 const DEFAULT_HERO = "/m-pillow-417953-web.webp";
+// ponytail: CTA reuses top hero otherwise; swap when a dedicated ctaImage field exists
+const DEFAULT_CTA_IMAGE = "/images/landing/ambassadors-hero.webp";
 
 type PartnersWorkWithUsSectionProps = {
   content: ResolvedPartnersPage;
@@ -79,15 +81,13 @@ export function PartnersWorkWithUsSection({ content, locale }: PartnersWorkWithU
 
       {content.ctaTitle ? (
         <section className="relative overflow-hidden py-16 md:py-24">
-          {heroImage ? (
-            <Image
-              src={heroImage}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="100vw"
-            />
-          ) : null}
+          <Image
+            src={DEFAULT_CTA_IMAGE}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="100vw"
+          />
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 mx-auto max-w-4xl px-4 text-center text-white">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{content.ctaTitle}</h2>
