@@ -206,6 +206,13 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
       case "stories":
         return <p className="text-sm text-muted-foreground">This section is driven by customer reviews and has no editable content.</p>;
 
+      case "faq":
+        return (
+          <p className="text-sm text-muted-foreground" data-page-builder-faq-hint="">
+            Questions and answers are managed in Settings → FAQ → Page FAQs (Home surface). This section only controls placement and visibility.
+          </p>
+        );
+
       case "pick_your_mpillow":
         return (
           <>

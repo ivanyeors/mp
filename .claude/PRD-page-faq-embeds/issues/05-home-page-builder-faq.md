@@ -18,11 +18,13 @@ Demoable outcome: add FAQ section in page builder, seed/edit home Page FAQs in S
 
 ## Acceptance criteria
 
-- [ ] Page builder can add/reorder/show/hide a `faq` section.
-- [ ] Homepage renders home Page FAQs when section visible and set non-empty.
-- [ ] Q&A copy is not edited inside page-builder section content.
-- [ ] Empty home set → no public FAQ block.
-- [ ] FAQPage JSON-LD present on home when FAQs show.
+- [x] Page builder can add/reorder/show/hide a `faq` section.
+- [x] Homepage renders home Page FAQs when section visible and set non-empty.
+- [x] Q&A copy is not edited inside page-builder section content.
+- [x] Empty home set → no public FAQ block.
+- [x] FAQPage JSON-LD present on home when FAQs show.
+
+Proof: `npx tsx --env-file=.env.local components/sections/landing/home-page-faq.check.ts` → `home-page-faq self-check ok`
 
 ## Blocked by
 

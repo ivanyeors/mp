@@ -17,7 +17,8 @@ export type CustomSectionType =
   | "custom_video"
   | "custom_rich_text"
   | "featured_products"
-  | "shop_cta";
+  | "shop_cta"
+  | "faq";
 
 export type SectionType = BuiltInSectionType | CustomSectionType;
 
@@ -138,6 +139,9 @@ export interface ShopCtaContent {
   buttonUrl?: string; // defaults to /shop
 }
 
+/** Placement only — Q&A copy lives in Settings → Page FAQs (`home` surface). */
+export type FaqContent = Record<string, never>;
+
 /** All section templates available when adding a new section */
 export const CUSTOM_SECTION_TEMPLATES: Array<{
   type: CustomSectionType;
@@ -150,4 +154,9 @@ export const CUSTOM_SECTION_TEMPLATES: Array<{
   { type: "custom_rich_text", label: "Rich Text", description: "Markdown-based content section" },
   { type: "featured_products", label: "Featured Products", description: "Grid of featured products from the shop" },
   { type: "shop_cta", label: "Shop CTA Banner", description: "Full-width banner with a call-to-action linking to the shop" },
+  {
+    type: "faq",
+    label: "Page FAQs",
+    description: "Home FAQs from Settings → FAQ → Page FAQs (home surface)",
+  },
 ];

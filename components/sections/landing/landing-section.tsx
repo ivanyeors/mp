@@ -17,6 +17,7 @@ import { CustomTextImageSection } from "./custom-text-image-section";
 import { CustomRichTextSection } from "./custom-rich-text-section";
 import { FeaturedProductsSection } from "./featured-products-section";
 import { ShopCtaSection } from "./shop-cta-section";
+import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 
 import type { LandingRatings } from "@/lib/seo/review-aggregate";
 
@@ -120,6 +121,10 @@ export function LandingSection({ section, messages, locale, images, prices, land
 
     case "shop_cta":
       return <ShopCtaSection section={section} locale={locale} />;
+
+    case "faq":
+      // ponytail: content {} — Q&A owned by Page FAQ store (`home`)
+      return <PageFaqSection surfaceKey="home" locale={locale} />;
 
     default:
       return null;

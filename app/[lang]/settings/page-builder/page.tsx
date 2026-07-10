@@ -50,6 +50,9 @@ const SECTION_TYPE_LABELS: Record<string, string> = {
   custom_full_width_image: "Custom: Full-Width Image",
   custom_video: "Custom: Video",
   custom_rich_text: "Custom: Rich Text",
+  featured_products: "Featured Products",
+  shop_cta: "Shop CTA Banner",
+  faq: "Page FAQs",
 };
 
 function slugify(text: string): string {
