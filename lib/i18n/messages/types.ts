@@ -82,6 +82,10 @@ export type Messages = {
       name: string;
       role: string;
     };
+    stories: {
+      title: string;
+      subtitle: string;
+    };
   };
   slides: {
     ambassadors: {

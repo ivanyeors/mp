@@ -33,8 +33,9 @@ export const enUS: Messages = {
         "Your shoulder length determines Mpillow loft and size. Learn how we measure and configure cervical support to your body build before you customise.",
     },
     ambassadors: {
-      title: "Customisable pillows for any body build",
-      description: "For our ambassadors, Skyjin and Piggie — a behind-the-scenes look at the customisation process.",
+      title: "How you stand is how you sleep — real body builds",
+      description:
+        "Consumer ambassadors Skyjin and Piggie show bespoke Mpillow fit for side and back sleep. Clinical partners: see Our Partners.",
     },
     pickYourMpillow: {
       title: "Pick your Mpillow",
@@ -70,11 +71,16 @@ export const enUS: Messages = {
     },
     whyChoose: {
       cards: [
-        { key: "why-01", label: "01", title: "Adjustable height", description: "Easily adjustable for any height" },
-        { key: "why-02", label: "02", title: "100% washable", description: "Covers and components are easy to keep fresh" },
-        { key: "why-03", label: "03", title: "Designed for your sleep style", description: "Uniquely shaped to suit your sleeping position" },
-        { key: "why-04", label: "04", title: "Customisable width", description: "Built for different body builds and shoulder widths" },
-        { key: "why-05", label: "05", title: "Modular & serviceable", description: "Modular components for easy maintenance" },
+        { key: "why-01", label: "01", title: "Adjustable height", description: "Dial loft to your shoulder length and sleep position" },
+        { key: "why-02", label: "02", title: "100% washable", description: "Wash covers and components without retiring the pillow" },
+        { key: "why-03", label: "03", title: "Designed for your sleep style", description: "Shape supports back and side sleepers in one pillow" },
+        { key: "why-04", label: "04", title: "Customisable width", description: "Sized for different shoulder widths and body builds" },
+        {
+          key: "why-05",
+          label: "05",
+          title: "Modular & serviceable",
+          description: "Replace layers without replacing the whole pillow",
+        },
       ],
     },
     mbolster: {
@@ -88,14 +94,14 @@ export const enUS: Messages = {
     },
     credibility: {
       cards: [
-        { key: "cred-01", title: "Singapore Good Design 2022", description: "Award-winning brand" },
-        { key: "cred-02", title: "7 years", description: "Research and development" },
-        { key: "cred-03", title: "Patented", description: "Across multiple countries" },
+        { key: "cred-01", title: "Singapore Good Design 2022", description: "Award-winning Science of Sleep design" },
+        { key: "cred-02", title: "7 years", description: "Seven years refining cervical fit" },
+        { key: "cred-03", title: "Patented", description: "Patented modular support across markets" },
       ],
     },
     review: {
       title: "Dr Steven Hulme's Mpillow Review",
-      subtitle: "Featured review.",
+      subtitle: "Clinician review of Mpillow's customised cervical support for neck pain — Singapore.",
       videoTitle: "Dr Steven Hulme's Mpillow Review",
     },
     founder: {
@@ -104,9 +110,14 @@ export const enUS: Messages = {
       paragraphs: [
         "What you're buying isn't just a product — it's everything that went into it: the art, the design, the long nights, the hard work, the setbacks, the breakthroughs, the persistence, the dedication, the time, and the love.",
         "A truly good product isn't made by copying what already exists. It's made by listening closely to real people and building around their needs and pain points. We've poured thousands of hours into research and refinement — learning from mistakes, taking feedback to heart, and continuing even when it was difficult. And through it all, we've held on to one belief: if we keep showing up with honest intention and help others, God will open the way.",
+        "That is why we measure: shoulder length, neck curve, and sleep position set a cervical fit one-size foam cannot match. Science of Sleep starts with your body, not a stock loft.",
       ],
       name: "Darren Yeo",
       role: "Founder",
+    },
+    stories: {
+      title: "Hear from Singapore customers",
+      subtitle: "Real Google reviews on custom-fit sleep and neck comfort.",
     },
   },
   slides: {
@@ -121,7 +132,7 @@ export const enUS: Messages = {
         "The Bespoke Mpillows were customised for Skyjin and Piggie accordingly so the pillows fit them when they sleep on their side and back.",
         "In these photos, the Mpillows are adjusted accordingly to their build and shape to show how you stand is how you sleep.",
       ],
-      ambassadorsTitle: "Our Ambassadors: Skyjin & Piggie",
+      ambassadorsTitle: "Our Consumer Ambassadors: Skyjin & Piggie",
       awardsIntro: "Skyjin has won several awards including:",
       awardsButton: "Awards",
       awards: [
@@ -138,7 +149,7 @@ export const enUS: Messages = {
     },
     sizeMatters: {
       trigger: "Learn More",
-      title: "Why choose Mpillow",
+      title: "Science of Sleep — why size matters",
       description: "Size matters — a pillow should fit you, not the other way around.",
       pressQuote: {
         text: "When you buy a shirt you have to try different sizes to find one that fits you - so why shouldn't it be the same for a pillow?",
@@ -174,7 +185,8 @@ export const enUS: Messages = {
     basicMpillow: {
       trigger: "Learn more",
       title: "Basic Mpillow",
-      description: "Experience our affordable uniquely shaped pillow for a goodnight's sleep.",
+      description:
+        "Affordable custom-fit cervical pillow in Singapore for occasional neck tension — modular, washable, sized to your shoulder length.",
       heroTitle: "Sleep made easy",
       heroParagraphs: [
         "The Basic Mpillow is an ergonomic pillow for people who have occasional neck and back pain. Our Basic Mpillows for neck support are engineered to provide the optimal balance of comfort and alignment.",
@@ -225,9 +237,9 @@ export const enUS: Messages = {
       trigger: "Learn more",
       title: "Premium Mpillow",
       description: "Get the support you need at all the right places with a customised pillow.",
-      heroSubtitle: "Premium Mpillow Is A Customised Pillow",
+      heroSubtitle: "Science of Sleep — consultative fitting for Premium Mpillow",
       heroParagraphs: [
-        "Get your pillow customised in person by our Mpillow team — we can build it the way you like it. Watch our experts customise your pillow and try it on the spot until you're satisfied with the fit before taking it home.",
+        "Premium Mpillow is part of Mpillow's Science of Sleep system: consultative in-store fitting so your cervical pillow matches your neck, sleep position, and body build. Watch our experts customise your pillow and try it on the spot until you're satisfied with the fit before taking it home.",
         "For overseas customers, submit your measurements online and follow the guide below for an accurate measurement of each section.",
       ],
       trustStrip: [
@@ -250,7 +262,8 @@ export const enUS: Messages = {
         "sleep apnea",
         "numb fingers",
       ],
-      whoItsForConclusion: "Choosing the right neck pain pillow can significantly improve your sleep quality and help alleviate discomfort.",
+      whoItsForConclusion:
+        "Choosing a measured cervical pillow can improve sleep comfort and overnight alignment.",
       pricingTitle: "Price range & charges",
       pricingTable: { sizeHeader: "Size", priceHeader: "Price range (SGD)" },
       pricingNotes: [
@@ -286,7 +299,7 @@ export const enUS: Messages = {
       ],
       packageTitle: "The Premium Mpillow package",
       packageItems: [
-        "1 Mpillow case (Linen blue / Linen Natural / FibreCool)",
+        "1 Mpillow case (Linen blue / Linen Natural / FibreCool — helpful if you run warm after long device days)",
         "A number of small and large filling cushions (depending on your pillow size)",
         "1 waterproof inner protector",
         "2 satin cover sheets",

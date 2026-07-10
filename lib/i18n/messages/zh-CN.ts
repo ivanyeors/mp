@@ -104,6 +104,10 @@ export const zhCN: Messages = {
       name: "Darren Yeo",
       role: "创办人",
     },
+    stories: {
+      title: "听听新加坡顾客怎么说",
+      subtitle: "来自 Google 的真实评价，关于定制贴合睡眠与颈部舒适。",
+    },
   },
   slides: {
     ambassadors: {

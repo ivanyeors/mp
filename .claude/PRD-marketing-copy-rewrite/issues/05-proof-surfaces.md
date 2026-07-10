@@ -18,11 +18,17 @@ Rewrite Affluent / proof en-US strings:
 
 ## Acceptance criteria
 
-- [ ] Size Matters slide title brands Science of Sleep.
-- [ ] Credibility / review / founder / ambassadors copy match canvas Recommended intent.
-- [ ] Consumer ambassadors never labeled Local Ambassadors.
-- [ ] No new medical claims.
-- [ ] en-US only.
+- [x] Size Matters slide title brands Science of Sleep.
+- [x] Credibility / review / founder / ambassadors copy match canvas Recommended intent.
+- [x] Consumer ambassadors never labeled Local Ambassadors.
+- [x] No new medical claims.
+- [x] en-US only.
+
+**Why choose note:** No section-title i18n key or H2 in `WhyChooseSection` (cards-only UI). Skipped adding a title key; tightened the five card one-liners instead (incl. modular replace-layers line).
+
+**CMS note:** Defaults in `lib/i18n/messages/en-US.ts` only. Prod `landing_sections.content` overrides for home ambassadors / credibility / review / founder / why-choose may still show old strings until cleared/re-seeded. Size Matters slide title resolves from i18n.
+
+**Proof:** `npx tsx lib/i18n/marketing-copy-slice-05.check.ts`
 
 ## Blocked by
 

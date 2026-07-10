@@ -17,12 +17,14 @@ Affluent path product stories after home stack:
 
 ## Acceptance criteria
 
-- [ ] Premium hero names Science of Sleep / consultative fitting.
-- [ ] FibreCool benefit line present on Premium (not cervical-only).
-- [ ] whoItsFor conclusion has no treat/cure framing.
-- [ ] Basic description includes Singapore + custom-fit cervical intent.
-- [ ] mp-config H1 drops redundant “Mpillow Pillow”; lede includes Science of Sleep.
-- [ ] Configurator wizard behavior unchanged below the SEO shell.
+- [x] Premium hero names Science of Sleep / consultative fitting.
+- [x] FibreCool benefit line present on Premium (not cervical-only).
+- [x] whoItsFor conclusion has no treat/cure framing.
+- [x] Basic description includes Singapore + custom-fit cervical intent.
+- [x] mp-config H1 drops redundant “Mpillow Pillow”; lede includes Science of Sleep.
+- [x] Configurator wizard behavior unchanged below the SEO shell.
+
+**Proof:** `npx tsx lib/i18n/marketing-copy-slice-04.check.ts`
 
 ## Blocked by
 

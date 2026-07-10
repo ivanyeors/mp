@@ -16,11 +16,15 @@ Cross-cutting buyer/clinical copy:
 
 ## Acceptance criteria
 
-- [ ] Home Page FAQ what-is answer has no “Storefront product” jargon.
-- [ ] Two new buyer-prompt FAQs present with claim-safe answers.
-- [ ] Partners title/subtitle name Singapore + clinical audiences.
-- [ ] No invented referral voucher / Family Bundle language.
-- [ ] FAQ schema/render still works for home surface.
+- [x] Home Page FAQ what-is answer has no “Storefront product” jargon.
+- [x] Two new buyer-prompt FAQs present with claim-safe answers.
+- [x] Partners title/subtitle name Singapore + clinical audiences.
+- [x] No invented referral voucher / Family Bundle language.
+- [x] FAQ schema/render still works for home surface.
+
+**DB note:** Defaults in `lib/page-faq/defaults.ts` + `DEFAULT_WORK_WITH_US`. Live `faq_page_items` / partners_page CMS rows may still show old copy until re-seeded or edited in Settings.
+
+**Proof:** `npx tsx lib/i18n/marketing-copy-slice-06.check.ts`
 
 ## Blocked by
 

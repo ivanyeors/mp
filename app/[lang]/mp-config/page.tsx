@@ -8,9 +8,9 @@ import { MpConfigClient } from "./mp-config-client";
 
 const INTRO: Record<Locale, { h1: string; lede: string }> = {
   "en-US": {
-    h1: "Customise Your Mpillow Pillow",
+    h1: "Customise Your Mpillow Cervical Pillow",
     lede:
-      "Customise your Mpillow cervical pillow for Singapore sleepers who need a true custom fit. Pick Basic or Premium, choose size and cover, then book an in-store fitting so height, width, and support match your neck and sleep position. Our modular design targets neck pain relief, ergonomic alignment, and long-term comfort — not a one-size foam block you cannot adjust after purchase.",
+      "Customise your Mpillow cervical pillow for Singapore sleepers who need a true custom fit — part of our Science of Sleep approach with in-store fitting for neck pain relief. Pick Basic or Premium, choose size and cover, then book an in-store fitting so height, width, and support match your neck and sleep position. Our modular design targets cervical alignment and long-term comfort — not a one-size foam block you cannot adjust after purchase.",
   },
   "zh-CN": {
     h1: "定制您的 Mpillow 枕头",

@@ -15,7 +15,7 @@ export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
           "en-US": {
             question: "What is Mpillow?",
             answer:
-              "Mpillow is a modular custom pillow system sized to your shoulder, neck, and head measurements. Choose a ready **Storefront product** or build via [mp-config](/mp-config).",
+              "Mpillow is a modular custom pillow system sized to your shoulder, neck, and head measurements. Start online via [mp-config](/mp-config), or browse [Shop](/shop) for ready options.",
           },
           "zh-CN": {
             question: "什么是 Mpillow？",
@@ -36,6 +36,36 @@ export const PAGE_FAQ_DEFAULTS: PageFaqDefaultSet[] = [
             question: "基础版与高级版 Mpillow 有什么区别？",
             answer:
               "基础版是核心定制枕。高级版配备更高规格部件与配件（含颈椎支撑选项）。可在[商店](/shop)对比，或开始[定制](/mp-config)。",
+          },
+        },
+      },
+      {
+        slug: "cervical-vs-ergonomic",
+        content: {
+          "en-US": {
+            question: "What’s the difference between a cervical and an ergonomic pillow?",
+            answer:
+              "Cervical support targets the neck curve with a dedicated contour. An ergonomic custom pillow like Mpillow sizes the whole stack — shoulder, neck, and head — to your body. See cervical neck support on the home page, or start [customisation](/mp-config).",
+          },
+          "zh-CN": {
+            question: "颈椎枕和人体工学枕有什么区别？",
+            answer:
+              "颈椎支撑侧重颈曲轮廓；人体工学定制枕（如 Mpillow）按肩、颈、头整体尺寸匹配身体。可在首页了解颈椎支撑，或开始[定制](/mp-config)。",
+          },
+        },
+      },
+      {
+        slug: "tech-neck-at-night",
+        content: {
+          "en-US": {
+            question: "Can a customised pillow help with tech neck strain at night?",
+            answer:
+              "Long screen days load the cervical spine. A customised Mpillow with optional cervical neck support helps keep overnight alignment after desk-heavy days — support and align for sleep comfort, not medical treatment. Explore cervical support on the home page or [customise](/mp-config).",
+          },
+          "zh-CN": {
+            question: "定制枕头能帮助缓解夜间科技颈不适吗？",
+            answer:
+              "长时间看屏幕会给颈椎带来负荷。定制 Mpillow 并可选颈椎支撑，有助于在久坐用电脑的一天后保持夜间对齐——以承托与对齐改善睡眠舒适，而非医疗治疗。可在首页了解颈椎支撑，或[开始定制](/mp-config)。",
           },
         },
       },

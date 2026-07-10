@@ -45,13 +45,16 @@ assert.match(html, /"@type":"FAQPage"/);
 assert.match(html, /"@type":"Question"/);
 assert.match(html, /"@type":"Answer"/);
 assert.match(html, /What is Mpillow\?/);
-// markdown stripped in schema (no ** / link markup)
+// markdown stripped in schema; no Storefront jargon
 assert.match(html, /modular custom pillow system/);
+assert.doesNotMatch(html, /Storefront product/i);
 assert.doesNotMatch(html, /application\/ld\+json[^>]*>[\s\S]*\*\*Storefront/);
 
 // Answers in HTML without accordion open (forceMount + question/answer body)
-assert.match(html, /Choose a ready/);
+assert.match(html, /Start online via/);
 assert.match(html, /mp-config/);
+assert.match(html, /cervical and an ergonomic/);
+assert.match(html, /tech neck strain/);
 
 // Link to Global FAQ
 assert.match(html, /href="\/en-US\/faq"/);

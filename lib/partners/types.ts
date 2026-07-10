@@ -52,9 +52,9 @@ export type ResolvedPartner = {
 
 export const DEFAULT_WORK_WITH_US: Record<Locale, WorkWithUsContent> = {
   "en-US": {
-    title: "Collaborate with us",
+    title: "Partner with Mpillow — clinical sleep support in Singapore",
     subtitle:
-      "If you think Mpillow could add value to your patients and customers, reach out for a product demo.",
+      "For chiropractors, physiotherapists, and wellness coaches who want a customisable cervical pillow to recommend after assessment.",
     body: "",
     benefitCards: [
       {

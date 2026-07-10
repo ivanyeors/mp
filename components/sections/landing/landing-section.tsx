@@ -46,7 +46,7 @@ export function LandingSection({ section, messages, locale, images, prices, land
       return <MarqueeSection section={section} images={images} />;
 
     case "stories":
-      return <StoriesSectionWrapper />;
+      return <StoriesSectionWrapper messages={messages} />;
 
     case "pick_your_mpillow":
       return (
