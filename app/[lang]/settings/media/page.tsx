@@ -36,6 +36,7 @@ import {
     SheetDescription,
 } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { SelectFromDriveDialog } from "@/components/settings/select-from-drive-dialog";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -141,6 +142,7 @@ export default function MediaPage() {
     const [drivePreview, setDrivePreview] = useState<DrivePreview | null>(null);
     const [drivePreviewing, setDrivePreviewing] = useState(false);
     const [driveImporting, setDriveImporting] = useState(false);
+    const [driveBrowseOpen, setDriveBrowseOpen] = useState(false);
 
     /* ---------------------------------------------------------------- */
     /* Data loaders                                                      */
@@ -631,9 +633,14 @@ export default function MediaPage() {
                     </div>
                 </div>
 
-                {/* Drive paste import */}
+                {/* Drive paste / browse import */}
                 <div className="border rounded-lg p-4 space-y-3 bg-muted/20">
-                    <div className="text-sm font-medium">Import from Google Drive</div>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="text-sm font-medium">Import from Google Drive</div>
+                        <Button variant="outline" size="sm" onClick={() => setDriveBrowseOpen(true)}>
+                            Select from Drive
+                        </Button>
+                    </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <input
                             type="url"
@@ -1187,6 +1194,15 @@ export default function MediaPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <SelectFromDriveDialog
+                open={driveBrowseOpen}
+                onOpenChange={setDriveBrowseOpen}
+                onImported={() => {
+                    void loadFiles();
+                    void loadUsages();
+                }}
+            />
         </div>
     );
 }

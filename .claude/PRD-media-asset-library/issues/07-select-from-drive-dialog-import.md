@@ -16,9 +16,9 @@ In-app **Select from Drive** dialog on Settings → Media page: browse Shared Dr
 
 ## Acceptance criteria
 
-- [ ] Staff opens Select from Drive, navigates Shared Drive folders, selects an image, imports → Asset in library.
-- [ ] Non-image selection either imports as link Asset (if slice 08 merged) or shows clear "supported in next step" — prefer completing link import if orchestrator already supports it.
-- [ ] Dialog requires admin session; no public access.
+- [x] Staff opens Select from Drive, navigates Shared Drive folders, selects an image, imports → Asset in library.
+- [x] Non-image selection either imports as link Asset (if slice 08 merged) or shows clear "supported in next step" — prefer completing link import if orchestrator already supports it.
+- [x] Dialog requires admin session; no public access.
 
 ## Blocked by
 
