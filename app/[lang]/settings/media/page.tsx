@@ -44,6 +44,7 @@ interface MediaFile {
     url: string;
     id: string;
     created_at: string;
+    kind?: string;
 }
 
 interface LandingSlot {
@@ -122,9 +123,33 @@ export default function MediaPage() {
     const loadFiles = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/media");
-            const data = await res.json();
-            if (data.ok) setFiles(data.files);
+            let res = await fetch("/api/media-assets");
+            let data = await res.json();
+            if (data.ok && Array.isArray(data.assets) && data.assets.length === 0) {
+                // One-shot backfill from existing bucket objects
+                await fetch("/api/media-assets", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "backfill" }),
+                });
+                res = await fetch("/api/media-assets");
+                data = await res.json();
+            }
+            if (data.ok && Array.isArray(data.assets)) {
+                setFiles(
+                    data.assets
+                        .filter((a: { hosted_url?: string | null }) => a.hosted_url)
+                        .map((a: { id: string; name: string; hosted_url: string; created_at: string; kind: string }) => ({
+                            id: a.id,
+                            name: a.name,
+                            url: a.hosted_url,
+                            created_at: a.created_at,
+                            kind: a.kind,
+                        })),
+                );
+            } else {
+                toast.error(getApiErrorMessage(data.error, "Failed to load media assets"));
+            }
         } catch (error) {
             console.error("Failed to load files", error);
             toast.error("Failed to load media files");
@@ -460,9 +485,9 @@ export default function MediaPage() {
             <section className="space-y-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold tracking-tight">Media Gallery</h2>
+                        <h2 className="text-2xl font-bold tracking-tight">Media Library</h2>
                         <p className="text-muted-foreground text-sm mt-1">
-                            Manage your images and static assets here.
+                            Company Media Assets — images hosted for the site; Drive video/PDF come later.
                         </p>
                     </div>
 
@@ -603,8 +628,15 @@ export default function MediaPage() {
                                         </Button>
                                     </div>
 
-                                    <div className="p-2 text-xs truncate" title={file.name}>
-                                        {file.name}
+                                    <div className="p-2 space-y-0.5">
+                                        <div className="text-xs truncate" title={file.name}>
+                                            {file.name}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                                            <span className="uppercase tracking-wide">{file.kind ?? "image"}</span>
+                                            <span>·</span>
+                                            <span>{new Date(file.created_at).toLocaleDateString()}</span>
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -621,7 +653,8 @@ export default function MediaPage() {
                             <SheetHeader>
                                 <SheetTitle className="truncate pr-8">{detailFile.name}</SheetTitle>
                                 <SheetDescription>
-                                    Uploaded {new Date(detailFile.created_at).toLocaleDateString()}
+                                    {(detailFile.kind ?? "image").toUpperCase()} ·{" "}
+                                    {new Date(detailFile.created_at).toLocaleDateString()}
                                 </SheetDescription>
                             </SheetHeader>
 

@@ -18,11 +18,11 @@ End-to-end **Media Asset registry** — the foundation module everything else bu
 
 ## Acceptance criteria
 
-- [ ] `media_assets` migration applied; types generated/updated.
-- [ ] Admin CRUD routes require `media` permission.
-- [ ] Backfill registers existing bucket files; re-run does not duplicate rows.
-- [ ] Media page shows Asset grid with name, kind, created date.
-- [ ] Tests cover registry module external behavior.
+- [x] `media_assets` migration applied; types generated/updated.
+- [x] Admin CRUD routes require `media` permission.
+- [x] Backfill registers existing bucket files; re-run does not duplicate rows.
+- [x] Media page shows Asset grid with name, kind, created date.
+- [x] Tests cover registry module external behavior.
 
 ## Blocked by
 

@@ -1,10 +1,30 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { listMediaAssets } from "@/lib/media-assets";
+import { ingestImageAsset } from "@/lib/media-assets/ingest";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+    // Prefer Asset registry; fall back to bucket list if registry empty (pre-backfill).
+    try {
+        const assets = await listMediaAssets();
+        if (assets.length > 0) {
+            const files = assets
+                .filter((a) => a.hosted_url)
+                .map((a) => ({
+                    id: a.id,
+                    name: a.name,
+                    url: a.hosted_url!,
+                    created_at: a.created_at,
+                }));
+            return NextResponse.json({ ok: true, files });
+        }
+    } catch {
+        // fall through to storage list
+    }
+
     const admin = supabaseAdmin();
     const { data, error } = await admin.storage.from("media").list("", {
         sortBy: { column: "created_at", order: "desc" },
@@ -14,7 +34,6 @@ export async function GET() {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Filter out the empty folder placeholder, create full URLs
     const files = data
         .filter((file) => file.name !== ".emptyFolderPlaceholder")
         .map((file) => {
@@ -39,30 +58,29 @@ export async function POST(req: Request) {
         if (!file) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
-
-        const admin = supabaseAdmin();
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-
-        // Upload file
-        const { error: uploadError } = await admin.storage
-            .from("media")
-            .upload(fileName, file, {
-                cacheControl: "3600",
-                upsert: false,
-            });
-
-        if (uploadError) {
-            return NextResponse.json({ error: uploadError.message }, { status: 500 });
+        if (!file.type.startsWith("image/")) {
+            return NextResponse.json({ error: "Only image uploads are supported" }, { status: 400 });
         }
 
-        const { data: publicUrlData } = admin.storage.from("media").getPublicUrl(fileName);
+        const bytes = Buffer.from(await file.arrayBuffer());
+        const { asset, storagePath } = await ingestImageAsset({
+            bytes,
+            originalName: file.name,
+        });
 
         return NextResponse.json({
             ok: true,
-            file: { name: fileName, url: publicUrlData.publicUrl },
+            file: {
+                name: storagePath,
+                url: asset.hosted_url,
+                id: asset.id,
+            },
+            asset,
         });
     } catch (err) {
-        return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
+        return NextResponse.json(
+            { error: err instanceof Error ? err.message : "Unknown error" },
+            { status: 500 },
+        );
     }
 }

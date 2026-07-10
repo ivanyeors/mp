@@ -20,8 +20,8 @@ Complete manual Google Workspace setup so engineering can call Drive API as the 
 
 - [ ] Drive API enabled; refresh token works for `files.list`, Shared Drives list, and file download.
 - [ ] At least one production Shared Drive visible to `admin@mpillow.com` documented by name/id.
-- [ ] Ops checklist committed under `.claude/PRD-media-asset-library/`.
-- [ ] `.env.example` documents Drive scope requirement; no duplicate secret vars introduced.
+- [x] Ops checklist committed under `.claude/PRD-media-asset-library/`.
+- [x] `.env.example` documents Drive scope requirement; no duplicate secret vars introduced.
 
 ## Blocked by
 

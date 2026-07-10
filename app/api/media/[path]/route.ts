@@ -41,6 +41,10 @@ export async function DELETE(
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Keep Asset registry in sync with bucket deletes
+    const { data: publicUrlData } = admin.storage.from("media").getPublicUrl(path);
+    await admin.from("media_assets").delete().eq("hosted_url", publicUrlData.publicUrl);
+
     return NextResponse.json({ ok: true });
 }
 

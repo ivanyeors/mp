@@ -22,9 +22,9 @@ Document relationship: Media Asset Library is separate from **Product slide sect
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` contains the glossary entries above with _Avoid_ notes where terms collide (e.g. "media" on landing vs Media Asset).
-- [ ] Entries align with PRD locked decisions (hybrid refs, one-time Drive import, images hosted / video-PDF linked).
-- [ ] No implementation file paths in glossary text.
+- [x] `CONTEXT.md` contains the glossary entries above with _Avoid_ notes where terms collide (e.g. "media" on landing vs Media Asset).
+- [x] Entries align with PRD locked decisions (hybrid refs, one-time Drive import, images hosted / video-PDF linked).
+- [x] No implementation file paths in glossary text.
 
 ## Blocked by
 

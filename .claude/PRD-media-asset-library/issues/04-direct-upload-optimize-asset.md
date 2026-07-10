@@ -17,10 +17,10 @@ Complete upload path on Settings → Media page: file picker / drag-drop → ima
 
 ## Acceptance criteria
 
-- [ ] Staff can upload an image; Asset appears in library with hosted_url and dimensions.
-- [ ] Stored file is WebP (or documented format) under size cap.
-- [ ] Upload requires admin `media` permission.
-- [ ] Image ingest module has automated contract test.
+- [x] Staff can upload an image; Asset appears in library with hosted_url and dimensions.
+- [x] Stored file is WebP (or documented format) under size cap.
+- [x] Upload requires admin `media` permission.
+- [x] Image ingest module has automated contract test.
 
 ## Blocked by
 
