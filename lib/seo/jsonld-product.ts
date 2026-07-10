@@ -110,16 +110,45 @@ export function buildProductBreadcrumbJsonLd(input: {
   };
 }
 
-/** Minimal Product JSON-LD for configurator SEO shells (composed sellable, no variant list). */
+/** Product JSON-LD for configurator SEO shells (composed sellable; price range, not per-variant list). */
 export function buildConfiguratorProductJsonLd(input: {
   lang: string;
   path: string;
   name: string;
   description: string;
+  image?: string;
   lowPrice?: number;
+  highPrice?: number;
   currency?: string;
 }): Record<string, unknown> {
   const url = localeUrl(input.lang, input.path);
+  const currency = input.currency ?? "SGD";
+  const low = input.lowPrice;
+  const high = input.highPrice ?? input.lowPrice;
+
+  let offers: Record<string, unknown> | undefined;
+  if (low != null && high != null) {
+    offers =
+      high > low
+        ? {
+            "@type": "AggregateOffer",
+            lowPrice: low,
+            highPrice: high,
+            priceCurrency: currency,
+            availability: "https://schema.org/InStock",
+            url,
+            seller: { "@type": "Organization", name: "Mpillow" },
+          }
+        : {
+            "@type": "Offer",
+            price: low,
+            priceCurrency: currency,
+            availability: "https://schema.org/InStock",
+            url,
+            seller: { "@type": "Organization", name: "Mpillow" },
+          };
+  }
+
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -127,17 +156,7 @@ export function buildConfiguratorProductJsonLd(input: {
     description: input.description,
     url,
     brand: { "@type": "Brand", name: "Mpillow" },
-    ...(input.lowPrice != null
-      ? {
-          offers: {
-            "@type": "Offer",
-            price: input.lowPrice,
-            priceCurrency: input.currency ?? "SGD",
-            availability: "https://schema.org/InStock",
-            url,
-            seller: { "@type": "Organization", name: "Mpillow" },
-          },
-        }
-      : {}),
+    ...(input.image ? { image: input.image } : {}),
+    ...(offers ? { offers } : {}),
   };
 }

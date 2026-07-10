@@ -1,5 +1,7 @@
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
+import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
+import { getSiteOrigin } from "@/lib/site-url";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MbolsterConfigClient } from "./mbolster-config-client";
 
@@ -24,12 +26,15 @@ export default async function MbolsterConfigPage({ params }: Props) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
+  const offer = await getConfiguratorOfferRange("bolster");
 
   const jsonLd = buildConfiguratorProductJsonLd({
     lang: locale,
     path: "/mbolster-config",
     name: "Mbolster Custom Support Bolster",
     description: intro.lede,
+    image: `${getSiteOrigin()}/bolster_mbolster_size.webp`,
+    ...(offer ?? {}),
   });
 
   return (

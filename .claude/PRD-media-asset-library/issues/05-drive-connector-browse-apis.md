@@ -20,10 +20,10 @@ Deep **Drive connector** module + thin admin API routes. No Asset creation yet â
 
 ## Acceptance criteria
 
-- [ ] Paste URL resolve returns metadata for a file in a Shared Drive the workspace account can access.
-- [ ] Browse lists Shared Drives and folder contents with pagination.
-- [ ] Routes reject unauthenticated/non-admin callers.
-- [ ] Connector logic isolated in testable module (HTTP mocked or manual smoke against staging after slice 02).
+- [x] Paste URL resolve returns metadata for a file in a Shared Drive the workspace account can access.
+- [x] Browse lists Shared Drives and folder contents with pagination.
+- [x] Routes reject unauthenticated/non-admin callers.
+- [x] Connector logic isolated in testable module (HTTP mocked or manual smoke against staging after slice 02).
 
 ## Blocked by
 

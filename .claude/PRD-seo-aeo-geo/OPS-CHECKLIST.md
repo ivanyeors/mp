@@ -39,7 +39,12 @@ Parent: Slice 00 (`issues/00-domain-migration.md`) + Slice 11 (`issues/11-gsc-an
 - [x] `curl -I https://work.mpillow.com` → permanent → custom
 - [x] `/robots.txt` sitemap host matches custom; configurators allowed
 - [x] `/llms.txt` URLs use custom + locale prefix; no full FAQ dump
-- [ ] Rich Results Test on a product PDP passes (optional spot-check)
+- [ ] Rich Results Test on product surface (blocked until deploy of configurator Offer/image JSON-LD)
+  - No shop accessory PDPs in prod yet (`/shop` empty; pillow/bolster are composed → soft-404 by design)
+  - Spot-check URL after deploy: https://custom.mpillow.com/en-US/mp-config
+  - Tool: https://search.google.com/test/rich-results?url=https%3A%2F%2Fcustom.mpillow.com%2Fen-US%2Fmp-config
+  - Expect: Product (with AggregateOffer) eligible; FAQ page already FAQPage-valid as secondary check
+  - FAQ (already live): https://search.google.com/test/rich-results?url=https%3A%2F%2Fcustom.mpillow.com%2Fen-US%2Ffaq
 
 ## Analytics (Slice 11)
 

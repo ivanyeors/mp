@@ -1,5 +1,7 @@
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
+import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
+import { getSiteOrigin } from "@/lib/site-url";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MpConfigClient } from "./mp-config-client";
 
@@ -24,12 +26,15 @@ export default async function MpConfigPage({ params }: Props) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
+  const offer = await getConfiguratorOfferRange("pillow");
 
   const jsonLd = buildConfiguratorProductJsonLd({
     lang: locale,
     path: "/mp-config",
     name: "Mpillow Custom Pillow",
     description: intro.lede,
+    image: `${getSiteOrigin()}/basic-mpillow.webp`,
+    ...(offer ?? {}),
   });
 
   return (

@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { resolveAnswerLede } from "@/lib/seo/answer-lede";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { buildLlmsIndex } from "@/lib/seo/llms-index";
-import { buildProductJsonLd } from "@/lib/seo/jsonld-product";
+import { buildProductJsonLd, buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import type { Product } from "@/lib/types/ecommerce";
 
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
@@ -63,5 +63,23 @@ const withReviews = buildProductJsonLd({
   reviews: { average: 4.5, count: 2 },
 });
 assert.ok(withReviews.aggregateRating);
+
+// configurator product jsonld — AggregateOffer when range
+const configLd = buildConfiguratorProductJsonLd({
+  lang: "en-US",
+  path: "/mp-config",
+  name: "Mpillow Custom Pillow",
+  description: "Custom cervical pillow.",
+  image: "https://custom.mpillow.com/basic-mpillow.webp",
+  lowPrice: 170,
+  highPrice: 1000,
+  currency: "SGD",
+});
+assert.equal(configLd["@type"], "Product");
+assert.equal(configLd.image, "https://custom.mpillow.com/basic-mpillow.webp");
+const offers = configLd.offers as Record<string, unknown>;
+assert.equal(offers["@type"], "AggregateOffer");
+assert.equal(offers.lowPrice, 170);
+assert.equal(offers.highPrice, 1000);
 
 console.log("lib/seo self-check: ok");

@@ -27,8 +27,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
       links: [
         { href: "/blog/what-is-the-best-pillow-for-neck-pain-in-singapore", label: "What is the best pillow for neck pain in Singapore?" },
         { href: "/blog/finding-the-perfect-neck-support-pillow-in-singapore", label: "Finding the perfect neck support pillow" },
-        { href: "/shop/mpillow-premium", label: "Mpillow Premium — in-store measurement" },
-        { href: "/shop/mpillow-basic", label: "Mpillow Basic — online customisation" },
+        { href: "/mp-config", label: "Customise Mpillow (Basic & Premium)" },
       ],
       faqs: [
         {
@@ -129,8 +128,7 @@ const GUIDES: Record<GuideTopic, Record<Locale, GuideContent>> = {
         "Mpillow is Singapore's custom pillow maker — not off-the-shelf memory foam. Pick Basic (online start) or Premium (in-store measurement), select size and fabrics, and get a pillow built for your neck and sleep style. Start customisation online; Premium customers book an in-store fitting to finalise height and filling mix.",
       links: [
         { href: "/blog/how-to-choose-the-best-pillow-in-singapore", label: "How to choose the best pillow in Singapore" },
-        { href: "/shop/mpillow-basic", label: "Mpillow Basic" },
-        { href: "/shop/mpillow-premium", label: "Mpillow Premium" },
+        { href: "/mp-config", label: "Customise Mpillow (Basic & Premium)" },
         { href: "/faq", label: "Customisation FAQs" },
       ],
       faqs: [

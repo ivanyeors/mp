@@ -22,6 +22,16 @@ export {
   validateCreateMediaAsset,
   validateUpdateMediaAsset,
 } from "./types";
+export {
+  DriveError,
+  downloadFile,
+  driveErrorStatus,
+  listFolder,
+  listSharedDrives,
+  parseDriveFileId,
+  resolveUrl,
+} from "./drive";
+export type { DriveFileMeta, DriveFolderListing, DriveSharedDrive } from "./drive";
 
 function admin() {
   return supabaseAdmin();
