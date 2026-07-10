@@ -77,8 +77,9 @@ export const enUS: Messages = {
     },
     mbolster: {
       title: "Mbolster",
-      description: "A customisable bolster designed to fit your body build — dial in your comfort with adjustable support.",
-      subtitle: "Premium customisation for the best fit",
+      description:
+        "Custom-length by height for kids through adults in the same household — dial in side-sleep torso support with adjustable firmness.",
+      subtitle: "Part of the same Science of Sleep system as Mpillow",
       buttonCustomise: "Customise mbolster",
       fromPricePrefix: "From",
       specs: { customisation: "Customisation", fitControl: "Fit control" },
@@ -371,7 +372,7 @@ export const enUS: Messages = {
       viewDetailsLabel: "View details",
       aboutTitle: "About Mbolster",
       aboutParagraphs: [
-        "Using the same modular structure as the Mpillow, the firmness of our customisable bolster, Mbolster is adjustable and suitable for side sleeping. Our Mbolster is also hygienic as it is 100% washable. It comes in different sizes to suit your height. You may also add on our Mbolster case made of tencel material to give it a premium feel.",
+        "Using the same modular structure as the Mpillow, Mbolster is a customisable side-sleep bolster sized by height for the whole household — children through adults. Firmness is adjustable and the bolster is 100% washable. Add a Tencel Mbolster case when you want a premium feel.",
         "Duo face cover combines 2 Mbolsters to help stomach sleepers breath better when sleeping on the stomach and to help align the spine.",
         "The inner case is made of white polyester fiber.",
       ],
@@ -406,7 +407,7 @@ export const enUS: Messages = {
         "With the modular fillings, the firmness of our Mbolster can be easily adjustable to suit your sleeping preferences especially for side sleeping. These fillings can also be removed so it is can washed in the washing machine making the bolster hygienic.",
       discoverTitle: "Discover the Mbolster",
       discoverParagraphs: [
-        "Complementing the Mpillow in providing better sleep quality is our Mbolster. While the Mpillow helps prevent neck and shoulder pain, the Mbolster ensures side sleepers maintain the right lower back posture throughout the night to prevent muscle strain and lower back pain.",
+        "Pair Mpillow (neck) with Mbolster (side-sleep torso) as a consistent Science of Sleep setup — cervical alignment upstairs, hip–spine support for side sleepers overnight. Size each Mbolster by height for whoever shares the household.",
         "A bolster that's excessively large or overly firm can be incredibly uncomfortable, akin to embracing a piece of rigid wood. Over time, it may gradually soften. If you inspect the inner fabric, you may notice it's turned yellow, likely due to the accumulation of dust mites. This is because conventional bolsters, being too bulky, are challenging to clean effectively.",
         "The M Bolster revolutionizes the traditional paradigm. Its innovative design ensures you have a hygienic bolster with just the right balance of softness and firmness that remains durable over time, providing you with daily comfort.",
       ],
