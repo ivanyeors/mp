@@ -305,6 +305,11 @@ export const zhCN: Messages = {
       heroEyebrow: "可定制 Premium Mpillow 的颈椎支撑枕",
       heroTitle: "颈椎支撑垫",
       heroDescription: "",
+      techNeckTitle: "为科技颈的白天而建，在夜间恢复承托",
+      techNeckParagraphs: [
+        "长时间伏案与使用设备会给颈椎带来负荷。Premium Mpillow 搭配颈椎支撑垫，旨在为屏幕日后的夜间对齐提供承托，帮助头颈姿势在睡眠中得到支撑。",
+        "作为同一套 Science of Sleep 配置的一部分：以模块化颈椎承托应对桌前负荷，在夜间恢复对齐——无需另设科技颈专用 SKU。",
+      ],
       whyTitle: "为什么设计颈椎支撑枕",
       whyDescription: "我们的研究与设计，能为颈部曲线更明显的人提供更好的承托，帮助缓解睡眠中造成的颈部僵硬或颈部疼痛。",
       benefitsTitle: "颈椎支撑枕的好处",

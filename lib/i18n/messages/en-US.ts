@@ -58,9 +58,9 @@ export const enUS: Messages = {
       fromPricePrefix: "From",
     },
     neckPains: {
-      title: "Neck Pains?",
+      title: "Neck pain from sleep — or the desk?",
       description:
-        "With our premium Mpillow, the ultimate customisable pillow for cervical neck pain relief. Designed to support your unique posture and sleep style, our modular pillows help improve sleep quality, reduce stiffness, and promote spinal alignment.",
+        "Premium Mpillow plus cervical neck support help overnight alignment after long screen days. Open Learn more for the tech-neck recovery story — modular support fitted to your posture and sleep style.",
       feelTitle: "What you’ll feel",
       feelSupported: { label: "More supported", description: "neck and head posture." },
       feelFit: { label: "Better fit", description: "for your height and sleep style." },
@@ -308,7 +308,13 @@ export const enUS: Messages = {
       description: "Cervical Pillow For Neck Pain",
       heroEyebrow: "Cervical Support Pillow For Customisable Premium Mpillow",
       heroTitle: "Cervical Neck Support",
-      heroDescription: "",
+      heroDescription:
+        "Cervical support for screen days in Singapore — overnight alignment after desk and device strain, fitted as part of Premium Mpillow.",
+      techNeckTitle: "Built for tech-neck days, recovered at night",
+      techNeckParagraphs: [
+        "Long desk and device hours load the cervical spine. Premium Mpillow with cervical neck support is built to support overnight alignment after screen days — so your neck and head posture are supported while you sleep.",
+        "Use it as part of the same Science of Sleep setup: modular cervical support for desk-day strain recovered overnight, without inventing a separate tech-neck SKU.",
+      ],
       whyTitle: "Why We Design Cervical Support Pillow",
       whyDescription:
         "Our research and design would help people with a more curved neck profile to have a better support to relieve that neck stiffness or neck pain caused during your sleep.",
