@@ -131,7 +131,7 @@ export async function backfillMediaAssetsFromBucket(): Promise<{
       return {
         name: f.name,
         url: pub.publicUrl,
-        created_at: f.created_at,
+        created_at: f.created_at ?? undefined,
         metadata: f.metadata as { mimetype?: string; size?: number } | null,
       };
     });
