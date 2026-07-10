@@ -15,11 +15,13 @@ Families persona on Mbolster surfaces only (no Family Bundle offer):
 
 ## Acceptance criteria
 
-- [ ] Home Mbolster card copy mentions household / kids-through-adults sizing.
-- [ ] Mbolster learn-more about/discover explicitly weave Families without inventing bundles.
-- [ ] mbolster-config lede retains existing side-sleeper Singapore keywords and adds household/height sentence.
-- [ ] No “Family Bundle”, workshop, or fitting-fee language introduced.
-- [ ] en-US only.
+- [x] Home Mbolster card copy mentions household / kids-through-adults sizing.
+- [x] Mbolster learn-more about/discover explicitly weave Families without inventing bundles.
+- [x] mbolster-config lede retains existing side-sleeper Singapore keywords and adds household/height sentence.
+- [x] No “Family Bundle”, workshop, or fitting-fee language introduced.
+- [x] en-US only.
+
+**Proof:** `npx tsx lib/i18n/marketing-copy-slice-03.check.ts`
 
 ## Blocked by
 

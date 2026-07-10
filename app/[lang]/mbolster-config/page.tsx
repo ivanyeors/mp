@@ -10,7 +10,7 @@ const INTRO: Record<Locale, { h1: string; lede: string }> = {
   "en-US": {
     h1: "Customise Your Mbolster",
     lede:
-      "Customise your Mbolster — Mpillow's custom-length support bolster for side sleepers in Singapore. Choose short, medium, or long to match your torso, pick a washable case fabric, and order online with delivery. Mbolster is built for hip–spine alignment and hug-sleep comfort, using the same ergonomic philosophy as our cervical pillows so your whole sleep setup stays consistent.",
+      "Customise your Mbolster — Mpillow's custom-length support bolster for side sleepers in Singapore. Choose short, medium, or long by height — including kids — so the whole household can share the same Science of Sleep approach. Pick a washable case fabric and order online with delivery. Mbolster is built for hip–spine alignment and hug-sleep comfort, using the same ergonomic philosophy as our cervical pillows so your whole sleep setup stays consistent.",
   },
   "zh-CN": {
     h1: "定制您的 Mbolster",
