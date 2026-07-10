@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { PageFaqsPanel } from "@/components/settings/page-faqs-panel";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -462,82 +463,118 @@ export default function SettingsFaqPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-8" data-settings-faq>
+        <div>
+          <h1>FAQ Management</h1>
+          <p className="mt-1 text-muted-foreground">
+            Manage Global FAQ and page-local FAQ embeds from one place.
+          </p>
+        </div>
+        <Tabs defaultValue="global" className="space-y-6">
+          <TabsList data-settings-faq-tabs>
+            <TabsTrigger value="global">Global FAQ</TabsTrigger>
+            <TabsTrigger value="page">Page FAQs</TabsTrigger>
+          </TabsList>
+          <TabsContent value="global">
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          </TabsContent>
+          <TabsContent value="page">
+            <PageFaqsPanel locale={locale} />
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1>FAQ Management</h1>
-          <p className="mt-1 text-muted-foreground">
-            Edit categories and questions shown on the public FAQ page.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={faqPreviewHref} target="_blank">
-            <ExternalLink className="mr-2 h-4 w-4" />
-            View FAQ
-          </Link>
-        </Button>
+    <div className="space-y-8" data-settings-faq>
+      <div>
+        <h1>FAQ Management</h1>
+        <p className="mt-1 text-muted-foreground">
+          Manage Global FAQ and page-local FAQ embeds from one place.
+        </p>
       </div>
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Categories</h2>
-          <AddCategoryDialog onAdd={addCategory} />
-        </div>
-        <DragDropProvider onDragEnd={handleCategoryDragEnd}>
-          <div className="space-y-2">
-            {categories.map((cat, index) => (
-              <SortableCategoryRow
-                key={cat.id}
-                category={cat}
-                index={index}
-                expanded={expandedCatId === cat.id}
-                onToggleExpand={() =>
-                  setExpandedCatId((prev) => (prev === cat.id ? null : cat.id))
-                }
-                onToggleVisible={() => toggleCategoryVisible(cat)}
-                onDelete={() => deleteCategory(cat)}
-                onSave={(labels, key) => saveCategory(cat.id, labels, key)}
-              />
-            ))}
-          </div>
-        </DragDropProvider>
-      </section>
+      <Tabs defaultValue="global" className="space-y-6">
+        <TabsList data-settings-faq-tabs>
+          <TabsTrigger value="global">Global FAQ</TabsTrigger>
+          <TabsTrigger value="page">Page FAQs</TabsTrigger>
+        </TabsList>
 
-      <section className="space-y-6">
-        <h2 className="text-lg font-semibold">Questions &amp; Answers</h2>
-        {categories.map((cat) => (
-          <div key={cat.id} className="space-y-2 rounded-xl border p-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">{cat.labels["en-US"] ?? cat.key}</h3>
-              <Button size="sm" variant="outline" onClick={() => addItem(cat.id)}>
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add question
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {(itemsByCategory.get(cat.id) ?? []).map((item) => (
-                <ItemEditor
-                  key={item.id}
-                  item={item}
-                  onSave={(patch) => saveItem(item.id, patch)}
-                  onDelete={() => deleteItem(item)}
-                  onToggleVisible={() => toggleItemVisible(item)}
-                />
-              ))}
-              {(itemsByCategory.get(cat.id) ?? []).length === 0 && (
-                <p className="text-sm text-muted-foreground">No questions in this category.</p>
-              )}
-            </div>
+        <TabsContent value="global" className="space-y-8">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">
+              Categories and questions on the public FAQ page.
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={faqPreviewHref} target="_blank">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                View FAQ
+              </Link>
+            </Button>
           </div>
-        ))}
-      </section>
+
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Categories</h2>
+              <AddCategoryDialog onAdd={addCategory} />
+            </div>
+            <DragDropProvider onDragEnd={handleCategoryDragEnd}>
+              <div className="space-y-2">
+                {categories.map((cat, index) => (
+                  <SortableCategoryRow
+                    key={cat.id}
+                    category={cat}
+                    index={index}
+                    expanded={expandedCatId === cat.id}
+                    onToggleExpand={() =>
+                      setExpandedCatId((prev) => (prev === cat.id ? null : cat.id))
+                    }
+                    onToggleVisible={() => toggleCategoryVisible(cat)}
+                    onDelete={() => deleteCategory(cat)}
+                    onSave={(labels, key) => saveCategory(cat.id, labels, key)}
+                  />
+                ))}
+              </div>
+            </DragDropProvider>
+          </section>
+
+          <section className="space-y-6">
+            <h2 className="text-lg font-semibold">Questions &amp; Answers</h2>
+            {categories.map((cat) => (
+              <div key={cat.id} className="space-y-2 rounded-xl border p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium">{cat.labels["en-US"] ?? cat.key}</h3>
+                  <Button size="sm" variant="outline" onClick={() => addItem(cat.id)}>
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Add question
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {(itemsByCategory.get(cat.id) ?? []).map((item) => (
+                    <ItemEditor
+                      key={item.id}
+                      item={item}
+                      onSave={(patch) => saveItem(item.id, patch)}
+                      onDelete={() => deleteItem(item)}
+                      onToggleVisible={() => toggleItemVisible(item)}
+                    />
+                  ))}
+                  {(itemsByCategory.get(cat.id) ?? []).length === 0 && (
+                    <p className="text-sm text-muted-foreground">No questions in this category.</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </section>
+        </TabsContent>
+
+        <TabsContent value="page">
+          <PageFaqsPanel locale={locale} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -47,6 +47,15 @@ Body parameter order must match `lib/appointments/whatsapp.ts` (positional).
 
 Smoke: `events.list` on primary for tomorrow; People `searchContacts` by a test phone.
 
+### Re-issue when Calendar returns `invalid_rapt`
+
+Symptom: Settings appointments / cron fail with `invalid_grant` + `error_subtype: invalid_rapt` (https://support.google.com/a/answer/9368756).
+
+1. Re-consent in OAuth Playground as **`admin@mpillow.com`** with calendar + contacts only (no Drive).
+2. Update `GOOGLE_OAUTH_REFRESH_TOKEN` in `.env.local` **and** Vercel (Production; Preview too if cron/settings run there). Leave `GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN` alone.
+3. Restart local `next dev` so it reloads env.
+4. To reduce recurrence (Workspace admin): lengthen Google Cloud session / reauth policy, or mark this OAuth client as a **trusted app** and exempt trusted apps from reauth. Keep the OAuth app **Published** (Testing-mode refresh tokens expire ~7 days).
+
 ## 4. Dump sample Events (lock summary strings)
 
 Export one real **Customisation** and one **Re-adjustment** Event JSON from primary.

@@ -11,6 +11,7 @@ export { isValidSurfaceKey, parseSurfaceKey, productSurfaceKey } from "./surface
 export { PAGE_FAQ_DEFAULTS } from "./defaults";
 export { seedPageFaqDatabase } from "./seed";
 export { stripMarkdownForSchema };
+export { pageFaqPreviewPath, FIXED_SURFACE_OPTIONS } from "./preview-path";
 
 let seedPromise: Promise<void> | null = null;
 

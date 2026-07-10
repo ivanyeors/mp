@@ -19,13 +19,15 @@ Demoable outcome: operator edits a Page FAQ item in Settings and sees it persist
 
 ## Acceptance criteria
 
-- [ ] Settings FAQ shows Global | Page FAQs tabs with coherent redesigned chrome.
-- [ ] Global FAQ create/edit/reorder/visibility still works.
-- [ ] Page FAQs: pick surface → edit bilingual items → reorder → toggle visibility → delete.
-- [ ] Product surface can be selected and gets a set if missing.
-- [ ] Empty state + preview link for selected surface.
-- [ ] Admin APIs require existing FAQ/page-builder permission; public cannot mutate.
-- [ ] Changes reflect in Page FAQ store reads used by slice 03+.
+- [x] Settings FAQ shows Global | Page FAQs tabs with coherent redesigned chrome.
+- [x] Global FAQ create/edit/reorder/visibility still works.
+- [x] Page FAQs: pick surface → edit bilingual items → reorder → toggle visibility → delete.
+- [x] Product surface can be selected and gets a set if missing.
+- [x] Empty state + preview link for selected surface.
+- [x] Admin APIs require existing FAQ/page-builder permission; public cannot mutate.
+- [x] Changes reflect in Page FAQ store reads used by slice 03+.
+
+Proof: `npx tsx --env-file=.env.local components/settings/settings-faq.check.ts` → `settings-faq self-check ok`
 
 ## Blocked by
 
