@@ -17,10 +17,10 @@ Modules: 8, 7
 
 ## Acceptance criteria
 
-- [ ] Staff creates folders and assigns Assets.
-- [ ] Library filters to selected folder.
-- [ ] Assets without folder appear in "Unfiled" or all view.
-- [ ] Folder CRUD requires admin `media` permission.
+- [x] Staff creates folders and assigns Assets.
+- [x] Library filters to selected folder.
+- [x] Assets without folder appear in "Unfiled" or all view.
+- [x] Folder CRUD requires admin `media` permission.
 
 ## Blocked by
 

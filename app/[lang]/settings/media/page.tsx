@@ -55,6 +55,12 @@ interface MediaFile {
     drive_url?: string | null;
     drive_file_id?: string | null;
     last_used_at?: string | null;
+    folder_id?: string | null;
+}
+
+interface MediaFolderRow {
+    id: string;
+    name: string;
 }
 
 interface DrivePreview {
@@ -88,6 +94,8 @@ interface UsageEntry {
 
 type UsageMap = Record<string, UsageEntry[]>;
 type FilterMode = "all" | "in_use" | "unused";
+/** all = no folder filter; unfiled = folder_id null; else folder uuid */
+type FolderFilter = "all" | "unfiled" | string;
 
 function relativeUsed(iso: string | null | undefined): string | null {
     if (!iso) return null;
@@ -154,6 +162,11 @@ export default function MediaPage() {
     /* Search & filter */
     const [searchQuery, setSearchQuery] = useState("");
     const [filterMode, setFilterMode] = useState<FilterMode>("all");
+    const [folders, setFolders] = useState<MediaFolderRow[]>([]);
+    const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
+    const [newFolderName, setNewFolderName] = useState("");
+    const [folderBusy, setFolderBusy] = useState(false);
+    const [editFolderId, setEditFolderId] = useState<string | null>(null);
 
     /* Replace dialog */
     const [replaceFile, setReplaceFile] = useState<MediaFile | null>(null);
@@ -202,6 +215,7 @@ export default function MediaPage() {
                             created_at: string;
                             kind: string;
                             last_used_at?: string | null;
+                            folder_id?: string | null;
                         }) => ({
                             id: a.id,
                             name: a.name,
@@ -212,6 +226,7 @@ export default function MediaPage() {
                             created_at: a.created_at,
                             kind: a.kind,
                             last_used_at: a.last_used_at ?? null,
+                            folder_id: a.folder_id ?? null,
                         }),
                     ),
                 );
@@ -223,6 +238,18 @@ export default function MediaPage() {
             toast.error("Failed to load media files");
         } finally {
             setLoading(false);
+        }
+    }, []);
+
+    const loadFolders = useCallback(async () => {
+        try {
+            const res = await fetch("/api/media-folders");
+            const data = await res.json();
+            if (data.ok && Array.isArray(data.folders)) {
+                setFolders(data.folders.map((f: MediaFolderRow) => ({ id: f.id, name: f.name })));
+            }
+        } catch (error) {
+            console.error("Failed to load folders", error);
         }
     }, []);
 
@@ -267,9 +294,10 @@ export default function MediaPage() {
 
     useEffect(() => {
         loadFiles();
+        loadFolders();
         loadOverrides();
         loadUsages();
-    }, [loadFiles, loadOverrides, loadUsages]);
+    }, [loadFiles, loadFolders, loadOverrides, loadUsages]);
 
     /* ---------------------------------------------------------------- */
     /* Filtered files                                                    */
@@ -286,6 +314,12 @@ export default function MediaPage() {
     const filteredFiles = useMemo(() => {
         let result = files;
 
+        if (folderFilter === "unfiled") {
+            result = result.filter((f) => !f.folder_id);
+        } else if (folderFilter !== "all") {
+            result = result.filter((f) => f.folder_id === folderFilter);
+        }
+
         // Search filter
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
@@ -300,7 +334,7 @@ export default function MediaPage() {
         }
 
         return result;
-    }, [files, searchQuery, filterMode, getFileUsages]);
+    }, [files, folderFilter, searchQuery, filterMode, getFileUsages]);
 
     /* ---------------------------------------------------------------- */
     /* Actions                                                           */
@@ -395,6 +429,7 @@ export default function MediaPage() {
         setDetailFile(file);
         setEditName(file.name);
         setEditAlt(file.alt_text ?? "");
+        setEditFolderId(file.folder_id ?? null);
         setDetailUsages(null);
         void (async () => {
             try {
@@ -412,6 +447,72 @@ export default function MediaPage() {
         })();
     };
 
+    const handleCreateFolder = async () => {
+        const name = newFolderName.trim();
+        if (!name) {
+            toast.error("Folder name is required");
+            return;
+        }
+        setFolderBusy(true);
+        try {
+            const res = await fetch("/api/media-folders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                toast.error(getApiErrorMessage(data.error, "Could not create folder"));
+                return;
+            }
+            setFolders((prev) =>
+                [...prev, { id: data.folder.id, name: data.folder.name }].sort((a, b) =>
+                    a.name.localeCompare(b.name),
+                ),
+            );
+            setNewFolderName("");
+            setFolderFilter(data.folder.id);
+            toast.success("Folder created");
+        } catch (error) {
+            console.error("Create folder error", error);
+            toast.error("Could not create folder");
+        } finally {
+            setFolderBusy(false);
+        }
+    };
+
+    const handleRenameFolder = async (id: string, name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) {
+            toast.error("Folder name cannot be empty");
+            return;
+        }
+        setFolderBusy(true);
+        try {
+            const res = await fetch(`/api/media-folders/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: trimmed }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                toast.error(getApiErrorMessage(data.error, "Rename failed"));
+                return;
+            }
+            setFolders((prev) =>
+                prev
+                    .map((f) => (f.id === id ? { id, name: data.folder.name } : f))
+                    .sort((a, b) => a.name.localeCompare(b.name)),
+            );
+            toast.success("Folder renamed");
+        } catch (error) {
+            console.error("Rename folder error", error);
+            toast.error("Rename failed");
+        } finally {
+            setFolderBusy(false);
+        }
+    };
+
     const handleSaveMeta = async () => {
         if (!detailFile) return;
         const name = editName.trim();
@@ -427,6 +528,7 @@ export default function MediaPage() {
                 body: JSON.stringify({
                     name,
                     alt_text: (detailFile.kind ?? "image") === "image" ? editAlt : undefined,
+                    folder_id: editFolderId,
                 }),
             });
             const data = await res.json();
@@ -438,8 +540,10 @@ export default function MediaPage() {
                 ...detailFile,
                 name: data.asset.name,
                 alt_text: data.asset.alt_text ?? null,
+                folder_id: data.asset.folder_id ?? null,
             };
             setDetailFile(updated);
+            setEditFolderId(updated.folder_id ?? null);
             setFiles((prev) => prev.map((f) => (f.id === updated.id ? { ...f, ...updated } : f)));
             toast.success("Saved");
         } catch (error) {
@@ -837,35 +941,88 @@ export default function MediaPage() {
                 </div>
 
                 {/* Search & Filter Bar */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <input
-                            type="text"
-                            placeholder="Search images..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
+                <div className="flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Search images..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                            />
+                        </div>
+                        <div className="flex gap-1 border rounded-lg p-1">
+                            {([
+                                { value: "all", label: "All" },
+                                { value: "in_use", label: "In Use" },
+                                { value: "unused", label: "Unused" },
+                            ] as const).map((opt) => (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => setFilterMode(opt.value)}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                                        filterMode === opt.value
+                                            ? "bg-primary text-primary-foreground"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="flex gap-1 border rounded-lg p-1">
-                        {([
-                            { value: "all", label: "All" },
-                            { value: "in_use", label: "In Use" },
-                            { value: "unused", label: "Unused" },
-                        ] as const).map((opt) => (
-                            <button
-                                key={opt.value}
-                                onClick={() => setFilterMode(opt.value)}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                                    filterMode === opt.value
-                                        ? "bg-primary text-primary-foreground"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                }`}
+                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                        <select
+                            value={folderFilter}
+                            onChange={(e) => setFolderFilter(e.target.value as FolderFilter)}
+                            className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[180px]"
+                            aria-label="Filter by folder"
+                        >
+                            <option value="all">All folders</option>
+                            <option value="unfiled">Unfiled</option>
+                            {folders.map((f) => (
+                                <option key={f.id} value={f.id}>
+                                    {f.name}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="flex gap-2 flex-1">
+                            <Input
+                                value={newFolderName}
+                                onChange={(e) => setNewFolderName(e.target.value)}
+                                placeholder="New folder name"
+                                className="h-9"
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") void handleCreateFolder();
+                                }}
+                            />
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={folderBusy || !newFolderName.trim()}
+                                onClick={() => void handleCreateFolder()}
                             >
-                                {opt.label}
-                            </button>
-                        ))}
+                                Create
+                            </Button>
+                        </div>
+                        {folderFilter !== "all" && folderFilter !== "unfiled" && (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                disabled={folderBusy}
+                                onClick={() => {
+                                    const current = folders.find((f) => f.id === folderFilter);
+                                    const next = window.prompt("Rename folder", current?.name ?? "");
+                                    if (next != null) void handleRenameFolder(folderFilter, next);
+                                }}
+                            >
+                                Rename
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -1119,13 +1276,34 @@ export default function MediaPage() {
                                             />
                                         </div>
                                     )}
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="asset-folder" className="text-xs text-muted-foreground">
+                                            Folder
+                                        </Label>
+                                        <select
+                                            id="asset-folder"
+                                            value={editFolderId ?? ""}
+                                            onChange={(e) =>
+                                                setEditFolderId(e.target.value ? e.target.value : null)
+                                            }
+                                            className="w-full text-sm border rounded-md px-3 py-2 bg-background"
+                                        >
+                                            <option value="">Unfiled</option>
+                                            {folders.map((f) => (
+                                                <option key={f.id} value={f.id}>
+                                                    {f.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <Button
                                         size="sm"
                                         onClick={handleSaveMeta}
                                         disabled={
                                             savingMeta ||
                                             (editName.trim() === detailFile.name &&
-                                                editAlt === (detailFile.alt_text ?? ""))
+                                                editAlt === (detailFile.alt_text ?? "") &&
+                                                (editFolderId ?? null) === (detailFile.folder_id ?? null))
                                         }
                                     >
                                         {savingMeta ? (

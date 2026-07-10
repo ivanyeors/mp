@@ -3,6 +3,13 @@
 export const MEDIA_ASSET_KINDS = ["image", "video", "pdf", "link"] as const;
 export type MediaAssetKind = (typeof MEDIA_ASSET_KINDS)[number];
 
+export type MediaFolder = {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MediaAsset = {
   id: string;
   kind: MediaAssetKind;
@@ -15,6 +22,7 @@ export type MediaAsset = {
   byte_size: number | null;
   width: number | null;
   height: number | null;
+  folder_id: string | null;
   imported_at: string | null;
   last_used_at: string | null;
   created_by: string | null;
@@ -40,7 +48,12 @@ export type CreateMediaAssetInput = {
 export type UpdateMediaAssetInput = {
   name?: string;
   alt_text?: string | null;
+  /** Assign folder, or null to unfile. */
+  folder_id?: string | null;
 };
+
+export type CreateMediaFolderInput = { name: string };
+export type UpdateMediaFolderInput = { name: string };
 
 export function isMediaAssetKind(value: unknown): value is MediaAssetKind {
   return typeof value === "string" && (MEDIA_ASSET_KINDS as readonly string[]).includes(value);
@@ -63,8 +76,37 @@ export function validateCreateMediaAsset(input: CreateMediaAssetInput): string |
 /** Validate update payload; returns error message or null. */
 export function validateUpdateMediaAsset(input: UpdateMediaAssetInput): string | null {
   if (input.name !== undefined && !input.name.trim()) return "Name cannot be empty";
-  if (input.name === undefined && input.alt_text === undefined) return "No fields to update";
+  if (
+    input.name === undefined &&
+    input.alt_text === undefined &&
+    input.folder_id === undefined
+  ) {
+    return "No fields to update";
+  }
+  if (input.folder_id !== undefined && input.folder_id !== null && !input.folder_id.trim()) {
+    return "Invalid folder_id";
+  }
   return null;
+}
+
+export function validateCreateMediaFolder(input: CreateMediaFolderInput): string | null {
+  if (!input.name?.trim()) return "Name is required";
+  return null;
+}
+
+export function validateUpdateMediaFolder(input: UpdateMediaFolderInput): string | null {
+  if (!input.name?.trim()) return "Name cannot be empty";
+  return null;
+}
+
+/** Pure folder filter for list opts (unit-tested). */
+export function matchesFolderFilter(
+  folderId: string | null | undefined,
+  opts?: { folder_id?: string; unfiled?: boolean },
+): boolean {
+  if (opts?.unfiled) return folderId == null;
+  if (opts?.folder_id) return folderId === opts.folder_id;
+  return true;
 }
 
 /** Display name from a storage object path (strip random prefix when present). */

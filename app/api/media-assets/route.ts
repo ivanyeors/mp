@@ -15,9 +15,16 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("q") ?? undefined;
   const kind = searchParams.get("kind") ?? undefined;
+  const folder_id = searchParams.get("folder_id") ?? undefined;
+  const unfiled = searchParams.get("unfiled") === "true";
 
   try {
-    const assets = await listMediaAssets({ search, kind: kind || undefined });
+    const assets = await listMediaAssets({
+      search,
+      kind: kind || undefined,
+      folder_id: folder_id || undefined,
+      unfiled: unfiled || undefined,
+    });
     return NextResponse.json({ ok: true, assets });
   } catch (err) {
     return NextResponse.json(

@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   isMediaAssetKind,
+  matchesFolderFilter,
   planBucketBackfill,
   validateCreateMediaAsset,
+  validateCreateMediaFolder,
   validateUpdateMediaAsset,
+  validateUpdateMediaFolder,
   displayNameFromStoragePath,
 } from "@/lib/media-assets";
 
@@ -48,6 +51,24 @@ describe("media-assets registry", () => {
     expect(validateUpdateMediaAsset({ name: "  " })).toBe("Name cannot be empty");
     expect(validateUpdateMediaAsset({ name: "Renamed", alt_text: "alt" })).toBeNull();
     expect(validateUpdateMediaAsset({ alt_text: null })).toBeNull();
+    expect(validateUpdateMediaAsset({ folder_id: null })).toBeNull();
+    expect(validateUpdateMediaAsset({ folder_id: "  " })).toBe("Invalid folder_id");
+    expect(validateUpdateMediaAsset({ folder_id: "abc" })).toBeNull();
+  });
+
+  it("validates folder create/rename", () => {
+    expect(validateCreateMediaFolder({ name: "  " })).toBe("Name is required");
+    expect(validateCreateMediaFolder({ name: "Campaign" })).toBeNull();
+    expect(validateUpdateMediaFolder({ name: "" })).toBe("Name cannot be empty");
+    expect(validateUpdateMediaFolder({ name: "Heroes" })).toBeNull();
+  });
+
+  it("matches folder filter", () => {
+    expect(matchesFolderFilter(null)).toBe(true);
+    expect(matchesFolderFilter("f1", { folder_id: "f1" })).toBe(true);
+    expect(matchesFolderFilter("f2", { folder_id: "f1" })).toBe(false);
+    expect(matchesFolderFilter(null, { unfiled: true })).toBe(true);
+    expect(matchesFolderFilter("f1", { unfiled: true })).toBe(false);
   });
 
   it("backfill skips known hosted_urls (idempotent)", () => {

@@ -27,9 +27,13 @@ type PickerAsset = {
   url: string;
   alt: string | null;
   created_at: string;
+  folder_id: string | null;
 };
 
+type PickerFolder = { id: string; name: string };
+
 type FilterMode = "all" | "in_use" | "unused";
+type FolderFilter = "all" | "unfiled" | string;
 
 interface ImagePickerProps {
   onSelect: (selection: AssetSelection) => void;
@@ -46,6 +50,8 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
   const [uploading, setUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
+  const [folders, setFolders] = useState<PickerFolder[]>([]);
+  const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
@@ -54,12 +60,14 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
     setLoading(true);
     try {
       const q = imageOnly ? "?kind=image" : "";
-      const [assetsRes, usageRes] = await Promise.all([
+      const [assetsRes, usageRes, foldersRes] = await Promise.all([
         fetch(`/api/media-assets${q}`),
         fetch("/api/media/usage"),
+        fetch("/api/media-folders"),
       ]);
       const assetsData = await assetsRes.json();
       const usageData = await usageRes.json();
+      const foldersData = await foldersRes.json();
 
       if (!assetsRes.ok || !assetsData.ok) {
         toast.error(getApiErrorMessage(assetsData.error, "Failed to load assets"));
@@ -73,6 +81,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
           alt_text?: string | null;
           hosted_url?: string | null;
           created_at: string;
+          folder_id?: string | null;
         }>)
           .filter((a) => a.hosted_url)
           .map((a) => ({
@@ -81,8 +90,15 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             url: a.hosted_url!,
             alt: a.alt_text ?? null,
             created_at: a.created_at,
+            folder_id: a.folder_id ?? null,
           })),
       );
+
+      if (foldersData.ok && Array.isArray(foldersData.folders)) {
+        setFolders(
+          foldersData.folders.map((f: PickerFolder) => ({ id: f.id, name: f.name })),
+        );
+      }
 
       if (usageData.ok && usageData.usages) {
         setUsageByUrl(usageData.usages);
@@ -100,6 +116,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
       loadAssets();
       setSearchQuery("");
       setFilterMode("all");
+      setFolderFilter("all");
     }
   }, [open, loadAssets]);
 
@@ -119,6 +136,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             url: data.asset.hosted_url,
             alt: data.asset.alt_text ?? null,
             created_at: data.asset.created_at,
+            folder_id: data.asset.folder_id ?? null,
           },
           ...prev,
         ]);
@@ -132,6 +150,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
             url: data.file.url,
             alt: null,
             created_at: new Date().toISOString(),
+            folder_id: null,
           },
           ...prev,
         ]);
@@ -199,6 +218,8 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
 
   const filtered = useMemo(() => {
     let list = assets;
+    if (folderFilter === "unfiled") list = list.filter((a) => !a.folder_id);
+    else if (folderFilter !== "all") list = list.filter((a) => a.folder_id === folderFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter((a) => a.name.toLowerCase().includes(q));
@@ -206,7 +227,7 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
     if (filterMode === "in_use") list = list.filter(isUsed);
     else if (filterMode === "unused") list = list.filter((a) => !isUsed(a));
     return list;
-  }, [assets, searchQuery, filterMode, isUsed]);
+  }, [assets, folderFilter, searchQuery, filterMode, isUsed]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -254,36 +275,52 @@ export function ImagePicker({ onSelect, children, imageOnly = true }: ImagePicke
           </div>
         </DialogHeader>
 
-        <div className="flex flex-col sm:flex-row gap-2 px-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search assets..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+        <div className="flex flex-col gap-2 px-1">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search assets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="flex gap-1">
+              {(
+                [
+                  ["all", "All"],
+                  ["in_use", "Used"],
+                  ["unused", "Unused"],
+                ] as const
+              ).map(([value, label]) => (
+                <Button
+                  key={value}
+                  type="button"
+                  size="sm"
+                  variant={filterMode === value ? "default" : "outline"}
+                  onClick={() => setFilterMode(value)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-1">
-            {(
-              [
-                ["all", "All"],
-                ["in_use", "Used"],
-                ["unused", "Unused"],
-              ] as const
-            ).map(([value, label]) => (
-              <Button
-                key={value}
-                type="button"
-                size="sm"
-                variant={filterMode === value ? "default" : "outline"}
-                onClick={() => setFilterMode(value)}
-              >
-                {label}
-              </Button>
+          <select
+            value={folderFilter}
+            onChange={(e) => setFolderFilter(e.target.value as FolderFilter)}
+            className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:max-w-xs"
+            aria-label="Filter by folder"
+          >
+            <option value="all">All folders</option>
+            <option value="unfiled">Unfiled</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
             ))}
-          </div>
+          </select>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-2 min-h-[300px] relative">

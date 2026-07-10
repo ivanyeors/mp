@@ -6,26 +6,37 @@ import {
 import { storagePathFromHostedUrl } from "@/lib/media-assets/ingest";
 import {
   type CreateMediaAssetInput,
+  type CreateMediaFolderInput,
   type MediaAsset,
+  type MediaFolder,
   type UpdateMediaAssetInput,
+  type UpdateMediaFolderInput,
   planBucketBackfill,
   validateCreateMediaAsset,
+  validateCreateMediaFolder,
   validateUpdateMediaAsset,
+  validateUpdateMediaFolder,
 } from "./types";
 
 export type {
   CreateMediaAssetInput,
+  CreateMediaFolderInput,
   MediaAsset,
   MediaAssetKind,
+  MediaFolder,
   UpdateMediaAssetInput,
+  UpdateMediaFolderInput,
 } from "./types";
 export {
   MEDIA_ASSET_KINDS,
   displayNameFromStoragePath,
   isMediaAssetKind,
+  matchesFolderFilter,
   planBucketBackfill,
   validateCreateMediaAsset,
+  validateCreateMediaFolder,
   validateUpdateMediaAsset,
+  validateUpdateMediaFolder,
 } from "./types";
 export {
   DriveError,
@@ -59,6 +70,8 @@ function admin() {
 export async function listMediaAssets(opts?: {
   search?: string;
   kind?: string;
+  folder_id?: string;
+  unfiled?: boolean;
   limit?: number;
 }): Promise<MediaAsset[]> {
   let q = admin()
@@ -68,6 +81,8 @@ export async function listMediaAssets(opts?: {
 
   if (opts?.kind) q = q.eq("kind", opts.kind);
   if (opts?.search?.trim()) q = q.ilike("name", `%${opts.search.trim()}%`);
+  if (opts?.unfiled) q = q.is("folder_id", null);
+  else if (opts?.folder_id) q = q.eq("folder_id", opts.folder_id);
   if (opts?.limit) q = q.limit(opts.limit);
 
   const { data, error } = await q;
@@ -133,6 +148,9 @@ export async function updateMediaAsset(
   const patch: Record<string, unknown> = {};
   if (input.name !== undefined) patch.name = input.name.trim();
   if (input.alt_text !== undefined) patch.alt_text = input.alt_text;
+  if (input.folder_id !== undefined) {
+    patch.folder_id = input.folder_id === null ? null : input.folder_id.trim();
+  }
 
   const { data, error } = await admin()
     .from("media_assets")
@@ -142,6 +160,50 @@ export async function updateMediaAsset(
     .single();
   if (error) throw new Error(error.message);
   return data as MediaAsset;
+}
+
+export async function listMediaFolders(): Promise<MediaFolder[]> {
+  const { data, error } = await admin()
+    .from("media_folders")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as MediaFolder[];
+}
+
+export async function createMediaFolder(input: CreateMediaFolderInput): Promise<MediaFolder> {
+  const err = validateCreateMediaFolder(input);
+  if (err) throw new Error(err);
+
+  const { data, error } = await admin()
+    .from("media_folders")
+    .insert({ name: input.name.trim() })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as MediaFolder;
+}
+
+export async function updateMediaFolder(
+  id: string,
+  input: UpdateMediaFolderInput,
+): Promise<MediaFolder> {
+  const err = validateUpdateMediaFolder(input);
+  if (err) throw new Error(err);
+
+  const { data, error } = await admin()
+    .from("media_folders")
+    .update({ name: input.name.trim() })
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as MediaFolder;
+}
+
+export async function deleteMediaFolder(id: string): Promise<void> {
+  const { error } = await admin().from("media_folders").delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteMediaAsset(id: string): Promise<void> {
