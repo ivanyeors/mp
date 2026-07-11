@@ -18,14 +18,24 @@ Desktop unchanged for this slice: keep animated backgrounds, existing padding, t
 
 ## Acceptance criteria
 
-- [ ] On mobile, post-welcome steps have no Particles/RetroGrid/DotPattern; background is solid.
-- [ ] On desktop, welcome and post-welcome animated backgrounds behave as today.
-- [ ] Mobile side padding is reduced vs current without breaking readability.
-- [ ] Mobile past welcome: bottom Close visible; top-right X absent.
-- [ ] Mobile Close opens a centered Stay/Exit dialog; Exit clears session as today (start/home).
-- [ ] Desktop X still uses toast exit confirm.
-- [ ] Bottom Close respects safe-area / home indicator patterns used by slide-ins.
-- [ ] Applied to both Mpillow and Mbolster configurators.
+- [x] On mobile, post-welcome steps have no Particles/RetroGrid/DotPattern; background is solid.
+- [x] On desktop, welcome and post-welcome animated backgrounds behave as today.
+- [x] Mobile side padding is reduced vs current without breaking readability.
+- [x] Mobile past welcome: bottom Close visible; top-right X absent.
+- [x] Mobile Close opens a centered Stay/Exit dialog; Exit clears session as today (start/home).
+- [x] Desktop X still uses toast exit confirm.
+- [x] Bottom Close respects safe-area / home indicator patterns used by slide-ins.
+- [x] Applied to both Mpillow and Mbolster configurators.
+
+## Proof
+
+```bash
+npx tsx components/configurator/configurator-mobile-chrome.check.ts
+# → configurator-mobile-chrome.check.ts: ok
+```
+
+Shared: `components/configurator/configurator-mobile-chrome.tsx`  
+Wired: `mp-config-client.tsx`, `mbolster-config-client.tsx`
 
 ## Blocked by
 

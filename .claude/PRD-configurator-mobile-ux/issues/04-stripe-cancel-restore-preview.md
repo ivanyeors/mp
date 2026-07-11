@@ -19,13 +19,24 @@ Do not change Stripe Checkout UI or hold pricing; server cancel path already tar
 
 ## Acceptance criteria
 
-- [ ] Cancelling hold Checkout on Mpillow returns to preview/customisation, not welcome restart.
-- [ ] Cancelling hold Checkout on Mbolster returns to preview/customisation.
-- [ ] Cover/case (and other preserved hold-prep selections) survive cancel when previously chosen.
-- [ ] `hold_cancelled` (or equivalent) can show a light cancelled notice without clearing the form.
-- [ ] Intentional Exit/Close still clears session as today.
-- [ ] Automated test covers restore helper / state mapping.
-- [ ] mp-basic hold cancel follows the same restore destination pattern.
+- [x] Cancelling hold Checkout on Mpillow returns to preview/customisation, not welcome restart.
+- [x] Cancelling hold Checkout on Mbolster returns to preview/customisation.
+- [x] Cover/case (and other preserved hold-prep selections) survive cancel when previously chosen.
+- [x] `hold_cancelled` (or equivalent) can show a light cancelled notice without clearing the form.
+- [x] Intentional Exit/Close still clears session as today.
+- [x] Automated test covers restore helper / state mapping.
+- [x] mp-basic hold cancel follows the same restore destination pattern.
+
+## Proof
+
+```bash
+npx tsx lib/configurator/hold-cancel-restore.check.ts
+# → hold-cancel-restore.check.ts: ok
+```
+
+Helper: `lib/configurator/hold-cancel-restore.ts`  
+Wired: `mp-config-client.tsx` (full + basic surfaces), `mbolster-config-client.tsx`  
+Server cancel URL already: `?hold_cancelled=1` on configurator paths.
 
 ## Blocked by
 

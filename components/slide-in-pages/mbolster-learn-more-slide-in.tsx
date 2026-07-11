@@ -4,29 +4,66 @@ import * as React from "react";
 import Link from "next/link";
 
 import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
+import { PageFaqAccordion } from "@/components/page-faq/page-faq-accordion";
+import type { PageFaqSectionItem } from "@/components/page-faq/page-faq-section";
 import { openBookAppointmentSheet } from "@/lib/book-appointment";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { cn } from "@/lib/utils";
+import { PAGE_FAQ_DEFAULTS } from "@/lib/page-faq/defaults";
+import type { Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { mbolsterSlideSections } from "@/lib/product-slide-sections/configs/mbolster";
 
+export type MbolsterLearnMoreFaq = {
+  title: string;
+  items: PageFaqSectionItem[];
+};
+
 type Props = {
   className?: string;
   triggerLabel?: string;
+  /** Live Page FAQ from server; falls back to mbolster-config defaults. */
+  faq?: MbolsterLearnMoreFaq | null;
 };
 
 type ControlledSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  faq?: MbolsterLearnMoreFaq | null;
 };
 
-function MbolsterLearnMoreSheetInner() {
+const FAQ_VIEW_ALL: Record<Locale, string> = {
+  "en-US": "View all FAQs",
+  "zh-CN": "查看全部常见问题",
+};
+
+/** ponytail: defaults when caller has no DB fetch (dock/landing); config page passes live set. */
+function resolveMbolsterFaq(locale: Locale, faq?: MbolsterLearnMoreFaq | null): MbolsterLearnMoreFaq | null {
+  if (faq && faq.items.length > 0) return faq;
+  const def = PAGE_FAQ_DEFAULTS.find((d) => d.surfaceKey === "mbolster-config");
+  if (!def?.items.length) return null;
+  return {
+    title: def.titles[locale] ?? def.titles["en-US"],
+    items: def.items.map((item) => {
+      const localized = item.content[locale] ?? item.content["en-US"];
+      return {
+        id: item.slug,
+        slug: item.slug,
+        question: localized.question,
+        answer: localized.answer,
+      };
+    }),
+  };
+}
+
+function MbolsterLearnMoreSheetInner({ faq }: { faq?: MbolsterLearnMoreFaq | null }) {
   const { m, locale } = useI18n();
   const to = React.useCallback((href: string) => withLocale(href, locale), [locale]);
+  const resolvedFaq = React.useMemo(() => resolveMbolsterFaq(locale, faq), [locale, faq]);
 
   const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
@@ -98,6 +135,22 @@ function MbolsterLearnMoreSheetInner() {
               commonMessages={m.common}
               resolveHref={to}
             />
+            {resolvedFaq ? (
+              <section className="mx-auto w-full max-w-6xl px-4 py-10 md:px-8 md:py-12">
+                <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+                  <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                    {resolvedFaq.title}
+                  </h2>
+                  <Link
+                    href={to("/faq")}
+                    className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                  >
+                    {FAQ_VIEW_ALL[locale]}
+                  </Link>
+                </div>
+                <PageFaqAccordion items={resolvedFaq.items} locale={locale} />
+              </section>
+            ) : null}
           </div>
         </div>
 
@@ -124,7 +177,7 @@ function MbolsterLearnMoreSheetInner() {
   );
 }
 
-export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
+export function MbolsterLearnMoreSlideIn({ className, triggerLabel, faq }: Props) {
   const { m } = useI18n();
   const label = triggerLabel ?? m.slides.mbolster.trigger;
 
@@ -135,15 +188,15 @@ export function MbolsterLearnMoreSlideIn({ className, triggerLabel }: Props) {
           {label}
         </Button>
       </SheetTrigger>
-      <MbolsterLearnMoreSheetInner />
+      <MbolsterLearnMoreSheetInner faq={faq} />
     </Sheet>
   );
 }
 
-export function MbolsterLearnMoreSheet({ open, onOpenChange }: ControlledSheetProps) {
+export function MbolsterLearnMoreSheet({ open, onOpenChange, faq }: ControlledSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <MbolsterLearnMoreSheetInner />
+      <MbolsterLearnMoreSheetInner faq={faq} />
     </Sheet>
   );
 }

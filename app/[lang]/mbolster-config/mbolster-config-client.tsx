@@ -4,11 +4,20 @@ import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MbolsterLearnMoreSlideIn } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Info, X } from "lucide-react";
+import Link from "next/link";
 
-import { getApiErrorMessage } from "@/lib/utils";
+import { getApiErrorMessage, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -16,7 +25,26 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Particles } from "@/components/ui/particles";
 import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  ConfiguratorExitDialog,
+  ConfiguratorMobileCloseBar,
+  configuratorCardPadClassName,
+  configuratorMobileCloseClearanceClassName,
+  configuratorPreviewPadClassName,
+} from "@/components/configurator/configurator-mobile-chrome";
+import { PageFaqAccordion } from "@/components/page-faq/page-faq-accordion";
+import type { PageFaqSectionItem } from "@/components/page-faq/page-faq-section";
+import {
+  HOLD_CANCELLED_NOTICE,
+  clearHoldCancelDraft,
+  isHoldCancelledQuery,
+  readHoldCancelDraft,
+  shouldRestorePreview,
+  stripHoldCancelledFromSearch,
+  writeHoldCancelDraft,
+} from "@/lib/configurator/hold-cancel-restore";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import {
   type RecommendationResponseData,
@@ -105,11 +133,27 @@ function stepIndex(step: Step): number {
   return STEP_ORDER.indexOf(step);
 }
 
-export function MbolsterConfigClient() {
+type MbolsterConfigInfo = {
+  h1: string;
+  lede: string;
+  faqTitle: string | null;
+  faqItems: PageFaqSectionItem[];
+};
+
+const FAQ_VIEW_ALL: Record<Locale, string> = {
+  "en-US": "View all FAQs",
+  "zh-CN": "查看全部常见问题",
+};
+
+export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const homeHref = withLocale("/", locale);
+  const to = (href: string) => withLocale(href, locale);
+  const isMobile = useIsMobile();
+  const [exitDialogOpen, setExitDialogOpen] = React.useState(false);
+  const [restoringHoldCancel, setRestoringHoldCancel] = React.useState(false);
 
   const [state, setState] = React.useState<State>({
     step: "welcome",
@@ -167,23 +211,63 @@ export function MbolsterConfigClient() {
   }, [addons, selectedAddons]);
 
   React.useEffect(() => {
+    let hydratedStep: Step | null = null;
     try {
       const raw =
         window.localStorage.getItem(STORAGE_KEY) ??
         window.localStorage.getItem("mbolster_config_v3");
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<State> | null;
-      if (!parsed) return;
-      const step = normalizeStep(parsed.step);
-      setState((prev) => ({
-        ...prev,
-        step: step ?? prev.step,
-        heightUnit: (parsed.heightUnit as HeightUnit) ?? prev.heightUnit,
-        heightCm: typeof parsed.heightCm === "string" ? parsed.heightCm : prev.heightCm,
-        sleepPosition: (parsed.sleepPosition as SleepPosition) ?? prev.sleepPosition,
-      }));
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<State> | null;
+        if (parsed) {
+          const step = normalizeStep(parsed.step);
+          hydratedStep = step;
+          setState((prev) => ({
+            ...prev,
+            step: step ?? prev.step,
+            heightUnit: (parsed.heightUnit as HeightUnit) ?? prev.heightUnit,
+            heightCm: typeof parsed.heightCm === "string" ? parsed.heightCm : prev.heightCm,
+            sleepPosition: (parsed.sleepPosition as SleepPosition) ?? prev.sleepPosition,
+          }));
+        }
+      }
     } catch {
       // best-effort
+    }
+
+    const holdCancelled = isHoldCancelledQuery(window.location.search);
+    const draft = readHoldCancelDraft(window.localStorage, "mbolster");
+    const draftStep = draft?.step ?? (hydratedStep === "preview" ? "preview" : null);
+    if (shouldRestorePreview({ holdCancelled, draftStep })) {
+      if (draft) {
+        setState((s) => ({
+          ...s,
+          step: "preview",
+          heightUnit: draft.heightUnit ?? s.heightUnit,
+          heightCm: draft.heightCm ?? s.heightCm,
+          sleepPosition: draft.sleepPosition !== undefined ? draft.sleepPosition : s.sleepPosition,
+        }));
+        const sel = draft.selections;
+        setSelectedCover(sel.selectedCover);
+        setSelectedCase(sel.selectedCase);
+        setSelectedAddons(new Set(sel.selectedAddons));
+        setSelectedShippingId(sel.selectedShippingId);
+        if (sel.holdEmail) setHoldEmail(sel.holdEmail);
+        setHoldAddress(sel.holdAddress);
+      } else {
+        setState((s) => ({ ...s, step: "preview" }));
+      }
+      setRestoringHoldCancel(true);
+    }
+
+    if (holdCancelled) {
+      toast.message(HOLD_CANCELLED_NOTICE.title, {
+        description: HOLD_CANCELLED_NOTICE.description,
+      });
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${stripHoldCancelledFromSearch(window.location.search)}`,
+      );
     }
   }, []);
 
@@ -194,6 +278,42 @@ export function MbolsterConfigClient() {
       // best-effort
     }
   }, [state]);
+
+  // Persist hold-prep while on preview (covers Stripe cancel return).
+  React.useEffect(() => {
+    if (state.step !== "preview") return;
+    try {
+      writeHoldCancelDraft(window.localStorage, {
+        v: 1,
+        surface: "mbolster",
+        step: "preview",
+        heightUnit: state.heightUnit,
+        heightCm: state.heightCm,
+        sleepPosition: state.sleepPosition,
+        selections: {
+          selectedCover,
+          selectedCase,
+          selectedAddons: [...selectedAddons],
+          selectedShippingId,
+          holdEmail,
+          holdAddress,
+        },
+      });
+    } catch {
+      // best-effort
+    }
+  }, [
+    state.step,
+    state.heightUnit,
+    state.heightCm,
+    state.sleepPosition,
+    selectedCover,
+    selectedCase,
+    selectedAddons,
+    selectedShippingId,
+    holdEmail,
+    holdAddress,
+  ]);
 
   React.useEffect(() => {
     if (typeof document === "undefined") return;
@@ -243,6 +363,7 @@ export function MbolsterConfigClient() {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
       window.localStorage.removeItem("mbolster_config_v3");
+      clearHoldCancelDraft(window.localStorage, "mbolster");
     } catch {
       // ignore
     }
@@ -263,7 +384,18 @@ export function MbolsterConfigClient() {
     });
   };
 
-  const fetchBolsterRecommendation = React.useCallback(async () => {
+  const exitConfirmed = () => {
+    reset();
+    router.push(homeHref);
+  };
+
+  /** Mobile → centered Dialog; desktop → toast (unchanged). */
+  const requestExit = () => {
+    if (isMobile) setExitDialogOpen(true);
+    else confirmExit();
+  };
+
+  const fetchBolsterRecommendation = React.useCallback(async (opts?: { preserveSelections?: boolean; stayOnStep?: boolean }) => {
     if (!heightNum) return;
     setShopLoading(true);
     try {
@@ -289,18 +421,45 @@ export function MbolsterConfigClient() {
       const data: RecommendationResponseData = await res.json();
       setShopRecommendation(data);
 
-      const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
-      const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
-      if (defaultCover) setSelectedCover(defaultCover.item_id);
-      if (defaultCase) setSelectedCase(defaultCase.item_id);
+      if (!opts?.preserveSelections) {
+        const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
+        const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
+        if (defaultCover) setSelectedCover(defaultCover.item_id);
+        if (defaultCase) setSelectedCase(defaultCase.item_id);
+      }
 
-      setState((s) => ({ ...s, step: "recommendation" }));
+      if (!opts?.stayOnStep) {
+        setState((s) => ({ ...s, step: "recommendation" }));
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get recommendation");
     } finally {
       setShopLoading(false);
     }
   }, [heightNum, state.sleepPosition]);
+
+  // After hold-cancel restore: re-fetch recommendation, keep cover/case, stay on preview.
+  React.useEffect(() => {
+    if (!restoringHoldCancel || state.step !== "preview") return;
+    if (!heightNum || !state.sleepPosition) {
+      setRestoringHoldCancel(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      await fetchBolsterRecommendation({ preserveSelections: true, stayOnStep: true });
+      if (!cancelled) setRestoringHoldCancel(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    restoringHoldCancel,
+    state.step,
+    state.sleepPosition,
+    heightNum,
+    fetchBolsterRecommendation,
+  ]);
 
   // Load bolster-specific add-ons + shipping when entering the cover/purchase preview.
   React.useEffect(() => {
@@ -385,6 +544,7 @@ export function MbolsterConfigClient() {
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
           shippingMethodId: selectedShippingId,
           shippingAddress: holdAddress,
+          cancelPath: "/mbolster-config",
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -413,8 +573,14 @@ export function MbolsterConfigClient() {
   if (state.step === "preview") {
     return (
       <div className="min-h-screen bg-background">
+        <ConfiguratorExitDialog
+          open={exitDialogOpen}
+          onOpenChange={setExitDialogOpen}
+          description="This will clear your session and return home."
+          onConfirmExit={exitConfirmed}
+        />
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4">
+          <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 max-md:px-3">
             <Button
               variant="ghost"
               size="icon"
@@ -425,39 +591,47 @@ export function MbolsterConfigClient() {
               <ArrowLeft className="size-4" />
             </Button>
             <h1 className="text-sm font-semibold">Your Custom Mbolster</h1>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              onClick={confirmExit}
-              aria-label="Exit"
-            >
-              <X className="size-4" />
-            </Button>
+            {isMobile ? (
+              <div className="size-8" aria-hidden />
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                onClick={requestExit}
+                aria-label="Exit"
+              >
+                <X className="size-4" />
+              </Button>
+            )}
           </div>
         </header>
 
         <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
           {/* Left: product visual */}
           <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
-            <Particles
-              className="absolute inset-0 z-[1]"
-              quantity={100}
-              ease={80}
-              staticity={50}
-              color="#ffffff"
-              size={0.8}
-            />
-            <DotPattern
-              dotSize={3}
-              gap={32}
-              baseColor="#3992C3"
-              activeColor="#3992C3"
-              proximity={80}
-              shockRadius={250}
-              className="absolute inset-0 z-[2] opacity-60"
-            />
-            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4">
+            {!isMobile && (
+              <>
+                <Particles
+                  className="absolute inset-0 z-[1]"
+                  quantity={100}
+                  ease={80}
+                  staticity={50}
+                  color="#ffffff"
+                  size={0.8}
+                />
+                <DotPattern
+                  dotSize={3}
+                  gap={32}
+                  baseColor="#3992C3"
+                  activeColor="#3992C3"
+                  proximity={80}
+                  shockRadius={250}
+                  className="absolute inset-0 z-[2] opacity-60"
+                />
+              </>
+            )}
+            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
               <div
                 className="relative"
                 style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
@@ -498,8 +672,13 @@ export function MbolsterConfigClient() {
 
           {/* Right: customization panel (cover style, add-ons, shipping) */}
           <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
-            <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6">
-              <div className="space-y-1">
+            <div
+              className={cn(
+                "flex-1 space-y-8 overflow-y-auto",
+                configuratorPreviewPadClassName,
+                configuratorMobileCloseClearanceClassName,
+              )}
+            >              <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                 <p className="text-sm text-muted-foreground">
                   Choose cover and case, optional add-ons, then authorize payment. You are not
@@ -707,13 +886,28 @@ export function MbolsterConfigClient() {
             </div>
           </div>
         </div>
+        {isMobile && <ConfiguratorMobileCloseBar onClose={requestExit} />}
       </div>
     );
   }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-4 py-10 md:px-6">
+      <ConfiguratorExitDialog
+        open={exitDialogOpen}
+        onOpenChange={setExitDialogOpen}
+        description="This will clear your session and return home."
+        onConfirmExit={exitConfirmed}
+      />
+      {state.step !== "welcome" && isMobile && (
+        <ConfiguratorMobileCloseBar onClose={requestExit} />
+      )}
+      <div
+        className={cn(
+          "relative mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center py-10 px-3 md:px-6",
+          state.step !== "welcome" && configuratorMobileCloseClearanceClassName,
+        )}
+      >
         {state.step !== "welcome" ? (
           <div className="mb-6">
             <Progress value={progressValue} aria-label="Mbolster customisation progress" />
@@ -721,7 +915,45 @@ export function MbolsterConfigClient() {
         ) : null}
 
         {state.step === "welcome" ? (
-          <div className="space-y-6 text-center">
+          <div className="relative space-y-6 text-center">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-0 right-0 h-8 w-8 text-muted-foreground"
+                  aria-label="About customisation"
+                >
+                  <Info className="h-5 w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+                <DialogHeader className="text-left sm:text-left">
+                  <DialogTitle className="text-2xl leading-tight">{info.h1}</DialogTitle>
+                  <DialogDescription className="text-base leading-relaxed">
+                    {info.lede}
+                  </DialogDescription>
+                </DialogHeader>
+                {info.faqItems.length > 0 && (
+                  <div className="space-y-4 border-t pt-4">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                      <h3 className="text-xl font-semibold tracking-tight">
+                        {info.faqTitle ?? "FAQs"}
+                      </h3>
+                      <Link
+                        href={to("/faq")}
+                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        {FAQ_VIEW_ALL[locale]}
+                      </Link>
+                    </div>
+                    <PageFaqAccordion items={info.faqItems} locale={locale} />
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
             <div className="space-y-2">
               <div className="text-sm font-semibold text-muted-foreground">Mbolster</div>
               <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">
@@ -737,13 +969,21 @@ export function MbolsterConfigClient() {
               <Button size="lg" onClick={goNext}>
                 Get started
               </Button>
-              <MbolsterLearnMoreSlideIn className="h-11 px-8 text-base" triggerLabel="Learn more" />
+              <MbolsterLearnMoreSlideIn
+                className="h-11 px-8 text-base"
+                triggerLabel="Learn more"
+                faq={
+                  info.faqItems.length > 0
+                    ? { title: info.faqTitle ?? "FAQs", items: info.faqItems }
+                    : null
+                }
+              />
             </div>
           </div>
         ) : null}
 
         {state.step === "height" ? (
-          <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
+          <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
             <div className="space-y-1">
               <div className="text-sm font-semibold text-muted-foreground">Step 1</div>
               <h2 className="text-2xl font-semibold tracking-tight">Your height</h2>
@@ -799,7 +1039,7 @@ export function MbolsterConfigClient() {
         ) : null}
 
         {state.step === "sleep-position" ? (
-          <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
+          <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
             <div className="space-y-1">
               <div className="text-sm font-semibold text-muted-foreground">Step 2</div>
               <h2 className="text-2xl font-semibold tracking-tight">Sleep position</h2>
@@ -851,7 +1091,7 @@ export function MbolsterConfigClient() {
         ) : null}
 
         {state.step === "recommendation" && shopRecommendation && suggestedLength ? (
-          <Card className="bg-card/80 backdrop-blur-sm p-6 md:p-8 gap-4">
+          <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
             <div className="space-y-6 text-center">
               <Badge variant="secondary" className="text-xs">
                 Recommended length

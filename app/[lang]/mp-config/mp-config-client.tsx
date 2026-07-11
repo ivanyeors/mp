@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { getApiErrorMessage } from "@/lib/utils";
+import { cn, getApiErrorMessage } from "@/lib/utils";
 import { RetroGrid } from "@/components/ui/shadcn-io/retro-grid";
 import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
 import { Particles } from "@/components/ui/particles";
@@ -32,6 +32,14 @@ import {
   GENDER_OPTIONS,
   SingleSelectOptionRows,
 } from "@/components/configurator/single-select-option-rows";
+import {
+  ConfiguratorExitDialog,
+  ConfiguratorMobileCloseBar,
+  configuratorCardPadClassName,
+  configuratorMobileCloseClearanceClassName,
+  configuratorOuterPadClassName,
+  configuratorPreviewPadClassName,
+} from "@/components/configurator/configurator-mobile-chrome";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
@@ -66,6 +74,16 @@ import {
   variantFromPathname,
   type MpConfigVariant,
 } from "@/lib/mp-config/flow-variant";
+import {
+  HOLD_CANCELLED_NOTICE,
+  clearHoldCancelDraft,
+  isHoldCancelledQuery,
+  readHoldCancelDraft,
+  shouldRestorePreview,
+  stripHoldCancelledFromSearch,
+  writeHoldCancelDraft,
+  type HoldCancelSurface,
+} from "@/lib/configurator/hold-cancel-restore";
 
 /** Prefer BOM default, else first in-stock option, else first row. */
 function pickDefaultComponent(
@@ -139,12 +157,14 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const variant: MpConfigVariant = variantFromPathname(pathname);
   const isBasic = variant === "basic";
+  const holdSurface: HoldCancelSurface = isBasic ? "mp-basic" : "mp-full";
   const sessionStorageKey = sessionKeyFor(variant);
   const configPath = configPathFor(variant);
   const to = (href: string) => withLocale(href, locale);
 
   const isMobile = useIsMobile();
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
+  const [restoringHoldCancel, setRestoringHoldCancel] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
   // Single unit selector for the whole flow (default: inches)
@@ -176,6 +196,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completedResponseId, setCompletedResponseId] = useState<string | null>(null);
+  const [exitDialogOpen, setExitDialogOpen] = useState(false);
 
   // --- Online purchase path (cover/case prefs, add-ons, hold) — no fillings/protector ---
   const [shopRecommendation, setShopRecommendation] = useState<RecommendationResponseData | null>(null);
@@ -324,6 +345,92 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     })();
   }, [sessionStorageKey]);
 
+  // Stripe hold cancel → restore preview + selections (and light notice).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const holdCancelled = isHoldCancelledQuery(window.location.search);
+    const draft = readHoldCancelDraft(window.localStorage, holdSurface);
+    if (!shouldRestorePreview({ holdCancelled, draftStep: draft?.step })) {
+      if (holdCancelled) {
+        toast.message(HOLD_CANCELLED_NOTICE.title, {
+          description: HOLD_CANCELLED_NOTICE.description,
+        });
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}${stripHoldCancelledFromSearch(window.location.search)}`,
+        );
+      }
+      return;
+    }
+
+    if (draft?.measurementData) {
+      setMeasurementData((prev) => ({ ...prev, ...(draft.measurementData as Partial<MeasurementData>) }));
+    }
+    if (draft?.measurementUnit) setMeasurementUnit(draft.measurementUnit);
+    if (draft?.responseId) {
+      window.localStorage.setItem(sessionStorageKey, draft.responseId);
+      setResponseId(draft.responseId);
+    }
+    if (draft?.selections) {
+      setSelectedCover(draft.selections.selectedCover);
+      setSelectedCase(draft.selections.selectedCase);
+      setSelectedAddons(new Set(draft.selections.selectedAddons));
+      setSelectedShippingId(draft.selections.selectedShippingId);
+      if (draft.selections.holdEmail) setHoldEmail(draft.selections.holdEmail);
+      setHoldAddress(draft.selections.holdAddress);
+    }
+    setCurrentStep("preview");
+    setRestoringHoldCancel(true);
+
+    if (holdCancelled) {
+      toast.message(HOLD_CANCELLED_NOTICE.title, {
+        description: HOLD_CANCELLED_NOTICE.description,
+      });
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${stripHoldCancelledFromSearch(window.location.search)}`,
+      );
+    }
+    // ponytail: mount-only restore; holdSurface/sessionStorageKey stable per page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist preview + hold-prep so cancel URL can restore.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (currentStep !== "preview") return;
+    writeHoldCancelDraft(window.localStorage, {
+      v: 1,
+      surface: holdSurface,
+      step: "preview",
+      responseId,
+      measurementUnit,
+      measurementData: measurementData as unknown as Record<string, unknown>,
+      selections: {
+        selectedCover,
+        selectedCase,
+        selectedAddons: [...selectedAddons],
+        selectedShippingId,
+        holdEmail,
+        holdAddress,
+      },
+    });
+  }, [
+    currentStep,
+    holdSurface,
+    responseId,
+    measurementUnit,
+    measurementData,
+    selectedCover,
+    selectedCase,
+    selectedAddons,
+    selectedShippingId,
+    holdEmail,
+    holdAddress,
+  ]);
+
   useEffect(() => {
     if (typeof document === "undefined") return;
     const shouldHideDock = currentStep !== "welcome" || isTransitioning;
@@ -389,6 +496,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     if (typeof window !== "undefined") {
       const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
       window.localStorage.setItem(sessionStorageKey, newId);
+      clearHoldCancelDraft(window.localStorage, holdSurface);
       setResponseId(newId);
     } else {
       setResponseId(null);
@@ -399,6 +507,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   const exitToStart = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(sessionStorageKey);
+      clearHoldCancelDraft(window.localStorage, holdSurface);
     }
     setResponseId(null);
     resetMeasurementState();
@@ -421,6 +530,12 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       cancel: "Stay",
       id: "mp-config-exit",
     });
+  };
+
+  /** Mobile → centered Dialog; desktop → toast (unchanged). */
+  const requestExit = () => {
+    if (isMobile) setExitDialogOpen(true);
+    else confirmExit();
   };
 
   const hasAnyInput = useMemo(() => {
@@ -561,7 +676,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     measurementData.usesBolster !== "";
 
   // Fetch shop recommendation from customize API (full mp-config path)
-  const fetchShopRecommendation = useCallback(async () => {
+  const fetchShopRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }) => {
     setShopLoading(true);
     try {
       const shoulderCm = Number(measurementData.shoulderLength);
@@ -606,9 +721,10 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       const data: RecommendationResponseData = await res.json();
       setShopRecommendation(data);
 
-      // Pre-select cover and case (BOM default, else first in-stock).
-      setSelectedCover(pickDefaultComponent(data.components.covers));
-      setSelectedCase(pickDefaultComponent(data.components.cases));
+      if (!opts?.preserveSelections) {
+        setSelectedCover(pickDefaultComponent(data.components.covers));
+        setSelectedCase(pickDefaultComponent(data.components.cases));
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get shop recommendation");
     } finally {
@@ -616,7 +732,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     }
   }, [measurementData]);
 
-  const fetchBasicRecommendation = useCallback(async (): Promise<RecommendationResponseData | null> => {
+  const fetchBasicRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }): Promise<RecommendationResponseData | null> => {
     setShopLoading(true);
     try {
       const res = await fetch("/api/mp-basic/recommend", {
@@ -632,8 +748,10 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
       const data: RecommendationResponseData = await res.json();
       setShopRecommendation(data);
-      setSelectedCover(pickDefaultComponent(data.components.covers));
-      setSelectedCase(pickDefaultComponent(data.components.cases));
+      if (!opts?.preserveSelections) {
+        setSelectedCover(pickDefaultComponent(data.components.covers));
+        setSelectedCase(pickDefaultComponent(data.components.cases));
+      }
       return data;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get basic recommendation");
@@ -644,6 +762,27 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   }, [measurementData]);
 
   const fetchRecommendation = isBasic ? fetchBasicRecommendation : fetchShopRecommendation;
+
+  // After hold-cancel restore, re-fetch recommendation without clobbering cover/case.
+  useEffect(() => {
+    if (!restoringHoldCancel || currentStep !== "preview") return;
+    let cancelled = false;
+    (async () => {
+      if (isBasic) {
+        await fetchBasicRecommendation({ preserveSelections: true });
+      } else {
+        await Promise.all([
+          loadSuggestion(),
+          fetchShopRecommendation({ preserveSelections: true }),
+        ]);
+      }
+      if (!cancelled) setRestoringHoldCancel(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoringHoldCancel, currentStep]);
 
   // Prefetch basic recommendation when entering customize with shoulder set.
   useEffect(() => {
@@ -867,9 +1006,15 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     return (
       <>
         {completionDialog}
+        <ConfiguratorExitDialog
+          open={exitDialogOpen}
+          onOpenChange={setExitDialogOpen}
+          description="This will clear your saved session and return to the start."
+          onConfirmExit={exitToStart}
+        />
         <div className="min-h-screen bg-background">
           <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4">
+            <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 max-md:px-3">
               <Button
                 variant="ghost"
                 size="icon"
@@ -880,39 +1025,47 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                 <ArrowLeft className="size-4" />
               </Button>
               <h1 className="text-sm font-semibold">{isBasic ? "Your Basic Mpillow" : "Your Custom Mpillow"}</h1>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={confirmExit}
-                aria-label="Exit"
-              >
-                <X className="size-4" />
-              </Button>
+              {isMobile ? (
+                <div className="size-8" aria-hidden />
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={requestExit}
+                  aria-label="Exit"
+                >
+                  <X className="size-4" />
+                </Button>
+              )}
             </div>
           </header>
 
           <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
             {/* Left: product visual (mp-maker style) */}
             <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
-              <Particles
-                className="absolute inset-0 z-[1]"
-                quantity={100}
-                ease={80}
-                staticity={50}
-                color="#ffffff"
-                size={0.8}
-              />
-              <DotPattern
-                dotSize={3}
-                gap={32}
-                baseColor="#3992C3"
-                activeColor="#3992C3"
-                proximity={80}
-                shockRadius={250}
-                className="absolute inset-0 z-[2] opacity-60"
-              />
-              <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4">
+              {!isMobile && (
+                <>
+                  <Particles
+                    className="absolute inset-0 z-[1]"
+                    quantity={100}
+                    ease={80}
+                    staticity={50}
+                    color="#ffffff"
+                    size={0.8}
+                  />
+                  <DotPattern
+                    dotSize={3}
+                    gap={32}
+                    baseColor="#3992C3"
+                    activeColor="#3992C3"
+                    proximity={80}
+                    shockRadius={250}
+                    className="absolute inset-0 z-[2] opacity-60"
+                  />
+                </>
+              )}
+              <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
                 <div
                   className="relative"
                   style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
@@ -958,7 +1111,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
             {/* Right: customization panel */}
             <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
-              <div className="flex-1 space-y-8 overflow-y-auto px-5 py-6">
+              <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName, configuratorMobileCloseClearanceClassName)}>
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                   <p className="text-sm text-muted-foreground">
@@ -1181,6 +1334,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
             </div>
           </div>
         </div>
+        {isMobile && <ConfiguratorMobileCloseBar onClose={requestExit} />}
       </>
     );
   }
@@ -1188,20 +1342,28 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
       {completionDialog}
-      {/* Retro Grid Background */}
-      <RetroGrid className="z-0" opacity={0.3} speed={gridSpeed} />
-
-      {/* Interactive particles */}
-      <Particles
-        className="absolute inset-0 z-0"
-        quantity={100}
-        ease={80}
-        staticity={50}
-        color="#ffffff"
-        size={0.8}
+      <ConfiguratorExitDialog
+        open={exitDialogOpen}
+        onOpenChange={setExitDialogOpen}
+        description="This will clear your saved session and return to the start."
+        onConfirmExit={exitToStart}
       />
+      {/* Animated bg: welcome always; post-welcome desktop only */}
+      {(!isMobile || currentStep === "welcome") && (
+        <>
+          <RetroGrid className="z-0" opacity={0.3} speed={gridSpeed} />
+          <Particles
+            className="absolute inset-0 z-0"
+            quantity={100}
+            ease={80}
+            staticity={50}
+            color="#ffffff"
+            size={0.8}
+          />
+        </>
+      )}
 
-      {currentStep !== "welcome" && (
+      {currentStep !== "welcome" && !isMobile && (
         <div
           className="absolute right-4 z-20"
           style={{ top: "calc(1rem + var(--safe-top))" }}
@@ -1210,7 +1372,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
             type="button"
             variant="ghost"
             size="icon"
-            onClick={confirmExit}
+            onClick={requestExit}
             aria-label="Exit configuration"
             title="Exit"
             className="text-muted-foreground hover:text-foreground hover:bg-muted/60"
@@ -1220,9 +1382,18 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
         </div>
       )}
 
+      {currentStep !== "welcome" && isMobile && (
+        <ConfiguratorMobileCloseBar onClose={requestExit} />
+      )}
+
       {/* Content Container */}
-      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
-        <div
+      <div
+        className={cn(
+          "relative z-10 flex min-h-screen items-center justify-center",
+          configuratorOuterPadClassName,
+          currentStep !== "welcome" && configuratorMobileCloseClearanceClassName,
+        )}
+      >        <div
           className={`w-full max-w-2xl transition-all duration-300 ${
             isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100"
           }`}
@@ -1269,7 +1440,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
           {/* What to Expect Step */}
           {currentStep === "what-to-expect" && (
-            <Card className="relative bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className={cn("relative bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <Dialog>
                 <DialogTrigger asChild>
                   <Button
@@ -1386,7 +1557,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
           {/* Name Input Step */}
           {currentStep === "name" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <User className="h-12 w-12 mx-auto text-primary" />
                 <h2 className="text-3xl font-bold">Tell us about yourself</h2>
@@ -1460,7 +1631,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
           {/* Shoulder Length Measurement */}
           {currentStep === "shoulder-length" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <Image
                   src="/shoulder-length.svg"
@@ -1541,7 +1712,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
           {/* Neck to Back Measurement */}
           {!isBasic && currentStep === "neck-to-back" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <Image
                   src="/neck-to-back.svg"
@@ -1622,7 +1793,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
           {/* Head to Back Measurement */}
           {!isBasic && currentStep === "head-to-back" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <Image
                   src="/head-to-back.svg"
@@ -1703,7 +1874,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
           {/* Neck Length Measurement */}
           {!isBasic && currentStep === "neck-length" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <Image
                   src="/neck-length.svg"
@@ -1784,7 +1955,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
           {/* Customize Button Step */}
           {currentStep === "customize" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <CheckCircle className="h-16 w-16 mx-auto text-green-500" />
                 <h2 className="text-3xl font-bold">Great job, {measurementData.name}!</h2>
