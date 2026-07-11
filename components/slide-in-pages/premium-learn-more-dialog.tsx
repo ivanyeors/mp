@@ -70,11 +70,11 @@ function PremiumLearnMoreSheetInner() {
       insetTopPadding={false}
       animation="fade-up"
       hideClose
-      className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
+      className="w-full max-w-none sm:max-w-none p-0 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
     >
-      <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
+      <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
         <div className={sheetStickyTopClassName}>
-          <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
+          <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
             <SheetTitle>{m.slides.premiumMpillow.title}</SheetTitle>
             <SheetDescription>{m.slides.premiumMpillow.description}</SheetDescription>
 
@@ -83,13 +83,13 @@ function PremiumLearnMoreSheetInner() {
             </SheetClose>
           </SheetHeader>
 
-          <div className="px-4 pb-4 md:px-8 md:pb-5">
+          <div className="px-3 pb-2 md:px-8 md:pb-5">
             <Progress value={progress} className="h-1" />
           </div>
         </div>
 
         <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          <div className="space-y-10 pb-28">
+          <div className="space-y-10 pb-20">
             <ProductSlideSectionRenderer
               sections={premiumMpillowSlideSections}
               messages={m.slides.premiumMpillow}
@@ -101,20 +101,18 @@ function PremiumLearnMoreSheetInner() {
         </div>
 
         <div className={sheetStickyBottomClassName}>
-          <div className="flex items-center gap-2 px-4 py-3 md:gap-3 md:px-6 md:py-4">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              <Button asChild className="h-auto shrink-0 px-4 py-3 text-sm md:h-9 md:py-2 md:text-base">
-                <Link href={to("/mp-config")}>{m.common.customise}</Link>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto shrink-0 px-4 py-3 text-sm md:h-9 md:py-2 md:text-base"
-                onClick={openBookAppointmentSheet}
-              >
-                {m.slides.premiumMpillow.bottomBookBespoke}
-              </Button>
-            </div>
+          <div className="flex items-center gap-1.5 px-3 py-2.5 md:gap-3 md:px-6 md:py-4">
+            <Button asChild className="h-auto min-w-0 flex-1 px-2.5 py-2.5 text-sm md:h-9 md:flex-none md:px-4 md:py-2 md:text-base">
+              <Link href={to("/mp-config")}>{m.common.customise}</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto min-w-0 flex-1 px-2.5 py-2.5 text-sm md:h-9 md:flex-none md:px-4 md:py-2 md:text-base"
+              onClick={openBookAppointmentSheet}
+            >
+              {m.slides.premiumMpillow.bottomBookBespoke}
+            </Button>
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} variant="inline" className="md:hidden shrink-0" />
             </SheetClose>

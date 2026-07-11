@@ -71,12 +71,12 @@ export function SizeMattersSlideIn({ className }: Props) {
         insetTopPadding={false}
         animation="fade-up"
         hideClose
-        className="w-full max-w-none sm:max-w-none p-3 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
+        className="w-full max-w-none sm:max-w-none p-0 md:p-6 bg-transparent border-0 shadow-none overflow-hidden"
       >
-        {/* Framed shell: inner rounded panel */}
-        <div className="flex h-[100dvh] flex-col overflow-hidden rounded-2xl border bg-background shadow-sm">
+        {/* Mobile: edge-to-edge; md+: framed shell */}
+        <div className="flex h-[100dvh] flex-col overflow-hidden rounded-none border-0 bg-background md:rounded-2xl md:border md:shadow-sm">
           <div className={sheetStickyTopClassName}>
-            <SheetHeader className="relative px-4 py-4 md:px-8 md:py-6 md:pr-12">
+            <SheetHeader className="relative px-3 py-3 md:px-8 md:py-6 md:pr-12">
               <SheetTitle>{m.slides.sizeMatters.title}</SheetTitle>
               <SheetDescription>{m.slides.sizeMatters.description}</SheetDescription>
 
@@ -84,13 +84,13 @@ export function SizeMattersSlideIn({ className }: Props) {
                 <OverlayDismissButton label={m.common.close} className="hidden md:inline-flex" />
               </SheetClose>
             </SheetHeader>
-            <div className="px-4 pb-4 md:px-8 md:pb-5">
+            <div className="px-3 pb-2 md:px-8 md:pb-5">
               <Progress value={progress} className="h-1" />
             </div>
           </div>
 
           <div ref={setViewportNode} className="flex-1 overflow-y-auto">
-            <div className="px-4 py-5 pb-24 md:px-6 md:py-6 md:pb-6">
+            <div className="px-3 py-3 pb-20 md:px-6 md:py-6">
               <main className="min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
                 <section
                   aria-labelledby="press-quote-heading"
@@ -286,7 +286,7 @@ export function SizeMattersSlideIn({ className }: Props) {
             </div>
           </div>
 
-          <div className={cn(sheetStickyBottomClassName, "flex justify-end px-4 pt-3 md:hidden")}>
+          <div className={cn(sheetStickyBottomClassName, "flex items-center justify-end gap-1.5 px-3 py-2.5 md:hidden")}>
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} variant="inline" />
             </SheetClose>

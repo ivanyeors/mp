@@ -218,7 +218,7 @@ export const zhCN: Messages = {
       aftercareParagraphs: ["Basic Mpillow 的清洗与保养方式。", "想了解更多 Mpillow 的日常维护吗？"],
       careButton: "Mpillow Care",
       bottomCustomise: "开始定制",
-      bookAdjustment: "预约 Basic Mpillow 调整服务",
+      bookAdjustment: "预约调整",
     },
     premiumMpillow: {
       trigger: "了解更多",

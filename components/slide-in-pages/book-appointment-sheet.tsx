@@ -49,7 +49,7 @@ function AppointmentIframe({
         />
       </div>
       {/* ponytail: iframe swallows the default corner close on mobile — keep dismiss outside the iframe */}
-      <div className={cn(sheetStickyBottomClassName, "flex shrink-0 justify-end px-4 pt-3 md:hidden")}>
+      <div className={cn(sheetStickyBottomClassName, "flex shrink-0 items-center justify-end gap-1.5 px-3 py-2.5 md:hidden")}>
         <SheetClose asChild>
           <OverlayDismissButton label={closeLabel} variant="inline" />
         </SheetClose>

@@ -4,7 +4,7 @@ export const enUS: Messages = {
   common: {
     close: "Close",
     customise: "Customise",
-    bookAppointment: "Book an appointment",
+    bookAppointment: "Book appointment",
     addToCart: "Add to cart",
     learnMore: "Learn more",
     learnHow: "Learn how",
@@ -230,7 +230,7 @@ export const enUS: Messages = {
       aftercareParagraphs: ["How to wash and clean your Basic Mpillow.", "Want to learn more about doing Mpillow Maintenance?"],
       careButton: "Mpillow Care",
       bottomCustomise: "Customise",
-      bookAdjustment: "Book Basic Mpillow Adjustment",
+      bookAdjustment: "Book adjustment",
     },
     premiumMpillow: {
       trigger: "Learn more",
@@ -316,7 +316,7 @@ export const enUS: Messages = {
         "All products are backed by a 10-year warranty on stuffing. To avail, schedule an appointment and bring your pillow to our service center for re-adjustment and stuffing replacement (readjustment fees apply).",
       helpTitle: "Need help?",
       helpDescription: "Feel free to contact customer support at +65 8780 5311.",
-      bottomBookBespoke: "Book a bespoke service",
+      bottomBookBespoke: "Book bespoke",
     },
     cervicalNeckSupport: {
       title: "Cervical Neck Support",
