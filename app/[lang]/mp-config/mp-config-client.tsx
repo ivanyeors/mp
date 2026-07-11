@@ -20,6 +20,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -40,9 +41,13 @@ import {
   Camera,
   X,
   Check,
+  Info,
 } from "lucide-react";
-import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import Link from "next/link";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { PageFaqAccordion } from "@/components/page-faq/page-faq-accordion";
+import type { PageFaqSectionItem } from "@/components/page-faq/page-faq-section";
 import {
   CustomizationStepComponents,
   type RecommendationResponseData,
@@ -114,7 +119,19 @@ type MpConfigSuggestion = {
   reasons: string[];
 };
 
-export function MpConfigClient() {
+type MpConfigInfo = {
+  h1: string;
+  lede: string;
+  faqTitle: string | null;
+  faqItems: PageFaqSectionItem[];
+};
+
+const FAQ_VIEW_ALL: Record<Locale, string> = {
+  "en-US": "View all FAQs",
+  "zh-CN": "查看全部常见问题",
+};
+
+export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -1250,7 +1267,45 @@ export function MpConfigClient() {
 
           {/* What to Expect Step */}
           {currentStep === "what-to-expect" && (
-            <Card className="bg-card/80 backdrop-blur-sm p-8 gap-4">
+            <Card className="relative bg-card/80 backdrop-blur-sm p-8 gap-4">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-3 right-3 h-8 w-8 text-muted-foreground"
+                    aria-label="About customisation"
+                  >
+                    <Info className="h-5 w-5" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+                  <DialogHeader className="text-left sm:text-left">
+                    <DialogTitle className="text-2xl leading-tight">{info.h1}</DialogTitle>
+                    <DialogDescription className="text-base leading-relaxed">
+                      {info.lede}
+                    </DialogDescription>
+                  </DialogHeader>
+                  {info.faqItems.length > 0 && (
+                    <div className="space-y-4 border-t pt-4">
+                      <div className="flex flex-wrap items-end justify-between gap-3">
+                        <h3 className="text-xl font-semibold tracking-tight">
+                          {info.faqTitle ?? "FAQs"}
+                        </h3>
+                        <Link
+                          href={to("/faq")}
+                          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+                        >
+                          {FAQ_VIEW_ALL[locale]}
+                        </Link>
+                      </div>
+                      <PageFaqAccordion items={info.faqItems} locale={locale} />
+                    </div>
+                  )}
+                </DialogContent>
+              </Dialog>
+
               <div className="text-center space-y-2">
                 <Sparkles className="h-12 w-12 mx-auto text-primary" />
                 <h2 className="text-3xl font-bold">What to Expect</h2>

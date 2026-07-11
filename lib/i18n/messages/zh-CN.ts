@@ -342,6 +342,7 @@ export const zhCN: Messages = {
       additionalBenefitsTitle: "Mpillow 颈椎支撑枕的额外优势",
       additionalBenefits: ["为部分用户提供更耐用的承托", "使用相同的填充技术", "可水洗", "可拆卸", "可更换"],
       bottomViewSource: "查看来源页面",
+      bottomShop: "选购",
     },
     mbolster: {
       trigger: "了解更多",

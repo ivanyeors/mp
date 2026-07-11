@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 
 import { ProductSlideSectionRenderer } from "@/components/product-sections/product-slide-section-renderer";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, sheetStickyBottomClassName, sheetStickyTopClassName } from "@/components/ui/sheet";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
+import { withLocale } from "@/lib/i18n/routing";
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { cervicalNeckSupportSlideSections } from "@/lib/product-slide-sections/configs/cervical-neck-support";
 
@@ -18,7 +20,8 @@ export function openCervicalNeckSupportSheet() {
 }
 
 function CervicalNeckSupportSheetInner() {
-  const { m } = useI18n();
+  const { m, locale } = useI18n();
+  const shopHref = withLocale("/shop/cervical-neck-support", locale);
 
   const [progress, setProgress] = React.useState(0);
   const [viewportEl, setViewportEl] = React.useState<HTMLDivElement | null>(null);
@@ -93,11 +96,9 @@ function CervicalNeckSupportSheetInner() {
 
         <div className={sheetStickyBottomClassName}>
           <div className="flex items-center gap-1.5 px-3 py-2.5 md:gap-3 md:px-6 md:py-4">
-            <SheetClose asChild>
-              <Button variant="outline" className="h-auto min-w-0 flex-1 py-2.5 md:h-9 md:flex-none md:py-2">
-                Back
-              </Button>
-            </SheetClose>
+            <Button asChild className="h-auto min-w-0 flex-1 py-2.5 md:h-9 md:flex-none md:py-2">
+              <Link href={shopHref}>{m.slides.cervicalNeckSupport.bottomShop}</Link>
+            </Button>
             <SheetClose asChild>
               <OverlayDismissButton label={m.common.close} variant="inline" className="md:hidden shrink-0" />
             </SheetClose>

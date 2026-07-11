@@ -63,10 +63,12 @@ const neckSrc = read("components/sections/landing/neck-pains-section.tsx");
 assert.match(neckSrc, /md:hidden[\s\S]*feelCard/);
 assert.match(neckSrc, /CervicalNeckSupportLearnMoreCta/);
 
-// openCervicalNeckSupportSheet + Back footer unchanged
+// openCervicalNeckSupportSheet + Shop footer CTA
 const sheetSrc = read("components/slide-in-pages/cervical-neck-support.tsx");
 assert.match(sheetSrc, /export function openCervicalNeckSupportSheet/);
-assert.match(sheetSrc, />\s*Back\s*</);
+assert.match(sheetSrc, /\/shop\/cervical-neck-support/);
+assert.match(sheetSrc, /bottomShop/);
+assert.doesNotMatch(sheetSrc, />\s*Back\s*</);
 
 // zh-CN Neck Pains + existing heroDescription left untouched; new keys only for type parity
 assert.equal(zhCN.home.neckPains.title, "颈椎不适？");

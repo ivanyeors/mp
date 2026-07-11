@@ -212,6 +212,7 @@ export type Messages = {
       additionalBenefitsTitle: string;
       additionalBenefits: string[];
       bottomViewSource: string;
+      bottomShop: string;
     };
     mbolster: {
       trigger: string;

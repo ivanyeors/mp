@@ -1,5 +1,6 @@
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
+import { getPageFaq } from "@/lib/page-faq";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -27,7 +28,10 @@ export default async function MpConfigPage({ params }: Props) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
-  const offer = await getConfiguratorOfferRange("pillow");
+  const [offer, faq] = await Promise.all([
+    getConfiguratorOfferRange("pillow"),
+    getPageFaq("mp-config", locale),
+  ]);
 
   const jsonLd = buildConfiguratorProductJsonLd({
     lang: locale,
@@ -40,9 +44,19 @@ export default async function MpConfigPage({ params }: Props) {
 
   return (
     <>
-      <ConfiguratorSeoIntro h1={intro.h1} answerLede={intro.lede} jsonLd={jsonLd} />
-      <PageFaqSection surfaceKey="mp-config" locale={locale} />
-      <MpConfigClient />
+      {/* Crawlable SEO shell; UI lives in the What-to-Expect (i) dialog */}
+      <div className="sr-only">
+        <ConfiguratorSeoIntro h1={intro.h1} answerLede={intro.lede} jsonLd={jsonLd} />
+        <PageFaqSection surfaceKey="mp-config" locale={locale} />
+      </div>
+      <MpConfigClient
+        info={{
+          h1: intro.h1,
+          lede: intro.lede,
+          faqTitle: faq?.title ?? null,
+          faqItems: faq?.items ?? [],
+        }}
+      />
     </>
   );
 }

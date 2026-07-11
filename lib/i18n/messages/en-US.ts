@@ -365,6 +365,7 @@ export const enUS: Messages = {
         "Replaceable",
       ],
       bottomViewSource: "View source",
+      bottomShop: "Shop",
     },
     mbolster: {
       trigger: "Learn more",
