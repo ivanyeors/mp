@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -22,6 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import {
   Select,
   SelectContent,
@@ -1280,7 +1282,10 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     <Info className="h-5 w-5" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+                <DialogContent
+                  hideClose
+                  className="max-h-[85vh] max-w-2xl overflow-y-auto"
+                >
                   <DialogHeader className="text-left sm:text-left">
                     <DialogTitle className="text-2xl leading-tight">{info.h1}</DialogTitle>
                     <DialogDescription className="text-base leading-relaxed">
@@ -1303,6 +1308,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                       <PageFaqAccordion items={info.faqItems} locale={locale} />
                     </div>
                   )}
+                  <div className="flex justify-end">
+                    <DialogClose asChild>
+                      <OverlayDismissButton variant="inline" />
+                    </DialogClose>
+                  </div>
                 </DialogContent>
               </Dialog>
 

@@ -28,8 +28,11 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  hideClose = false,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  hideClose?: boolean
+}) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -42,9 +45,11 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogClose asChild>
-          <OverlayDismissButton />
-        </DialogClose>
+        {!hideClose && (
+          <DialogClose asChild>
+            <OverlayDismissButton />
+          </DialogClose>
+        )}
       </DialogPrimitive.Content>
     </DialogPortal>
   )
