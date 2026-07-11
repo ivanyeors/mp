@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `configurator-mobile-ux` (`.claude/PRD-configurator-mobile-ux/configurator-mobile-ux-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 32–37, 43, 45
 
 ## What to build

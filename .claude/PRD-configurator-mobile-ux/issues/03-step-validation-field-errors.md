@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `configurator-mobile-ux` (`.claude/PRD-configurator-mobile-ux/configurator-mobile-ux-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 24–31, 44
 
 ## What to build
@@ -19,13 +19,24 @@ Extract a small validation helper with an automated check (enablement rules + er
 
 ## Acceptance criteria
 
-- [ ] Empty step: primary CTA disabled.
-- [ ] Partially filled step: CTA enabled; submit with missing required fields shows per-field errors.
-- [ ] Fixing a field clears that field’s error without requiring a full remount.
-- [ ] Option-row questions support error styling (group + helper text).
-- [ ] Mbolster height / sleep-position steps follow the same hybrid + error pattern.
-- [ ] Preview authorize surfaces field-level errors for missing required hold-prep inputs.
-- [ ] Automated test/check covers validation helper behavior (not full React trees).
+- [x] Empty step: primary CTA disabled.
+- [x] Partially filled step: CTA enabled; submit with missing required fields shows per-field errors.
+- [x] Fixing a field clears that field’s error without requiring a full remount.
+- [x] Option-row questions support error styling (group + helper text).
+- [x] Mbolster height / sleep-position steps follow the same hybrid + error pattern.
+- [x] Preview authorize surfaces field-level errors for missing required hold-prep inputs.
+- [x] Automated test/check covers validation helper behavior (not full React trees).
+
+## Proof
+
+```bash
+npx tsx lib/configurator/step-validation.check.ts
+# → step-validation.check.ts: ok
+```
+
+Helper: `lib/configurator/step-validation.ts`  
+Wired: `mp-config-client.tsx`, `mbolster-config-client.tsx`  
+Option rows: `invalid` + `error` helper text on `SingleSelectOptionRows`
 
 ## Blocked by
 

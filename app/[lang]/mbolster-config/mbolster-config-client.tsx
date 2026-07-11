@@ -44,6 +44,14 @@ import {
   stripHoldCancelledFromSearch,
   writeHoldCancelDraft,
 } from "@/lib/configurator/hold-cancel-restore";
+import {
+  buildFieldErrorMap,
+  hybridCtaEnabled,
+  isNonEmptyString,
+  isPositiveNumberString,
+  pruneFieldErrors,
+  type FieldCheck,
+} from "@/lib/configurator/step-validation";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import {
@@ -154,6 +162,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const isMobile = useIsMobile();
   const [exitDialogOpen, setExitDialogOpen] = React.useState(false);
   const [restoringHoldCancel, setRestoringHoldCancel] = React.useState(false);
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>({});
 
   const [state, setState] = React.useState<State>({
     step: "welcome",
@@ -325,6 +334,115 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   }, [state.step]);
 
   const heightNum = toNumber(state.heightCm);
+
+  const heightFields = React.useMemo((): FieldCheck[] => [
+    {
+      key: "heightCm",
+      touched: state.heightCm.trim() !== "",
+      valid: isPositiveNumberString(state.heightCm),
+      message: "Enter a valid height",
+    },
+  ], [state.heightCm]);
+
+  const sleepFields = React.useMemo((): FieldCheck[] => [
+    {
+      key: "sleepPosition",
+      touched: state.sleepPosition != null,
+      valid: state.sleepPosition != null,
+      message: "Select a sleep position",
+    },
+  ], [state.sleepPosition]);
+
+  const holdFields = React.useMemo((): FieldCheck[] => [
+    {
+      key: "cover",
+      touched: selectedCover != null,
+      valid: selectedCover != null,
+      message: "Choose a cover",
+    },
+    {
+      key: "case",
+      touched: selectedCase != null,
+      valid: selectedCase != null,
+      message: "Choose a case",
+    },
+    {
+      key: "email",
+      touched: isNonEmptyString(holdEmail),
+      valid: isNonEmptyString(holdEmail),
+      message: "Email is required",
+    },
+    {
+      key: "recipient",
+      touched: isNonEmptyString(holdAddress.recipient),
+      valid: isNonEmptyString(holdAddress.recipient),
+      message: "Recipient is required",
+    },
+    {
+      key: "line1",
+      touched: isNonEmptyString(holdAddress.line1),
+      valid: isNonEmptyString(holdAddress.line1),
+      message: "Address is required",
+    },
+    {
+      key: "city",
+      touched: isNonEmptyString(holdAddress.city),
+      valid: isNonEmptyString(holdAddress.city),
+      message: "City is required",
+    },
+    {
+      key: "postal_code",
+      touched: isNonEmptyString(holdAddress.postal_code),
+      valid: isNonEmptyString(holdAddress.postal_code),
+      message: "Postal code is required",
+    },
+    {
+      key: "shipping",
+      touched: isNonEmptyString(selectedShippingId),
+      valid: isNonEmptyString(selectedShippingId),
+      message: "Choose a shipping method",
+    },
+  ], [
+    selectedCover,
+    selectedCase,
+    holdEmail,
+    holdAddress.recipient,
+    holdAddress.line1,
+    holdAddress.city,
+    holdAddress.postal_code,
+    selectedShippingId,
+  ]);
+
+  const activeFields = React.useMemo((): FieldCheck[] => {
+    switch (state.step) {
+      case "height":
+        return heightFields;
+      case "sleep-position":
+        return sleepFields;
+      case "preview":
+        return holdFields;
+      default:
+        return [];
+    }
+  }, [state.step, heightFields, sleepFields, holdFields]);
+
+  React.useEffect(() => {
+    setFieldErrors({});
+  }, [state.step]);
+
+  React.useEffect(() => {
+    setFieldErrors((prev) => pruneFieldErrors(prev, activeFields));
+  }, [activeFields]);
+
+  const tryAdvance = (fields: FieldCheck[], onOk: () => void | Promise<void>) => {
+    const errors = buildFieldErrorMap(fields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+    void onOk();
+  };
 
   const progressValue = React.useMemo(() => {
     const idx = stepIndex(state.step);
@@ -502,25 +620,10 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       toast.error("Missing length recommendation");
       return;
     }
-    if (!selectedCover || !selectedCase) {
-      toast.error("Choose a cover and case");
-      return;
-    }
-    if (!holdEmail.trim()) {
-      toast.error("Email is required");
-      return;
-    }
-    if (
-      !holdAddress.recipient ||
-      !holdAddress.line1 ||
-      !holdAddress.city ||
-      !holdAddress.postal_code
-    ) {
-      toast.error("Shipping address is incomplete");
-      return;
-    }
-    if (!selectedShippingId) {
-      toast.error("Choose a shipping method");
+
+    const errors = buildFieldErrorMap(holdFields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -538,8 +641,8 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             sleep_position: state.sleepPosition,
           },
           preferenceLines: [
-            { item_id: selectedCover, quantity: 1, category: "cover" },
-            { item_id: selectedCase, quantity: 1, category: "case" },
+            { item_id: selectedCover!, quantity: 1, category: "cover" },
+            { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
           shippingMethodId: selectedShippingId,
@@ -567,6 +670,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     selectedAddons,
     heightNum,
     state.sleepPosition,
+    holdFields,
   ]);
 
   // Purchase preview uses the same mp-config split layout (cover/case, add-ons, shipping).
@@ -687,22 +791,29 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
               </div>
 
               {shopRecommendation ? (
-                <CustomizationStepComponents
-                  components={shopRecommendation.components}
-                  selectedCover={selectedCover}
-                  onSelectCover={setSelectedCover}
-                  selectedCase={selectedCase}
-                  onSelectCase={setSelectedCase}
-                  componentQtyOverrides={new Map()}
-                  onQtyChange={() => {}}
-                  currency={shopCurrency}
-                  basePrice={shopBasePrice}
-                  addonPrice={addonTotal}
-                  onBack={goBack}
-                  onContinue={() => void handleAuthorizeHold()}
-                  preferencesOnly
-                  hideNav
-                />
+                <div className="space-y-2">
+                  {(fieldErrors.cover || fieldErrors.case) && (
+                    <p className="text-sm text-destructive">
+                      {[fieldErrors.cover, fieldErrors.case].filter(Boolean).join(" · ")}
+                    </p>
+                  )}
+                  <CustomizationStepComponents
+                    components={shopRecommendation.components}
+                    selectedCover={selectedCover}
+                    onSelectCover={setSelectedCover}
+                    selectedCase={selectedCase}
+                    onSelectCase={setSelectedCase}
+                    componentQtyOverrides={new Map()}
+                    onQtyChange={() => {}}
+                    currency={shopCurrency}
+                    basePrice={shopBasePrice}
+                    addonPrice={addonTotal}
+                    onBack={goBack}
+                    onContinue={() => void handleAuthorizeHold()}
+                    preferencesOnly
+                    hideNav
+                  />
+                </div>
               ) : (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
@@ -772,7 +883,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     value={holdEmail}
                     onChange={(e) => setHoldEmail(e.target.value)}
                     placeholder="you@example.com"
+                    aria-invalid={!!fieldErrors.email}
                   />
+                  {fieldErrors.email ? (
+                    <p className="text-sm text-destructive">{fieldErrors.email}</p>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="hold-recipient">Recipient</Label>
@@ -783,7 +898,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                       setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
                     }
                     placeholder="Name"
+                    aria-invalid={!!fieldErrors.recipient}
                   />
+                  {fieldErrors.recipient ? (
+                    <p className="text-sm text-destructive">{fieldErrors.recipient}</p>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="hold-line1">Address</Label>
@@ -792,7 +911,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     value={holdAddress.line1}
                     onChange={(e) => setHoldAddress((a) => ({ ...a, line1: e.target.value }))}
                     placeholder="Street address"
+                    aria-invalid={!!fieldErrors.line1}
                   />
+                  {fieldErrors.line1 ? (
+                    <p className="text-sm text-destructive">{fieldErrors.line1}</p>
+                  ) : null}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-2">
@@ -801,7 +924,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                       id="hold-city"
                       value={holdAddress.city}
                       onChange={(e) => setHoldAddress((a) => ({ ...a, city: e.target.value }))}
+                      aria-invalid={!!fieldErrors.city}
                     />
+                    {fieldErrors.city ? (
+                      <p className="text-sm text-destructive">{fieldErrors.city}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="hold-postal">Postal code</Label>
@@ -811,7 +938,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                       onChange={(e) =>
                         setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
                       }
+                      aria-invalid={!!fieldErrors.postal_code}
                     />
+                    {fieldErrors.postal_code ? (
+                      <p className="text-sm text-destructive">{fieldErrors.postal_code}</p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -831,7 +962,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                             type="button"
                             onClick={() => setSelectedShippingId(m.id)}
                             className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
-                              selected ? "border-primary bg-primary/5" : "border-border"
+                              selected
+                                ? "border-primary bg-primary/5"
+                                : fieldErrors.shipping
+                                  ? "border-destructive"
+                                  : "border-border"
                             }`}
                           >
                             <span className="text-sm font-medium">{label}</span>
@@ -846,6 +981,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                       })}
                     </div>
                   )}
+                  {fieldErrors.shipping ? (
+                    <p className="text-sm text-destructive">{fieldErrors.shipping}</p>
+                  ) : null}
                 </div>
               </div>
 
@@ -1004,6 +1142,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   placeholder={state.heightUnit === "m" ? "e.g. 1.68" : "e.g. 168"}
                   className="h-12 text-lg"
                   autoFocus
+                  aria-invalid={!!fieldErrors.heightCm}
                 />
                 <Tabs
                   value={state.heightUnit}
@@ -1025,13 +1164,19 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   </TabsList>
                 </Tabs>
               </div>
+              {fieldErrors.heightCm ? (
+                <p className="text-sm text-destructive">{fieldErrors.heightCm}</p>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-between pt-2">
               <Button variant="outline" onClick={goBack}>
                 Back
               </Button>
-              <Button onClick={goNext} disabled={!toNumber(state.heightCm)}>
+              <Button
+                onClick={() => tryAdvance(heightFields, goNext)}
+                disabled={!hybridCtaEnabled(heightFields)}
+              >
                 Continue
               </Button>
             </div>
@@ -1058,7 +1203,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                       "w-full rounded-xl border px-4 py-3 text-left transition-colors",
                       selected
                         ? "bg-primary/10 border-primary/30"
-                        : "bg-background/50 hover:bg-muted/30",
+                        : fieldErrors.sleepPosition
+                          ? "border-destructive bg-background/50"
+                          : "bg-background/50 hover:bg-muted/30",
                     ].join(" ")}
                   >
                     <div className="text-sm font-semibold text-foreground">
@@ -1074,6 +1221,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   </button>
                 );
               })}
+              {fieldErrors.sleepPosition ? (
+                <p className="text-sm text-destructive">{fieldErrors.sleepPosition}</p>
+              ) : null}
             </div>
 
             <div className="flex items-center justify-between pt-2">
@@ -1081,8 +1231,10 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 Back
               </Button>
               <Button
-                onClick={() => void fetchBolsterRecommendation()}
-                disabled={!state.sleepPosition || !toNumber(state.heightCm) || shopLoading}
+                onClick={() =>
+                  tryAdvance(sleepFields, () => void fetchBolsterRecommendation())
+                }
+                disabled={!hybridCtaEnabled(sleepFields) || shopLoading}
               >
                 {shopLoading ? "Loading..." : "Get Recommendation"}
               </Button>

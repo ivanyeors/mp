@@ -84,6 +84,14 @@ import {
   writeHoldCancelDraft,
   type HoldCancelSurface,
 } from "@/lib/configurator/hold-cancel-restore";
+import {
+  buildFieldErrorMap,
+  hybridCtaEnabled,
+  isNonEmptyString,
+  isPositiveNumberString,
+  pruneFieldErrors,
+  type FieldCheck,
+} from "@/lib/configurator/step-validation";
 
 /** Prefer BOM default, else first in-stock option, else first row. */
 function pickDefaultComponent(
@@ -225,6 +233,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   >([]);
   const [selectedShippingId, setSelectedShippingId] = useState("");
   const [holdSubmitting, setHoldSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   type PhotoView = "front" | "side";
   const frontInputRef = useRef<HTMLInputElement | null>(null);
@@ -296,6 +305,181 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     value: MeasurementData[K],
   ) => {
     setMeasurementData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const nameFields = useMemo((): FieldCheck[] => [
+    {
+      key: "name",
+      touched: isNonEmptyString(measurementData.name),
+      valid: isNonEmptyString(measurementData.name),
+      message: "Enter your name",
+    },
+    {
+      key: "gender",
+      touched: isNonEmptyString(measurementData.gender),
+      valid: isNonEmptyString(measurementData.gender),
+      message: "Select a gender",
+    },
+    {
+      key: "ageGroup",
+      touched: isNonEmptyString(measurementData.ageGroup),
+      valid: isNonEmptyString(measurementData.ageGroup),
+      message: "Select an age group",
+    },
+  ], [measurementData.name, measurementData.gender, measurementData.ageGroup]);
+
+  const measureField = (key: "shoulderLength" | "neckToBack" | "headToBack" | "neckLength"): FieldCheck[] => [
+    {
+      key,
+      touched: measurementData[key].trim() !== "",
+      valid: isPositiveNumberString(measurementData[key]),
+      message: "Enter a valid measurement",
+    },
+  ];
+
+  const customizeFields = useMemo((): FieldCheck[] => [
+    {
+      key: "bloodPressureLevel",
+      touched: isNonEmptyString(measurementData.bloodPressureLevel),
+      valid: isNonEmptyString(measurementData.bloodPressureLevel),
+      message: "Select blood pressure",
+    },
+    {
+      key: "earDiscomfortSideSleep",
+      touched: isNonEmptyString(measurementData.earDiscomfortSideSleep),
+      valid: isNonEmptyString(measurementData.earDiscomfortSideSleep),
+      message: "Select yes or no",
+    },
+    {
+      key: "bedFirmness",
+      touched: isNonEmptyString(measurementData.bedFirmness),
+      valid: isNonEmptyString(measurementData.bedFirmness),
+      message: "Select bed firmness",
+    },
+    {
+      key: "acidReflux",
+      touched: isNonEmptyString(measurementData.acidReflux),
+      valid: isNonEmptyString(measurementData.acidReflux),
+      message: "Select yes or no",
+    },
+    {
+      key: "sleepPositionType",
+      touched: measurementData.sleepPositionType.length > 0,
+      valid: measurementData.sleepPositionType.length > 0,
+      message: "Select at least one sleep position",
+    },
+    {
+      key: "usesBolster",
+      touched: isNonEmptyString(measurementData.usesBolster),
+      valid: isNonEmptyString(measurementData.usesBolster),
+      message: "Select yes or no",
+    },
+  ], [
+    measurementData.bloodPressureLevel,
+    measurementData.earDiscomfortSideSleep,
+    measurementData.bedFirmness,
+    measurementData.acidReflux,
+    measurementData.sleepPositionType,
+    measurementData.usesBolster,
+  ]);
+
+  const holdFields = useMemo((): FieldCheck[] => [
+    {
+      key: "cover",
+      touched: selectedCover != null,
+      valid: selectedCover != null,
+      message: "Choose a cover",
+    },
+    {
+      key: "case",
+      touched: selectedCase != null,
+      valid: selectedCase != null,
+      message: "Choose a case",
+    },
+    {
+      key: "email",
+      touched: isNonEmptyString(holdEmail),
+      valid: isNonEmptyString(holdEmail),
+      message: "Email is required",
+    },
+    {
+      key: "recipient",
+      touched: isNonEmptyString(holdAddress.recipient),
+      valid: isNonEmptyString(holdAddress.recipient),
+      message: "Recipient is required",
+    },
+    {
+      key: "line1",
+      touched: isNonEmptyString(holdAddress.line1),
+      valid: isNonEmptyString(holdAddress.line1),
+      message: "Address is required",
+    },
+    {
+      key: "city",
+      touched: isNonEmptyString(holdAddress.city),
+      valid: isNonEmptyString(holdAddress.city),
+      message: "City is required",
+    },
+    {
+      key: "postal_code",
+      touched: isNonEmptyString(holdAddress.postal_code),
+      valid: isNonEmptyString(holdAddress.postal_code),
+      message: "Postal code is required",
+    },
+    {
+      key: "shipping",
+      touched: isNonEmptyString(selectedShippingId),
+      valid: isNonEmptyString(selectedShippingId),
+      message: "Choose a shipping method",
+    },
+  ], [
+    selectedCover,
+    selectedCase,
+    holdEmail,
+    holdAddress.recipient,
+    holdAddress.line1,
+    holdAddress.city,
+    holdAddress.postal_code,
+    selectedShippingId,
+  ]);
+
+  const activeFields = useMemo((): FieldCheck[] => {
+    switch (currentStep) {
+      case "name":
+        return nameFields;
+      case "shoulder-length":
+        return measureField("shoulderLength");
+      case "neck-to-back":
+        return measureField("neckToBack");
+      case "head-to-back":
+        return measureField("headToBack");
+      case "neck-length":
+        return measureField("neckLength");
+      case "customize":
+        return customizeFields;
+      case "preview":
+        return holdFields;
+      default:
+        return [];
+    }
+  }, [currentStep, nameFields, customizeFields, holdFields, measurementData]);
+
+  useEffect(() => {
+    setFieldErrors({});
+  }, [currentStep]);
+
+  useEffect(() => {
+    setFieldErrors((prev) => pruneFieldErrors(prev, activeFields));
+  }, [activeFields]);
+
+  const tryAdvance = (fields: FieldCheck[], onOk: () => void | Promise<void>) => {
+    const errors = buildFieldErrorMap(fields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+    void onOk();
   };
 
   const toDisplayValue = (cmValue: string) => {
@@ -667,14 +851,6 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       ? 0
       : Math.round((currentStepIndex / (stepOrder.length - 1)) * 100);
 
-  const hasAnsweredAdditionalQuestions =
-    measurementData.bloodPressureLevel.trim() !== "" &&
-    measurementData.bedFirmness.trim() !== "" &&
-    measurementData.earDiscomfortSideSleep !== "" &&
-    measurementData.acidReflux !== "" &&
-    measurementData.sleepPositionType.length > 0 &&
-    measurementData.usesBolster !== "";
-
   // Fetch shop recommendation from customize API (full mp-config path)
   const fetchShopRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }) => {
     setShopLoading(true);
@@ -860,20 +1036,10 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       toast.error("Missing size or tier suggestion");
       return;
     }
-    if (!selectedCover || !selectedCase) {
-      toast.error("Choose a cover and case");
-      return;
-    }
-    if (!holdEmail.trim()) {
-      toast.error("Email is required");
-      return;
-    }
-    if (!holdAddress.recipient || !holdAddress.line1 || !holdAddress.city || !holdAddress.postal_code) {
-      toast.error("Shipping address is incomplete");
-      return;
-    }
-    if (!selectedShippingId) {
-      toast.error("Choose a shipping method");
+
+    const errors = buildFieldErrorMap(holdFields);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -890,8 +1056,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
           suggestedSize: size,
           suggestedTier: tier,
           preferenceLines: [
-            { item_id: selectedCover, quantity: 1, category: "cover" },
-            { item_id: selectedCase, quantity: 1, category: "case" },
+            { item_id: selectedCover!, quantity: 1, category: "cover" },
+            { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
           shippingMethodId: selectedShippingId,
@@ -926,6 +1092,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     upsertToDb,
     isBasic,
     configPath,
+    holdFields,
   ]);
 
   const saveLabel:
@@ -1121,22 +1288,29 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                 </div>
 
                 {shopRecommendation ? (
-                  <CustomizationStepComponents
-                    components={shopRecommendation.components}
-                    selectedCover={selectedCover}
-                    onSelectCover={setSelectedCover}
-                    selectedCase={selectedCase}
-                    onSelectCase={setSelectedCase}
-                    componentQtyOverrides={new Map()}
-                    onQtyChange={() => {}}
-                    currency={currency}
-                    basePrice={basePrice}
-                    addonPrice={addonTotal}
-                    onBack={goToPreviousStep}
-                    onContinue={() => void handleAuthorizeHold()}
-                    preferencesOnly
-                    hideNav
-                  />
+                  <div className="space-y-2">
+                    {(fieldErrors.cover || fieldErrors.case) && (
+                      <p className="text-sm text-destructive">
+                        {[fieldErrors.cover, fieldErrors.case].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    <CustomizationStepComponents
+                      components={shopRecommendation.components}
+                      selectedCover={selectedCover}
+                      onSelectCover={setSelectedCover}
+                      selectedCase={selectedCase}
+                      onSelectCase={setSelectedCase}
+                      componentQtyOverrides={new Map()}
+                      onQtyChange={() => {}}
+                      currency={currency}
+                      basePrice={basePrice}
+                      addonPrice={addonTotal}
+                      onBack={goToPreviousStep}
+                      onContinue={() => void handleAuthorizeHold()}
+                      preferencesOnly
+                      hideNav
+                    />
+                  </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
@@ -1202,7 +1376,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                       value={holdEmail}
                       onChange={(e) => setHoldEmail(e.target.value)}
                       placeholder="you@example.com"
+                      aria-invalid={!!fieldErrors.email}
                     />
+                    {fieldErrors.email ? (
+                      <p className="text-sm text-destructive">{fieldErrors.email}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="hold-recipient">Recipient</Label>
@@ -1213,7 +1391,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         setHoldAddress((a) => ({ ...a, recipient: e.target.value }))
                       }
                       placeholder={measurementData.name || "Name"}
+                      aria-invalid={!!fieldErrors.recipient}
                     />
+                    {fieldErrors.recipient ? (
+                      <p className="text-sm text-destructive">{fieldErrors.recipient}</p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="hold-line1">Address</Label>
@@ -1224,7 +1406,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         setHoldAddress((a) => ({ ...a, line1: e.target.value }))
                       }
                       placeholder="Street address"
+                      aria-invalid={!!fieldErrors.line1}
                     />
+                    {fieldErrors.line1 ? (
+                      <p className="text-sm text-destructive">{fieldErrors.line1}</p>
+                    ) : null}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-2">
@@ -1235,7 +1421,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         onChange={(e) =>
                           setHoldAddress((a) => ({ ...a, city: e.target.value }))
                         }
+                        aria-invalid={!!fieldErrors.city}
                       />
+                      {fieldErrors.city ? (
+                        <p className="text-sm text-destructive">{fieldErrors.city}</p>
+                      ) : null}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="hold-postal">Postal code</Label>
@@ -1245,7 +1435,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         onChange={(e) =>
                           setHoldAddress((a) => ({ ...a, postal_code: e.target.value }))
                         }
+                        aria-invalid={!!fieldErrors.postal_code}
                       />
+                      {fieldErrors.postal_code ? (
+                        <p className="text-sm text-destructive">{fieldErrors.postal_code}</p>
+                      ) : null}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -1268,7 +1462,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                               className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
                                 selected
                                   ? "border-primary bg-primary/5"
-                                  : "border-border"
+                                  : fieldErrors.shipping
+                                    ? "border-destructive"
+                                    : "border-border"
                               }`}
                             >
                               <span className="text-sm font-medium">{label}</span>
@@ -1283,6 +1479,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         })}
                       </div>
                     )}
+                    {fieldErrors.shipping ? (
+                      <p className="text-sm text-destructive">{fieldErrors.shipping}</p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1576,7 +1775,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     onChange={(e) => updateMeasurement("name", e.target.value)}
                     className="text-lg h-12"
                     autoFocus
+                    aria-invalid={!!fieldErrors.name}
                   />
+                  {fieldErrors.name ? (
+                    <p className="text-sm text-destructive">{fieldErrors.name}</p>
+                  ) : null}
                 </div>
 
                 <div className="space-y-2">
@@ -1585,6 +1788,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     options={GENDER_OPTIONS}
                     value={measurementData.gender}
                     onChange={(v) => updateMeasurement("gender", v)}
+                    invalid={!!fieldErrors.gender}
+                    error={fieldErrors.gender}
                   />
                 </div>
 
@@ -1594,6 +1799,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     options={AGE_GROUP_OPTIONS}
                     value={measurementData.ageGroup}
                     onChange={(v) => updateMeasurement("ageGroup", v)}
+                    invalid={!!fieldErrors.ageGroup}
+                    error={fieldErrors.ageGroup}
                   />
                 </div>
               </div>
@@ -1605,12 +1812,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={goToNextStep}
-                    disabled={
-                      !measurementData.name.trim() ||
-                      !measurementData.gender.trim() ||
-                      !measurementData.ageGroup.trim()
-                    }
+                    onClick={() => tryAdvance(nameFields, goToNextStep)}
+                    disabled={!hybridCtaEnabled(nameFields)}
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -1663,6 +1866,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     }}
                     className="text-lg h-12"
                     autoFocus
+                    aria-invalid={!!fieldErrors.shoulderLength}
                   />
                   <Tabs
                     value={measurementUnit}
@@ -1678,6 +1882,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     </TabsList>
                   </Tabs>
                 </div>
+                {fieldErrors.shoulderLength ? (
+                  <p className="text-sm text-destructive">{fieldErrors.shoulderLength}</p>
+                ) : null}
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: Start from the shoulder bone and measure to the other shoulder bone
                 </p>
@@ -1690,8 +1897,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={goToNextStep}
-                    disabled={!measurementData.shoulderLength}
+                    onClick={() => tryAdvance(measureField("shoulderLength"), goToNextStep)}
+                    disabled={!hybridCtaEnabled(measureField("shoulderLength"))}
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -1744,6 +1951,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     }}
                     className="text-lg h-12"
                     autoFocus
+                    aria-invalid={!!fieldErrors.neckToBack}
                   />
                   <Tabs
                     value={measurementUnit}
@@ -1759,6 +1967,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     </TabsList>
                   </Tabs>
                 </div>
+                {fieldErrors.neckToBack ? (
+                  <p className="text-sm text-destructive">{fieldErrors.neckToBack}</p>
+                ) : null}
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: Measure in your typical standing position
                 </p>
@@ -1771,8 +1982,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={goToNextStep}
-                    disabled={!measurementData.neckToBack}
+                    onClick={() => tryAdvance(measureField("neckToBack"), goToNextStep)}
+                    disabled={!hybridCtaEnabled(measureField("neckToBack"))}
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -1825,6 +2036,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     }}
                     className="text-lg h-12"
                     autoFocus
+                    aria-invalid={!!fieldErrors.headToBack}
                   />
                   <Tabs
                     value={measurementUnit}
@@ -1840,6 +2052,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     </TabsList>
                   </Tabs>
                 </div>
+                {fieldErrors.headToBack ? (
+                  <p className="text-sm text-destructive">{fieldErrors.headToBack}</p>
+                ) : null}
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: Measure in your typical standing position
                 </p>
@@ -1852,8 +2067,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={goToNextStep}
-                    disabled={!measurementData.headToBack}
+                    onClick={() => tryAdvance(measureField("headToBack"), goToNextStep)}
+                    disabled={!hybridCtaEnabled(measureField("headToBack"))}
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -1906,6 +2121,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     }}
                     className="text-lg h-12"
                     autoFocus
+                    aria-invalid={!!fieldErrors.neckLength}
                   />
                   <Tabs
                     value={measurementUnit}
@@ -1921,6 +2137,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     </TabsList>
                   </Tabs>
                 </div>
+                {fieldErrors.neckLength ? (
+                  <p className="text-sm text-destructive">{fieldErrors.neckLength}</p>
+                ) : null}
                 <p className="text-sm text-muted-foreground">
                   💡 Tip: Stop at the top of the shoulders, when seen on the side view
                 </p>
@@ -1933,8 +2152,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={goToNextStep}
-                    disabled={!measurementData.neckLength}
+                    onClick={() => tryAdvance(measureField("neckLength"), goToNextStep)}
+                    disabled={!hybridCtaEnabled(measureField("neckLength"))}
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -2010,6 +2229,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                       options={BLOOD_PRESSURE_OPTIONS}
                       value={measurementData.bloodPressureLevel}
                       onChange={(v) => updateMeasurement("bloodPressureLevel", v)}
+                      invalid={!!fieldErrors.bloodPressureLevel}
+                      error={fieldErrors.bloodPressureLevel}
                     />
                   </div>
 
@@ -2030,6 +2251,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         </TabsTrigger>
                       </TabsList>
                     </Tabs>
+                    {fieldErrors.earDiscomfortSideSleep ? (
+                      <p className="text-sm text-destructive">{fieldErrors.earDiscomfortSideSleep}</p>
+                    ) : null}
                   </div>
 
                   <div className="space-y-2">
@@ -2038,6 +2262,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                       options={BED_FIRMNESS_OPTIONS}
                       value={measurementData.bedFirmness}
                       onChange={(v) => updateMeasurement("bedFirmness", v)}
+                      invalid={!!fieldErrors.bedFirmness}
+                      error={fieldErrors.bedFirmness}
                     />
                   </div>
 
@@ -2056,6 +2282,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         </TabsTrigger>
                       </TabsList>
                     </Tabs>
+                    {fieldErrors.acidReflux ? (
+                      <p className="text-sm text-destructive">{fieldErrors.acidReflux}</p>
+                    ) : null}
                   </div>
 
                   {/* Sleep pain areas (multi-select) */}
@@ -2132,6 +2361,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         );
                       })}
                     </div>
+                    {fieldErrors.sleepPositionType ? (
+                      <p className="text-sm text-destructive">{fieldErrors.sleepPositionType}</p>
+                    ) : null}
                   </div>
 
                   {/* Uses bolster */}
@@ -2150,6 +2382,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         </TabsTrigger>
                       </TabsList>
                     </Tabs>
+                    {fieldErrors.usesBolster ? (
+                      <p className="text-sm text-destructive">{fieldErrors.usesBolster}</p>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -2255,17 +2490,24 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={async () => {
-                      await upsertToDb();
-                      if (isBasic) {
-                        const rec = shopRecommendation ?? (await fetchBasicRecommendation());
-                        if (!rec) return;
-                      } else {
-                        await Promise.all([loadSuggestion(), fetchShopRecommendation()]);
-                      }
-                      goToNextStep();
-                    }}
-                    disabled={!hasAnsweredAdditionalQuestions || photoUploading.front || photoUploading.side || shopLoading}
+                    onClick={() =>
+                      tryAdvance(customizeFields, async () => {
+                        await upsertToDb();
+                        if (isBasic) {
+                          const rec = shopRecommendation ?? (await fetchBasicRecommendation());
+                          if (!rec) return;
+                        } else {
+                          await Promise.all([loadSuggestion(), fetchShopRecommendation()]);
+                        }
+                        goToNextStep();
+                      })
+                    }
+                    disabled={
+                      !hybridCtaEnabled(customizeFields) ||
+                      photoUploading.front ||
+                      photoUploading.side ||
+                      shopLoading
+                    }
                     size="lg"
                     className="group"
                   >

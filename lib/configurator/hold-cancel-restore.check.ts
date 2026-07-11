@@ -82,18 +82,35 @@ assert.equal(readHoldCancelDraft(mem, "mp-full"), null);
 assert.equal(holdCancelDraftKey("mp-basic"), "mp_hold_cancel_mp-basic_v1");
 assert.match(HOLD_CANCELLED_NOTICE.title, /cancelled/i);
 
-// Clients wire restore
+// Clients wire restore (acceptance: preview restore + notice + exit clears)
 const ROOT = process.cwd();
 const mp = readFileSync(join(ROOT, "app/[lang]/mp-config/mp-config-client.tsx"), "utf8");
 const bolster = readFileSync(
   join(ROOT, "app/[lang]/mbolster-config/mbolster-config-client.tsx"),
   "utf8",
 );
+const holdRoute = readFileSync(join(ROOT, "app/api/results/hold/route.ts"), "utf8");
+const flowVariant = readFileSync(join(ROOT, "lib/mp-config/flow-variant.ts"), "utf8");
+
 for (const src of [mp, bolster]) {
   assert.match(src, /hold-cancel-restore|readHoldCancelDraft|writeHoldCancelDraft/);
   assert.match(src, /isHoldCancelledQuery|hold_cancelled/);
   assert.match(src, /HOLD_CANCELLED_NOTICE|Payment cancelled/);
   assert.match(src, /clearHoldCancelDraft/);
+  assert.match(src, /preserveSelections:\s*true/);
 }
+
+// Mpillow full + basic share client; cancelPath follows variant path
+assert.match(mp, /holdSurface:\s*HoldCancelSurface\s*=\s*isBasic\s*\?\s*"mp-basic"\s*:\s*"mp-full"/);
+assert.match(mp, /cancelPath:\s*configPath/);
+assert.match(flowVariant, /\/mp-basic/);
+assert.match(flowVariant, /\/mp-config/);
+
+// Mbolster: explicit cancel path + stay on preview when re-fetching
+assert.match(bolster, /cancelPath:\s*"\/mbolster-config"/);
+assert.match(bolster, /stayOnStep:\s*true/);
+
+// Server cancel URL already appends hold_cancelled=1
+assert.match(holdRoute, /cancelUrl:\s*`\$\{origin\}\$\{cancelPath\}\?hold_cancelled=1`/);
 
 console.log("hold-cancel-restore.check.ts: ok");

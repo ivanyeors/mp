@@ -11,15 +11,17 @@ export function SingleSelectOptionRows({
   value,
   onChange,
   invalid = false,
+  error,
 }: {
   options: SingleSelectOption[];
   value: string;
   onChange: (value: string) => void;
   /** Slice 03: field error border when submit fails. */
   invalid?: boolean;
+  error?: string;
 }) {
   return (
-    <div className="space-y-2" role="radiogroup">
+    <div className="space-y-2" role="radiogroup" aria-invalid={invalid || undefined}>
       {options.map((opt) => {
         const isSelected = value === opt.value;
         return (
@@ -41,6 +43,7 @@ export function SingleSelectOptionRows({
           </button>
         );
       })}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
   );
 }
