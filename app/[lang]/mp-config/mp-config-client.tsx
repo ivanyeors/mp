@@ -1860,10 +1860,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     </Select>
                   </div>
 
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-medium">Ear discomfort during side sleep?</h3>
-                    </div>
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Ear discomfort during side sleep?</h3>
                     <Tabs
                       value={measurementData.earDiscomfortSideSleep}
                       onValueChange={(v) =>
@@ -1898,10 +1896,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     </Select>
                   </div>
 
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-medium">Acid Reflux?</h3>
-                    </div>
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Acid Reflux?</h3>
                     <Tabs
                       value={measurementData.acidReflux}
                       onValueChange={(v) => updateMeasurement("acidReflux", v as "yes" | "no")}
@@ -1994,10 +1990,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                   </div>
 
                   {/* Uses bolster */}
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-medium">Do you use bolsters to sleep?</h3>
-                    </div>
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Do you use bolsters to sleep?</h3>
                     <Tabs
                       value={measurementData.usesBolster}
                       onValueChange={(v) => updateMeasurement("usesBolster", v as "yes" | "no")}
@@ -2016,12 +2010,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
               </div>
 
               <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
-                <div className="flex items-center justify-between gap-3">
-                  <h4 className="font-semibold text-lg">Photos (optional)</h4>
-                  <div className="text-xs text-muted-foreground">
-                    Saved temporarily and attached to Telegram
-                  </div>
-                </div>
+                <h4 className="font-semibold text-lg">Photos (optional)</h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-lg border bg-background/60 p-3 space-y-3">

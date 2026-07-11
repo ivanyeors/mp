@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { XIcon } from 'lucide-react';
 import { gsap } from 'gsap';
 import './bubble-menu.css';
 
@@ -286,6 +287,14 @@ export function BubbleMenu({
                 </li>
               ))}
             </ul>
+            <button
+              type="button"
+              className="bubble-menu-close"
+              onClick={handleClose}
+              aria-label="Close menu"
+            >
+              <XIcon className="bubble-menu-close-icon" aria-hidden />
+            </button>
           </div>,
           document.body,
         )

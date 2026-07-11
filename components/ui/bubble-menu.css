@@ -248,9 +248,15 @@
   line-height: 1.2;
 }
 
+.bubble-menu-close {
+  display: none;
+}
+
 @media (max-width: 899px) {
   .bubble-menu-items {
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
     padding-top: 120px;
     overflow-y: auto;
     overscroll-behavior: none;
@@ -286,5 +292,32 @@
 
   .bubble-menu-items .pill-link:active {
     transform: scale(0.94);
+  }
+
+  .bubble-menu-close {
+    --bubble-menu-close-size: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--bubble-menu-close-size);
+    height: var(--bubble-menu-close-size);
+    min-width: 44px;
+    min-height: 44px;
+    margin: 24px auto 0;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--card, #fff);
+    color: var(--foreground, #111);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .bubble-menu-close-icon {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 }
