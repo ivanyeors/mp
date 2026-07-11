@@ -38,3 +38,4 @@ graph TD
 ## HITL notes
 
 - **Slice 05:** Physical or staging device pass for Mpillow (full + basic) and Mbolster — option rows, mobile chrome, validation, Stripe cancel restore.
+- Checklist + AFK preflight live in [`05-staging-mobile-qa-signoff.md`](./05-staging-mobile-qa-signoff.md). Device matrix still open. Local `main` must be pushed (or preview-deployed) before phones — production does not yet include slices 01–04.
