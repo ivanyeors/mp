@@ -58,6 +58,15 @@ assert.match(mp, /configuratorCardPadClassName/);
 assert.match(mp, /configuratorOuterPadClassName/);
 assert.match(bolster, /configuratorCardPadClassName/);
 assert.match(bolster, /px-3 md:px-6/);
+// Preview Proceed footer must clear fixed Close (not only the scroll pane above it)
+assert.match(
+  mp,
+  /border-t bg-background px-5 py-4[\s\S]*?configuratorMobileCloseClearanceClassName[\s\S]*?Proceed/,
+);
+assert.match(
+  bolster,
+  /border-t bg-background px-5 py-4[\s\S]*?configuratorMobileCloseClearanceClassName[\s\S]*?Proceed/,
+);
 
 // Close bar uses slide-in safe-bottom language
 assert.match(sheetStickyBottomClassName, /--safe-bottom/);

@@ -806,9 +806,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
               className={cn(
                 "flex-1 space-y-8 overflow-y-auto",
                 configuratorPreviewPadClassName,
-                configuratorMobileCloseClearanceClassName,
               )}
-            >              <div className="space-y-1">
+            >
+              <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                 <p className="text-sm text-muted-foreground">
                   Choose cover and case, optional add-ons, then authorize payment. You are not
@@ -1032,7 +1032,12 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
               </div>
             </div>
 
-            <div className="border-t bg-background px-5 py-4">
+            <div
+              className={cn(
+                "border-t bg-background px-5 py-4",
+                configuratorMobileCloseClearanceClassName,
+              )}
+            >
               <div className="mb-3 flex justify-between text-sm">
                 <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
                 <span className="font-medium tabular-nums">

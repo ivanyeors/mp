@@ -1306,7 +1306,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
             {/* Right: customization panel */}
             <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
-              <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName, configuratorMobileCloseClearanceClassName)}>
+              <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                   <p className="text-sm text-muted-foreground">
@@ -1581,7 +1581,12 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                 </div>
               </div>
 
-              <div className="border-t bg-background px-5 py-4">
+              <div
+                className={cn(
+                  "border-t bg-background px-5 py-4",
+                  configuratorMobileCloseClearanceClassName,
+                )}
+              >
                 <div className="mb-3 flex justify-between text-sm">
                   <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
                   <span className="font-medium tabular-nums">
