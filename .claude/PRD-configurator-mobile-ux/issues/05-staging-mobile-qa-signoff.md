@@ -2,7 +2,7 @@
 
 Type: HITL
 Parent: PRD `configurator-mobile-ux` (`.claude/PRD-configurator-mobile-ux/configurator-mobile-ux-prd.md`)
-Triage: in-progress (checklist + AFK preflight ready; device matrix open)
+Triage: awaiting-HITL (AFK preflight + prod deploy done; device matrix open)
 User stories covered: 46–47, 49–50
 
 ## What to build
@@ -19,6 +19,8 @@ Human staging / device sign-off checklist for both configurators after slices 01
 - [ ] Stripe Checkout itself unchanged aside from return-to-preview behavior.
 - [ ] Sign-off notes recorded (device/browser matrix: at least one iOS Safari and one Android Chrome).
 
+> **AFK cannot tick the boxes above.** They require a human iOS Safari + Android Chrome pass on the live URLs below.
+
 ## Blocked by
 
 - [01-single-select-rows-cta-copy.md](./01-single-select-rows-cta-copy.md) — done
@@ -30,25 +32,29 @@ Human staging / device sign-off checklist for both configurators after slices 01
 
 ## Preflight (AFK) — 2026-07-11
 
-### Deploy gate (do this first)
+### Deploy gate — **closed**
 
-Local `main` is **3 commits ahead of `origin/main`**. Production (`work.mpillow.com` / `mp-inv.vercel.app`) does **not** include slices 01–04 yet.
+Pushed `main` → production READY on commit `b30efd73`.
 
-Commits to ship before device QA:
+| Field | Value |
+|-------|-------|
+| Deploy | `dpl_Arzvnp8r9mw1MEcnZ7gbJacX5f87` |
+| State | READY (production) |
+| SHA | `b30efd73` (includes 01–04) |
+| Inspector | https://vercel.com/ivanyeors-projects/mp-inv/Arzvnp8r9mw1MEcnZ7gbJacX5f87 |
+| Base URL | `https://custom.mpillow.com` (aliases: `work.mpillow.com`, `mp-inv.vercel.app`) |
 
-| SHA | Slice coverage |
-|-----|----------------|
-| `72a7e4a9` | 01 — single-select rows + CTA copy |
-| `8aefb4d6` | 02 + 04 — mobile chrome + hold-cancel restore |
-| `b30efd73` | 03 — step validation + field errors |
+**QA paths (locale = `en-US`):**
 
-**Options:**
+| Surface | URL |
+|---------|-----|
+| Mpillow full | https://custom.mpillow.com/en-US/mp-config |
+| Mpillow basic | https://custom.mpillow.com/en-US/mp-basic |
+| Mbolster | https://custom.mpillow.com/en-US/mbolster-config |
 
-1. Push `main` → wait for production deploy, then QA on `https://work.mpillow.com` (or `https://mp-inv.vercel.app`).
-2. Or push a branch / `vercel deploy` preview and QA that URL.
-3. Or local: `npm run dev` + phone on same LAN / ngrok — Stripe cancel needs a public `cancelUrl` host that matches hold route origin.
+HTTP smoke (2026-07-11): all three return **200** with welcome/`Get Started` content.
 
-Stripe test mode: use existing test keys; cancel Checkout (X / back) must hit `?hold_cancelled=1` on the configurator path.
+Stripe test mode: cancel Checkout must return with `?hold_cancelled=1` on the same host.
 
 ### Automated checks (all ok)
 
@@ -91,8 +97,8 @@ Fill **Pass / Fail / N/A** and notes. Minimum matrix: **1× iOS Safari** + **1×
 
 | Field | Value |
 |-------|-------|
-| Base URL | _e.g. https://work.mpillow.com or preview URL_ |
-| Build / commit | _SHA after push_ |
+| Base URL | `https://custom.mpillow.com` |
+| Build / commit | `b30efd73` / `dpl_Arzvnp8r9mw1MEcnZ7gbJacX5f87` |
 | Stripe mode | test / live |
 | Tester | |
 | Date | |
@@ -109,9 +115,9 @@ Fill **Pass / Fail / N/A** and notes. Minimum matrix: **1× iOS Safari** + **1×
 
 | Surface | Path |
 |---------|------|
-| Mpillow full | `/{lang}/mp-config` |
-| Mpillow basic | `/{lang}/mp-basic` |
-| Mbolster | `/{lang}/mbolster-config` |
+| Mpillow full | `/en-US/mp-config` |
+| Mpillow basic | `/en-US/mp-basic` |
+| Mbolster | `/en-US/mbolster-config` |
 
 ### A. Mpillow full (mobile)
 
@@ -187,8 +193,11 @@ Fill **Pass / Fail / N/A** and notes. Minimum matrix: **1× iOS Safari** + **1×
 | Deliverable | Status |
 |-------------|--------|
 | Staging checklist + preflight notes | **Done** (this file) |
-| AFK automated preflight (01–04 checks) | **Pass** |
+| AFK automated preflight (01–04 checks) | **Pass** (re-run 2026-07-11) |
 | Code-audit wiring table | **Pass** (proxy only) |
-| Deploy with 01–04 commits | **Open** — push/preview before phones |
+| Deploy with 01–04 commits | **Done** — prod READY @ `b30efd73` |
+| HTTP smoke on three configurator URLs | **Pass** (200 + Get Started) |
 | iOS Safari + Android Chrome matrix | **Open** — human only |
 | AC checkboxes above | **Open** until matrix signed |
+
+**This is the last slice in the PRD.** No next AFK slice until HITL signs off (or explicitly waives the device matrix).

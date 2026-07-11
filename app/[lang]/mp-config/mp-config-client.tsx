@@ -92,6 +92,10 @@ import {
   pruneFieldErrors,
   type FieldCheck,
 } from "@/lib/configurator/step-validation";
+import {
+  PreviewContactFields,
+  previewContactFieldChecks,
+} from "@/components/configurator/preview-contact-fields";
 
 /** Prefer BOM default, else first in-stock option, else first row. */
 function pickDefaultComponent(
@@ -214,6 +218,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   const [selectedAddons, setSelectedAddons] = useState<Set<number>>(new Set());
   const [addons, setAddons] = useState<{ item_id: number; name: string; msrp: number; currency: string }[]>([]);
   const [holdEmail, setHoldEmail] = useState("");
+  const [holdPhone, setHoldPhone] = useState("");
+  const [discoverySource, setDiscoverySource] = useState("");
+  const [discoverySourceOther, setDiscoverySourceOther] = useState("");
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>({
     recipient: "",
     line1: "",
@@ -396,12 +403,12 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       valid: selectedCase != null,
       message: "Choose a case",
     },
-    {
-      key: "email",
-      touched: isNonEmptyString(holdEmail),
-      valid: isNonEmptyString(holdEmail),
-      message: "Email is required",
-    },
+    ...previewContactFieldChecks({
+      email: holdEmail,
+      phone: holdPhone,
+      discoverySource,
+      discoverySourceOther,
+    }),
     {
       key: "recipient",
       touched: isNonEmptyString(holdAddress.recipient),
@@ -436,6 +443,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     selectedCover,
     selectedCase,
     holdEmail,
+    holdPhone,
+    discoverySource,
+    discoverySourceOther,
     holdAddress.recipient,
     holdAddress.line1,
     holdAddress.city,
@@ -562,6 +572,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       setSelectedAddons(new Set(draft.selections.selectedAddons));
       setSelectedShippingId(draft.selections.selectedShippingId);
       if (draft.selections.holdEmail) setHoldEmail(draft.selections.holdEmail);
+      if (draft.selections.holdPhone) setHoldPhone(draft.selections.holdPhone);
+      if (draft.selections.discoverySource) setDiscoverySource(draft.selections.discoverySource);
+      if (draft.selections.discoverySourceOther) {
+        setDiscoverySourceOther(draft.selections.discoverySourceOther);
+      }
       setHoldAddress(draft.selections.holdAddress);
     }
     setCurrentStep("preview");
@@ -598,6 +613,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
         selectedAddons: [...selectedAddons],
         selectedShippingId,
         holdEmail,
+        holdPhone,
+        discoverySource,
+        discoverySourceOther,
         holdAddress,
       },
     });
@@ -612,6 +630,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     selectedAddons,
     selectedShippingId,
     holdEmail,
+    holdPhone,
+    discoverySource,
+    discoverySourceOther,
     holdAddress,
   ]);
 
@@ -1052,6 +1073,10 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
         body: JSON.stringify({
           responseId: responseId ?? undefined,
           email: holdEmail.trim(),
+          phone: holdPhone.trim(),
+          discoverySource,
+          discoverySourceOther:
+            discoverySource === "other" ? discoverySourceOther.trim() : undefined,
           measurements: measurementData,
           suggestedSize: size,
           suggestedTier: tier,
@@ -1084,6 +1109,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     selectedCover,
     selectedCase,
     holdEmail,
+    holdPhone,
+    discoverySource,
+    discoverySourceOther,
     holdAddress,
     selectedShippingId,
     selectedAddons,
@@ -1368,20 +1396,26 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     value={selectedAddressId}
                     onValueChange={handleSelectAddress}
                   />
-                  <div className="space-y-2">
-                    <Label htmlFor="hold-email">Email</Label>
-                    <Input
-                      id="hold-email"
-                      type="email"
-                      value={holdEmail}
-                      onChange={(e) => setHoldEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      aria-invalid={!!fieldErrors.email}
-                    />
-                    {fieldErrors.email ? (
-                      <p className="text-sm text-destructive">{fieldErrors.email}</p>
-                    ) : null}
-                  </div>
+                  <PreviewContactFields
+                    locale={locale}
+                    fieldErrors={fieldErrors}
+                    values={{
+                      email: holdEmail,
+                      phone: holdPhone,
+                      discoverySource,
+                      discoverySourceOther,
+                    }}
+                    onChange={(patch) => {
+                      if (patch.email !== undefined) setHoldEmail(patch.email);
+                      if (patch.phone !== undefined) setHoldPhone(patch.phone);
+                      if (patch.discoverySource !== undefined) {
+                        setDiscoverySource(patch.discoverySource);
+                      }
+                      if (patch.discoverySourceOther !== undefined) {
+                        setDiscoverySourceOther(patch.discoverySourceOther);
+                      }
+                    }}
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="hold-recipient">Recipient</Label>
                     <Input
@@ -1490,14 +1524,53 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     variant="ghost"
                     size="sm"
                     onClick={async () => {
-                      const result = await upsertToDb();
-                      if (!result?.id) {
-                        toast.error("Save failed");
+                      const contactErrors = buildFieldErrorMap(
+                        previewContactFieldChecks({
+                          email: holdEmail,
+                          phone: holdPhone,
+                          discoverySource,
+                          discoverySourceOther,
+                        }),
+                      );
+                      if (Object.keys(contactErrors).length > 0) {
+                        setFieldErrors((prev) => ({ ...prev, ...contactErrors }));
                         return;
                       }
-                      toast.success("Saved to cloud");
-                      setCompletedResponseId(result.id);
-                      setCompletionDialogOpen(true);
+                      if (!responseId) return;
+                      setSaveStatus("saving");
+                      try {
+                        const res = await fetch("/api/mp-config/responses", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            id: responseId,
+                            data: measurementData,
+                            persistContact: true,
+                            email: holdEmail.trim(),
+                            phone: holdPhone.trim(),
+                            discoverySource,
+                            discoverySourceOther:
+                              discoverySource === "other"
+                                ? discoverySourceOther.trim()
+                                : undefined,
+                          }),
+                        });
+                        const payload = await res.json().catch(() => null);
+                        if (!res.ok) {
+                          throw new Error(
+                            getApiErrorMessage(payload?.error, "Save failed"),
+                          );
+                        }
+                        setSaveStatus("saved");
+                        toast.success("Saved to cloud");
+                        setCompletedResponseId((payload?.id ?? responseId) as string);
+                        setCompletionDialogOpen(true);
+                      } catch (err) {
+                        setSaveStatus("error");
+                        toast.error(
+                          err instanceof Error ? err.message : "Save failed",
+                        );
+                      }
                     }}
                     disabled={!responseId}
                     className="text-muted-foreground"

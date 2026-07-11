@@ -15,6 +15,9 @@ export type HoldPrepSelections = {
   selectedAddons: number[];
   selectedShippingId: string;
   holdEmail: string;
+  holdPhone: string;
+  discoverySource: string;
+  discoverySourceOther: string;
   holdAddress: HoldPrepAddress;
 };
 
@@ -78,6 +81,10 @@ export function parseHoldPrepSelections(raw: unknown): HoldPrepSelections | null
     selectedAddons: addons,
     selectedShippingId: typeof s.selectedShippingId === "string" ? s.selectedShippingId : "",
     holdEmail: typeof s.holdEmail === "string" ? s.holdEmail : "",
+    holdPhone: typeof s.holdPhone === "string" ? s.holdPhone : "",
+    discoverySource: typeof s.discoverySource === "string" ? s.discoverySource : "",
+    discoverySourceOther:
+      typeof s.discoverySourceOther === "string" ? s.discoverySourceOther : "",
     holdAddress: {
       recipient: typeof a.recipient === "string" ? a.recipient : "",
       line1: typeof a.line1 === "string" ? a.line1 : "",

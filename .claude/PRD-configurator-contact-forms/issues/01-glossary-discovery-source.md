@@ -17,10 +17,14 @@ No schema, API, or UI in this slice.
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` contains **Discovery source** with clear definition and `_Avoid_` disambiguation.
-- [ ] Wording does not invent referral-voucher programs or conflate attribution with Customer preference / Add-on.
-- [ ] Forms / option-list scope (not step CMS) is stated or linked in spirit so agents do not overbuild.
+- [x] `CONTEXT.md` contains **Discovery source** with clear definition and `_Avoid_` disambiguation.
+- [x] Wording does not invent referral-voucher programs or conflate attribution with Customer preference / Add-on.
+- [x] Forms / option-list scope (not step CMS) is stated or linked in spirit so agents do not overbuild.
 
 ## Blocked by
 
 None — can start immediately.
+
+## Status
+
+Done (2026-07-11).

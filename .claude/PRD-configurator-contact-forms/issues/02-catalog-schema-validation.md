@@ -19,14 +19,18 @@ No Forms UI, preview contact UI, or Results detail in this slice.
 
 ## Acceptance criteria
 
-- [ ] Migration adds `customer_phone`, `discovery_source`, `discovery_source_other` to `mp_config_responses`.
-- [ ] Catalog persists to `site_settings` with ordered options: `id`, `labels` (`en-US`, `zh-CN`), `active`, optional `system`.
-- [ ] Seed includes fixed `other` (system, not deletable) and a small starter list ops can edit later.
-- [ ] Active-only listing excludes archived options; label resolve still works for archived ids.
-- [ ] Validation rejects missing source, empty Other text when `other`, and unknown/inactive ids.
-- [ ] Admin mutate path requires page-builder; public read returns active options only.
-- [ ] Runnable checks pass for catalog + validation.
+- [x] Migration adds `customer_phone`, `discovery_source`, `discovery_source_other` to `mp_config_responses`.
+- [x] Catalog persists to `site_settings` with ordered options: `id`, `labels` (`en-US`, `zh-CN`), `active`, optional `system`.
+- [x] Seed includes fixed `other` (system, not deletable) and a small starter list ops can edit later.
+- [x] Active-only listing excludes archived options; label resolve still works for archived ids.
+- [x] Validation rejects missing source, empty Other text when `other`, and unknown/inactive ids.
+- [x] Admin mutate path requires page-builder; public read returns active options only.
+- [x] Runnable checks pass for catalog + validation.
 
 ## Blocked by
 
 None — can start immediately.
+
+## Status
+
+Done (2026-07-11). Prove: `npx tsx --env-file=.env.local lib/discovery-source/discovery-source.check.ts`

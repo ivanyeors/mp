@@ -5,6 +5,12 @@ import {
   buildInstoreReviewOnlyPatch,
   shouldCreateInstoreReviewOnly,
 } from "@/lib/results/instore-finalize";
+import { normalizePhone } from "@/lib/appointments/phone";
+import {
+  getDiscoverySourceCatalog,
+  normalizeDiscoverySourceOther,
+  validateDiscoverySource,
+} from "@/lib/discovery-source";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -185,6 +191,13 @@ const UpsertSchema = z.object({
   data: MeasurementSchema,
   isFinal: z.boolean().optional(),
   measuredBy: MeasuredBySchema.optional(),
+  /** When set (Save without purchasing / finalize), contact is required + persisted. */
+  email: z.string().email().optional(),
+  phone: z.string().min(1).optional(),
+  discoverySource: z.string().min(1).optional(),
+  discoverySourceOther: z.string().optional(),
+  /** Explicit flag: require + write contact columns on this upsert. */
+  persistContact: z.boolean().optional(),
 });
 
 export async function GET(req: Request) {
@@ -248,17 +261,46 @@ export async function POST(req: Request) {
   }
 
   const id = parsed.data.id ?? crypto.randomUUID();
-  const row: {
-    id: string;
-    data: unknown;
-    is_final?: boolean;
-    measured_by_type?: "by_user" | "staff";
-    measured_by_staff_id?: string | null;
-  } = { id, data: parsed.data.data };
+  const row: Record<string, unknown> = { id, data: parsed.data.data };
   if (typeof parsed.data.isFinal === "boolean") row.is_final = parsed.data.isFinal;
   if (parsed.data.measuredBy) {
     row.measured_by_type = parsed.data.measuredBy.type;
     row.measured_by_staff_id = parsed.data.measuredBy.type === "staff" ? parsed.data.measuredBy.staffId : null;
+  }
+
+  const persistContact = parsed.data.persistContact === true;
+  if (persistContact) {
+    if (!parsed.data.email || !parsed.data.phone || !parsed.data.discoverySource) {
+      return NextResponse.json(
+        { error: "Email, phone, and discovery source are required" },
+        { status: 400 },
+      );
+    }
+    const phoneNormalized = normalizePhone(parsed.data.phone);
+    if (!phoneNormalized) {
+      return NextResponse.json({ error: "Invalid phone", field: "phone" }, { status: 400 });
+    }
+    const catalog = await getDiscoverySourceCatalog();
+    const discoveryErr = validateDiscoverySource(
+      {
+        discoverySource: parsed.data.discoverySource,
+        discoverySourceOther: parsed.data.discoverySourceOther,
+      },
+      catalog,
+    );
+    if (discoveryErr) {
+      return NextResponse.json(
+        { error: discoveryErr.message, field: discoveryErr.field },
+        { status: 400 },
+      );
+    }
+    row.customer_email = parsed.data.email;
+    row.customer_phone = phoneNormalized;
+    row.discovery_source = parsed.data.discoverySource;
+    row.discovery_source_other = normalizeDiscoverySourceOther(
+      parsed.data.discoverySource,
+      parsed.data.discoverySourceOther,
+    );
   }
 
   const admin = supabaseAdmin();

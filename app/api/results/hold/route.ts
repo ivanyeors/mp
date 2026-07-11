@@ -19,6 +19,12 @@ import {
   loadComposedSellable,
 } from "@/lib/results/composed-sellable";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
+import { normalizePhone } from "@/lib/appointments/phone";
+import {
+  getDiscoverySourceCatalog,
+  normalizeDiscoverySourceOther,
+  validateDiscoverySource,
+} from "@/lib/discovery-source";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +56,9 @@ const HoldSchema = z
   .object({
     responseId: z.string().uuid().optional(),
     email: z.string().email(),
+    phone: z.string().min(1),
+    discoverySource: z.string().min(1),
+    discoverySourceOther: z.string().optional(),
     measurements: z.record(z.string(), z.unknown()).optional(),
     productType: z.enum(["pillow", "bolster"]).default("pillow"),
     suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]).optional(),
@@ -152,6 +161,33 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const origin = new URL(req.url).origin;
   const productType = input.productType;
+
+  const phoneNormalized = normalizePhone(input.phone);
+  if (!phoneNormalized) {
+    return NextResponse.json(
+      { error: "Invalid phone", field: "phone" },
+      { status: 400 },
+    );
+  }
+
+  const catalog = await getDiscoverySourceCatalog();
+  const discoveryErr = validateDiscoverySource(
+    {
+      discoverySource: input.discoverySource,
+      discoverySourceOther: input.discoverySourceOther,
+    },
+    catalog,
+  );
+  if (discoveryErr) {
+    return NextResponse.json(
+      { error: discoveryErr.message, field: discoveryErr.field },
+      { status: 400 },
+    );
+  }
+  const discoverySourceOther = normalizeDiscoverySourceOther(
+    input.discoverySource,
+    input.discoverySourceOther,
+  );
 
   // Preference categories only (cover/case) — reject protector/filling at the boundary.
   for (const line of input.preferenceLines) {
@@ -311,6 +347,9 @@ export async function POST(req: Request) {
     payment_intent_id: null as string | null,
     status: "held",
     customer_email: input.email,
+    customer_phone: phoneNormalized,
+    discovery_source: input.discoverySource,
+    discovery_source_other: discoverySourceOther,
     customer_id: customerId,
     access_token: accessToken,
     source: "online_purchase",
