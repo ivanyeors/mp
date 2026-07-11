@@ -25,6 +25,10 @@ Human staging verification checklist (no new product code). Confirm the full pat
 - [ ] Checklist completed on staging with notes for any failures.
 - [ ] Blockers filed or fixed before PRD marked done.
 
+## Status
+
+**Ready for human** (2026-07-11). AFK slices 01–05 complete. Walk this checklist on staging and check boxes when verified.
+
 ## Blocked by
 
 - [`.claude/PRD-configurator-contact-forms/issues/03-forms-admin.md`](03-forms-admin.md)

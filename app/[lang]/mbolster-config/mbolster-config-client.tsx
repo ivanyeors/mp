@@ -52,6 +52,10 @@ import {
   pruneFieldErrors,
   type FieldCheck,
 } from "@/lib/configurator/step-validation";
+import {
+  PreviewContactFields,
+  previewContactFieldChecks,
+} from "@/components/configurator/preview-contact-fields";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import {
@@ -181,6 +185,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     { item_id: number; name: string; msrp: number; currency: string }[]
   >([]);
   const [holdEmail, setHoldEmail] = React.useState("");
+  const [holdPhone, setHoldPhone] = React.useState("");
+  const [discoverySource, setDiscoverySource] = React.useState("");
+  const [discoverySourceOther, setDiscoverySourceOther] = React.useState("");
   const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",
     line1: "",
@@ -261,6 +268,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         setSelectedAddons(new Set(sel.selectedAddons));
         setSelectedShippingId(sel.selectedShippingId);
         if (sel.holdEmail) setHoldEmail(sel.holdEmail);
+        if (sel.holdPhone) setHoldPhone(sel.holdPhone);
+        if (sel.discoverySource) setDiscoverySource(sel.discoverySource);
+        if (sel.discoverySourceOther) setDiscoverySourceOther(sel.discoverySourceOther);
         setHoldAddress(sel.holdAddress);
       } else {
         setState((s) => ({ ...s, step: "preview" }));
@@ -305,6 +315,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
           selectedAddons: [...selectedAddons],
           selectedShippingId,
           holdEmail,
+          holdPhone,
+          discoverySource,
+          discoverySourceOther,
           holdAddress,
         },
       });
@@ -321,6 +334,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     selectedAddons,
     selectedShippingId,
     holdEmail,
+    holdPhone,
+    discoverySource,
+    discoverySourceOther,
     holdAddress,
   ]);
 
@@ -366,12 +382,12 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       valid: selectedCase != null,
       message: "Choose a case",
     },
-    {
-      key: "email",
-      touched: isNonEmptyString(holdEmail),
-      valid: isNonEmptyString(holdEmail),
-      message: "Email is required",
-    },
+    ...previewContactFieldChecks({
+      email: holdEmail,
+      phone: holdPhone,
+      discoverySource,
+      discoverySourceOther,
+    }),
     {
       key: "recipient",
       touched: isNonEmptyString(holdAddress.recipient),
@@ -406,6 +422,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     selectedCover,
     selectedCase,
     holdEmail,
+    holdPhone,
+    discoverySource,
+    discoverySourceOther,
     holdAddress.recipient,
     holdAddress.line1,
     holdAddress.city,
@@ -634,6 +653,10 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: holdEmail.trim(),
+          phone: holdPhone.trim(),
+          discoverySource,
+          discoverySourceOther:
+            discoverySource === "other" ? discoverySourceOther.trim() : undefined,
           productType: "bolster",
           suggestedLength,
           measurements: {
@@ -665,6 +688,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     selectedCover,
     selectedCase,
     holdEmail,
+    holdPhone,
+    discoverySource,
+    discoverySourceOther,
     holdAddress,
     selectedShippingId,
     selectedAddons,
@@ -867,6 +893,27 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 </div>
               )}
 
+              <PreviewContactFields
+                  locale={locale}
+                  fieldErrors={fieldErrors}
+                  values={{
+                    email: holdEmail,
+                    phone: holdPhone,
+                    discoverySource,
+                    discoverySourceOther,
+                  }}
+                  onChange={(patch) => {
+                    if (patch.email !== undefined) setHoldEmail(patch.email);
+                    if (patch.phone !== undefined) setHoldPhone(patch.phone);
+                    if (patch.discoverySource !== undefined) {
+                      setDiscoverySource(patch.discoverySource);
+                    }
+                    if (patch.discoverySourceOther !== undefined) {
+                      setDiscoverySourceOther(patch.discoverySourceOther);
+                    }
+                  }}
+                />
+
               <div className="space-y-3">
                 <Label className="text-base font-semibold">Shipping</Label>
                 <SavedAddressSelect
@@ -875,20 +922,6 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   value={selectedAddressId}
                   onValueChange={handleSelectAddress}
                 />
-                <div className="space-y-2">
-                  <Label htmlFor="hold-email">Email</Label>
-                  <Input
-                    id="hold-email"
-                    type="email"
-                    value={holdEmail}
-                    onChange={(e) => setHoldEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    aria-invalid={!!fieldErrors.email}
-                  />
-                  {fieldErrors.email ? (
-                    <p className="text-sm text-destructive">{fieldErrors.email}</p>
-                  ) : null}
-                </div>
                 <div className="space-y-2">
                   <Label htmlFor="hold-recipient">Recipient</Label>
                   <Input

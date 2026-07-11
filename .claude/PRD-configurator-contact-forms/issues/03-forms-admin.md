@@ -18,13 +18,17 @@ No configurator preview changes in this slice (those are slice 04).
 
 ## Acceptance criteria
 
-- [ ] Forms appears under Landing Site in settings sidebar; gated by page-builder.
-- [ ] Operator can add/edit/reorder/archive Discovery source options; values survive reload.
-- [ ] Locale tabs edit en-US and zh-CN labels per option.
-- [ ] Other cannot be deleted/archived away; remains available as system option.
-- [ ] Archived options do not appear in the public/active list used by the configurator.
-- [ ] Non–page-builder roles cannot mutate Forms.
+- [x] Forms appears under Landing Site in settings sidebar; gated by page-builder.
+- [x] Operator can add/edit/reorder/archive Discovery source options; values survive reload.
+- [x] Locale tabs edit en-US and zh-CN labels per option.
+- [x] Other cannot be deleted/archived away; remains available as system option.
+- [x] Archived options do not appear in the public/active list used by the configurator.
+- [x] Non–page-builder roles cannot mutate Forms.
 
 ## Blocked by
 
 - [`.claude/PRD-configurator-contact-forms/issues/02-catalog-schema-validation.md`](02-catalog-schema-validation.md)
+
+## Status
+
+Done (2026-07-11). Prove: `npx tsx lib/discovery-source/forms-preview-contact.check.ts`

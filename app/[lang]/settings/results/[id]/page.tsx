@@ -60,6 +60,10 @@ type MpConfigResponseRow = {
   currency?: string | null;
   payment_intent_id?: string | null;
   customer_email?: string | null;
+  customer_phone?: string | null;
+  discovery_source?: string | null;
+  discovery_source_other?: string | null;
+  discovery_source_label?: string | null;
 };
 
 type BomLine = {
@@ -657,7 +661,10 @@ export default function ResultDetailPage() {
             </div>
           )}
 
-          {(row.authorized_amount != null || row.customer_email) && (
+          {(row.authorized_amount != null ||
+            row.customer_email ||
+            row.customer_phone ||
+            row.discovery_source) && (
             <div className="grid gap-3 sm:grid-cols-2 text-sm border-t pt-3">
               {row.authorized_amount != null && (
                 <div>
@@ -669,8 +676,28 @@ export default function ResultDetailPage() {
               )}
               {row.customer_email && (
                 <div>
-                  <span className="text-muted-foreground">Customer: </span>
+                  <span className="text-muted-foreground">Email: </span>
                   {row.customer_email}
+                </div>
+              )}
+              {row.customer_phone && (
+                <div>
+                  <span className="text-muted-foreground">Phone: </span>
+                  <a href={`tel:${row.customer_phone}`} className="font-medium hover:underline">
+                    {row.customer_phone}
+                  </a>
+                </div>
+              )}
+              {row.discovery_source && (
+                <div>
+                  <span className="text-muted-foreground">Discovery source: </span>
+                  {row.discovery_source_label ?? row.discovery_source}
+                  {row.discovery_source_other ? (
+                    <span className="text-muted-foreground">
+                      {" "}
+                      — {row.discovery_source_other}
+                    </span>
+                  ) : null}
                 </div>
               )}
               <div>

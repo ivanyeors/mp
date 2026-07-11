@@ -55,6 +55,9 @@ const draft: HoldCancelDraft = {
     selectedAddons: [30],
     selectedShippingId: "ship_1",
     holdEmail: "a@b.co",
+    holdPhone: "87805311",
+    discoverySource: "instagram",
+    discoverySourceOther: "",
     holdAddress: {
       recipient: "Ada",
       line1: "1 St",

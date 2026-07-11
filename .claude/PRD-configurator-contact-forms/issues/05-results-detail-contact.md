@@ -15,12 +15,16 @@ Show persisted contact and attribution on the operator Results detail page.
 
 ## Acceptance criteria
 
-- [ ] Results detail shows phone when present.
-- [ ] Results detail shows Discovery source label (or id fallback) when present.
-- [ ] Other free text shows when `discovery_source` is Other / `discovery_source_other` is set.
-- [ ] Results list and Analytics are unchanged.
+- [x] Results detail shows phone when present.
+- [x] Results detail shows Discovery source label (or id fallback) when present.
+- [x] Other free text shows when `discovery_source` is Other / `discovery_source_other` is set.
+- [x] Results list and Analytics are unchanged.
 
 ## Blocked by
 
 - [`.claude/PRD-configurator-contact-forms/issues/02-catalog-schema-validation.md`](02-catalog-schema-validation.md)
 - [`.claude/PRD-configurator-contact-forms/issues/04-preview-contact-hold.md`](04-preview-contact-hold.md)
+
+## Status
+
+Done (2026-07-11). Prove: `npx tsx lib/discovery-source/forms-preview-contact.check.ts`

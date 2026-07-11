@@ -19,14 +19,18 @@ No Forms admin UI (slice 03) and no Results detail display (slice 05) in this sl
 
 ## Acceptance criteria
 
-- [ ] Preview on mp-config, mp-basic, and mbolster-config shows required email, mobile, and Discovery source.
-- [ ] Other reveals required free text; non-Other hides/ignores free text for validation.
-- [ ] Invalid/missing fields block authorize with field-level errors (not toast-only).
-- [ ] Successful hold persists phone + Discovery source (+ Other text when applicable) on the Result.
-- [ ] Mpillow Save without purchasing requires and persists the same fields.
-- [ ] Phone is normalized via the existing SG-friendly helper when valid.
-- [ ] Welcome / measurement / customize steps are unchanged beyond consuming the shared preview block.
+- [x] Preview on mp-config, mp-basic, and mbolster-config shows required email, mobile, and Discovery source.
+- [x] Other reveals required free text; non-Other hides/ignores free text for validation.
+- [x] Invalid/missing fields block authorize with field-level errors (not toast-only).
+- [x] Successful hold persists phone + Discovery source (+ Other text when applicable) on the Result.
+- [x] Mpillow Save without purchasing requires and persists the same fields.
+- [x] Phone is normalized via the existing SG-friendly helper when valid.
+- [x] Welcome / measurement / customize steps are unchanged beyond consuming the shared preview block.
 
 ## Blocked by
 
 - [`.claude/PRD-configurator-contact-forms/issues/02-catalog-schema-validation.md`](02-catalog-schema-validation.md)
+
+## Status
+
+Done (2026-07-11). Prove: `npx tsx lib/discovery-source/forms-preview-contact.check.ts` (+ hold/upsert route wiring). Staging HITL in slice 06.

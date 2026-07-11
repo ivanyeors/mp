@@ -7,6 +7,11 @@ import {
   type PillowSize,
   type PillowTier,
 } from "@/lib/results/instore-ballpark";
+import {
+  getDiscoverySourceCatalog,
+  resolveDiscoverySourceLabel,
+} from "@/lib/discovery-source";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
 type BomLineRow = {
   quantity: string | number;
@@ -32,13 +37,20 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const { data: responseRow, error: rErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,customer_email",
+      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,customer_email,customer_phone,discovery_source,discovery_source_other",
     )
     .eq("id", parsedParams.data.id)
     .maybeSingle();
 
   if (rErr) return NextResponse.json({ error: rErr.message }, { status: 500 });
   if (!responseRow) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const catalog = await getDiscoverySourceCatalog();
+  const discovery_source_label = resolveDiscoverySourceLabel(
+    catalog,
+    responseRow.discovery_source,
+    DEFAULT_LOCALE,
+  );
 
   // Fetch linked order number if present
   let orderNumber: string | null = null;
@@ -92,7 +104,10 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   return NextResponse.json({
     ok: true,
-    response: responseRow,
+    response: {
+      ...responseRow,
+      discovery_source_label,
+    },
     order_number: orderNumber,
     suggestion: {
       recommended: {

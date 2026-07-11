@@ -10,10 +10,10 @@ Tracer-bullet breakdown of the PRD (`../configurator-contact-forms-prd.md`). Eac
 |---|-------|------|------------|--------------|--------|
 | 01 | Glossary: Discovery source in CONTEXT.md | AFK | none | 1–3 | **done** |
 | 02 | Catalog + schema: site_settings options, Result columns, validation + checks | AFK | none | 42, 45–48, 50–51 | **done** |
-| 03 | Landing Site → Forms admin (locale tabs, reorder, archive, Other lock) | AFK | 02 | 26–37 | |
-| 04 | Preview contact block + hold/in-store persist (mp-config, mp-basic, mbolster) | AFK | 02 | 4–25, 43–44, 49 | |
-| 05 | Results detail: phone + Discovery source (+ Other) | AFK | 02, 04 | 38–41 | |
-| 06 | Staging QA signoff checklist (all three flows + in-store save) | HITL | 03–05 | 52 | |
+| 03 | Landing Site → Forms admin (locale tabs, reorder, archive, Other lock) | AFK | 02 | 26–37 | **done** |
+| 04 | Preview contact block + hold/in-store persist (mp-config, mp-basic, mbolster) | AFK | 02 | 4–25, 43–44, 49 | **done** |
+| 05 | Results detail: phone + Discovery source (+ Other) | AFK | 02, 04 | 38–41 | **done** |
+| 06 | Staging QA signoff checklist (all three flows + in-store save) | HITL | 03–05 | 52 | **ready for human** |
 
 ## Dependency graph
 

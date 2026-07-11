@@ -1388,15 +1388,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Shipping</Label>
-                  <SavedAddressSelect
-                    signedIn={shippingSignedIn}
-                    addresses={savedAddresses}
-                    value={selectedAddressId}
-                    onValueChange={handleSelectAddress}
-                  />
-                  <PreviewContactFields
+                <PreviewContactFields
                     locale={locale}
                     fieldErrors={fieldErrors}
                     values={{
@@ -1415,6 +1407,15 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                         setDiscoverySourceOther(patch.discoverySourceOther);
                       }
                     }}
+                  />
+
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Shipping</Label>
+                  <SavedAddressSelect
+                    signedIn={shippingSignedIn}
+                    addresses={savedAddresses}
+                    value={selectedAddressId}
+                    onValueChange={handleSelectAddress}
                   />
                   <div className="space-y-2">
                     <Label htmlFor="hold-recipient">Recipient</Label>
