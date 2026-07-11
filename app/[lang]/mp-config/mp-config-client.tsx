@@ -24,14 +24,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AGE_GROUP_OPTIONS,
+  BED_FIRMNESS_OPTIONS,
+  BLOOD_PRESSURE_OPTIONS,
+  GENDER_OPTIONS,
+  SingleSelectOptionRows,
+} from "@/components/configurator/single-select-option-rows";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
@@ -1410,39 +1410,20 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
                 <div className="space-y-2">
                   <div className="text-sm font-medium">Gender</div>
-                  <Select
+                  <SingleSelectOptionRows
+                    options={GENDER_OPTIONS}
                     value={measurementData.gender}
-                    onValueChange={(v) => updateMeasurement("gender", v)}
-                  >
-                    <SelectTrigger className="w-full justify-between text-lg h-12">
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="male">Male</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => updateMeasurement("gender", v)}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <div className="text-sm font-medium">Age group</div>
-                  <Select
+                  <SingleSelectOptionRows
+                    options={AGE_GROUP_OPTIONS}
                     value={measurementData.ageGroup}
-                    onValueChange={(v) => updateMeasurement("ageGroup", v)}
-                  >
-                    <SelectTrigger className="w-full justify-between text-lg h-12">
-                      <SelectValue placeholder="Select age group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="under-18">Under 18</SelectItem>
-                      <SelectItem value="18-24">18–24</SelectItem>
-                      <SelectItem value="25-34">25–34</SelectItem>
-                      <SelectItem value="35-44">35–44</SelectItem>
-                      <SelectItem value="45-54">45–54</SelectItem>
-                      <SelectItem value="55-64">55–64</SelectItem>
-                      <SelectItem value="65-plus">65+</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => updateMeasurement("ageGroup", v)}
+                  />
                 </div>
               </div>
 
@@ -1854,20 +1835,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium">Blood Pressure levels</h3>
-                    <Select
+                    <SingleSelectOptionRows
+                      options={BLOOD_PRESSURE_OPTIONS}
                       value={measurementData.bloodPressureLevel}
-                      onValueChange={(v) => updateMeasurement("bloodPressureLevel", v)}
-                    >
-                      <SelectTrigger className="w-full justify-between text-lg h-12">
-                        <SelectValue placeholder="Select blood pressure level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="normal">Normal</SelectItem>
-                        <SelectItem value="low-blood">Low Blood</SelectItem>
-                        <SelectItem value="high-blood">High Blood</SelectItem>
-                        <SelectItem value="unsure">Unsure</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      onChange={(v) => updateMeasurement("bloodPressureLevel", v)}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1891,19 +1863,11 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium">Bed firmness</h3>
-                    <Select
+                    <SingleSelectOptionRows
+                      options={BED_FIRMNESS_OPTIONS}
                       value={measurementData.bedFirmness}
-                      onValueChange={(v) => updateMeasurement("bedFirmness", v)}
-                    >
-                      <SelectTrigger className="w-full justify-between text-lg h-12">
-                        <SelectValue placeholder="Select bed firmness" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="soft">Soft</SelectItem>
-                        <SelectItem value="medium-soft">Medium Soft</SelectItem>
-                        <SelectItem value="firm">Firm</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      onChange={(v) => updateMeasurement("bedFirmness", v)}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -2135,7 +2099,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     className="group"
                   >
                     <Sparkles className="mr-2 h-5 w-5" />
-                    {isBasic ? "See your Basic Mpillow" : "Generate Results"}
+                    {isBasic ? "Continue" : "Customise"}
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </div>

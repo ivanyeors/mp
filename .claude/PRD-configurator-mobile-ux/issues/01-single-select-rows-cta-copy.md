@@ -19,14 +19,24 @@ Ship a small shared option-row control (or reuse Cover Style button styling) so 
 
 ## Acceptance criteria
 
-- [ ] Gender, age group, blood pressure, and bed firmness use single-select option rows on mp-config and mp-basic (all breakpoints).
-- [ ] Only one option can be selected per question; tapping another option replaces the previous.
-- [ ] Sleep pain / sleep position multi-select pill chips are unchanged.
-- [ ] Mbolster does not gain gender/age/BP/bed firmness questions.
-- [ ] Full Mpillow customize-step primary CTA reads `Customise`.
-- [ ] Basic Mpillow equivalent primary CTA reads `Continue`.
-- [ ] Mbolster advance CTAs read `Continue` where applicable.
-- [ ] Yes/no Tabs (ear discomfort, acid reflux, uses bolster) unchanged.
+- [x] Gender, age group, blood pressure, and bed firmness use single-select option rows on mp-config and mp-basic (all breakpoints).
+- [x] Only one option can be selected per question; tapping another option replaces the previous.
+- [x] Sleep pain / sleep position multi-select pill chips are unchanged.
+- [x] Mbolster does not gain gender/age/BP/bed firmness questions.
+- [x] Full Mpillow customize-step primary CTA reads `Customise`.
+- [x] Basic Mpillow equivalent primary CTA reads `Continue`.
+- [x] Mbolster advance CTAs read `Continue` where applicable.
+- [x] Yes/no Tabs (ear discomfort, acid reflux, uses bolster) unchanged.
+
+## Proof
+
+```bash
+npx tsx components/configurator/single-select-option-rows.check.ts
+# → single-select-option-rows.check.ts: ok
+```
+
+Shared control: `components/configurator/single-select-option-rows.tsx`  
+Wired in: `app/[lang]/mp-config/mp-config-client.tsx` (mp-basic reuses same client via `variantFromPathname`)
 
 ## Blocked by
 
