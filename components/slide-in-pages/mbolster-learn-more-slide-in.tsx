@@ -90,7 +90,7 @@ function MbolsterLearnMoreSheetInner() {
           </div>
         </div>
 
-        <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div ref={setViewportNode} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain">
           <div className="pb-28">
             <ProductSlideSectionRenderer
               sections={mbolsterSlideSections}
