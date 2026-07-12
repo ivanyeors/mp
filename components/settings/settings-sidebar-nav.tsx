@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
-  ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
+  ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, Menu,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -34,6 +34,15 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
 import type { Permission } from "@/lib/auth/permissions";
@@ -136,6 +145,21 @@ function itemVisible(item: NavItem, permissions: Permission[]): boolean {
   return (item.items ?? []).some((sub) => canSee(sub, permissions));
 }
 
+/** Flatten nested items into peers for the mobile icon grid. */
+function flattenNavItems(items: NavItem[], permissions: Permission[]): NavItem[] {
+  const out: NavItem[] = [];
+  for (const item of items) {
+    if (!itemVisible(item, permissions)) continue;
+    if (canSee(item, permissions)) {
+      out.push({ href: item.href, label: item.label, tooltip: item.tooltip, Icon: item.Icon, perm: item.perm });
+    }
+    for (const sub of item.items ?? []) {
+      if (canSee(sub, permissions)) out.push(sub);
+    }
+  }
+  return out;
+}
+
 type AdminStatus = "checking" | "authed" | "unauth";
 
 export function SettingsSidebarNav({ children }: { children: React.ReactNode }) {
@@ -144,11 +168,13 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const basePathname = stripLocale(pathname);
   const to = (href: string) => withLocale(href, locale);
+  const isMobile = useIsMobile();
 
   const isLoginRoute = basePathname === "/settings/login";
 
   const [status, setStatus] = useState<AdminStatus>("checking");
   const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (isLoginRoute) return;
@@ -203,6 +229,85 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
 
   const activeHref = findActiveHref(basePathname, NAV_GROUPS);
 
+  const header = (
+    <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
+      {isMobile ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0"
+          aria-label="Open settings menu"
+          onClick={() => setMenuOpen(true)}
+        >
+          <Menu className="size-5" />
+        </Button>
+      ) : (
+        <SidebarTrigger />
+      )}
+      <div className="min-w-0 flex-1">
+        <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
+      </div>
+    </header>
+  );
+
+  if (isMobile) {
+    return (
+      <SettingsBreadcrumbProvider>
+        <div className="flex min-h-svh w-full flex-col">
+          {header}
+          <div className="px-2 py-4 sm:px-3">{children}</div>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetContent
+              side="bottom"
+              mobilePreset="quick"
+              className="max-h-[85svh] gap-0 px-0"
+            >
+              <SheetHeader className="px-4 pb-2 pt-1">
+                <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
+              <div className="overflow-y-auto px-3 pb-4">
+                {groups.map((group) => {
+                  const tiles = flattenNavItems(group.items, permissions);
+                  if (!tiles.length) return null;
+                  return (
+                    <div key={group.label} className="mb-4">
+                      <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        {group.label}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {tiles.map(({ href, label, tooltip, Icon }) => {
+                          const isActive = activeHref === href;
+                          return (
+                            <Link
+                              key={href}
+                              href={to(href)}
+                              title={tooltip}
+                              onClick={() => setMenuOpen(false)}
+                              className={cn(
+                                "flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-sm font-medium transition-colors",
+                                isActive
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border bg-background text-foreground hover:bg-accent"
+                              )}
+                            >
+                              <Icon className="size-6 shrink-0" />
+                              <span className="line-clamp-2 leading-tight">{label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </SettingsBreadcrumbProvider>
+    );
+  }
+
   return (
     <SettingsBreadcrumbProvider>
       <div className="flex min-h-svh w-full">
@@ -254,12 +359,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
             <SidebarRail />
           </Sidebar>
           <SidebarInset>
-            <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
-              <SidebarTrigger />
-              <div className="min-w-0 flex-1">
-                <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
-              </div>
-            </header>
+            {header}
             <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
               {children}
             </div>
