@@ -16,7 +16,7 @@ No Edit / shortcut icons in v1. On storefront routes, keep the landing dock (inc
 
 ## Acceptance criteria
 
-- [x] On `/settings/*` (excluding login redirect), dock shows **Home** and **Logout** only.
+- [x] On `/settings/*` (excluding login redirect), dock shows **Home**, **Menu** (nav sheet), and **Logout**.
 - [x] Home navigates to landing and landing dock reappears.
 - [x] Logout clears the session via existing sign-out.
 - [x] Storefront routes never show the Admin Panel dock (even while Staff is signed in).
@@ -27,9 +27,27 @@ No Edit / shortcut icons in v1. On storefront routes, keep the landing dock (inc
 
 - Slice 04 — Landing Menu pill: Sign in / Profile / Admin Panel
 
-## Done notes
+## Proof (2026-07-12)
 
-- Path gate: `isAdminPanelDockPath` in `lib/auth/dock-chrome.ts`
-- Admin dock branch in `components/ui/app-dock.tsx` (Home + Logout form → `/auth/signout`)
-- Breadcrumb root + sidebar group label → **Admin Panel**
-- Automated: `lib/auth/__tests__/dock-chrome.test.ts`
+**Automated:** `3/3` dock-chrome + `6/6` post-auth; `dock-chrome.check.ts: ok`; breadcrumbs check ok
+
+```bash
+npm test -- lib/auth/__tests__/dock-chrome.test.ts lib/auth/__tests__/post-auth-redirect.test.ts
+npx tsx lib/auth/dock-chrome.check.ts
+npx tsx components/settings/settings-breadcrumbs.check.ts
+```
+
+**Source matrix:** `6/6`
+
+| Check | Evidence |
+|-------|----------|
+| Admin dock = Home + Menu + Logout | `app-dock.tsx` `adminDock` branch; Menu opens sidebar sheet via `admin-panel-menu` bus |
+| Home → landing | `Link href={to("/")}` |
+| Logout → existing sign-out | `POST /auth/signout?next=…` → `app/auth/signout/route.ts` |
+| Path gate excludes login | `isAdminPanelDockPath("/settings/login") === false`; storefront paths false |
+| No Edit/shortcuts | no Edit/shortcut strings in `app-dock.tsx` (Menu = nav sheet only) |
+| Naming → Admin Panel | breadcrumb root, sidebar group, dock menu aria, error heading |
+
+**Live (local):** `/en-US/settings/login` → `NEXT_REDIRECT … /en-US/account/login?next=%2Fen-US%2Fsettings`; login path keeps landing dock (not Admin dock).
+
+**Note:** Admin dock Menu (mobile nav sheet) is an intentional add beyond the original “Home + Logout only” line — keeps Admin Panel IA reachable after the header hamburger moved to the dock.
