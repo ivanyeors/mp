@@ -9,19 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 /**
- * Shared Supabase Auth login form (Google OAuth + optional email magic link).
- * Used for both the customer account login and the staff settings login;
- * `nextPath` controls the post-login destination. Set `allowEmailLink={false}`
- * to render Google-only (used by the staff settings login).
+ * Shared Supabase Auth login form (Google OAuth + email magic link).
+ * Google is the primary CTA; `nextPath` controls the post-login destination.
  */
 export function LoginForm({
   nextPath,
-  allowEmailLink = true,
   initialEmail = "",
   submitLabel = "Email me a magic link",
 }: {
   nextPath: string;
-  allowEmailLink?: boolean;
   /** Prefill email (e.g. from a Result hold submission). */
   initialEmail?: string;
   submitLabel?: string;
@@ -72,25 +68,6 @@ export function LoginForm({
     setSent(true);
   };
 
-  if (!allowEmailLink) {
-    return (
-      <div className="space-y-4">
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={signInWithGoogle}
-          disabled={loading !== null}
-        >
-          {loading === "google" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          Continue with Google
-        </Button>
-
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      </div>
-    );
-  }
-
   if (sent) {
     return (
       <div className="rounded-lg border p-6 text-center">
@@ -107,7 +84,6 @@ export function LoginForm({
     <div className="space-y-4">
       <Button
         type="button"
-        variant="outline"
         className="w-full"
         onClick={signInWithGoogle}
         disabled={loading !== null}
@@ -139,7 +115,12 @@ export function LoginForm({
             autoComplete="email"
           />
         </div>
-        <Button type="submit" className="w-full" disabled={loading !== null || !email.trim()}>
+        <Button
+          type="submit"
+          variant="outline"
+          className="w-full"
+          disabled={loading !== null || !email.trim()}
+        >
           {loading === "email" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           {submitLabel}
         </Button>

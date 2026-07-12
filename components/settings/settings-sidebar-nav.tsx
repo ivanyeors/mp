@@ -72,7 +72,7 @@ type NavGroup = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Settings",
+    label: "Admin Panel",
     items: [
       {
         href: "/settings",
@@ -198,16 +198,17 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
     };
   }, [isLoginRoute]);
 
-  // Redirect unauthorized visitors to the staff login.
+  // Redirect unauthorized visitors to unified Sign in (preserve deep link).
   useEffect(() => {
     if (status === "unauth" && !isLoginRoute) {
-      router.replace(to("/settings/login"));
+      router.replace(
+        to(`/account/login?next=${encodeURIComponent(to(basePathname))}`),
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, isLoginRoute]);
 
-  // The staff login screen renders without the sidebar or the auth gate so
-  // unauthenticated staff can sign in.
+  // Legacy /settings/login only redirects; keep bare shell if it still renders.
   if (isLoginRoute) {
     return <>{children}</>;
   }

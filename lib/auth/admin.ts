@@ -129,15 +129,20 @@ export async function assertAdmin(permission: Permission): Promise<AdminContext>
 }
 
 /**
- * Server-component / page guard. Redirects to the staff login when not signed
- * in, or to the settings overview when signed in but lacking `permission`.
+ * Server-component / page guard. Redirects to Sign in when not signed in, or
+ * to the Admin Panel overview when signed in but lacking `permission`.
  */
 export async function requireAdminPage(
   permission: Permission,
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<AdminContext> {
   const ctx = await getAdminContext();
-  if (!ctx) redirect(withLocale("/settings/login", locale));
+  if (!ctx) {
+    const adminHome = withLocale("/settings", locale);
+    redirect(
+      withLocale(`/account/login?next=${encodeURIComponent(adminHome)}`, locale),
+    );
+  }
   if (!roleHasPermission(ctx.role, permission)) {
     redirect(withLocale("/settings", locale));
   }

@@ -9,7 +9,7 @@ import {
 
 const NAV: BreadcrumbNavGroup[] = [
   {
-    label: "Settings",
+    label: "Admin Panel",
     items: [
       {
         href: "/settings",
@@ -54,12 +54,12 @@ function assertEqual(actual: unknown, expected: unknown, msg: string) {
   }
 }
 
-assertEqual(labels("/settings"), ["Settings"], "root is Settings only");
+assertEqual(labels("/settings"), ["Admin Panel"], "root is Admin Panel only");
 assertEqual(hrefs("/settings"), [null], "root is current (no link)");
 
 assertEqual(
   labels("/settings/inventory/configure"),
-  ["Settings", "Inventory", "Configure"],
+  ["Admin Panel", "Inventory", "Configure"],
   "configure includes Inventory ancestor",
 );
 assertEqual(
@@ -68,23 +68,23 @@ assertEqual(
   "configure links ancestors only",
 );
 
-assertEqual(labels("/settings/general"), ["Settings", "API Configs"], "nav label for general");
-assertEqual(labels("/settings/admins"), ["Settings", "Admin Users"], "nav label for admins");
+assertEqual(labels("/settings/general"), ["Admin Panel", "API Configs"], "nav label for general");
+assertEqual(labels("/settings/admins"), ["Admin Panel", "Admin Users"], "nav label for admins");
 assertEqual(
   labels("/settings/integrations/shopify"),
-  ["Settings", "Shopify Link"],
+  ["Admin Panel", "Shopify Link"],
   "nav label for shopify",
 );
 
 const uuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
 assertEqual(
   labels(`/settings/products/${uuid}`),
-  ["Settings", "Products", "Details"],
+  ["Admin Panel", "Products", "Details"],
   "opaque id becomes Details",
 );
 assertEqual(
   labels(`/settings/products/${uuid}`, "Cloud Pillow"),
-  ["Settings", "Products", "Cloud Pillow"],
+  ["Admin Panel", "Products", "Cloud Pillow"],
   "detailLabel overrides Details",
 );
 assertEqual(
@@ -95,7 +95,7 @@ assertEqual(
 
 assertEqual(
   labels("/settings/products/new"),
-  ["Settings", "Products", "New"],
+  ["Admin Panel", "Products", "New"],
   "non-opaque segment title-cases",
 );
 

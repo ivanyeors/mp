@@ -70,7 +70,7 @@ function detailSegmentLabel(segment: string, detailLabel?: string | null): strin
 }
 
 /**
- * Build an IA trail for settings: Settings → nav ancestors → active section → detail.
+ * Build an IA trail for Admin Panel: Admin Panel → nav ancestors → active section → detail.
  * Labels come from nav config; only real destinations are linked.
  */
 export function buildSettingsBreadcrumbs(
@@ -81,7 +81,7 @@ export function buildSettingsBreadcrumbs(
   const path = basePathname.replace(/\/+$/, "") || "/settings";
 
   if (path === "/settings") {
-    return [{ label: "Settings" }];
+    return [{ label: "Admin Panel" }];
   }
 
   const entries = allNavEntries(groups);
@@ -96,7 +96,7 @@ export function buildSettingsBreadcrumbs(
     )
     .sort((a, b) => a.href.length - b.href.length);
 
-  const crumbs: SettingsCrumb[] = [{ label: "Settings", href: "/settings" }];
+  const crumbs: SettingsCrumb[] = [{ label: "Admin Panel", href: "/settings" }];
 
   for (const entry of ancestors) {
     crumbs.push({ label: entry.label, href: entry.href });

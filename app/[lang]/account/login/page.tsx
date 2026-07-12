@@ -34,18 +34,13 @@ export default async function AccountLoginPage({
   }
 
   const prefill = (email ?? "").trim();
-  const fromResult = Boolean(prefill) || nextPath.includes("/results/");
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col px-4 py-16">
+    <main className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center px-4 py-16">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {fromResult ? "Create your account" : "Sign in to your account"}
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
         <p className="text-sm text-muted-foreground">
-          {fromResult
-            ? "Use a magic link to track this customisation and your orders."
-            : "Access your order history, tracking, and saved addresses."}
+          Use Google or a magic link to continue.
         </p>
       </div>
       <div className="mt-8">

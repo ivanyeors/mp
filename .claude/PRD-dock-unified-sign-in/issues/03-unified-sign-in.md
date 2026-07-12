@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `dock-unified-sign-in` (`.claude/PRD-dock-unified-sign-in/dock-unified-sign-in-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 1–6, 18–19, 30–31, 33, 39, 43
 
 ## What to build
@@ -21,13 +21,13 @@ Leave Result “Sign up / sign in” magic-link cards working. User-facing “St
 
 ## Acceptance criteria
 
-- [ ] Canonical Sign in URL is `/[lang]/account/login` with heading **Sign In**.
-- [ ] Google and magic link remain available on that page.
-- [ ] `/settings/login` redirects to account login with an Admin Panel `next` (or equivalent deep link).
-- [ ] Settings unauth gate sends users to `/account/login?next=...`.
-- [ ] Sign in page has light mobile polish (centered full-viewport-friendly layout).
-- [ ] Result status magic-link Sign in / Sign up entry still works.
-- [ ] Slice 02 redirect helper is used for already-signed-in / post-auth behavior on this page.
+- [x] Canonical Sign in URL is `/[lang]/account/login` with heading **Sign In**.
+- [x] Google and magic link remain available on that page.
+- [x] `/settings/login` redirects to account login with an Admin Panel `next` (or equivalent deep link).
+- [x] Settings unauth gate sends users to `/account/login?next=...`.
+- [x] Sign in page has light mobile polish (centered full-viewport-friendly layout).
+- [x] Result status magic-link Sign in / Sign up entry still works.
+- [x] Slice 02 redirect helper is used for already-signed-in / post-auth behavior on this page.
 
 ## Blocked by
 

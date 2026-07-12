@@ -106,7 +106,12 @@ export default function SettingsPage() {
               setLoggingOut(true);
               const supabase = createSupabaseBrowserClient();
               await supabase.auth.signOut();
-              router.replace(withLocale("/settings/login", locale));
+              router.replace(
+                withLocale(
+                  `/account/login?next=${encodeURIComponent(withLocale("/settings", locale))}`,
+                  locale,
+                ),
+              );
             } finally {
               setLoggingOut(false);
             }
