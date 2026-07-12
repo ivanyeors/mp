@@ -16,12 +16,14 @@ import { BasicMpillowLearnMoreSheet } from "@/components/slide-in-pages/basic-mp
 import { PremiumLearnMoreSheet } from "@/components/slide-in-pages/premium-learn-more-dialog";
 import { MbolsterLearnMoreSheet } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
 import { CervicalNeckSupportSheet } from "@/components/slide-in-pages/cervical-neck-support";
+import { openAdminPanelMenu } from "@/lib/auth/admin-panel-menu";
 import {
   isAdminPanelDockPath,
   landingAuthPill,
   resolveDockSessionRole,
   type DockSessionRole,
 } from "@/lib/auth/dock-chrome";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
@@ -52,6 +54,7 @@ export function AppDock() {
   const basePathname = stripLocale(pathname);
   const to = (href: string) => withLocale(href, locale);
   const adminDock = isAdminPanelDockPath(basePathname);
+  const isMobile = useIsMobile();
 
   const [isHidden, setIsHidden] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -180,6 +183,21 @@ export function AppDock() {
                   </DockIcon>
                 </DockItem>
               </Link>
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => openAdminPanelMenu()}
+                  aria-label="Open Admin Panel menu"
+                  className="border-none bg-transparent p-0"
+                >
+                  <DockItem className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm">
+                    <DockLabel>Menu</DockLabel>
+                    <DockIcon>
+                      <Menu className="h-full w-full text-gray-200 dark:text-neutral-300" />
+                    </DockIcon>
+                  </DockItem>
+                </button>
+              )}
               <form action={signOutAction} method="post">
                 <button type="submit" className="border-none bg-transparent p-0" aria-label="Logout">
                   <DockItem className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm">

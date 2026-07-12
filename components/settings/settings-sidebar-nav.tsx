@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
-  ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, Menu,
+  ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -34,7 +34,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -43,6 +42,7 @@ import {
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { subscribeAdminPanelMenu } from "@/lib/auth/admin-panel-menu";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
 import type { Permission } from "@/lib/auth/permissions";
@@ -177,6 +177,11 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
+    if (!isMobile) return;
+    return subscribeAdminPanelMenu(() => setMenuOpen(true));
+  }, [isMobile]);
+
+  useEffect(() => {
     if (isLoginRoute) return;
     let cancelled = false;
     fetch("/api/admin/context")
@@ -232,20 +237,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
 
   const header = (
     <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
-      {isMobile ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-9 shrink-0"
-          aria-label="Open Admin Panel menu"
-          onClick={() => setMenuOpen(true)}
-        >
-          <Menu className="size-5" />
-        </Button>
-      ) : (
-        <SidebarTrigger />
-      )}
+      {!isMobile && <SidebarTrigger />}
       <div className="min-w-0 flex-1">
         <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
       </div>
