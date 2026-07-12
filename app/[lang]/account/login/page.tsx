@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
+import { getAdminContext } from "@/lib/auth/admin";
+import { resolvePostAuthRedirect, safeNextPath } from "@/lib/auth/post-auth-redirect";
 import { getAuthUser } from "@/lib/auth/user";
 import { LoginForm } from "@/components/auth/login-form";
-
-function safeNextPath(next: string | undefined, fallback: string): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
-  return next;
-}
 
 export default async function AccountLoginPage({
   params,
@@ -20,11 +17,21 @@ export default async function AccountLoginPage({
   const { email, next } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const accountHref = withLocale("/account", locale);
+  const adminHref = withLocale("/settings", locale);
+  // Preserve next for OAuth; role routing runs after session (callback / already-signed-in).
   const nextPath = safeNextPath(next, accountHref);
 
-  // Already signed in → destination (result status or account).
   const user = await getAuthUser();
-  if (user) redirect(nextPath);
+  if (user) {
+    redirect(
+      resolvePostAuthRedirect({
+        next: nextPath,
+        isStaff: Boolean(await getAdminContext()),
+        accountHome: accountHref,
+        adminHome: adminHref,
+      }),
+    );
+  }
 
   const prefill = (email ?? "").trim();
   const fromResult = Boolean(prefill) || nextPath.includes("/results/");

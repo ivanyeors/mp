@@ -76,6 +76,26 @@ _Avoid_: mp-config **Result** (digital submission flow)
 **Re-adjustment appointment**:
 An **Appointment** for post-purchase fitting/adjustment; type inferred from calendar event summary match strings.
 
+**Sign in**:
+The unified authentication entry at `/account/login`. Guests start here; role (**Staff** vs **Customer**) is decided after the session exists, not by picking a separate staff login URL.
+_Avoid_: “Staff sign in” as a separate customer-facing door; splitting shopper and staff onto different auth pages for v1
+
+**Admin Panel**:
+The staff back office under `/settings`. User-facing name for that surface.
+_Avoid_: Settings (as the product name for this surface — keep the `/settings` URL path)
+
+**Profile**:
+The signed-in **Customer** account entry from the storefront Menu pill (opens `/account`). Not a separate dock icon.
+_Avoid_: adding a second Profile control on the landing dock
+
+**Staff**:
+An authorized back-office actor: active row in `admin_users`, or bootstrap allowlist. Shares the same Supabase session as a possible **Customer** record; when both apply, **Staff** wins for Menu chrome.
+_Avoid_: treating every signed-in user as staff; calling the back office “Settings” in UI copy
+
+**Customer**:
+A shopper account identity after Sign in when the session is not **Staff**. Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
+_Avoid_: conflating with **Customer preference** (cover/case choices only)
+
 ## Relationships
 
 - An **Item** may be a **Sellable item** when it has an MSRP
@@ -92,6 +112,7 @@ An **Appointment** for post-purchase fitting/adjustment; type inferred from cale
 - Fillings affect COGS/fulfillment only; sell price is **Costings** **MSRP** for the composed sellable plus preference/add-on item **MSRP**s, plus shipping and tax
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
 - A **Media Asset** is the library record; landing slots, blogs, products, and slide configs are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
+- The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), or **Admin Panel** (**Staff**). When the session is **Staff**, prefer **Admin Panel** over **Profile**.
 
 ## Example dialogue
 
@@ -118,6 +139,9 @@ An **Appointment** for post-purchase fitting/adjustment; type inferred from cale
 >
 > **Dev:** "Industry says add a TL;DR under the H1. New component?"
 > **Domain expert:** "No — that's the **Answer lede**. Fill `seo_answer` (or the home/configurator lede field). Do not ship a second summary block."
+>
+> **Dev:** "Staff still need a separate Settings login page, right?"
+> **Domain expert:** "No — one **Sign in** at `/account/login`. After the session, **Staff** go to the **Admin Panel**; everyone else is a **Customer** on **Profile**. Keep the `/settings` path; just don't call it Settings in the UI."
 
 ## Configure (settings)
 

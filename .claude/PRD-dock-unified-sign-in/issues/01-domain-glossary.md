@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `dock-unified-sign-in` (`.claude/PRD-dock-unified-sign-in/dock-unified-sign-in-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 28, 35
 
 ## What to build
@@ -19,10 +19,10 @@ Keep definitions domain-facing (not implementation dumps). No code changes in th
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` defines **Sign in**, **Admin Panel**, **Profile**, **Staff**, and **Customer** in the Language section.
-- [ ] User-facing “Settings” for the back office is listed as an avoid-term under **Admin Panel**.
-- [ ] Relationships note that Menu prefers **Admin Panel** when the session is **Staff**.
-- [ ] No schema, route, or UI changes in this slice.
+- [x] `CONTEXT.md` defines **Sign in**, **Admin Panel**, **Profile**, **Staff**, and **Customer** in the Language section.
+- [x] User-facing “Settings” for the back office is listed as an avoid-term under **Admin Panel**.
+- [x] Relationships note that Menu prefers **Admin Panel** when the session is **Staff**.
+- [x] No schema, route, or UI changes in this slice.
 
 ## Blocked by
 
