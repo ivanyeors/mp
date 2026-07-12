@@ -238,7 +238,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
           variant="ghost"
           size="icon"
           className="size-9 shrink-0"
-          aria-label="Open settings menu"
+          aria-label="Open Admin Panel menu"
           onClick={() => setMenuOpen(true)}
         >
           <Menu className="size-5" />
