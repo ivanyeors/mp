@@ -27,6 +27,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
+import { isNearDocumentBottom } from "@/components/ui/app-dock-visibility";
 
 const dockItems = [
   {
@@ -71,7 +72,14 @@ export function AppDock() {
       const y = window.scrollY;
       const delta = y - lastY;
 
-      if (y < 24) {
+      if (
+        y < 24 ||
+        isNearDocumentBottom(
+          window.innerHeight,
+          y,
+          document.documentElement.scrollHeight,
+        )
+      ) {
         setIsHidden(false);
         lastY = y;
         return;

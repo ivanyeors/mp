@@ -38,7 +38,7 @@ export function ConfiguratorExitDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent hideClose className="max-w-sm">
         <DialogHeader className="text-center sm:text-center">
           <DialogTitle>Exit configuration?</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

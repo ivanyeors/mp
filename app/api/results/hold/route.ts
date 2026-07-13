@@ -25,6 +25,7 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
+import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,6 +89,15 @@ const HoldSchema = z
         path: ["suggestedLength"],
       });
     }
+    v.preferenceLines.forEach((line, index) => {
+      if (!preferenceCategoryAllowed(v.productType, line.category)) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Bolster preferences may only include a case",
+          path: ["preferenceLines", index, "category"],
+        });
+      }
+    });
   });
 
 async function sendTelegram(text: string) {
@@ -188,16 +198,6 @@ export async function POST(req: Request) {
     input.discoverySource,
     input.discoverySourceOther,
   );
-
-  // Preference categories only (cover/case) — reject protector/filling at the boundary.
-  for (const line of input.preferenceLines) {
-    if (line.category !== "cover" && line.category !== "case") {
-      return NextResponse.json(
-        { error: "Customer preferences may only include cover and case" },
-        { status: 400 },
-      );
-    }
-  }
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
   const addonIds = input.addonLines.map((l) => l.item_id);

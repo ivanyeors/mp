@@ -11,11 +11,16 @@ Mbolster welcome (i) FAQ dialog: use `hideClose` and an inline close control **b
 
 ## Acceptance criteria
 
-- [ ] Mobile: close appears below the FAQ accordion and scrolls with dialog content.
-- [ ] No fixed/corner X overlapping FAQ content.
-- [ ] Desktop: close remains reachable.
-- [ ] FAQ copy/items unchanged.
+- [x] Mobile: close appears below the FAQ accordion and scrolls with dialog content.
+- [x] No fixed/corner X overlapping FAQ content.
+- [x] Desktop: close remains reachable.
+- [x] FAQ copy/items unchanged.
 
-## Blocked by
+## Proof (2026-07-13)
 
-None - can start immediately.
+Welcome FAQ uses `DialogContent hideClose` + inline `OverlayDismissButton` after `PageFaqAccordion`.
+
+```bash
+npx tsx "app/[lang]/mbolster-config/faq-dismiss.check.ts"
+# → mbolster FAQ dismiss self-check ok: inline close follows accordion
+```

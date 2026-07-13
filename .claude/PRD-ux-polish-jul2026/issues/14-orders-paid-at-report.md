@@ -11,12 +11,17 @@ Wire Orders `date_from` / `date_to` through list and dashboard APIs using **`pai
 
 ## Acceptance criteria
 
-- [ ] Changing date range filters Orders list by `paid_at`.
-- [ ] Summary cards match the same `paid_at` window.
-- [ ] Orders with null `paid_at` are excluded from a bounded sales range.
-- [ ] Invalid from > to rejected or corrected with clear feedback.
-- [ ] Automated check for paid_at range filtering.
+- [x] Changing date range filters Orders list by `paid_at`.
+- [x] Summary cards match the same `paid_at` window.
+- [x] Orders with null `paid_at` are excluded from a bounded sales range.
+- [x] Invalid from > to rejected or corrected with clear feedback.
+- [x] Automated check for paid_at range filtering.
 
-## Blocked by
+## Proof (2026-07-13)
 
-None - can start immediately.
+List + dashboard APIs apply `parseOrdersPaidAtRange` / `applyOrdersPaidAtRange` on `paid_at`. UI refetches summary with the same params and surfaces from>to via `role="alert"`.
+
+```bash
+npx tsx lib/ecommerce/orders-paid-at-range.check.ts
+# → orders-paid-at-range.check.ts: ok
+```

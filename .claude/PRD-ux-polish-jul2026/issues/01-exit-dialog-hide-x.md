@@ -11,10 +11,19 @@ On the configurator exit confirmation dialog, remove the default corner dismiss 
 
 ## Acceptance criteria
 
-- [ ] Exit dialog has no corner X / OverlayDismiss on mobile or desktop.
-- [ ] Stay and Exit remain usable; Exit clears session as today.
-- [ ] Mobile wizard bottom Close still opens the exit dialog.
-- [ ] Desktop toast-only exit path unchanged if it does not use this dialog.
+- [x] Exit dialog has no corner X / OverlayDismiss on mobile or desktop.
+- [x] Stay and Exit remain usable; Exit clears session as today.
+- [x] Mobile wizard bottom Close still opens the exit dialog.
+- [x] Desktop toast-only exit path unchanged if it does not use this dialog.
+
+## Proof (2026-07-13)
+
+`ConfiguratorExitDialog` uses `DialogContent hideClose`. Wizard `ConfiguratorMobileCloseBar` unchanged. Desktop toast exit path untouched in consumers.
+
+```bash
+npx tsx components/configurator/configurator-mobile-chrome.check.ts
+# → configurator-mobile-chrome.check.ts: ok
+```
 
 ## Blocked by
 

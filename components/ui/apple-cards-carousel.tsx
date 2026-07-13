@@ -25,9 +25,9 @@ export type MeasureTileProps = {
 
 export function MeasureTile({ iconSrc, title, description }: MeasureTileProps) {
   return (
-    <div className="flex items-start gap-3" data-ui="apple-cards-carousel-measure-tile">
+    <div className="flex flex-col gap-3" data-ui="apple-cards-carousel-measure-tile">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={iconSrc} alt="" className="mt-0.5 h-[150px] w-[150px] shrink-0 object-contain" />
+      <img src={iconSrc} alt="" className="mx-auto h-auto w-full max-w-[150px] object-contain" />
       <div className="min-w-0">
         <div className="text-lg font-semibold leading-tight">{title}</div>
         <div className="mt-2 text-base leading-relaxed text-muted-foreground">{description}</div>

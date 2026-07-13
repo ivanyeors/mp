@@ -13,11 +13,18 @@ User stories covered: 22–25
 
 ## Acceptance criteria
 
-- [ ] Less empty space above the dock on home without content sitting under the dock.
-- [ ] Scrolling to the end of the home page shows the dock.
-- [ ] Mid-page scroll-down can still hide the dock; scroll-up reveals it.
-- [ ] Configurator dock-hidden after welcome unchanged.
+- [x] Less empty space above the dock on home without content sitting under the dock.
+- [x] Scrolling to the end of the home page shows the dock.
+- [x] Mid-page scroll-down can still hide the dock; scroll-up reveals it.
+- [x] Configurator dock-hidden after welcome unchanged.
 
-## Blocked by
+## Proof (2026-07-13)
 
-None - can start immediately.
+Dock shows when `isNearDocumentBottom` (within 24px of document end); top/scroll-up/down rules unchanged. Marketing footer/hero dropped double-counted clearance. Configurator `dock-hidden` toggles untouched.
+
+```bash
+npx tsx components/ui/app-dock-visibility.check.ts
+# → app-dock-visibility.check.ts: ok
+```
+
+Note: hero `pb` trim may need reconcile with slice 09 (CTA band placement).

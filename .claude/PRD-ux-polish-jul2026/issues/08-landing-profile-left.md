@@ -11,11 +11,16 @@ Expanded landing header: Profile (signed-in only) in the **left** column; logo c
 
 ## Acceptance criteria
 
-- [ ] Signed-in: Profile on the left; logo centered; language + theme on the right.
-- [ ] Signed-out: no header Sign-in; left column empty/balanced.
-- [ ] On a narrow phone width, logo is not overlapped by language/Profile/theme controls.
-- [ ] Compact Online / In-Person / WhatsApp bar unchanged.
+- [x] Signed-in: Profile on the left; logo centered; language + theme on the right.
+- [x] Signed-out: no header Sign-in; left column empty/balanced.
+- [x] On a narrow phone width, logo is not overlapped by language/Profile/theme controls.
+- [x] Compact Online / In-Person / WhatsApp bar unchanged.
 
-## Blocked by
+## Proof (2026-07-13)
 
-None - can start immediately.
+Expanded header: Profile left, logo center (shrinks on narrow), language+theme right. Compact dock unchanged.
+
+```bash
+npx tsx components/ui/landing-header-hero.check.ts
+# → landing-header-hero.check.ts: ok
+```

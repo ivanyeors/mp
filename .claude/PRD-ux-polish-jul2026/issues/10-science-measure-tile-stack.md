@@ -11,10 +11,15 @@ Keep the same MeasureTile / measurement carousel section. Change internal layout
 
 ## Acceptance criteria
 
-- [ ] Each measurement card shows diagram above text on mobile (and consistently on desktop unless a documented exception).
-- [ ] Title and description remain fully readable without overlap.
-- [ ] Same four measurement cards / copy; carousel shell may remain.
+- [x] Each measurement card shows diagram above text on mobile (and consistently on desktop unless a documented exception).
+- [x] Title and description remain fully readable without overlap.
+- [x] Same four measurement cards / copy; carousel shell may remain.
 
-## Blocked by
+## Proof (2026-07-13)
 
-None - can start immediately.
+`MeasureTile` uses `flex flex-col` with responsive diagram (`max-w-[150px]`) above title/description. Size Matters still mounts four `MeasureTile`s.
+
+```bash
+npx tsx components/ui/measure-tile.check.ts
+# → measure-tile.check.ts: ok
+```

@@ -11,11 +11,16 @@ Fix height entry so intermediate decimals (e.g. `1.`) are not wiped on each keys
 
 ## Acceptance criteria
 
-- [ ] Typing `1.` then more digits works in `m` unit without the field resetting to `1`.
-- [ ] Unit toggle m/cm still converts correctly after a committed value.
-- [ ] Continue still rejects empty / out-of-range heights.
-- [ ] Automated check covers intermediate draft strings.
+- [x] Typing `1.` then more digits works in `m` unit without the field resetting to `1`.
+- [x] Unit toggle m/cm still converts correctly after a committed value.
+- [x] Continue still rejects empty / out-of-range heights.
+- [x] Automated check covers intermediate draft strings.
 
-## Blocked by
+## Proof (2026-07-13)
 
-None - can start immediately.
+Height step keeps `heightDraft` while typing; `normalizeHeightDraft` commits on blur/Continue.
+
+```bash
+npx tsx lib/configurator/height-draft.check.ts
+# → height-draft self-check ok: intermediate decimals preserved; commit range enforced
+```

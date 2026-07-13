@@ -11,12 +11,17 @@ Align Mbolster customise with inventory/Configure: **Customer preference** is ca
 
 ## Acceptance criteria
 
-- [ ] Mbolster preview shows case picker; no Cover Style block.
-- [ ] Authorize does not require or send a cover preference line for bolster.
-- [ ] Exactly one eligible case → auto-selected.
-- [ ] Hold/API reject invalid cover-as-required for bolster.
-- [ ] Automated check for bolster preference policy.
+- [x] Mbolster preview shows case picker; no Cover Style block.
+- [x] Authorize does not require or send a cover preference line for bolster.
+- [x] Exactly one eligible case → auto-selected.
+- [x] Hold/API reject invalid cover-as-required for bolster.
+- [x] Automated check for bolster preference policy.
 
-## Blocked by
+## Proof (2026-07-13)
 
-None - can start immediately.
+`caseOnly` on customization; hold sends case-only `preferenceLines`; API uses `preferenceCategoryAllowed`; sole case via `soleCaseId`.
+
+```bash
+npx tsx lib/configurator/preference-policy.check.ts
+# → preference-policy self-check ok: bolster is case-only; sole case auto-selects
+```
