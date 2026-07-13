@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccountSidebarNav } from "@/components/account/account-sidebar-nav";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 
@@ -20,5 +21,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <AccountSidebarNav>{children}</AccountSidebarNav>;
 }

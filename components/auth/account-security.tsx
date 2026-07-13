@@ -94,91 +94,93 @@ export function AccountSecurity({ email, googleLinked: initialGoogleLinked }: Pr
   };
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-medium">Password</h2>
-          <p className="text-sm text-muted-foreground">
-            Set a password for email sign-in, or email yourself a reset link.
-          </p>
-        </div>
-        <form onSubmit={setNewPassword} className="space-y-3 rounded-lg border p-4">
-          <div className="space-y-1.5">
-            <Label htmlFor={passwordId}>New password</Label>
-            <Input
-              id={passwordId}
-              type="password"
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading !== null}
-              minLength={8}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={confirmId}>Confirm password</Label>
-            <Input
-              id={confirmId}
-              type="password"
-              autoComplete="new-password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              disabled={loading !== null}
-              minLength={8}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={loading !== null || !password || !confirm}>
-              {loading === "password" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Save password
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={sendResetEmail}
-              disabled={loading !== null}
-            >
-              {loading === "reset" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Email reset link
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-medium">Connected accounts</h2>
-          <p className="text-sm text-muted-foreground">
-            Link Google so you can sign in with either method.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4">
+    <div className="space-y-4">
+      <div className="grid items-start gap-6 lg:grid-cols-2 lg:gap-8">
+        <section className="flex flex-col gap-3">
           <div>
-            <p className="font-medium">Google</p>
-            <p className="text-sm text-muted-foreground">
-              {googleLinked ? "Connected" : "Not connected"}
+            <h2 className="text-sm font-medium">Password</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Set a password for email sign-in, or email yourself a reset link.
             </p>
           </div>
-          {googleLinked ? (
-            <Button type="button" variant="secondary" size="sm" disabled>
-              Linked
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={linkGoogle}
-              disabled={loading !== null}
-            >
-              {loading === "google" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Link Google
-            </Button>
-          )}
-        </div>
-      </section>
+          <form onSubmit={setNewPassword} className="flex flex-1 flex-col gap-3 rounded-lg border p-5 sm:p-6">
+            <div className="space-y-1.5">
+              <Label htmlFor={passwordId}>New password</Label>
+              <Input
+                id={passwordId}
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading !== null}
+                minLength={8}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={confirmId}>Confirm password</Label>
+              <Input
+                id={confirmId}
+                type="password"
+                autoComplete="new-password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                disabled={loading !== null}
+                minLength={8}
+              />
+            </div>
+            <div className="mt-auto flex flex-wrap gap-2 pt-1">
+              <Button type="submit" disabled={loading !== null || !password || !confirm}>
+                {loading === "password" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Save password
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={sendResetEmail}
+                disabled={loading !== null}
+              >
+                {loading === "reset" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Email reset link
+              </Button>
+            </div>
+          </form>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-sm font-medium">Connected accounts</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Link Google so you can sign in with either method.
+            </p>
+          </div>
+          <div className="flex flex-1 flex-wrap items-center justify-between gap-3 rounded-lg border p-5 sm:p-6">
+            <div>
+              <p className="font-medium">Google</p>
+              <p className="text-sm text-muted-foreground">
+                {googleLinked ? "Connected" : "Not connected"}
+              </p>
+            </div>
+            {googleLinked ? (
+              <Button type="button" variant="secondary" size="sm" disabled>
+                Linked
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={linkGoogle}
+                disabled={loading !== null}
+              >
+                {loading === "google" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Link Google
+              </Button>
+            )}
+          </div>
+        </section>
+      </div>
 
       {message ? <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}

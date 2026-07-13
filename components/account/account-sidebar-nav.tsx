@@ -204,7 +204,7 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
           <SidebarRail />
         </Sidebar>
         <SidebarInset>
-          <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
+          <header className="flex h-14 min-w-0 items-center gap-2 border-b px-4 sm:px-6 md:px-8 lg:px-10">
             <SidebarTrigger />
             <div className="min-w-0 flex-1">
               <Breadcrumb>
@@ -243,7 +243,8 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
               </Link>
             </Button>
           </header>
-          <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
+          {/* pb clears the marketing dock that still shows on account routes */}
+          <div className="px-4 py-6 pb-28 sm:px-6 md:px-8 md:py-8 md:pb-28 lg:px-10 lg:py-10">
             {children}
           </div>
         </SidebarInset>
