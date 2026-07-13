@@ -1,26 +1,52 @@
 import { NextResponse } from "next/server";
+import {
+  applyOrdersPaidAtRange,
+  parseOrdersPaidAtRange,
+} from "@/lib/ecommerce/orders-paid-at-range";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const paidAtRange = parseOrdersPaidAtRange(
+    searchParams.get("date_from"),
+    searchParams.get("date_to")
+  );
+  if (!paidAtRange.ok) {
+    return NextResponse.json({ error: paidAtRange.error }, { status: 400 });
+  }
+
   const admin = supabaseAdmin();
 
   const [totalResult, revenueResult, pendingResult, marginResult, ledgerResult] =
     await Promise.all([
-      admin.from("orders").select("*", { count: "exact", head: true }),
-      admin
-        .from("orders")
-        .select("total")
-        .not("status", "in", '("cancelled","refunded")'),
-      admin
-        .from("orders")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "pending"),
-      admin
-        .from("order_margins")
-        .select("order_id, gross_margin, margin_pct, orders!inner(status, paid_at)")
-        .not("orders.status", "eq", "cancelled"),
+      applyOrdersPaidAtRange(
+        admin.from("orders").select("*", { count: "exact", head: true }),
+        paidAtRange.range
+      ),
+      applyOrdersPaidAtRange(
+        admin
+          .from("orders")
+          .select("total")
+          .not("status", "in", '("cancelled","refunded")'),
+        paidAtRange.range
+      ),
+      applyOrdersPaidAtRange(
+        admin
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending"),
+        paidAtRange.range
+      ),
+      applyOrdersPaidAtRange(
+        admin
+          .from("order_margins")
+          .select("order_id, gross_margin, margin_pct, orders!inner(status, paid_at)")
+          .not("orders.status", "eq", "cancelled"),
+        paidAtRange.range,
+        "orders.paid_at"
+      ),
       admin.from("order_payments").select("order_id"),
     ]);
 

@@ -98,6 +98,8 @@ assert.match(chromeSrc, /Exit configuration\?/);
 assert.match(chromeSrc, /sheetStickyBottomClassName/);
 assert.match(chromeSrc, /OverlayDismissButton/);
 assert.match(chromeSrc, /md:hidden/);
+// Slice 01: exit confirmation has no corner X (Stay/Exit/backdrop only)
+assert.match(chromeSrc, /ConfiguratorExitDialog[\s\S]*?DialogContent hideClose/);
 
 void dialogHtml;
 void barHtml;

@@ -175,6 +175,10 @@ export default function SettingsOrdersPage() {
     const [dateTo, setDateTo] = useState("");
     const [page, setPage] = useState(1);
     const [ordersTab, setOrdersTab] = useState<"platform" | "shopify">("platform");
+    const dateRangeError =
+        dateFrom && dateTo && dateFrom > dateTo
+            ? "From date must be on or before To date."
+            : null;
 
     // Data state
     const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -184,6 +188,8 @@ export default function SettingsOrdersPage() {
     // Dashboard stats
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [statsLoading, setStatsLoading] = useState(true);
+    const summaryStats = dateRangeError ? null : stats;
+    const summaryStatsLoading = dateRangeError ? false : statsLoading;
 
     // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -203,12 +209,18 @@ export default function SettingsOrdersPage() {
         setPage(1);
     }, [statusFilter, dateFrom, dateTo]);
 
-    // Fetch dashboard stats once
+    // Fetch dashboard stats for the selected sales window
     useEffect(() => {
-        setStatsLoading(true);
-        fetch("/api/shop/orders/dashboard")
+        if (dateRangeError) return;
+
+        const params = new URLSearchParams();
+        if (dateFrom) params.set("date_from", dateFrom);
+        if (dateTo) params.set("date_to", dateTo);
+        let cancelled = false;
+        fetch(`/api/shop/orders/dashboard?${params.toString()}`)
             .then((r) => r.json())
             .then((json) => {
+                if (cancelled) return;
                 const s = json.stats ?? json;
                 setStats({
                     total_orders: s.total_orders ?? 0,
@@ -220,11 +232,23 @@ export default function SettingsOrdersPage() {
                 });
             })
             .catch(() => {})
-            .finally(() => setStatsLoading(false));
-    }, []);
+            .finally(() => {
+                if (!cancelled) setStatsLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [dateFrom, dateTo, dateRangeError]);
 
     // Fetch orders
     const fetchOrders = useCallback(async () => {
+        if (dateRangeError) {
+            setOrders([]);
+            setTotal(0);
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         const params = new URLSearchParams();
         if (debouncedSearch) params.set("search", debouncedSearch);
@@ -245,7 +269,7 @@ export default function SettingsOrdersPage() {
         } finally {
             setLoading(false);
         }
-    }, [debouncedSearch, statusFilter, dateFrom, dateTo, page]);
+    }, [debouncedSearch, statusFilter, dateFrom, dateTo, dateRangeError, page]);
 
     useEffect(() => {
         fetchOrders();
@@ -281,34 +305,34 @@ export default function SettingsOrdersPage() {
                 <SummaryCard
                     icon={ShoppingCart}
                     label="Total Orders"
-                    value={stats ? String(stats.total_orders) : "—"}
-                    loading={statsLoading}
+                    value={summaryStats ? String(summaryStats.total_orders) : "—"}
+                    loading={summaryStatsLoading}
                 />
                 <SummaryCard
                     icon={DollarSign}
                     label="Revenue"
-                    value={stats ? formatSGD(stats.revenue) : "—"}
-                    loading={statsLoading}
+                    value={summaryStats ? formatSGD(summaryStats.revenue) : "—"}
+                    loading={summaryStatsLoading}
                 />
                 <SummaryCard
                     icon={TrendingUp}
                     label="Avg Order Value"
-                    value={stats ? formatSGD(stats.avg_order_value) : "—"}
-                    loading={statsLoading}
+                    value={summaryStats ? formatSGD(summaryStats.avg_order_value) : "—"}
+                    loading={summaryStatsLoading}
                 />
-                {!statsLoading && stats && (
+                {!summaryStatsLoading && summaryStats && (
                     <SummaryCard
                         icon={TrendingUp}
                         label="Gross Margin"
-                        value={`${formatSGD(stats.total_gross_margin ?? 0)}${stats.avg_margin_pct != null ? ` · ${formatMarginPct(stats.avg_margin_pct)} avg` : ""}`}
-                        loading={statsLoading}
+                        value={`${formatSGD(summaryStats.total_gross_margin ?? 0)}${summaryStats.avg_margin_pct != null ? ` · ${formatMarginPct(summaryStats.avg_margin_pct)} avg` : ""}`}
+                        loading={summaryStatsLoading}
                     />
                 )}
                 <SummaryCard
                     icon={Clock}
                     label="Pending Orders"
-                    value={stats ? String(stats.pending_orders) : "—"}
-                    loading={statsLoading}
+                    value={summaryStats ? String(summaryStats.pending_orders) : "—"}
+                    loading={summaryStatsLoading}
                 />
             </div>
 
@@ -352,7 +376,11 @@ export default function SettingsOrdersPage() {
                     <Input
                         type="date"
                         value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
+                        onChange={(e) => {
+                            setDateFrom(e.target.value);
+                            setStatsLoading(true);
+                        }}
+                        max={dateTo || undefined}
                         className="w-40"
                         aria-label="From date"
                     />
@@ -360,11 +388,20 @@ export default function SettingsOrdersPage() {
                     <Input
                         type="date"
                         value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
+                        onChange={(e) => {
+                            setDateTo(e.target.value);
+                            setStatsLoading(true);
+                        }}
+                        min={dateFrom || undefined}
                         className="w-40"
                         aria-label="To date"
                     />
                 </div>
+                {dateRangeError && (
+                    <p role="alert" className="basis-full text-sm text-destructive">
+                        {dateRangeError}
+                    </p>
+                )}
             </div>
 
             {/* Content */}

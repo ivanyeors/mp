@@ -53,13 +53,24 @@ A Configure BOM template that contains filling lines only, scoped by product typ
 The baseline filling mix for one Configure product card (e.g. Basic Size S, Premium Size M, Bolster medium). Stored on that **Composed sellable**, not on a warehouse preset name. Shown as a hint at assignment; the operator must actively confirm or override. Changing assigned size×tier (or length) on a **Result** clears any filling selection and reloads the hint for the new product card.
 
 **Customer preference**:
-Cover and case **Item** choices only. Protector is tier-owned on the **Composed sellable**, not a preference.
+Shopper-chosen **Item**s on a customisation preview. **Mpillow** (full/basic): cover and case only. **Mbolster**: case only (`bolster_case`) — no cover category in inventory or Configure for bolsters. When exactly one eligible case is available to choose, the preview auto-selects it. Protector (`pillow_protector` / `bolster_protector`) is owned on the **Composed sellable** BOM, not a preference.
+_Avoid_: showing a Cover Style picker on mbolster-config; treating bolster protector as a shopper choice
 
 **Add-on**:
 An accessory (or optional extra) line at item **MSRP**, chosen during customisation.
 
 **Authorization hold**:
 An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
+
+**Pre-order**:
+A customise-preview fulfillment mode when immediate build is not possible from current inventory: a required **Customer preference** line has `stock_available <= 0` (Mpillow: cover or case; Mbolster: case), **or** the recommended **Composed sellable** (size×tier / length) has buildable `<= 0`. Applies to **Mpillow** (full/basic) and **Mbolster**.
+
+- **Live preview CTA:** recomputed from current inventory. When trigger is false, new shoppers see the normal hold CTA (e.g. Proceed) — not Pre-order. When true, CTA + waiting-time section use Pre-order copy (fixed i18n in v1).
+- **Persisted Result mode:** at hold create, if the shopper submitted under Pre-order, the **Result** keeps that mode (sticky for that submission).
+- **Restock notice:** when inventory recovers enough that the Pre-order trigger would clear, open Pre-order **Results** in status **`held`** or **`assigned`** are **automatically** emailed that stock is back and they can Sign in in a few days to track customisation (**Result**) status (idempotent; skip expired/declined/captured/canceled; no Staff-triggered send in v1). New sessions on the configurator flip back to the normal hold CTA.
+
+Same money path: hold → **Result** → assign → Accept → capture → **Order**; no separate Pre-order queue in v1.
+_Avoid_: conflating soft “low stock” badges with Pre-order; calling the held **Result** an **Order** before Accept + capture; “Purchase” as the hold CTA (payment is still an **Authorization hold**); UI-only Pre-order that vanishes after Stripe; bolster-only rules; CMS editing of waiting-time copy in v1; manual restock notice as the v1 path
 
 **Appointment**:
 A scheduled in-store Customisation or Re-adjustment session booked via Google Appointment Scheduling (Calendar Events on `admin@mpillow.com`).
@@ -126,7 +137,7 @@ _Avoid_: conflating with **Customer preference** (cover/case choices only)
 > **Domain expert:** "We create a **Result** with an **Authorization hold**. The operator assigns size×**tier** and a **Filling Template** on the platform. The customer sees the final build, Accepts, we capture payment, and the **Result** becomes an **Order** for production."
 >
 > **Dev:** "Can the customer pick the protector or fillings?"
-> **Domain expert:** "No. Protector is **tier**-owned on the **Composed sellable**. Fillings come only from the **Filling Template**. **Customer preference** is cover and case only."
+> **Domain expert:** "No. Protector is owned on the **Composed sellable** BOM (pillow by **tier**, bolster by **length**). Fillings come only from the **Filling Template**. **Customer preference** is cover + case on **Mpillow**; **case only** on **Mbolster** (Bolster Case — no covers in inventory)."
 >
 > **Dev:** "What if the operator doesn't pick a filling mix at assign?"
 > **Domain expert:** "Assign is blocked until they confirm one. The UI shows the **Default Filling Template** for that **Composed sellable** as a hint, plus a short preview of its filling lines (variant, qty). They must actively select — usually the default, sometimes an override."
@@ -295,7 +306,15 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - "price" was used for both the editable Costings field and the storefront mirror — resolved: **MSRP** is the source; `product_variants.price` is the mirror.
 - "kind" was used for basic/premium — resolved: human-facing language is **tier**. Existing DB columns may remain `kind` / `pillow_kind`; UI, emails, and new human-facing API field labels use `tier`.
 - **Filling Template** (filling-only Configure BOM template, operator-selected) vs **Composed sellable** (size×tier or length BOM owning packaging/protector defaults and sell **MSRP**) vs **Storefront product** (shop listing projection) — three different things; do not conflate.
-- Protector is **tier**-owned on the **Composed sellable**, not a **Customer preference**. Fillings come from **Filling Templates** only.
+- Protector is owned on the **Composed sellable** BOM, not a **Customer preference**. Fillings come from **Filling Templates** only.
+- Mbolster “covers” — resolved: inventory/Configure have **Bolster Case** + **Bolster Protector** (plus packaging/etc.); no cover category. **Customer preference** on mbolster-config is case only; customise UI must not show Cover Style or require `selectedCover`.
+- Customise “sold out / low stock / still pay” — resolved: **Pre-order** when a required preference line on-hand is 0 **or** composed sellable buildable is 0. Preview CTA is **live**; **Result** mode is **sticky** at hold create; **automated** restock email to **`held`/`assigned`** Pre-order Results when stock recovers (idempotent; no manual send in v1). Scope: Mpillow + Mbolster. Waiting-time copy: fixed i18n. No separate ops queue in v1. Hold CTA: Proceed vs Pre-order (not “Purchase”). Packaged inside **UX polish Jul 2026** PRD (single backlog; Pre-order is vertical slices within it, not a separate PRD). ADR: `docs/adr/0005-pre-order-authorization-hold.md`.
+- Marketing app dock scroll — resolved: hide on scroll-down, show on scroll-up / near top, **and** show when near document bottom; configurator post-welcome `dock-hidden` unchanged. Trim excess bottom padding that double-counts dock clearance.
+- Mbolster (i) FAQ dismiss — resolved: **`hideClose` + inline close below the FAQ accordion** (scrolls with content), matching Mpillow FAQ — not a fixed/corner X.
+- Mbolster height “can’t type `.`” — resolved as AFK bug: input round-trips through `parseFloat`/`toDisplayHeight` on every keystroke so intermediate values like `1.` become `1`. Keep a draft display string while typing; normalize/clamp on blur or Continue.
+- Pre-order trade-offs — ADR written: `docs/adr/0005-pre-order-authorization-hold.md`.
+- Orders date-range **sales** report — resolved: filter list + dashboard summary by **`paid_at`** (not `created_at`). Unpaid/pending without `paid_at` fall outside the sales window.
+- Mpillow/Mbolster “Stripe API issue” on deploy — resolved: missing **`STRIPE_SECRET_KEY`** on the deployed Vercel env (localhost had it). Operator fixed env; **no code slice** in this PRD for that failure. Still remove bolster **cover** preference requirement as a separate customise correctness slice.
 - "media" / landing slot images vs **Media Asset** — slot overrides and slide-in config paths are consumers; the library record is the **Media Asset**. Hybrid refs: new attachments prefer Asset id; legacy URL strings still count toward **Used**.
 - “TL;DR” / key takeaways vs **Answer lede** — resolved: same pattern; industry synonym only, no second UI.
 - “FAQ” alone is ambiguous — resolved: **Global FAQ** = `/faq` catalog; **Page FAQ** = per-**FAQ surface** embed. Independent catalogs in v1.

@@ -353,6 +353,8 @@ export interface CustomizationStepComponentsProps {
    * Used by the authorize-then-capture purchase path.
    */
   preferencesOnly?: boolean;
+  /** Show only the case preference picker (Mbolster). */
+  caseOnly?: boolean;
   /** Hide back/continue row when the parent owns navigation. */
   hideNav?: boolean;
   continueLabel?: string;
@@ -422,34 +424,37 @@ export function CustomizationStepComponents({
   onBack,
   onContinue,
   preferencesOnly = false,
+  caseOnly = false,
   hideNav = false,
   continueLabel = "Review & Add to Cart",
 }: CustomizationStepComponentsProps) {
   return (
     <div className="space-y-6">
       {/* Cover style picker */}
-      <div className="space-y-3">
-        <Label className="text-base font-semibold">Cover Style</Label>
-        {components.covers.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No covers available for this size.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {components.covers.map((cover) => (
-              <ComponentOptionButton
-                key={cover.item_id}
-                name={cover.name}
-                subtype={cover.subtype}
-                stockAvailable={cover.stock_available}
-                isSelected={selectedCover === cover.item_id}
-                onSelect={() => onSelectCover(cover.item_id)}
-                allowSoldOut={preferencesOnly}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      {!caseOnly && (
+        <div className="space-y-3">
+          <Label className="text-base font-semibold">Cover Style</Label>
+          {components.covers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No covers available for this size.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {components.covers.map((cover) => (
+                <ComponentOptionButton
+                  key={cover.item_id}
+                  name={cover.name}
+                  subtype={cover.subtype}
+                  stockAvailable={cover.stock_available}
+                  isSelected={selectedCover === cover.item_id}
+                  onSelect={() => onSelectCover(cover.item_id)}
+                  allowSoldOut={preferencesOnly}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Case style picker — always shown (empty state if none) so Case is never missing */}
       <div className="space-y-3">

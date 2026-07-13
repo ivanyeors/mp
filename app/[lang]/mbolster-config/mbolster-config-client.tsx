@@ -12,12 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -48,7 +50,6 @@ import {
   buildFieldErrorMap,
   hybridCtaEnabled,
   isNonEmptyString,
-  isPositiveNumberString,
   pruneFieldErrors,
   type FieldCheck,
 } from "@/lib/configurator/step-validation";
@@ -67,9 +68,14 @@ import {
   useSavedShippingPrefill,
   type HoldShippingAddress,
 } from "@/components/shop/saved-address-select";
+import {
+  displayHeight,
+  normalizeHeightDraft,
+  type HeightUnit,
+} from "@/lib/configurator/height-draft";
+import { soleCaseId } from "@/lib/configurator/preference-policy";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
-type HeightUnit = "cm" | "m";
 type SleepPosition = "side" | "stomach" | "other";
 type BolsterLength = "short" | "medium" | "long";
 
@@ -86,31 +92,11 @@ const STORAGE_KEY = "mbolster_config_v4";
 const BOLSTER_PATH =
   "M80 40 C80 18 120 18 160 18 L504 18 C544 18 584 18 584 40 L584 334 C584 356 544 356 504 356 L160 356 C120 356 80 356 80 334 Z";
 
-function clampNumber(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
 function toNumber(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   const n = Number.parseFloat(trimmed);
   return Number.isFinite(n) ? n : null;
-}
-
-function toDisplayHeight(state: Pick<State, "heightUnit" | "heightCm">): string {
-  const cm = toNumber(state.heightCm);
-  if (cm === null) return "";
-  if (state.heightUnit === "cm") return String(Math.round(cm));
-  const meters = cm / 100;
-  return String(Math.round(meters * 100) / 100);
-}
-
-function toCmValue(unit: HeightUnit, raw: string): string {
-  const n = toNumber(raw);
-  if (n === null) return raw.trim() ? raw : "";
-  const cm = unit === "cm" ? n : n * 100;
-  const clamped = clampNumber(cm, 80, 250);
-  return String(Math.round(clamped * 10) / 10);
 }
 
 function labelForSleepPosition(v: SleepPosition): string {
@@ -174,11 +160,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     heightCm: "",
     sleepPosition: null,
   });
+  const [heightDraft, setHeightDraft] = React.useState("");
 
   const [shopRecommendation, setShopRecommendation] =
     React.useState<RecommendationResponseData | null>(null);
   const [shopLoading, setShopLoading] = React.useState(false);
-  const [selectedCover, setSelectedCover] = React.useState<number | null>(null);
   const [selectedCase, setSelectedCase] = React.useState<number | null>(null);
   const [selectedAddons, setSelectedAddons] = React.useState<Set<number>>(new Set());
   const [addons, setAddons] = React.useState<
@@ -236,14 +222,17 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         const parsed = JSON.parse(raw) as Partial<State> | null;
         if (parsed) {
           const step = normalizeStep(parsed.step);
+          const heightUnit = (parsed.heightUnit as HeightUnit) ?? "m";
+          const heightCm = typeof parsed.heightCm === "string" ? parsed.heightCm : "";
           hydratedStep = step;
           setState((prev) => ({
             ...prev,
             step: step ?? prev.step,
-            heightUnit: (parsed.heightUnit as HeightUnit) ?? prev.heightUnit,
-            heightCm: typeof parsed.heightCm === "string" ? parsed.heightCm : prev.heightCm,
+            heightUnit,
+            heightCm,
             sleepPosition: (parsed.sleepPosition as SleepPosition) ?? prev.sleepPosition,
           }));
+          setHeightDraft(displayHeight(heightUnit, heightCm));
         }
       }
     } catch {
@@ -262,8 +251,10 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
           heightCm: draft.heightCm ?? s.heightCm,
           sleepPosition: draft.sleepPosition !== undefined ? draft.sleepPosition : s.sleepPosition,
         }));
+        if (draft.heightCm) {
+          setHeightDraft(displayHeight(draft.heightUnit ?? "m", draft.heightCm));
+        }
         const sel = draft.selections;
-        setSelectedCover(sel.selectedCover);
         setSelectedCase(sel.selectedCase);
         setSelectedAddons(new Set(sel.selectedAddons));
         setSelectedShippingId(sel.selectedShippingId);
@@ -310,7 +301,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         heightCm: state.heightCm,
         sleepPosition: state.sleepPosition,
         selections: {
-          selectedCover,
+          selectedCover: null,
           selectedCase,
           selectedAddons: [...selectedAddons],
           selectedShippingId,
@@ -329,7 +320,6 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     state.heightUnit,
     state.heightCm,
     state.sleepPosition,
-    selectedCover,
     selectedCase,
     selectedAddons,
     selectedShippingId,
@@ -354,11 +344,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const heightFields = React.useMemo((): FieldCheck[] => [
     {
       key: "heightCm",
-      touched: state.heightCm.trim() !== "",
-      valid: isPositiveNumberString(state.heightCm),
-      message: "Enter a valid height",
+      touched: heightDraft.trim() !== "",
+      valid: normalizeHeightDraft(state.heightUnit, heightDraft) !== null,
+      message: "Enter a height between 80 and 250 cm",
     },
-  ], [state.heightCm]);
+  ], [heightDraft, state.heightUnit]);
 
   const sleepFields = React.useMemo((): FieldCheck[] => [
     {
@@ -370,12 +360,6 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   ], [state.sleepPosition]);
 
   const holdFields = React.useMemo((): FieldCheck[] => [
-    {
-      key: "cover",
-      touched: selectedCover != null,
-      valid: selectedCover != null,
-      message: "Choose a cover",
-    },
     {
       key: "case",
       touched: selectedCase != null,
@@ -419,7 +403,6 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       message: "Choose a shipping method",
     },
   ], [
-    selectedCover,
     selectedCase,
     holdEmail,
     holdPhone,
@@ -491,8 +474,8 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       heightCm: "",
       sleepPosition: null,
     });
+    setHeightDraft("");
     setShopRecommendation(null);
-    setSelectedCover(null);
     setSelectedCase(null);
     setSelectedAddons(new Set());
     setAddons([]);
@@ -559,10 +542,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       setShopRecommendation(data);
 
       if (!opts?.preserveSelections) {
-        const defaultCover = data.components.covers.find((c) => c.base_quantity > 0);
-        const defaultCase = data.components.cases.find((c) => c.base_quantity > 0);
-        if (defaultCover) setSelectedCover(defaultCover.item_id);
-        if (defaultCase) setSelectedCase(defaultCase.item_id);
+        setSelectedCase(soleCaseId(data.components.cases));
       }
 
       if (!opts?.stayOnStep) {
@@ -575,7 +555,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     }
   }, [heightNum, state.sleepPosition]);
 
-  // After hold-cancel restore: re-fetch recommendation, keep cover/case, stay on preview.
+  // After hold-cancel restore: re-fetch recommendation, keep the case, stay on preview.
   React.useEffect(() => {
     if (!restoringHoldCancel || state.step !== "preview") return;
     if (!heightNum || !state.sleepPosition) {
@@ -598,7 +578,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     fetchBolsterRecommendation,
   ]);
 
-  // Load bolster-specific add-ons + shipping when entering the cover/purchase preview.
+  // Load bolster-specific add-ons + shipping when entering the purchase preview.
   React.useEffect(() => {
     if (state.step !== "preview") return;
 
@@ -664,7 +644,6 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             sleep_position: state.sleepPosition,
           },
           preferenceLines: [
-            { item_id: selectedCover!, quantity: 1, category: "cover" },
             { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
@@ -685,7 +664,6 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     }
   }, [
     suggestedLength,
-    selectedCover,
     selectedCase,
     holdEmail,
     holdPhone,
@@ -699,7 +677,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     holdFields,
   ]);
 
-  // Purchase preview uses the same mp-config split layout (cover/case, add-ons, shipping).
+  // Purchase preview uses the same mp-config split layout (case, add-ons, shipping).
   if (state.step === "preview") {
     return (
       <div className="min-h-screen bg-background">
@@ -800,7 +778,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             </div>
           </div>
 
-          {/* Right: customization panel (cover style, add-ons, shipping) */}
+          {/* Right: customization panel (case, add-ons, shipping) */}
           <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
             <div
               className={cn(
@@ -811,22 +789,22 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                 <p className="text-sm text-muted-foreground">
-                  Choose cover and case, optional add-ons, then authorize payment. You are not
+                  Choose a case, optional add-ons, then authorize payment. You are not
                   charged until you accept the final build.
                 </p>
               </div>
 
               {shopRecommendation ? (
                 <div className="space-y-2">
-                  {(fieldErrors.cover || fieldErrors.case) && (
+                  {fieldErrors.case && (
                     <p className="text-sm text-destructive">
-                      {[fieldErrors.cover, fieldErrors.case].filter(Boolean).join(" · ")}
+                      {fieldErrors.case}
                     </p>
                   )}
                   <CustomizationStepComponents
                     components={shopRecommendation.components}
-                    selectedCover={selectedCover}
-                    onSelectCover={setSelectedCover}
+                    selectedCover={null}
+                    onSelectCover={() => {}}
                     selectedCase={selectedCase}
                     onSelectCase={setSelectedCase}
                     componentQtyOverrides={new Map()}
@@ -837,6 +815,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     onBack={goBack}
                     onContinue={() => void handleAuthorizeHold()}
                     preferencesOnly
+                    caseOnly
                     hideNav
                   />
                 </div>
@@ -1104,7 +1083,10 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   <Info className="h-5 w-5" />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+              <DialogContent
+                hideClose
+                className="max-h-[85vh] max-w-2xl overflow-y-auto"
+              >
                 <DialogHeader className="text-left sm:text-left">
                   <DialogTitle className="text-2xl leading-tight">{info.h1}</DialogTitle>
                   <DialogDescription className="text-base leading-relaxed">
@@ -1127,6 +1109,11 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     <PageFaqAccordion items={info.faqItems} locale={locale} />
                   </div>
                 )}
+                <div className="flex justify-end">
+                  <DialogClose asChild>
+                    <OverlayDismissButton variant="inline" />
+                  </DialogClose>
+                </div>
               </DialogContent>
             </Dialog>
 
@@ -1136,7 +1123,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 Customise your Mbolster
               </h1>
               <p className="mx-auto max-w-2xl text-muted-foreground">
-                Answer a few quick questions, choose cover and case preferences, then authorize
+                Answer a few quick questions, choose a case preference, then authorize
                 payment for operator review. You are not charged until you accept the final build.
               </p>
             </div>
@@ -1171,10 +1158,13 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <Input
-                  value={toDisplayHeight(state)}
-                  onChange={(e) => {
-                    const nextCm = toCmValue(state.heightUnit, e.target.value);
-                    setState((s) => ({ ...s, heightCm: nextCm }));
+                  value={heightDraft}
+                  onChange={(e) => setHeightDraft(e.target.value)}
+                  onBlur={() => {
+                    const heightCm = normalizeHeightDraft(state.heightUnit, heightDraft);
+                    if (heightCm === null) return;
+                    setState((s) => ({ ...s, heightCm }));
+                    setHeightDraft(displayHeight(state.heightUnit, heightCm));
                   }}
                   inputMode="decimal"
                   placeholder={state.heightUnit === "m" ? "e.g. 1.68" : "e.g. 168"}
@@ -1184,13 +1174,17 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 />
                 <Tabs
                   value={state.heightUnit}
-                  onValueChange={(v) =>
+                  onValueChange={(v) => {
+                    const heightUnit = v as HeightUnit;
+                    const heightCm =
+                      normalizeHeightDraft(state.heightUnit, heightDraft) ?? state.heightCm;
                     setState((s) => ({
                       ...s,
-                      heightUnit: v as HeightUnit,
-                      heightCm: toCmValue(v as HeightUnit, toDisplayHeight(s)),
-                    }))
-                  }
+                      heightUnit,
+                      heightCm,
+                    }));
+                    setHeightDraft(displayHeight(heightUnit, heightCm));
+                  }}
                 >
                   <TabsList className="h-12">
                     <TabsTrigger value="m" className="px-4">
@@ -1212,7 +1206,14 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 Back
               </Button>
               <Button
-                onClick={() => tryAdvance(heightFields, goNext)}
+                onClick={() =>
+                  tryAdvance(heightFields, () => {
+                    const heightCm = normalizeHeightDraft(state.heightUnit, heightDraft)!;
+                    setState((s) => ({ ...s, heightCm }));
+                    setHeightDraft(displayHeight(state.heightUnit, heightCm));
+                    goNext();
+                  })
+                }
                 disabled={!hybridCtaEnabled(heightFields)}
               >
                 Continue
@@ -1297,8 +1298,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 {shopRecommendation.recommendation.explanation}
               </p>
               <p className="text-xs text-muted-foreground">
-                Fillings are chosen by our team after review. You pick cover and case preferences
-                next.
+                Fillings are chosen by our team after review. You pick a case preference next.
               </p>
               <div className="flex items-center justify-between pt-2">
                 <Button variant="outline" onClick={goBack}>

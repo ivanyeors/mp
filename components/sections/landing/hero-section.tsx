@@ -39,9 +39,9 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
 
         <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-background/85 via-background/25 to-transparent" />
         <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/25 to-transparent md:hidden" />
-        <div className="absolute inset-0 z-10 flex items-end md:items-center">
-          <div className="mx-auto w-full max-w-6xl px-4 pt-12 pb-[calc(3rem+var(--mobile-bottom-clearance,4.5rem))] md:py-16 md:pb-16">
-            <div className="max-w-xl space-y-6">
+        <div className="absolute inset-0 z-10 flex md:items-center">
+          <div className="mx-auto h-full w-full max-w-6xl px-4 pt-12 md:h-auto md:py-16">
+            <div className="flex h-full max-w-xl flex-col md:block md:h-auto md:space-y-6">
               <div className="space-y-3">
                 <h1 className="line-clamp-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-6xl">
                   {titlePrefix}
@@ -71,7 +71,7 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
                 ) : null}
               </div>
 
-              <div className="pointer-events-auto flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="pointer-events-auto mt-auto flex flex-col gap-3 pb-[var(--mobile-bottom-clearance,4.5rem)] sm:flex-row sm:items-center md:mt-0 md:pb-0">
                 <CustomiseTierPicker
                   locale={locale}
                   images={images}

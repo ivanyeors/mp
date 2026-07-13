@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sumOrderItemQuantities } from "@/lib/ecommerce/orders";
+import {
+  applyOrdersPaidAtRange,
+  parseOrdersPaidAtRange,
+} from "@/lib/ecommerce/orders-paid-at-range";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -73,6 +77,13 @@ export async function GET(req: Request) {
   const page = parseInt(searchParams.get("page") ?? "1", 10);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
   const sort = searchParams.get("sort") ?? "created_at.desc";
+  const paidAtRange = parseOrdersPaidAtRange(
+    searchParams.get("date_from"),
+    searchParams.get("date_to")
+  );
+  if (!paidAtRange.ok) {
+    return NextResponse.json({ error: paidAtRange.error }, { status: 400 });
+  }
 
   const admin = supabaseAdmin();
   const from = (page - 1) * limit;
@@ -88,6 +99,7 @@ export async function GET(req: Request) {
   if (search) {
     query = query.or(`order_number.ilike.%${search}%,email.ilike.%${search}%`);
   }
+  query = applyOrdersPaidAtRange(query, paidAtRange.range);
 
   const [sortColumn, sortDir] = sort.split(".");
   const ascending = sortDir === "asc";

@@ -114,21 +114,22 @@ export function HomeHeader() {
           }`}
       >
         {!isCompact ? (
-          <div className="mx-auto grid w-full max-w-6xl grid-cols-3 items-center px-4 py-3">
-            <div />
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2 py-3 sm:gap-2 sm:px-4">
+            <div className="flex min-w-0 justify-start">
+              <ProfileMenu />
+            </div>
             <div className="flex justify-center">
               <Image
                 src="/mpillow_logo_2026.png"
                 alt="Mpillow"
                 width={120}
                 height={120}
-                className="h-[120px] w-[120px] object-contain"
+                className="h-16 w-16 object-contain sm:h-[120px] sm:w-[120px]"
                 priority
               />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex min-w-0 justify-end gap-1 sm:gap-2">
               <LanguageToggle />
-              <ProfileMenu />
               <ModeToggle />
             </div>
           </div>

@@ -1,73 +1,70 @@
-# UX Polish Jul 2026 — Vertical Slices (Issues)
+# UX Polish + Pre-order Jul 2026 — Vertical Slices (Issues)
 
-Tracer-bullet breakdown of the PRD (`../ux-polish-jul2026-prd.md`). Each slice is a thin, demoable path. Published locally (no external issue tracker configured).
+Tracer-bullet breakdown of the PRD (`../ux-polish-jul2026-prd.md`). Each slice is independently grabbable. Published locally; triage label: `needs-triage`.
 
-**Triage label:** `needs-triage` (each slice)
+ADR: `docs/adr/0005-pre-order-authorization-hold.md`
 
 ## Slices
 
-| # | Title | Type | Blocked by | User stories | Suggested PR |
-|---|-------|------|------------|--------------|--------------|
-| 01 | Mpillow Stripe hold verification | HITL (+fix if broken) | none | 1–2 | A |
-| 02 | Exit dialog — remove corner X | AFK | none | 3–4 | A |
-| 03 | Mbolster FAQ close below accordion | AFK | none | 5 | B |
-| 04 | Mbolster height keyboard input | AFK | none | 6 | B |
-| 05 | Mbolster preferences: no covers | AFK | none | 7–8 | B |
-| 06 | Landing header — Profile left | AFK | none | 9–10 | C |
-| 07 | Landing hero — CTAs bottom mobile | AFK | none | 11 | C |
-| 08 | Science of Sleep cards stack | AFK | none | 12–13 | D |
-| 09 | Bottom padding + dock at page end | AFK | none | 14–15 | E |
-| 10 | Mobile viewport — no zoom / no side scroll | AFK | 09 (soft) | 16–17 | E |
-| 11 | Settings mobile UX audit | AFK | 10 (soft) | 18 | F |
-| 12 | Orders sales report by date range | AFK | none | 19–20 | G |
+| # | Title | Type | Blocked by | User stories |
+|---|-------|------|------------|--------------|
+| 01 | Exit dialog: hide overlapping X | AFK | none | 1–2 |
+| 02 | Mbolster FAQ close below accordion | AFK | none | 3 |
+| 03 | Mbolster height decimal draft input | AFK | none | 4 |
+| 04 | Mbolster case-only preference + auto-select | AFK | none | 5–8 |
+| 05 | Pre-order trigger + live CTA + waiting-time i18n | AFK | 04 (soft) | 9–10, 14, 32 |
+| 06 | Persist Pre-order on Result at hold create | AFK | 05 | 11 |
+| 07 | Automated Pre-order restock email | AFK | 06 | 12–13, 15 |
+| 08 | Landing header: Profile left + logo clearance | AFK | none | 16–18 |
+| 09 | Landing hero: mobile CTAs lower in hero | AFK | none | 19–20 |
+| 10 | Science of Sleep MeasureTile stack | AFK | none | 21 |
+| 11 | Dock: show at page end + trim padding | AFK | none | 22–25 |
+| 12 | Mobile overflow / no side-scroll | AFK | 11 (soft) | 26 |
+| 13 | Site-wide pinch-zoom lock | AFK | 12 | 27 |
+| 14 | Orders sales report by paid_at | AFK | none | 29–30 |
+| 15 | Full Admin Panel mobile UX pass | AFK | 12 (soft) | 28 |
+| 16 | Staging device QA checklist | HITL | 01–15 as relevant | 31 |
 
 ## Dependency graph
 
 ```mermaid
-graph TD
-  s01[01 Stripe hold verify]
-  s02[02 Exit dialog no X]
-  s03[03 Mbolster FAQ close]
-  s04[04 Height keyboard]
-  s05[05 Bolster no covers]
-  s06[06 Profile left]
-  s07[07 Hero CTAs]
-  s08[08 Science cards]
-  s09[09 Dock padding]
-  s10[10 Viewport lock]
-  s11[11 Settings mobile]
-  s12[12 Orders date report]
-  s09 -.-> s10
-  s10 -.-> s11
-  s05 -.-> s03
+flowchart TB
+  s01[01 Exit X]
+  s02[02 FAQ close]
+  s03[03 Height draft]
+  s04[04 Case-only]
+  s05[05 Pre-order CTA]
+  s06[06 Persist flag]
+  s07[07 Restock email]
+  s08[08 Profile left]
+  s09[09 Hero CTAs]
+  s10[10 MeasureTile]
+  s11[11 Dock end]
+  s12[12 Overflow]
+  s13[13 Zoom lock]
+  s14[14 Orders paid_at]
+  s15[15 Settings mobile]
+  s16[16 Staging QA]
+  s04 --> s05
+  s05 --> s06
+  s06 --> s07
+  s11 -.-> s12
+  s12 --> s13
+  s12 -.-> s15
+  s01 --> s16
+  s07 --> s16
+  s13 --> s16
+  s14 --> s16
+  s15 --> s16
 ```
 
-Solid edges = hard blockers. Dotted = soft (prefer order; can parallelize).
+## Recommended build order
 
-## Recommended build order / PR split
-
-Independent PRs off `main` (default). Stack only where noted.
-
-```mermaid
-flowchart LR
-  A[PR A: Mpillow hold + exit]
-  B[PR B: Mbolster customise]
-  C[PR C: Landing header + hero]
-  D[PR D: Science of Sleep cards]
-  E[PR E: Dock + viewport]
-  F[PR F: Settings mobile]
-  G[PR G: Orders date report]
-```
-
-1. **A** — slices 01–02 (configurator payment + exit)
-2. **B** — slices 03–05 (Mbolster FAQ / height / covers)
-3. **C** — slices 06–07 (landing)
-4. **D** — slice 08 (Science of Sleep)
-5. **E** — slices 09–10 (dock + viewport; soft stack)
-6. **F** — slice 11 (Settings mobile; after E if overflow tokens change)
-7. **G** — slice 12 (Orders API + UI; independent)
+1. Parallel: **01–04**, **08–11**, **14**
+2. **05 → 06 → 07** (Pre-order stack)
+3. **12 → 13**; **15** after or with **12**
+4. **16** HITL after relevant AFK slices
 
 ## HITL notes
 
-- **Slice 01:** Staging Stripe test card — create hold, cancel, restore preview; document pass/fail before merging “verify” as done.
-- **Slices 04, 09, 10:** Device matrix (iOS Safari + Android Chrome) required; AFK code alone is insufficient for sign-off.
+- **Slice 16:** iOS Safari + Android Chrome matrix for Pre-order, Mbolster height/FAQ, landing, dock end-of-page, Settings mobile, Orders date range.

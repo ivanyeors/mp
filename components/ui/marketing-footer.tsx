@@ -73,7 +73,7 @@ export function MarketingFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="w-full border-t border-border bg-muted/40 pb-[calc(var(--mobile-bottom-clearance)+2.5rem)] md:pb-0">
+    <footer className="w-full border-t border-border bg-muted/40 pb-[var(--mobile-bottom-clearance)] md:pb-0">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="flex flex-col gap-8">
           <div className="max-w-md space-y-5">
