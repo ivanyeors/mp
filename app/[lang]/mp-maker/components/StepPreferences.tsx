@@ -17,6 +17,11 @@ import { useBuilder } from "./BuilderProvider";
 import type { CustomerPreferences } from "@/lib/types/customization";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import {
+  displayHeight,
+  normalizeHeightDraft,
+  type HeightUnit,
+} from "@/lib/configurator/height-draft";
 
 // ─── Pillow option data ──────────────────────────────────────
 
@@ -60,7 +65,7 @@ export function StepPreferences() {
   const [notes, setNotes] = useState("");
 
   // Bolster state
-  const [heightUnit, setHeightUnit] = useState<"cm" | "m">("cm");
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>("cm");
   const [heightValue, setHeightValue] = useState("");
   const [bolsterSleepPos, setBolsterSleepPos] = useState<"side" | "stomach" | "other" | null>(null);
 
@@ -119,14 +124,12 @@ export function StepPreferences() {
       return;
     }
 
-    const heightCm = heightUnit === "m"
-      ? Math.round(parseFloat(heightValue) * 100)
-      : parseInt(heightValue, 10);
-
-    if (isNaN(heightCm) || heightCm < 80 || heightCm > 250) {
+    const heightCmStr = normalizeHeightDraft(heightUnit, heightValue);
+    if (heightCmStr === null) {
       toast.error("Please enter a valid height (80-250 cm)");
       return;
     }
+    const heightCm = Math.round(Number(heightCmStr));
 
     setLoading(true);
     builder.setIsLoadingRecommendation(true);
@@ -304,14 +307,29 @@ export function StepPreferences() {
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <Input
-              type="number"
               value={heightValue}
               onChange={(e) => setHeightValue(e.target.value)}
+              onBlur={() => {
+                const heightCm = normalizeHeightDraft(heightUnit, heightValue);
+                if (heightCm === null) return;
+                setHeightValue(displayHeight(heightUnit, heightCm));
+              }}
+              inputMode="decimal"
               placeholder={heightUnit === "cm" ? "170" : "1.70"}
               className="text-lg h-12"
             />
           </div>
-          <Tabs value={heightUnit} onValueChange={(v) => setHeightUnit(v as "cm" | "m")}>
+          <Tabs
+            value={heightUnit}
+            onValueChange={(v) => {
+              const next = v as HeightUnit;
+              const heightCm = normalizeHeightDraft(heightUnit, heightValue);
+              setHeightUnit(next);
+              if (heightCm !== null) {
+                setHeightValue(displayHeight(next, heightCm));
+              }
+            }}
+          >
             <TabsList>
               <TabsTrigger value="cm">cm</TabsTrigger>
               <TabsTrigger value="m">m</TabsTrigger>

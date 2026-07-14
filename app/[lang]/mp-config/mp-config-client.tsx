@@ -88,14 +88,27 @@ import {
   buildFieldErrorMap,
   hybridCtaEnabled,
   isNonEmptyString,
-  isPositiveNumberString,
   pruneFieldErrors,
   type FieldCheck,
 } from "@/lib/configurator/step-validation";
 import {
+  displayMeasurement,
+  normalizeMeasurementDraft,
+  type MeasurementUnit,
+} from "@/lib/configurator/measurement-draft";
+import {
   PreviewContactFields,
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
+
+type MeasureKey = "shoulderLength" | "neckToBack" | "headToBack" | "neckLength";
+
+const EMPTY_MEASURE_DRAFTS: Record<MeasureKey, string> = {
+  shoulderLength: "",
+  neckToBack: "",
+  headToBack: "",
+  neckLength: "",
+};
 
 /** Prefer BOM default, else first in-stock option, else first row. */
 function pickDefaultComponent(
@@ -180,7 +193,9 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
   // Single unit selector for the whole flow (default: inches)
-  const [measurementUnit, setMeasurementUnit] = useState<"cm" | "in">("in");
+  const [measurementUnit, setMeasurementUnit] = useState<MeasurementUnit>("in");
+  const [measurementDrafts, setMeasurementDrafts] =
+    useState<Record<MeasureKey, string>>(EMPTY_MEASURE_DRAFTS);
   const [measurementData, setMeasurementData] = useState<MeasurementData>({
     name: "",
     gender: "",
@@ -335,14 +350,40 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     },
   ], [measurementData.name, measurementData.gender, measurementData.ageGroup]);
 
-  const measureField = (key: "shoulderLength" | "neckToBack" | "headToBack" | "neckLength"): FieldCheck[] => [
+  const measureField = (key: MeasureKey): FieldCheck[] => [
     {
       key,
-      touched: measurementData[key].trim() !== "",
-      valid: isPositiveNumberString(measurementData[key]),
+      touched: measurementDrafts[key].trim() !== "",
+      valid: normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]) !== null,
       message: "Enter a valid measurement",
     },
   ];
+
+  const setMeasureDraft = (key: MeasureKey, value: string) => {
+    setMeasurementDrafts((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const commitMeasureDraft = (key: MeasureKey) => {
+    const cm = normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]);
+    if (cm === null) return;
+    updateMeasurement(key, cm);
+    setMeasureDraft(key, displayMeasurement(measurementUnit, cm));
+  };
+
+  const changeMeasurementUnit = (next: MeasurementUnit) => {
+    const nextDrafts = { ...measurementDrafts };
+    const nextData = { ...measurementData };
+    for (const key of Object.keys(EMPTY_MEASURE_DRAFTS) as MeasureKey[]) {
+      const cm =
+        normalizeMeasurementDraft(measurementUnit, measurementDrafts[key]) ??
+        measurementData[key];
+      nextData[key] = cm;
+      nextDrafts[key] = displayMeasurement(next, cm);
+    }
+    setMeasurementData(nextData);
+    setMeasurementDrafts(nextDrafts);
+    setMeasurementUnit(next);
+  };
 
   const customizeFields = useMemo((): FieldCheck[] => [
     {
@@ -472,7 +513,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       default:
         return [];
     }
-  }, [currentStep, nameFields, customizeFields, holdFields, measurementData]);
+  }, [currentStep, nameFields, customizeFields, holdFields, measurementData, measurementDrafts, measurementUnit]);
 
   useEffect(() => {
     setFieldErrors({});
@@ -490,23 +531,6 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     }
     setFieldErrors({});
     void onOk();
-  };
-
-  const toDisplayValue = (cmValue: string) => {
-    if (measurementUnit === "cm") return cmValue;
-    const cm = Number(cmValue);
-    if (!cmValue) return "";
-    if (!Number.isFinite(cm)) return cmValue;
-    const inches = cm / 2.54;
-    return String(Math.round(inches * 100) / 100);
-  };
-
-  const toCmValue = (raw: string) => {
-    if (raw === "") return "";
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return raw;
-    const cm = measurementUnit === "cm" ? n : n * 2.54;
-    return String(Math.round(cm * 100) / 100);
   };
 
   useEffect(() => {
@@ -559,7 +583,18 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     }
 
     if (draft?.measurementData) {
-      setMeasurementData((prev) => ({ ...prev, ...(draft.measurementData as Partial<MeasurementData>) }));
+      const partial = draft.measurementData as Partial<MeasurementData>;
+      setMeasurementData((prev) => ({ ...prev, ...partial }));
+      setMeasurementDrafts((prev) => {
+        const unit = (draft.measurementUnit as MeasurementUnit | undefined) ?? measurementUnit;
+        const next = { ...prev };
+        for (const key of Object.keys(EMPTY_MEASURE_DRAFTS) as MeasureKey[]) {
+          if (partial[key] != null) {
+            next[key] = displayMeasurement(unit, String(partial[key]));
+          }
+        }
+        return next;
+      });
     }
     if (draft?.measurementUnit) setMeasurementUnit(draft.measurementUnit);
     if (draft?.responseId) {
@@ -673,6 +708,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       sleepPositionType: [],
       usesBolster: "",
     });
+    setMeasurementDrafts(EMPTY_MEASURE_DRAFTS);
     setCurrentStep("welcome");
     setGridSpeed("slow");
     setIsTransitioning(false);
@@ -1932,24 +1968,18 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
-                    type={isMobile ? "text" : "number"}
-                    inputMode={isMobile ? "numeric" : undefined}
-                    pattern={isMobile ? "[0-9]*" : undefined}
+                    inputMode="decimal"
                     placeholder="Enter measurement"
-                    value={
-                      toDisplayValue(measurementData.shoulderLength)
-                    }
-                    onChange={(e) => {
-                      updateMeasurement("shoulderLength", toCmValue(e.target.value));
-                    }}
+                    value={measurementDrafts.shoulderLength}
+                    onChange={(e) => setMeasureDraft("shoulderLength", e.target.value)}
+                    onBlur={() => commitMeasureDraft("shoulderLength")}
                     className="text-lg h-12"
                     autoFocus
                     aria-invalid={!!fieldErrors.shoulderLength}
                   />
                   <Tabs
                     value={measurementUnit}
-                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
+                    onValueChange={(v) => changeMeasurementUnit(v as MeasurementUnit)}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -1976,7 +2006,12 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={() => tryAdvance(measureField("shoulderLength"), goToNextStep)}
+                    onClick={() =>
+                      tryAdvance(measureField("shoulderLength"), () => {
+                        commitMeasureDraft("shoulderLength");
+                        goToNextStep();
+                      })
+                    }
                     disabled={!hybridCtaEnabled(measureField("shoulderLength"))}
                   >
                     Continue
@@ -2017,24 +2052,18 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
-                    type={isMobile ? "text" : "number"}
-                    inputMode={isMobile ? "numeric" : undefined}
-                    pattern={isMobile ? "[0-9]*" : undefined}
+                    inputMode="decimal"
                     placeholder="Enter measurement"
-                    value={
-                      toDisplayValue(measurementData.neckToBack)
-                    }
-                    onChange={(e) => {
-                      updateMeasurement("neckToBack", toCmValue(e.target.value));
-                    }}
+                    value={measurementDrafts.neckToBack}
+                    onChange={(e) => setMeasureDraft("neckToBack", e.target.value)}
+                    onBlur={() => commitMeasureDraft("neckToBack")}
                     className="text-lg h-12"
                     autoFocus
                     aria-invalid={!!fieldErrors.neckToBack}
                   />
                   <Tabs
                     value={measurementUnit}
-                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
+                    onValueChange={(v) => changeMeasurementUnit(v as MeasurementUnit)}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -2061,7 +2090,12 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={() => tryAdvance(measureField("neckToBack"), goToNextStep)}
+                    onClick={() =>
+                      tryAdvance(measureField("neckToBack"), () => {
+                        commitMeasureDraft("neckToBack");
+                        goToNextStep();
+                      })
+                    }
                     disabled={!hybridCtaEnabled(measureField("neckToBack"))}
                   >
                     Continue
@@ -2102,24 +2136,18 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
-                    type={isMobile ? "text" : "number"}
-                    inputMode={isMobile ? "numeric" : undefined}
-                    pattern={isMobile ? "[0-9]*" : undefined}
+                    inputMode="decimal"
                     placeholder="Enter measurement"
-                    value={
-                      toDisplayValue(measurementData.headToBack)
-                    }
-                    onChange={(e) => {
-                      updateMeasurement("headToBack", toCmValue(e.target.value));
-                    }}
+                    value={measurementDrafts.headToBack}
+                    onChange={(e) => setMeasureDraft("headToBack", e.target.value)}
+                    onBlur={() => commitMeasureDraft("headToBack")}
                     className="text-lg h-12"
                     autoFocus
                     aria-invalid={!!fieldErrors.headToBack}
                   />
                   <Tabs
                     value={measurementUnit}
-                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
+                    onValueChange={(v) => changeMeasurementUnit(v as MeasurementUnit)}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -2146,7 +2174,12 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={() => tryAdvance(measureField("headToBack"), goToNextStep)}
+                    onClick={() =>
+                      tryAdvance(measureField("headToBack"), () => {
+                        commitMeasureDraft("headToBack");
+                        goToNextStep();
+                      })
+                    }
                     disabled={!hybridCtaEnabled(measureField("headToBack"))}
                   >
                     Continue
@@ -2187,24 +2220,18 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <Input
-                    // Mobile: force number-pad keyboard (iOS is more consistent with text+inputMode).
-                    type={isMobile ? "text" : "number"}
-                    inputMode={isMobile ? "numeric" : undefined}
-                    pattern={isMobile ? "[0-9]*" : undefined}
+                    inputMode="decimal"
                     placeholder="Enter measurement"
-                    value={
-                      toDisplayValue(measurementData.neckLength)
-                    }
-                    onChange={(e) => {
-                      updateMeasurement("neckLength", toCmValue(e.target.value));
-                    }}
+                    value={measurementDrafts.neckLength}
+                    onChange={(e) => setMeasureDraft("neckLength", e.target.value)}
+                    onBlur={() => commitMeasureDraft("neckLength")}
                     className="text-lg h-12"
                     autoFocus
                     aria-invalid={!!fieldErrors.neckLength}
                   />
                   <Tabs
                     value={measurementUnit}
-                    onValueChange={(v) => setMeasurementUnit(v as "cm" | "in")}
+                    onValueChange={(v) => changeMeasurementUnit(v as MeasurementUnit)}
                   >
                     <TabsList className="h-12">
                       <TabsTrigger value="cm" className="px-3">
@@ -2231,7 +2258,12 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     Back
                   </Button>
                   <Button
-                    onClick={() => tryAdvance(measureField("neckLength"), goToNextStep)}
+                    onClick={() =>
+                      tryAdvance(measureField("neckLength"), () => {
+                        commitMeasureDraft("neckLength");
+                        goToNextStep();
+                      })
+                    }
                     disabled={!hybridCtaEnabled(measureField("neckLength"))}
                   >
                     Continue
@@ -2270,7 +2302,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                   <div>
                     <p className="text-sm text-muted-foreground">Shoulder Length</p>
                     <p className="text-lg font-medium">
-                      {toDisplayValue(measurementData.shoulderLength)} {measurementUnit}
+                      {displayMeasurement(measurementUnit, measurementData.shoulderLength)} {measurementUnit}
                     </p>
                   </div>
                   {!isBasic && (
@@ -2278,19 +2310,19 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                       <div>
                         <p className="text-sm text-muted-foreground">Neck to Back</p>
                         <p className="text-lg font-medium">
-                          {toDisplayValue(measurementData.neckToBack)} {measurementUnit}
+                          {displayMeasurement(measurementUnit, measurementData.neckToBack)} {measurementUnit}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Head to Back</p>
                         <p className="text-lg font-medium">
-                          {toDisplayValue(measurementData.headToBack)} {measurementUnit}
+                          {displayMeasurement(measurementUnit, measurementData.headToBack)} {measurementUnit}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Neck Length</p>
                         <p className="text-lg font-medium">
-                          {toDisplayValue(measurementData.neckLength)} {measurementUnit}
+                          {displayMeasurement(measurementUnit, measurementData.neckLength)} {measurementUnit}
                         </p>
                       </div>
                     </>
