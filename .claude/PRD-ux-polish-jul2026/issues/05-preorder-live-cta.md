@@ -18,11 +18,11 @@ Does not yet persist on Result (slice 06) or send restock email (slice 07).
 
 ## Acceptance criteria
 
-- [ ] Trigger module unit-tested for preference-zero, buildable-zero, and in-stock false cases.
-- [ ] Soft low-stock (e.g. qty 3) alone does not flip Pre-order.
-- [ ] Both configurators show Pre-order CTA + waiting section when triggered.
-- [ ] When not triggered, CTA is Proceed (not “Purchase”).
-- [ ] en-US and zh-CN waiting-time copy present.
+- [x] Trigger module unit-tested for preference-zero, buildable-zero, and in-stock false cases.
+- [x] Soft low-stock (e.g. qty 3) alone does not flip Pre-order.
+- [x] Both configurators show Pre-order CTA + waiting section when triggered.
+- [x] When not triggered, CTA is Proceed (not “Purchase”).
+- [x] en-US and zh-CN waiting-time copy present.
 
 ## Blocked by
 
