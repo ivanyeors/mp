@@ -709,7 +709,7 @@ export default function CustomerDetailPage() {
                                             title="Click to remove"
                                         >
                                             {tag}
-                                            <span className="ml-1 opacity-50 group-hover:opacity-100 text-xs leading-none">
+                                            <span className="ml-1 text-xs leading-none opacity-100">
                                                 ×
                                             </span>
                                         </Badge>

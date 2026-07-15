@@ -1434,7 +1434,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
             Entry source
           </label>
           <Select value={entrySource} onValueChange={setEntrySource}>
-            <SelectTrigger id="entry-source-filter" className="h-8 w-[220px]">
+            <SelectTrigger id="entry-source-filter" className="min-h-11 w-full sm:w-[220px]">
               <SelectValue placeholder="All entry sources" />
             </SelectTrigger>
             <SelectContent>
@@ -1453,7 +1453,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
             Visitors
           </label>
           <Select value={visitorCohort} onValueChange={setVisitorCohort}>
-            <SelectTrigger id="visitor-cohort-filter" className="h-8 w-[180px]">
+            <SelectTrigger id="visitor-cohort-filter" className="min-h-11 w-full sm:w-[180px]">
               <SelectValue placeholder="All visitors" />
             </SelectTrigger>
             <SelectContent>
@@ -1469,7 +1469,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 min-w-[160px] justify-between font-normal"
+                className="min-h-11 w-full min-w-0 justify-between font-normal sm:w-auto sm:min-w-[160px]"
                 aria-label="Filter countries"
               >
                 {selectedCountries.length === 0

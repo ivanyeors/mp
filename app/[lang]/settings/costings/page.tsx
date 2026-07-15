@@ -1217,9 +1217,10 @@ export default function CostingsPage() {
             Track cost price and MSRP for each part to keep your pricing consistent.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Button
             variant="secondary"
+            className="w-full sm:w-auto"
             onClick={async () => {
               setSyncingShopifyPrices(true);
               try {
@@ -1240,10 +1241,10 @@ export default function CostingsPage() {
           >
             {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
           </Button>
-          <Button variant="secondary" onClick={load} disabled={saving}>
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={load} disabled={saving}>
             Refresh
           </Button>
-          <Button onClick={save} disabled={saving || !isDirty}>
+          <Button className="w-full sm:w-auto" onClick={save} disabled={saving || !isDirty}>
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -1337,7 +1338,7 @@ export default function CostingsPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Select closeOnSelect={false} onValueChange={handleAddFilter}>
                     <SelectTrigger
-                      className="w-[280px]"
+                      className="w-full max-w-full sm:w-[280px]"
                       aria-label="Filter parts by category"
                       disabled={availableFilterCategories.length === 0}
                     >

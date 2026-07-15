@@ -237,13 +237,13 @@ export default function SettingsCustomersPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+                <div className="flex min-w-0 flex-col items-center gap-2 overflow-x-auto sm:flex-row sm:flex-wrap sm:justify-between">
                     <p className="text-sm text-muted-foreground">
                         Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of{" "}
                         {total} customer{total !== 1 ? "s" : ""}
                     </p>
-                    <Pagination className="w-auto mx-0">
-                        <PaginationContent>
+                    <Pagination className="mx-0 w-auto max-w-full">
+                        <PaginationContent className="flex-wrap justify-center">
                             <PaginationItem>
                                 <PaginationPrevious
                                     href="#"

@@ -141,7 +141,7 @@ export function AdminsClient() {
         </form>
       </Card>
 
-      <Card>
+      <Card className="min-w-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -168,19 +168,21 @@ export function AdminsClient() {
               rows.map((u) => (
                 <TableRow key={u.id} className={u.is_active ? "" : "opacity-60"}>
                   <TableCell>
-                    <span className="font-medium">{u.email}</span>
-                    {!u.auth_user_id ? (
-                      <span className="ml-2 rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
-                        pending first sign-in
-                      </span>
-                    ) : null}
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <span className="font-medium">{u.email}</span>
+                      {!u.auth_user_id ? (
+                        <span className="w-fit rounded-full border px-2 py-0.5 text-xs text-muted-foreground">
+                          pending first sign-in
+                        </span>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Select
                       value={u.role}
                       onValueChange={(v) => patch(u.id, { role: v as AdminRole })}
                     >
-                      <SelectTrigger className="w-36" disabled={busyId === u.id}>
+                      <SelectTrigger className="w-full min-w-0 sm:w-36" disabled={busyId === u.id}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

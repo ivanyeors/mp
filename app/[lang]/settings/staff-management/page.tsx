@@ -106,9 +106,9 @@ export default function StaffManagementPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[260px]">Name</TableHead>
-                <TableHead className="w-[220px]">Updated</TableHead>
-                <TableHead>ID</TableHead>
+                <TableHead className="sm:w-[260px]">Name</TableHead>
+                <TableHead className="sm:w-[220px]">Updated</TableHead>
+                <TableHead className="hidden sm:table-cell">ID</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,11 +121,11 @@ export default function StaffManagementPage() {
               ) : (
                 rows.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="max-w-[40vw] truncate font-medium sm:max-w-none">{r.name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {r.updated_at ? new Date(r.updated_at).toLocaleString() : "—"}
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{r.id}</TableCell>
+                    <TableCell className="hidden font-mono text-xs text-muted-foreground sm:table-cell">{r.id}</TableCell>
                   </TableRow>
                 ))
               )}
