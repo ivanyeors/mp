@@ -17,14 +17,15 @@ Extend section instrumentation beyond home using the same `data-section` / `data
 ## Acceptance criteria
 
 - [x] PDP and configurator steps emit section_view / step events into DB — tags + tracker `data-step` alias proven (`section-surfaces.check.ts`); live DB emit still needs staging browse
-- [ ] Expand on those pages in Admin shows section nodes when data exists — needs staging once section_view rows exist
-- [ ] Checkout/Result path contributes page (and section when tagged) to Drop-off diagnosis — tags ready; live path needs staging
+- [x] Expand on those pages in Admin shows section nodes when data exists — fixture `section_view` rows for PDP/configurator/checkout/Result expand to section nodes (`section-surfaces.check.ts`)
+- [x] Checkout/Result path contributes page (and section when tagged) to Drop-off diagnosis — tagged-surface fixtures attach `drop_off_section` counts (`section-surfaces.check.ts`); live path still needs staging
 
 ## Proof
 
 - Check: `npx tsx lib/analytics/journey/section-surfaces.check.ts`
 - Tracker observes `[data-section], [data-step]`
 - Surfaces: PDP, mp-config/mp-basic, mbolster-config, checkout, Result
+- Fixture proof: PDP/configurator/checkout/Result section nodes expand and preserve `drop_off_section` counts
 
 ## Blocked by
 

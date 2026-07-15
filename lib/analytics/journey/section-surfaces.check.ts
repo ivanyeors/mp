@@ -6,6 +6,11 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  buildPageTransitions,
+  buildSectionTransitions,
+  expandPageToSections,
+} from "./transitions";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -62,6 +67,39 @@ for (const file of walkTsx(settingsDir)) {
     src,
     /data-section=|data-step=/,
     `settings must not tag journey sections: ${file}`,
+  );
+}
+
+const taggedSurfaces = [
+  { path: "/shop/example", sectionId: "buy-box" },
+  { path: "/mp-config", sectionId: "size" },
+  { path: "/shop/checkout", sectionId: "payment" },
+  { path: "/results/example", sectionId: "status-accepted" },
+];
+const occurredAt = "2026-07-15T10:00:00.000Z";
+const pages = buildPageTransitions(
+  taggedSurfaces.map((surface, i) => ({
+    visitId: `surface-${i}`,
+    path: surface.path,
+    occurredAt,
+  })),
+);
+const sections = buildSectionTransitions(
+  taggedSurfaces.map((surface, i) => ({
+    visitId: `surface-${i}`,
+    ...surface,
+    occurredAt,
+  })),
+  taggedSurfaces.map((surface) => ({ ...surface, count: 1 })),
+);
+for (const surface of taggedSurfaces) {
+  const expanded = expandPageToSections(pages, sections, surface.path);
+  assert.ok(expanded.nodes.some((node) => node.path === `${surface.path}#${surface.sectionId}`));
+  assert.equal(
+    sections.nodes.find(
+      (node) => node.path === surface.path && node.sectionId === surface.sectionId,
+    )?.dropOffs,
+    1,
   );
 }
 
