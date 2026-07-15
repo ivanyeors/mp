@@ -1506,10 +1506,9 @@ export function ProspectJourneyCard({ from, to }: Props) {
   const filterArgs = useMemo(
     () => ({
       entrySource: entrySource === ALL ? null : entrySource,
-      visitorCohort:
-        visitorCohort === "new" || visitorCohort === "returning"
-          ? visitorCohort
-          : null,
+      visitorCohort: (visitorCohort === "new" || visitorCohort === "returning"
+        ? visitorCohort
+        : null) as "new" | "returning" | null,
       countries: selectedCountries.length > 0 ? selectedCountries : null,
       includeConverted,
     }),
