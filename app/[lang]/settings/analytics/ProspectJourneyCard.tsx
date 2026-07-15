@@ -30,6 +30,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   ChevronDown,
   ChevronRight,
@@ -40,8 +42,10 @@ import {
   X,
 } from "lucide-react";
 import { edgeStrokeWidth } from "@/lib/analytics/journey/chrome";
+import { CONVERTED_NODE } from "@/lib/analytics/journey/converted-sink";
 import {
   getProspectJourneyTransitions,
+  type JourneyConvertedDetail,
   type JourneyNodeDetail,
   type JourneySectionNode,
   type JourneyTransitionEdge,
@@ -52,6 +56,7 @@ type Props = { from: string; to: string };
 
 const ALL = "__all__";
 const DROP_OFF = "__drop_off__";
+const CONVERTED = CONVERTED_NODE;
 const LAYOUT_KEY = "prospect-journey-layout-v1";
 const DRAG_THRESHOLD = 4;
 const PORT_R = 4;
@@ -67,9 +72,18 @@ const PAN_NUDGE = 40;
 
 function labelPath(path: string) {
   if (path === DROP_OFF) return "Drop-off";
+  if (path === CONVERTED) return "Converted";
   const hash = path.indexOf("#");
   if (hash >= 0) return `${path.slice(0, hash)} › ${path.slice(hash + 1)}`;
   return path === "/" ? "Home" : path;
+}
+
+function formatValue(amount: number) {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: "MYR",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 function truncateLabel(s: string, maxChars: number): { text: string; full: string } {
@@ -110,8 +124,9 @@ function layoutGraph(
   width: number,
   height: number,
 ): LayoutNode[] {
-  const sink = nodes.find((n) => n.path === DROP_OFF);
-  const pages = nodes.filter((n) => n.path !== DROP_OFF);
+  const dropOffSink = nodes.find((n) => n.path === DROP_OFF);
+  const convertedSink = nodes.find((n) => n.path === CONVERTED);
+  const pages = nodes.filter((n) => n.path !== DROP_OFF && n.path !== CONVERTED);
   const cx = width * 0.42;
   const cy = height * 0.5;
   const r = Math.min(width, height) * 0.32;
@@ -119,8 +134,14 @@ function layoutGraph(
     const angle = pages.length === 1 ? -Math.PI / 2 : (i / pages.length) * Math.PI * 2 - Math.PI / 2;
     return { ...n, x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
   });
-  if (sink) {
-    laid.push({ ...sink, x: width * 0.88, y: cy });
+  const sinkX = width * 0.88;
+  if (dropOffSink && convertedSink) {
+    laid.push({ ...dropOffSink, x: sinkX, y: cy - 52 });
+    laid.push({ ...convertedSink, x: sinkX, y: cy + 52 });
+  } else if (dropOffSink) {
+    laid.push({ ...dropOffSink, x: sinkX, y: cy });
+  } else if (convertedSink) {
+    laid.push({ ...convertedSink, x: sinkX, y: cy });
   }
   return laid;
 }
@@ -346,6 +367,99 @@ function DetailPanel({
   );
 }
 
+function ConvertedDetailPanel({
+  detail,
+  open,
+  onClose,
+}: {
+  detail: JourneyConvertedDetail | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <aside
+      className={`absolute inset-y-0 right-0 z-20 flex w-[min(360px,90%)] flex-col border-l bg-card/95 shadow-sm backdrop-blur transition-transform duration-200 ${
+        open ? "translate-x-0" : "pointer-events-none translate-x-full"
+      }`}
+      aria-hidden={!open}
+    >
+      <div className="flex items-start justify-between gap-2 border-b px-4 py-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-medium">Converted</h3>
+          <p className="text-xs text-muted-foreground">
+            Last-touch Entry source, journey duration, order value, and page path
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onClose}
+          aria-label="Close detail"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex-1 space-y-4 overflow-auto px-4 py-3 text-sm">
+        {!detail ? (
+          <p className="text-muted-foreground">Loading detail…</p>
+        ) : detail.count === 0 ? (
+          <p className="text-muted-foreground">No paid orders linked in this range.</p>
+        ) : (
+          <>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Summary
+              </p>
+              <p>
+                {detail.count} orders · {formatValue(detail.totalValue)}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Last-touch Entry source
+              </p>
+              {detail.byEntrySource.length === 0 ? (
+                <p className="text-muted-foreground">—</p>
+              ) : (
+                <ul className="space-y-1 text-xs">
+                  {detail.byEntrySource.map((s) => (
+                    <li key={s.entrySource} className="flex justify-between gap-2">
+                      <span>{s.entrySource}</span>
+                      <span className="text-muted-foreground">
+                        {s.count} · {formatValue(s.totalValue)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Sample conversions
+              </p>
+              <ul className="space-y-2 text-xs">
+                {detail.samples.map((s, i) => (
+                  <li key={i} className="rounded border p-2">
+                    <p className="font-medium">{s.entrySource}</p>
+                    <p className="text-muted-foreground">
+                      {formatValue(s.orderValue)} · {formatDwell(s.journeyDurationMs)}
+                    </p>
+                    <p className="mt-1 truncate font-mono text-muted-foreground">
+                      {s.shortPath.map(labelPath).join(" → ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 function JourneyGraph({
   nodes,
   edges,
@@ -353,6 +467,7 @@ function JourneyGraph({
   onSelect,
   colorByCode,
   detail,
+  convertedDetail,
 }: {
   nodes: JourneyTransitionNode[];
   edges: JourneyTransitionEdge[];
@@ -360,6 +475,7 @@ function JourneyGraph({
   onSelect: (path: string | null) => void;
   colorByCode: Map<string, string>;
   detail: JourneyNodeDetail | null;
+  convertedDetail: JourneyConvertedDetail | null;
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -778,7 +894,9 @@ function JourneyGraph({
           })}
           {drawOrder.map((n) => {
             const selected = selectedPath === n.path;
-            const isSink = n.path === DROP_OFF;
+            const isDropOff = n.path === DROP_OFF;
+            const isConverted = n.path === CONVERTED;
+            const isSink = isDropOff || isConverted;
             const { hw, hh } = nodeHalfSize(selected && !isSink);
             const headerH = selected && !isSink ? 28 : 22;
             const titleMax = selected ? 28 : 18;
@@ -806,11 +924,13 @@ function JourneyGraph({
                   height={hh * 2}
                   rx={8}
                   className={
-                    isSink
+                    isDropOff
                       ? "fill-background stroke-destructive/60"
-                      : selected
-                        ? "fill-background stroke-foreground"
-                        : "fill-background stroke-border"
+                      : isConverted
+                        ? "fill-muted/30 stroke-muted-foreground/50"
+                        : selected
+                          ? "fill-background stroke-foreground"
+                          : "fill-background stroke-border"
                   }
                   strokeWidth={selected ? 2 : 1}
                 />
@@ -821,11 +941,13 @@ function JourneyGraph({
                   height={headerH}
                   rx={8}
                   className={
-                    isSink
+                    isDropOff
                       ? "fill-destructive/15"
-                      : selected
-                        ? "fill-muted"
-                        : "fill-muted/60"
+                      : isConverted
+                        ? "fill-muted/40"
+                        : selected
+                          ? "fill-muted"
+                          : "fill-muted/60"
                   }
                 />
                 <rect
@@ -834,17 +956,23 @@ function JourneyGraph({
                   width={hw * 2}
                   height={8}
                   className={
-                    isSink
+                    isDropOff
                       ? "fill-destructive/15"
-                      : selected
-                        ? "fill-muted"
-                        : "fill-muted/60"
+                      : isConverted
+                        ? "fill-muted/40"
+                        : selected
+                          ? "fill-muted"
+                          : "fill-muted/60"
                   }
                 />
                 <SvgText
                   y={-hh + headerH / 2 + 4}
                   maxChars={titleMax}
-                  className="fill-foreground text-[11px] font-medium"
+                  className={
+                    isConverted
+                      ? "fill-muted-foreground text-[11px] font-medium"
+                      : "fill-foreground text-[11px] font-medium"
+                  }
                 >
                   {title}
                 </SvgText>
@@ -923,7 +1051,7 @@ function JourneyGraph({
                   )
                 ) : (
                   <SvgText y={4} maxChars={18} className="fill-muted-foreground text-[10px]">
-                    {`${n.views} visits`}
+                    {isConverted ? `${n.views} orders` : `${n.views} visits`}
                   </SvgText>
                 )}
                 <circle
@@ -931,9 +1059,11 @@ function JourneyGraph({
                   cy={0}
                   r={PORT_R}
                   className={
-                    isSink
+                    isDropOff
                       ? "fill-destructive/70 stroke-background"
-                      : "fill-muted-foreground stroke-background"
+                      : isConverted
+                        ? "fill-muted-foreground/50 stroke-background"
+                        : "fill-muted-foreground stroke-background"
                   }
                   strokeWidth={1.5}
                 />
@@ -942,9 +1072,11 @@ function JourneyGraph({
                   cy={0}
                   r={PORT_R}
                   className={
-                    isSink
+                    isDropOff
                       ? "fill-destructive/70 stroke-background"
-                      : "fill-muted-foreground stroke-background"
+                      : isConverted
+                        ? "fill-muted-foreground/50 stroke-background"
+                        : "fill-muted-foreground stroke-background"
                   }
                   strokeWidth={1.5}
                 />
@@ -954,7 +1086,13 @@ function JourneyGraph({
         </g>
       </svg>
 
-      {selectedPath && selectedPath !== DROP_OFF ? (
+      {selectedPath === CONVERTED ? (
+        <ConvertedDetailPanel
+          detail={convertedDetail}
+          open
+          onClose={() => onSelect(null)}
+        />
+      ) : selectedPath && selectedPath !== DROP_OFF ? (
         <DetailPanel
           detailPath={selectedPath}
           detail={detail}
@@ -982,6 +1120,8 @@ export function ProspectJourneyCard({ from, to }: Props) {
   const [expandPath, setExpandPath] = useState<string | null>(null);
   const [detailPath, setDetailPath] = useState<string | null>(null);
   const [detail, setDetail] = useState<JourneyNodeDetail | null>(null);
+  const [includeConverted, setIncludeConverted] = useState(false);
+  const [convertedDetail, setConvertedDetail] = useState<JourneyConvertedDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -998,6 +1138,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
             ? visitorCohort
             : null,
         countries: selectedCountries.length > 0 ? selectedCountries : null,
+        includeConverted,
         expandPath,
         detailPath,
       });
@@ -1008,6 +1149,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
         setSections([]);
         setExpandablePaths([]);
         setDetail(null);
+        setConvertedDetail(null);
         setCountryLegend([]);
         return;
       }
@@ -1019,6 +1161,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
       setCountryOptions(res.countries);
       setCountryLegend(res.countryLegend);
       setDetail(res.detail);
+      setConvertedDetail(res.convertedDetail);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
       setNodes([]);
@@ -1026,11 +1169,21 @@ export function ProspectJourneyCard({ from, to }: Props) {
       setSections([]);
       setExpandablePaths([]);
       setDetail(null);
+      setConvertedDetail(null);
       setCountryLegend([]);
     } finally {
       setLoading(false);
     }
-  }, [from, to, entrySource, visitorCohort, selectedCountries, expandPath, detailPath]);
+  }, [
+    from,
+    to,
+    entrySource,
+    visitorCohort,
+    selectedCountries,
+    includeConverted,
+    expandPath,
+    detailPath,
+  ]);
 
   useEffect(() => {
     void load();
@@ -1162,6 +1315,16 @@ export function ProspectJourneyCard({ from, to }: Props) {
               ) : null}
             </PopoverContent>
           </Popover>
+          <div className="flex items-center gap-2">
+            <Switch
+              id="include-converted"
+              checked={includeConverted}
+              onCheckedChange={setIncludeConverted}
+            />
+            <Label htmlFor="include-converted" className="text-xs font-medium text-muted-foreground">
+              Include converted
+            </Label>
+          </div>
         </div>
         {loading ? (
           <Skeleton className="h-[min(70vh,720px)] w-full" />
@@ -1229,6 +1392,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
               onSelect={(path) => setDetailPath(path === DROP_OFF ? null : path)}
               colorByCode={colorByCode}
               detail={detail}
+              convertedDetail={convertedDetail}
             />
             {countryLegend.length >= 2 ? (
               <ul

@@ -17,11 +17,19 @@ Secondary conversion story without stealing Prospect focus.
 
 ## Acceptance criteria
 
-- [ ] Default view hides Converted / excludes paid Visitors from Prospect cohort appropriately
-- [ ] Include converted shows muted sink with last-touch Entry source and value
-- [ ] Journey duration and short path available in tooltip or side panel
-- [ ] Automated check covers last-touch attribution
+- [x] Default view hides Converted / excludes paid Visitors from Prospect cohort appropriately
+- [x] Include converted shows muted sink with last-touch Entry source and value
+- [x] Journey duration and short path available in tooltip or side panel
+- [x] Automated check covers last-touch attribution
 
 ## Blocked by
 
 - Slice 07 — Unique-node loops + custom node chrome + side panel
+
+## Done
+
+- `lib/analytics/journey/converted-sink.ts` + `converted-sink.check.ts`
+- Aggregates: Prospect cohort excludes `converted_order_id`; `includeConverted` attaches muted Converted sink
+- UI: Include converted toggle, muted sink chrome, Converted side panel (last-touch / duration / value / path)
+- Merged into `feat/journey-slice-08-returns` with returns + country filters preserved
+- Verify: `npx tsx lib/analytics/journey/converted-sink.check.ts`

@@ -468,6 +468,18 @@ export type JourneyNodeDetail = {
   }[];
 };
 
+export type JourneyConvertedDetail = {
+  count: number;
+  totalValue: number;
+  byEntrySource: { entrySource: string; count: number; totalValue: number }[];
+  samples: {
+    entrySource: string;
+    journeyDurationMs: number;
+    orderValue: number;
+    shortPath: string[];
+  }[];
+};
+
 /** Page→page transitions from analytics_events only (no live GA). */
 export async function getProspectJourneyTransitions(input: {
   from: string;
@@ -478,6 +490,8 @@ export async function getProspectJourneyTransitions(input: {
   visitorCohort?: "new" | "returning" | null;
   /** Multi-select countries; ≥2 → color-by-country legend. */
   countries?: string[] | null;
+  /** When true, attach muted Converted sink (default Prospect cohort). */
+  includeConverted?: boolean;
   /** Expand this page path into section child nodes. */
   expandPath?: string | null;
   /** Include side-panel detail for this page path. */
@@ -493,6 +507,7 @@ export async function getProspectJourneyTransitions(input: {
       sections: JourneySectionNode[];
       expandablePaths: string[];
       detail: JourneyNodeDetail | null;
+      convertedDetail: JourneyConvertedDetail | null;
     }
   | { ok: false; error: string }
 > {
@@ -515,7 +530,7 @@ export async function getProspectJourneyTransitions(input: {
     const expandPath = input.expandPath?.trim() || null;
     const detailPath = input.detailPath?.trim() || null;
     const [
-      { nodes, edges, sections, expandablePaths, detail, countryLegend },
+      { nodes, edges, sections, expandablePaths, detail, countryLegend, convertedDetail },
       entrySources,
       countryOptions,
     ] = await Promise.all([
@@ -525,6 +540,7 @@ export async function getProspectJourneyTransitions(input: {
         entrySource,
         visitorCohort,
         countries: countries.length > 0 ? countries : null,
+        includeConverted: input.includeConverted === true,
         expandPath,
         detailPath,
       }),
@@ -541,6 +557,7 @@ export async function getProspectJourneyTransitions(input: {
       sections,
       expandablePaths,
       detail,
+      convertedDetail,
     };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to load journey" };

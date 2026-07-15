@@ -5,6 +5,16 @@ import {
   type NodeSidePanel,
   type PageNodeChrome,
 } from "./chrome";
+import {
+  attachConvertedSink,
+  buildConvertedRecords,
+  buildConvertedSinkDetail,
+  collectConvertedFeeds,
+  CONVERTED_NODE,
+  isProspectVisit,
+  type ConvertedSinkDetail,
+  type ConvertedVisitRow,
+} from "./converted-sink";
 import { buildCountryLegend, UNKNOWN_COUNTRY } from "./country";
 import { attachDropOffSink, DROP_OFF_NODE } from "./drop-off-sink";
 import {
@@ -140,7 +150,7 @@ async function loadSectionGraphFromDb(
 function landingsFromEvents(events: PageViewEvent[]): Map<string, string> {
   const byVisit = new Map<string, PageViewEvent[]>();
   for (const e of events) {
-    if (!e.path || e.path === DROP_OFF_NODE) continue;
+    if (!e.path || e.path === DROP_OFF_NODE || e.path === CONVERTED_NODE) continue;
     const list = byVisit.get(e.visitId) ?? [];
     list.push(e);
     byVisit.set(e.visitId, list);
@@ -175,6 +185,73 @@ function attachReentryEdges(
   return { nodes, edges };
 }
 
+async function loadConvertedRecordsFromDb(
+  db: SupabaseClient,
+  opts: { convertedVisits: ConvertedVisitRow[] },
+): Promise<ReturnType<typeof buildConvertedRecords>> {
+  if (opts.convertedVisits.length === 0) return [];
+
+  const orderIds = [
+    ...new Set(opts.convertedVisits.map((v) => v.converted_order_id)),
+  ];
+  const { data: orders, error: oErr } = await db
+    .from("orders")
+    .select("id, paid_at, total")
+    .in("id", orderIds)
+    .not("paid_at", "is", null)
+    .limit(5000);
+  if (oErr) throw new Error(oErr.message);
+
+  const orderMap = new Map<string, { paid_at: string; total: number }>();
+  for (const row of orders ?? []) {
+    if (row.id && row.paid_at != null) {
+      orderMap.set(row.id as string, {
+        paid_at: row.paid_at as string,
+        total: Number(row.total),
+      });
+    }
+  }
+
+  const convertedIds = opts.convertedVisits.map((v) => v.id);
+  const { data: convEvents, error: eErr } = await db
+    .from("analytics_events")
+    .select("visit_id, path, occurred_at")
+    .eq("type", "page_view")
+    .in("visit_id", convertedIds)
+    .order("occurred_at", { ascending: true })
+    .limit(5000);
+  if (eErr) throw new Error(eErr.message);
+
+  const eventsByVisit = new Map<string, PageViewEvent[]>();
+  for (const row of convEvents ?? []) {
+    const visitId = row.visit_id as string;
+    const list = eventsByVisit.get(visitId) ?? [];
+    list.push({
+      visitId,
+      path: row.path as string,
+      occurredAt: row.occurred_at as string,
+    });
+    eventsByVisit.set(visitId, list);
+  }
+
+  return buildConvertedRecords({
+    visits: opts.convertedVisits,
+    orders: orderMap,
+    eventsByVisit,
+  });
+}
+
+const emptyGraph = {
+  nodes: [] as PageNodeChrome[],
+  edges: [] as JourneyEdge[],
+  sections: [] as SectionNode[],
+  sectionEdges: [] as SectionEdge[],
+  expandablePaths: [] as string[],
+  detail: null as NodeSidePanel | null,
+  countryLegend: [] as { code: string; color: string }[],
+  convertedDetail: null as ConvertedSinkDetail | null,
+};
+
 export async function loadPageTransitionsFromDb(
   db: SupabaseClient,
   opts: {
@@ -185,6 +262,8 @@ export async function loadPageTransitionsFromDb(
     visitorCohort?: VisitorCohort | null;
     /** Multi-select ISO countries (Unknown allowed). Empty/omit = all. */
     countries?: string[] | null;
+    /** When true, attach muted Converted sink (default Prospect cohort). */
+    includeConverted?: boolean;
     /** When set, replace that page node with its section children. */
     expandPath?: string | null;
     /** When set, include side-panel detail for this page node. */
@@ -199,6 +278,7 @@ export async function loadPageTransitionsFromDb(
   detail: NodeSidePanel | null;
   /** Non-empty when ≥2 countries selected (color-by-country mode). */
   countryLegend: { code: string; color: string }[];
+  convertedDetail: ConvertedSinkDetail | null;
 }> {
   const selectedCountries = [
     ...new Set((opts.countries ?? []).map((c) => c.trim()).filter(Boolean)),
@@ -207,7 +287,9 @@ export async function loadPageTransitionsFromDb(
 
   let rangeQ = db
     .from("analytics_visits")
-    .select("id, visitor_id, started_at, ended_at, drop_off_path, entry_source, country")
+    .select(
+      "id, visitor_id, started_at, ended_at, drop_off_path, entry_source, country, converted_order_id",
+    )
     .gte("started_at", opts.from)
     .lte("started_at", opts.to)
     .limit(5000);
@@ -216,97 +298,133 @@ export async function loadPageTransitionsFromDb(
   const { data: rangeRows, error: rangeErr } = await rangeQ;
   if (rangeErr) throw new Error(rangeErr.message);
 
-  let rangeVisits = (rangeRows ?? []).map(rowToVisitMeta);
+  type RangeRow = {
+    id: string;
+    visitor_id: string;
+    started_at: string;
+    ended_at: string | null;
+    drop_off_path: string | null;
+    entry_source: string | null;
+    country: string | null;
+    converted_order_id: string | null;
+  };
+
+  let rangeRaw = (rangeRows ?? []) as RangeRow[];
   if (selectedCountries.length > 0) {
     const want = new Set(selectedCountries);
-    rangeVisits = rangeVisits.filter((v) => want.has(v.country));
-  }
-  if (rangeVisits.length === 0) {
-    return {
-      nodes: [],
-      edges: [],
-      sections: [],
-      sectionEdges: [],
-      expandablePaths: [],
-      detail: null,
-      countryLegend: [],
-    };
+    rangeRaw = rangeRaw.filter((row) => {
+      const raw = row.country?.trim();
+      const c = raw && raw.length > 0 ? raw : UNKNOWN_COUNTRY;
+      return want.has(c);
+    });
   }
 
-  const visitorIds = [...new Set(rangeVisits.map((v) => v.visitorId))];
-  // Prior Visits may sit outside the date window — needed for Returning + gaps.
-  const { data: histRows, error: histErr } = await db
-    .from("analytics_visits")
-    .select("id, visitor_id, started_at, ended_at, drop_off_path, country")
-    .in("visitor_id", visitorIds)
-    .limit(5000);
-  if (histErr) throw new Error(histErr.message);
-  const allVisits = (histRows ?? []).map(rowToVisitMeta);
+  const convertedVisits: ConvertedVisitRow[] = rangeRaw
+    .filter((v) => !isProspectVisit(v.converted_order_id))
+    .map((v) => ({
+      id: v.id,
+      entry_source: v.entry_source,
+      started_at: v.started_at,
+      converted_order_id: v.converted_order_id as string,
+    }));
 
-  const cohortIds = filterVisitIdsByCohort(
-    rangeVisits,
-    allVisits,
-    opts.visitorCohort ?? null,
-  );
-  const visitIds = cohortIds ?? rangeVisits.map((v) => v.id);
-  if (visitIds.length === 0) {
-    return {
-      nodes: [],
-      edges: [],
-      sections: [],
-      sectionEdges: [],
-      expandablePaths: [],
-      detail: null,
-      countryLegend: [],
-    };
+  // Prospect cohort excludes paid Visits (slice 10).
+  let rangeVisits = rangeRaw
+    .filter((v) => isProspectVisit(v.converted_order_id))
+    .map(rowToVisitMeta);
+
+  if (
+    rangeVisits.length === 0 &&
+    (!opts.includeConverted || convertedVisits.length === 0)
+  ) {
+    return emptyGraph;
   }
-  const focusVisitIds = new Set(visitIds);
-  const countryByVisitId = new Map(rangeVisits.map((v) => [v.id, v.country]));
-  // hist visits may also be focus after cohort — fill gaps
-  for (const v of allVisits) {
-    if (focusVisitIds.has(v.id) && !countryByVisitId.has(v.id)) {
-      countryByVisitId.set(v.id, v.country);
+
+  let allVisits: (VisitMeta & { country: string })[] = [];
+  let visitIds: string[] = [];
+  let focusVisitIds = new Set<string>();
+  let countryByVisitId = new Map<string, string>();
+
+  if (rangeVisits.length > 0) {
+    const visitorIds = [...new Set(rangeVisits.map((v) => v.visitorId))];
+    // Prior Visits may sit outside the date window — needed for Returning + gaps.
+    const { data: histRows, error: histErr } = await db
+      .from("analytics_visits")
+      .select("id, visitor_id, started_at, ended_at, drop_off_path, country")
+      .in("visitor_id", visitorIds)
+      .limit(5000);
+    if (histErr) throw new Error(histErr.message);
+    allVisits = (histRows ?? []).map(rowToVisitMeta);
+
+    const cohortIds = filterVisitIdsByCohort(
+      rangeVisits,
+      allVisits,
+      opts.visitorCohort ?? null,
+    );
+    visitIds = cohortIds ?? rangeVisits.map((v) => v.id);
+    if (visitIds.length === 0 && (!opts.includeConverted || convertedVisits.length === 0)) {
+      return emptyGraph;
+    }
+    focusVisitIds = new Set(visitIds);
+    countryByVisitId = new Map(rangeVisits.map((v) => [v.id, v.country]));
+    for (const v of allVisits) {
+      if (focusVisitIds.has(v.id) && !countryByVisitId.has(v.id)) {
+        countryByVisitId.set(v.id, v.country);
+      }
     }
   }
 
-  const { data, error } = await db
-    .from("analytics_events")
-    .select("visit_id, path, occurred_at")
-    .eq("type", "page_view")
-    .gte("occurred_at", opts.from)
-    .lte("occurred_at", opts.to)
-    .in("visit_id", visitIds)
-    .order("occurred_at", { ascending: true })
-    .limit(5000);
-  if (error) throw new Error(error.message);
+  let events: PageViewEvent[] = [];
+  if (visitIds.length > 0) {
+    const { data, error } = await db
+      .from("analytics_events")
+      .select("visit_id, path, occurred_at")
+      .eq("type", "page_view")
+      .gte("occurred_at", opts.from)
+      .lte("occurred_at", opts.to)
+      .in("visit_id", visitIds)
+      .order("occurred_at", { ascending: true })
+      .limit(5000);
+    if (error) throw new Error(error.message);
 
-  const events: PageViewEvent[] = (data ?? []).map((row) => {
-    const visitId = row.visit_id as string;
-    return {
-      visitId,
-      path: row.path as string,
-      occurredAt: row.occurred_at as string,
-      ...(colorByCountry
-        ? { country: countryByVisitId.get(visitId) ?? UNKNOWN_COUNTRY }
-        : {}),
-    };
-  });
+    events = (data ?? []).map((row) => {
+      const visitId = row.visit_id as string;
+      return {
+        visitId,
+        path: row.path as string,
+        occurredAt: row.occurred_at as string,
+        ...(colorByCountry
+          ? { country: countryByVisitId.get(visitId) ?? UNKNOWN_COUNTRY }
+          : {}),
+      };
+    });
+  }
   const graph = buildPageTransitions(events);
 
-  const { data: dropped, error: dErr } = await db
-    .from("analytics_visits")
-    .select("id, drop_off_path, drop_off_section, ended_at, country")
-    .in("id", visitIds)
-    .not("drop_off_path", "is", null)
-    .not("ended_at", "is", null)
-    .limit(5000);
-  if (dErr) throw new Error(dErr.message);
+  let dropped: {
+    id?: string;
+    drop_off_path?: string | null;
+    drop_off_section?: string | null;
+    ended_at?: string | null;
+    country?: string | null;
+  }[] = [];
+  if (visitIds.length > 0) {
+    const { data, error: dErr } = await db
+      .from("analytics_visits")
+      .select("id, drop_off_path, drop_off_section, ended_at, country")
+      .in("id", visitIds)
+      .not("drop_off_path", "is", null)
+      .not("ended_at", "is", null)
+      .limit(5000);
+    if (dErr) throw new Error(dErr.message);
+    dropped = data ?? [];
+  }
 
   const feedMap = new Map<string, number>();
   const topSectionCount = new Map<string, Map<string, number>>();
   const visitEndedAt = new Map<string, string>();
   const feeds: { lastPath: string; count: number; country?: string }[] = [];
-  for (const row of dropped ?? []) {
+  for (const row of dropped) {
     const p = row.drop_off_path as string;
     if (!p) continue;
     feedMap.set(p, (feedMap.get(p) ?? 0) + 1);
@@ -326,15 +444,17 @@ export async function loadPageTransitionsFromDb(
   if (!colorByCountry) {
     for (const [lastPath, count] of feedMap) feeds.push({ lastPath, count });
   }
-  const { data: endedRows } = await db
-    .from("analytics_visits")
-    .select("id, ended_at")
-    .in("id", visitIds)
-    .not("ended_at", "is", null)
-    .limit(5000);
-  for (const row of endedRows ?? []) {
-    if (row.id && row.ended_at) {
-      visitEndedAt.set(row.id as string, row.ended_at as string);
+  if (visitIds.length > 0) {
+    const { data: endedRows } = await db
+      .from("analytics_visits")
+      .select("id, ended_at")
+      .in("id", visitIds)
+      .not("ended_at", "is", null)
+      .limit(5000);
+    for (const row of endedRows ?? []) {
+      if (row.id && row.ended_at) {
+        visitEndedAt.set(row.id as string, row.ended_at as string);
+      }
     }
   }
 
@@ -351,7 +471,13 @@ export async function loadPageTransitionsFromDb(
     if (best) topSectionByPath.set(path, best);
   }
 
-  const withSink = attachDropOffSink(graph, feeds);
+  let withSink = attachDropOffSink(graph, feeds);
+
+  let convertedRecords: ReturnType<typeof buildConvertedRecords> = [];
+  if (opts.includeConverted && convertedVisits.length > 0) {
+    convertedRecords = await loadConvertedRecordsFromDb(db, { convertedVisits });
+    withSink = attachConvertedSink(withSink, collectConvertedFeeds(convertedRecords));
+  }
 
   const landings = landingsFromEvents(events);
   const returns = collectReturns(allVisits, landings, focusVisitIds);
@@ -365,7 +491,7 @@ export async function loadPageTransitionsFromDb(
   const sectionGraph = await loadSectionGraphFromDb(db, {
     from: opts.from,
     to: opts.to,
-    visitIds,
+    visitIds: visitIds.length > 0 ? visitIds : null,
   });
   const expandablePaths = [
     ...new Set(sectionGraph.nodes.map((n) => n.path)),
@@ -404,7 +530,10 @@ export async function loadPageTransitionsFromDb(
 
   const detailPath = opts.detailPath?.trim() || null;
   let detail: NodeSidePanel | null = null;
-  if (detailPath && detailPath !== DROP_OFF_NODE) {
+  let convertedDetail: ConvertedSinkDetail | null = null;
+  if (detailPath === CONVERTED_NODE) {
+    convertedDetail = buildConvertedSinkDetail(convertedRecords);
+  } else if (detailPath && detailPath !== DROP_OFF_NODE) {
     const exitSections = sectionGraph.nodes
       .filter((s) => s.path === detailPath && s.dropOffs > 0)
       .map((s) => ({ sectionId: s.sectionId, count: s.dropOffs }));
@@ -433,5 +562,6 @@ export async function loadPageTransitionsFromDb(
     expandablePaths,
     detail,
     countryLegend,
+    convertedDetail,
   };
 }

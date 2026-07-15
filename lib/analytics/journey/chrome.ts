@@ -1,4 +1,5 @@
 import type { PageViewEvent } from "./transitions";
+import { CONVERTED_NODE } from "./converted-sink";
 import { DROP_OFF_NODE } from "./drop-off-sink";
 
 /** Page node chrome for the unique-node journey graph. */
@@ -58,7 +59,7 @@ export function collectPageDwells(
 ): Map<string, number[]> {
   const byVisit = new Map<string, PageViewEvent[]>();
   for (const e of events) {
-    if (!e.path || e.path === DROP_OFF_NODE) continue;
+    if (!e.path || e.path === DROP_OFF_NODE || e.path === CONVERTED_NODE) continue;
     const list = byVisit.get(e.visitId) ?? [];
     list.push(e);
     byVisit.set(e.visitId, list);
@@ -98,7 +99,7 @@ export function buildNodeChrome(input: {
 }): PageNodeChrome[] {
   const prospectsByPath = new Map<string, Set<string>>();
   for (const e of input.events) {
-    if (!e.path || e.path === DROP_OFF_NODE) continue;
+    if (!e.path || e.path === DROP_OFF_NODE || e.path === CONVERTED_NODE) continue;
     const set = prospectsByPath.get(e.path) ?? new Set();
     set.add(e.visitId);
     prospectsByPath.set(e.path, set);
@@ -118,6 +119,19 @@ export function buildNodeChrome(input: {
         medianDwellMs: null,
         topDropOffSection: null,
         returnHits: 0,
+        medianReturnGapMs: null,
+      };
+    }
+    if (n.path === CONVERTED_NODE) {
+      return {
+        path: n.path,
+        views: n.views,
+        prospects: 0,
+        dropOffs: 0,
+        dropOffPct: 0,
+        medianDwellMs: null,
+        topDropOffSection: null,
+        returnHits: null,
         medianReturnGapMs: null,
       };
     }
@@ -152,7 +166,7 @@ export function buildNodeSidePanel(input: {
 
   const byVisit = new Map<string, string[]>();
   for (const e of input.events) {
-    if (!e.path || e.path === DROP_OFF_NODE) continue;
+    if (!e.path || e.path === DROP_OFF_NODE || e.path === CONVERTED_NODE) continue;
     const list = byVisit.get(e.visitId) ?? [];
     // Unique-node: consecutive same-path refresh collapses in path sample.
     if (list[list.length - 1] !== e.path) list.push(e.path);
