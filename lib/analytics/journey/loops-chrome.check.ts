@@ -10,6 +10,9 @@ import {
   buildNodeChrome,
   buildNodeSidePanel,
   edgeStrokeWidth,
+  edgeTrafficMixPct,
+  edgeTrafficOpacity,
+  edgeTrafficT,
   median,
 } from "./chrome";
 import { attachDropOffSink } from "./drop-off-sink";
@@ -33,6 +36,13 @@ assert.ok(loopEdges.some((e) => e.from === "/shop" && e.to === "/")); // back-ed
 assert.ok(Math.abs(edgeStrokeWidth(1, 10) - 1.7) < 1e-9);
 assert.ok(edgeStrokeWidth(10, 10) > edgeStrokeWidth(1, 10));
 assert.equal(edgeStrokeWidth(0, 10), 1);
+
+// --- Edge traffic color intensity ∝ count ---
+assert.equal(edgeTrafficT(0, 10), 0);
+assert.equal(edgeTrafficT(5, 10), 0.5);
+assert.equal(edgeTrafficT(10, 10), 1);
+assert.ok(edgeTrafficMixPct(10, 10) > edgeTrafficMixPct(1, 10));
+assert.ok(edgeTrafficOpacity(10, 10) > edgeTrafficOpacity(1, 10));
 
 // --- Node chrome metrics ---
 assert.equal(median([10, 30, 20]), 20);

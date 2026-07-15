@@ -49,6 +49,25 @@ export function edgeStrokeWidth(count: number, maxCount: number): number {
   return 1 + (count / maxCount) * 7;
 }
 
+/** 0–1 traffic fraction for edge color intensity. */
+export function edgeTrafficT(count: number, maxCount: number): number {
+  if (count <= 0 || maxCount <= 0) return 0;
+  return Math.min(1, count / maxCount);
+}
+
+/**
+ * color-mix % for traffic intensity (light → intense).
+ * Use as: color-mix(in oklab, var(--chart-2) ${pct}%, var(--muted)).
+ */
+export function edgeTrafficMixPct(count: number, maxCount: number): number {
+  return Math.round(22 + edgeTrafficT(count, maxCount) * 78);
+}
+
+/** Opacity when edge hue is already fixed (e.g. country color). */
+export function edgeTrafficOpacity(count: number, maxCount: number): number {
+  return 0.35 + edgeTrafficT(count, maxCount) * 0.6;
+}
+
 /**
  * Per-page dwell samples: time from landing on a path until the next different
  * page_view in the same Visit (or until visit end when last page).
