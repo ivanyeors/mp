@@ -63,12 +63,17 @@ export async function POST(req: Request) {
 
     const { data: pillowBuildable } = await admin
       .from("product_buildable")
-      .select("size, buildable");
+      .select("product_id, size, buildable");
     const buildable_counts: Record<string, number> = {};
     for (const row of pillowBuildable ?? []) {
       buildable_counts[row.size] = row.buildable ?? 0;
     }
-    const composed_buildable = buildable_counts[pillowProduct.size] ?? 0;
+    // Prefer product_id so basic vs premium of the same size do not collide.
+    const composed_buildable = Number(
+      pillowBuildable?.find((r) => r.product_id === pillowProduct.id)?.buildable ??
+        buildable_counts[pillowProduct.size] ??
+        0,
+    );
 
     return NextResponse.json({
       ok: true,

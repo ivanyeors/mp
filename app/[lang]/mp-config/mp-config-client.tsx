@@ -1250,10 +1250,13 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     const preferenceStocks = [coverStock, caseStock].filter(
       (s): s is number => s !== null,
     );
-    const { isPreOrder: preOrder } = isPreOrder({
-      preferenceStocks,
-      composedBuildable: shopRecommendation?.composed_buildable ?? 0,
-    });
+    // ponytail: no rec yet → not Pre-order (CTA already disabled until rec loads)
+    const preOrder = shopRecommendation
+      ? isPreOrder({
+          preferenceStocks,
+          composedBuildable: shopRecommendation.composed_buildable ?? 0,
+        }).isPreOrder
+      : false;
     const holdCta = holdSubmitting ? "Redirecting…" : holdCtaLabel(preOrder);
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 

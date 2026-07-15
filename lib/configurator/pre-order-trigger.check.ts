@@ -89,4 +89,13 @@ for (const [name, src] of [
 const recType = readFileSync("components/shop/customization-steps.tsx", "utf8");
 assert.match(recType, /composed_buildable\??:\s*number/);
 
+assert.match(
+  readFileSync("app/api/mp-basic/recommend/route.ts", "utf8"),
+  /product_id[\s\S]*composed_buildable/,
+);
+assert.match(
+  readFileSync("app/api/shop/customize/route.ts", "utf8"),
+  /composed_buildable/,
+);
+
 console.log("pre-order-trigger self-check ok");

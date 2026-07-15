@@ -258,15 +258,19 @@ async function handleRecommend(req: Request) {
     // Get available fillings for display
     const fillings = await getAvailableFillings();
 
-    // Fetch pillow buildable counts per size
+    // Fetch pillow buildable counts; composed uses product_id (kind×size).
     const { data: pillowBuildable } = await admin
       .from("product_buildable")
-      .select("size, buildable");
+      .select("product_id, size, buildable");
     const buildable_counts: Record<string, number> = {};
     for (const row of pillowBuildable ?? []) {
       buildable_counts[row.size] = row.buildable ?? 0;
     }
-    const composed_buildable = buildable_counts[pillowProduct.size] ?? 0;
+    const composed_buildable = Number(
+      pillowBuildable?.find((r) => r.product_id === pillowProduct.id)?.buildable ??
+        buildable_counts[pillowProduct.size] ??
+        0,
+    );
 
     return NextResponse.json({
       ok: true,

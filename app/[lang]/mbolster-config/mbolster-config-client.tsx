@@ -690,10 +690,13 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       shopRecommendation?.components.cases ?? [],
     );
     const preferenceStocks = caseStock !== null ? [caseStock] : [];
-    const { isPreOrder: preOrder } = isPreOrder({
-      preferenceStocks,
-      composedBuildable: shopRecommendation?.composed_buildable ?? 0,
-    });
+    // ponytail: no rec yet → not Pre-order (CTA already disabled until rec loads)
+    const preOrder = shopRecommendation
+      ? isPreOrder({
+          preferenceStocks,
+          composedBuildable: shopRecommendation.composed_buildable ?? 0,
+        }).isPreOrder
+      : false;
     const holdCta = holdSubmitting ? "Redirecting…" : holdCtaLabel(preOrder);
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
