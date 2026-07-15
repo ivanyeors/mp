@@ -17,10 +17,10 @@ Secondary conversion story without stealing Prospect focus.
 
 ## Acceptance criteria
 
-- [ ] Default view hides Converted / excludes paid Visitors from Prospect cohort appropriately
-- [ ] Include converted shows muted sink with last-touch Entry source and value
-- [ ] Journey duration and short path available in tooltip or side panel
-- [ ] Automated check covers last-touch attribution
+- [x] Default view hides Converted / excludes paid Visitors from Prospect cohort appropriately
+- [x] Include converted shows muted sink with last-touch Entry source and value
+- [x] Journey duration and short path available in tooltip or side panel
+- [x] Automated check covers last-touch attribution
 
 ## Blocked by
 

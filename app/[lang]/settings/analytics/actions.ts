@@ -457,12 +457,26 @@ export type JourneyNodeDetail = {
   samplePaths: string[][];
 };
 
+export type JourneyConvertedDetail = {
+  count: number;
+  totalValue: number;
+  byEntrySource: { entrySource: string; count: number; totalValue: number }[];
+  samples: {
+    entrySource: string;
+    journeyDurationMs: number;
+    orderValue: number;
+    shortPath: string[];
+  }[];
+};
+
 /** Page→page transitions from analytics_events only (no live GA). */
 export async function getProspectJourneyTransitions(input: {
   from: string;
   to: string;
   /** Filter by Visit.entry_source; omit / empty = all. */
   entrySource?: string | null;
+  /** When true, attach muted Converted sink (default Prospect cohort). */
+  includeConverted?: boolean;
   /** Expand this page path into section child nodes. */
   expandPath?: string | null;
   /** Include side-panel detail for this page path. */
@@ -476,6 +490,7 @@ export async function getProspectJourneyTransitions(input: {
       sections: JourneySectionNode[];
       expandablePaths: string[];
       detail: JourneyNodeDetail | null;
+      convertedDetail: JourneyConvertedDetail | null;
     }
   | { ok: false; error: string }
 > {
@@ -488,18 +503,28 @@ export async function getProspectJourneyTransitions(input: {
     const entrySource = input.entrySource?.trim() || null;
     const expandPath = input.expandPath?.trim() || null;
     const detailPath = input.detailPath?.trim() || null;
-    const [{ nodes, edges, sections, expandablePaths, detail }, entrySources] =
+    const [{ nodes, edges, sections, expandablePaths, detail, convertedDetail }, entrySources] =
       await Promise.all([
         loadPageTransitionsFromDb(db, {
           from: input.from,
           to: input.to,
           entrySource,
+          includeConverted: input.includeConverted === true,
           expandPath,
           detailPath,
         }),
         listEntrySourcesFromDb(db),
       ]);
-    return { ok: true, nodes, edges, entrySources, sections, expandablePaths, detail };
+    return {
+      ok: true,
+      nodes,
+      edges,
+      entrySources,
+      sections,
+      expandablePaths,
+      detail,
+      convertedDetail,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to load journey" };
   }
