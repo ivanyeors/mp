@@ -247,9 +247,9 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
   if (isMobile) {
     return (
       <SettingsBreadcrumbProvider>
-        <div className="flex min-h-svh w-full flex-col">
+        <div className="flex min-h-svh w-full min-w-0 flex-col overflow-x-hidden">
           {header}
-          <div className="px-2 py-4 sm:px-3">{children}</div>
+          <div className="min-w-0 max-w-full px-2 py-4 sm:px-3">{children}</div>
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetContent
               side="bottom"

@@ -211,16 +211,16 @@ export default function GeneralSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">API Configurations</h1>
           <p className="text-sm text-muted-foreground">
             Manage external API integrations (LLM providers, Stripe, etc.)
           </p>
         </div>
-        <Button onClick={openNew}>
+        <Button onClick={openNew} className="shrink-0 self-start sm:self-auto">
           <Plus className="mr-2 h-4 w-4" />
           Add API
         </Button>
@@ -232,7 +232,7 @@ export default function GeneralSettingsPage() {
           No API configurations yet. Click &ldquo;Add API&rdquo; to create one.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="min-w-0 max-w-full overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">

@@ -11,9 +11,9 @@ Audit and fix page-level horizontal overflow on marketing, configurators, Scienc
 
 ## Acceptance criteria
 
-- [ ] Home, mp-config, mbolster-config, Science of Sleep sheet, and a sample `/settings` page: no page-level horizontal scroll at ~390px width.
-- [ ] Contained carousels do not widen the document.
-- [ ] Inputs remain ≥16px font on mobile where needed to avoid focus-zoom before slice 13.
+- [x] Home, mp-config, mbolster-config, Science of Sleep sheet, and a sample `/settings` page: no page-level horizontal scroll at ~390px width.
+- [x] Contained carousels do not widen the document.
+- [x] Inputs remain ≥16px font on mobile where needed to avoid focus-zoom before slice 13.
 
 ## Blocked by
 

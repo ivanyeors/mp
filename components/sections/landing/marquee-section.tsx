@@ -13,7 +13,8 @@ export function MarqueeSection({ section, images }: MarqueeSectionProps) {
 
   return (
     <section className="relative py-12 md:py-16">
-      <div className="relative left-1/2 w-screen -translate-x-1/2">
+      {/* ponytail: w-full not w-screen — 100vw side-scrolls when a scrollbar exists */}
+      <div className="relative w-full overflow-hidden">
         <AspectRatio ratio={1150 / 310} className="relative overflow-hidden border bg-card/40 backdrop-blur-sm">
           <InfiniteImageMarquee
             src={image}

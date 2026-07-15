@@ -166,7 +166,9 @@ body.dock-hidden .app-dock {
   body {
     width: 100%;
     max-width: 100%;
-    overflow: visible;
+    /* Clip X only — Y stays visible so sticky/fixed chrome keeps working */
+    overflow-x: clip;
+    overflow-y: visible;
     /* Default text (body, small text, UI text) */
     @apply bg-background text-foreground font-mono leading-snug;
     min-height: 100%;

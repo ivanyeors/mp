@@ -89,8 +89,8 @@ export function SizeMattersSlideIn({ className }: Props) {
             </div>
           </div>
 
-          <div ref={setViewportNode} className="flex-1 overflow-y-auto">
-            <div className="px-3 py-3 pb-20 md:px-6 md:py-6">
+          <div ref={setViewportNode} className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="min-w-0 px-3 py-3 pb-20 md:px-6 md:py-6">
               <main className="min-w-0 space-y-8" aria-label="Mpillow sizing and fit">
                 <section
                   aria-labelledby="press-quote-heading"

@@ -35,7 +35,7 @@ export function HomeHeader() {
     <>
       {/* Keep compact header explicitly top-anchored so mobile scroll can't drift it. */}
       <div
-        className={`fixed left-1/2 top-[var(--mobile-top-clearance)] z-40 w-fit max-w-[calc(100vw-0.5rem)] -translate-x-1/2 px-2 py-2 transition-all duration-200 ease-out sm:max-w-full sm:px-4 ${isCompact ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+        className={`fixed left-1/2 top-[var(--mobile-top-clearance)] z-40 w-fit max-w-[calc(100%-0.5rem)] -translate-x-1/2 px-2 py-2 transition-all duration-200 ease-out sm:max-w-full sm:px-4 ${isCompact ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
           }`}
       >
         <div

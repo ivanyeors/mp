@@ -701,7 +701,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
-      <div className="relative min-h-screen bg-background">
+      <div className="relative min-h-screen min-w-0 max-w-full overflow-x-hidden bg-background">
         {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
         <div
           key={state.step}
@@ -1083,7 +1083,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-background">
+    <div className="relative min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-background">
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
         key={state.step}

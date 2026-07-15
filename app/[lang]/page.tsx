@@ -166,10 +166,10 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
   const prices = { basicXsFromPrice, premiumXsFromPrice, bolsterFromPrice };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="relative min-h-screen min-w-0 max-w-full bg-background">
       <SiteJsonLd lang={locale} />
 
-      <main className="relative overflow-x-hidden">
+      <main className="relative min-w-0 max-w-full overflow-x-hidden">
         {sections.map((section) => (
           // Stable home section tags for journey analytics (slice 06).
           <div key={section.id} data-section={section.slug}>

@@ -138,9 +138,10 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
 
   return (
     <CarouselContext.Provider value={{ onCardClose: handleCardClose, currentIndex }}>
-      <div className="relative w-full">
+      {/* min-w-0: keep horizontal scroll local so the track cannot widen the document */}
+      <div className="relative w-full min-w-0">
         <div
-          className="flex w-full overflow-x-scroll overscroll-x-auto scroll-smooth py-6 [scrollbar-width:none] md:py-10"
+          className="flex w-full min-w-0 overflow-x-auto overscroll-x-contain scroll-smooth py-6 [scrollbar-width:none] md:py-10"
           onScroll={checkScrollability}
           ref={carouselRef}
         >
