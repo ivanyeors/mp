@@ -20,7 +20,6 @@ const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 const input = read("components/ui/input.tsx");
 const textarea = read("components/ui/textarea.tsx");
 const globals = read("app/globals.css");
-const rootLayout = read("app/layout.tsx");
 const header = read("components/ui/home-header.tsx");
 
 // Home: containment without relying only on html overflow
@@ -55,9 +54,6 @@ assert.match(textarea, /text-base[\s\S]*?md:text-sm/);
 // Safety net stays; sources are fixed above
 assert.match(globals, /html\s*\{[\s\S]*?overflow-x:\s*hidden/);
 assert.match(globals, /overflow-x:\s*clip/);
-
-// Slice 13 must not land here
-assert.doesNotMatch(rootLayout, /maximumScale|userScalable/);
 
 // Compact header: no 100vw max-width (scrollbar-safe)
 assert.doesNotMatch(header, /100vw/);

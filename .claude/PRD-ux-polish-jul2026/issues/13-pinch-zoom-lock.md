@@ -11,9 +11,13 @@ After overflow fixes (slice 12), lock pinch-zoom site-wide via Next.js root `vie
 
 ## Acceptance criteria
 
-- [ ] Mobile Safari/Chrome: pinch-zoom does not scale the page.
-- [ ] Slice 12 overflow criteria still hold.
-- [ ] PR notes intentional a11y tradeoff for app-like behavior.
+- [x] Mobile Safari/Chrome: pinch-zoom does not scale the page.
+- [x] Slice 12 overflow criteria still hold.
+- [x] PR notes intentional a11y tradeoff for app-like behavior.
+
+## A11y tradeoff (intentional)
+
+Locking `maximumScale: 1` / `userScalable: false` on the root Next.js `viewport` disables browser pinch-zoom so the PWA feels app-like after overflow/font fixes (slice 12, including ≥16px inputs to avoid iOS focus-zoom). Tradeoff: users who rely on pinch-zoom for low vision lose that browser affordance site-wide. Accepted for this product surface; revisit if WCAG zoom requirements become a hard gate.
 
 ## Blocked by
 
