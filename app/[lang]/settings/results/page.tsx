@@ -602,12 +602,12 @@ export default function ResultsPage() {
                 <TableHead className="w-[100px]">Status</TableHead>
                 <TableHead className="w-[80px]">Source</TableHead>
                 <TableHead className="w-[140px]">Order</TableHead>
-                <TableHead className="w-[120px]">Gender</TableHead>
-                <TableHead className="w-[140px]">Age group</TableHead>
-                <TableHead className="w-[130px]">Shoulder (cm)</TableHead>
+                <TableHead className="hidden w-[120px] md:table-cell">Gender</TableHead>
+                <TableHead className="hidden w-[140px] md:table-cell">Age group</TableHead>
+                <TableHead className="hidden w-[130px] md:table-cell">Shoulder (cm)</TableHead>
                 <TableHead className="w-[220px]">Measured by</TableHead>
                 <TableHead className="w-[140px]">Group Updates</TableHead>
-                <TableHead className="w-[260px]">ID</TableHead>
+                <TableHead className="hidden w-[260px] lg:table-cell">ID</TableHead>
                 <TableHead className="w-[52px] text-right" />
               </TableRow>
             </TableHeader>
@@ -689,9 +689,9 @@ export default function ResultsPage() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>{gender}</TableCell>
-                      <TableCell>{ageGroup}</TableCell>
-                      <TableCell className="tabular-nums">{shoulder}</TableCell>
+                      <TableCell className="hidden md:table-cell">{gender}</TableCell>
+                      <TableCell className="hidden md:table-cell">{ageGroup}</TableCell>
+                      <TableCell className="hidden tabular-nums md:table-cell">{shoulder}</TableCell>
                       <TableCell
                         onClick={(e) => {
                           e.stopPropagation();
@@ -739,7 +739,9 @@ export default function ResultsPage() {
                           {busy ? "Sending…" : row.is_final ? "Sent" : "Send"}
                         </Button>
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{row.id}</TableCell>
+                      <TableCell className="hidden font-mono text-xs text-muted-foreground lg:table-cell">
+                        {row.id}
+                      </TableCell>
                       <TableCell
                         className="text-right"
                         onClick={(e) => {
@@ -750,7 +752,7 @@ export default function ResultsPage() {
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                          className="min-h-11 min-w-11"
                           onClick={() => {
                             setDeleteTarget(row);
                             setDeleteDialogOpen(true);
