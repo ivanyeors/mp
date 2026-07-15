@@ -601,9 +601,9 @@ export default function ConfigureInventoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1>Configure Products</h1>
-        <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        <Button className="w-full sm:w-auto" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
       </div>
       <Separator />
       <div className="space-y-4">

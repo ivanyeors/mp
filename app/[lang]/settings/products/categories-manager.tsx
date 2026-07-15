@@ -155,7 +155,7 @@ function CategoryRow({
                             <button
                                 type="button"
                                 onClick={() => onToggleExpand(category.id)}
-                                className="p-0.5 rounded hover:bg-muted transition-colors shrink-0"
+                                className="flex min-h-11 min-w-11 items-center justify-center rounded hover:bg-muted transition-colors shrink-0"
                                 aria-label={isExpanded ? "Collapse" : "Expand"}
                             >
                                 {isExpanded ? (
@@ -165,7 +165,7 @@ function CategoryRow({
                                 )}
                             </button>
                         ) : (
-                            <span className="w-5 shrink-0" />
+                            <span className="min-w-11 shrink-0" />
                         )}
                         {/* Thumbnail */}
                         <div className="h-8 w-8 rounded border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
@@ -208,7 +208,7 @@ function CategoryRow({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8"
+                        className="min-h-11 min-w-11"
                         onClick={() => onEdit(category)}
                     >
                         <Pencil className="h-4 w-4" />
@@ -216,7 +216,7 @@ function CategoryRow({
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        className="min-h-11 min-w-11 text-destructive hover:text-destructive"
                         onClick={() => onDelete(category)}
                     >
                         <Trash2 className="h-4 w-4" />
@@ -420,7 +420,7 @@ export function CategoriesManager() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h2 className="flex items-center gap-2 text-lg font-semibold">
                         <FolderTree className="h-5 w-5 text-muted-foreground" />
@@ -430,7 +430,7 @@ export function CategoriesManager() {
                         Organise your products into a hierarchy of categories.
                     </p>
                 </div>
-                <Button size="sm" onClick={openCreate}>
+                <Button size="sm" className="w-full sm:w-auto" onClick={openCreate}>
                     <Plus className="mr-2 h-4 w-4" /> Add Category
                 </Button>
             </div>
@@ -445,7 +445,7 @@ export function CategoriesManager() {
                     No categories yet. Add your first category to get started.
                 </div>
             ) : (
-                <div className="rounded-xl border overflow-hidden">
+                <div className="rounded-xl border overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="border-b bg-muted/50">
                             <tr>
