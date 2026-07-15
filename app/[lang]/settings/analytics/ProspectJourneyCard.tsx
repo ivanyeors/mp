@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   Card,
   CardContent,
@@ -24,13 +31,14 @@ import {
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+  ChevronDown,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+  Scan,
+  X,
+} from "lucide-react";
 import { edgeStrokeWidth } from "@/lib/analytics/journey/chrome";
 import {
   getProspectJourneyTransitions,
@@ -44,12 +52,29 @@ type Props = { from: string; to: string };
 
 const ALL = "__all__";
 const DROP_OFF = "__drop_off__";
+const LAYOUT_KEY = "prospect-journey-layout-v1";
+const DRAG_THRESHOLD = 4;
+const PORT_R = 4;
+const NODE_W = 140;
+const NODE_H = 76;
+const NODE_W_SEL = 200;
+const NODE_H_SEL = 120;
+const WORLD_W = 640;
+const WORLD_H = 400;
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 3;
+const PAN_NUDGE = 40;
 
 function labelPath(path: string) {
   if (path === DROP_OFF) return "Drop-off";
   const hash = path.indexOf("#");
   if (hash >= 0) return `${path.slice(0, hash)} › ${path.slice(hash + 1)}`;
   return path === "/" ? "Home" : path;
+}
+
+function truncateLabel(s: string, maxChars: number): { text: string; full: string } {
+  if (s.length <= maxChars) return { text: s, full: s };
+  return { text: `${s.slice(0, Math.max(1, maxChars - 1))}…`, full: s };
 }
 
 function formatDwell(ms: number | null) {
@@ -70,7 +95,15 @@ function formatGap(ms: number) {
   return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
 }
 
+function isTypingTarget(el: EventTarget | null) {
+  if (!(el instanceof HTMLElement)) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+}
+
 type LayoutNode = JourneyTransitionNode & { x: number; y: number };
+type PosMap = Record<string, { x: number; y: number }>;
+type Camera = { x: number; y: number; k: number };
 
 function layoutGraph(
   nodes: JourneyTransitionNode[],
@@ -92,27 +125,297 @@ function layoutGraph(
   return laid;
 }
 
+function loadPositions(): PosMap {
+  try {
+    const raw = localStorage.getItem(LAYOUT_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as PosMap;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePositions(pos: PosMap) {
+  try {
+    localStorage.setItem(LAYOUT_KEY, JSON.stringify(pos));
+  } catch {
+    /* ponytail: quota/private mode — layout just won't persist */
+  }
+}
+
+function nodeHalfSize(selected: boolean) {
+  return selected
+    ? { hw: NODE_W_SEL / 2, hh: NODE_H_SEL / 2 }
+    : { hw: NODE_W / 2, hh: NODE_H / 2 };
+}
+
+function fitCamera(laid: LayoutNode[], vw: number, vh: number, pad = 48): Camera {
+  if (laid.length === 0 || vw <= 0 || vh <= 0) return { x: 0, y: 0, k: 1 };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const n of laid) {
+    const { hw, hh } = nodeHalfSize(false);
+    minX = Math.min(minX, n.x - hw);
+    minY = Math.min(minY, n.y - hh);
+    maxX = Math.max(maxX, n.x + hw);
+    maxY = Math.max(maxY, n.y + hh);
+  }
+  const bw = Math.max(1, maxX - minX);
+  const bh = Math.max(1, maxY - minY);
+  const k = Math.min(
+    ZOOM_MAX,
+    Math.max(ZOOM_MIN, Math.min((vw - pad * 2) / bw, (vh - pad * 2) / bh)),
+  );
+  const x = (vw - bw * k) / 2 - minX * k;
+  const y = (vh - bh * k) / 2 - minY * k;
+  return { x, y, k };
+}
+
+/** Cubic noodle from source out-port to target in-port. */
+function cubicEdgePath(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  aHw: number,
+  bHw: number,
+  bendY: number,
+): string {
+  const x1 = ax + aHw + PORT_R;
+  const y1 = ay;
+  const x2 = bx - bHw - PORT_R;
+  const y2 = by;
+  const dx = Math.max(40, Math.abs(x2 - x1) * 0.4);
+  const c1x = x1 + dx;
+  const c1y = y1 + bendY * 0.35;
+  const c2x = x2 - dx;
+  const c2y = y2 + bendY * 0.35;
+  return `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
+}
+
+function SvgText({
+  children,
+  maxChars,
+  className,
+  y,
+  textAnchor = "middle",
+  x = 0,
+}: {
+  children: string;
+  maxChars: number;
+  className?: string;
+  y: number;
+  textAnchor?: "middle" | "start" | "end";
+  x?: number;
+}) {
+  const { text, full } = truncateLabel(children, maxChars);
+  return (
+    <text x={x} y={y} textAnchor={textAnchor} className={className}>
+      {text !== full ? <title>{full}</title> : null}
+      {text}
+    </text>
+  );
+}
+
+function DetailPanel({
+  detailPath,
+  detail,
+  open,
+  onClose,
+}: {
+  detailPath: string;
+  detail: JourneyNodeDetail | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <aside
+      className={`absolute inset-y-0 right-0 z-20 flex w-[min(360px,90%)] flex-col border-l bg-card/95 shadow-sm backdrop-blur transition-transform duration-200 ${
+        open ? "translate-x-0" : "pointer-events-none translate-x-full"
+      }`}
+      aria-hidden={!open}
+    >
+      <div className="flex items-start justify-between gap-2 border-b px-4 py-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-medium">{labelPath(detailPath)}</h3>
+          <p className="text-xs text-muted-foreground">
+            Exit sections, dwell, and sample Visit paths
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onClose}
+          aria-label="Close detail"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex-1 space-y-4 overflow-auto p-4 text-sm">
+        {!detail || detail.path !== detailPath ? (
+          <p className="text-muted-foreground">Loading detail…</p>
+        ) : (
+          <>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Median dwell
+              </p>
+              <p>{formatDwell(detail.medianDwellMs)}</p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Exit sections
+              </p>
+              {detail.exitSections.length === 0 ? (
+                <p className="text-muted-foreground">No section-level drop-offs yet.</p>
+              ) : (
+                <ul className="space-y-1 font-mono text-xs">
+                  {detail.exitSections.map((s) => (
+                    <li key={s.sectionId} className="flex justify-between gap-2">
+                      <span>#{s.sectionId}</span>
+                      <span className="text-muted-foreground">{s.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Dwell samples
+              </p>
+              {detail.dwellMsSamples.length === 0 ? (
+                <p className="text-muted-foreground">No dwell samples yet.</p>
+              ) : (
+                <p className="font-mono text-xs text-muted-foreground">
+                  {detail.dwellMsSamples
+                    .slice(0, 8)
+                    .map((ms) => formatDwell(ms))
+                    .join(" · ")}
+                  {detail.dwellMsSamples.length > 8
+                    ? ` · +${detail.dwellMsSamples.length - 8}`
+                    : ""}
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Sample paths
+              </p>
+              {detail.samplePaths.length === 0 ? (
+                <p className="text-muted-foreground">No paths yet.</p>
+              ) : (
+                <ul className="space-y-1 font-mono text-xs">
+                  {detail.samplePaths.map((p, i) => (
+                    <li key={i} className="truncate">
+                      {p.map(labelPath).join(" → ")}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Return timeline
+              </p>
+              {detail.returnTimeline.length === 0 ? (
+                <p className="text-muted-foreground">No returns landed here.</p>
+              ) : (
+                <ul className="space-y-1 font-mono text-xs">
+                  {detail.returnTimeline.map((r, i) => (
+                    <li key={i} className="flex justify-between gap-2">
+                      <span className="truncate text-muted-foreground">
+                        {r.priorDropOffPath
+                          ? `${labelPath(r.priorDropOffPath)} → Drop-off → here`
+                          : "Drop-off → here"}
+                      </span>
+                      <span className="shrink-0">{formatGap(r.gapMs)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 function JourneyGraph({
   nodes,
   edges,
   selectedPath,
   onSelect,
   colorByCode,
+  detail,
 }: {
   nodes: JourneyTransitionNode[];
   edges: JourneyTransitionEdge[];
   selectedPath: string | null;
-  onSelect: (path: string) => void;
+  onSelect: (path: string | null) => void;
   colorByCode: Map<string, string>;
+  detail: JourneyNodeDetail | null;
 }) {
-  const width = 640;
-  const height = 320;
-  const laid = useMemo(() => layoutGraph(nodes, width, height), [nodes]);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [viewport, setViewport] = useState({ w: 800, h: 500 });
+  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, k: 1 });
+  const [fullscreen, setFullscreen] = useState(false);
+  const [spaceDown, setSpaceDown] = useState(false);
+  const [panning, setPanning] = useState(false);
+  const [overrides, setOverrides] = useState<PosMap>({});
+  const [fittedKey, setFittedKey] = useState("");
+  const cameraRef = useRef(camera);
+  cameraRef.current = camera;
+
+  const dragRef = useRef<{
+    path: string;
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    moved: boolean;
+  } | null>(null);
+  const panRef = useRef<{
+    startClientX: number;
+    startClientY: number;
+    origX: number;
+    origY: number;
+  } | null>(null);
+
+  useEffect(() => {
+    setOverrides(loadPositions());
+    setFittedKey(""); // refit after persisted positions apply
+  }, []);
+
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (!cr) return;
+      setViewport({ w: Math.max(1, cr.width), h: Math.max(1, cr.height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fullscreen]);
+
+  const seeded = useMemo(() => layoutGraph(nodes, WORLD_W, WORLD_H), [nodes]);
+  const laid = useMemo(() => {
+    return seeded.map((n) => {
+      const o = overrides[n.path];
+      return o ? { ...n, x: o.x, y: o.y } : n;
+    });
+  }, [seeded, overrides]);
   const byPath = useMemo(() => new Map(laid.map((n) => [n.path, n])), [laid]);
   const maxCount = Math.max(1, ...edges.map((e) => e.count));
   const colorMode = colorByCode.size >= 2;
 
-  // Offset sibling country edges sharing same endpoints
   const pairIndex = useMemo(() => {
     const map = new Map<string, number>();
     const out = new Map<string, number>();
@@ -125,128 +428,541 @@ function JourneyGraph({
     return out;
   }, [edges]);
 
+  useEffect(() => {
+    if (laid.length === 0 || viewport.w < 40) return;
+    const key = `${laid.map((n) => n.path).join("|")}:${Math.round(viewport.w)}x${Math.round(viewport.h)}`;
+    if (key === fittedKey) return;
+    setCamera(fitCamera(laid, viewport.w, viewport.h));
+    setFittedKey(key);
+  }, [laid, viewport, fittedKey]);
+
+  const clientToWorld = useCallback((clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    if (!svg) return { x: 0, y: 0 };
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const p = pt.matrixTransform(ctm.inverse());
+    const cam = cameraRef.current;
+    return { x: (p.x - cam.x) / cam.k, y: (p.y - cam.y) / cam.k };
+  }, []);
+
+  const onNodePointerMove = useCallback(
+    (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const { x, y } = clientToWorld(ev.clientX, ev.clientY);
+      const dx = x - d.startX;
+      const dy = y - d.startY;
+      if (!d.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      d.moved = true;
+      setOverrides((prev) => {
+        const next = { ...prev, [d.path]: { x: d.origX + dx, y: d.origY + dy } };
+        savePositions(next);
+        return next;
+      });
+    },
+    [clientToWorld],
+  );
+
+  const onNodePointerUp = useCallback(() => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    window.removeEventListener("pointermove", onNodePointerMove);
+    window.removeEventListener("pointerup", onNodePointerUp);
+    if (!d) return;
+    if (!d.moved && d.path !== DROP_OFF) onSelect(d.path);
+  }, [onNodePointerMove, onSelect]);
+
+  const onPanMove = useCallback((ev: PointerEvent) => {
+    const p = panRef.current;
+    if (!p) return;
+    const dx = ev.clientX - p.startClientX;
+    const dy = ev.clientY - p.startClientY;
+    setCamera((c) => ({ ...c, x: p.origX + dx, y: p.origY + dy }));
+  }, []);
+
+  const onPanUp = useCallback(() => {
+    panRef.current = null;
+    setPanning(false);
+    window.removeEventListener("pointermove", onPanMove);
+    window.removeEventListener("pointerup", onPanUp);
+  }, [onPanMove]);
+
+  useEffect(() => {
+    return () => {
+      window.removeEventListener("pointermove", onNodePointerMove);
+      window.removeEventListener("pointerup", onNodePointerUp);
+      window.removeEventListener("pointermove", onPanMove);
+      window.removeEventListener("pointerup", onPanUp);
+    };
+  }, [onNodePointerMove, onNodePointerUp, onPanMove, onPanUp]);
+
+  function startPan(ev: ReactPointerEvent) {
+    ev.preventDefault();
+    panRef.current = {
+      startClientX: ev.clientX,
+      startClientY: ev.clientY,
+      origX: cameraRef.current.x,
+      origY: cameraRef.current.y,
+    };
+    setPanning(true);
+    window.addEventListener("pointermove", onPanMove);
+    window.addEventListener("pointerup", onPanUp);
+  }
+
+  function onNodePointerDown(path: string, ev: ReactPointerEvent) {
+    if (spaceDown || ev.button === 1) {
+      startPan(ev);
+      return;
+    }
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const n = byPath.get(path);
+    if (!n) return;
+    const { x, y } = clientToWorld(ev.clientX, ev.clientY);
+    dragRef.current = {
+      path,
+      startX: x,
+      startY: y,
+      origX: n.x,
+      origY: n.y,
+      moved: false,
+    };
+    (ev.currentTarget as Element).setPointerCapture?.(ev.pointerId);
+    window.addEventListener("pointermove", onNodePointerMove);
+    window.addEventListener("pointerup", onNodePointerUp);
+  }
+
+  function onCanvasPointerDown(ev: ReactPointerEvent) {
+    if (ev.button === 1 || (ev.button === 0 && spaceDown)) {
+      startPan(ev);
+      return;
+    }
+    if (ev.button === 0) onSelect(null);
+  }
+
+  function fitView() {
+    setCamera(fitCamera(laid, viewport.w, viewport.h));
+  }
+
+  // Non-passive wheel so we can preventDefault (page scroll)
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    function onWheel(ev: WheelEvent) {
+      ev.preventDefault();
+      const el = svgRef.current;
+      if (!el) return;
+      const pt = el.createSVGPoint();
+      pt.x = ev.clientX;
+      pt.y = ev.clientY;
+      const ctm = el.getScreenCTM();
+      if (!ctm) return;
+      const p = pt.matrixTransform(ctm.inverse());
+      const cam = cameraRef.current;
+      const factor = ev.deltaY < 0 ? 1.08 : 1 / 1.08;
+      const nextK = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, cam.k * factor));
+      const wx = (p.x - cam.x) / cam.k;
+      const wy = (p.y - cam.y) / cam.k;
+      setCamera({
+        k: nextK,
+        x: p.x - wx * nextK,
+        y: p.y - wy * nextK,
+      });
+    }
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onWheel);
+  }, [fullscreen]);
+
+  useEffect(() => {
+    function onKeyDown(ev: KeyboardEvent) {
+      if (isTypingTarget(ev.target)) return;
+      if (ev.code === "Space") {
+        ev.preventDefault();
+        setSpaceDown(true);
+        return;
+      }
+      if (ev.key === "Escape") {
+        if (selectedPath) {
+          onSelect(null);
+          return;
+        }
+        if (fullscreen) setFullscreen(false);
+        return;
+      }
+      if (ev.key === "f" || ev.key === "F") {
+        if (!ev.metaKey && !ev.ctrlKey && !ev.altKey) {
+          ev.preventDefault();
+          setFullscreen((v) => !v);
+        }
+        return;
+      }
+      if (ev.key === "ArrowLeft") {
+        ev.preventDefault();
+        setCamera((c) => ({ ...c, x: c.x + PAN_NUDGE }));
+      } else if (ev.key === "ArrowRight") {
+        ev.preventDefault();
+        setCamera((c) => ({ ...c, x: c.x - PAN_NUDGE }));
+      } else if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        setCamera((c) => ({ ...c, y: c.y + PAN_NUDGE }));
+      } else if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        setCamera((c) => ({ ...c, y: c.y - PAN_NUDGE }));
+      }
+    }
+    function onKeyUp(ev: KeyboardEvent) {
+      if (ev.code === "Space") setSpaceDown(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [fullscreen, onSelect, selectedPath]);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [fullscreen]);
+
+  const drawOrder = useMemo(() => {
+    const rest = laid.filter((n) => n.path !== selectedPath);
+    const sel = laid.find((n) => n.path === selectedPath);
+    return sel ? [...rest, sel] : rest;
+  }, [laid, selectedPath]);
+
+  const cursorClass = panning
+    ? "cursor-grabbing"
+    : spaceDown
+      ? "cursor-grab"
+      : "cursor-default";
+
+  const shellClass = fullscreen
+    ? `fixed inset-0 z-50 flex flex-col bg-background ${cursorClass}`
+    : `relative h-[min(70vh,720px)] w-full overflow-hidden rounded-md border bg-muted/30 ${cursorClass}`;
+
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="h-auto w-full max-h-[360px] rounded-md border bg-muted/20"
-      role="img"
-      aria-label="Prospect journey unique-node graph"
-    >
-      <defs>
-        <marker
-          id="journey-arrow"
-          markerWidth="8"
-          markerHeight="8"
-          refX="6"
-          refY="3"
-          orient="auto"
+    <div ref={shellRef} className={shellClass} tabIndex={0}>
+      <div className="pointer-events-none absolute left-2 top-2 z-30 flex items-center gap-1">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="pointer-events-auto h-8 gap-1.5 text-xs shadow-sm"
+          onClick={fitView}
+          aria-label="Fit view"
         >
-          <path d="M0,0 L6,3 L0,6 Z" className="fill-muted-foreground" />
-        </marker>
-      </defs>
-      {edges.map((e) => {
-        const a = byPath.get(e.from);
-        const b = byPath.get(e.to);
-        if (!a || !b) return null;
-        const isBack = a.x > b.x;
-        const pk = `${e.from}->${e.to}${e.dashed ? ":re" : ""}`;
-        const idx = pairIndex.get(`${pk}\0${e.country ?? ""}`) ?? 0;
-        const bend = (isBack || e.dashed ? -36 : 0) + (colorMode ? idx * -14 : 0);
-        const mx = (a.x + b.x) / 2;
-        const my = (a.y + b.y) / 2 + bend;
-        const sw = edgeStrokeWidth(e.count, maxCount);
-        const stroke =
-          colorMode && e.country && colorByCode.has(e.country)
-            ? colorByCode.get(e.country)!
-            : undefined;
-        return (
-          <path
-            key={`${e.from}->${e.to}:${e.country ?? ""}:${e.dashed ? "re" : "s"}`}
-            d={`M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`}
-            fill="none"
-            stroke={stroke ?? "currentColor"}
-            className={
-              stroke
-                ? undefined
-                : e.dashed
-                  ? "text-muted-foreground/50"
-                  : "text-muted-foreground/70"
-            }
-            strokeWidth={sw}
-            strokeDasharray={e.dashed ? "6 4" : undefined}
-            markerEnd="url(#journey-arrow)"
-            opacity={stroke ? 0.85 : undefined}
-          />
-        );
-      })}
-      {laid.map((n) => {
-        const selected = selectedPath === n.path;
-        const isSink = n.path === DROP_OFF;
-        return (
-          <g
-            key={n.path}
-            transform={`translate(${n.x}, ${n.y})`}
-            className="cursor-pointer"
-            onClick={() => onSelect(n.path)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(ev) => {
-              if (ev.key === "Enter" || ev.key === " ") {
-                ev.preventDefault();
-                onSelect(n.path);
-              }
-            }}
+          <Scan className="h-3.5 w-3.5" />
+          Fit
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="pointer-events-auto h-8 gap-1.5 text-xs shadow-sm"
+          onClick={() => setFullscreen((v) => !v)}
+          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+        >
+          {fullscreen ? (
+            <Minimize2 className="h-3.5 w-3.5" />
+          ) : (
+            <Maximize2 className="h-3.5 w-3.5" />
+          )}
+          {fullscreen ? "Exit" : "Full"}
+        </Button>
+        <span className="pointer-events-none ml-1 hidden rounded bg-background/80 px-2 py-1 text-[10px] text-muted-foreground sm:inline">
+          Space/MMB pan · wheel zoom · F fullscreen · Esc close
+        </span>
+      </div>
+
+      <svg
+        ref={svgRef}
+        width={viewport.w}
+        height={viewport.h}
+        viewBox={`0 0 ${viewport.w} ${viewport.h}`}
+        className="h-full w-full touch-none select-none"
+        role="img"
+        aria-label="Prospect journey unique-node graph"
+        onPointerDown={onCanvasPointerDown}
+        onAuxClick={(ev) => ev.preventDefault()}
+        onContextMenu={(ev) => ev.preventDefault()}
+      >
+        <defs>
+          <pattern
+            id="journey-dots"
+            width="16"
+            height="16"
+            patternUnits="userSpaceOnUse"
+            patternTransform={`translate(${camera.x} ${camera.y}) scale(${camera.k})`}
           >
-            <rect
-              x={-70}
-              y={-38}
-              width={140}
-              height={76}
-              rx={8}
-              className={
-                isSink
-                  ? "fill-background stroke-destructive/60"
-                  : selected
-                    ? "fill-background stroke-foreground"
-                    : "fill-background stroke-border"
-              }
-              strokeWidth={selected ? 2 : 1}
-            />
-            <text
-              textAnchor="middle"
-              y={-20}
-              className="fill-foreground text-[11px] font-medium"
-            >
-              {labelPath(n.path)}
-            </text>
-            {!isSink ? (
-              <>
-                <text textAnchor="middle" y={-4} className="fill-muted-foreground text-[9px]">
-                  {n.prospects} prospects · {n.dropOffPct}% drop
-                </text>
-                <text textAnchor="middle" y={12} className="fill-muted-foreground text-[9px]">
-                  dwell {formatDwell(n.medianDwellMs)}
-                  {n.topDropOffSection ? ` · #${n.topDropOffSection}` : ""}
-                </text>
-                <text textAnchor="middle" y={28} className="fill-muted-foreground text-[8px]">
-                  {n.returnHits > 0
-                    ? `returns ${n.returnHits}${
-                        n.medianReturnGapMs != null
-                          ? ` · gap ${formatGap(n.medianReturnGapMs)}`
-                          : ""
-                      }`
-                    : "returns 0"}
-                </text>
-              </>
-            ) : (
-              <text textAnchor="middle" y={4} className="fill-muted-foreground text-[10px]">
-                {n.views} visits
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+            <circle cx="1" cy="1" r="1" className="fill-muted-foreground/25" />
+          </pattern>
+          <filter id="journey-shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.35" />
+          </filter>
+          <marker
+            id="journey-start"
+            viewBox="-4 -4 8 8"
+            markerWidth="6"
+            markerHeight="6"
+            refX="0"
+            refY="0"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <circle r="2.5" fill="context-stroke" />
+          </marker>
+          <marker
+            id="journey-end"
+            viewBox="0 0 10 8"
+            markerWidth="8"
+            markerHeight="6"
+            refX="9"
+            refY="4"
+            orient="auto"
+            markerUnits="userSpaceOnUse"
+          >
+            <path d="M0,0 L10,4 L0,8 Z" fill="context-stroke" />
+          </marker>
+        </defs>
+        <rect width={viewport.w} height={viewport.h} fill="url(#journey-dots)" />
+        <g transform={`translate(${camera.x}, ${camera.y}) scale(${camera.k})`}>
+          {edges.map((e) => {
+            const a = byPath.get(e.from);
+            const b = byPath.get(e.to);
+            if (!a || !b) return null;
+            const aSel = selectedPath === a.path;
+            const bSel = selectedPath === b.path;
+            const { hw: aHw } = nodeHalfSize(aSel);
+            const { hw: bHw } = nodeHalfSize(bSel);
+            const isBack = a.x > b.x;
+            const pk = `${e.from}->${e.to}${e.dashed ? ":re" : ""}`;
+            const idx = pairIndex.get(`${pk}\0${e.country ?? ""}`) ?? 0;
+            const bend = (isBack || e.dashed ? -48 : 0) + (colorMode ? idx * -16 : 0);
+            const sw = edgeStrokeWidth(e.count, maxCount);
+            const stroke =
+              colorMode && e.country && colorByCode.has(e.country)
+                ? colorByCode.get(e.country)!
+                : undefined;
+            return (
+              <path
+                key={`${e.from}->${e.to}:${e.country ?? ""}:${e.dashed ? "re" : "s"}`}
+                d={cubicEdgePath(a.x, a.y, b.x, b.y, aHw, bHw, bend)}
+                fill="none"
+                stroke={stroke ?? "currentColor"}
+                className={
+                  stroke
+                    ? undefined
+                    : e.dashed
+                      ? "text-muted-foreground/45"
+                      : "text-muted-foreground/60"
+                }
+                strokeWidth={sw}
+                strokeDasharray={e.dashed ? "6 4" : undefined}
+                markerStart="url(#journey-start)"
+                markerEnd="url(#journey-end)"
+                opacity={stroke ? 0.85 : undefined}
+                pointerEvents="none"
+              />
+            );
+          })}
+          {drawOrder.map((n) => {
+            const selected = selectedPath === n.path;
+            const isSink = n.path === DROP_OFF;
+            const { hw, hh } = nodeHalfSize(selected && !isSink);
+            const headerH = selected && !isSink ? 28 : 22;
+            const titleMax = selected ? 28 : 18;
+            const title = labelPath(n.path);
+            return (
+              <g
+                key={n.path}
+                transform={`translate(${n.x}, ${n.y})`}
+                className={spaceDown ? "cursor-grab" : "cursor-grab active:cursor-grabbing"}
+                onPointerDown={(ev) => onNodePointerDown(n.path, ev)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(ev) => {
+                  if (ev.key === "Enter") {
+                    ev.preventDefault();
+                    if (n.path !== DROP_OFF) onSelect(n.path);
+                  }
+                }}
+                filter={selected ? "url(#journey-shadow)" : undefined}
+              >
+                <rect
+                  x={-hw}
+                  y={-hh}
+                  width={hw * 2}
+                  height={hh * 2}
+                  rx={8}
+                  className={
+                    isSink
+                      ? "fill-background stroke-destructive/60"
+                      : selected
+                        ? "fill-background stroke-foreground"
+                        : "fill-background stroke-border"
+                  }
+                  strokeWidth={selected ? 2 : 1}
+                />
+                <rect
+                  x={-hw}
+                  y={-hh}
+                  width={hw * 2}
+                  height={headerH}
+                  rx={8}
+                  className={
+                    isSink
+                      ? "fill-destructive/15"
+                      : selected
+                        ? "fill-muted"
+                        : "fill-muted/60"
+                  }
+                />
+                <rect
+                  x={-hw}
+                  y={-hh + headerH - 8}
+                  width={hw * 2}
+                  height={8}
+                  className={
+                    isSink
+                      ? "fill-destructive/15"
+                      : selected
+                        ? "fill-muted"
+                        : "fill-muted/60"
+                  }
+                />
+                <SvgText
+                  y={-hh + headerH / 2 + 4}
+                  maxChars={titleMax}
+                  className="fill-foreground text-[11px] font-medium"
+                >
+                  {title}
+                </SvgText>
+                {!isSink ? (
+                  selected ? (
+                    <>
+                      <SvgText
+                        y={-hh + headerH + 18}
+                        maxChars={32}
+                        className="fill-muted-foreground text-[10px]"
+                      >
+                        {`${n.prospects} prospects · ${n.dropOffPct}% drop`}
+                      </SvgText>
+                      <SvgText
+                        y={-hh + headerH + 36}
+                        maxChars={32}
+                        className="fill-muted-foreground text-[10px]"
+                      >
+                        {`dwell ${formatDwell(n.medianDwellMs)}${
+                          n.topDropOffSection ? ` · #${n.topDropOffSection}` : ""
+                        }`}
+                      </SvgText>
+                      <SvgText
+                        y={-hh + headerH + 54}
+                        maxChars={32}
+                        className="fill-muted-foreground text-[10px]"
+                      >
+                        {n.returnHits > 0
+                          ? `returns ${n.returnHits}${
+                              n.medianReturnGapMs != null
+                                ? ` · gap ${formatGap(n.medianReturnGapMs)}`
+                                : ""
+                            }`
+                          : "returns 0"}
+                      </SvgText>
+                      <SvgText
+                        y={-hh + headerH + 72}
+                        maxChars={28}
+                        className="fill-muted-foreground/80 text-[9px]"
+                      >
+                        {`${n.views} views`}
+                      </SvgText>
+                    </>
+                  ) : (
+                    <>
+                      <SvgText
+                        y={-hh + headerH + 14}
+                        maxChars={22}
+                        className="fill-muted-foreground text-[9px]"
+                      >
+                        {`${n.prospects} prospects · ${n.dropOffPct}% drop`}
+                      </SvgText>
+                      <SvgText
+                        y={-hh + headerH + 28}
+                        maxChars={22}
+                        className="fill-muted-foreground text-[9px]"
+                      >
+                        {`dwell ${formatDwell(n.medianDwellMs)}${
+                          n.topDropOffSection ? ` · #${n.topDropOffSection}` : ""
+                        }`}
+                      </SvgText>
+                      <SvgText
+                        y={-hh + headerH + 42}
+                        maxChars={22}
+                        className="fill-muted-foreground text-[8px]"
+                      >
+                        {n.returnHits > 0
+                          ? `returns ${n.returnHits}${
+                              n.medianReturnGapMs != null
+                                ? ` · gap ${formatGap(n.medianReturnGapMs)}`
+                                : ""
+                            }`
+                          : "returns 0"}
+                      </SvgText>
+                    </>
+                  )
+                ) : (
+                  <SvgText y={4} maxChars={18} className="fill-muted-foreground text-[10px]">
+                    {`${n.views} visits`}
+                  </SvgText>
+                )}
+                <circle
+                  cx={-hw}
+                  cy={0}
+                  r={PORT_R}
+                  className={
+                    isSink
+                      ? "fill-destructive/70 stroke-background"
+                      : "fill-muted-foreground stroke-background"
+                  }
+                  strokeWidth={1.5}
+                />
+                <circle
+                  cx={hw}
+                  cy={0}
+                  r={PORT_R}
+                  className={
+                    isSink
+                      ? "fill-destructive/70 stroke-background"
+                      : "fill-muted-foreground stroke-background"
+                  }
+                  strokeWidth={1.5}
+                />
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+
+      {selectedPath && selectedPath !== DROP_OFF ? (
+        <DetailPanel
+          detailPath={selectedPath}
+          detail={detail}
+          open
+          onClose={() => onSelect(null)}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -448,7 +1164,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
           </Popover>
         </div>
         {loading ? (
-          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-[min(70vh,720px)] w-full" />
         ) : error ? (
           <p className="text-sm text-destructive">{error}</p>
         ) : nodes.length === 0 ? (
@@ -512,6 +1228,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
               selectedPath={detailPath}
               onSelect={(path) => setDetailPath(path === DROP_OFF ? null : path)}
               colorByCode={colorByCode}
+              detail={detail}
             />
             {countryLegend.length >= 2 ? (
               <ul
@@ -533,108 +1250,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
           </div>
         )}
       </CardContent>
-
-      <Sheet
-        open={detailPath != null && detailPath !== DROP_OFF}
-        onOpenChange={(open) => {
-          if (!open) setDetailPath(null);
-        }}
-      >
-        <SheetContent side="right" className="flex w-full flex-col sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>{detailPath ? labelPath(detailPath) : "Node"}</SheetTitle>
-            <SheetDescription>
-              Exit sections, dwell, and sample Visit paths for this page node.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-4 space-y-4 overflow-auto text-sm">
-            {!detail || detail.path !== detailPath ? (
-              <p className="text-muted-foreground">Loading detail…</p>
-            ) : (
-              <>
-                <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Median dwell
-                  </p>
-                  <p>{formatDwell(detail.medianDwellMs)}</p>
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Exit sections
-                  </p>
-                  {detail.exitSections.length === 0 ? (
-                    <p className="text-muted-foreground">No section-level drop-offs yet.</p>
-                  ) : (
-                    <ul className="space-y-1 font-mono text-xs">
-                      {detail.exitSections.map((s) => (
-                        <li key={s.sectionId} className="flex justify-between gap-2">
-                          <span>#{s.sectionId}</span>
-                          <span className="text-muted-foreground">{s.count}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Dwell samples
-                  </p>
-                  {detail.dwellMsSamples.length === 0 ? (
-                    <p className="text-muted-foreground">No dwell samples yet.</p>
-                  ) : (
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {detail.dwellMsSamples
-                        .slice(0, 8)
-                        .map((ms) => formatDwell(ms))
-                        .join(" · ")}
-                      {detail.dwellMsSamples.length > 8
-                        ? ` · +${detail.dwellMsSamples.length - 8}`
-                        : ""}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Sample paths
-                  </p>
-                  {detail.samplePaths.length === 0 ? (
-                    <p className="text-muted-foreground">No paths yet.</p>
-                  ) : (
-                    <ul className="space-y-1 font-mono text-xs">
-                      {detail.samplePaths.map((p, i) => (
-                        <li key={i} className="truncate">
-                          {p.map(labelPath).join(" → ")}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Return timeline
-                  </p>
-                  {detail.returnTimeline.length === 0 ? (
-                    <p className="text-muted-foreground">No returns landed here.</p>
-                  ) : (
-                    <ul className="space-y-1 font-mono text-xs">
-                      {detail.returnTimeline.map((r, i) => (
-                        <li key={i} className="flex justify-between gap-2">
-                          <span className="truncate text-muted-foreground">
-                            {r.priorDropOffPath
-                              ? `${labelPath(r.priorDropOffPath)} → Drop-off → here`
-                              : "Drop-off → here"}
-                          </span>
-                          <span className="shrink-0">{formatGap(r.gapMs)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
     </Card>
   );
 }

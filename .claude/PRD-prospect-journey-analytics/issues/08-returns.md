@@ -32,3 +32,4 @@ Show come-backs without duplicating multi-day paths.
 - Aggregates load visitor history, attach dashed `__drop_off__`→landing edges, cohort filter
 - Prospect journey UI: Visitors New/Returning select, dashed SVG edges, return chrome + side-panel timeline
 - Verify: `npx tsx lib/analytics/journey/returns.check.ts`
+- Live DB: `npx tsx lib/analytics/journey/slice-08-09.smoke.ts` (dashed re-entry, returnHits/gap, New vs Returning cohort, side-panel return timeline)

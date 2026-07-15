@@ -31,4 +31,5 @@ Country on Visit for Prospect filtering and comparison.
 - Ingest: `resolveCountryFromHeaders(req.headers)` → Visit.country on INSERT (no raw IP column)
 - Aggregates: `countries[]` filter; ≥2 → edge.country + `countryLegend`
 - UI: Country multi-select + colored edges + legend
-- Verify: `npx tsx lib/analytics/journey/country.check.ts` + live DB smoke
+- Verify: `npx tsx lib/analytics/journey/country.check.ts`
+- Live DB: `npx tsx lib/analytics/journey/slice-08-09.smoke.ts` (country on Visit, multi-select subset, ≥2 → color legend + edge.country, no IP column, headers≠locale)
