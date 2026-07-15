@@ -171,15 +171,17 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
       <main className="relative overflow-x-hidden">
         {sections.map((section) => (
-          <LandingSection
-            key={section.id}
-            section={section}
-            messages={m}
-            locale={locale}
-            images={img}
-            prices={prices}
-            landingRatings={landingRatings}
-          />
+          // Stable home section tags for journey analytics (slice 06).
+          <div key={section.id} data-section={section.slug}>
+            <LandingSection
+              section={section}
+              messages={m}
+              locale={locale}
+              images={img}
+              prices={prices}
+              landingRatings={landingRatings}
+            />
+          </div>
         ))}
       </main>
     </div>

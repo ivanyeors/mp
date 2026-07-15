@@ -44,7 +44,27 @@ A customisation submission with optional **Authorization hold** and operator ass
 
 **Discovery source**:
 The visitor’s answer to “How did you hear about us?” captured on configurator preview (mp-config, mp-basic, mbolster-config) and required for authorize / in-store save. Stored on the **Result** as a stable option id (plus free text when Other). Operators edit the bilingual option list under Landing Site → **Forms** — option-list editing only, not a customization-steps CMS.
-_Avoid_: referral, referral source, lead source (partner/voucher collision); **Customer preference**; **Add-on**
+_Avoid_: referral, referral source, lead source (partner/voucher collision); **Customer preference**; **Add-on**; conflating with **Entry source**
+
+**Visitor**:
+A long-lived anonymous browser identity for journey analytics, distinct from **Customer** until a deterministic link (email or **Customer**) merges them.
+_Avoid_: Customer (shopper Sign-in identity); session id; device fingerprint as identity; Customer journey (Appointment collision)
+
+**Visit**:
+One continuous browsing session for a **Visitor**, bounded by inactivity or tab close, with a frozen **Entry source** and optional **Drop-off**.
+_Avoid_: session (generic); conflating with **Appointment**
+
+**Prospect**:
+A **Visitor** who has not yet produced a paid **Order**.
+_Avoid_: lead; anonymous user (prefer **Visitor**); treating converters as the default Analytics cohort
+
+**Entry source**:
+Machine-captured traffic origin at **Visit** start: UTM when present, else referrer host, else Direct.
+_Avoid_: **Discovery source** (self-reported on **Result**); referral source; campaign (when you mean the full Entry source)
+
+**Drop-off**:
+The end of a **Visit** without conversion: last page, last section when known, and dwell — not a surveyed reason.
+_Avoid_: bounce (too narrow); exit intent; “why they left” as captured fact
 
 **Filling Template**:
 A Configure BOM template that contains filling lines only, scoped by product type and size. A **Composed sellable** may designate one active Filling Template as its **Default Filling Template** (baseline mix). At assignment the operator may keep that default or pick another template from the same size-scoped catalog; the choice is stored on the **Result**. Fillings never come from customer input or from raw filling lines on the composed sellable BOM. Affects COGS and fulfillment, not sell price.
@@ -107,6 +127,22 @@ _Avoid_: treating every signed-in user as staff; calling the back office “Sett
 A shopper account identity after Sign in when the session is not **Staff**. Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
 _Avoid_: conflating with **Customer preference** (cover/case choices only)
 
+**Order**:
+A paid platform sale in our DB (post Accept + capture when a hold existed). Analytics sales windows for platform **Orders** use **`paid_at`**, not `created_at`. Unpaid checkouts are outside realized margin.
+_Avoid_: calling a held **Result** an **Order**; using `created_at` for Analytics sold-margin windows
+
+**Analytics channel**:
+Admin Panel → Analytics view filter: `all` | `orders` | `shopify`. **All** = paid platform **Orders** ∪ **Shopify order mirror** for the same date range. In-store inventory sells without an **Order** are not a revenue channel. Accepted **Results** count only via the **Order** they become.
+_Avoid_: live Shopify Admin API reads from the Analytics page; a third “in-store sell” toggle in v1
+
+**Shopify order mirror**:
+Durable DB finance facts for Shopify paid sales (orders, lines, refunds, sync cursor). Source for Analytics Shopify / All’s Shopify half. Distinct from `shopify_sales_queue` (ops inventory commit). Shopify Admin API is ingest-only (webhook + catch-up); Analytics reads the mirror only.
+_Avoid_: merging mirror tables/jobs with the sales queue; treating live API list price × qty as P&L truth
+
+**Others**:
+Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
+_Avoid_: dropping unmapped lines from totals; silently understating Shopify sales
+
 ## Relationships
 
 - An **Item** may be a **Sellable item** when it has an MSRP
@@ -124,6 +160,12 @@ _Avoid_: conflating with **Customer preference** (cover/case choices only)
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
 - A **Media Asset** is the library record; landing slots, blogs, products, and slide configs are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
 - The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), or **Admin Panel** (**Staff**). When the session is **Staff**, prefer **Admin Panel** over **Profile**.
+- Analytics is retrospective P&L: sales windows use **`paid_at`** on platform **Orders** and the **Shopify order mirror**. On-hand stock value KPIs (inventory at cost, potential MSRP revenue, unrealized margin, weighted margin %) live on **Costings** as-of-now, not on Analytics.
+- **Analytics channel** All = paid **Orders** ∪ **Shopify order mirror** only; `shopify_sales_queue` is ops, not a finance channel.
+- A **Visitor** has zero or more **Visits**; each **Visit** has one **Entry source** and may end in a **Drop-off** or a paid **Order**
+- A **Prospect** is a **Visitor** with no paid **Order**; after payment they are no longer a **Prospect**
+- **Entry source** is machine-captured at **Visit** start; **Discovery source** is self-reported later on the **Result** — never the same field
+- A **Visitor** merges to a **Customer** (or email) only via a deterministic key — never by IP, user-agent, or fingerprint alone
 
 ## Example dialogue
 
@@ -153,6 +195,18 @@ _Avoid_: conflating with **Customer preference** (cover/case choices only)
 >
 > **Dev:** "Staff still need a separate Settings login page, right?"
 > **Domain expert:** "No — one **Sign in** at `/account/login`. After the session, **Staff** go to the **Admin Panel**; everyone else is a **Customer** on **Profile**. Keep the `/settings` path; just don't call it Settings in the UI."
+>
+> **Dev:** "Should Analytics pull Shopify sales live from the Admin API?"
+> **Domain expert:** "No — read the **Shopify order mirror**. Unmapped lines stay under **Others** with revenue counted. On-hand stock value belongs on **Costings**, not Analytics."
+>
+> **Dev:** "Is **Entry source** the same as **Discovery source**?"
+> **Domain expert:** "No — **Entry source** is UTM/referrer/Direct at **Visit** start. **Discovery source** is the questionnaire answer on the **Result**."
+>
+> **Dev:** "Can we merge two **Visitors** on the same IP into one person?"
+> **Domain expert:** "Only after email or **Customer** Sign-in. Until then each browser stays its own **Visitor**; roommates must not share identity."
+>
+> **Dev:** "What should Staff look at first on Analytics — converters or leavers?"
+> **Domain expert:** "**Prospects** and **Drop-off**. Paid **Orders** are the muted minority until Staff opt in."
 
 ## Configure (settings)
 
@@ -313,7 +367,8 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Mbolster (i) FAQ dismiss — resolved: **`hideClose` + inline close below the FAQ accordion** (scrolls with content), matching Mpillow FAQ — not a fixed/corner X.
 - Mbolster height “can’t type `.`” — resolved as AFK bug: input round-trips through `parseFloat`/`toDisplayHeight` on every keystroke so intermediate values like `1.` become `1`. Keep a draft display string while typing; normalize/clamp on blur or Continue.
 - Pre-order trade-offs — ADR written: `docs/adr/0005-pre-order-authorization-hold.md`.
-- Orders date-range **sales** report — resolved: filter list + dashboard summary by **`paid_at`** (not `created_at`). Unpaid/pending without `paid_at` fall outside the sales window.
+- Orders date-range **sales** report — resolved: filter list + dashboard summary by **`paid_at`** (not `created_at`). Unpaid/pending without `paid_at` fall outside the sales window. Same rule for Analytics platform half and **Shopify order mirror** `paid_at`.
+- Analytics live Shopify API vs DB — resolved: DB-only via **Shopify order mirror**; channel toggle **Analytics channel**; gap lines = **Others**. ADR: `docs/adr/0006-analytics-db-channel-facts.md`. On-hand inventory value KPIs → **Costings** (as-of-now).
 - Mpillow/Mbolster “Stripe API issue” on deploy — resolved: missing **`STRIPE_SECRET_KEY`** on the deployed Vercel env (localhost had it). Operator fixed env; **no code slice** in this PRD for that failure. Still remove bolster **cover** preference requirement as a separate customise correctness slice.
 - "media" / landing slot images vs **Media Asset** — slot overrides and slide-in config paths are consumers; the library record is the **Media Asset**. Hybrid refs: new attachments prefer Asset id; legacy URL strings still count toward **Used**.
 - “TL;DR” / key takeaways vs **Answer lede** — resolved: same pattern; industry synonym only, no second UI.
@@ -321,3 +376,5 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Marketing “ambassador” was overloaded — resolved: **Consumer ambassador** (home/Skyjin & Piggie) vs **Local Ambassador (clinical)** (`/our-partners`).
 - Single “Elusive Sleeper” persona vs roadmap trio — resolved: Elusive Sleeper is the shared pain pattern; canonical audiences are **Affluent Wellness / Pain Sufferer**, **Tech Neck professional**, **Multi-generational family**.
 - “How did you hear about us?” / referral / lead source — resolved: domain term is **Discovery source** (not referral; avoids partner/voucher collision). Forms settings edit option lists only — not a customization-steps CMS.
+- Traffic “from” vs “how did you hear” — resolved: **Entry source** (machine, **Visit** start) ≠ **Discovery source** (self-reported on **Result**).
+- Anonymous browser vs shopper account — resolved: **Visitor** until deterministic merge to email/**Customer**; **Prospect** = **Visitor** with no paid **Order**. No “Customer journey” label (collides with **Appointment**). ADR: `docs/adr/0007-first-party-journey-analytics.md`.

@@ -301,7 +301,7 @@ function ResultStatusPage() {
   }, [id, token, locale]);
 
   const journey = (
-    <div className="space-y-3">
+    <div className="space-y-3" data-section="status-journey">
       <Progress value={isTerminalFail ? 25 : progressValue} className="h-2" />
       <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {JOURNEY_STEPS.map((step, index) => {
@@ -330,7 +330,7 @@ function ResultStatusPage() {
   );
 
   const details = result ? (
-    <div className="space-y-2 rounded-lg border p-4 text-sm">
+    <div className="space-y-2 rounded-lg border p-4 text-sm" data-section="build-details">
       {result.product_type === "bolster" ? (
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Length</span>
@@ -428,7 +428,7 @@ function ResultStatusPage() {
       )}
 
       {canDecide && (
-        <div className="flex flex-wrap gap-2 border-t pt-3">
+        <div className="flex flex-wrap gap-2 border-t pt-3" data-section="decide">
           <Button
             variant="default"
             size="sm"
@@ -567,7 +567,15 @@ function ResultStatusPage() {
   // Signed-in: settings-style content (shell provides chrome).
   if (signedIn) {
     return (
-      <div className={cn("space-y-6", showTable ? "max-w-5xl" : "max-w-3xl")}>
+      <div className={cn("relative space-y-6", showTable ? "max-w-5xl" : "max-w-3xl")}>
+        {/* ponytail: status as section so hold→accept drop-off is diagnosable */}
+        <div
+          key={status}
+          data-section={`status-${status}`}
+          data-step={status}
+          className="pointer-events-none absolute left-0 top-0 h-4 w-full"
+          aria-hidden
+        />
         {showTable ? (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
             {resultsTable}
@@ -601,7 +609,15 @@ function ResultStatusPage() {
 
   // Guest: standalone status page (token link).
   return (
-    <div className="mx-auto w-full max-w-xl px-4 py-8 sm:py-12">
+    <div className="relative mx-auto w-full max-w-xl px-4 py-8 sm:py-12">
+      {/* ponytail: status as section so hold→accept drop-off is diagnosable */}
+      <div
+        key={status}
+        data-section={`status-${status}`}
+        data-step={status}
+        className="pointer-events-none absolute left-0 top-0 h-4 w-full"
+        aria-hidden
+      />
       <div className="flex flex-col gap-5 sm:gap-6">
         <Card className="space-y-5 p-5 sm:p-6">
           <div>
@@ -615,7 +631,7 @@ function ResultStatusPage() {
           {details}
         </Card>
 
-        <Card className="space-y-4 p-5 sm:p-6">
+        <Card className="space-y-4 p-5 sm:p-6" data-section="sign-in">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Sign up / sign in</h2>
             <p className="mt-1 text-sm text-muted-foreground">

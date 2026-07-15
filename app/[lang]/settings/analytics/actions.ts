@@ -1,294 +1,40 @@
 "use server";
 
+import {
+  getChannelSalesSummary,
+  type AnalyticsChannel,
+} from "@/lib/analytics/channel-sales";
+import { assertAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { shopifyListPaidOrdersPaginated, type ShopifyOrderLite } from "@/lib/shopify/orders";
-import { addMonths, endOfMonth, startOfMonth } from "date-fns";
 
 export type SalesMetric = "units" | "revenue";
 export type TimelineViewMode = "parts" | "products";
+// ponytail: do not `export type { X }` from "use server" — SWC emits runtime refs (TimelinePoint is not defined)
 
-export type TimelinePoint = {
-  date: string; // ISO for month start
-  units: number;
-  revenue: number; // store currency units
-};
-
-export type TimelineSeries = {
-  id: string;
-  name: string;
-  category: string;
-  data: TimelinePoint[];
-};
-
-type VariantMappingRow = {
-  shopify_variant_id: number | string;
-  kind: "pillow" | "bolster" | "part";
-  pillow_size: "XS" | "S" | "M" | "L" | "XL" | null;
-  pillow_kind: "basic" | "premium" | null;
-  bolster_variant: "short" | "medium" | "long" | null;
-  item_id: number | null;
-  default_template_id?: number | null;
-};
-
-type ItemCategoryRow = { id: number | string; category: string | null };
-
-function monthsInRange(from: Date, to: Date): Date[] {
-  const start = startOfMonth(from);
-  const end = startOfMonth(to);
-  const acc: Date[] = [];
-  for (let d = start; d <= end; d = addMonths(d, 1)) acc.push(d);
-  return acc;
+function parseChannel(raw: string | undefined): AnalyticsChannel {
+  if (raw === "orders" || raw === "shopify" || raw === "all") return raw;
+  return "all";
 }
 
-function toMoneyNumber(value: unknown): number {
-  const n = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-export async function getShopifySalesTimeline(input: { from: string; to: string }) {
-  const from = startOfMonth(new Date(input.from));
-  const to = endOfMonth(new Date(input.to));
-  const months = monthsInRange(from, to);
-
-  const orders: ShopifyOrderLite[] = await shopifyListPaidOrdersPaginated({
-    createdAtMin: from.toISOString(),
-    createdAtMax: to.toISOString(),
-    pageSize: 250,
-    maxPages: 10,
+/** Channel sales timeline from mirror/platform DB (no Admin API). */
+export async function getShopifySalesTimeline(input: {
+  from: string;
+  to: string;
+  channel?: AnalyticsChannel;
+}) {
+  await assertAdmin("analytics");
+  const res = await getChannelSalesSummary({
+    channel: parseChannel(input.channel),
+    from: input.from,
+    to: input.to,
   });
-
-  const variantIds = Array.from(
-    new Set(
-      orders
-        .flatMap((o) => o.line_items ?? [])
-        .map((li) => li.variant_id)
-        .filter((v): v is number => typeof v === "number" && Number.isFinite(v) && v > 0)
-    )
-  );
-
-  const admin = supabaseAdmin();
-  const mappingByVariantId = new Map<number, VariantMappingRow>();
-  if (variantIds.length) {
-    const { data, error } = await admin
-      .from("shopify_variant_mappings")
-      .select("shopify_variant_id,kind,pillow_size,pillow_kind,bolster_variant,item_id,default_template_id")
-      .in("shopify_variant_id", variantIds);
-    if (error) throw new Error(error.message);
-    (data ?? []).forEach((row: VariantMappingRow) => {
-      mappingByVariantId.set(Number(row.shopify_variant_id), row);
-    });
-  }
-
-  const partItemIds = Array.from(
-    new Set(
-      Array.from(mappingByVariantId.values())
-        .filter((m) => m.kind === "part" && m.item_id)
-        .map((m) => Number(m.item_id))
-    )
-  );
-  const itemCategoryById = new Map<number, string>();
-  if (partItemIds.length) {
-    const { data, error } = await admin.from("items").select("id,category").in("id", partItemIds);
-    if (error) throw new Error(error.message);
-    (data ?? []).forEach((row: ItemCategoryRow) => {
-      const id = Number(row.id);
-      if (!Number.isFinite(id) || id <= 0) return;
-      itemCategoryById.set(id, String(row.category ?? "other"));
-    });
-  }
-
-  type Bucket = { units: number; revenue: number };
-  const partsAgg = new Map<string, Map<string, Bucket>>(); // category -> monthISO -> bucket
-  const productsAgg = new Map<string, { name: string; category: string; byMonth: Map<string, Bucket> }>();
-  const partUnitsByItemId = new Map<number, number>();
-  const pillowUnitsByKindSize = new Map<string, number>(); // key: basic:S
-  const pillowUnitsByTemplateId = new Map<number, number>(); // bom_templates.id
-
-  const monthKeyForOrder = (createdAt: string | null | undefined): string | null => {
-    if (!createdAt) return null;
-    const d = new Date(createdAt);
-    if (Number.isNaN(d.getTime())) return null;
-    return startOfMonth(d).toISOString();
-  };
-
-  for (const order of orders) {
-    const mk = monthKeyForOrder(order.created_at ?? null);
-    if (!mk) continue;
-    for (const li of order.line_items ?? []) {
-      const variantId = li.variant_id ?? null;
-      if (!variantId) continue;
-      const mapping = mappingByVariantId.get(Number(variantId));
-      if (!mapping) continue;
-
-      const units = Math.max(0, Math.floor(Number(li.quantity ?? 0)));
-      if (!units) continue;
-
-      const unitPrice = toMoneyNumber((li as ShopifyOrderLite["line_items"][number]).price);
-      const revenue = Math.max(0, unitPrice * units);
-
-      if (mapping.kind === "part") {
-        const itemId = mapping.item_id ? Number(mapping.item_id) : null;
-        const category = itemId ? itemCategoryById.get(itemId) ?? "other" : "other";
-        const byMonth = partsAgg.get(category) ?? new Map<string, Bucket>();
-        const cur = byMonth.get(mk) ?? { units: 0, revenue: 0 };
-        cur.units += units;
-        cur.revenue += revenue;
-        byMonth.set(mk, cur);
-        partsAgg.set(category, byMonth);
-
-        if (itemId) {
-          partUnitsByItemId.set(itemId, (partUnitsByItemId.get(itemId) ?? 0) + units);
-        }
-      } else if (mapping.kind === "pillow" && mapping.pillow_size) {
-        const pk = (mapping.pillow_kind ?? "basic") as "basic" | "premium";
-        const key = `pillow:${pk}:${mapping.pillow_size}`;
-        const name = `${pk === "premium" ? "Premium" : "Basic"} Pillow — ${mapping.pillow_size}`;
-        const entry = productsAgg.get(key) ?? { name, category: "pillow", byMonth: new Map<string, Bucket>() };
-        const cur = entry.byMonth.get(mk) ?? { units: 0, revenue: 0 };
-        cur.units += units;
-        cur.revenue += revenue;
-        entry.byMonth.set(mk, cur);
-        productsAgg.set(key, entry);
-
-        const ksKey = `${pk}:${mapping.pillow_size}`;
-        pillowUnitsByKindSize.set(ksKey, (pillowUnitsByKindSize.get(ksKey) ?? 0) + units);
-        const templateId = mapping.default_template_id ? Number(mapping.default_template_id) : null;
-        if (templateId && Number.isFinite(templateId) && templateId > 0) {
-          pillowUnitsByTemplateId.set(templateId, (pillowUnitsByTemplateId.get(templateId) ?? 0) + units);
-        }
-      } else if (mapping.kind === "bolster" && mapping.bolster_variant) {
-        const key = `bolster:${mapping.bolster_variant}`;
-        const name = `${mapping.bolster_variant.charAt(0).toUpperCase() + mapping.bolster_variant.slice(1)} Bolster`;
-        const entry = productsAgg.get(key) ?? { name, category: "bolster", byMonth: new Map<string, Bucket>() };
-        const cur = entry.byMonth.get(mk) ?? { units: 0, revenue: 0 };
-        cur.units += units;
-        cur.revenue += revenue;
-        entry.byMonth.set(mk, cur);
-        productsAgg.set(key, entry);
-      }
-    }
-  }
-
-  const parts: TimelineSeries[] = Array.from(partsAgg.entries()).map(([category, byMonth]) => ({
-    id: category,
-    name: category,
-    category,
-    data: months.map((m) => {
-      const k = startOfMonth(m).toISOString();
-      const b = byMonth.get(k) ?? { units: 0, revenue: 0 };
-      return { date: k, units: b.units, revenue: b.revenue };
-    }),
-  }));
-
-  const products: TimelineSeries[] = Array.from(productsAgg.entries()).map(([id, entry]) => ({
-    id,
-    name: entry.name,
-    category: entry.category,
-    data: months.map((m) => {
-      const k = startOfMonth(m).toISOString();
-      const b = entry.byMonth.get(k) ?? { units: 0, revenue: 0 };
-      return { date: k, units: b.units, revenue: b.revenue };
-    }),
-  }));
-
-  // Sort to keep stable output
-  parts.sort((a, b) => a.name.localeCompare(b.name));
-  products.sort((a, b) => a.name.localeCompare(b.name));
-
-  const toRecordNumber = (m: Map<string, number>) => {
-    const out: Record<string, number> = {};
-    m.forEach((v, k) => {
-      out[k] = v;
-    });
-    return out;
-  };
-  const toRecordNumberKey = (m: Map<number, number>) => {
-    const out: Record<string, number> = {};
-    m.forEach((v, k) => {
-      out[String(k)] = v;
-    });
-    return out;
-  };
-
   return {
     ok: true as const,
-    parts,
-    products,
-    currency: orders.find((o) => o.currency)?.currency ?? null,
-    totals: {
-      partUnitsByItemId: toRecordNumberKey(partUnitsByItemId),
-      pillowUnitsByKindSize: toRecordNumber(pillowUnitsByKindSize),
-      pillowUnitsByTemplateId: toRecordNumberKey(pillowUnitsByTemplateId),
-    },
+    parts: res.timeline.parts,
+    products: res.timeline.products,
+    currency: res.timeline.currency,
+    totals: res.timeline.totals,
   };
-}
-
-export type MonthlyInventoryRow = {
-  month: string; // ISO month start
-  totalsByCategory: Record<string, number>;
-};
-
-export async function getMonthlyInventoryByCategory(input: { from: string; to: string }) {
-  const from = startOfMonth(new Date(input.from));
-  const to = endOfMonth(new Date(input.to));
-  const months = monthsInRange(from, to);
-
-  const admin = supabaseAdmin();
-
-  const { data: itemRows, error: itemErr } = await admin.from("items").select("id,category");
-  if (itemErr) throw new Error(itemErr.message);
-  const itemCategoryById = new Map<number, string>();
-  (itemRows ?? []).forEach((r: ItemCategoryRow) => {
-    const id = Number(r.id);
-    if (!Number.isFinite(id) || id <= 0) return;
-    itemCategoryById.set(id, String(r.category ?? "other"));
-  });
-
-  // Fetch all transactions up to end of range so month-end snapshots are correct.
-  const { data: txRows, error: txErr } = await admin
-    .from("inventory_transactions")
-    .select("item_id,quantity_signed,created_at")
-    .lte("created_at", to.toISOString())
-    .order("created_at", { ascending: true });
-  if (txErr) throw new Error(txErr.message);
-
-  type TxRow = { item_id: number | string; quantity_signed: number | string; created_at: string };
-  const txs = (txRows ?? []) as TxRow[];
-
-  const categories = new Set<string>();
-  itemCategoryById.forEach((cat) => categories.add(cat));
-
-  const runningByCategory = new Map<string, number>();
-  categories.forEach((c) => runningByCategory.set(c, 0));
-
-  const results: MonthlyInventoryRow[] = [];
-
-  let txIdx = 0;
-  for (const monthStart of months) {
-    const monthEnd = endOfMonth(monthStart);
-
-    for (; txIdx < txs.length; txIdx += 1) {
-      const tx = txs[txIdx];
-      const createdAt = new Date(tx.created_at);
-      if (createdAt > monthEnd) break;
-
-      const itemId = Number(tx.item_id);
-      if (!Number.isFinite(itemId) || itemId <= 0) continue;
-      const cat = itemCategoryById.get(itemId) ?? "other";
-      const delta = Number(tx.quantity_signed);
-      if (!Number.isFinite(delta) || delta === 0) continue;
-      runningByCategory.set(cat, (runningByCategory.get(cat) ?? 0) + delta);
-    }
-
-    const totalsByCategory: Record<string, number> = {};
-    Array.from(runningByCategory.entries()).forEach(([cat, value]) => {
-      totalsByCategory[cat] = Math.max(0, Math.round(value));
-    });
-
-    results.push({ month: startOfMonth(monthStart).toISOString(), totalsByCategory });
-  }
-
-  return { ok: true as const, rows: results, categories: Array.from(categories).sort() };
 }
 
 export type InventoryMovementGroup = "category" | "size" | "type";
@@ -326,6 +72,7 @@ export type MpConfigMetricBreakdown = {
 };
 
 export async function getMpConfigMetricsBreakdown(input: { from: string; to: string }) {
+  await assertAdmin("analytics");
   const from = new Date(input.from);
   const to = new Date(input.to);
   if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
@@ -449,6 +196,7 @@ export async function getInventoryMovementWaterfall(input: {
   category?: string | null;
   size?: string | null;
 }) {
+  await assertAdmin("analytics");
   const start = new Date(input.from);
   const end = new Date(input.to);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
@@ -662,70 +410,97 @@ export type RealizedMarginSummary = {
 export async function getRealizedMarginSummary(input: {
   from: string;
   to: string;
+  channel?: AnalyticsChannel;
 }): Promise<{ ok: true; summary: RealizedMarginSummary }> {
-  const from = new Date(input.from);
-  const to = new Date(input.to);
-  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-    throw new Error("Invalid date range");
-  }
-
-  const fromIso = from.toISOString();
-  const toIso = to.toISOString();
-  const admin = supabaseAdmin();
-
-  const [{ data: paidOrders, error: paidErr }, { data: unpaidOrders, error: unpaidErr }] =
-    await Promise.all([
-      admin.from("orders").select("id").gte("paid_at", fromIso).lte("paid_at", toIso),
-      admin
-        .from("orders")
-        .select("id")
-        .is("paid_at", null)
-        .gte("created_at", fromIso)
-        .lte("created_at", toIso),
-    ]);
-  if (paidErr) throw new Error(paidErr.message);
-  if (unpaidErr) throw new Error(unpaidErr.message);
-
-  const orderIds = Array.from(
-    new Set([...(paidOrders ?? []), ...(unpaidOrders ?? [])].map((row) => String(row.id)))
-  );
-
-  const empty: RealizedMarginSummary = {
-    net_revenue: 0,
-    cogs: 0,
-    gross_margin: 0,
-    margin_pct: null,
-    order_count: 0,
-  };
-  if (!orderIds.length) return { ok: true, summary: empty };
-
-  const { data: marginRows, error: marginErr } = await admin
-    .from("order_margins")
-    .select("net_revenue, cogs, gross_margin")
-    .in("order_id", orderIds);
-  if (marginErr) throw new Error(marginErr.message);
-
-  let net_revenue = 0;
-  let cogs = 0;
-  let gross_margin = 0;
-  for (const row of marginRows ?? []) {
-    net_revenue += toMoneyNumber(row.net_revenue);
-    cogs += toMoneyNumber(row.cogs);
-    gross_margin += toMoneyNumber(row.gross_margin);
-  }
-
-  const productRevenue = gross_margin + cogs;
-  const margin_pct = productRevenue > 0 ? (gross_margin / productRevenue) * 100 : null;
-
+  await assertAdmin("analytics");
+  // paid_at only via channel-sales (no unpaid-by-created_at).
+  const res = await getChannelSalesSummary({
+    channel: parseChannel(input.channel),
+    from: input.from,
+    to: input.to,
+  });
   return {
     ok: true,
     summary: {
-      net_revenue,
-      cogs,
-      gross_margin,
-      margin_pct,
-      order_count: orderIds.length,
+      net_revenue: res.summary.net_revenue,
+      cogs: res.summary.cogs,
+      gross_margin: res.summary.gross_margin,
+      margin_pct: res.summary.margin_pct,
+      order_count: res.summary.order_count,
     },
   };
 }
 
+export type JourneyTransitionNode = {
+  path: string;
+  views: number;
+  prospects: number;
+  dropOffs: number;
+  dropOffPct: number;
+  medianDwellMs: number | null;
+  topDropOffSection: string | null;
+  returnHits: null;
+  medianReturnGapMs: null;
+};
+export type JourneyTransitionEdge = { from: string; to: string; count: number };
+export type JourneySectionNode = {
+  path: string;
+  sectionId: string;
+  views: number;
+  dropOffs: number;
+};
+export type JourneyNodeDetail = {
+  path: string;
+  exitSections: { sectionId: string; count: number }[];
+  dwellMsSamples: number[];
+  medianDwellMs: number | null;
+  samplePaths: string[][];
+};
+
+/** Page→page transitions from analytics_events only (no live GA). */
+export async function getProspectJourneyTransitions(input: {
+  from: string;
+  to: string;
+  /** Filter by Visit.entry_source; omit / empty = all. */
+  entrySource?: string | null;
+  /** Expand this page path into section child nodes. */
+  expandPath?: string | null;
+  /** Include side-panel detail for this page path. */
+  detailPath?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      nodes: JourneyTransitionNode[];
+      edges: JourneyTransitionEdge[];
+      entrySources: string[];
+      sections: JourneySectionNode[];
+      expandablePaths: string[];
+      detail: JourneyNodeDetail | null;
+    }
+  | { ok: false; error: string }
+> {
+  await assertAdmin("analytics");
+  try {
+    const { listEntrySourcesFromDb, loadPageTransitionsFromDb } = await import(
+      "@/lib/analytics/journey/aggregates"
+    );
+    const db = supabaseAdmin();
+    const entrySource = input.entrySource?.trim() || null;
+    const expandPath = input.expandPath?.trim() || null;
+    const detailPath = input.detailPath?.trim() || null;
+    const [{ nodes, edges, sections, expandablePaths, detail }, entrySources] =
+      await Promise.all([
+        loadPageTransitionsFromDb(db, {
+          from: input.from,
+          to: input.to,
+          entrySource,
+          expandPath,
+          detailPath,
+        }),
+        listEntrySourcesFromDb(db),
+      ]);
+    return { ok: true, nodes, edges, entrySources, sections, expandablePaths, detail };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to load journey" };
+  }
+}

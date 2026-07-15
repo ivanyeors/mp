@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "user_pseudo_id": "1234567890.0987654321",
+      "event_name": "page_view",
+      "event_timestamp": "2026-07-14T12:00:00.000Z",
+      "page_location": "https://example.com/shop"
+    },
+    {
+      "client_id": "1112223334.5556667778",
+      "event_name": "session_start",
+      "event_timestamp": 1720958400000000,
+      "page_location": "https://example.com/"
+    },
+    {
+      "user_pseudo_id": "9998887776.5554443332",
+      "event_name": "page_view",
+      "event_timestamp": "2026-07-14T13:00:00.000Z"
+    }
+  ]
+}

@@ -51,9 +51,11 @@ export type ShopifyOrderLite = {
   id: number
   name?: string | null
   created_at?: string | null
+  processed_at?: string | null
   financial_status?: string | null
   fulfillment_status?: string | null
   currency?: string | null
+  total_price?: string | number | null
   line_items: Array<{
     id: number
     title?: string | null
@@ -62,6 +64,56 @@ export type ShopifyOrderLite = {
     variant_id: number | null
     price?: string | null
   }>
+}
+
+export type ShopifyOrdersPage = {
+  orders: ShopifyOrderLite[]
+  /** Shopify `page_info` for the next page, or null when exhausted. */
+  nextPageInfo: string | null
+}
+
+function pageInfoFromNextUrl(nextUrl: string | null): string | null {
+  if (!nextUrl) return null
+  try {
+    return new URL(nextUrl).searchParams.get('page_info')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * One Admin API orders page for mirror catch-up.
+ * When `pageInfo` is set, Shopify forbids other filters — only page_info + limit.
+ */
+export async function shopifyFetchOrdersPage(args?: {
+  pageInfo?: string | null
+  sinceId?: number | null
+  updatedAtMin?: string | null
+  limit?: number
+}): Promise<ShopifyOrdersPage> {
+  const env = getShopifyEnv()
+  const limit = Math.max(1, Math.min(250, Math.floor(args?.limit ?? 50)))
+  const qs = new URLSearchParams()
+  qs.set('limit', String(limit))
+  // Full payload — no fields= (line_items[].id / processed_at needed for mirror).
+  // Filter paid client-side so refunded / partially_refunded still land in the mirror.
+  // Shopify: page_info cursor requests may only send page_info + limit (no status/filters).
+
+  if (args?.pageInfo) {
+    qs.set('page_info', args.pageInfo)
+  } else {
+    qs.set('status', 'any')
+    if (args?.sinceId != null && args.sinceId > 0) qs.set('since_id', String(args.sinceId))
+    if (args?.updatedAtMin) qs.set('updated_at_min', args.updatedAtMin)
+  }
+
+  const url = `https://${env.shopDomain}/admin/api/${env.apiVersion}/orders.json?${qs.toString()}`
+  const { json, headers } = await shopifyFetchAbsolute(url, { method: 'GET' })
+  const parsed = json as { orders?: ShopifyOrderLite[] }
+  const orders = (parsed.orders ?? []).filter(
+    (o): o is ShopifyOrderLite => !!o && typeof o.id === 'number' && Array.isArray(o.line_items),
+  )
+  return { orders, nextPageInfo: pageInfoFromNextUrl(parseNextLink(headers.get('link'))) }
 }
 
 export async function shopifyListPaidOrders(args?: {

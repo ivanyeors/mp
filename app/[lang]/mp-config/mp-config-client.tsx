@@ -1243,7 +1243,15 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
           description="This will clear your saved session and return to the start."
           onConfirmExit={exitToStart}
         />
-        <div className="min-h-screen bg-background">
+        <div className="relative min-h-screen bg-background">
+          {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
+          <div
+            key={currentStep}
+            data-section={currentStep}
+            data-step={currentStep}
+            className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"
+            aria-hidden
+          />
           <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between px-4 max-md:px-3">
               <Button
@@ -1655,6 +1663,14 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
+      {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
+      <div
+        key={currentStep}
+        data-section={currentStep}
+        data-step={currentStep}
+        className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"
+        aria-hidden
+      />
       {completionDialog}
       <ConfiguratorExitDialog
         open={exitDialogOpen}
