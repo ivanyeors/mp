@@ -463,6 +463,7 @@ export default function DiscountEditorPage() {
                                         type="button"
                                         variant="outline"
                                         size="icon"
+                                        className="min-h-11 min-w-11 shrink-0"
                                         onClick={handleGenerate}
                                         title="Generate random code"
                                     >
@@ -472,6 +473,7 @@ export default function DiscountEditorPage() {
                                         type="button"
                                         variant="outline"
                                         size="icon"
+                                        className="min-h-11 min-w-11 shrink-0"
                                         onClick={handleCopyCode}
                                         title="Copy code"
                                         disabled={!form.code}

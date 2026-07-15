@@ -751,14 +751,14 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1>Inventory</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => void load()}>Refresh</Button>
-          <Button onClick={() => setAddDrawerOpen(true)} aria-label="Add inventory item">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={() => void load()}>Refresh</Button>
+          <Button className="w-full sm:w-auto" onClick={() => setAddDrawerOpen(true)} aria-label="Add inventory item">
             Add inventory
           </Button>
-          <Button onClick={() => setCartOpen(true)} aria-label="Open cart">
+          <Button className="w-full sm:w-auto" onClick={() => setCartOpen(true)} aria-label="Open cart">
             <span className="mr-2" aria-hidden>🛒</span>
             Cart ({
               cart.pillows.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0) +
@@ -2560,7 +2560,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                           )}
                           <button
                             type="button"
-                            className="pointer-events-none absolute bottom-3 right-3 rounded-full border border-border bg-background/90 p-1 text-muted-foreground opacity-0 shadow-sm transition hover:text-destructive focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:pointer-events-auto group-hover:opacity-100 disabled:opacity-50"
+                            className="absolute bottom-3 right-3 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-background/90 p-1 text-muted-foreground shadow-sm transition hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
                             aria-label={`Delete ${description}`}
                             disabled={deletingId === variant.id}
                             onClick={async (event) => {

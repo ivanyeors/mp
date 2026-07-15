@@ -259,7 +259,13 @@ export default function GeneralSettingsPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(cfg)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="min-h-11 min-w-11"
+                      onClick={() => openEdit(cfg)}
+                      aria-label={`Edit ${cfg.name}`}
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </td>
@@ -334,7 +340,8 @@ export default function GeneralSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowKey((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showKey ? "Hide API key" : "Show API key"}
+                  className="absolute right-1 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
                 >
                   {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

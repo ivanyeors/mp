@@ -372,7 +372,7 @@ export default function SettingsOrdersPage() {
                     </SelectContent>
                 </Select>
 
-                <div className="flex items-center gap-2">
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                     <Input
                         type="date"
                         value={dateFrom}
@@ -381,10 +381,10 @@ export default function SettingsOrdersPage() {
                             setStatsLoading(true);
                         }}
                         max={dateTo || undefined}
-                        className="w-40"
+                        className="w-full sm:w-40"
                         aria-label="From date"
                     />
-                    <span className="text-muted-foreground text-sm">to</span>
+                    <span className="text-muted-foreground text-sm hidden sm:inline">to</span>
                     <Input
                         type="date"
                         value={dateTo}
@@ -393,7 +393,7 @@ export default function SettingsOrdersPage() {
                             setStatsLoading(true);
                         }}
                         min={dateFrom || undefined}
-                        className="w-40"
+                        className="w-full sm:w-40"
                         aria-label="To date"
                     />
                 </div>

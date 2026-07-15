@@ -15,12 +15,12 @@ Staging checklist (not a code feature) for iOS Safari + Android Chrome covering 
 - Dock at page end; overflow; pinch-zoom lock
 - Orders `paid_at` range; sample Settings pages
 
-Record pass/fail notes on the PR or checklist file.
+Record pass/fail notes on the PR or checklist file: `../OPS-STAGING-QA.md`.
 
 ## Acceptance criteria
 
-- [ ] Checklist document exists under this PRD folder (or linked from README).
-- [ ] iOS Safari and Android Chrome rows filled for critical paths.
+- [x] Checklist document exists under this PRD folder (or linked from README). → `../OPS-STAGING-QA.md`
+- [ ] iOS Safari and Android Chrome rows filled for critical paths. (**HITL — needs real devices**)
 - [ ] Failures filed as follow-up AFK slices (not left vague).
 
 ## Blocked by

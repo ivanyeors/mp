@@ -1138,7 +1138,12 @@ export default function OrderDetailPage() {
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-1 shrink-0">
-                                                    <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="min-h-11 min-w-11"
+                                                        asChild
+                                                    >
                                                         <Link href={to(`/settings/results/${r.id}`)}>
                                                             <ExternalLink className="h-3.5 w-3.5" />
                                                         </Link>
@@ -1146,7 +1151,7 @@ export default function OrderDetailPage() {
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                                        className="min-h-11 min-w-11 text-muted-foreground hover:text-destructive"
                                                         onClick={() => handleUnlinkResult(r.id)}
                                                     >
                                                         <Unlink className="h-3.5 w-3.5" />

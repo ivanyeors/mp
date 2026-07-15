@@ -1018,7 +1018,7 @@ export default function MediaPage() {
                                 <button
                                     key={opt.value}
                                     onClick={() => setFilterMode(opt.value)}
-                                    className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                                    className={`min-h-11 px-4 py-2 text-xs font-medium rounded-md transition-colors ${
                                         filterMode === opt.value
                                             ? "bg-primary text-primary-foreground"
                                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -1040,7 +1040,7 @@ export default function MediaPage() {
                                 key={opt.value}
                                 type="button"
                                 onClick={() => setKindFilter(opt.value)}
-                                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                                className={`min-h-11 px-4 py-2 text-xs font-medium rounded-md transition-colors ${
                                     kindFilter === opt.value
                                         ? "bg-primary text-primary-foreground"
                                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -1176,13 +1176,13 @@ export default function MediaPage() {
                                         </div>
                                     )}
 
-                                    {/* Quick actions overlay */}
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
+                                    {/* Quick actions: always visible on mobile, hover on sm+ */}
+                                    <div className="absolute inset-0 bg-black/50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px]">
                                         {file.url && (file.kind ?? "image") === "image" && (
                                             <Button
                                                 size="icon"
                                                 variant="secondary"
-                                                className="h-8 w-8 rounded-full"
+                                                className="min-h-11 min-w-11 rounded-full"
                                                 onClick={(e) => { e.stopPropagation(); copyToClipboard(file.url!); }}
                                                 title="Copy URL"
                                             >
@@ -1193,7 +1193,7 @@ export default function MediaPage() {
                                             <Button
                                                 size="icon"
                                                 variant="secondary"
-                                                className="h-8 w-8 rounded-full"
+                                                className="min-h-11 min-w-11 rounded-full"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     window.open(file.drive_url!, "_blank", "noopener,noreferrer");
@@ -1207,7 +1207,7 @@ export default function MediaPage() {
                                             <Button
                                                 size="icon"
                                                 variant="secondary"
-                                                className="h-8 w-8 rounded-full"
+                                                className="min-h-11 min-w-11 rounded-full"
                                                 onClick={(e) => { e.stopPropagation(); setReplaceFile(file); }}
                                                 title="Replace everywhere"
                                             >
@@ -1217,7 +1217,7 @@ export default function MediaPage() {
                                         <Button
                                             size="icon"
                                             variant="destructive"
-                                            className="h-8 w-8 rounded-full"
+                                            className="min-h-11 min-w-11 rounded-full"
                                             onClick={(e) => { e.stopPropagation(); handleDelete(file); }}
                                             title="Delete"
                                         >

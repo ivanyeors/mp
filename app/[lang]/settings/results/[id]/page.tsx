@@ -430,14 +430,23 @@ export default function ResultDetailPage() {
             </p>
           ) : null}
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => router.push(to("/settings/results"))}>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => router.push(to("/settings/results"))}
+          >
             Back
           </Button>
-          <Button variant="secondary" onClick={load} disabled={saving || deleting}>
+          <Button
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={load}
+            disabled={saving || deleting}
+          >
             Refresh
           </Button>
-          <Button onClick={save} disabled={saving || deleting}>
+          <Button className="w-full sm:w-auto" onClick={save} disabled={saving || deleting}>
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>

@@ -638,7 +638,7 @@ export default function ProductEditorPage() {
                                     No images yet. Click &quot;Add Image&quot; to attach media.
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-4 gap-3">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                     {images.map((img, idx) => (
                                         <div key={img.id} className="relative group aspect-square rounded-lg overflow-hidden border bg-muted">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -658,7 +658,7 @@ export default function ProductEditorPage() {
                                             <button
                                                 type="button"
                                                 onClick={() => deleteImage(img.id)}
-                                                className="absolute top-1 right-1 hidden group-hover:flex items-center justify-center h-6 w-6 rounded-full bg-destructive text-destructive-foreground shadow-sm transition-opacity"
+                                                className="absolute top-1 right-1 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
                                             >
                                                 <Trash2 className="h-3 w-3" />
                                             </button>

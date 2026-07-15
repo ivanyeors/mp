@@ -742,11 +742,12 @@ export default function SettingsProductsPage() {
 
                 <TabsContent value="products" className="mt-6 space-y-6">
                     {/* Actions bar */}
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
                             <Button
                                 size="sm"
                                 variant="outline"
+                                className="w-full sm:w-auto"
                                 onClick={syncFromInventory}
                                 disabled={syncing || resyncingPrices}
                             >
@@ -760,6 +761,7 @@ export default function SettingsProductsPage() {
                             <Button
                                 size="sm"
                                 variant="outline"
+                                className="w-full sm:w-auto"
                                 onClick={resyncPrices}
                                 disabled={syncing || resyncingPrices}
                             >
@@ -771,7 +773,7 @@ export default function SettingsProductsPage() {
                                 Resync prices
                             </Button>
                         </div>
-                        <Button size="sm" onClick={openInventoryPicker}>
+                        <Button size="sm" className="w-full sm:w-auto" onClick={openInventoryPicker}>
                             <Plus className="mr-2 h-4 w-4" />
                             Add from inventory
                         </Button>

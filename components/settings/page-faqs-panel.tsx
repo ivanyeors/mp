@@ -275,7 +275,7 @@ export function PageFaqsPanel({ locale }: { locale: Locale }) {
           </div>
           <div className="flex max-w-md items-center gap-2">
             <Select value={productPick || undefined} onValueChange={selectProduct}>
-              <SelectTrigger className="w-[280px]" data-page-faq-product-picker>
+              <SelectTrigger className="w-full sm:w-[280px]" data-page-faq-product-picker>
                 <SelectValue placeholder="Or pick a product…" />
               </SelectTrigger>
               <SelectContent>
@@ -377,7 +377,7 @@ function PageItemEditor({
             type="button"
             disabled={!canUp}
             onClick={() => onMove(-1)}
-            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
             aria-label="Move up"
           >
             <ChevronUp className="h-3.5 w-3.5" />
@@ -386,7 +386,7 @@ function PageItemEditor({
             type="button"
             disabled={!canDown}
             onClick={() => onMove(1)}
-            className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
             aria-label="Move down"
           >
             <ChevronDown className="h-3.5 w-3.5" />
@@ -395,7 +395,7 @@ function PageItemEditor({
         <button
           type="button"
           onClick={onToggleVisible}
-          className="p-1 text-muted-foreground hover:text-foreground"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
           aria-label={item.visible ? "Hide question" : "Show question"}
         >
           {item.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
@@ -408,13 +408,13 @@ function PageItemEditor({
         <button
           type="button"
           onClick={onDelete}
-          className="p-1 text-muted-foreground hover:text-destructive"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
           aria-label="Delete question"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
         <CollapsibleTrigger asChild>
-          <button type="button" className="p-1 text-muted-foreground">
+          <button type="button" className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground">
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
         </CollapsibleTrigger>

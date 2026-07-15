@@ -809,23 +809,27 @@ export function ShopifySalesSection() {
   return (
     <>
       <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <div className="text-sm font-medium">Shopify Sales</div>
             <div className="text-xs text-muted-foreground">Review new paid orders and choose templates before committing inventory.</div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <Input
               value={shopifySalesSearch}
               onChange={(e) => setShopifySalesSearch(e.target.value)}
               placeholder="Search order #…"
-              className="w-[220px]"
+              className="w-full sm:w-[220px]"
               disabled={loadingShopifySales || savingShopifySales}
             />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" disabled={loadingShopifySales || savingShopifySales}>
+                <Button
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  disabled={loadingShopifySales || savingShopifySales}
+                >
                   Date range
                 </Button>
               </DropdownMenuTrigger>
@@ -840,7 +844,7 @@ export function ShopifySalesSection() {
                   defaultMonth={shopifyRefreshRange?.from}
                   selected={shopifyRefreshRange}
                   onSelect={setShopifyRefreshRange}
-                  numberOfMonths={2}
+                  numberOfMonths={1}
                   className="rounded-lg border shadow-sm"
                 />
               </DropdownMenuContent>
@@ -848,11 +852,20 @@ export function ShopifySalesSection() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" disabled={loadingShopifySales || savingShopifySales}>
+                <Button
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                  disabled={loadingShopifySales || savingShopifySales}
+                >
                   Limit: {shopifyRefreshLimit}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="bottom" align="end" sideOffset={6} className="p-3 w-[360px]">
+              <DropdownMenuContent
+                side="bottom"
+                align="end"
+                sideOffset={6}
+                className="p-3 w-[min(360px,calc(100vw-2rem))]"
+              >
                 <DropdownMenuLabel className="px-0">Limit</DropdownMenuLabel>
                 <div className="text-xs text-muted-foreground px-0 pb-2">
                   Max number of paid orders to fetch from Shopify (1–250).
@@ -875,6 +888,7 @@ export function ShopifySalesSection() {
 
             <Button
               variant="secondary"
+              className="w-full sm:w-auto"
               onClick={async () => {
                 if (shopifySalesTab === "archived") {
                   await loadShopifySalesQueueArchived();
@@ -910,7 +924,11 @@ export function ShopifySalesSection() {
             >
               {loadingShopifySales ? "Refreshing…" : "Refresh"}
             </Button>
-            <Button onClick={commitQueuedShopifySales} disabled={savingShopifySales || shopifyQueue.length === 0 || shopifySalesTab !== "active"}>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={commitQueuedShopifySales}
+              disabled={savingShopifySales || shopifyQueue.length === 0 || shopifySalesTab !== "active"}
+            >
               {savingShopifySales ? "Saving…" : "Save"}
             </Button>
           </div>
