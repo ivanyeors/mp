@@ -38,9 +38,10 @@ export default function ShopifyAdminPage() {
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
         <Button
           variant="outline"
+          className="w-full sm:w-auto"
           disabled={syncingShopify}
           onClick={async () => {
             if (syncingShopify) return;

@@ -460,13 +460,13 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by variantId, SKU, item name…" />
         <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as "active" | "inactive" | "mapped" | "unmapped" | "broken" | "all")}
         >
-          <SelectTrigger className="w-[140px] shrink-0">
+          <SelectTrigger className="w-full sm:w-[140px] shrink-0">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -484,12 +484,12 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Variant</TableHead>
+              <TableHead className="hidden md:table-cell">Variant</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Mapping</TableHead>
               <TableHead>SKU</TableHead>
-              <TableHead>Price (SGD)</TableHead>
+              <TableHead className="hidden md:table-cell">Price (SGD)</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -517,7 +517,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
               return (
                 <TableRow key={r.shopifyVariantId}>
-                  <TableCell className="font-mono text-xs">{r.shopifyVariantId}</TableCell>
+                  <TableCell className="hidden font-mono text-xs md:table-cell">{r.shopifyVariantId}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-1">
                       {isInactive && (
@@ -554,7 +554,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                       placeholder="(optional)"
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Input
                       value={r.msrp ?? ""}
                       disabled
@@ -563,7 +563,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
                       <Button
                         size="sm"
                         onClick={async () => {
