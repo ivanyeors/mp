@@ -35,8 +35,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
+  ArrowRight,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   Maximize2,
   Minimize2,
   RefreshCw,
@@ -76,8 +78,11 @@ const DRAG_THRESHOLD = 4;
 const PORT_R = 4;
 const NODE_W = 156;
 const NODE_H = 92;
-const NODE_W_EXP = 280;
-const NODE_H_EXP = 360;
+const NODE_W_EXP = 304;
+/** KPI chrome above page dig-in (path + prospects + drop bar). */
+const EXP_KPI_H = 96;
+const EXP_CONV_TOP = 10;
+const EXP_BOTTOM_PAD = 8;
 const WORLD_W = 640;
 const WORLD_H = 400;
 const ZOOM_MIN = 0.25;
@@ -206,9 +211,46 @@ function canExpandNode(path: string) {
   return path !== DROP_OFF && !isSectionChildPath(path);
 }
 
+/** Dig-in body height so the expanded node can grow to fit (no inner scroll). */
+function pageDigInH(detail: JourneyNodeDetail | null): number {
+  const chrome = 30 + 16; // title bar + padding
+  if (!detail) return chrome + 120;
+  let h = chrome + 48; // median dwell hero
+  const block = (body: number) => 14 + body + 10;
+  h += block(detail.exitSections.length === 0 ? 16 : detail.exitSections.length * 32);
+  h += block(detail.outbound.length === 0 ? 16 : detail.outbound.length * 24);
+  h += block(detail.dwellMsSamples.length === 0 ? 16 : 22);
+  h += block(detail.samplePaths.length === 0 ? 16 : detail.samplePaths.length * 30);
+  h += block(detail.returnTimeline.length === 0 ? 16 : detail.returnTimeline.length * 26);
+  return h + 12; // slack so foreignObject never clips
+}
+
+function convertedDigInH(detail: JourneyConvertedDetail | null): number {
+  const chrome = 30 + 16;
+  if (!detail) return chrome + 100;
+  if (detail.count === 0) return chrome + 20;
+  let h = chrome + 58;
+  h += 14 + Math.max(1, detail.byEntrySource.length) * 24 + 10;
+  h += 14 + detail.samples.length * 68 + 10;
+  return h + 12;
+}
+
+function expandedNodeBox(
+  isConverted: boolean,
+  detail: JourneyNodeDetail | null,
+  convertedDetail: JourneyConvertedDetail | null,
+): { hw: number; hh: number; digInTop: number; digInH: number } {
+  const digInH = isConverted
+    ? convertedDigInH(convertedDetail)
+    : pageDigInH(detail);
+  const digInTop = isConverted ? EXP_CONV_TOP : EXP_KPI_H;
+  const totalH = digInTop + digInH + EXP_BOTTOM_PAD;
+  return { hw: NODE_W_EXP / 2, hh: totalH / 2, digInTop, digInH };
+}
+
 function nodeHalfSize(expanded: boolean) {
   return expanded
-    ? { hw: NODE_W_EXP / 2, hh: NODE_H_EXP / 2 }
+    ? { hw: NODE_W_EXP / 2, hh: (EXP_KPI_H + 200) / 2 }
     : { hw: NODE_W / 2, hh: NODE_H / 2 };
 }
 
@@ -376,7 +418,7 @@ function NodeCardBody({
         x={-hw}
         y={-hh + 10}
         width={4}
-        height={hh * 2 - 20}
+        height={selected ? 72 : hh * 2 - 20}
         rx={2}
         className={dropAccentClass(n.dropOffPct)}
       />
@@ -451,11 +493,45 @@ function DigInSection({
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-        {title}
-      </p>
+    <section className="space-y-1.5">
+      <h4 className="text-[10px] font-medium text-muted-foreground">{title}</h4>
       {children}
+    </section>
+  );
+}
+
+function DigInEmpty({ children }: { children: ReactNode }) {
+  return <p className="text-[11px] leading-snug text-muted-foreground/80">{children}</p>;
+}
+
+function DigInShell({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="flex h-full cursor-default flex-col overflow-hidden rounded-md bg-card text-foreground"
+      onPointerDown={(ev) => ev.stopPropagation()}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-2.5 py-1.5">
+        <p className="truncate text-[10px] font-medium tracking-wide text-muted-foreground">
+          {title}
+        </p>
+        <button
+          type="button"
+          className="cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          onClick={onClose}
+          aria-label="Collapse node"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="space-y-2.5 px-2.5 py-2">{children}</div>
     </div>
   );
 }
@@ -474,106 +550,148 @@ function ExpandedPageDigIn({
 }) {
   const ready = detail && detail.path === detailPath;
   return (
-    <div
-      className="flex h-full flex-col gap-2 overflow-auto bg-card/95 p-2 text-[10px] text-foreground"
-      onPointerDown={(ev) => ev.stopPropagation()}
-    >
-      <div className="flex items-start justify-between gap-1">
-        <p className="text-[9px] text-muted-foreground">Expanded node</p>
-        <button
-          type="button"
-          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          onClick={onClose}
-          aria-label="Collapse node"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      </div>
+    <DigInShell title="Node detail" onClose={onClose}>
       {!ready ? (
-        <p className="text-muted-foreground">Loading detail…</p>
+        <div className="space-y-2.5" aria-busy={true} aria-label="Loading detail">
+          <Skeleton className="h-14 w-full rounded-md" />
+          <Skeleton className="h-8 w-full rounded-md" />
+          <Skeleton className="h-8 w-full rounded-md" />
+          <Skeleton className="h-8 w-full rounded-md" />
+        </div>
       ) : (
         <>
-          <DigInSection title="Median dwell">
-            <p>{formatDwell(detail.medianDwellMs)}</p>
-          </DigInSection>
+          <div className="rounded-md bg-muted/55 px-2.5 py-2">
+            <p className="text-[10px] text-muted-foreground">Median dwell</p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight">
+              {formatDwell(detail.medianDwellMs)}
+            </p>
+          </div>
+
           <DigInSection title="Exit sections">
             {detail.exitSections.length === 0 ? (
-              <p className="text-muted-foreground">No section-level drop-offs yet.</p>
+              <DigInEmpty>No section-level drop-offs yet.</DigInEmpty>
             ) : (
-              <ul className="space-y-0.5 font-mono">
+              <ul className="space-y-2">
                 {detail.exitSections.map((s) => (
-                  <li key={s.sectionId} className="flex justify-between gap-2">
-                    <a
-                      href={exitSectionHref(locale, detailPath, s.sectionId)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="truncate text-foreground underline-offset-2 hover:underline"
-                    >
-                      #{s.sectionId}
-                    </a>
-                    <span className="shrink-0 text-muted-foreground">
-                      {s.count} · {s.sharePct}%
-                    </span>
+                  <li key={s.sectionId} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <a
+                        href={exitSectionHref(locale, detailPath, s.sectionId)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-w-0 cursor-pointer items-center gap-1 text-[11px] font-medium text-foreground underline-offset-2 hover:underline"
+                      >
+                        <span className="truncate">#{s.sectionId}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                      </a>
+                      <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground">
+                        {s.count}
+                        <span className="mx-1 text-border">·</span>
+                        {s.sharePct}%
+                      </span>
+                    </div>
+                    <div className="h-1 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-destructive/75"
+                        style={{ width: `${Math.min(100, Math.max(0, s.sharePct))}%` }}
+                      />
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </DigInSection>
+
           <DigInSection title="Outbound">
             {detail.outbound.length === 0 ? (
-              <p className="text-muted-foreground">No outbound transitions.</p>
+              <DigInEmpty>No outbound transitions.</DigInEmpty>
             ) : (
-              <ul className="space-y-0.5 font-mono">
-                {detail.outbound.map((o) => (
-                  <li key={o.to} className="flex justify-between gap-2">
-                    <span className="truncate">→ {labelPath(o.to)}</span>
-                    <span className="text-muted-foreground">{o.count}</span>
-                  </li>
-                ))}
+              <ul className="space-y-0.5">
+                {detail.outbound.map((o) => {
+                  const isDrop = o.to === DROP_OFF;
+                  return (
+                    <li
+                      key={o.to}
+                      className="flex items-center justify-between gap-2 rounded-md px-1 py-1 hover:bg-muted/50"
+                    >
+                      <span className="flex min-w-0 items-center gap-1.5 truncate text-[11px]">
+                        <ArrowRight
+                          className={`h-3 w-3 shrink-0 ${
+                            isDrop ? "text-destructive" : "text-muted-foreground"
+                          }`}
+                        />
+                        <span className={isDrop ? "font-medium text-destructive" : undefined}>
+                          {labelPath(o.to)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 tabular-nums text-[11px] font-medium">
+                        {o.count}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </DigInSection>
+
           <DigInSection title="Dwell samples">
             {detail.dwellMsSamples.length === 0 ? (
-              <p className="text-muted-foreground">No dwell samples yet.</p>
+              <DigInEmpty>No dwell samples yet.</DigInEmpty>
             ) : (
-              <p className="font-mono text-muted-foreground">
-                {detail.dwellMsSamples
-                  .slice(0, 8)
-                  .map((ms) => formatDwell(ms))
-                  .join(" · ")}
-                {detail.dwellMsSamples.length > 8
-                  ? ` · +${detail.dwellMsSamples.length - 8}`
-                  : ""}
-              </p>
+              <div className="flex flex-wrap gap-1">
+                {detail.dwellMsSamples.slice(0, 8).map((ms, i) => (
+                  <span
+                    key={`${ms}-${i}`}
+                    className="rounded-md bg-muted/60 px-1.5 py-0.5 tabular-nums text-[10px] text-muted-foreground"
+                  >
+                    {formatDwell(ms)}
+                  </span>
+                ))}
+                {detail.dwellMsSamples.length > 8 ? (
+                  <span className="px-1 py-0.5 text-[10px] text-muted-foreground">
+                    +{detail.dwellMsSamples.length - 8}
+                  </span>
+                ) : null}
+              </div>
             )}
           </DigInSection>
+
           <DigInSection title="Sample paths">
             {detail.samplePaths.length === 0 ? (
-              <p className="text-muted-foreground">No paths yet.</p>
+              <DigInEmpty>No paths yet.</DigInEmpty>
             ) : (
-              <ul className="space-y-0.5 font-mono">
+              <ul className="space-y-1">
                 {detail.samplePaths.map((p, i) => (
-                  <li key={i} className="truncate">
-                    {p.map(labelPath).join(" → ")}
+                  <li
+                    key={i}
+                    className="rounded-md bg-muted/40 px-1.5 py-1 font-mono text-[10px] leading-snug text-muted-foreground"
+                    title={p.map(labelPath).join(" → ")}
+                  >
+                    <span className="line-clamp-2">{p.map(labelPath).join(" → ")}</span>
                   </li>
                 ))}
               </ul>
             )}
           </DigInSection>
+
           <DigInSection title="Return timeline">
             {detail.returnTimeline.length === 0 ? (
-              <p className="text-muted-foreground">No returns landed here.</p>
+              <DigInEmpty>No returns landed here.</DigInEmpty>
             ) : (
-              <ul className="space-y-0.5 font-mono">
+              <ul className="space-y-1">
                 {detail.returnTimeline.map((r, i) => (
-                  <li key={i} className="flex justify-between gap-2">
-                    <span className="truncate text-muted-foreground">
+                  <li
+                    key={i}
+                    className="flex items-start justify-between gap-2 rounded-md px-1 py-1 hover:bg-muted/40"
+                  >
+                    <span className="min-w-0 text-[11px] leading-snug text-muted-foreground">
                       {r.priorDropOffPath
                         ? `${labelPath(r.priorDropOffPath)} → Drop-off → here`
                         : "Drop-off → here"}
                     </span>
-                    <span className="shrink-0">{formatGap(r.gapMs)}</span>
+                    <span className="shrink-0 tabular-nums text-[11px] font-medium">
+                      {formatGap(r.gapMs)}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -581,7 +699,7 @@ function ExpandedPageDigIn({
           </DigInSection>
         </>
       )}
-    </div>
+    </DigInShell>
   );
 }
 
@@ -593,57 +711,66 @@ function ExpandedConvertedDigIn({
   onClose: () => void;
 }) {
   return (
-    <div
-      className="flex h-full flex-col gap-2 overflow-auto bg-card/95 p-2 text-[10px] text-foreground"
-      onPointerDown={(ev) => ev.stopPropagation()}
-    >
-      <div className="flex items-start justify-between gap-1">
-        <p className="text-[9px] text-muted-foreground">Converted dig-in</p>
-        <button
-          type="button"
-          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-          onClick={onClose}
-          aria-label="Collapse node"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      </div>
+    <DigInShell title="Converted" onClose={onClose}>
       {!detail ? (
-        <p className="text-muted-foreground">Loading detail…</p>
+        <div className="space-y-2.5" aria-busy={true} aria-label="Loading detail">
+          <Skeleton className="h-14 w-full rounded-md" />
+          <Skeleton className="h-8 w-full rounded-md" />
+          <Skeleton className="h-16 w-full rounded-md" />
+        </div>
       ) : detail.count === 0 ? (
-        <p className="text-muted-foreground">No paid orders linked in this range.</p>
+        <DigInEmpty>No paid orders linked in this range.</DigInEmpty>
       ) : (
         <>
-          <DigInSection title="Summary">
-            <p>
-              {detail.count} orders · {formatValue(detail.totalValue)}
+          <div className="rounded-md bg-muted/55 px-2.5 py-2">
+            <p className="text-[10px] text-muted-foreground">Orders</p>
+            <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight">
+              {detail.count}
             </p>
-          </DigInSection>
-          <DigInSection title="Last-touch Entry source">
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {formatValue(detail.totalValue)} total
+            </p>
+          </div>
+
+          <DigInSection title="Last-touch entry source">
             {detail.byEntrySource.length === 0 ? (
-              <p className="text-muted-foreground">—</p>
+              <DigInEmpty>—</DigInEmpty>
             ) : (
               <ul className="space-y-0.5">
                 {detail.byEntrySource.map((s) => (
-                  <li key={s.entrySource} className="flex justify-between gap-2">
-                    <span>{s.entrySource}</span>
-                    <span className="text-muted-foreground">
-                      {s.count} · {formatValue(s.totalValue)}
+                  <li
+                    key={s.entrySource}
+                    className="flex items-center justify-between gap-2 rounded-md px-1 py-1 hover:bg-muted/50"
+                  >
+                    <span className="truncate text-[11px]">{s.entrySource}</span>
+                    <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground">
+                      {s.count}
+                      <span className="mx-1 text-border">·</span>
+                      {formatValue(s.totalValue)}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
           </DigInSection>
+
           <DigInSection title="Sample conversions">
-            <ul className="space-y-1">
+            <ul className="space-y-1.5">
               {detail.samples.map((s, i) => (
-                <li key={i} className="rounded border p-1">
-                  <p className="font-medium">{s.entrySource}</p>
-                  <p className="text-muted-foreground">
-                    {formatValue(s.orderValue)} · {formatDwell(s.journeyDurationMs)}
+                <li key={i} className="rounded-md border border-border/70 bg-muted/30 p-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="truncate text-[11px] font-medium">{s.entrySource}</p>
+                    <p className="shrink-0 tabular-nums text-[11px] font-medium">
+                      {formatValue(s.orderValue)}
+                    </p>
+                  </div>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    Journey {formatDwell(s.journeyDurationMs)}
                   </p>
-                  <p className="truncate font-mono text-muted-foreground">
+                  <p
+                    className="mt-1 line-clamp-2 font-mono text-[10px] leading-snug text-muted-foreground"
+                    title={s.shortPath.map(labelPath).join(" → ")}
+                  >
                     {s.shortPath.map(labelPath).join(" → ")}
                   </p>
                 </li>
@@ -652,7 +779,7 @@ function ExpandedConvertedDigIn({
           </DigInSection>
         </>
       )}
-    </div>
+    </DigInShell>
   );
 }
 
@@ -685,6 +812,7 @@ function JourneyGraph({
   const [overrides, setOverrides] = useState<PosMap>({});
   const [fittedKey, setFittedKey] = useState("");
   const [hoverEdgeKey, setHoverEdgeKey] = useState<string | null>(null);
+  const [draggingNode, setDraggingNode] = useState(false);
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
 
@@ -785,6 +913,7 @@ function JourneyGraph({
       const dx = x - d.startX;
       const dy = y - d.startY;
       if (!d.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      if (!d.moved) setDraggingNode(true);
       d.moved = true;
       setOverrides((prev) => {
         const next = { ...prev, [d.path]: { x: d.origX + dx, y: d.origY + dy } };
@@ -798,6 +927,7 @@ function JourneyGraph({
   const onNodePointerUp = useCallback(() => {
     const d = dragRef.current;
     dragRef.current = null;
+    setDraggingNode(false);
     window.removeEventListener("pointermove", onNodePointerMove);
     window.removeEventListener("pointerup", onNodePointerUp);
     if (!d) return;
@@ -999,7 +1129,7 @@ function JourneyGraph({
     return sel ? [...rest, sel] : rest;
   }, [laid, selectedPath]);
 
-  const cursorClass = panning
+  const cursorClass = panning || draggingNode
     ? "cursor-grabbing"
     : spaceDown
       ? "cursor-grab"
@@ -1101,8 +1231,20 @@ function JourneyGraph({
             if (!a || !b) return null;
             const aExp = selectedPath === a.path && canExpandNode(a.path);
             const bExp = selectedPath === b.path && canExpandNode(b.path);
-            const { hw: aHw } = nodeHalfSize(aExp);
-            const { hw: bHw } = nodeHalfSize(bExp);
+            const { hw: aHw } = aExp
+              ? expandedNodeBox(
+                  a.path === CONVERTED,
+                  a.path === detail?.path ? detail : null,
+                  a.path === CONVERTED ? convertedDetail : null,
+                )
+              : nodeHalfSize(false);
+            const { hw: bHw } = bExp
+              ? expandedNodeBox(
+                  b.path === CONVERTED,
+                  b.path === detail?.path ? detail : null,
+                  b.path === CONVERTED ? convertedDetail : null,
+                )
+              : nodeHalfSize(false);
             const isBack = a.x > b.x;
             const pk = `${e.from}->${e.to}${e.dashed ? ":re" : ""}`;
             const idx = pairIndex.get(`${pk}\0${e.country ?? ""}`) ?? 0;
@@ -1155,12 +1297,27 @@ function JourneyGraph({
             const isDropOff = n.path === DROP_OFF;
             const isConverted = n.path === CONVERTED;
             const isSink = isDropOff || isConverted;
-            const { hw, hh } = nodeHalfSize(expanded);
+            const box = expanded
+              ? expandedNodeBox(
+                  isConverted,
+                  !isConverted && detail?.path === n.path ? detail : null,
+                  isConverted ? convertedDetail : null,
+                )
+              : { ...nodeHalfSize(false), digInTop: 0, digInH: 0 };
+            const { hw, hh, digInTop, digInH } = box;
+            const nodeCursor =
+              panning || draggingNode
+                ? "cursor-grabbing"
+                : spaceDown
+                  ? "cursor-grab"
+                  : canExpandNode(n.path)
+                    ? "cursor-pointer"
+                    : "cursor-grab";
             return (
               <g
                 key={n.path}
                 transform={`translate(${n.x}, ${n.y})`}
-                className={spaceDown ? "cursor-grab" : "cursor-grab active:cursor-grabbing"}
+                className={nodeCursor}
                 onPointerDown={(ev) => onNodePointerDown(n.path, ev)}
                 role="button"
                 tabIndex={0}
@@ -1179,17 +1336,17 @@ function JourneyGraph({
                   y={-hh}
                   width={hw * 2}
                   height={hh * 2}
-                  rx={10}
+                  rx={12}
                   className={
                     isDropOff
                       ? "fill-background stroke-destructive/50"
                       : isConverted
                         ? "fill-muted/40 stroke-muted-foreground/40"
                         : expanded
-                          ? "fill-card stroke-foreground"
+                          ? "fill-card stroke-foreground/80"
                           : "fill-card stroke-border"
                   }
-                  strokeWidth={expanded ? 2 : 1}
+                  strokeWidth={expanded ? 1.75 : 1}
                 />
                 {!isSink ? (
                   <rect
@@ -1197,8 +1354,8 @@ function JourneyGraph({
                     y={-hh}
                     width={hw * 2}
                     height={28}
-                    rx={10}
-                    className={expanded ? "fill-muted/70" : "fill-muted/40"}
+                    rx={12}
+                    className={expanded ? "fill-muted/55" : "fill-muted/40"}
                   />
                 ) : isDropOff ? (
                   <rect
@@ -1206,7 +1363,7 @@ function JourneyGraph({
                     y={-hh}
                     width={hw * 2}
                     height={hh * 2}
-                    rx={10}
+                    rx={12}
                     className="fill-destructive/5"
                   />
                 ) : null}
@@ -1214,7 +1371,7 @@ function JourneyGraph({
                   <NodeCardBody
                     n={n}
                     hw={hw}
-                    hh={expanded ? 44 : hh}
+                    hh={hh}
                     selected={expanded}
                     isDropOff={isDropOff}
                     isConverted={isConverted}
@@ -1222,10 +1379,10 @@ function JourneyGraph({
                 ) : null}
                 {expanded ? (
                   <foreignObject
-                    x={-hw + 4}
-                    y={-hh + (isConverted ? 8 : 92)}
-                    width={hw * 2 - 8}
-                    height={hh * 2 - (isConverted ? 16 : 100)}
+                    x={-hw + 6}
+                    y={-hh + digInTop}
+                    width={hw * 2 - 12}
+                    height={digInH}
                   >
                     {isConverted ? (
                       <ExpandedConvertedDigIn
@@ -1584,7 +1741,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
                   <li key={`expand-${p}`}>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
+                      className="inline-flex cursor-pointer items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => toggleExpand(p)}
                       aria-expanded={false}
                     >
@@ -1599,7 +1756,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
               <div className="space-y-2">
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
                   onClick={() => setExpandPath(null)}
                   aria-expanded={true}
                 >
