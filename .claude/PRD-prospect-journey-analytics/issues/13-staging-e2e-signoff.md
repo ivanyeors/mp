@@ -17,7 +17,8 @@ Checklist walkthrough (no new product features):
 4. Multi-select two countries → color-by-country legend
 5. Return Visit shows dashed re-entry
 6. Pay as test buyer → Include converted shows last-touch Entry source + value
-7. Confirm no Admin Panel self-traffic in journey; P&L charts still present below
+7. Click a page node → **Expanded node** dig-in (no side drawer); exit section is a live storefront `#` link; Converted expands in place
+8. Confirm no Admin Panel self-traffic in journey; P&L charts still present below
 
 ## Acceptance criteria
 
@@ -26,10 +27,4 @@ Checklist walkthrough (no new product features):
 
 ## Blocked by
 
-- Slice 04 — Analytics notice bar
-- Slice 05 — Entry source
-- Slice 08 — Returns
-- Slice 09 — Country color
-- Slice 10 — Converted sink
-- Slice 11 — Section tags surfaces
-- Slice 12 — GA sync stitch
+- Slices 04–12 and **14** (Expanded node dig-in) — staging walk includes amended story 19

@@ -497,7 +497,7 @@ export default function CheckoutPage() {
       <h1 className="text-2xl font-bold mb-6">Checkout</h1>
 
       {/* Mobile: collapsible order summary at top */}
-      <div className="lg:hidden mb-6" data-section="order-summary">
+      <div className="lg:hidden mb-6" id="order-summary" data-section="order-summary">
         <Collapsible open={summaryOpen} onOpenChange={setSummaryOpen}>
           <CollapsibleTrigger asChild>
             <button
@@ -532,7 +532,7 @@ export default function CheckoutPage() {
         <div className="lg:col-span-3">
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
             {/* Contact */}
-            <section data-section="contact">
+            <section id="contact" data-section="contact">
               <h2 className="text-lg font-semibold mb-4">Contact</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2 flex flex-col gap-1.5">
@@ -572,7 +572,7 @@ export default function CheckoutPage() {
             </section>
 
             {/* Shipping address */}
-            <section data-section="shipping-address">
+            <section id="shipping-address" data-section="shipping-address">
               <h2 className="text-lg font-semibold mb-4">Shipping Address</h2>
 
               {/* Saved addresses (signed-in shoppers) */}
@@ -752,7 +752,7 @@ export default function CheckoutPage() {
             </section>
 
             {/* Shipping method */}
-            <section data-section="shipping-method">
+            <section id="shipping-method" data-section="shipping-method">
               <h2 className="text-lg font-semibold mb-4">Shipping Method</h2>
 
               {shippingLoading ? (
@@ -839,7 +839,7 @@ export default function CheckoutPage() {
             )}
 
             {/* Submit / payment handoff */}
-            <div data-section="payment">
+            <div id="payment" data-section="payment">
             <Button
               type="submit"
               size="lg"
@@ -863,7 +863,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Right: Desktop order summary */}
-        <div className="hidden lg:block lg:col-span-2" data-section="order-summary">
+        <div className="hidden lg:block lg:col-span-2" id="order-summary" data-section="order-summary">
           <div className="sticky top-8">
             <Card>
               <CardContent className="pt-6">

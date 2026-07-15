@@ -172,7 +172,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <main className="relative min-w-0 max-w-full overflow-x-hidden">
         {sections.map((section) => (
           // Stable home section tags for journey analytics (slice 06).
-          <div key={section.id} data-section={section.slug}>
+          <div key={section.id} id={section.slug} data-section={section.slug}>
             <LandingSection
               section={section}
               messages={m}

@@ -52,7 +52,7 @@ Ship a **Prospect-first journey transition graph** as the **first section** on A
 16. As Staff, I want an **Include converted** toggle (off by default), so that I can optionally see the Converted sink without losing Prospect focus.
 17. As Staff, when Include converted is on, I want a muted **Converted** sink, so that purchases are secondary visually.
 18. As Staff, I want Converted detail to show last-touch **Entry source**, journey duration (first Visit start → `paid_at`), order value, and a short page path, so that successful sales are attributable.
-19. As Staff, I want clicking a node to open a side panel with exit sections, dwell distribution, sample paths, and return timeline, so that I can dig deeper than node chrome.
+19. As Staff, I want clicking a page node to open an **Expanded node** (in-place taller chrome — not a side panel) with exit sections as storefront anchor links, exit share %, outbound transitions, dwell distribution, sample paths, and return timeline, so that I can dig deeper than node chrome without covering the graph.
 20. As Staff, I want “why they left” to remain our interpretation from when/what/dwell, so that we do not pretend clickstream is a survey.
 21. As a storefront visitor, I want a non-blocking notice that using the site means we collect visit data to improve the experience, so that collection is disclosed without an opt-out wall.
 22. As a storefront visitor, I want Got it to dismiss the notice and stay dismissed, so that it does not nag every Visit.
@@ -96,7 +96,7 @@ Ship a **Prospect-first journey transition graph** as the **first section** on A
 | **3. Event ingest** | Beacon API → ingest route; page/section/heartbeat; exclude `/settings`; dual-write `dataLayer` | Thin wiring; rules in 1–2 |
 | **4. GA sync** | BigQuery export → `analytics_ga_*` staging; stitch on `ga_client_id` | Staging/ops verification |
 | **5. Journey aggregates** | Unique-node graph model + filters (Prospect default, country colors, Include converted, Entry source, New/Returning) from DB only | **Yes** |
-| **6. Journey graph UI** | First Analytics section; custom nodes; expand/collapse sections; sinks; side panel; filters | Staging QA |
+| **6. Journey graph UI** | First Analytics section; custom nodes; expand/collapse sections; sinks; **Expanded node** dig-in (no side panel); filters | Staging QA |
 | **7. Analytics notice** | Non-blocking bar; Got it persistence; always collect | No (copy/UX) |
 | **8. Section instrumentation** | `data-section` / `data-step` on home, PDP, configurators, checkout/Result | Manual QA |
 | **9. Docs** | CONTEXT glossary + ADR 0007 | No |

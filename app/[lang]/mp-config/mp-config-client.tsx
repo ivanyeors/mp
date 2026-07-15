@@ -1273,6 +1273,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
           {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
           <div
             key={currentStep}
+            id={currentStep}
             data-section={currentStep}
             data-step={currentStep}
             className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"
@@ -1699,6 +1700,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
         key={currentStep}
+        id={currentStep}
         data-section={currentStep}
         data-step={currentStep}
         className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"

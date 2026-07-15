@@ -705,6 +705,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
         <div
           key={state.step}
+          id={state.step}
           data-section={state.step}
           data-step={state.step}
           className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"
@@ -1087,6 +1088,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
         key={state.step}
+        id={state.step}
         data-section={state.step}
         data-step={state.step}
         className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"

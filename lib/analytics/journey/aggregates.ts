@@ -537,10 +537,15 @@ export async function loadPageTransitionsFromDb(
     const exitSections = sectionGraph.nodes
       .filter((s) => s.path === detailPath && s.dropOffs > 0)
       .map((s) => ({ sectionId: s.sectionId, count: s.dropOffs }));
+    const outbound = withReturns.edges
+      .filter((e) => e.from === detailPath && e.to !== detailPath)
+      .map((e) => ({ to: e.to, count: e.count }));
     detail = buildNodeSidePanel({
       path: detailPath,
       events,
       exitSections,
+      pageDropOffTotal: feedMap.get(detailPath) ?? 0,
+      outbound,
       visitEndedAt,
       returnTimeline: returnsForPath(returns, detailPath).map((r) => ({
         returnedAt: r.returnedAt,
@@ -564,4 +569,32 @@ export async function loadPageTransitionsFromDb(
     countryLegend,
     convertedDetail,
   };
+}
+
+/** Dig-in only — same filters as the graph; does not need expandPath. */
+export async function loadNodeDetailFromDb(
+  db: SupabaseClient,
+  opts: {
+    path: string;
+    from: string;
+    to: string;
+    entrySource?: string | null;
+    visitorCohort?: VisitorCohort | null;
+    countries?: string[] | null;
+    includeConverted?: boolean;
+  },
+): Promise<{
+  detail: NodeSidePanel | null;
+  convertedDetail: ConvertedSinkDetail | null;
+}> {
+  const r = await loadPageTransitionsFromDb(db, {
+    from: opts.from,
+    to: opts.to,
+    entrySource: opts.entrySource,
+    visitorCohort: opts.visitorCohort,
+    countries: opts.countries,
+    includeConverted: opts.includeConverted === true || opts.path === CONVERTED_NODE,
+    detailPath: opts.path,
+  });
+  return { detail: r.detail, convertedDetail: r.convertedDetail };
 }

@@ -457,7 +457,7 @@ export type JourneySectionNode = {
 };
 export type JourneyNodeDetail = {
   path: string;
-  exitSections: { sectionId: string; count: number }[];
+  exitSections: { sectionId: string; count: number; sharePct: number }[];
   dwellMsSamples: number[];
   medianDwellMs: number | null;
   samplePaths: string[][];
@@ -466,6 +466,7 @@ export type JourneyNodeDetail = {
     gapMs: number;
     priorDropOffPath: string | null;
   }[];
+  outbound: { to: string; count: number }[];
 };
 
 export type JourneyConvertedDetail = {
@@ -494,8 +495,6 @@ export async function getProspectJourneyTransitions(input: {
   includeConverted?: boolean;
   /** Expand this page path into section child nodes. */
   expandPath?: string | null;
-  /** Include side-panel detail for this page path. */
-  detailPath?: string | null;
 }): Promise<
   | {
       ok: true;
@@ -506,8 +505,6 @@ export async function getProspectJourneyTransitions(input: {
       countryLegend: { code: string; color: string }[];
       sections: JourneySectionNode[];
       expandablePaths: string[];
-      detail: JourneyNodeDetail | null;
-      convertedDetail: JourneyConvertedDetail | null;
     }
   | { ok: false; error: string }
 > {
@@ -528,9 +525,8 @@ export async function getProspectJourneyTransitions(input: {
       .map((c) => c.trim())
       .filter(Boolean);
     const expandPath = input.expandPath?.trim() || null;
-    const detailPath = input.detailPath?.trim() || null;
     const [
-      { nodes, edges, sections, expandablePaths, detail, countryLegend, convertedDetail },
+      { nodes, edges, sections, expandablePaths, countryLegend },
       entrySources,
       countryOptions,
     ] = await Promise.all([
@@ -542,7 +538,6 @@ export async function getProspectJourneyTransitions(input: {
         countries: countries.length > 0 ? countries : null,
         includeConverted: input.includeConverted === true,
         expandPath,
-        detailPath,
       }),
       listEntrySourcesFromDb(db),
       listCountriesFromDb(db),
@@ -556,10 +551,58 @@ export async function getProspectJourneyTransitions(input: {
       countryLegend,
       sections,
       expandablePaths,
-      detail,
-      convertedDetail,
     };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to load journey" };
+  }
+}
+
+/** Expanded-node dig-in only — does not return graph nodes/edges. */
+export async function getProspectJourneyNodeDetail(input: {
+  path: string;
+  from: string;
+  to: string;
+  entrySource?: string | null;
+  visitorCohort?: "new" | "returning" | null;
+  countries?: string[] | null;
+  includeConverted?: boolean;
+}): Promise<
+  | {
+      ok: true;
+      detail: JourneyNodeDetail | null;
+      convertedDetail: JourneyConvertedDetail | null;
+    }
+  | { ok: false; error: string }
+> {
+  await assertAdmin("analytics");
+  try {
+    const { loadNodeDetailFromDb } = await import(
+      "@/lib/analytics/journey/aggregates"
+    );
+    const path = input.path?.trim();
+    if (!path) return { ok: false, error: "path required" };
+    const entrySource = input.entrySource?.trim() || null;
+    const visitorCohort =
+      input.visitorCohort === "new" || input.visitorCohort === "returning"
+        ? input.visitorCohort
+        : null;
+    const countries = (input.countries ?? [])
+      .map((c) => c.trim())
+      .filter(Boolean);
+    const { detail, convertedDetail } = await loadNodeDetailFromDb(
+      supabaseAdmin(),
+      {
+        path,
+        from: input.from,
+        to: input.to,
+        entrySource,
+        visitorCohort,
+        countries: countries.length > 0 ? countries : null,
+        includeConverted: input.includeConverted === true,
+      },
+    );
+    return { ok: true, detail, convertedDetail };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to load detail" };
   }
 }

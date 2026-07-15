@@ -78,7 +78,10 @@ const panel = buildNodeSidePanel({
   exitSections: [{ sectionId: "pick-your-mpillow", count: 1 }],
   visitEndedAt: new Map([["v1", "2026-07-15T10:03:00.000Z"]]),
 });
-assert.deepEqual(panel.exitSections, [{ sectionId: "pick-your-mpillow", count: 1 }]);
+assert.deepEqual(panel.exitSections, [
+  { sectionId: "pick-your-mpillow", count: 1, sharePct: 100 },
+]);
+assert.deepEqual(panel.outbound, []);
 assert.ok(panel.dwellMsSamples.length >= 1);
 assert.deepEqual(panel.samplePaths[0], ["/", "/shop", "/"]);
 assert.deepEqual(panel.returnTimeline, []);
@@ -97,8 +100,11 @@ assert.match(card, /prospects/);
 assert.match(card, /dropOffPct/);
 assert.match(card, /medianDwellMs/);
 assert.match(card, /topDropOffSection/);
-assert.match(card, /DetailPanel/);
-assert.match(card, /ConvertedDetailPanel/);
+assert.match(card, /ExpandedPageDigIn/);
+assert.match(card, /foreignObject/);
+assert.match(card, /getProspectJourneyNodeDetail/);
+assert.doesNotMatch(card, /function DetailPanel/);
+assert.doesNotMatch(card, /function ConvertedDetailPanel/);
 assert.match(card, /includeConverted/);
 assert.match(card, /exitSections/);
 assert.match(card, /samplePaths/);
@@ -115,7 +121,7 @@ const actions = readFileSync(
   join(root, "app/[lang]/settings/analytics/actions.ts"),
   "utf8",
 );
-assert.match(actions, /detailPath/);
+assert.match(actions, /getProspectJourneyNodeDetail/);
 assert.match(actions, /JourneyNodeDetail/);
 assert.doesNotMatch(actions, /analytics_ga|bigquery|googleapis|gtag/i);
 

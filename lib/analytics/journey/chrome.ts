@@ -23,14 +23,24 @@ export type ReturnTimelineEntry = {
   priorDropOffPath: string | null;
 };
 
+export type ExitSectionRow = {
+  sectionId: string;
+  count: number;
+  /** Share of this page's Drop-offs (0–100). */
+  sharePct: number;
+};
+
+export type OutboundTransition = { to: string; count: number };
+
 export type NodeSidePanel = {
   path: string;
-  exitSections: { sectionId: string; count: number }[];
+  exitSections: ExitSectionRow[];
   dwellMsSamples: number[];
   medianDwellMs: number | null;
   /** Sample Visit page sequences that touch this node (unique-node loops reuse paths). */
   samplePaths: string[][];
   returnTimeline: ReturnTimelineEntry[];
+  outbound: OutboundTransition[];
 };
 
 export function median(nums: number[]): number | null {
@@ -176,8 +186,12 @@ export function buildNodeSidePanel(input: {
   path: string;
   events: PageViewEvent[];
   exitSections: { sectionId: string; count: number }[];
+  /** Page Drop-off total for share %; defaults to sum of exit section counts. */
+  pageDropOffTotal?: number;
+  outbound?: OutboundTransition[];
   visitEndedAt?: Map<string, string>;
   sampleLimit?: number;
+  outboundLimit?: number;
   returnTimeline?: ReturnTimelineEntry[];
 }): NodeSidePanel {
   const dwells = collectPageDwells(input.events, input.visitEndedAt ?? new Map());
@@ -199,16 +213,31 @@ export function buildNodeSidePanel(input: {
     if (samplePaths.length >= (input.sampleLimit ?? 5)) break;
   }
 
+  const dropTotal =
+    input.pageDropOffTotal ??
+    input.exitSections.reduce((s, e) => s + e.count, 0);
+  const exitSections: ExitSectionRow[] = [...input.exitSections]
+    .sort((a, b) => b.count - a.count || a.sectionId.localeCompare(b.sectionId))
+    .map((s) => ({
+      sectionId: s.sectionId,
+      count: s.count,
+      sharePct:
+        dropTotal > 0 ? Math.round((s.count / dropTotal) * 1000) / 10 : 0,
+    }));
+
+  const outbound = [...(input.outbound ?? [])]
+    .sort((a, b) => b.count - a.count || a.to.localeCompare(b.to))
+    .slice(0, input.outboundLimit ?? 5);
+
   return {
     path: input.path,
-    exitSections: [...input.exitSections].sort(
-      (a, b) => b.count - a.count || a.sectionId.localeCompare(b.sectionId),
-    ),
+    exitSections,
     dwellMsSamples,
     medianDwellMs: median(dwellMsSamples),
     samplePaths,
     returnTimeline: [...(input.returnTimeline ?? [])].sort((a, b) =>
       b.returnedAt.localeCompare(a.returnedAt),
     ),
+    outbound,
   };
 }

@@ -14,13 +14,14 @@ Tracer-bullet breakdown of the PRD (`../prospect-journey-analytics-prd.md`). Eac
 | 04 | Analytics notice bar | AFK | 02 | 21–23 |
 | 05 | Entry source freeze + filter + tests | AFK | 02 | 14, 30–31, 40 |
 | 06 | Section tracer: home tags + expand/collapse | AFK | 02, 03 | 4–5, 7, 25, 48 |
-| 07 | Unique-node loops + custom node chrome + side panel | AFK | 03, 06 | 3, 6, 9, 19, 44 |
+| 07 | Unique-node loops + custom node chrome + side panel | AFK | 03, 06 | 3, 6, 9, 44 (19 dig-in → slice 14) |
 | 08 | Returns: dashed re-entry + return metrics | AFK | 07 | 10, 15, 27 |
 | 09 | Country: IP→ISO + multi-select color-by-country | AFK | 07 | 12–13, 32, 45, 49 |
 | 10 | Converted sink + Include converted + last-touch | AFK | 07 | 2, 16–18, 46, 50 |
 | 11 | Section tags: PDP, configurators, checkout/Result | AFK | 06 | 25, 48 |
 | 12 | GA→DB BigQuery sync + ga_client_id stitch | AFK | 02 | 34–36 |
-| 13 | Staging E2E signoff | HITL | 04–12 | 43–46 |
+| 13 | Staging E2E signoff | HITL | 04–12, 14 | 43–46 |
+| 14 | Expanded node dig-in (replace side panel) | AFK | 07, 06/11 | 19 (amended), 7 |
 
 ## Dependency graph
 
@@ -39,6 +40,7 @@ graph TD
   s11[11_More_sections]
   s12[12_GA_sync]
   s13[13_Staging]
+  s14[14_Expanded_node]
 
   s01 --> s02
   s02 --> s03
@@ -53,6 +55,9 @@ graph TD
   s07 --> s09
   s07 --> s10
   s06 --> s11
+  s07 --> s14
+  s06 --> s14
+  s11 --> s14
   s04 --> s13
   s05 --> s13
   s08 --> s13
@@ -60,6 +65,7 @@ graph TD
   s10 --> s13
   s11 --> s13
   s12 --> s13
+  s14 --> s13
 ```
 
 ## How to work a slice

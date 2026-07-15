@@ -302,7 +302,7 @@ function ResultStatusPage() {
   }, [id, token, locale]);
 
   const journey = (
-    <div className="space-y-3" data-section="status-journey">
+    <div className="space-y-3" id="status-journey" data-section="status-journey">
       <Progress value={isTerminalFail ? 25 : progressValue} className="h-2" />
       <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {JOURNEY_STEPS.map((step, index) => {
@@ -331,7 +331,7 @@ function ResultStatusPage() {
   );
 
   const details = result ? (
-    <div className="space-y-2 rounded-lg border p-4 text-sm" data-section="build-details">
+    <div className="space-y-2 rounded-lg border p-4 text-sm" id="build-details" data-section="build-details">
       {result.is_pre_order ? (
         <div>
           <Badge variant="secondary">Pre-order</Badge>
@@ -434,7 +434,7 @@ function ResultStatusPage() {
       )}
 
       {canDecide && (
-        <div className="flex flex-wrap gap-2 border-t pt-3" data-section="decide">
+        <div className="flex flex-wrap gap-2 border-t pt-3" id="decide" data-section="decide">
           <Button
             variant="default"
             size="sm"
@@ -577,7 +577,7 @@ function ResultStatusPage() {
         {/* ponytail: status as section so hold→accept drop-off is diagnosable */}
         <div
           key={status}
-          data-section={`status-${status}`}
+          id={`status-${status}`} data-section={`status-${status}`}
           data-step={status}
           className="pointer-events-none absolute left-0 top-0 h-4 w-full"
           aria-hidden
@@ -619,7 +619,7 @@ function ResultStatusPage() {
       {/* ponytail: status as section so hold→accept drop-off is diagnosable */}
       <div
         key={status}
-        data-section={`status-${status}`}
+        id={`status-${status}`} data-section={`status-${status}`}
         data-step={status}
         className="pointer-events-none absolute left-0 top-0 h-4 w-full"
         aria-hidden
@@ -637,7 +637,7 @@ function ResultStatusPage() {
           {details}
         </Card>
 
-        <Card className="space-y-4 p-5 sm:p-6" data-section="sign-in">
+        <Card className="space-y-4 p-5 sm:p-6" id="sign-in" data-section="sign-in">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">Sign up / sign in</h2>
             <p className="mt-1 text-sm text-muted-foreground">

@@ -1,9 +1,24 @@
-import { stripLocale } from "@/lib/i18n/routing";
+import type { Locale } from "@/lib/i18n/locales";
+import { stripLocale, withLocale } from "@/lib/i18n/routing";
 
 /** Admin Panel paths must never enter the journey store. */
 export function isAdminJourneyPath(pathname: string): boolean {
   const base = stripLocale(pathname);
   return base === "/settings" || base.startsWith("/settings/");
+}
+
+/** Storefront hash link for an exit section (Admin lang + locale-stripped journey path). */
+export function exitSectionHref(
+  locale: Locale,
+  path: string,
+  sectionId: string,
+): string {
+  return `${withLocale(path, locale)}#${sectionId}`;
+}
+
+/** Section child nodes are `path#sectionId`; sinks/pages are not. */
+export function isSectionChildPath(path: string): boolean {
+  return path.includes("#");
 }
 
 /** Normalize storefront path for graph nodes (locale-stripped, no query/hash). */
