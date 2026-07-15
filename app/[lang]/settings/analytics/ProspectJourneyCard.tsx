@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
@@ -41,7 +42,12 @@ import {
   Scan,
   X,
 } from "lucide-react";
-import { edgeStrokeWidth } from "@/lib/analytics/journey/chrome";
+import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
+import {
+  edgeStrokeWidth,
+  edgeTrafficMixPct,
+  edgeTrafficOpacity,
+} from "@/lib/analytics/journey/chrome";
 import { CONVERTED_NODE } from "@/lib/analytics/journey/converted-sink";
 import {
   getProspectJourneyTransitions,
@@ -60,15 +66,38 @@ const CONVERTED = CONVERTED_NODE;
 const LAYOUT_KEY = "prospect-journey-layout-v1";
 const DRAG_THRESHOLD = 4;
 const PORT_R = 4;
-const NODE_W = 140;
-const NODE_H = 76;
-const NODE_W_SEL = 200;
-const NODE_H_SEL = 120;
+const NODE_W = 156;
+const NODE_H = 92;
+const NODE_W_SEL = 212;
+const NODE_H_SEL = 132;
 const WORLD_W = 640;
 const WORLD_H = 400;
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 3;
 const PAN_NUDGE = 40;
+
+const edgeTooltipStyles: CSSProperties = {
+  ...(defaultStyles as CSSProperties),
+  backgroundColor: "var(--popover)",
+  color: "var(--popover-foreground)",
+  border: "1px solid var(--border)",
+  boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+  padding: "10px 12px",
+  borderRadius: "10px",
+  fontSize: "12px",
+  position: "fixed",
+  zIndex: 1000,
+  pointerEvents: "none",
+};
+
+type EdgeTooltipData = {
+  from: string;
+  to: string;
+  count: number;
+  sharePct: number;
+  country?: string;
+  dashed?: boolean;
+};
 
 function labelPath(path: string) {
   if (path === DROP_OFF) return "Drop-off";
@@ -217,6 +246,45 @@ function cubicEdgePath(
   return `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
 }
 
+
+function edgeKey(e: JourneyTransitionEdge) {
+  return `${e.from}->${e.to}:${e.country ?? ""}:${e.dashed ? "re" : "s"}`;
+}
+
+/** Semantic base hue: drop-off / converted / return / forward. */
+function edgeHueVar(e: JourneyTransitionEdge): string {
+  if (e.to === DROP_OFF) return "var(--destructive)";
+  if (e.to === CONVERTED) return "var(--chart-2)";
+  if (e.dashed) return "var(--muted-foreground)";
+  return "var(--chart-3)";
+}
+
+function edgeTrafficStroke(
+  e: JourneyTransitionEdge,
+  maxCount: number,
+  colorByCode: Map<string, string>,
+  colorMode: boolean,
+): { stroke: string; opacity: number } {
+  if (colorMode && e.country && colorByCode.has(e.country)) {
+    return {
+      stroke: colorByCode.get(e.country)!,
+      opacity: edgeTrafficOpacity(e.count, maxCount),
+    };
+  }
+  const pct = edgeTrafficMixPct(e.count, maxCount);
+  return {
+    stroke: `color-mix(in oklab, ${edgeHueVar(e)} ${pct}%, var(--muted))`,
+    opacity: e.dashed ? 0.85 : 0.95,
+  };
+}
+
+/** Accent for node left rail from drop-off severity. */
+function dropAccentClass(dropOffPct: number): string {
+  if (dropOffPct >= 50) return "fill-destructive";
+  if (dropOffPct >= 25) return "fill-[var(--chart-1)]";
+  return "fill-[var(--chart-2)]";
+}
+
 function SvgText({
   children,
   maxChars,
@@ -238,6 +306,128 @@ function SvgText({
       {text !== full ? <title>{full}</title> : null}
       {text}
     </text>
+  );
+}
+
+/** Compact node body — primary KPI + drop bar + one meta line. */
+function NodeCardBody({
+  n,
+  hw,
+  hh,
+  selected,
+  isDropOff,
+  isConverted,
+}: {
+  n: LayoutNode;
+  hw: number;
+  hh: number;
+  selected: boolean;
+  isDropOff: boolean;
+  isConverted: boolean;
+}) {
+  const isSink = isDropOff || isConverted;
+  const padX = 12;
+  const left = -hw + padX;
+  const barW = hw * 2 - padX * 2 - (isSink ? 0 : 6);
+  const dropFill = Math.min(1, Math.max(0, n.dropOffPct / 100));
+
+  if (isSink) {
+    return (
+      <>
+        <SvgText
+          x={0}
+          y={-6}
+          maxChars={16}
+          className={
+            isDropOff
+              ? "fill-destructive text-[12px] font-semibold"
+              : "fill-foreground text-[12px] font-semibold"
+          }
+        >
+          {labelPath(n.path)}
+        </SvgText>
+        <SvgText y={14} maxChars={18} className="fill-muted-foreground text-[11px]">
+          {isConverted ? `${n.views} orders` : `${n.views} visits`}
+        </SvgText>
+      </>
+    );
+  }
+
+  const titleY = -hh + 16;
+  const kpiY = -hh + 42;
+  const barY = -hh + 56;
+  const metaY = selected ? -hh + 84 : -hh + 78;
+
+  return (
+    <>
+      <rect
+        x={-hw}
+        y={-hh + 10}
+        width={4}
+        height={hh * 2 - 20}
+        rx={2}
+        className={dropAccentClass(n.dropOffPct)}
+      />
+      <SvgText
+        x={left + 4}
+        y={titleY}
+        textAnchor="start"
+        maxChars={selected ? 26 : 18}
+        className="fill-foreground text-[11px] font-semibold"
+      >
+        {labelPath(n.path)}
+      </SvgText>
+      <text
+        x={left + 4}
+        y={kpiY}
+        textAnchor="start"
+        className="fill-foreground text-[20px] font-semibold tabular-nums"
+      >
+        {n.prospects}
+      </text>
+      <text
+        x={left + 4 + Math.min(5, String(n.prospects).length) * 12 + 6}
+        y={kpiY}
+        textAnchor="start"
+        className="fill-muted-foreground text-[10px]"
+      >
+        prospects
+      </text>
+      <rect x={left + 4} y={barY} width={barW} height={5} rx={2.5} className="fill-muted" />
+      <rect
+        x={left + 4}
+        y={barY}
+        width={Math.max(0, barW * dropFill)}
+        height={5}
+        rx={2.5}
+        className={dropAccentClass(n.dropOffPct)}
+        opacity={0.85}
+      />
+      <SvgText
+        x={left + 4}
+        y={barY + 16}
+        textAnchor="start"
+        maxChars={selected ? 30 : 22}
+        className="fill-muted-foreground text-[9px]"
+      >
+        {`${n.dropOffPct}% drop${
+          n.topDropOffSection ? ` · #${n.topDropOffSection}` : ""
+        }`}
+      </SvgText>
+      <SvgText
+        x={left + 4}
+        y={metaY}
+        textAnchor="start"
+        maxChars={selected ? 30 : 22}
+        className="fill-muted-foreground/90 text-[9px]"
+      >
+        {selected
+          ? `dwell ${formatDwell(n.medianDwellMs)} · ${n.views} views · ret ${n.returnHits}${
+              n.medianReturnGapMs != null ? ` (${formatGap(n.medianReturnGapMs)})` : ""
+            }`
+          : `dwell ${formatDwell(n.medianDwellMs)} · ret ${n.returnHits}`}
+      </SvgText>
+    </>
   );
 }
 
@@ -486,8 +676,18 @@ function JourneyGraph({
   const [panning, setPanning] = useState(false);
   const [overrides, setOverrides] = useState<PosMap>({});
   const [fittedKey, setFittedKey] = useState("");
+  const [hoverEdgeKey, setHoverEdgeKey] = useState<string | null>(null);
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
+
+  const {
+    tooltipData,
+    tooltipLeft,
+    tooltipTop,
+    tooltipOpen,
+    showTooltip,
+    hideTooltip,
+  } = useTooltip<EdgeTooltipData>();
 
   const dragRef = useRef<{
     path: string;
@@ -530,6 +730,10 @@ function JourneyGraph({
   }, [seeded, overrides]);
   const byPath = useMemo(() => new Map(laid.map((n) => [n.path, n])), [laid]);
   const maxCount = Math.max(1, ...edges.map((e) => e.count));
+  const totalTransitions = useMemo(
+    () => edges.reduce((s, e) => s + e.count, 0),
+    [edges],
+  );
   const colorMode = colorByCode.size >= 2;
 
   const pairIndex = useMemo(() => {
@@ -658,11 +862,39 @@ function JourneyGraph({
       startPan(ev);
       return;
     }
-    if (ev.button === 0) onSelect(null);
+    if (ev.button === 0) {
+      clearEdgeTooltip();
+      onSelect(null);
+    }
   }
 
   function fitView() {
     setCamera(fitCamera(laid, viewport.w, viewport.h));
+  }
+
+  function showEdgeTooltip(e: JourneyTransitionEdge, clientX: number, clientY: number) {
+    const sharePct =
+      totalTransitions > 0
+        ? Math.round((e.count / totalTransitions) * 1000) / 10
+        : 0;
+    setHoverEdgeKey(edgeKey(e));
+    showTooltip({
+      tooltipLeft: clientX + 12,
+      tooltipTop: clientY + 12,
+      tooltipData: {
+        from: e.from,
+        to: e.to,
+        count: e.count,
+        sharePct,
+        country: e.country,
+        dashed: e.dashed,
+      },
+    });
+  }
+
+  function clearEdgeTooltip() {
+    setHoverEdgeKey(null);
+    hideTooltip();
   }
 
   // Non-passive wheel so we can preventDefault (page scroll)
@@ -866,30 +1098,46 @@ function JourneyGraph({
             const idx = pairIndex.get(`${pk}\0${e.country ?? ""}`) ?? 0;
             const bend = (isBack || e.dashed ? -48 : 0) + (colorMode ? idx * -16 : 0);
             const sw = edgeStrokeWidth(e.count, maxCount);
-            const stroke =
-              colorMode && e.country && colorByCode.has(e.country)
-                ? colorByCode.get(e.country)!
-                : undefined;
+            const key = edgeKey(e);
+            const hovered = hoverEdgeKey === key;
+            const { stroke, opacity } = edgeTrafficStroke(
+              e,
+              maxCount,
+              colorByCode,
+              colorMode,
+            );
+            const d = cubicEdgePath(a.x, a.y, b.x, b.y, aHw, bHw, bend);
             return (
-              <path
-                key={`${e.from}->${e.to}:${e.country ?? ""}:${e.dashed ? "re" : "s"}`}
-                d={cubicEdgePath(a.x, a.y, b.x, b.y, aHw, bHw, bend)}
-                fill="none"
-                stroke={stroke ?? "currentColor"}
-                className={
-                  stroke
-                    ? undefined
-                    : e.dashed
-                      ? "text-muted-foreground/45"
-                      : "text-muted-foreground/60"
-                }
-                strokeWidth={sw}
-                strokeDasharray={e.dashed ? "6 4" : undefined}
-                markerStart="url(#journey-start)"
-                markerEnd="url(#journey-end)"
-                opacity={stroke ? 0.85 : undefined}
-                pointerEvents="none"
-              />
+              <g key={key}>
+                <path
+                  d={d}
+                  fill="none"
+                  stroke="transparent"
+                  strokeWidth={Math.max(14, sw + 10)}
+                  style={{ cursor: "pointer", pointerEvents: "stroke" }}
+                  onPointerDown={(ev) => {
+                    ev.stopPropagation();
+                    showEdgeTooltip(e, ev.clientX, ev.clientY);
+                  }}
+                  onPointerMove={(ev) => {
+                    ev.stopPropagation();
+                    showEdgeTooltip(e, ev.clientX, ev.clientY);
+                  }}
+                  onPointerLeave={clearEdgeTooltip}
+                />
+                <path
+                  d={d}
+                  fill="none"
+                  stroke={stroke}
+                  strokeWidth={sw}
+                  strokeDasharray={e.dashed ? "6 4" : undefined}
+                  markerStart="url(#journey-start)"
+                  markerEnd="url(#journey-end)"
+                  opacity={hovered ? 1 : opacity}
+                  style={{ filter: hovered ? "brightness(1.15)" : undefined }}
+                  pointerEvents="none"
+                />
+              </g>
             );
           })}
           {drawOrder.map((n) => {
@@ -898,9 +1146,6 @@ function JourneyGraph({
             const isConverted = n.path === CONVERTED;
             const isSink = isDropOff || isConverted;
             const { hw, hh } = nodeHalfSize(selected && !isSink);
-            const headerH = selected && !isSink ? 28 : 22;
-            const titleMax = selected ? 28 : 18;
-            const title = labelPath(n.path);
             return (
               <g
                 key={n.path}
@@ -922,138 +1167,45 @@ function JourneyGraph({
                   y={-hh}
                   width={hw * 2}
                   height={hh * 2}
-                  rx={8}
+                  rx={10}
                   className={
                     isDropOff
-                      ? "fill-background stroke-destructive/60"
+                      ? "fill-background stroke-destructive/50"
                       : isConverted
-                        ? "fill-muted/30 stroke-muted-foreground/50"
+                        ? "fill-muted/40 stroke-muted-foreground/40"
                         : selected
-                          ? "fill-background stroke-foreground"
-                          : "fill-background stroke-border"
+                          ? "fill-card stroke-foreground"
+                          : "fill-card stroke-border"
                   }
                   strokeWidth={selected ? 2 : 1}
                 />
-                <rect
-                  x={-hw}
-                  y={-hh}
-                  width={hw * 2}
-                  height={headerH}
-                  rx={8}
-                  className={
-                    isDropOff
-                      ? "fill-destructive/15"
-                      : isConverted
-                        ? "fill-muted/40"
-                        : selected
-                          ? "fill-muted"
-                          : "fill-muted/60"
-                  }
-                />
-                <rect
-                  x={-hw}
-                  y={-hh + headerH - 8}
-                  width={hw * 2}
-                  height={8}
-                  className={
-                    isDropOff
-                      ? "fill-destructive/15"
-                      : isConverted
-                        ? "fill-muted/40"
-                        : selected
-                          ? "fill-muted"
-                          : "fill-muted/60"
-                  }
-                />
-                <SvgText
-                  y={-hh + headerH / 2 + 4}
-                  maxChars={titleMax}
-                  className={
-                    isConverted
-                      ? "fill-muted-foreground text-[11px] font-medium"
-                      : "fill-foreground text-[11px] font-medium"
-                  }
-                >
-                  {title}
-                </SvgText>
                 {!isSink ? (
-                  selected ? (
-                    <>
-                      <SvgText
-                        y={-hh + headerH + 18}
-                        maxChars={32}
-                        className="fill-muted-foreground text-[10px]"
-                      >
-                        {`${n.prospects} prospects · ${n.dropOffPct}% drop`}
-                      </SvgText>
-                      <SvgText
-                        y={-hh + headerH + 36}
-                        maxChars={32}
-                        className="fill-muted-foreground text-[10px]"
-                      >
-                        {`dwell ${formatDwell(n.medianDwellMs)}${
-                          n.topDropOffSection ? ` · #${n.topDropOffSection}` : ""
-                        }`}
-                      </SvgText>
-                      <SvgText
-                        y={-hh + headerH + 54}
-                        maxChars={32}
-                        className="fill-muted-foreground text-[10px]"
-                      >
-                        {n.returnHits > 0
-                          ? `returns ${n.returnHits}${
-                              n.medianReturnGapMs != null
-                                ? ` · gap ${formatGap(n.medianReturnGapMs)}`
-                                : ""
-                            }`
-                          : "returns 0"}
-                      </SvgText>
-                      <SvgText
-                        y={-hh + headerH + 72}
-                        maxChars={28}
-                        className="fill-muted-foreground/80 text-[9px]"
-                      >
-                        {`${n.views} views`}
-                      </SvgText>
-                    </>
-                  ) : (
-                    <>
-                      <SvgText
-                        y={-hh + headerH + 14}
-                        maxChars={22}
-                        className="fill-muted-foreground text-[9px]"
-                      >
-                        {`${n.prospects} prospects · ${n.dropOffPct}% drop`}
-                      </SvgText>
-                      <SvgText
-                        y={-hh + headerH + 28}
-                        maxChars={22}
-                        className="fill-muted-foreground text-[9px]"
-                      >
-                        {`dwell ${formatDwell(n.medianDwellMs)}${
-                          n.topDropOffSection ? ` · #${n.topDropOffSection}` : ""
-                        }`}
-                      </SvgText>
-                      <SvgText
-                        y={-hh + headerH + 42}
-                        maxChars={22}
-                        className="fill-muted-foreground text-[8px]"
-                      >
-                        {n.returnHits > 0
-                          ? `returns ${n.returnHits}${
-                              n.medianReturnGapMs != null
-                                ? ` · gap ${formatGap(n.medianReturnGapMs)}`
-                                : ""
-                            }`
-                          : "returns 0"}
-                      </SvgText>
-                    </>
-                  )
-                ) : (
-                  <SvgText y={4} maxChars={18} className="fill-muted-foreground text-[10px]">
-                    {isConverted ? `${n.views} orders` : `${n.views} visits`}
-                  </SvgText>
-                )}
+                  <rect
+                    x={-hw}
+                    y={-hh}
+                    width={hw * 2}
+                    height={28}
+                    rx={10}
+                    className={selected ? "fill-muted/70" : "fill-muted/40"}
+                  />
+                ) : isDropOff ? (
+                  <rect
+                    x={-hw}
+                    y={-hh}
+                    width={hw * 2}
+                    height={hh * 2}
+                    rx={10}
+                    className="fill-destructive/5"
+                  />
+                ) : null}
+                <NodeCardBody
+                  n={n}
+                  hw={hw}
+                  hh={hh}
+                  selected={selected && !isSink}
+                  isDropOff={isDropOff}
+                  isConverted={isConverted}
+                />
                 <circle
                   cx={-hw}
                   cy={0}
@@ -1085,6 +1237,53 @@ function JourneyGraph({
           })}
         </g>
       </svg>
+
+      {tooltipOpen && tooltipData ? (
+        <TooltipWithBounds
+          top={tooltipTop}
+          left={tooltipLeft}
+          style={edgeTooltipStyles}
+        >
+          <div className="space-y-1.5">
+            <p className="font-medium leading-snug">
+              {labelPath(tooltipData.from)}
+              <span className="mx-1 text-muted-foreground">→</span>
+              {labelPath(tooltipData.to)}
+            </p>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px]">
+              <dt className="text-muted-foreground">Transitions</dt>
+              <dd className="tabular-nums font-medium">{tooltipData.count}</dd>
+              <dt className="text-muted-foreground">Share</dt>
+              <dd className="tabular-nums">{tooltipData.sharePct}%</dd>
+              {tooltipData.country ? (
+                <>
+                  <dt className="text-muted-foreground">Country</dt>
+                  <dd className="font-mono">{tooltipData.country}</dd>
+                </>
+              ) : null}
+              {tooltipData.dashed ? (
+                <>
+                  <dt className="text-muted-foreground">Type</dt>
+                  <dd>Return visit</dd>
+                </>
+              ) : null}
+            </dl>
+          </div>
+        </TooltipWithBounds>
+      ) : null}
+
+      <div className="pointer-events-none absolute bottom-2 left-2 z-30 flex items-center gap-2 rounded-md bg-background/85 px-2 py-1.5 text-[10px] text-muted-foreground shadow-sm">
+        <span>Traffic</span>
+        <span
+          className="inline-block h-1.5 w-16 rounded-full"
+          style={{
+            background:
+              "linear-gradient(to right, color-mix(in oklab, var(--chart-3) 22%, var(--muted)), var(--chart-3))",
+          }}
+          aria-hidden
+        />
+        <span>less → more</span>
+      </div>
 
       {selectedPath === CONVERTED ? (
         <ConvertedDetailPanel
@@ -1215,7 +1414,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
           <CardTitle className="text-base font-medium">Prospect journey</CardTitle>
           <CardDescription>
             Unique-node page graph from our DB. Loops reuse one node with a back-edge.
-            Click a node for exit sections, dwell, and sample paths.
+            Hover a connector for transition stats; click a node for exit sections, dwell, and sample paths.
           </CardDescription>
         </div>
         <Button
@@ -1409,6 +1608,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
                     <span className="font-mono">{c.code}</span>
                   </li>
                 ))}
+                <li className="text-muted-foreground">Opacity scales with traffic</li>
               </ul>
             ) : null}
           </div>

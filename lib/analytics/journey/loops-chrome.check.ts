@@ -90,6 +90,9 @@ const card = readFileSync(
 );
 assert.match(card, /JourneyGraph/);
 assert.match(card, /edgeStrokeWidth/);
+assert.match(card, /edgeTrafficMixPct/);
+assert.match(card, /useTooltip/);
+assert.match(card, /NodeCardBody/);
 assert.match(card, /prospects/);
 assert.match(card, /dropOffPct/);
 assert.match(card, /medianDwellMs/);
