@@ -84,10 +84,13 @@ assert.match(card, /prospects/);
 assert.match(card, /dropOffPct/);
 assert.match(card, /medianDwellMs/);
 assert.match(card, /topDropOffSection/);
-assert.match(card, /Sheet/);
+assert.match(card, /DetailPanel/);
+assert.match(card, /ConvertedDetailPanel/);
+assert.match(card, /includeConverted/);
 assert.match(card, /exitSections/);
 assert.match(card, /samplePaths/);
 assert.match(card, /detailPath/);
+assert.match(card, /returnTimeline/);
 
 const client = readFileSync(
   join(root, "app/[lang]/settings/analytics/AnalyticsClient.tsx"),
