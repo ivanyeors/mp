@@ -33,3 +33,4 @@ Secondary conversion story without stealing Prospect focus.
 - UI: Include converted toggle, muted sink chrome, Converted side panel (last-touch / duration / value / path)
 - Merged into `feat/journey-slice-08-returns` with returns + country filters preserved
 - Verify: `npx tsx lib/analytics/journey/converted-sink.check.ts`
+- Live smoke: `npx tsx --env-file=.env.local lib/analytics/journey/slice-10.smoke.ts`

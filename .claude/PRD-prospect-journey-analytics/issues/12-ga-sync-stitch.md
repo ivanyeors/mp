@@ -33,3 +33,13 @@ GA extract lives in our DB and can stitch to **Visitor**.
 - Sync: chained on `/api/cron/results-sla` after Shopify catch-up (no 3rd Hobby cron)
 - Fixture when BQ absent: set `GA_SYNC_FIXTURE_PATH` (default file: `lib/analytics/journey/fixtures/ga-bq-export.json`). Cron without that env only stitches existing staging rows.
 - Check: `npx tsx lib/analytics/journey/ga-sync.check.ts`
+- Live smoke: `npx tsx --env-file=.env.local lib/analytics/journey/slice-12.smoke.ts`
+
+## Proof matrix
+
+| AC | Proof |
+|---|---|
+| Visitor stores ga_client_id | Smoke ingest → `analytics_visitors.ga_client_id` set; set-if-null refuses clobber |
+| Export/fixture lands rows in DB | Smoke `runGaSync` inserts 2 rows into `analytics_ga_events` |
+| Matching client id links to Visitor | Smoke: matching row `visitor_id` set; unmatched stays null |
+| Admin graph does not query GA live | `ga-sync.check` + smoke: aggregates source has no GA/BQ reads; first-party graph still loads |

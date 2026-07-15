@@ -23,9 +23,11 @@ Extend section instrumentation beyond home using the same `data-section` / `data
 ## Proof
 
 - Check: `npx tsx lib/analytics/journey/section-surfaces.check.ts`
+- Live smoke: `npx tsx --env-file=.env.local lib/analytics/journey/slice-11.smoke.ts`
 - Tracker observes `[data-section], [data-step]`
 - Surfaces: PDP, mp-config/mp-basic, mbolster-config, checkout, Result
 - Fixture proof: PDP/configurator/checkout/Result section nodes expand and preserve `drop_off_section` counts
+- Staging browser walk remains Slice 13 HITL
 
 ## Blocked by
 
