@@ -11,11 +11,11 @@ When inventory recovers enough that the Pre-order trigger would clear for matchi
 
 ## Acceptance criteria
 
-- [ ] Restock event selects only Pre-order Results in `held`/`assigned`.
-- [ ] Email sends once; second event does not re-send (idempotent marker).
-- [ ] Expired/declined/captured/canceled excluded.
-- [ ] Automated tests for selection + idempotency.
-- [ ] New configurator sessions show Proceed when stock recovered (slice 05 live trigger).
+- [x] Restock event selects only Pre-order Results in `held`/`assigned`.
+- [x] Email sends once; second event does not re-send (idempotent marker).
+- [x] Expired/declined/captured/canceled excluded.
+- [x] Automated tests for selection + idempotency.
+- [x] New configurator sessions show Proceed when stock recovered (slice 05 live trigger).
 
 ## Blocked by
 

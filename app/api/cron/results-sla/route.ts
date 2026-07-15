@@ -12,6 +12,7 @@ import {
 } from "@/lib/sla-reminders";
 import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
 import { runGaSync } from "@/lib/analytics/journey/ga-sync";
+import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -261,7 +262,28 @@ export async function GET(req: Request) {
     gaSync = { ok: false, error: e instanceof Error ? e.message : "ga sync failed" };
   }
 
-  return NextResponse.json({ ok: true, ...summary, settings, catchup, gaSync });
+  // Chain: Pre-order restock emails when inventory recovered (slice 07).
+  // Manual ops: GET/POST /api/cron/preorder-restock with CRON_SECRET.
+  let preOrderRestock:
+    | Awaited<ReturnType<typeof runPreOrderRestockNotices>>
+    | { ok: false; error: string };
+  try {
+    preOrderRestock = await runPreOrderRestockNotices(admin, { origin });
+  } catch (e) {
+    preOrderRestock = {
+      ok: false,
+      error: e instanceof Error ? e.message : "pre-order restock failed",
+    };
+  }
+
+  return NextResponse.json({
+    ok: true,
+    ...summary,
+    settings,
+    catchup,
+    gaSync,
+    preOrderRestock,
+  });
 }
 
 export async function POST(req: Request) {
