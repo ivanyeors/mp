@@ -67,6 +67,9 @@ export interface RecommendationResponseData {
     name: string;
     on_hand: number;
   }[];
+  /** Buildable units for the recommended composed sellable (size×tier or bolster length). */
+  composed_buildable?: number;
+  buildable_counts?: Record<string, number>;
 }
 
 // ─── Shared Constants ────────────────────────────────────────

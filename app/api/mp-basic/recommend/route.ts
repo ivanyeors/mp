@@ -68,6 +68,7 @@ export async function POST(req: Request) {
     for (const row of pillowBuildable ?? []) {
       buildable_counts[row.size] = row.buildable ?? 0;
     }
+    const composed_buildable = buildable_counts[pillowProduct.size] ?? 0;
 
     return NextResponse.json({
       ok: true,
@@ -97,6 +98,7 @@ export async function POST(req: Request) {
       templates: [],
       available_fillings: [],
       buildable_counts,
+      composed_buildable,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to get basic recommendation";

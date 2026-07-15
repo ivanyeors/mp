@@ -179,6 +179,7 @@ async function handleRecommend(req: Request) {
       for (const row of bolsterBuildable ?? []) {
         buildable_counts[row.variant] = row.buildable ?? 0;
       }
+      const composed_buildable = buildable_counts[bolsterVariant] ?? 0;
 
       return NextResponse.json({
         ok: true,
@@ -204,6 +205,7 @@ async function handleRecommend(req: Request) {
         templates: [],
         available_fillings: [],
         buildable_counts,
+        composed_buildable,
       });
     }
 
@@ -264,6 +266,7 @@ async function handleRecommend(req: Request) {
     for (const row of pillowBuildable ?? []) {
       buildable_counts[row.size] = row.buildable ?? 0;
     }
+    const composed_buildable = buildable_counts[pillowProduct.size] ?? 0;
 
     return NextResponse.json({
       ok: true,
@@ -288,6 +291,7 @@ async function handleRecommend(req: Request) {
       })),
       available_fillings: fillings,
       buildable_counts,
+      composed_buildable,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to get recommendation";

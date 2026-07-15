@@ -57,6 +57,12 @@ import {
   PreviewContactFields,
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
+import {
+  holdCtaLabel,
+  isPreOrder,
+  preferenceStockFor,
+  preOrderWaitingCopy,
+} from "@/lib/configurator/pre-order-trigger";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import {
@@ -677,8 +683,20 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     holdFields,
   ]);
 
-  // Purchase preview uses the same mp-config split layout (case, add-ons, shipping).
+  // Hold preview uses the same mp-config split layout (case, add-ons, shipping).
   if (state.step === "preview") {
+    const caseStock = preferenceStockFor(
+      selectedCase,
+      shopRecommendation?.components.cases ?? [],
+    );
+    const preferenceStocks = caseStock !== null ? [caseStock] : [];
+    const { isPreOrder: preOrder } = isPreOrder({
+      preferenceStocks,
+      composedBuildable: shopRecommendation?.composed_buildable ?? 0,
+    });
+    const holdCta = holdSubmitting ? "Redirecting…" : holdCtaLabel(preOrder);
+    const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
+
     return (
       <div className="relative min-h-screen bg-background">
         {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
@@ -1019,6 +1037,13 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
               </div>
             </div>
 
+            {waitingCopy ? (
+              <div className="border-t bg-muted/30 px-5 py-4 text-sm">
+                <p className="font-medium">{waitingCopy.title}</p>
+                <p className="mt-1 text-muted-foreground">{waitingCopy.body}</p>
+              </div>
+            ) : null}
+
             <div
               className={cn(
                 "border-t bg-background px-5 py-4",
@@ -1042,7 +1067,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   onClick={() => void handleAuthorizeHold()}
                   disabled={holdSubmitting || shopLoading || !shopRecommendation}
                 >
-                  {holdSubmitting ? "Redirecting…" : "Proceed"}
+                  {holdCta}
                   <ArrowRight className="size-4" />
                 </Button>
               </div>

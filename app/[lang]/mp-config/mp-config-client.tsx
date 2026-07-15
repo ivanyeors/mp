@@ -100,6 +100,12 @@ import {
   PreviewContactFields,
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
+import {
+  holdCtaLabel,
+  isPreOrder,
+  preferenceStockFor,
+  preOrderWaitingCopy,
+} from "@/lib/configurator/pre-order-trigger";
 
 type MeasureKey = "shoulderLength" | "neckToBack" | "headToBack" | "neckLength";
 
@@ -1218,7 +1224,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     </Dialog>
   );
 
-  // Purchase preview uses mp-maker split layout (cover/case card pickers, no fillings/protector).
+  // Hold preview uses mp-maker split layout (cover/case card pickers, no fillings/protector).
   if (currentStep === "preview") {
     const size =
       shopRecommendation?.pillow_product?.size ??
@@ -1233,6 +1239,23 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     const addonTotal = addons
       .filter((a) => selectedAddons.has(a.item_id))
       .reduce((s, a) => s + a.msrp, 0);
+    const coverStock = preferenceStockFor(
+      selectedCover,
+      shopRecommendation?.components.covers ?? [],
+    );
+    const caseStock = preferenceStockFor(
+      selectedCase,
+      shopRecommendation?.components.cases ?? [],
+    );
+    const preferenceStocks = [coverStock, caseStock].filter(
+      (s): s is number => s !== null,
+    );
+    const { isPreOrder: preOrder } = isPreOrder({
+      preferenceStocks,
+      composedBuildable: shopRecommendation?.composed_buildable ?? 0,
+    });
+    const holdCta = holdSubmitting ? "Redirecting…" : holdCtaLabel(preOrder);
+    const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
       <>
@@ -1625,6 +1648,13 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                 </div>
               </div>
 
+              {waitingCopy ? (
+                <div className="border-t bg-muted/30 px-5 py-4 text-sm">
+                  <p className="font-medium">{waitingCopy.title}</p>
+                  <p className="mt-1 text-muted-foreground">{waitingCopy.body}</p>
+                </div>
+              ) : null}
+
               <div
                 className={cn(
                   "border-t bg-background px-5 py-4",
@@ -1648,7 +1678,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     onClick={() => void handleAuthorizeHold()}
                     disabled={holdSubmitting || shopLoading || !shopRecommendation}
                   >
-                    {holdSubmitting ? "Redirecting…" : "Proceed"}
+                    {holdCta}
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>
