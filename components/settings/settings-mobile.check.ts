@@ -62,4 +62,14 @@ assert.match(customerDetail, /opacity-100/);
 assert.doesNotMatch(customerDetail, /group-hover:opacity-100/);
 assert.match(customers, /overflow-x-auto/);
 
+// Cross-partition: results delete always visible; orders date stacks; media mobile overlay
+const results = read("app/[lang]/settings/results/page.tsx");
+const orders = read("app/[lang]/settings/orders/page.tsx");
+const media = read("app/[lang]/settings/media/page.tsx");
+assert.doesNotMatch(results, /opacity-0 group-hover:opacity-100/);
+assert.match(results, /min-h-11 min-w-11/);
+assert.match(orders, /flex w-full flex-col gap-2 sm:w-auto sm:flex-row/);
+assert.match(orders, /w-full sm:w-40/);
+assert.match(media, /opacity-100 sm:opacity-0 sm:group-hover:opacity-100/);
+
 console.log("settings-mobile.check.ts: ok");
