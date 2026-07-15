@@ -11,11 +11,11 @@ When hold create runs under Pre-order trigger, persist sticky Pre-order mode on 
 
 ## Acceptance criteria
 
-- [ ] Hold create under Pre-order stores the mode on the Result.
-- [ ] Hold create when not Pre-order stores in-stock / non-pre-order mode (or null/false).
-- [ ] Customer Result status and Admin Result detail can show Pre-order.
-- [ ] Automated check for persist mapping / payload flag.
-- [ ] Sticky: restock does not clear the flag on an existing Result (email is slice 07).
+- [x] Hold create under Pre-order stores the mode on the Result.
+- [x] Hold create when not Pre-order stores in-stock / non-pre-order mode (or null/false).
+- [x] Customer Result status and Admin Result detail can show Pre-order.
+- [x] Automated check for persist mapping / payload flag.
+- [x] Sticky: restock does not clear the flag on an existing Result (email is slice 07).
 
 ## Blocked by
 

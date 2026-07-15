@@ -60,6 +60,7 @@ type ResultPublic = {
   currency: string | null;
   payment_intent_id: string | null;
   customer_email: string | null;
+  is_pre_order?: boolean | null;
   build: BuildSummary | null;
 };
 
@@ -331,6 +332,11 @@ function ResultStatusPage() {
 
   const details = result ? (
     <div className="space-y-2 rounded-lg border p-4 text-sm" data-section="build-details">
+      {result.is_pre_order ? (
+        <div>
+          <Badge variant="secondary">Pre-order</Badge>
+        </div>
+      ) : null}
       {result.product_type === "bolster" ? (
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Length</span>

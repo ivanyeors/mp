@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PUBLIC_FIELDS =
-  "id, status, product_type, suggested_size, suggested_tier, suggested_length, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, created_at, updated_at, customer_email, payment_intent_id";
+  "id, status, product_type, suggested_size, suggested_tier, suggested_length, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, created_at, updated_at, customer_email, payment_intent_id, is_pre_order";
 
 type PrefLine = { item_id: number; quantity: number; category: string };
 type AddonLine = { item_id: number; quantity: number };

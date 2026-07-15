@@ -26,6 +26,10 @@ import {
   validateDiscoverySource,
 } from "@/lib/discovery-source";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
+import {
+  loadPreOrderTriggerAtHold,
+  preOrderFlagForResult,
+} from "@/lib/configurator/pre-order-persist";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -329,6 +333,17 @@ export async function POST(req: Request) {
     quantity: l.quantity,
   }));
 
+  // Sticky Pre-order at hold create — recompute from inventory (ADR 0005).
+  const is_pre_order = preOrderFlagForResult(
+    await loadPreOrderTriggerAtHold(admin, {
+      productType,
+      preferenceItemIds: preferenceLines.map((l) => l.item_id),
+      suggestedSize: input.suggestedSize,
+      suggestedTier: input.suggestedTier,
+      suggestedLength: input.suggestedLength,
+    }),
+  );
+
   const row = {
     id: resultId,
     data: input.measurements ?? {},
@@ -353,6 +368,7 @@ export async function POST(req: Request) {
     customer_id: customerId,
     access_token: accessToken,
     source: "online_purchase",
+    is_pre_order,
   };
 
   const { error: upsertErr } = await admin.from("mp_config_responses").upsert(row, {

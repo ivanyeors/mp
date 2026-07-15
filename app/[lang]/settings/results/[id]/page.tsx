@@ -64,6 +64,7 @@ type MpConfigResponseRow = {
   discovery_source?: string | null;
   discovery_source_other?: string | null;
   discovery_source_label?: string | null;
+  is_pre_order?: boolean | null;
 };
 
 type BomLine = {
@@ -703,6 +704,11 @@ export default function ResultDetailPage() {
               <div>
                 <span className="text-muted-foreground">Status: </span>
                 <span className="font-medium">{row.status}</span>
+                {row.is_pre_order ? (
+                  <span className="ml-2 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                    Pre-order
+                  </span>
+                ) : null}
               </div>
             </div>
           )}
