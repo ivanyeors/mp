@@ -1,7 +1,7 @@
 import type { PageViewEvent } from "./transitions";
 import { DROP_OFF_NODE } from "./drop-off-sink";
 
-/** Page node chrome for the unique-node journey graph. Return fields stub until slice 08. */
+/** Page node chrome for the unique-node journey graph. */
 export type PageNodeChrome = {
   path: string;
   views: number;
@@ -11,10 +11,15 @@ export type PageNodeChrome = {
   dropOffPct: number;
   medianDwellMs: number | null;
   topDropOffSection: string | null;
-  /** Stub until slice 08. */
-  returnHits: null;
-  /** Stub until slice 08. */
-  medianReturnGapMs: null;
+  /** Landings of return Visits after a prior Drop-off. */
+  returnHits: number;
+  medianReturnGapMs: number | null;
+};
+
+export type ReturnTimelineEntry = {
+  returnedAt: string;
+  gapMs: number;
+  priorDropOffPath: string | null;
 };
 
 export type NodeSidePanel = {
@@ -24,6 +29,7 @@ export type NodeSidePanel = {
   medianDwellMs: number | null;
   /** Sample Visit page sequences that touch this node (unique-node loops reuse paths). */
   samplePaths: string[][];
+  returnTimeline: ReturnTimelineEntry[];
 };
 
 export function median(nums: number[]): number | null {
@@ -88,6 +94,7 @@ export function buildNodeChrome(input: {
   dropOffsByPath: Map<string, number>;
   topSectionByPath: Map<string, string>;
   visitEndedAt?: Map<string, string>;
+  returnHitsByPath?: Map<string, { returnHits: number; medianReturnGapMs: number | null }>;
 }): PageNodeChrome[] {
   const prospectsByPath = new Map<string, Set<string>>();
   for (const e of input.events) {
@@ -98,6 +105,7 @@ export function buildNodeChrome(input: {
   }
 
   const dwells = collectPageDwells(input.events, input.visitEndedAt ?? new Map());
+  const returns = input.returnHitsByPath ?? new Map();
 
   return input.nodes.map((n) => {
     if (n.path === DROP_OFF_NODE) {
@@ -109,13 +117,14 @@ export function buildNodeChrome(input: {
         dropOffPct: 100,
         medianDwellMs: null,
         topDropOffSection: null,
-        returnHits: null,
+        returnHits: 0,
         medianReturnGapMs: null,
       };
     }
     const prospects = prospectsByPath.get(n.path)?.size ?? 0;
     const dropOffs = input.dropOffsByPath.get(n.path) ?? 0;
     const dropOffPct = prospects > 0 ? Math.round((dropOffs / prospects) * 1000) / 10 : 0;
+    const ret = returns.get(n.path);
     return {
       path: n.path,
       views: n.views,
@@ -124,8 +133,8 @@ export function buildNodeChrome(input: {
       dropOffPct,
       medianDwellMs: median(dwells.get(n.path) ?? []),
       topDropOffSection: input.topSectionByPath.get(n.path) ?? null,
-      returnHits: null,
-      medianReturnGapMs: null,
+      returnHits: ret?.returnHits ?? 0,
+      medianReturnGapMs: ret?.medianReturnGapMs ?? null,
     };
   });
 }
@@ -136,6 +145,7 @@ export function buildNodeSidePanel(input: {
   exitSections: { sectionId: string; count: number }[];
   visitEndedAt?: Map<string, string>;
   sampleLimit?: number;
+  returnTimeline?: ReturnTimelineEntry[];
 }): NodeSidePanel {
   const dwells = collectPageDwells(input.events, input.visitEndedAt ?? new Map());
   const dwellMsSamples = dwells.get(input.path) ?? [];
@@ -164,5 +174,8 @@ export function buildNodeSidePanel(input: {
     dwellMsSamples,
     medianDwellMs: median(dwellMsSamples),
     samplePaths,
+    returnTimeline: [...(input.returnTimeline ?? [])].sort((a, b) =>
+      b.returnedAt.localeCompare(a.returnedAt),
+    ),
   };
 }

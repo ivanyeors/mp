@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizeCountryCode, UNKNOWN_COUNTRY } from "./country";
 import { resolveEntrySource, type EntrySourceInput } from "./entry-source";
 import { normalizeGaClientId } from "./ga-sync";
 import {
@@ -26,6 +27,8 @@ export type IngestBody = {
   gaClientId?: string | null;
   /** Only applied on Visit INSERT (frozen Entry source). */
   entry?: EntrySourceInput | null;
+  /** ISO country (or Unknown) — set on Visit INSERT only; from server headers. */
+  country?: string | null;
   /** Close a prior Visit (pagehide or rotated after inactivity). */
   closeVisitId?: string | null;
   closeReason?: "pagehide" | "inactivity" | null;
@@ -230,8 +233,9 @@ export async function persistJourneyIngest(
   if (lookErr) return { ok: false, error: lookErr.message };
 
   if (!existingVisit) {
-    // Freeze Entry source on INSERT only — never overwrite on later beacons.
+    // Freeze Entry source + country on INSERT only — never overwrite on later beacons.
     const resolved = resolveEntrySource(body.entry ?? {});
+    const country = normalizeCountryCode(body.country) || UNKNOWN_COUNTRY;
     const { error: visitErr } = await db.from("analytics_visits").insert({
       id: visitId,
       visitor_id: visitorId,
@@ -239,6 +243,7 @@ export async function persistJourneyIngest(
       entry_medium: resolved.entryMedium,
       entry_campaign: resolved.entryCampaign,
       referrer_host: resolved.referrerHost,
+      country,
     });
     if (visitErr) return { ok: false, error: visitErr.message };
   }

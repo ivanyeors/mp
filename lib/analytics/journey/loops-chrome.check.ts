@@ -50,7 +50,7 @@ assert.equal(home.prospects, 1);
 assert.equal(home.dropOffs, 1);
 assert.equal(home.dropOffPct, 100);
 assert.equal(home.topDropOffSection, "pick-your-mpillow");
-assert.equal(home.returnHits, null); // stub until 08
+assert.equal(home.returnHits, 0);
 assert.equal(home.medianReturnGapMs, null);
 assert.ok(home.medianDwellMs != null && home.medianDwellMs > 0);
 
@@ -71,6 +71,7 @@ const panel = buildNodeSidePanel({
 assert.deepEqual(panel.exitSections, [{ sectionId: "pick-your-mpillow", count: 1 }]);
 assert.ok(panel.dwellMsSamples.length >= 1);
 assert.deepEqual(panel.samplePaths[0], ["/", "/shop", "/"]);
+assert.deepEqual(panel.returnTimeline, []);
 
 // --- UI: graph chrome + side panel + above Product Configuration ---
 const card = readFileSync(

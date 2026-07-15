@@ -17,11 +17,18 @@ Show come-backs without duplicating multi-day paths.
 
 ## Acceptance criteria
 
-- [ ] Second Visit after Drop-off shows dashed re-entry into landing page node
-- [ ] Return hits / median gap appear on affected page nodes
-- [ ] New vs Returning filter changes the graph cohort
-- [ ] Same-session backtracks remain solid edges (not “Returned”)
+- [x] Second Visit after Drop-off shows dashed re-entry into landing page node
+- [x] Return hits / median gap appear on affected page nodes
+- [x] New vs Returning filter changes the graph cohort
+- [x] Same-session backtracks remain solid edges (not “Returned”)
 
 ## Blocked by
 
 - Slice 07 — Unique-node loops + custom node chrome + side panel
+
+## Done
+
+- `lib/analytics/journey/returns.ts` + `returns.check.ts`
+- Aggregates load visitor history, attach dashed `__drop_off__`→landing edges, cohort filter
+- Prospect journey UI: Visitors New/Returning select, dashed SVG edges, return chrome + side-panel timeline
+- Verify: `npx tsx lib/analytics/journey/returns.check.ts`

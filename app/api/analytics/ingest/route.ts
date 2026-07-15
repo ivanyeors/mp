@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { resolveCountryFromHeaders } from "@/lib/analytics/journey/country";
 import { parseIngestBody, persistJourneyIngest } from "@/lib/analytics/journey/ingest";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
@@ -23,7 +24,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error }, { status });
   }
 
-  const result = await persistJourneyIngest(supabaseAdmin(), parsed.body);
+  // Server-side geo headers only — ignore client body for country.
+  const country = resolveCountryFromHeaders(req.headers);
+  const result = await persistJourneyIngest(supabaseAdmin(), {
+    ...parsed.body,
+    country,
+  });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }

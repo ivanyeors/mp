@@ -439,10 +439,16 @@ export type JourneyTransitionNode = {
   dropOffPct: number;
   medianDwellMs: number | null;
   topDropOffSection: string | null;
-  returnHits: null;
-  medianReturnGapMs: null;
+  returnHits: number;
+  medianReturnGapMs: number | null;
 };
-export type JourneyTransitionEdge = { from: string; to: string; count: number };
+export type JourneyTransitionEdge = {
+  from: string;
+  to: string;
+  count: number;
+  dashed?: boolean;
+  country?: string;
+};
 export type JourneySectionNode = {
   path: string;
   sectionId: string;
@@ -455,6 +461,11 @@ export type JourneyNodeDetail = {
   dwellMsSamples: number[];
   medianDwellMs: number | null;
   samplePaths: string[][];
+  returnTimeline: {
+    returnedAt: string;
+    gapMs: number;
+    priorDropOffPath: string | null;
+  }[];
 };
 
 /** Page→page transitions from analytics_events only (no live GA). */
@@ -463,6 +474,10 @@ export async function getProspectJourneyTransitions(input: {
   to: string;
   /** Filter by Visit.entry_source; omit / empty = all. */
   entrySource?: string | null;
+  /** new = first Visit; returning = prior ended Visit on same Visitor. */
+  visitorCohort?: "new" | "returning" | null;
+  /** Multi-select countries; ≥2 → color-by-country legend. */
+  countries?: string[] | null;
   /** Expand this page path into section child nodes. */
   expandPath?: string | null;
   /** Include side-panel detail for this page path. */
@@ -473,6 +488,8 @@ export async function getProspectJourneyTransitions(input: {
       nodes: JourneyTransitionNode[];
       edges: JourneyTransitionEdge[];
       entrySources: string[];
+      countries: string[];
+      countryLegend: { code: string; color: string }[];
       sections: JourneySectionNode[];
       expandablePaths: string[];
       detail: JourneyNodeDetail | null;
@@ -481,25 +498,50 @@ export async function getProspectJourneyTransitions(input: {
 > {
   await assertAdmin("analytics");
   try {
-    const { listEntrySourcesFromDb, loadPageTransitionsFromDb } = await import(
-      "@/lib/analytics/journey/aggregates"
-    );
+    const {
+      listCountriesFromDb,
+      listEntrySourcesFromDb,
+      loadPageTransitionsFromDb,
+    } = await import("@/lib/analytics/journey/aggregates");
     const db = supabaseAdmin();
     const entrySource = input.entrySource?.trim() || null;
+    const visitorCohort =
+      input.visitorCohort === "new" || input.visitorCohort === "returning"
+        ? input.visitorCohort
+        : null;
+    const countries = (input.countries ?? [])
+      .map((c) => c.trim())
+      .filter(Boolean);
     const expandPath = input.expandPath?.trim() || null;
     const detailPath = input.detailPath?.trim() || null;
-    const [{ nodes, edges, sections, expandablePaths, detail }, entrySources] =
-      await Promise.all([
-        loadPageTransitionsFromDb(db, {
-          from: input.from,
-          to: input.to,
-          entrySource,
-          expandPath,
-          detailPath,
-        }),
-        listEntrySourcesFromDb(db),
-      ]);
-    return { ok: true, nodes, edges, entrySources, sections, expandablePaths, detail };
+    const [
+      { nodes, edges, sections, expandablePaths, detail, countryLegend },
+      entrySources,
+      countryOptions,
+    ] = await Promise.all([
+      loadPageTransitionsFromDb(db, {
+        from: input.from,
+        to: input.to,
+        entrySource,
+        visitorCohort,
+        countries: countries.length > 0 ? countries : null,
+        expandPath,
+        detailPath,
+      }),
+      listEntrySourcesFromDb(db),
+      listCountriesFromDb(db),
+    ]);
+    return {
+      ok: true,
+      nodes,
+      edges,
+      entrySources,
+      countries: countryOptions,
+      countryLegend,
+      sections,
+      expandablePaths,
+      detail,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to load journey" };
   }

@@ -16,11 +16,19 @@ Country on Visit for Prospect filtering and comparison.
 
 ## Acceptance criteria
 
-- [ ] New Visits store country (or Unknown)
-- [ ] Multi-select filter subsets the graph
-- [ ] Two+ countries selected → color-by-country legend on one canvas
-- [ ] Locale cookie is not used as country
+- [x] New Visits store country (or Unknown)
+- [x] Multi-select filter subsets the graph
+- [x] Two+ countries selected → color-by-country legend on one canvas
+- [x] Locale cookie is not used as country
 
 ## Blocked by
 
 - Slice 07 — Unique-node loops + custom node chrome + side panel
+
+## Done
+
+- `lib/analytics/journey/country.ts` + `country.check.ts`
+- Ingest: `resolveCountryFromHeaders(req.headers)` → Visit.country on INSERT (no raw IP column)
+- Aggregates: `countries[]` filter; ≥2 → edge.country + `countryLegend`
+- UI: Country multi-select + colored edges + legend
+- Verify: `npx tsx lib/analytics/journey/country.check.ts` + live DB smoke

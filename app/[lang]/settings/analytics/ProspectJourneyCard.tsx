@@ -18,6 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -54,6 +60,16 @@ function formatDwell(ms: number | null) {
   return `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 
+function formatGap(ms: number) {
+  if (ms < 60_000) return formatDwell(ms);
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  if (h < 24) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const rh = h % 24;
+  return rh > 0 ? `${d}d ${rh}h` : `${d}d`;
+}
+
 type LayoutNode = JourneyTransitionNode & { x: number; y: number };
 
 function layoutGraph(
@@ -81,17 +97,33 @@ function JourneyGraph({
   edges,
   selectedPath,
   onSelect,
+  colorByCode,
 }: {
   nodes: JourneyTransitionNode[];
   edges: JourneyTransitionEdge[];
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  colorByCode: Map<string, string>;
 }) {
   const width = 640;
   const height = 320;
   const laid = useMemo(() => layoutGraph(nodes, width, height), [nodes]);
   const byPath = useMemo(() => new Map(laid.map((n) => [n.path, n])), [laid]);
   const maxCount = Math.max(1, ...edges.map((e) => e.count));
+  const colorMode = colorByCode.size >= 2;
+
+  // Offset sibling country edges sharing same endpoints
+  const pairIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    const out = new Map<string, number>();
+    for (const e of edges) {
+      const pk = `${e.from}->${e.to}${e.dashed ? ":re" : ""}`;
+      const i = map.get(pk) ?? 0;
+      out.set(`${pk}\0${e.country ?? ""}`, i);
+      map.set(pk, i + 1);
+    }
+    return out;
+  }, [edges]);
 
   return (
     <svg
@@ -117,18 +149,33 @@ function JourneyGraph({
         const b = byPath.get(e.to);
         if (!a || !b) return null;
         const isBack = a.x > b.x;
+        const pk = `${e.from}->${e.to}${e.dashed ? ":re" : ""}`;
+        const idx = pairIndex.get(`${pk}\0${e.country ?? ""}`) ?? 0;
+        const bend = (isBack || e.dashed ? -36 : 0) + (colorMode ? idx * -14 : 0);
         const mx = (a.x + b.x) / 2;
-        const my = (a.y + b.y) / 2 + (isBack ? -36 : 0);
+        const my = (a.y + b.y) / 2 + bend;
         const sw = edgeStrokeWidth(e.count, maxCount);
+        const stroke =
+          colorMode && e.country && colorByCode.has(e.country)
+            ? colorByCode.get(e.country)!
+            : undefined;
         return (
           <path
-            key={`${e.from}->${e.to}`}
+            key={`${e.from}->${e.to}:${e.country ?? ""}:${e.dashed ? "re" : "s"}`}
             d={`M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`}
             fill="none"
-            stroke="currentColor"
-            className="text-muted-foreground/70"
+            stroke={stroke ?? "currentColor"}
+            className={
+              stroke
+                ? undefined
+                : e.dashed
+                  ? "text-muted-foreground/50"
+                  : "text-muted-foreground/70"
+            }
             strokeWidth={sw}
+            strokeDasharray={e.dashed ? "6 4" : undefined}
             markerEnd="url(#journey-arrow)"
+            opacity={stroke ? 0.85 : undefined}
           />
         );
       })}
@@ -181,8 +228,14 @@ function JourneyGraph({
                   dwell {formatDwell(n.medianDwellMs)}
                   {n.topDropOffSection ? ` · #${n.topDropOffSection}` : ""}
                 </text>
-                <text textAnchor="middle" y={28} className="fill-muted-foreground/70 text-[8px]">
-                  returns — (slice 08)
+                <text textAnchor="middle" y={28} className="fill-muted-foreground text-[8px]">
+                  {n.returnHits > 0
+                    ? `returns ${n.returnHits}${
+                        n.medianReturnGapMs != null
+                          ? ` · gap ${formatGap(n.medianReturnGapMs)}`
+                          : ""
+                      }`
+                    : "returns 0"}
                 </text>
               </>
             ) : (
@@ -204,6 +257,12 @@ export function ProspectJourneyCard({ from, to }: Props) {
   const [expandablePaths, setExpandablePaths] = useState<string[]>([]);
   const [entrySources, setEntrySources] = useState<string[]>([]);
   const [entrySource, setEntrySource] = useState<string>(ALL);
+  const [visitorCohort, setVisitorCohort] = useState<string>(ALL);
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [countryLegend, setCountryLegend] = useState<
+    { code: string; color: string }[]
+  >([]);
   const [expandPath, setExpandPath] = useState<string | null>(null);
   const [detailPath, setDetailPath] = useState<string | null>(null);
   const [detail, setDetail] = useState<JourneyNodeDetail | null>(null);
@@ -218,6 +277,11 @@ export function ProspectJourneyCard({ from, to }: Props) {
         from,
         to,
         entrySource: entrySource === ALL ? null : entrySource,
+        visitorCohort:
+          visitorCohort === "new" || visitorCohort === "returning"
+            ? visitorCohort
+            : null,
+        countries: selectedCountries.length > 0 ? selectedCountries : null,
         expandPath,
         detailPath,
       });
@@ -228,6 +292,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
         setSections([]);
         setExpandablePaths([]);
         setDetail(null);
+        setCountryLegend([]);
         return;
       }
       setNodes(res.nodes);
@@ -235,6 +300,8 @@ export function ProspectJourneyCard({ from, to }: Props) {
       setSections(res.sections);
       setExpandablePaths(res.expandablePaths);
       setEntrySources(res.entrySources);
+      setCountryOptions(res.countries);
+      setCountryLegend(res.countryLegend);
       setDetail(res.detail);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
@@ -243,10 +310,11 @@ export function ProspectJourneyCard({ from, to }: Props) {
       setSections([]);
       setExpandablePaths([]);
       setDetail(null);
+      setCountryLegend([]);
     } finally {
       setLoading(false);
     }
-  }, [from, to, entrySource, expandPath, detailPath]);
+  }, [from, to, entrySource, visitorCohort, selectedCountries, expandPath, detailPath]);
 
   useEffect(() => {
     void load();
@@ -255,6 +323,17 @@ export function ProspectJourneyCard({ from, to }: Props) {
   function toggleExpand(path: string) {
     setExpandPath((prev) => (prev === path ? null : path));
   }
+
+  function toggleCountry(code: string) {
+    setSelectedCountries((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
+    );
+  }
+
+  const colorByCode = useMemo(
+    () => new Map(countryLegend.map((c) => [c.code, c.color])),
+    [countryLegend],
+  );
 
   const pageSections = expandPath
     ? sections.filter((s) => s.path === expandPath)
@@ -299,6 +378,74 @@ export function ProspectJourneyCard({ from, to }: Props) {
               ))}
             </SelectContent>
           </Select>
+          <label
+            htmlFor="visitor-cohort-filter"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Visitors
+          </label>
+          <Select value={visitorCohort} onValueChange={setVisitorCohort}>
+            <SelectTrigger id="visitor-cohort-filter" className="h-8 w-[180px]">
+              <SelectValue placeholder="All visitors" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All visitors</SelectItem>
+              <SelectItem value="new">New</SelectItem>
+              <SelectItem value="returning">Returning</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-xs font-medium text-muted-foreground">Country</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 min-w-[160px] justify-between font-normal"
+                aria-label="Filter countries"
+              >
+                {selectedCountries.length === 0
+                  ? "All countries"
+                  : selectedCountries.length === 1
+                    ? selectedCountries[0]
+                    : `${selectedCountries.length} countries`}
+                <ChevronDown className="ml-2 h-3 w-3 opacity-60" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-56 p-2">
+              {countryOptions.length === 0 ? (
+                <p className="px-1 py-2 text-xs text-muted-foreground">No countries yet.</p>
+              ) : (
+                <ul className="max-h-48 space-y-1 overflow-auto">
+                  {countryOptions.map((code) => {
+                    const checked = selectedCountries.includes(code);
+                    return (
+                      <li key={code}>
+                        <label className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-sm hover:bg-muted">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleCountry(code)}
+                          />
+                          <span className="font-mono text-xs">{code}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {selectedCountries.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 h-7 w-full text-xs"
+                  onClick={() => setSelectedCountries([])}
+                >
+                  Clear
+                </Button>
+              ) : null}
+            </PopoverContent>
+          </Popover>
         </div>
         {loading ? (
           <Skeleton className="h-48 w-full" />
@@ -364,7 +511,25 @@ export function ProspectJourneyCard({ from, to }: Props) {
               edges={edges}
               selectedPath={detailPath}
               onSelect={(path) => setDetailPath(path === DROP_OFF ? null : path)}
+              colorByCode={colorByCode}
             />
+            {countryLegend.length >= 2 ? (
+              <ul
+                className="flex flex-wrap gap-3 text-xs"
+                aria-label="Country color legend"
+              >
+                {countryLegend.map((c) => (
+                  <li key={c.code} className="inline-flex items-center gap-1.5">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-sm"
+                      style={{ backgroundColor: c.color }}
+                      aria-hidden
+                    />
+                    <span className="font-mono">{c.code}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         )}
       </CardContent>
@@ -444,9 +609,27 @@ export function ProspectJourneyCard({ from, to }: Props) {
                     </ul>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Return timeline lands in slice 08.
-                </p>
+                <div>
+                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Return timeline
+                  </p>
+                  {detail.returnTimeline.length === 0 ? (
+                    <p className="text-muted-foreground">No returns landed here.</p>
+                  ) : (
+                    <ul className="space-y-1 font-mono text-xs">
+                      {detail.returnTimeline.map((r, i) => (
+                        <li key={i} className="flex justify-between gap-2">
+                          <span className="truncate text-muted-foreground">
+                            {r.priorDropOffPath
+                              ? `${labelPath(r.priorDropOffPath)} → Drop-off → here`
+                              : "Drop-off → here"}
+                          </span>
+                          <span className="shrink-0">{formatGap(r.gapMs)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </>
             )}
           </div>

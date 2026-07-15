@@ -2,10 +2,20 @@ export type PageViewEvent = {
   visitId: string;
   path: string;
   occurredAt: string;
+  /** Visit.country when color-by-country mode splits edges. */
+  country?: string;
 };
 
 export type JourneyNode = { path: string; views: number };
-export type JourneyEdge = { from: string; to: string; count: number };
+export type JourneyEdge = {
+  from: string;
+  to: string;
+  count: number;
+  /** Cross-Visit re-entry after Drop-off (slice 08). Same-session backtracks stay solid. */
+  dashed?: boolean;
+  /** Set when Admin color-by-country mode (≥2 countries selected). */
+  country?: string;
+};
 
 /** Build unique-node page→page transitions from ordered page_view rows. */
 export function buildPageTransitions(events: PageViewEvent[]): {
@@ -30,7 +40,8 @@ export function buildPageTransitions(events: PageViewEvent[]): {
       const from = list[i - 1]!.path;
       const to = list[i]!.path;
       if (from === to) continue; // same-path refresh is not a transition
-      const key = `${from}\0${to}`;
+      const country = list[i]!.country; // Visit country (same for all events in Visit)
+      const key = country ? `${from}\0${to}\0${country}` : `${from}\0${to}`;
       edgeCounts.set(key, (edgeCounts.get(key) ?? 0) + 1);
     }
   }
@@ -41,10 +52,18 @@ export function buildPageTransitions(events: PageViewEvent[]): {
 
   const edges = [...edgeCounts.entries()]
     .map(([key, count]) => {
-      const [from, to] = key.split("\0");
-      return { from: from!, to: to!, count };
+      const parts = key.split("\0");
+      if (parts.length === 3) {
+        return { from: parts[0]!, to: parts[1]!, count, country: parts[2]! };
+      }
+      return { from: parts[0]!, to: parts[1]!, count };
     })
-    .sort((a, b) => b.count - a.count || a.from.localeCompare(b.from));
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        a.from.localeCompare(b.from) ||
+        (a.country ?? "").localeCompare(b.country ?? ""),
+    );
 
   return { nodes, edges };
 }
