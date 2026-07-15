@@ -795,12 +795,12 @@ export default function AnalyticsClient() {
                   }}
                 >
                   <PopoverAnchor asChild>
-                    <div className="inline-flex h-9 w-full items-center gap-1 rounded-lg border bg-background p-1 sm:w-auto">
+                    <div className="inline-flex min-h-11 w-full items-center gap-1 rounded-lg border bg-background p-1 sm:w-auto">
                       <CalendarIcon className="ml-1 h-4 w-4 text-muted-foreground" />
                       <button
                         type="button"
                         className={[
-                          "inline-flex h-7 items-center rounded-md px-2 text-xs font-medium transition-colors",
+                          "inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium transition-colors",
                           (activeTimelineDateEdge === "from" && isTimelineCalendarOpen) || hoverTimelineDateEdge === "from"
                             ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -818,7 +818,7 @@ export default function AnalyticsClient() {
                       <button
                         type="button"
                         className={[
-                          "inline-flex h-7 items-center rounded-md px-2 text-xs font-medium transition-colors",
+                          "inline-flex min-h-11 items-center rounded-md px-2 text-xs font-medium transition-colors",
                           (activeTimelineDateEdge === "to" && isTimelineCalendarOpen) || hoverTimelineDateEdge === "to"
                             ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",

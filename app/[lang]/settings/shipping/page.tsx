@@ -277,7 +277,7 @@ export default function SettingsShippingPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Shipping Methods
@@ -312,7 +312,7 @@ export default function SettingsShippingPage() {
                 <div className="space-y-3">
                     {methods.map((method) => (
                         <Card key={method.id}>
-                            <CardContent className="flex items-start justify-between gap-4 py-4">
+                            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
                                 {/* Info */}
                                 <div className="min-w-0 flex-1 space-y-2">
                                     <div className="flex flex-wrap items-center gap-2">

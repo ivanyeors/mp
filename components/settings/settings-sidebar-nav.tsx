@@ -259,7 +259,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
               <SheetHeader className="px-4 pb-2 pt-1">
                 <SheetTitle>Menu</SheetTitle>
               </SheetHeader>
-              <div className="overflow-y-auto px-3 pb-4">
+              <div className="overflow-y-auto px-3 pb-[calc(4rem+var(--safe-bottom))]">
                 {groups.map((group) => {
                   const tiles = flattenNavItems(group.items, permissions);
                   if (!tiles.length) return null;

@@ -57,7 +57,7 @@ export default async function AuditLogPage({
           No admin actions recorded yet.
         </div>
       ) : (
-        <div className="mt-8 overflow-hidden rounded-lg border">
+        <div className="mt-8 min-w-0 overflow-x-auto rounded-lg border">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
