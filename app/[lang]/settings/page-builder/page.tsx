@@ -103,7 +103,7 @@ function SortableSectionRow({
           {/* Drag handle */}
           <button
             ref={handleRef}
-            className="cursor-grab touch-none p-1 text-muted-foreground hover:text-foreground active:cursor-grabbing"
+            className="cursor-grab touch-none min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
             aria-label="Drag to reorder"
           >
             <GripVertical className="h-4 w-4" />
@@ -115,7 +115,7 @@ function SortableSectionRow({
               e.stopPropagation();
               onToggleVisibility(section);
             }}
-            className="p-1 text-muted-foreground hover:text-foreground"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
             aria-label={section.visible ? "Hide section" : "Show section"}
           >
             {section.visible ? (
@@ -144,7 +144,7 @@ function SortableSectionRow({
                 e.stopPropagation();
                 onDelete(section);
               }}
-              className="p-1 text-muted-foreground hover:text-destructive"
+              className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
               aria-label="Delete section"
             >
               <Trash2 className="h-4 w-4" />
@@ -153,7 +153,7 @@ function SortableSectionRow({
 
           {/* Expand toggle */}
           <CollapsibleTrigger asChild>
-            <button className="p-1 text-muted-foreground hover:text-foreground">
+            <button className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground">
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${
                   isExpanded ? "rotate-180" : ""
@@ -403,15 +403,15 @@ export default function PageBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Page Builder</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Drag to reorder, toggle visibility, and edit section content.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" asChild>
             <a href="/" target="_blank" rel="noopener noreferrer">
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
               Preview

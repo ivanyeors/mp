@@ -161,21 +161,21 @@ export default function BlogEditorPage() {
     return (
         <div className="space-y-6 max-w-4xl">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Button asChild variant="ghost" size="icon">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                    <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0">
                         <Link href={to("/settings/blogs")}>
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
-                    <h1>{isNew ? "New Blog Post" : "Edit Blog Post"}</h1>
+                    <h1 className="truncate">{isNew ? "New Blog Post" : "Edit Blog Post"}</h1>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleSave()} disabled={saving}>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => handleSave()} disabled={saving}>
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save
                     </Button>
-                    <Button size="sm" onClick={() => handleSave("published")} disabled={saving}>
+                    <Button size="sm" className="flex-1 sm:flex-none" onClick={() => handleSave("published")} disabled={saving}>
                         <Eye className="mr-2 h-4 w-4" /> Save &amp; Publish
                     </Button>
                 </div>

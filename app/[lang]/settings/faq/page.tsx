@@ -101,7 +101,7 @@ function SortableCategoryRow({
         <div className="flex items-center gap-2 px-3 py-2.5">
           <button
             ref={handleRef}
-            className="cursor-grab p-1 text-muted-foreground hover:text-foreground active:cursor-grabbing"
+            className="cursor-grab min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
             aria-label="Drag to reorder"
           >
             <GripVertical className="h-4 w-4" />
@@ -109,7 +109,7 @@ function SortableCategoryRow({
           <button
             type="button"
             onClick={onToggleVisible}
-            className="p-1 text-muted-foreground hover:text-foreground"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
             aria-label={category.visible ? "Hide category" : "Show category"}
           >
             {category.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -123,13 +123,13 @@ function SortableCategoryRow({
           <button
             type="button"
             onClick={onDelete}
-            className="p-1 text-muted-foreground hover:text-destructive"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
             aria-label="Delete category"
           >
             <Trash2 className="h-4 w-4" />
           </button>
           <CollapsibleTrigger asChild>
-            <button type="button" className="p-1 text-muted-foreground hover:text-foreground">
+            <button type="button" className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground">
               <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
             </button>
           </CollapsibleTrigger>
@@ -194,7 +194,7 @@ function ItemEditor({
         <button
           type="button"
           onClick={onToggleVisible}
-          className="p-1 text-muted-foreground hover:text-foreground"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
         >
           {item.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
         </button>
@@ -206,12 +206,12 @@ function ItemEditor({
         <button
           type="button"
           onClick={onDelete}
-          className="p-1 text-muted-foreground hover:text-destructive"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
         <CollapsibleTrigger asChild>
-          <button type="button" className="p-1 text-muted-foreground">
+          <button type="button" className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground">
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
           </button>
         </CollapsibleTrigger>

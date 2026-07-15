@@ -175,17 +175,17 @@ export default function FormsSettingsPage() {
       </div>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-medium">Discovery source</h2>
             <p className="text-sm text-muted-foreground">
               Answers to “How did you hear about us?”
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
-                <Button type="button" size="sm" variant="outline">
+                <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-none">
                   <Plus className="mr-1 h-4 w-4" />
                   Add
                 </Button>
@@ -236,6 +236,7 @@ export default function FormsSettingsPage() {
             <Button
               type="button"
               size="sm"
+              className="flex-1 sm:flex-none"
               onClick={() => void save(options)}
               disabled={saving || loading}
             >
@@ -265,7 +266,7 @@ export default function FormsSettingsPage() {
                       <div className="flex flex-col">
                         <button
                           type="button"
-                          className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
                           disabled={index === 0 || saving}
                           onClick={() => move(index, -1)}
                           aria-label="Move up"
@@ -274,7 +275,7 @@ export default function FormsSettingsPage() {
                         </button>
                         <button
                           type="button"
-                          className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
                           disabled={index === editable.length - 1 || saving}
                           onClick={() => move(index, 1)}
                           aria-label="Move down"
@@ -284,7 +285,7 @@ export default function FormsSettingsPage() {
                       </div>
                       <button
                         type="button"
-                        className="p-1 text-muted-foreground hover:text-foreground"
+                        className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
                         onClick={() => archiveToggle(opt.id)}
                         aria-label={opt.active ? "Archive" : "Restore"}
                       >
@@ -310,7 +311,7 @@ export default function FormsSettingsPage() {
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className="text-muted-foreground"
+                        className="min-h-11 min-w-11 text-muted-foreground"
                         onClick={() => removeOption(opt.id)}
                         aria-label="Delete"
                       >

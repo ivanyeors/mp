@@ -76,12 +76,12 @@ export default function SettingsBlogsPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1>Blog Management</h1>
                     <p className="text-muted-foreground mt-1">Create, edit, and publish blog posts.</p>
                 </div>
-                <Button asChild size="sm">
+                <Button asChild size="sm" className="w-full sm:w-auto">
                     <Link href={to("/settings/blogs/new")}>
                         <Plus className="mr-2 h-4 w-4" /> New Post
                     </Link>
@@ -97,7 +97,7 @@ export default function SettingsBlogsPage() {
                     No blog posts yet. Create a new one to get started.
                 </div>
             ) : (
-                <div className="rounded-xl border overflow-hidden">
+                <div className="min-w-0 rounded-xl border overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead className="border-b bg-muted/50">
                             <tr>
@@ -118,7 +118,7 @@ export default function SettingsBlogsPage() {
                                         {post.published_at ? new Date(post.published_at).toLocaleDateString() : "—"}
                                     </td>
                                     <td className="px-4 py-3 text-right space-x-1">
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                        <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11">
                                             <Link href={to(`/settings/blogs/${post.id}`)}>
                                                 <Pencil className="h-4 w-4" />
                                             </Link>
@@ -126,7 +126,7 @@ export default function SettingsBlogsPage() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8"
+                                            className="min-h-11 min-w-11"
                                             onClick={() => toggleStatus(post.id, post.status)}
                                             title={post.status === "published" ? "Unpublish" : "Publish"}
                                         >
@@ -135,7 +135,7 @@ export default function SettingsBlogsPage() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                            className="min-h-11 min-w-11 text-destructive hover:text-destructive"
                                             onClick={() => deletePost(post.id)}
                                         >
                                             <Trash2 className="h-4 w-4" />
