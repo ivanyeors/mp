@@ -24,6 +24,11 @@ import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayL
 import { syncShopifyPricesOnly } from "../inventory/actions";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  computeOnHandValueKpis,
+  type OnHandValueKpis,
+} from "@/lib/costings/on-hand-value-kpis";
 
 type PriceRecord = { cost_price: string | number | null; msrp: string | number | null; compare_at_price?: string | number | null };
 
@@ -187,6 +192,25 @@ const toCents = (value: unknown): number | null => {
   return Math.round(numeric * 100);
 };
 
+/** Same parse as Analytics on-hand strip (dollar floats from item_prices). */
+const toNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number.parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const currencyFormatter = new Intl.NumberFormat("en-SG", {
+  style: "currency",
+  currency: "SGD",
+  maximumFractionDigits: 0,
+});
+
+const formatPercent = (value: number | null) => {
+  if (value === null || Number.isNaN(value)) return "—";
+  return `${value.toFixed(1)}%`;
+};
+
 const formatFromCents = (cents: number | null): string => {
   if (cents === null) return "";
   return (cents / 100).toFixed(2);
@@ -263,6 +287,7 @@ export default function CostingsPage() {
   const filterContainerRef = useRef<HTMLDivElement>(null);
   const [premiumVariantSelection, setPremiumVariantSelection] = useState<PremiumVariant>("linen");
   const [syncingShopifyPrices, setSyncingShopifyPrices] = useState(false);
+  const [onHandKpis, setOnHandKpis] = useState<OnHandValueKpis | null>(null);
   const [groupOpenStates, setGroupOpenStates] = useState<Record<ProductGroupKey, boolean>>(() =>
     Object.fromEntries(
       PRODUCT_GROUP_DEFINITIONS.map((group) => [group.key, Boolean(group.defaultOpen)]),
@@ -291,6 +316,7 @@ export default function CostingsPage() {
         updated_at: string;
         lines?: Array<{ item_id: number | string; quantity: number | string }> | null;
       };
+      type BalanceRow = { item_id: number; on_hand: string | number | null };
 
       const [
         { data: itemsData, error: itemsError },
@@ -299,6 +325,7 @@ export default function CostingsPage() {
         { data: bolsterData, error: bolsterError },
         { data: productPricesData, error: productPricesError },
         { data: templateData, error: templateError },
+        { data: balanceRows, error: balancesError },
       ] = await Promise.all([
         supabaseClient
           .from("items")
@@ -323,6 +350,8 @@ export default function CostingsPage() {
           .eq("pillow_kind", "premium")
           .in("pillow_variant", PREMIUM_VARIANTS as unknown as string[])
           .order("updated_at", { ascending: false }),
+        // ponytail: as-of-now KPIs from balances + item_prices only — no Shopify mirror
+        supabaseClient.from("inventory_balances").select("item_id,on_hand"),
       ]);
 
       if (itemsError) throw new Error(itemsError.message);
@@ -331,6 +360,12 @@ export default function CostingsPage() {
       if (bolsterError) throw new Error(bolsterError.message);
       if (productPricesError) throw new Error(productPricesError.message);
       if (templateError) throw new Error(templateError.message);
+      if (balancesError) throw new Error(balancesError.message);
+
+      const balanceMap = new Map<number, number>();
+      (balanceRows ?? []).forEach((row: BalanceRow) => {
+        balanceMap.set(row.item_id, toNumber(row.on_hand) ?? 0);
+      });
 
       const rows = (itemsData ?? []) as RawItemRow[];
       const nextItems = rows.map(({ id, category, name, size, subtype }) => ({
@@ -343,6 +378,7 @@ export default function CostingsPage() {
       const nextDraft: DraftState = {};
       const nextBaseline: BaselineState = {};
       const itemCostById = new Map<number, number | null>();
+      const onHandUnits: Array<{ cost: number | null; msrp: number | null; onHand: number }> = [];
 
       rows.forEach((row) => {
         const pricing = Array.isArray(row.pricing) ? row.pricing[0] : row.pricing;
@@ -357,7 +393,13 @@ export default function CostingsPage() {
         };
         nextBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
         itemCostById.set(row.id, costCents);
+        onHandUnits.push({
+          cost: toNumber(pricing?.cost_price),
+          msrp: toNumber(pricing?.msrp),
+          onHand: balanceMap.get(row.id) ?? 0,
+        });
       });
+      setOnHandKpis(computeOnHandValueKpis(onHandUnits));
 
       const bomLines = (bomData ?? []) as RawBomLine[];
       const bolsterLines = (bolsterData ?? []) as RawBolsterLine[];
@@ -1206,6 +1248,55 @@ export default function CostingsPage() {
           </Button>
         </div>
       </div>
+
+      {onHandKpis && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="text-base font-medium">On-hand stock value</h2>
+            <p className="text-sm text-muted-foreground">
+              As of now — current warehouse stock × Costings prices (not a sales date range).
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardDescription>Inventory at cost</CardDescription>
+                <CardTitle className="text-2xl">{currencyFormatter.format(onHandKpis.costValue)}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground">
+                Across {onHandKpis.totalItems} active items; reflects on-hand cost exposure.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardDescription>Potential revenue (MSRP)</CardDescription>
+                <CardTitle className="text-2xl">{currencyFormatter.format(onHandKpis.msrpValue)}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground">
+                Assumes every stocked unit sells at full list price.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardDescription>Unrealized gross margin</CardDescription>
+                <CardTitle className="text-2xl">{currencyFormatter.format(onHandKpis.marginValue)}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground">
+                Difference between current MSRP value and cost basis.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="space-y-1">
+                <CardDescription>Weighted gross margin %</CardDescription>
+                <CardTitle className="text-2xl">{formatPercent(onHandKpis.weightedMarginPct)}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground">
+                Weighted by MSRP across all stocked SKUs with pricing coverage.
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       <Separator />
 

@@ -3,6 +3,12 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyWebhookSecret } from '@/lib/shopify/env'
 import { verifyShopifyWebhookHmac } from '@/lib/shopify/verify'
 import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
+import {
+  bestEffortApplyRefundMirror,
+  bestEffortUpsertOrderMirror,
+  isShopifyRefundPayload,
+} from '@/lib/shopify/webhook-mirror'
+import type { ShopifyOrderLike } from '@/lib/shopify/order-mirror-ingest'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +17,7 @@ type ShopifyOrder = {
   name?: string | null
   created_at?: string | null
   fulfillment_status?: string | null
+  financial_status?: string | null
   line_items?: Array<{
     id: number
     title?: string | null
@@ -58,6 +65,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
   }
 
+  // Refunds: mirror only (no sales-queue). Failures logged; 200 so Shopify does not hammer retries.
+  if (isShopifyRefundPayload(payload)) {
+    await bestEffortApplyRefundMirror(payload)
+    return NextResponse.json({ ok: true, refund: true })
+  }
+
   // Only process order-like payloads; respond 200 for unhandled topics to prevent retries.
   if (!isShopifyOrder(payload)) {
     return NextResponse.json({ ok: true, ignored: true })
@@ -66,7 +79,8 @@ export async function POST(req: NextRequest) {
 
   const admin = supabaseAdmin()
 
-  // Idempotency: if we've processed this order id, no-op.
+  // Idempotency: if we've processed this order id, queue is done — still best-effort mirror
+  // (recovers prior mirror failure on Shopify redelivery; upsert is idempotent).
   const { data: existing } = await admin
     .from('shopify_processed_orders')
     .select('shopify_order_id')
@@ -74,6 +88,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   if (existing?.shopify_order_id) {
+    await bestEffortUpsertOrderMirror(order as ShopifyOrderLike)
     return NextResponse.json({ ok: true, duplicate: true })
   }
 
@@ -157,6 +172,9 @@ export async function POST(req: NextRequest) {
       payload: { ...(order as unknown as Record<string, unknown>), _mp: { mapped: mappedLines.length, unmapped: unmappedLines } },
     })
     if (insErr) throw new Error(insErr.message)
+
+    // Finance mirror: after queue success. Failure must not undo queue (catch-up retries).
+    await bestEffortUpsertOrderMirror(order as ShopifyOrderLike)
 
     // Inventory on Shopify only changes after stock-out in the UI (scoped push).
     return NextResponse.json({ ok: true, mapped: mappedLines.length, unmapped: unmappedLines.length })

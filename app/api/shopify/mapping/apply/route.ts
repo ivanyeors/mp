@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyEnv } from '@/lib/shopify/env'
+import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
 
 export const runtime = 'nodejs'
 
@@ -49,6 +50,13 @@ export async function POST(req: NextRequest) {
     const admin = supabaseAdmin()
     const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
     if (error) throw new Error(error.message)
+
+    const variantIds = payload.map((r) => r.shopify_variant_id)
+    after(() => {
+      void reResolveShopifyLineCosts({ variantIds }).catch((err) => {
+        console.error('[shopify-mirror] re-resolve failed', err)
+      })
+    })
 
     return NextResponse.json({ ok: true, upserted: payload.length })
   } catch (e) {

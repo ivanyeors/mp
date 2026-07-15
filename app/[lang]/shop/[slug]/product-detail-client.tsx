@@ -192,7 +192,7 @@ export function ProductDetailClient({
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* LEFT: Image Gallery */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4" data-section="gallery">
             <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
               {images.length > 0 ? (
                 <Image
@@ -242,7 +242,7 @@ export function ProductDetailClient({
           </div>
 
           {/* RIGHT: Product Info */}
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-5" data-section="buy-box">
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
@@ -456,7 +456,7 @@ export function ProductDetailClient({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="description" className="pt-6">
+            <TabsContent value="description" className="pt-6" data-section="description">
               {body ? (
                 <div className="prose prose-neutral dark:prose-invert max-w-none">
                   <ReactMarkdown>{body}</ReactMarkdown>
@@ -468,7 +468,7 @@ export function ProductDetailClient({
               )}
             </TabsContent>
 
-            <TabsContent value="specifications" className="pt-6">
+            <TabsContent value="specifications" className="pt-6" data-section="specifications">
               {hasSpecifications(specifications) ? (
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 max-w-2xl">
                   {SPEC_FIELDS.filter(({ key }) => specifications[key]).map(
@@ -492,7 +492,7 @@ export function ProductDetailClient({
               )}
             </TabsContent>
 
-            <TabsContent value="reviews" className="pt-6">
+            <TabsContent value="reviews" className="pt-6" data-section="reviews">
               <ProductReviews
                 productId={product.id}
                 reviews={reviews}
@@ -503,10 +503,10 @@ export function ProductDetailClient({
             </TabsContent>
           </Tabs>
 
-          {pageFaq}
+          {pageFaq ? <div data-section="faq">{pageFaq}</div> : null}
 
           {relatedProducts.length > 0 && (
-            <section>
+            <section data-section="related">
               <h2 className="text-xl font-semibold mb-6">You May Also Like</h2>
               <ProductGrid>
                 {relatedProducts.map((p) => (

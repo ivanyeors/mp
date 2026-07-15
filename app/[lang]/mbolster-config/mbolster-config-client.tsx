@@ -680,7 +680,15 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   // Purchase preview uses the same mp-config split layout (case, add-ons, shipping).
   if (state.step === "preview") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="relative min-h-screen bg-background">
+        {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
+        <div
+          key={state.step}
+          data-section={state.step}
+          data-step={state.step}
+          className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"
+          aria-hidden
+        />
         <ConfiguratorExitDialog
           open={exitDialogOpen}
           onOpenChange={setExitDialogOpen}
@@ -1048,6 +1056,14 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
+      {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
+      <div
+        key={state.step}
+        data-section={state.step}
+        data-step={state.step}
+        className="pointer-events-none absolute left-0 top-0 z-30 h-4 w-full"
+        aria-hidden
+      />
       <ConfiguratorExitDialog
         open={exitDialogOpen}
         onOpenChange={setExitDialogOpen}

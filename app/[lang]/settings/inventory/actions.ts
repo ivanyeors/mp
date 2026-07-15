@@ -3,12 +3,22 @@
 import { after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { assertAdmin } from '@/lib/auth/admin'
 import { syncShopifyInventoryFromBuildable, syncShopifyInventoryForDepletedItems } from '@/lib/shopify/sync'
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
 import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
 import { shopifyListPaidOrders } from '@/lib/shopify/orders'
 import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
 import { aggregateSignedQuantities, combineTemplateSaleLines } from '@/lib/inventory/template-sale-lines'
+import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
+
+function scheduleMirrorReResolve(variantIds: number[]) {
+  after(() => {
+    void reResolveShopifyLineCosts({ variantIds }).catch((err) => {
+      console.error('[shopify-mirror] re-resolve failed', err)
+    })
+  })
+}
 
 const SellPillowSchema = z.object({ productId: z.number().int().positive(), quantity: z.number().int().positive() })
 const ItemQtySchema = z.object({
@@ -1306,6 +1316,7 @@ export async function deleteShopifyVariantOverride(shopifyVariantId: number) {
 }
 
 export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMappingSchema>) {
+  await assertAdmin('inventory')
   const parsed = LinkPartMappingSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -1333,10 +1344,12 @@ export async function linkPartToShopifyVariant(input: z.infer<typeof LinkPartMap
   }
   const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
   if (error) throw new Error(error.message)
+  scheduleMirrorReResolve([parsed.shopifyVariantId])
   return { ok: true }
 }
 
 export async function linkPillowToShopifyVariant(input: z.infer<typeof LinkPillowMappingSchema>) {
+  await assertAdmin('inventory')
   const parsed = LinkPillowMappingSchema.parse(input)
   const admin = supabaseAdmin()
   const payload = {
@@ -1350,10 +1363,12 @@ export async function linkPillowToShopifyVariant(input: z.infer<typeof LinkPillo
   }
   const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
   if (error) throw new Error(error.message)
+  scheduleMirrorReResolve([parsed.shopifyVariantId])
   return { ok: true }
 }
 
 export async function linkBolsterToShopifyVariant(input: z.infer<typeof LinkBolsterMappingSchema>) {
+  await assertAdmin('inventory')
   const parsed = LinkBolsterMappingSchema.parse(input)
   const admin = supabaseAdmin()
   const payload = {
@@ -1367,13 +1382,16 @@ export async function linkBolsterToShopifyVariant(input: z.infer<typeof LinkBols
   }
   const { error } = await admin.from('shopify_variant_mappings').upsert(payload, { onConflict: 'shopify_variant_id' })
   if (error) throw new Error(error.message)
+  scheduleMirrorReResolve([parsed.shopifyVariantId])
   return { ok: true }
 }
 
 export async function deleteShopifyMapping(shopifyVariantId: number) {
+  await assertAdmin('inventory')
   const id = ShopifyVariantIdSchema.parse(shopifyVariantId)
   const admin = supabaseAdmin()
   const { error } = await admin.from('shopify_variant_mappings').delete().eq('shopify_variant_id', id)
   if (error) throw new Error(error.message)
+  scheduleMirrorReResolve([id])
   return { ok: true }
 }

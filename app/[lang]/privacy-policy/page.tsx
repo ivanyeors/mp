@@ -44,6 +44,7 @@ const SECTIONS: PolicySection[] = [
       "Support and communication content: messages you send through our contact form, email, WhatsApp, or other channels",
       "Customisation and sleep-related responses you provide when configuring a pillow or completing a measurement flow",
       "Technical and usage data: browser type, device information, pages viewed, and interactions with our site",
+      "First-party visit analytics: an anonymous visitor identifier and the pages you view during a visit, so we can understand how people move through the site and improve the experience",
       "Cookie and cart data: identifiers needed to maintain your shopping cart and site preferences",
     ],
   },
@@ -57,7 +58,7 @@ const SECTIONS: PolicySection[] = [
       "Respond to enquiries, warranty claims, returns, and customer support requests",
       "Send transactional messages such as order confirmations, payment receipts, shipping updates, and refund notices",
       "Prevent fraud, protect our services, and maintain security",
-      "Improve our website, products, and customer experience",
+      "Measure storefront visits (first-party visit analytics) and improve our website, products, and customer experience",
       "Comply with legal, tax, accounting, and regulatory obligations",
       "Send marketing communications only where permitted by law and, where required, with your consent. You may opt out at any time.",
     ],
@@ -100,7 +101,8 @@ const SECTIONS: PolicySection[] = [
     list: [
       "Essential cookies: for example, an HTTP-only cart token cookie that remembers your shopping cart for up to 30 days",
       "Preference cookies: to remember settings such as language where applicable",
-      "Analytics or marketing cookies: only if enabled on our site, and where required we will ask for your consent before using non-essential cookies",
+      "First-party visit analytics: a long-lived anonymous visitor cookie (and related browser storage) used to measure pages viewed and improve the site experience; this runs when you use the storefront",
+      "Third-party analytics or marketing cookies: only if separately enabled on our site, and where required we will ask for your consent before using those non-essential cookies",
     ],
     outro: [
       "You can control cookies through your browser settings. Disabling essential cookies may affect cart persistence and checkout.",

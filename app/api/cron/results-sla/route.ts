@@ -10,6 +10,8 @@ import {
   parseSlaSettings,
   planHeldTick,
 } from "@/lib/sla-reminders";
+import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
+import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -242,7 +244,24 @@ export async function GET(req: Request) {
     summary.reminded += 1;
   }
 
-  return NextResponse.json({ ok: true, ...summary, settings });
+  // Chain: same request after SLA work — Hobby stays at 2 vercel.json crons.
+  // Manual ops: POST /api/cron/shopify-order-mirror-catchup with CRON_SECRET.
+  let catchup: Awaited<ReturnType<typeof runShopifyOrderMirrorCatchup>> | { ok: false; error: string };
+  try {
+    catchup = await runShopifyOrderMirrorCatchup();
+  } catch (e) {
+    catchup = { ok: false, error: e instanceof Error ? e.message : "catch-up failed" };
+  }
+
+  // Chain: GA staging sync (fixture when BQ creds absent — see ga-sync.ts).
+  let gaSync: Awaited<ReturnType<typeof runGaSync>> | { ok: false; error: string };
+  try {
+    gaSync = await runGaSync(admin);
+  } catch (e) {
+    gaSync = { ok: false, error: e instanceof Error ? e.message : "ga sync failed" };
+  }
+
+  return NextResponse.json({ ok: true, ...summary, settings, catchup, gaSync });
 }
 
 export async function POST(req: Request) {
