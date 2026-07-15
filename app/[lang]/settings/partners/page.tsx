@@ -327,7 +327,7 @@ export default function PartnersSettingsPage() {
                 key={loc}
                 type="button"
                 onClick={() => setActiveLocale(loc)}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`min-h-11 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   activeLocale === loc
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -412,7 +412,7 @@ export default function PartnersSettingsPage() {
                 value={activeContent.body ?? ""}
                 onChange={(v) => updateActiveContent({ body: v ?? "" })}
                 height={280}
-                preview="live"
+                preview="edit"
               />
             </div>
 
@@ -497,7 +497,7 @@ export default function PartnersSettingsPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="min-h-11 min-w-11"
                     disabled={index === 0}
                     onClick={() => movePartner(index, -1)}
                   >
@@ -507,7 +507,7 @@ export default function PartnersSettingsPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
+                    className="min-h-11 min-w-11"
                     disabled={index === partners.length - 1}
                     onClick={() => movePartner(index, 1)}
                   >
