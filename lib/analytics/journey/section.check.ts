@@ -29,7 +29,10 @@ const card = readFileSync(
   "utf8",
 );
 assert.match(card, /expandPath/);
-assert.match(card, /Collapse/);
+assert.match(card, /onToggleSectionExpand/);
+assert.match(card, /Expand sections/);
+assert.doesNotMatch(card, /Expand \{p\}/);
+assert.doesNotMatch(card, /Collapse \{expandPath\}/);
 
 const sectionOk = parseIngestBody({
   visitorId: "11111111-1111-4111-8111-111111111111",

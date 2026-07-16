@@ -460,7 +460,7 @@ export type JourneyNodeDetail = {
   exitSections: { sectionId: string; count: number; sharePct: number }[];
   dwellMsSamples: number[];
   medianDwellMs: number | null;
-  samplePaths: string[][];
+  routes: { pathSeq: string[]; count: number }[];
   returnTimeline: {
     returnedAt: string;
     gapMs: number;

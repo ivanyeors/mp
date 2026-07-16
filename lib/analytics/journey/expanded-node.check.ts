@@ -60,11 +60,17 @@ assert.match(card, /exitSectionHref/);
 assert.match(card, /canExpandNode/);
 assert.match(card, /expandedNodeBox/);
 assert.match(card, /pageDigInH/);
+assert.match(card, /TimeOnPageChart/);
+assert.match(card, /RoutesChart/);
+assert.match(card, /onToggleSectionExpand/);
 assert.doesNotMatch(card, /overflow-y-auto/);
 assert.doesNotMatch(card, /function DetailPanel/);
 assert.doesNotMatch(card, /function ConvertedDetailPanel/);
 assert.doesNotMatch(card, /translate-x-full/);
 assert.doesNotMatch(card, /absolute inset-y-0 right-0 z-20/);
+assert.doesNotMatch(card, /Expand \{p\}/);
+assert.doesNotMatch(card, /Dwell samples/);
+assert.doesNotMatch(card, /Sample paths/);
 
 const actions = readFileSync(
   join(root, "app/[lang]/settings/analytics/actions.ts"),

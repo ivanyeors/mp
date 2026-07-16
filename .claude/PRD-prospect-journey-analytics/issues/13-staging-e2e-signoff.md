@@ -13,11 +13,11 @@ Checklist walkthrough (no new product features):
 
 1. Notice bar + Got it; page views appear in DB for a storefront path
 2. Home→Shop→Home shows one Home node with back-edge; Drop-off sink after abandon
-3. Expand home sections; last section on Drop-off visible
+3. **Section expand** via on-node chevron (no toolbar Expand strip); last section on Drop-off visible
 4. Multi-select two countries → color-by-country legend
 5. Return Visit shows dashed re-entry
 6. Pay as test buyer → Include converted shows last-touch Entry source + value
-7. Click a page node → **Expanded node** dig-in (no side drawer); exit section is a live storefront `#` link; Converted expands in place
+7. Click a page node → **Expanded node** dig-in (no side drawer); exit section is a live storefront `#` link; Converted expands in place; **Time on page** line histogram + **Routes** bars (hover path)
 8. Confirm no Admin Panel self-traffic in journey; P&L charts still present below
 
 ## Acceptance criteria
@@ -27,4 +27,4 @@ Checklist walkthrough (no new product features):
 
 ## Blocked by
 
-- Slices 04–12 and **14** (Expanded node dig-in) — staging walk includes amended story 19
+- Slices 04–12, **14** (Expanded node), and **15** (dig-in viz + Section expand chrome)

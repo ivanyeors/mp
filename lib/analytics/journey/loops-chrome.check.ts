@@ -83,7 +83,10 @@ assert.deepEqual(panel.exitSections, [
 ]);
 assert.deepEqual(panel.outbound, []);
 assert.ok(panel.dwellMsSamples.length >= 1);
-assert.deepEqual(panel.samplePaths[0], ["/", "/shop", "/"]);
+assert.deepEqual(panel.routes[0], {
+  pathSeq: ["/", "/shop", "/"],
+  count: 1,
+});
 assert.deepEqual(panel.returnTimeline, []);
 
 // --- UI: graph chrome + side panel + above Product Configuration ---
@@ -107,9 +110,13 @@ assert.doesNotMatch(card, /function DetailPanel/);
 assert.doesNotMatch(card, /function ConvertedDetailPanel/);
 assert.match(card, /includeConverted/);
 assert.match(card, /exitSections/);
-assert.match(card, /samplePaths/);
+assert.match(card, /detail\.routes/);
+assert.match(card, /Time on page/);
+assert.match(card, /RoutesChart/);
 assert.match(card, /detailPath/);
 assert.match(card, /returnTimeline/);
+assert.doesNotMatch(card, /Dwell samples/);
+assert.doesNotMatch(card, /Sample paths/);
 
 const client = readFileSync(
   join(root, "app/[lang]/settings/analytics/AnalyticsClient.tsx"),

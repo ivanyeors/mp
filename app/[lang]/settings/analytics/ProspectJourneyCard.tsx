@@ -63,10 +63,15 @@ import {
   getProspectJourneyTransitions,
   type JourneyConvertedDetail,
   type JourneyNodeDetail,
-  type JourneySectionNode,
   type JourneyTransitionEdge,
   type JourneyTransitionNode,
 } from "./actions";
+import {
+  RoutesChart,
+  TimeOnPageChart,
+  routesBlockH,
+  timeOnPageBlockH,
+} from "./DigInViz";
 
 type Props = { from: string; to: string };
 
@@ -217,11 +222,21 @@ function pageDigInH(detail: JourneyNodeDetail | null): number {
   if (!detail) return chrome + 120;
   let h = chrome + 48; // median dwell hero
   const block = (body: number) => 14 + body + 10;
-  h += block(detail.exitSections.length === 0 ? 16 : detail.exitSections.length * 32);
-  h += block(detail.outbound.length === 0 ? 16 : detail.outbound.length * 24);
-  h += block(detail.dwellMsSamples.length === 0 ? 16 : 22);
-  h += block(detail.samplePaths.length === 0 ? 16 : detail.samplePaths.length * 30);
-  h += block(detail.returnTimeline.length === 0 ? 16 : detail.returnTimeline.length * 26);
+  h += block(
+    (detail.exitSections?.length ?? 0) === 0
+      ? 16
+      : detail.exitSections.length * 32,
+  );
+  h += block(
+    (detail.outbound?.length ?? 0) === 0 ? 16 : detail.outbound.length * 24,
+  );
+  h += block(timeOnPageBlockH(detail.dwellMsSamples?.length ?? 0));
+  h += block(routesBlockH(detail.routes?.length ?? 0));
+  h += block(
+    (detail.returnTimeline?.length ?? 0) === 0
+      ? 16
+      : detail.returnTimeline.length * 26,
+  );
   return h + 12; // slack so foreignObject never clips
 }
 
@@ -634,44 +649,12 @@ function ExpandedPageDigIn({
             )}
           </DigInSection>
 
-          <DigInSection title="Dwell samples">
-            {detail.dwellMsSamples.length === 0 ? (
-              <DigInEmpty>No dwell samples yet.</DigInEmpty>
-            ) : (
-              <div className="flex flex-wrap gap-1">
-                {detail.dwellMsSamples.slice(0, 8).map((ms, i) => (
-                  <span
-                    key={`${ms}-${i}`}
-                    className="rounded-md bg-muted/60 px-1.5 py-0.5 tabular-nums text-[10px] text-muted-foreground"
-                  >
-                    {formatDwell(ms)}
-                  </span>
-                ))}
-                {detail.dwellMsSamples.length > 8 ? (
-                  <span className="px-1 py-0.5 text-[10px] text-muted-foreground">
-                    +{detail.dwellMsSamples.length - 8}
-                  </span>
-                ) : null}
-              </div>
-            )}
+          <DigInSection title="Time on page">
+            <TimeOnPageChart samplesMs={detail.dwellMsSamples} />
           </DigInSection>
 
-          <DigInSection title="Sample paths">
-            {detail.samplePaths.length === 0 ? (
-              <DigInEmpty>No paths yet.</DigInEmpty>
-            ) : (
-              <ul className="space-y-1">
-                {detail.samplePaths.map((p, i) => (
-                  <li
-                    key={i}
-                    className="rounded-md bg-muted/40 px-1.5 py-1 font-mono text-[10px] leading-snug text-muted-foreground"
-                    title={p.map(labelPath).join(" → ")}
-                  >
-                    <span className="line-clamp-2">{p.map(labelPath).join(" → ")}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+          <DigInSection title="Routes">
+            <RoutesChart routes={detail.routes} labelPath={labelPath} />
           </DigInSection>
 
           <DigInSection title="Return timeline">
@@ -792,6 +775,9 @@ function JourneyGraph({
   detail,
   convertedDetail,
   locale,
+  expandPath,
+  expandablePaths,
+  onToggleSectionExpand,
 }: {
   nodes: JourneyTransitionNode[];
   edges: JourneyTransitionEdge[];
@@ -801,6 +787,9 @@ function JourneyGraph({
   detail: JourneyNodeDetail | null;
   convertedDetail: JourneyConvertedDetail | null;
   locale: Locale;
+  expandPath: string | null;
+  expandablePaths: string[];
+  onToggleSectionExpand: (path: string) => void;
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1399,6 +1388,40 @@ function JourneyGraph({
                     )}
                   </foreignObject>
                 ) : null}
+                {!isSink && expandablePaths.includes(n.path) ? (
+                  <foreignObject
+                    x={hw - 22}
+                    y={-hh + 2}
+                    width={20}
+                    height={20}
+                  >
+                    <button
+                      type="button"
+                      className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label={
+                        expandPath === n.path
+                          ? "Collapse sections"
+                          : "Expand sections"
+                      }
+                      aria-expanded={expandPath === n.path}
+                      onPointerDown={(ev) => {
+                        ev.stopPropagation();
+                        ev.preventDefault();
+                      }}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        ev.preventDefault();
+                        onToggleSectionExpand(n.path);
+                      }}
+                    >
+                      {expandPath === n.path ? (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </foreignObject>
+                ) : null}
                 <circle
                   cx={-hw}
                   cy={0}
@@ -1485,7 +1508,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
   const { locale } = useI18n();
   const [nodes, setNodes] = useState<JourneyTransitionNode[]>([]);
   const [edges, setEdges] = useState<JourneyTransitionEdge[]>([]);
-  const [sections, setSections] = useState<JourneySectionNode[]>([]);
   const [expandablePaths, setExpandablePaths] = useState<string[]>([]);
   const [entrySources, setEntrySources] = useState<string[]>([]);
   const [entrySource, setEntrySource] = useState<string>(ALL);
@@ -1529,14 +1551,12 @@ export function ProspectJourneyCard({ from, to }: Props) {
         setError(res.error);
         setNodes([]);
         setEdges([]);
-        setSections([]);
         setExpandablePaths([]);
         setCountryLegend([]);
         return;
       }
       setNodes(res.nodes);
       setEdges(res.edges);
-      setSections(res.sections);
       setExpandablePaths(res.expandablePaths);
       setEntrySources(res.entrySources);
       setCountryOptions(res.countries);
@@ -1545,7 +1565,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
       setError(e instanceof Error ? e.message : "Failed to load");
       setNodes([]);
       setEdges([]);
-      setSections([]);
       setExpandablePaths([]);
       setCountryLegend([]);
     } finally {
@@ -1601,10 +1620,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
     () => new Map(countryLegend.map((c) => [c.code, c.color])),
     [countryLegend],
   );
-
-  const pageSections = expandPath
-    ? sections.filter((s) => s.path === expandPath)
-    : [];
 
   return (
     <Card>
@@ -1734,55 +1749,6 @@ export function ProspectJourneyCard({ from, to }: Props) {
           </p>
         ) : (
           <div className="space-y-3">
-            {!expandPath && expandablePaths.length > 0 ? (
-              <ul className="flex flex-wrap gap-2 text-sm">
-                {expandablePaths.map((p) => (
-                  <li key={`expand-${p}`}>
-                    <button
-                      type="button"
-                      className="inline-flex cursor-pointer items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
-                      onClick={() => toggleExpand(p)}
-                      aria-expanded={false}
-                    >
-                      <ChevronRight className="h-3 w-3" />
-                      Expand {p}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {expandPath ? (
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setExpandPath(null)}
-                  aria-expanded={true}
-                >
-                  <ChevronDown className="h-3 w-3" />
-                  Collapse {expandPath}
-                </button>
-                {pageSections.length > 0 ? (
-                  <ul className="max-h-28 space-y-1 overflow-auto border-l pl-2 text-sm">
-                    {pageSections.map((s) => (
-                      <li
-                        key={`${s.path}#${s.sectionId}`}
-                        className="flex justify-between gap-2 font-mono text-xs"
-                      >
-                        <span className="truncate">#{s.sectionId}</span>
-                        <span className="shrink-0 text-muted-foreground">
-                          {s.views}v / {s.dropOffs}d
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    No section views for this page yet.
-                  </p>
-                )}
-              </div>
-            ) : null}
             <JourneyGraph
               nodes={nodes}
               edges={edges}
@@ -1794,6 +1760,9 @@ export function ProspectJourneyCard({ from, to }: Props) {
               detail={detail}
               convertedDetail={convertedDetail}
               locale={locale}
+              expandPath={expandPath}
+              expandablePaths={expandablePaths}
+              onToggleSectionExpand={toggleExpand}
             />
             {countryLegend.length >= 2 ? (
               <ul

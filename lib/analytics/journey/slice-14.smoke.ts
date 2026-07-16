@@ -41,7 +41,7 @@ async function main() {
     edges: graph.edges.length,
     exits: dig.detail!.exitSections.slice(0, 3),
     outbound: dig.detail!.outbound.slice(0, 5),
-    samplePath: dig.detail!.samplePaths[0],
+    topRoute: dig.detail!.routes[0],
   });
 }
 
