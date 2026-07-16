@@ -13,7 +13,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -39,6 +38,7 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  LayoutGrid,
   Maximize2,
   Minimize2,
   RefreshCw,
@@ -52,6 +52,13 @@ import {
   edgeTrafficOpacity,
 } from "@/lib/analytics/journey/chrome";
 import { CONVERTED_NODE } from "@/lib/analytics/journey/converted-sink";
+import {
+  DIVE_ENTRY,
+  DIVE_EXIT,
+  buildDiveGraph,
+  isDivePort,
+  layoutDiveGraph,
+} from "@/lib/analytics/journey/dive";
 import {
   exitSectionHref,
   isSectionChildPath,
@@ -79,6 +86,7 @@ const ALL = "__all__";
 const DROP_OFF = "__drop_off__";
 const CONVERTED = CONVERTED_NODE;
 const LAYOUT_KEY = "prospect-journey-layout-v1";
+const DIVE_LAYOUT_PREFIX = "prospect-journey-dive-v1:";
 const DRAG_THRESHOLD = 4;
 const PORT_R = 4;
 const NODE_W = 156;
@@ -120,9 +128,43 @@ type EdgeTooltipData = {
 function labelPath(path: string) {
   if (path === DROP_OFF) return "Drop-off";
   if (path === CONVERTED) return "Converted";
+  if (path === DIVE_ENTRY) return "Entry";
+  if (path === DIVE_EXIT) return "Exit";
   const hash = path.indexOf("#");
-  if (hash >= 0) return `${path.slice(0, hash)} › ${path.slice(hash + 1)}`;
+  if (hash >= 0) return path.slice(hash + 1);
   return path === "/" ? "Home" : path;
+}
+
+function layoutStorageKey(divePath: string | null) {
+  return divePath ? `${DIVE_LAYOUT_PREFIX}${divePath}` : LAYOUT_KEY;
+}
+
+function stubChrome(path: string, views: number): JourneyTransitionNode {
+  return {
+    path,
+    views,
+    prospects: views,
+    dropOffs: 0,
+    dropOffPct: 0,
+    medianDwellMs: null,
+    topDropOffSection: null,
+    returnHits: 0,
+    medianReturnGapMs: null,
+  };
+}
+
+/** Focused section view for one page (Houdini-style dive). */
+function toDiveDisplay(
+  pagePath: string,
+  nodes: JourneyTransitionNode[],
+  edges: JourneyTransitionEdge[],
+): { nodes: JourneyTransitionNode[]; edges: JourneyTransitionEdge[] } {
+  const dive = buildDiveGraph(pagePath, nodes, edges);
+  const byPath = new Map(nodes.map((n) => [n.path, n]));
+  return {
+    nodes: dive.nodes.map((n) => byPath.get(n.path) ?? stubChrome(n.path, n.views)),
+    edges: dive.edges,
+  };
 }
 
 function formatValue(amount: number) {
@@ -173,7 +215,13 @@ function layoutGraph(
 ): LayoutNode[] {
   const dropOffSink = nodes.find((n) => n.path === DROP_OFF);
   const convertedSink = nodes.find((n) => n.path === CONVERTED);
-  const pages = nodes.filter((n) => n.path !== DROP_OFF && n.path !== CONVERTED);
+  const pages = nodes.filter(
+    (n) =>
+      n.path !== DROP_OFF &&
+      n.path !== CONVERTED &&
+      !isSectionChildPath(n.path) &&
+      !isDivePort(n.path),
+  );
   const cx = width * 0.42;
   const cy = height * 0.5;
   const r = Math.min(width, height) * 0.32;
@@ -193,9 +241,9 @@ function layoutGraph(
   return laid;
 }
 
-function loadPositions(): PosMap {
+function loadPositions(key: string): PosMap {
   try {
-    const raw = localStorage.getItem(LAYOUT_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as PosMap;
     return parsed && typeof parsed === "object" ? parsed : {};
@@ -204,16 +252,20 @@ function loadPositions(): PosMap {
   }
 }
 
-function savePositions(pos: PosMap) {
+function savePositions(key: string, pos: PosMap) {
   try {
-    localStorage.setItem(LAYOUT_KEY, JSON.stringify(pos));
+    localStorage.setItem(key, JSON.stringify(pos));
   } catch {
     /* ponytail: quota/private mode — layout just won't persist */
   }
 }
 
 function canExpandNode(path: string) {
-  return path !== DROP_OFF && !isSectionChildPath(path);
+  return (
+    path !== DROP_OFF &&
+    !isSectionChildPath(path) &&
+    !isDivePort(path)
+  );
 }
 
 /** Dig-in body height so the expanded node can grow to fit (no inner scroll). */
@@ -269,7 +321,7 @@ function nodeHalfSize(expanded: boolean) {
     : { hw: NODE_W / 2, hh: NODE_H / 2 };
 }
 
-function fitCamera(laid: LayoutNode[], vw: number, vh: number, pad = 48): Camera {
+function fitCamera(laid: LayoutNode[], vw: number, vh: number, pad = 110): Camera {
   if (laid.length === 0 || vw <= 0 || vh <= 0) return { x: 0, y: 0, k: 1 };
   let minX = Infinity;
   let minY = Infinity;
@@ -394,13 +446,15 @@ function NodeCardBody({
   isDropOff: boolean;
   isConverted: boolean;
 }) {
-  const isSink = isDropOff || isConverted;
+  const isPort = isDivePort(n.path);
+  const isSection = isSectionChildPath(n.path);
+  const isSink = isDropOff || isConverted || isPort;
   const padX = 12;
   const left = -hw + padX;
-  const barW = hw * 2 - padX * 2 - (isSink ? 0 : 6);
+  const barW = hw * 2 - padX * 2 - (isSink || isSection ? 0 : 6);
   const dropFill = Math.min(1, Math.max(0, n.dropOffPct / 100));
 
-  if (isSink) {
+  if (isSink || isSection) {
     return (
       <>
         <SvgText
@@ -416,7 +470,11 @@ function NodeCardBody({
           {labelPath(n.path)}
         </SvgText>
         <SvgText y={14} maxChars={18} className="fill-muted-foreground text-[11px]">
-          {isConverted ? `${n.views} orders` : `${n.views} visits`}
+          {isConverted
+            ? `${n.views} orders`
+            : isPort
+              ? `${n.views} transitions`
+              : `${n.views} views`}
         </SvgText>
       </>
     );
@@ -769,27 +827,33 @@ function ExpandedConvertedDigIn({
 function JourneyGraph({
   nodes,
   edges,
-  selectedPath,
-  onSelect,
+  selectedPaths,
+  onToggleSelect,
+  onClearSelection,
   colorByCode,
-  detail,
-  convertedDetail,
+  detailsByPath,
+  convertedDetailByPath,
   locale,
-  expandPath,
+  divePath,
   expandablePaths,
-  onToggleSectionExpand,
+  onDive,
+  onExitDive,
+  filterBar,
 }: {
   nodes: JourneyTransitionNode[];
   edges: JourneyTransitionEdge[];
-  selectedPath: string | null;
-  onSelect: (path: string | null) => void;
+  selectedPaths: string[];
+  onToggleSelect: (path: string) => void;
+  onClearSelection: () => void;
   colorByCode: Map<string, string>;
-  detail: JourneyNodeDetail | null;
-  convertedDetail: JourneyConvertedDetail | null;
+  detailsByPath: Map<string, JourneyNodeDetail>;
+  convertedDetailByPath: Map<string, JourneyConvertedDetail>;
   locale: Locale;
-  expandPath: string | null;
+  divePath: string | null;
   expandablePaths: string[];
-  onToggleSectionExpand: (path: string) => void;
+  onDive: (path: string) => void;
+  onExitDive: () => void;
+  filterBar: ReactNode;
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -804,6 +868,8 @@ function JourneyGraph({
   const [draggingNode, setDraggingNode] = useState(false);
   const cameraRef = useRef(camera);
   cameraRef.current = camera;
+  const posKey = layoutStorageKey(divePath);
+  const selectedSet = useMemo(() => new Set(selectedPaths), [selectedPaths]);
 
   const {
     tooltipData,
@@ -830,9 +896,9 @@ function JourneyGraph({
   } | null>(null);
 
   useEffect(() => {
-    setOverrides(loadPositions());
+    setOverrides(loadPositions(posKey));
     setFittedKey(""); // refit after persisted positions apply
-  }, []);
+  }, [posKey]);
 
   useEffect(() => {
     const el = shellRef.current;
@@ -846,7 +912,12 @@ function JourneyGraph({
     return () => ro.disconnect();
   }, [fullscreen]);
 
-  const seeded = useMemo(() => layoutGraph(nodes, WORLD_W, WORLD_H), [nodes]);
+  const seeded = useMemo(() => {
+    if (divePath) {
+      return layoutDiveGraph(nodes, WORLD_W, WORLD_H) as LayoutNode[];
+    }
+    return layoutGraph(nodes, WORLD_W, WORLD_H);
+  }, [nodes, divePath]);
   const laid = useMemo(() => {
     return seeded.map((n) => {
       const o = overrides[n.path];
@@ -906,11 +977,11 @@ function JourneyGraph({
       d.moved = true;
       setOverrides((prev) => {
         const next = { ...prev, [d.path]: { x: d.origX + dx, y: d.origY + dy } };
-        savePositions(next);
+        savePositions(posKey, next);
         return next;
       });
     },
-    [clientToWorld],
+    [clientToWorld, posKey],
   );
 
   const onNodePointerUp = useCallback(() => {
@@ -920,10 +991,10 @@ function JourneyGraph({
     window.removeEventListener("pointermove", onNodePointerMove);
     window.removeEventListener("pointerup", onNodePointerUp);
     if (!d) return;
-    if (!d.moved && canExpandNode(d.path)) {
-      onSelect(selectedPath === d.path ? null : d.path);
+    if (!d.moved && !divePath && canExpandNode(d.path)) {
+      onToggleSelect(d.path);
     }
-  }, [onNodePointerMove, onSelect, selectedPath]);
+  }, [onNodePointerMove, onToggleSelect, divePath]);
 
   const onPanMove = useCallback((ev: PointerEvent) => {
     const p = panRef.current;
@@ -993,12 +1064,26 @@ function JourneyGraph({
     }
     if (ev.button === 0) {
       clearEdgeTooltip();
-      onSelect(null);
+      onClearSelection();
     }
   }
 
   function fitView() {
     setCamera(fitCamera(laid, viewport.w, viewport.h));
+  }
+
+  function arrangeNodes() {
+    setOverrides({});
+    try {
+      localStorage.removeItem(posKey);
+    } catch {
+      /* ignore */
+    }
+    setFittedKey("");
+    const next = divePath
+      ? (layoutDiveGraph(nodes, WORLD_W, WORLD_H) as LayoutNode[])
+      : layoutGraph(nodes, WORLD_W, WORLD_H);
+    setCamera(fitCamera(next, viewport.w, viewport.h));
   }
 
   function showEdgeTooltip(e: JourneyTransitionEdge, clientX: number, clientY: number) {
@@ -1064,11 +1149,22 @@ function JourneyGraph({
         return;
       }
       if (ev.key === "Escape") {
-        if (selectedPath) {
-          onSelect(null);
+        if (selectedPaths.length > 0) {
+          onClearSelection();
+          return;
+        }
+        if (divePath) {
+          onExitDive();
           return;
         }
         if (fullscreen) setFullscreen(false);
+        return;
+      }
+      if ((ev.key === "u" || ev.key === "U") && divePath) {
+        if (!ev.metaKey && !ev.ctrlKey && !ev.altKey) {
+          ev.preventDefault();
+          onExitDive();
+        }
         return;
       }
       if (ev.key === "f" || ev.key === "F") {
@@ -1101,7 +1197,13 @@ function JourneyGraph({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [fullscreen, onSelect, selectedPath]);
+  }, [
+    fullscreen,
+    onClearSelection,
+    onExitDive,
+    selectedPaths.length,
+    divePath,
+  ]);
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -1113,10 +1215,10 @@ function JourneyGraph({
   }, [fullscreen]);
 
   const drawOrder = useMemo(() => {
-    const rest = laid.filter((n) => n.path !== selectedPath);
-    const sel = laid.find((n) => n.path === selectedPath);
-    return sel ? [...rest, sel] : rest;
-  }, [laid, selectedPath]);
+    const rest = laid.filter((n) => !selectedSet.has(n.path));
+    const sel = laid.filter((n) => selectedSet.has(n.path));
+    return [...rest, ...sel];
+  }, [laid, selectedSet]);
 
   const cursorClass = panning || draggingNode
     ? "cursor-grabbing"
@@ -1130,36 +1232,83 @@ function JourneyGraph({
 
   return (
     <div ref={shellRef} className={shellClass} tabIndex={0}>
-      <div className="pointer-events-none absolute left-2 top-2 z-30 flex items-center gap-1">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="pointer-events-auto h-8 gap-1.5 text-xs shadow-sm"
-          onClick={fitView}
-          aria-label="Fit view"
+      <div className="pointer-events-none absolute inset-x-2 top-2 z-30 flex flex-col gap-2">
+        <nav
+          className="pointer-events-auto flex min-h-8 flex-wrap items-center gap-1 rounded-md border bg-background/95 px-2 py-1 text-xs shadow-sm"
+          aria-label="Journey breadcrumb"
         >
-          <Scan className="h-3.5 w-3.5" />
-          Fit
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="pointer-events-auto h-8 gap-1.5 text-xs shadow-sm"
-          onClick={() => setFullscreen((v) => !v)}
-          aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-        >
-          {fullscreen ? (
-            <Minimize2 className="h-3.5 w-3.5" />
-          ) : (
-            <Maximize2 className="h-3.5 w-3.5" />
-          )}
-          {fullscreen ? "Exit" : "Full"}
-        </Button>
-        <span className="pointer-events-none ml-1 hidden rounded bg-background/80 px-2 py-1 text-[10px] text-muted-foreground sm:inline">
-          Space/MMB pan · wheel zoom · F fullscreen · Esc close
-        </span>
+          <button
+            type="button"
+            className={
+              divePath
+                ? "cursor-pointer rounded px-1.5 py-0.5 font-medium text-foreground hover:bg-muted"
+                : "cursor-default rounded px-1.5 py-0.5 font-medium text-foreground"
+            }
+            onClick={() => {
+              if (divePath) onExitDive();
+            }}
+            aria-current={divePath ? undefined : "page"}
+          >
+            Journey
+          </button>
+          {divePath ? (
+            <>
+              <span className="text-muted-foreground" aria-hidden>
+                /
+              </span>
+              <span
+                className="truncate rounded px-1.5 py-0.5 font-medium text-foreground"
+                aria-current="page"
+                title={divePath}
+              >
+                {labelPath(divePath)}
+              </span>
+              <span className="text-muted-foreground">· sections</span>
+            </>
+          ) : null}
+        </nav>
+        <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-md border bg-background/95 p-1.5 shadow-sm">
+          {filterBar}
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={arrangeNodes}
+              aria-label="Arrange nodes"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              Arrange
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={fitView}
+              aria-label="Fit view"
+            >
+              <Scan className="h-3.5 w-3.5" />
+              Fit
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setFullscreen((v) => !v)}
+              aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {fullscreen ? (
+                <Minimize2 className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )}
+              {fullscreen ? "Exit" : "Full"}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <svg
@@ -1218,20 +1367,20 @@ function JourneyGraph({
             const a = byPath.get(e.from);
             const b = byPath.get(e.to);
             if (!a || !b) return null;
-            const aExp = selectedPath === a.path && canExpandNode(a.path);
-            const bExp = selectedPath === b.path && canExpandNode(b.path);
+            const aExp = selectedSet.has(a.path) && canExpandNode(a.path);
+            const bExp = selectedSet.has(b.path) && canExpandNode(b.path);
             const { hw: aHw } = aExp
               ? expandedNodeBox(
                   a.path === CONVERTED,
-                  a.path === detail?.path ? detail : null,
-                  a.path === CONVERTED ? convertedDetail : null,
+                  detailsByPath.get(a.path) ?? null,
+                  convertedDetailByPath.get(a.path) ?? null,
                 )
               : nodeHalfSize(false);
             const { hw: bHw } = bExp
               ? expandedNodeBox(
                   b.path === CONVERTED,
-                  b.path === detail?.path ? detail : null,
-                  b.path === CONVERTED ? convertedDetail : null,
+                  detailsByPath.get(b.path) ?? null,
+                  convertedDetailByPath.get(b.path) ?? null,
                 )
               : nodeHalfSize(false);
             const isBack = a.x > b.x;
@@ -1282,16 +1431,16 @@ function JourneyGraph({
             );
           })}
           {drawOrder.map((n) => {
-            const expanded = selectedPath === n.path && canExpandNode(n.path);
+            const expanded =
+              !divePath && selectedSet.has(n.path) && canExpandNode(n.path);
             const isDropOff = n.path === DROP_OFF;
             const isConverted = n.path === CONVERTED;
-            const isSink = isDropOff || isConverted;
+            const isPort = isDivePort(n.path);
+            const isSink = isDropOff || isConverted || isPort;
+            const pageDetail = detailsByPath.get(n.path) ?? null;
+            const convDetail = convertedDetailByPath.get(n.path) ?? null;
             const box = expanded
-              ? expandedNodeBox(
-                  isConverted,
-                  !isConverted && detail?.path === n.path ? detail : null,
-                  isConverted ? convertedDetail : null,
-                )
+              ? expandedNodeBox(isConverted, pageDetail, convDetail)
               : { ...nodeHalfSize(false), digInTop: 0, digInH: 0 };
             const { hw, hh, digInTop, digInH } = box;
             const nodeCursor =
@@ -1299,7 +1448,7 @@ function JourneyGraph({
                 ? "cursor-grabbing"
                 : spaceDown
                   ? "cursor-grab"
-                  : canExpandNode(n.path)
+                  : !divePath && canExpandNode(n.path)
                     ? "cursor-pointer"
                     : "cursor-grab";
             return (
@@ -1313,8 +1462,8 @@ function JourneyGraph({
                 onKeyDown={(ev) => {
                   if (ev.key === "Enter") {
                     ev.preventDefault();
-                    if (canExpandNode(n.path)) {
-                      onSelect(selectedPath === n.path ? null : n.path);
+                    if (!divePath && canExpandNode(n.path)) {
+                      onToggleSelect(n.path);
                     }
                   }
                 }}
@@ -1329,7 +1478,7 @@ function JourneyGraph({
                   className={
                     isDropOff
                       ? "fill-background stroke-destructive/50"
-                      : isConverted
+                      : isConverted || isPort
                         ? "fill-muted/40 stroke-muted-foreground/40"
                         : expanded
                           ? "fill-card stroke-foreground/80"
@@ -1375,20 +1524,20 @@ function JourneyGraph({
                   >
                     {isConverted ? (
                       <ExpandedConvertedDigIn
-                        detail={convertedDetail}
-                        onClose={() => onSelect(null)}
+                        detail={convDetail}
+                        onClose={() => onToggleSelect(n.path)}
                       />
                     ) : (
                       <ExpandedPageDigIn
                         detailPath={n.path}
-                        detail={detail}
+                        detail={pageDetail}
                         locale={locale}
-                        onClose={() => onSelect(null)}
+                        onClose={() => onToggleSelect(n.path)}
                       />
                     )}
                   </foreignObject>
                 ) : null}
-                {!isSink && expandablePaths.includes(n.path) ? (
+                {!divePath && !isSink && expandablePaths.includes(n.path) ? (
                   <foreignObject
                     x={hw - 22}
                     y={-hh + 2}
@@ -1398,12 +1547,7 @@ function JourneyGraph({
                     <button
                       type="button"
                       className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label={
-                        expandPath === n.path
-                          ? "Collapse sections"
-                          : "Expand sections"
-                      }
-                      aria-expanded={expandPath === n.path}
+                      aria-label="Dive into sections"
                       onPointerDown={(ev) => {
                         ev.stopPropagation();
                         ev.preventDefault();
@@ -1411,14 +1555,10 @@ function JourneyGraph({
                       onClick={(ev) => {
                         ev.stopPropagation();
                         ev.preventDefault();
-                        onToggleSectionExpand(n.path);
+                        onDive(n.path);
                       }}
                     >
-                      {expandPath === n.path ? (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      )}
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </foreignObject>
                 ) : null}
@@ -1506,8 +1646,8 @@ function JourneyGraph({
 
 export function ProspectJourneyCard({ from, to }: Props) {
   const { locale } = useI18n();
-  const [nodes, setNodes] = useState<JourneyTransitionNode[]>([]);
-  const [edges, setEdges] = useState<JourneyTransitionEdge[]>([]);
+  const [rawNodes, setRawNodes] = useState<JourneyTransitionNode[]>([]);
+  const [rawEdges, setRawEdges] = useState<JourneyTransitionEdge[]>([]);
   const [expandablePaths, setExpandablePaths] = useState<string[]>([]);
   const [entrySources, setEntrySources] = useState<string[]>([]);
   const [entrySource, setEntrySource] = useState<string>(ALL);
@@ -1517,11 +1657,15 @@ export function ProspectJourneyCard({ from, to }: Props) {
   const [countryLegend, setCountryLegend] = useState<
     { code: string; color: string }[]
   >([]);
-  const [expandPath, setExpandPath] = useState<string | null>(null);
-  const [detailPath, setDetailPath] = useState<string | null>(null);
-  const [detail, setDetail] = useState<JourneyNodeDetail | null>(null);
+  const [divePath, setDivePath] = useState<string | null>(null);
+  const [detailPaths, setDetailPaths] = useState<string[]>([]);
+  const [detailsByPath, setDetailsByPath] = useState<Map<string, JourneyNodeDetail>>(
+    () => new Map(),
+  );
+  const [convertedDetailByPath, setConvertedDetailByPath] = useState<
+    Map<string, JourneyConvertedDetail>
+  >(() => new Map());
   const [includeConverted, setIncludeConverted] = useState(false);
-  const [convertedDetail, setConvertedDetail] = useState<JourneyConvertedDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -1545,69 +1689,96 @@ export function ProspectJourneyCard({ from, to }: Props) {
         from,
         to,
         ...filterArgs,
-        expandPath,
+        // When diving, fetch expanded section children; page view stays page-only.
+        expandPath: divePath,
       });
       if (!res.ok) {
         setError(res.error);
-        setNodes([]);
-        setEdges([]);
+        setRawNodes([]);
+        setRawEdges([]);
         setExpandablePaths([]);
         setCountryLegend([]);
         return;
       }
-      setNodes(res.nodes);
-      setEdges(res.edges);
+      setRawNodes(res.nodes);
+      setRawEdges(res.edges);
       setExpandablePaths(res.expandablePaths);
       setEntrySources(res.entrySources);
       setCountryOptions(res.countries);
       setCountryLegend(res.countryLegend);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
-      setNodes([]);
-      setEdges([]);
+      setRawNodes([]);
+      setRawEdges([]);
       setExpandablePaths([]);
       setCountryLegend([]);
     } finally {
       setLoading(false);
     }
-  }, [from, to, filterArgs, expandPath]);
+  }, [from, to, filterArgs, divePath]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  const { nodes, edges } = useMemo(() => {
+    if (divePath) return toDiveDisplay(divePath, rawNodes, rawEdges);
+    return {
+      nodes: rawNodes.filter(
+        (n) => !isSectionChildPath(n.path) && !isDivePort(n.path),
+      ),
+      edges: rawEdges.filter(
+        (e) => !isSectionChildPath(e.from) && !isSectionChildPath(e.to),
+      ),
+    };
+  }, [divePath, rawNodes, rawEdges]);
+
   // Dig-in fetch separate from graph — node click must not reload nodes/edges.
   useEffect(() => {
-    if (!detailPath || !canExpandNode(detailPath)) {
-      setDetail(null);
-      setConvertedDetail(null);
+    const paths = detailPaths.filter((p) => canExpandNode(p));
+    if (paths.length === 0) {
+      setDetailsByPath(new Map());
+      setConvertedDetailByPath(new Map());
       return;
     }
     let cancelled = false;
-    setDetail(null);
-    setConvertedDetail(null);
-    void getProspectJourneyNodeDetail({
-      path: detailPath,
-      from,
-      to,
-      ...filterArgs,
-    }).then((res) => {
+    void Promise.all(
+      paths.map((path) =>
+        getProspectJourneyNodeDetail({ path, from, to, ...filterArgs }).then(
+          (res) => ({ path, res }),
+        ),
+      ),
+    ).then((results) => {
       if (cancelled) return;
-      if (!res.ok) {
-        setDetail(null);
-        setConvertedDetail(null);
-        return;
+      const nextDetails = new Map<string, JourneyNodeDetail>();
+      const nextConverted = new Map<string, JourneyConvertedDetail>();
+      for (const { path, res } of results) {
+        if (!res.ok) continue;
+        if (res.detail) nextDetails.set(path, res.detail);
+        if (res.convertedDetail) nextConverted.set(path, res.convertedDetail);
       }
-      setDetail(res.detail);
-      setConvertedDetail(res.convertedDetail);
+      setDetailsByPath(nextDetails);
+      setConvertedDetailByPath(nextConverted);
     });
     return () => {
       cancelled = true;
     };
-  }, [detailPath, from, to, filterArgs]);
+  }, [detailPaths, from, to, filterArgs]);
 
-  function toggleExpand(path: string) {
-    setExpandPath((prev) => (prev === path ? null : path));
+  function onDive(path: string) {
+    setDetailPaths([]);
+    setDivePath(path);
+  }
+
+  function onExitDive() {
+    setDivePath(null);
+  }
+
+  function onToggleSelect(path: string) {
+    if (!canExpandNode(path)) return;
+    setDetailPaths((prev) =>
+      prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path],
+    );
   }
 
   function toggleCountry(code: string) {
@@ -1621,16 +1792,114 @@ export function ProspectJourneyCard({ from, to }: Props) {
     [countryLegend],
   );
 
+  const filterBar = (
+    <>
+      <label htmlFor="entry-source-filter" className="sr-only">
+        Entry source
+      </label>
+      <Select value={entrySource} onValueChange={setEntrySource}>
+        <SelectTrigger
+          id="entry-source-filter"
+          className="h-8 w-[140px] min-h-8 text-xs sm:w-[180px]"
+        >
+          <SelectValue placeholder="Entry source" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All entry sources</SelectItem>
+          {entrySources.map((s) => (
+            <SelectItem key={s} value={s}>
+              {s}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <label htmlFor="visitor-cohort-filter" className="sr-only">
+        Visitors
+      </label>
+      <Select value={visitorCohort} onValueChange={setVisitorCohort}>
+        <SelectTrigger
+          id="visitor-cohort-filter"
+          className="h-8 w-[110px] min-h-8 text-xs sm:w-[130px]"
+        >
+          <SelectValue placeholder="Visitors" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All visitors</SelectItem>
+          <SelectItem value="new">New</SelectItem>
+          <SelectItem value="returning">Returning</SelectItem>
+        </SelectContent>
+      </Select>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 min-h-8 min-w-0 justify-between font-normal text-xs sm:min-w-[120px]"
+            aria-label="Filter countries"
+          >
+            {selectedCountries.length === 0
+              ? "All countries"
+              : selectedCountries.length === 1
+                ? selectedCountries[0]
+                : `${selectedCountries.length} countries`}
+            <ChevronDown className="ml-1 h-3 w-3 opacity-60" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-56 p-2">
+          {countryOptions.length === 0 ? (
+            <p className="px-1 py-2 text-xs text-muted-foreground">No countries yet.</p>
+          ) : (
+            <ul className="max-h-48 space-y-1 overflow-auto">
+              {countryOptions.map((code) => {
+                const checked = selectedCountries.includes(code);
+                return (
+                  <li key={code}>
+                    <label className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-sm hover:bg-muted">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => toggleCountry(code)}
+                      />
+                      <span className="font-mono text-xs">{code}</span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {selectedCountries.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="mt-1 h-7 w-full text-xs"
+              onClick={() => setSelectedCountries([])}
+            >
+              Clear
+            </Button>
+          ) : null}
+        </PopoverContent>
+      </Popover>
+      <div className="flex items-center gap-1.5 px-1">
+        <Switch
+          id="include-converted"
+          checked={includeConverted}
+          onCheckedChange={setIncludeConverted}
+        />
+        <Label
+          htmlFor="include-converted"
+          className="text-[11px] font-medium text-muted-foreground"
+        >
+          Include converted
+        </Label>
+      </div>
+    </>
+  );
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
-        <div className="space-y-1">
-          <CardTitle className="text-base font-medium">Prospect journey</CardTitle>
-          <CardDescription>
-            Unique-node page graph from our DB. Loops reuse one node with a back-edge.
-            Hover a connector for transition stats; click a page node to expand dig-in in place.
-          </CardDescription>
-        </div>
+        <CardTitle className="text-base font-medium">Prospect journey</CardTitle>
         <Button
           type="button"
           variant="ghost"
@@ -1642,108 +1911,12 @@ export function ProspectJourneyCard({ from, to }: Props) {
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="entry-source-filter" className="text-xs font-medium text-muted-foreground">
-            Entry source
-          </label>
-          <Select value={entrySource} onValueChange={setEntrySource}>
-            <SelectTrigger id="entry-source-filter" className="min-h-11 w-full sm:w-[220px]">
-              <SelectValue placeholder="All entry sources" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All entry sources</SelectItem>
-              {entrySources.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <label
-            htmlFor="visitor-cohort-filter"
-            className="text-xs font-medium text-muted-foreground"
-          >
-            Visitors
-          </label>
-          <Select value={visitorCohort} onValueChange={setVisitorCohort}>
-            <SelectTrigger id="visitor-cohort-filter" className="min-h-11 w-full sm:w-[180px]">
-              <SelectValue placeholder="All visitors" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All visitors</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="returning">Returning</SelectItem>
-            </SelectContent>
-          </Select>
-          <span className="text-xs font-medium text-muted-foreground">Country</span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="min-h-11 w-full min-w-0 justify-between font-normal sm:w-auto sm:min-w-[160px]"
-                aria-label="Filter countries"
-              >
-                {selectedCountries.length === 0
-                  ? "All countries"
-                  : selectedCountries.length === 1
-                    ? selectedCountries[0]
-                    : `${selectedCountries.length} countries`}
-                <ChevronDown className="ml-2 h-3 w-3 opacity-60" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-56 p-2">
-              {countryOptions.length === 0 ? (
-                <p className="px-1 py-2 text-xs text-muted-foreground">No countries yet.</p>
-              ) : (
-                <ul className="max-h-48 space-y-1 overflow-auto">
-                  {countryOptions.map((code) => {
-                    const checked = selectedCountries.includes(code);
-                    return (
-                      <li key={code}>
-                        <label className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-sm hover:bg-muted">
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={() => toggleCountry(code)}
-                          />
-                          <span className="font-mono text-xs">{code}</span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              {selectedCountries.length > 0 ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-1 h-7 w-full text-xs"
-                  onClick={() => setSelectedCountries([])}
-                >
-                  Clear
-                </Button>
-              ) : null}
-            </PopoverContent>
-          </Popover>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="include-converted"
-              checked={includeConverted}
-              onCheckedChange={setIncludeConverted}
-            />
-            <Label htmlFor="include-converted" className="text-xs font-medium text-muted-foreground">
-              Include converted
-            </Label>
-          </div>
-        </div>
+      <CardContent className="space-y-3">
         {loading ? (
           <Skeleton className="h-[min(70vh,720px)] w-full" />
         ) : error ? (
           <p className="text-sm text-destructive">{error}</p>
-        ) : nodes.length === 0 ? (
+        ) : rawNodes.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No page views in this range yet. Browse the storefront to generate transitions.
           </p>
@@ -1752,17 +1925,18 @@ export function ProspectJourneyCard({ from, to }: Props) {
             <JourneyGraph
               nodes={nodes}
               edges={edges}
-              selectedPath={detailPath}
-              onSelect={(path) =>
-                setDetailPath(path && canExpandNode(path) ? path : null)
-              }
+              selectedPaths={detailPaths}
+              onToggleSelect={onToggleSelect}
+              onClearSelection={() => setDetailPaths([])}
               colorByCode={colorByCode}
-              detail={detail}
-              convertedDetail={convertedDetail}
+              detailsByPath={detailsByPath}
+              convertedDetailByPath={convertedDetailByPath}
               locale={locale}
-              expandPath={expandPath}
+              divePath={divePath}
               expandablePaths={expandablePaths}
-              onToggleSectionExpand={toggleExpand}
+              onDive={onDive}
+              onExitDive={onExitDive}
+              filterBar={filterBar}
             />
             {countryLegend.length >= 2 ? (
               <ul

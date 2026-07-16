@@ -36,14 +36,15 @@ const card = readFileSync(
   join(root, "app/[lang]/settings/analytics/ProspectJourneyCard.tsx"),
   "utf8",
 );
-assert.match(card, /onToggleSectionExpand/);
-assert.match(card, /Expand sections/);
+assert.match(card, /onDive/);
+assert.match(card, /Dive into sections/);
 assert.match(card, /Time on page/);
 assert.match(card, /TimeOnPageChart/);
 assert.match(card, /RoutesChart/);
 assert.match(card, /Return timeline/);
 assert.doesNotMatch(card, /Expand \{p\}/);
 assert.doesNotMatch(card, /Collapse \{expandPath\}/);
+assert.doesNotMatch(card, /onToggleSectionExpand/);
 assert.doesNotMatch(card, /Dwell samples/);
 assert.doesNotMatch(card, /Sample paths/);
 assert.doesNotMatch(card, /samplePaths/);

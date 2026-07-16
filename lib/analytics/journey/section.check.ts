@@ -28,11 +28,14 @@ const card = readFileSync(
   join(root, "app/[lang]/settings/analytics/ProspectJourneyCard.tsx"),
   "utf8",
 );
-assert.match(card, /expandPath/);
-assert.match(card, /onToggleSectionExpand/);
-assert.match(card, /Expand sections/);
+assert.match(card, /divePath/);
+assert.match(card, /onDive/);
+assert.match(card, /onExitDive/);
+assert.match(card, /Dive into sections/);
+assert.match(card, /Journey breadcrumb/);
 assert.doesNotMatch(card, /Expand \{p\}/);
 assert.doesNotMatch(card, /Collapse \{expandPath\}/);
+assert.doesNotMatch(card, /onToggleSectionExpand/);
 
 const sectionOk = parseIngestBody({
   visitorId: "11111111-1111-4111-8111-111111111111",
