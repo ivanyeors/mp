@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { isValidPhone } from "@/lib/appointments/phone";
 import {
   OTHER_DISCOVERY_SOURCE_ID,
@@ -28,6 +29,7 @@ export type PreviewContactValues = {
   phone: string;
   discoverySource: string;
   discoverySourceOther: string;
+  notes: string;
 };
 
 type Option = { id: string; label: string };
@@ -194,6 +196,20 @@ export function PreviewContactFields({
             ) : null}
           </div>
         ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="hold-notes" className="text-base font-semibold">
+          Additional Notes{" "}
+          <span className="font-normal text-muted-foreground">(optional)</span>
+        </Label>
+        <Textarea
+          id="hold-notes"
+          value={values.notes}
+          onChange={(e) => onChange({ notes: e.target.value })}
+          placeholder="Any specific preferences or concerns…"
+          rows={3}
+        />
       </div>
     </div>
   );

@@ -18,6 +18,7 @@ export type HoldPrepSelections = {
   holdPhone: string;
   discoverySource: string;
   discoverySourceOther: string;
+  notes: string;
   holdAddress: HoldPrepAddress;
 };
 
@@ -85,6 +86,7 @@ export function parseHoldPrepSelections(raw: unknown): HoldPrepSelections | null
     discoverySource: typeof s.discoverySource === "string" ? s.discoverySource : "",
     discoverySourceOther:
       typeof s.discoverySourceOther === "string" ? s.discoverySourceOther : "",
+    notes: typeof s.notes === "string" ? s.notes : "",
     holdAddress: {
       recipient: typeof a.recipient === "string" ? a.recipient : "",
       line1: typeof a.line1 === "string" ? a.line1 : "",

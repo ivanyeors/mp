@@ -22,6 +22,7 @@ assert.equal(
     phone: "",
     discoverySource: "",
     discoverySourceOther: "",
+    notes: "",
   }).filter((f) => !f.valid).length,
   3, // email, phone, discovery (other not required yet)
 );
@@ -32,6 +33,7 @@ assert.ok(
     phone: "87805311",
     discoverySource: "google",
     discoverySourceOther: "",
+    notes: "",
   }).every((f) => f.valid),
 );
 
@@ -41,6 +43,7 @@ assert.equal(
     phone: "87805311",
     discoverySource: OTHER_DISCOVERY_SOURCE_ID,
     discoverySourceOther: "",
+    notes: "",
   }).find((f) => f.key === "discoverySourceOther")?.valid,
   false,
 );
@@ -51,6 +54,7 @@ assert.ok(
     phone: "87805311",
     discoverySource: OTHER_DISCOVERY_SOURCE_ID,
     discoverySourceOther: "Reddit",
+    notes: "edge softer please",
   }).every((f) => f.valid),
 );
 
@@ -74,6 +78,7 @@ assert.equal(roleHasPermission("viewer", "page-builder"), false);
 const preview = read("components/configurator/preview-contact-fields.tsx");
 assert.match(preview, /data-preview-contact/);
 assert.match(preview, /How did you hear about us/);
+assert.match(preview, /Additional Notes/);
 assert.match(preview, /\/api\/discovery-source/);
 
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");

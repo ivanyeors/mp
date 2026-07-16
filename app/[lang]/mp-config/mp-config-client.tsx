@@ -242,6 +242,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   const [holdPhone, setHoldPhone] = useState("");
   const [discoverySource, setDiscoverySource] = useState("");
   const [discoverySourceOther, setDiscoverySourceOther] = useState("");
+  const [holdNotes, setHoldNotes] = useState("");
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>({
     recipient: "",
     line1: "",
@@ -455,6 +456,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       phone: holdPhone,
       discoverySource,
       discoverySourceOther,
+      notes: holdNotes,
     }),
     {
       key: "recipient",
@@ -493,6 +495,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    holdNotes,
     holdAddress.recipient,
     holdAddress.line1,
     holdAddress.city,
@@ -618,6 +621,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       if (draft.selections.discoverySourceOther) {
         setDiscoverySourceOther(draft.selections.discoverySourceOther);
       }
+      if (draft.selections.notes) setHoldNotes(draft.selections.notes);
       setHoldAddress(draft.selections.holdAddress);
     }
     setCurrentStep("preview");
@@ -657,6 +661,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
         holdPhone,
         discoverySource,
         discoverySourceOther,
+        notes: holdNotes,
         holdAddress,
       },
     });
@@ -674,6 +679,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    holdNotes,
     holdAddress,
   ]);
 
@@ -1119,7 +1125,10 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
           discoverySource,
           discoverySourceOther:
             discoverySource === "other" ? discoverySourceOther.trim() : undefined,
-          measurements: measurementData,
+          measurements: {
+            ...measurementData,
+            ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
+          },
           suggestedSize: size,
           suggestedTier: tier,
           preferenceLines: [
@@ -1154,6 +1163,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    holdNotes,
     holdAddress,
     selectedShippingId,
     selectedAddons,
@@ -1467,6 +1477,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                       phone: holdPhone,
                       discoverySource,
                       discoverySourceOther,
+                      notes: holdNotes,
                     }}
                     onChange={(patch) => {
                       if (patch.email !== undefined) setHoldEmail(patch.email);
@@ -1477,6 +1488,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                       if (patch.discoverySourceOther !== undefined) {
                         setDiscoverySourceOther(patch.discoverySourceOther);
                       }
+                      if (patch.notes !== undefined) setHoldNotes(patch.notes);
                     }}
                   />
 
@@ -1602,6 +1614,7 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                           phone: holdPhone,
                           discoverySource,
                           discoverySourceOther,
+                          notes: holdNotes,
                         }),
                       );
                       if (Object.keys(contactErrors).length > 0) {
@@ -1616,7 +1629,10 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             id: responseId,
-                            data: measurementData,
+                            data: {
+                              ...measurementData,
+                              notes: holdNotes.trim(),
+                            },
                             persistContact: true,
                             email: holdEmail.trim(),
                             phone: holdPhone.trim(),

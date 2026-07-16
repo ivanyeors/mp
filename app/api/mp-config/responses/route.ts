@@ -179,6 +179,7 @@ const MeasurementSchema = z.object({
   neckToBack: z.string().default(""),
   headToBack: z.string().default(""),
   neckLength: z.string().default(""),
+  notes: z.string().max(2000).optional().default(""),
 });
 
 const MeasuredBySchema = z.discriminatedUnion("type", [

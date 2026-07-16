@@ -58,6 +58,7 @@ const draft: HoldCancelDraft = {
     holdPhone: "87805311",
     discoverySource: "instagram",
     discoverySourceOther: "",
+    notes: "softer near the edge",
     holdAddress: {
       recipient: "Ada",
       line1: "1 St",
@@ -75,6 +76,7 @@ assert.ok(roundTrip);
 assert.equal(roundTrip!.selections.selectedCover, 10);
 assert.equal(roundTrip!.selections.selectedCase, 20);
 assert.deepEqual(roundTrip!.selections.selectedAddons, [30]);
+assert.equal(roundTrip!.selections.notes, "softer near the edge");
 assert.equal(roundTrip!.measurementData?.name, "Ada");
 
 assert.equal(parseHoldCancelDraft({ v: 1, step: "welcome" }), null);

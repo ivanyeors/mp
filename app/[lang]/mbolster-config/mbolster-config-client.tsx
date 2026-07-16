@@ -180,6 +180,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const [holdPhone, setHoldPhone] = React.useState("");
   const [discoverySource, setDiscoverySource] = React.useState("");
   const [discoverySourceOther, setDiscoverySourceOther] = React.useState("");
+  const [holdNotes, setHoldNotes] = React.useState("");
   const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",
     line1: "",
@@ -268,6 +269,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         if (sel.holdPhone) setHoldPhone(sel.holdPhone);
         if (sel.discoverySource) setDiscoverySource(sel.discoverySource);
         if (sel.discoverySourceOther) setDiscoverySourceOther(sel.discoverySourceOther);
+        if (sel.notes) setHoldNotes(sel.notes);
         setHoldAddress(sel.holdAddress);
       } else {
         setState((s) => ({ ...s, step: "preview" }));
@@ -315,6 +317,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
           holdPhone,
           discoverySource,
           discoverySourceOther,
+          notes: holdNotes,
           holdAddress,
         },
       });
@@ -333,6 +336,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    holdNotes,
     holdAddress,
   ]);
 
@@ -377,6 +381,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       phone: holdPhone,
       discoverySource,
       discoverySourceOther,
+      notes: holdNotes,
     }),
     {
       key: "recipient",
@@ -414,6 +419,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    holdNotes,
     holdAddress.recipient,
     holdAddress.line1,
     holdAddress.city,
@@ -648,6 +654,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
           measurements: {
             height_cm: heightNum,
             sleep_position: state.sleepPosition,
+            ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
           },
           preferenceLines: [
             { item_id: selectedCase!, quantity: 1, category: "case" },
@@ -675,6 +682,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    holdNotes,
     holdAddress,
     selectedShippingId,
     selectedAddons,
@@ -910,6 +918,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     phone: holdPhone,
                     discoverySource,
                     discoverySourceOther,
+                    notes: holdNotes,
                   }}
                   onChange={(patch) => {
                     if (patch.email !== undefined) setHoldEmail(patch.email);
@@ -920,6 +929,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     if (patch.discoverySourceOther !== undefined) {
                       setDiscoverySourceOther(patch.discoverySourceOther);
                     }
+                    if (patch.notes !== undefined) setHoldNotes(patch.notes);
                   }}
                 />
 
