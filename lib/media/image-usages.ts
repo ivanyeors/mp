@@ -16,7 +16,9 @@ export type ImageUsageEntry = {
     | "category"
     | "partner"
     | "partners_page"
-    | "slide_media";
+    | "slide_media"
+    | "item_overlay"
+    | "item_image";
   label: string;
   ref_id: string;
 };
@@ -64,6 +66,18 @@ export type UsageConsumerRows = {
     src: string;
     assetId: string;
     consumer?: string;
+  }>;
+  /** Product Builder cover/case overlays (slice 10). */
+  itemOverlays?: Array<{
+    item_id: number;
+    media_asset_id: string;
+    item_name?: string | null;
+  }>;
+  /** Item primary media (slice 12 add-on card images). */
+  items?: Array<{
+    id: number;
+    name: string;
+    primary_media_asset_id: string | null;
   }>;
   /** Intentionally unused — order snapshots must never count as usage. */
   orderItems?: Array<{ id: string; image_url: string | null }>;
@@ -263,6 +277,26 @@ export function resolveUsages(
     }
   }
 
+  for (const m of rows.itemOverlays ?? []) {
+    if (refsMatch(asset, { assetId: m.media_asset_id })) {
+      usages.push({
+        type: "item_overlay",
+        label: m.item_name ? `Overlay: ${m.item_name}` : "Item overlay",
+        ref_id: String(m.item_id),
+      });
+    }
+  }
+
+  for (const item of rows.items ?? []) {
+    if (refsMatch(asset, { assetId: item.primary_media_asset_id })) {
+      usages.push({
+        type: "item_image",
+        label: item.name,
+        ref_id: String(item.id),
+      });
+    }
+  }
+
   for (const slide of rows.slideMedia ?? []) {
     if (refsMatch(asset, { url: slide.src, assetId: slide.assetId })) {
       usages.push({
@@ -306,6 +340,8 @@ async function fetchConsumerRows(): Promise<UsageConsumerRows> {
     categories,
     partners,
     partnersPages,
+    itemOverlays,
+    items,
   ] = await Promise.all([
     admin.from("blog_posts").select("id, slug, image_url, content, media_asset_id"),
     admin.from("site_settings").select("key, value").like("key", "landing_%"),
@@ -315,6 +351,11 @@ async function fetchConsumerRows(): Promise<UsageConsumerRows> {
     admin.from("categories").select("id, slug, image_url, media_asset_id"),
     admin.from("partners").select("id, name, logo_url, media_asset_id"),
     admin.from("partners_page").select("id, content"),
+    admin.from("item_overlay_mappings").select("item_id, media_asset_id, items ( name )"),
+    admin
+      .from("items")
+      .select("id, name, primary_media_asset_id")
+      .not("primary_media_asset_id", "is", null),
   ]);
 
   return {
@@ -326,6 +367,21 @@ async function fetchConsumerRows(): Promise<UsageConsumerRows> {
     categories: (categories.data ?? []) as UsageConsumerRows["categories"],
     partners: (partners.data ?? []) as UsageConsumerRows["partners"],
     partnersPages: (partnersPages.data ?? []) as UsageConsumerRows["partnersPages"],
+    itemOverlays: (
+      (itemOverlays.data ?? []) as Array<{
+        item_id: number;
+        media_asset_id: string;
+        items: { name: string | null } | { name: string | null }[] | null;
+      }>
+    ).map((m) => {
+      const item = Array.isArray(m.items) ? m.items[0] : m.items;
+      return {
+        item_id: m.item_id,
+        media_asset_id: m.media_asset_id,
+        item_name: item?.name ?? null,
+      };
+    }),
+    items: (items.data ?? []) as UsageConsumerRows["items"],
   };
 }
 

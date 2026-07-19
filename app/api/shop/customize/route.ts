@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings, getSizeBallparkFromMeasurements, getSizeBallparkFromPreferences } from "@/lib/shop/customization-llm";
-import { getAvailableComponents, validateCustomizationConfig, calculateAddonPrice, getBolsterBaseQuantities } from "@/lib/shop/customization-inventory";
+import { getAvailableComponents, validateCustomizationConfig, calculateAddonPrice, getBolsterBaseQuantities, fetchOverlayMap } from "@/lib/shop/customization-inventory";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 
 export const runtime = "nodejs";
@@ -153,6 +153,8 @@ async function handleRecommend(req: Request) {
         (prices ?? []).map((p: { item_id: number; msrp: number | null }) => [p.item_id, p.msrp ?? 0])
       );
 
+      const overlayMap = await fetchOverlayMap(admin, itemIds);
+
       const toOption = (i: { id: number; category: string; subtype: string | null; name: string; size: string | null }) => ({
         item_id: i.id,
         category: i.category.replace("bolster_", ""),
@@ -162,6 +164,7 @@ async function handleRecommend(req: Request) {
         stock_available: stockMap.get(i.id) ?? 0,
         unit_price: priceMap.get(i.id) ?? 0,
         base_quantity: bomMap.get(i.id) ?? 0,
+        overlay: overlayMap.get(i.id) ?? null,
       });
 
       const components = {

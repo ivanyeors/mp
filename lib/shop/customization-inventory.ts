@@ -1,5 +1,28 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { BolsterVariant, ComponentOption, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
+import type { ItemOverlay, OverlayFit } from "@/lib/product-builder/overlays";
+
+/** Product Builder overlay mappings for the given items (slice 10). */
+export async function fetchOverlayMap(
+  admin: ReturnType<typeof supabaseAdmin>,
+  itemIds: number[],
+): Promise<Map<number, ItemOverlay>> {
+  const map = new Map<number, ItemOverlay>();
+  if (itemIds.length === 0) return map;
+  const { data } = await admin
+    .from("item_overlay_mappings")
+    .select("item_id, fit, media_assets ( hosted_url )")
+    .in("item_id", itemIds);
+  for (const row of (data ?? []) as Array<{
+    item_id: number;
+    fit: OverlayFit | null;
+    media_assets: { hosted_url: string | null } | { hosted_url: string | null }[] | null;
+  }>) {
+    const asset = Array.isArray(row.media_assets) ? row.media_assets[0] : row.media_assets;
+    if (asset?.hosted_url) map.set(row.item_id, { url: asset.hosted_url, fit: row.fit ?? null });
+  }
+  return map;
+}
 
 /**
  * Inventory stores split categories (pillow_case / bolster_case, …) after migration 0015.
@@ -127,6 +150,8 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     (prices ?? []).map((p: { item_id: number; msrp: number | null }) => [p.item_id, p.msrp ?? 0])
   );
 
+  const overlayMap = await fetchOverlayMap(admin, itemIds);
+
   // Role category (case/protector) so preference + component-line logic stays stable.
   const toOption = (i: {
     id: number;
@@ -143,6 +168,7 @@ export async function getAvailableComponents(pillowProductId: number): Promise<{
     stock_available: stockMap.get(i.id) ?? 0,
     unit_price: priceMap.get(i.id) ?? 0,
     base_quantity: bomMap.get(i.id) ?? 0,
+    overlay: overlayMap.get(i.id) ?? null,
   });
 
   return {
@@ -231,6 +257,8 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     (prices ?? []).map((p: { item_id: number; msrp: number | null }) => [p.item_id, p.msrp ?? 0])
   );
 
+  const overlayMap = await fetchOverlayMap(admin, itemIds);
+
   const toOption = (i: {
     id: number;
     category: string;
@@ -246,6 +274,7 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     stock_available: stockMap.get(i.id) ?? 0,
     unit_price: priceMap.get(i.id) ?? 0,
     base_quantity: bomMap.get(i.id) ?? 0,
+    overlay: overlayMap.get(i.id) ?? null,
   });
 
   return {
