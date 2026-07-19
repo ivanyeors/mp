@@ -96,7 +96,7 @@ import { overlayFrame } from "@/lib/product-builder/overlays";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
 import { bolsterCapsulePath } from "@/components/spatial/xray-assets";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import type { BolsterPlacement } from "@/lib/spatial-fillings/core";
+import { bolsterPlacementsToRows, type BolsterPlacement } from "@/lib/spatial-fillings/core";
 import {
   xrayColorVarStyle,
   type ColorOverrideRow,
@@ -112,6 +112,8 @@ import {
   type HeightUnit,
 } from "@/lib/configurator/height-draft";
 import { soleCaseId } from "@/lib/configurator/preference-policy";
+import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
+import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
@@ -261,8 +263,10 @@ export function MbolsterConfigClient({
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
   const suggestedLength = (shopRecommendation?.bolster_variant ?? null) as BolsterLength | null;
 
-  // --- Staff assist x-ray (slice 13): session-local bolster filling mix ------
+  // --- Staff assist (slice 13) — top-level so the session mix survives step navigation ---
   const [assistPlacements, setAssistPlacements] = React.useState<BolsterPlacement[]>([]);
+  const [assistLoadedTemplate, setAssistLoadedTemplate] = React.useState<LoadedTemplate | null>(null);
+  // Filling items surfaced from the assist panel; the x-ray resolves colors/scale by subtype/size.
   const [assistItems, setAssistItems] = React.useState<FillingItem[]>([]);
   const [assistColorOverrides, setAssistColorOverrides] = React.useState<ColorOverrideRow[]>([]);
   const assistItemSubtypes = React.useMemo(
@@ -277,27 +281,16 @@ export function MbolsterConfigClient({
     () => xrayColorVarStyle(assistColorOverrides),
     [assistColorOverrides],
   );
+  // Kept only while the mix exactly matches the loaded template; the hold snapshot claims this.
+  const sessionFillingTemplateId = React.useMemo(
+    () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
+    [assistLoadedTemplate, assistPlacements],
+  );
+  // Length-based eligibility: a different recommended length invalidates the loaded mix.
   React.useEffect(() => {
-    if (!staffAssist) return;
-    let cancelled = false;
-    // No size param: filling Items + color overrides only (staff-gated).
-    fetch("/api/mp-config/assist")
-      .then((r) => r.json())
-      .then((d: { items?: FillingItem[]; colorOverrides?: ColorOverrideRow[] }) => {
-        if (cancelled) return;
-        setAssistItems(d.items ?? []);
-        setAssistColorOverrides(d.colorOverrides ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAssistItems([]);
-          setAssistColorOverrides([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [staffAssist]);
+    setAssistPlacements([]);
+    setAssistLoadedTemplate(null);
+  }, [suggestedLength]);
 
   const addonTotal = React.useMemo(() => {
     let sum = 0;
@@ -804,6 +797,15 @@ export function MbolsterConfigClient({
             { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          // Staff assist snapshot (slice 13): session mix + still-matching template claim.
+          ...(staffAssist && assistPlacements.length > 0
+            ? {
+                assistFilling: {
+                  placements: bolsterPlacementsToRows(assistPlacements),
+                  templateId: sessionFillingTemplateId,
+                },
+              }
+            : {}),
           shippingMethodId: selectedShippingId,
           shippingAddress: holdAddress,
           cancelPath: "/mbolster-config",
@@ -835,6 +837,9 @@ export function MbolsterConfigClient({
     state.sleepPosition,
     holdFields,
     shopRecommendation?.recommendation_record,
+    staffAssist,
+    assistPlacements,
+    sessionFillingTemplateId,
   ]);
 
   const flowRouteBlocksHold = (() => {
@@ -1058,7 +1063,18 @@ export function MbolsterConfigClient({
                 );
               })()}
               <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
-              {!shopRecommendation ? (
+              {staffAssist && suggestedLength ? (
+                <StaffAssistBolsterPanel
+                  length={suggestedLength}
+                  placements={assistPlacements}
+                  onPlacementsChange={setAssistPlacements}
+                  loadedTemplate={assistLoadedTemplate}
+                  onLoadTemplate={setAssistLoadedTemplate}
+                  sessionFillingTemplateId={sessionFillingTemplateId}
+                  onItemsChange={setAssistItems}
+                  onColorOverridesChange={setAssistColorOverrides}
+                />
+              ) : !shopRecommendation ? (
                 <p className="max-w-xs text-center text-xs text-white/80">
                   Fillings are chosen by our team after review.
                 </p>

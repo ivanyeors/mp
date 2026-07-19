@@ -5,6 +5,8 @@ import {
   flattenToPackList,
   derivePackList,
   placementsExactMatch,
+  bolsterPlacementsToRows,
+  rowsToBolsterPlacements,
   type PillowPlacement,
   type BolsterPlacement,
   type Section,
@@ -118,6 +120,18 @@ describe("validateBolsterPlacements", () => {
     ).toBe(false);
     expect(validateBolsterPlacements([{ slot: 0, itemId: 1 }], categories).ok).toBe(false);
     expect(validateBolsterPlacements([{ slot: 1, itemId: 9 }], categories).ok).toBe(false);
+  });
+
+  it("row mapping round-trips slot-only rows — never the pillow enums (slice 13)", () => {
+    const rows = [
+      { slot: 1, item_id: 1 },
+      { slot: 7, item_id: 2 },
+    ];
+    const placements = rowsToBolsterPlacements(rows);
+    expect(bolsterPlacementsToRows(placements)).toEqual(rows);
+    for (const row of bolsterPlacementsToRows(placements)) {
+      expect(Object.keys(row).sort()).toEqual(["item_id", "slot"]);
+    }
   });
 });
 

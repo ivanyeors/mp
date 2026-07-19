@@ -9,6 +9,7 @@ import {
   placementsExactMatch,
   SECTIONS,
   SUB_SECTIONS,
+  type AnyPlacement,
   type BolsterPlacement,
   type PillowPlacement,
   type Section,
@@ -160,7 +161,7 @@ export function removePiece(
 
 // --- Mbolster session mix (single compartment, no cap in v1 — ADR 0008) ------
 
-/** Add one bolster piece into the lowest free slot. */
+/** Add one piece into the lowest free slot — no piece cap for Mbolster in v1. */
 export function addBolsterPiece(
   placements: BolsterPlacement[],
   itemId: number,
@@ -181,7 +182,7 @@ export function removeBolsterPiece(
 
 // --- Loaded-template tracking (for slice 05's snapshot) ----------------------
 
-export type LoadedTemplate = { id: number; placements: PillowPlacement[] };
+export type LoadedTemplate = { id: number; placements: AnyPlacement[] };
 
 /**
  * `sessionFillingTemplateId`: kept only while the session mix still exactly
@@ -189,7 +190,7 @@ export type LoadedTemplate = { id: number; placements: PillowPlacement[] };
  */
 export function sessionTemplateId(
   loaded: LoadedTemplate | null,
-  session: PillowPlacement[],
+  session: AnyPlacement[],
 ): number | null {
   if (!loaded) return null;
   return placementsExactMatch(loaded.placements, session) ? loaded.id : null;

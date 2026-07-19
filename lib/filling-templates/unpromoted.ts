@@ -6,7 +6,11 @@
 
 import {
   fingerprintPlacements,
+  rowsToBolsterPlacements,
   rowsToPillowPlacements,
+  type AnyPlacement,
+  type BolsterPlacement,
+  type BolsterPlacementRow,
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
@@ -46,17 +50,31 @@ export function rankUnpromoted(opts: {
     .sort((a, b) => b.count - a.count || (a.fingerprint < b.fingerprint ? -1 : 1));
 }
 
+function verify<P extends AnyPlacement>(
+  placements: P[],
+  fingerprint: string,
+): { ok: true; placements: P[] } | { ok: false; error: string } {
+  if (placements.length === 0) {
+    return { ok: false, error: "Mix no longer exists on any Result" };
+  }
+  if (fingerprintPlacements(placements) !== fingerprint) {
+    return { ok: false, error: "Mix no longer matches its fingerprint" };
+  }
+  return { ok: true, placements };
+}
+
 /** Re-verify a representative Result's rows still hash to the promoted fingerprint. */
 export function verifyPromotedMix(
   rows: PillowPlacementRow[],
   fingerprint: string,
 ): { ok: true; placements: PillowPlacement[] } | { ok: false; error: string } {
-  if (rows.length === 0) {
-    return { ok: false, error: "Mix no longer exists on any Result" };
-  }
-  const placements = rowsToPillowPlacements(rows);
-  if (fingerprintPlacements(placements) !== fingerprint) {
-    return { ok: false, error: "Mix no longer matches its fingerprint" };
-  }
-  return { ok: true, placements };
+  return verify(rowsToPillowPlacements(rows), fingerprint);
+}
+
+/** Mbolster variant (slice 13): own row schema — never the pillow enums. */
+export function verifyPromotedBolsterMix(
+  rows: BolsterPlacementRow[],
+  fingerprint: string,
+): { ok: true; placements: BolsterPlacement[] } | { ok: false; error: string } {
+  return verify(rowsToBolsterPlacements(rows), fingerprint);
 }

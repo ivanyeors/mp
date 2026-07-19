@@ -2,7 +2,7 @@
 
 import type { BuildLine, BuildLineRole } from "@/lib/build-assembly";
 import type { PriceResultOutput } from "@/lib/result-pricing";
-import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
+import type { BolsterPlacementRow, PillowPlacementRow } from "@/lib/spatial-fillings/core";
 
 export type NamedBuildLine = BuildLine & { name: string };
 
@@ -15,8 +15,9 @@ export type ResultOrderBuildSnapshot = {
   /** Null when the mix diverged from every catalog template (custom spatial mix). */
   filling_template_id: number | null;
   filling_template_name: string | null;
-  /** Spatial placement breakdown for the warehouse (absent on pre-spatial Results). */
-  filling_placements?: PillowPlacementRow[];
+  /** Spatial placement breakdown for the warehouse (absent on pre-spatial Results).
+   * Pillow cell rows or bolster slot rows, per product_type. */
+  filling_placements?: Array<PillowPlacementRow | BolsterPlacementRow>;
   preference_lines: NamedBuildLine[];
   addon_lines: NamedBuildLine[];
   build_lines: NamedBuildLine[];
@@ -55,7 +56,7 @@ export function buildResultOrderSnapshot(input: {
   assignedLength: string | null;
   fillingTemplateId: number | null;
   fillingTemplateName: string | null;
-  fillingPlacements?: PillowPlacementRow[];
+  fillingPlacements?: Array<PillowPlacementRow | BolsterPlacementRow>;
   buildLines: BuildLine[];
   nameByItem: Map<number, string>;
   cogs: number;

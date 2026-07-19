@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminContext } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { PILLOW_SIZES } from "@/lib/configurator/staff-assist";
+import { isBolsterLength } from "@/lib/results/composed-sellable";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Staff assist data (slice 04). Staff-gated: guests get 401, never template or
- * inventory data. Three query modes:
- *   ?size=M         → active size-scoped Filling Templates + active filling Items
- *   ?templateId=12  → that template's spatial placements
- *   (no params)     → active filling Items + color overrides only (bolster x-ray)
+ * Staff assist data (slices 04/13). Staff-gated: guests get 401, never template
+ * or inventory data. Query modes:
+ *   ?size=M         → active size-scoped pillow Filling Templates + filling Items
+ *   ?length=short   → active length-scoped bolster Filling Templates + filling Items
+ *   ?templateId=12  → that template's spatial placements (pillow or bolster rows)
  */
 export async function GET(req: NextRequest) {
   const staff = await getAdminContext();
@@ -32,41 +33,43 @@ export async function GET(req: NextRequest) {
       .eq("id", id)
       .maybeSingle();
     if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 });
-    if (!tpl || tpl.role !== "filling" || tpl.kind !== "pillow") {
+    if (!tpl || tpl.role !== "filling" || (tpl.kind !== "pillow" && tpl.kind !== "bolster")) {
       return NextResponse.json({ error: "Filling Template not found" }, { status: 404 });
     }
+    // Bolster templates use their own schema: slot rows only, never pillow enums.
+    const table = tpl.kind === "bolster" ? "bolster_template_placements" : "filling_template_placements";
+    const cols = tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id";
     const { data: placements, error: pErr } = await admin
-      .from("filling_template_placements")
-      .select("section,sub_section,slot,item_id")
+      .from(table)
+      .select(cols)
       .eq("template_id", id)
       .order("slot");
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
     return NextResponse.json({ ok: true, placements: placements ?? [] });
   }
 
-  // No size param → items + color overrides only (the bolster x-ray has no
-  // size-scoped pillow templates). A present-but-invalid size still 400s.
-  const sizeParam = searchParams.get("size");
-  const size = sizeParam?.toUpperCase() ?? null;
-  if (size !== null && !(PILLOW_SIZES as readonly string[]).includes(size)) {
-    return NextResponse.json({ error: "Invalid size" }, { status: 400 });
+  const lengthParam = searchParams.get("length")?.toLowerCase() ?? "";
+  const size = searchParams.get("size")?.toUpperCase() ?? "";
+  if (lengthParam ? !isBolsterLength(lengthParam) : !(PILLOW_SIZES as readonly string[]).includes(size)) {
+    return NextResponse.json({ error: lengthParam ? "Invalid length" : "Invalid size" }, { status: 400 });
   }
+  const scope = lengthParam
+    ? { kind: "bolster", key: lengthParam }
+    : { kind: "pillow", key: size };
 
   const [
     { data: templates, error: listErr },
     { data: items, error: itemsErr },
     { data: colorOverrides, error: colorsErr },
   ] = await Promise.all([
-    size === null
-      ? Promise.resolve({ data: [], error: null })
-      : admin
-          .from("bom_templates")
-          .select("id,name")
-          .eq("kind", "pillow")
-          .eq("key", size)
-          .eq("role", "filling")
-          .eq("is_active", true)
-          .order("name"),
+    admin
+      .from("bom_templates")
+      .select("id,name")
+      .eq("kind", scope.kind)
+      .eq("key", scope.key)
+      .eq("role", "filling")
+      .eq("is_active", true)
+      .order("name"),
     admin
       .from("items")
       .select("id,name,subtype,size")

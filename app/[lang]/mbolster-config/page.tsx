@@ -29,10 +29,10 @@ export default async function MbolsterConfigPage({ params }: Props) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
+  // Staff assist gate: same Staff check as mp-config. Guests get null.
   const [offer, faq, staffCtx] = await Promise.all([
     getConfiguratorOfferRange("bolster"),
     getPageFaq("mbolster-config", locale),
-    // Staff assist gate: same Staff check as mp-config. Guests get null.
     getAdminContext(),
   ]);
 
