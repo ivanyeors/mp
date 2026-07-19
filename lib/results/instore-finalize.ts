@@ -59,6 +59,7 @@ export async function buildInstoreReviewOnlyPatch(
       tierSuggestion: ballpark.suggested_tier,
       soldTier: "premium",
       flowRoute: null,
+      flowRouteDecision: null,
       firedTerminals: [],
       trace: [],
       usedFallback: false,
