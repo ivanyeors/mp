@@ -32,7 +32,7 @@ export type HoldCancelDraft = {
   measurementUnit?: "cm" | "in";
   /** Opaque measurement blob — client owns the shape. */
   measurementData?: Record<string, unknown>;
-  heightUnit?: "cm" | "m";
+  heightUnit?: "cm" | "m" | "in";
   heightCm?: string;
   sleepPosition?: "side" | "stomach" | "other" | null;
   selections: HoldPrepSelections;

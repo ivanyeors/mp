@@ -1,3 +1,5 @@
+import { cmToInches, inchesToCm, roundCm } from "@/lib/rules-engine/units";
+
 export type MeasurementUnit = "cm" | "in";
 
 /** Incomplete drafts like "16." stay invalid until the user finishes typing. */
@@ -9,15 +11,14 @@ export function normalizeMeasurementDraft(
   if (!trimmed || trimmed.endsWith(".") || trimmed.endsWith(",")) return null;
   const value = Number(trimmed);
   if (!Number.isFinite(value) || value <= 0) return null;
-  const cm = unit === "cm" ? value : value * 2.54;
-  return String(Math.round(cm * 100) / 100);
+  const cm = unit === "cm" ? value : inchesToCm(value);
+  return String(roundCm(cm));
 }
 
 export function displayMeasurement(unit: MeasurementUnit, cmValue: string): string {
   if (!cmValue.trim()) return "";
   const cm = Number(cmValue);
   if (!Number.isFinite(cm)) return cmValue;
-  if (unit === "cm") return String(Math.round(cm * 100) / 100);
-  const inches = cm / 2.54;
-  return String(Math.round(inches * 100) / 100);
+  if (unit === "cm") return String(roundCm(cm));
+  return String(Math.round(cmToInches(cm) * 100) / 100);
 }

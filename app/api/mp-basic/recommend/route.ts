@@ -3,6 +3,10 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { recommendBasicMpillow } from "@/lib/mp-basic/recommend";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
+import {
+  basicBodyToEngineInputs,
+  incompleteEngineInputs,
+} from "@/lib/rules-engine/legacy-inputs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,15 +14,15 @@ export const dynamic = "force-dynamic";
 const RecommendSchema = z.object({
   shoulderLength: z.string().min(1),
   name: z.string().optional(),
-  gender: z.string().optional(),
-  ageGroup: z.string().optional(),
-  bloodPressureLevel: z.string().optional(),
-  bedFirmness: z.string().optional(),
-  earDiscomfortSideSleep: z.string().optional(),
-  acidReflux: z.string().optional(),
-  sleepPainAreas: z.array(z.string()).optional(),
-  sleepPositionType: z.array(z.string()).optional(),
-  usesBolster: z.string().optional(),
+  gender: z.string().min(1),
+  ageGroup: z.string().min(1),
+  bloodPressureLevel: z.string().min(1),
+  bedFirmness: z.string().min(1),
+  earDiscomfortSideSleep: z.string().min(1),
+  acidReflux: z.string().min(1),
+  sleepPainAreas: z.array(z.string()).min(1),
+  sleepPositionType: z.array(z.string()).min(1),
+  usesBolster: z.string().min(1),
 });
 
 export async function POST(req: Request) {
@@ -31,6 +35,17 @@ export async function POST(req: Request) {
   const shoulderCm = Number.parseFloat(parsed.data.shoulderLength);
   if (!Number.isFinite(shoulderCm) || shoulderCm <= 0) {
     return NextResponse.json({ error: "shoulderLength must be a positive number (cm)" }, { status: 400 });
+  }
+
+  const missing = incompleteEngineInputs(
+    "basic-mpillow",
+    basicBodyToEngineInputs(parsed.data),
+  );
+  if (missing.length > 0) {
+    return NextResponse.json(
+      { error: "Incomplete engine inputs", missing },
+      { status: 400 },
+    );
   }
 
   try {

@@ -42,9 +42,10 @@ assert.doesNotMatch(mp, /SelectTrigger|SelectItem|SelectValue/);
 assert.match(mp, /isBasic \? "Continue" : "Customise"/);
 assert.doesNotMatch(mp, /Generate Results|See your Basic Mpillow/);
 
-// Multi-select stays pill chips (rounded-full)
-assert.match(mp, /sleepPainAreas[\s\S]*?rounded-full/);
+// Multi-select stays pill chips (rounded-full); pain areas use shared PAIN_AREA_OPTIONS
+assert.match(mp, /PAIN_AREA_OPTIONS|sleepPainAreas[\s\S]*?rounded-full/);
 assert.match(mp, /sleepPositionType[\s\S]*?rounded-full/);
+assert.match(mp, /togglePainArea/);
 
 // Yes/no Tabs unchanged for ear / acid / bolster
 assert.match(mp, /earDiscomfortSideSleep[\s\S]*?<Tabs[\s\S]*?TabsTrigger value="yes"/);
