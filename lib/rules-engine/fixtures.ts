@@ -83,3 +83,69 @@ export const DEFAULT_TEMPLATE_IDS = {
   L: "tpl-l-default",
   XL: "tpl-xl-default",
 } as const;
+
+/**
+ * Basic graph with acid_reflux → Premium Flow route (+ same-flow Fallback sibling).
+ * For slice 06 tests / Staff demo publish — not the day-one seed.
+ */
+export function basicWithPremiumUpsellGraph(templateIds: {
+  XS: string;
+  S: string;
+  M: string;
+  L: string;
+  XL: string;
+}): RuleGraphJson {
+  const t = templateIds;
+  return {
+    nodes: [
+      { id: "in-shoulder", type: "input", inputKey: "shoulder_length_cm" },
+      { id: "in-reflux", type: "input", inputKey: "acid_reflux" },
+      {
+        id: "rng-shoulder",
+        type: "range",
+        inputKey: "shoulder_length_cm",
+        bands: [
+          { id: "b-xs", minCm: null, maxCm: 36, label: "XS" },
+          { id: "b-s", minCm: 36, maxCm: 40, label: "S" },
+          { id: "b-m", minCm: 40, maxCm: 46, label: "M" },
+          { id: "b-l", minCm: 46, maxCm: 52, label: "L" },
+          { id: "b-xl", minCm: 52, maxCm: null, label: "XL" },
+        ],
+      },
+      { id: "match-reflux", type: "match", inputKey: "acid_reflux" },
+      {
+        id: "route-premium",
+        type: "flow-route",
+        targetFlow: "premium-mpillow",
+        reason: "Acid reflux often needs Premium neck support",
+        fallbackSiblingId: "fb",
+      },
+      { id: "sz-xs", type: "size-output", size: "XS" },
+      { id: "sz-s", type: "size-output", size: "S" },
+      { id: "sz-m", type: "size-output", size: "M" },
+      { id: "sz-l", type: "size-output", size: "L" },
+      { id: "sz-xl", type: "size-output", size: "XL" },
+      { id: "tpl-xs", type: "template-output", templateId: t.XS, size: "XS" },
+      { id: "tpl-s", type: "template-output", templateId: t.S, size: "S" },
+      { id: "tpl-m", type: "template-output", templateId: t.M, size: "M" },
+      { id: "tpl-l", type: "template-output", templateId: t.L, size: "L" },
+      { id: "tpl-xl", type: "template-output", templateId: t.XL, size: "XL" },
+      { id: "fb", type: "fallback", size: "M", templateId: t.M },
+    ],
+    edges: [
+      { id: "e0", source: "in-shoulder", target: "rng-shoulder" },
+      { id: "e-rf", source: "in-reflux", target: "match-reflux" },
+      { id: "e-rf-true", source: "match-reflux", target: "route-premium", handle: "true" },
+      { id: "e1", source: "rng-shoulder", target: "sz-xs", handle: "b-xs" },
+      { id: "e2", source: "rng-shoulder", target: "sz-s", handle: "b-s" },
+      { id: "e3", source: "rng-shoulder", target: "sz-m", handle: "b-m" },
+      { id: "e4", source: "rng-shoulder", target: "sz-l", handle: "b-l" },
+      { id: "e5", source: "rng-shoulder", target: "sz-xl", handle: "b-xl" },
+      { id: "e6", source: "sz-xs", target: "tpl-xs" },
+      { id: "e7", source: "sz-s", target: "tpl-s" },
+      { id: "e8", source: "sz-m", target: "tpl-m" },
+      { id: "e9", source: "sz-l", target: "tpl-l" },
+      { id: "e10", source: "sz-xl", target: "tpl-xl" },
+    ],
+  };
+}

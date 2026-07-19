@@ -13,6 +13,8 @@ export * from "./reveal";
 export * from "./assign-hint";
 export * from "./flow-labels";
 export * from "./ports";
+export * from "./carry-over";
+export * from "./journey";
 export {
   isRuleFlow,
   getDraft,

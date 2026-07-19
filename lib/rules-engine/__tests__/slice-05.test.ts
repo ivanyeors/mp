@@ -19,6 +19,7 @@ const baseRecord = (
   tierSuggestion: null,
   soldTier: "premium",
   flowRoute: null,
+  flowRouteDecision: null,
   firedTerminals: [],
   trace: [
     { nodeId: "in-shoulder", type: "input", detail: "shoulder_length_cm" },

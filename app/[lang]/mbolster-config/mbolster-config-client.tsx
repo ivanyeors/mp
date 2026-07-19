@@ -75,10 +75,22 @@ import {
   CustomizationStepComponents,
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
+import { UpsellCard } from "@/components/rules-engine/upsell-card";
+import { TierSuggestion } from "@/components/rules-engine/tier-suggestion";
 import {
+  FLOW_ROUTE_EXPECTATION,
+  assertPreStripeRouteResolved,
+  carryOverAnswers,
+  inputsFromBolsterHeight,
+  isFlowRoutePending,
+  missingStepsAfterCarryOver,
   parseRecommendationRecord,
   plainLanguageWhy,
   shouldRevealRecommendation,
+  withJourneyOnAccept,
+  withJourneyOnDecline,
+  type RecommendationRecord,
+  type RuleFlow,
 } from "@/lib/rules-engine";
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
@@ -105,6 +117,13 @@ type State = {
 };
 
 const STORAGE_KEY = "mbolster_config_v4";
+const FLOW_ROUTE_HANDOFF_KEY = "mp_flow_route_handoff";
+
+const FLOW_UI_LABEL: Record<RuleFlow, string> = {
+  "basic-mpillow": "Basic Mpillow",
+  "premium-mpillow": "Premium Mpillow",
+  mbolster: "Mbolster",
+};
 
 /** Simple capsule silhouette for the left visual panel. */
 const BOLSTER_PATH =
@@ -216,6 +235,13 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   >([]);
   const [selectedShippingId, setSelectedShippingId] = React.useState("");
   const [holdSubmitting, setHoldSubmitting] = React.useState(false);
+  const [routeBusy, setRouteBusy] = React.useState(false);
+
+  const patchRecommendationRecord = React.useCallback((next: RecommendationRecord) => {
+    setShopRecommendation((prev) =>
+      prev ? { ...prev, recommendation_record: next } : prev,
+    );
+  }, []);
 
   const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
@@ -636,9 +662,65 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       .catch(() => setShippingMethods([]));
   }, [state.step, holdAddress.country, shopRecommendation?.bolster_variant]);
 
+  const handleKeepFlowRoute = React.useCallback(() => {
+    const record = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    if (!record?.flowRoute) return;
+    setRouteBusy(true);
+    patchRecommendationRecord(withJourneyOnDecline(record));
+    setRouteBusy(false);
+  }, [shopRecommendation?.recommendation_record, patchRecommendationRecord]);
+
+  const handleUpgradeFlowRoute = React.useCallback(() => {
+    const record = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    if (!record?.flowRoute) return;
+    const target = record.flowRoute.targetFlow;
+    if (target !== "premium-mpillow" && target !== "basic-mpillow") return;
+
+    setRouteBusy(true);
+    try {
+      const bolsterInputs =
+        heightNum != null ? inputsFromBolsterHeight(heightNum) : {};
+      const carried = carryOverAnswers("mbolster", target, bolsterInputs);
+      const missing = missingStepsAfterCarryOver("mbolster", target, carried);
+      const accepted = withJourneyOnAccept(record, target);
+      sessionStorage.setItem(
+        FLOW_ROUTE_HANDOFF_KEY,
+        JSON.stringify({
+          journey: accepted,
+          targetFlow: target,
+          carriedAnswers: carried,
+          missingSteps: missing,
+        }),
+      );
+      router.push(to(target === "basic-mpillow" ? "/mp-basic" : "/mp-config"));
+    } finally {
+      setRouteBusy(false);
+    }
+  }, [
+    shopRecommendation?.recommendation_record,
+    heightNum,
+    router,
+    to,
+  ]);
+
   const handleAuthorizeHold = React.useCallback(async () => {
     if (!suggestedLength) {
       toast.error("Missing length recommendation");
+      return;
+    }
+
+    const journeyRecord = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    const routeGate = assertPreStripeRouteResolved(
+      journeyRecord ?? { flowRoute: null },
+    );
+    if (!routeGate.ok) {
+      toast.error(routeGate.reason);
       return;
     }
 
@@ -673,6 +755,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
           shippingMethodId: selectedShippingId,
           shippingAddress: holdAddress,
           cancelPath: "/mbolster-config",
+          ...(journeyRecord ? { recommendationRecord: journeyRecord } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -699,7 +782,15 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     heightNum,
     state.sleepPosition,
     holdFields,
+    shopRecommendation?.recommendation_record,
   ]);
+
+  const flowRouteBlocksHold = (() => {
+    const r = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    return Boolean(r && isFlowRoutePending(r));
+  })();
 
   // Hold preview uses the same mp-config split layout (case, add-ons, shipping).
   if (state.step === "preview") {
@@ -836,9 +927,10 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 const record = parseRecommendationRecord(
                   shopRecommendation?.recommendation_record ?? null,
                 );
+                const routePending = Boolean(record && isFlowRoutePending(record));
                 const revealNow = shouldRevealRecommendation({
                   requiredInputsComplete: Boolean(shopRecommendation && suggestedLength),
-                  flowRouteUnresolved: false,
+                  flowRouteUnresolved: routePending,
                 });
                 const why = record
                   ? plainLanguageWhy(record)
@@ -856,14 +948,39 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     qty: l.quantity,
                   };
                 });
+                const showTierAdvice =
+                  record?.tierSuggestion &&
+                  record.tierSuggestion !== record.soldTier;
+                const targetIsMpillow =
+                  record?.flowRoute?.targetFlow === "basic-mpillow" ||
+                  record?.flowRoute?.targetFlow === "premium-mpillow";
                 return (
-                  <RecommendationReveal
-                    reveal={revealNow}
-                    sizeLabel={suggestedLength ? String(suggestedLength) : ""}
-                    why={why}
-                    templateName={tpl?.name ?? null}
-                    mixLines={mixLines}
-                  />
+                  <>
+                    {showTierAdvice && record?.tierSuggestion ? (
+                      <TierSuggestion tier={record.tierSuggestion} />
+                    ) : null}
+                    {routePending && record?.flowRoute ? (
+                      <UpsellCard
+                        reason={record.flowRoute.reason}
+                        fromLabel="Mbolster"
+                        toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
+                        fromPrice={shopBasePrice > 0 ? shopBasePrice : null}
+                        toPrice={null}
+                        currency={shopCurrency}
+                        expectation={targetIsMpillow ? FLOW_ROUTE_EXPECTATION : null}
+                        onUpgrade={() => handleUpgradeFlowRoute()}
+                        onKeep={handleKeepFlowRoute}
+                        busy={routeBusy}
+                      />
+                    ) : null}
+                    <RecommendationReveal
+                      reveal={revealNow}
+                      sizeLabel={suggestedLength ? String(suggestedLength) : ""}
+                      why={why}
+                      templateName={tpl?.name ?? null}
+                      mixLines={mixLines}
+                    />
+                  </>
                 );
               })()}
               <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
@@ -1127,7 +1244,12 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   className="flex-[2]"
                   size="lg"
                   onClick={() => void handleAuthorizeHold()}
-                  disabled={holdSubmitting || shopLoading || !shopRecommendation}
+                  disabled={
+                    holdSubmitting ||
+                    shopLoading ||
+                    !shopRecommendation ||
+                    flowRouteBlocksHold
+                  }
                 >
                   {holdCta}
                   <ArrowRight className="size-4" />
@@ -1407,6 +1529,39 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
               <p className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed text-muted-foreground text-left">
                 {shopRecommendation.recommendation.explanation}
               </p>
+              {(() => {
+                const record = parseRecommendationRecord(
+                  shopRecommendation.recommendation_record ?? null,
+                );
+                const routePending = Boolean(record && isFlowRoutePending(record));
+                const showTierAdvice =
+                  record?.tierSuggestion &&
+                  record.tierSuggestion !== record.soldTier;
+                const targetIsMpillow =
+                  record?.flowRoute?.targetFlow === "basic-mpillow" ||
+                  record?.flowRoute?.targetFlow === "premium-mpillow";
+                return (
+                  <>
+                    {showTierAdvice && record?.tierSuggestion ? (
+                      <TierSuggestion tier={record.tierSuggestion} />
+                    ) : null}
+                    {routePending && record?.flowRoute ? (
+                      <UpsellCard
+                        reason={record.flowRoute.reason}
+                        fromLabel="Mbolster"
+                        toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
+                        fromPrice={shopBasePrice > 0 ? shopBasePrice : null}
+                        toPrice={null}
+                        currency={shopCurrency}
+                        expectation={targetIsMpillow ? FLOW_ROUTE_EXPECTATION : null}
+                        onUpgrade={() => handleUpgradeFlowRoute()}
+                        onKeep={handleKeepFlowRoute}
+                        busy={routeBusy}
+                      />
+                    ) : null}
+                  </>
+                );
+              })()}
               <p className="text-xs text-muted-foreground">
                 Fillings are chosen by our team after review. You pick a case preference next.
               </p>

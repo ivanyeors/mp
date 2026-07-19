@@ -90,6 +90,8 @@ export type RuleGraphJson = {
 
 export type EngineInputs = Record<string, unknown>;
 
+export type FlowRouteDecision = "pending" | "accepted" | "declined";
+
 export type TraceStep = {
   nodeId: string;
   type: RuleNode["type"];

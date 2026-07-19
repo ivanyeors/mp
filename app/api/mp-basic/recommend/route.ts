@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import {
-  inputsFromBasicShoulder,
-  recommendWithEngine,
-  toPersistedRecommendationRecord,
-} from "@/lib/rules-engine";
+import { recommendWithEngine, toPersistedRecommendationRecord } from "@/lib/rules-engine";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
 import {
   basicBodyToEngineInputs,
@@ -55,7 +51,7 @@ export async function POST(req: Request) {
   try {
     const engineResult = await recommendWithEngine(
       "basic-mpillow",
-      inputsFromBasicShoulder(shoulderCm),
+      basicBodyToEngineInputs(parsed.data),
     );
     if ("error" in engineResult) {
       return NextResponse.json(

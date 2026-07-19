@@ -39,8 +39,10 @@ import {
 } from "@/lib/spatial-fillings";
 import { buildFillingSnapshot, type FillingSnapshot } from "@/lib/results/filling-snapshot";
 import {
+  assertPreStripeRouteResolved,
   inputsFromBolsterHeight,
   inputsFromMpConfigData,
+  parseRecommendationRecord,
   recommendWithEngine,
   toPersistedRecommendationRecord,
 } from "@/lib/rules-engine";
@@ -109,6 +111,8 @@ const HoldSchema = z
     assistFilling: AssistFillingSchema.optional(),
     /** Locale-less return path when Stripe checkout is cancelled (default: /mp-config or /mbolster-config). */
     cancelPath: z.string().regex(/^\//).optional(),
+    /** Client journey-resolved recommendation record (entry→final flow + route decision). */
+    recommendationRecord: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.productType === "pillow") {
@@ -409,9 +413,13 @@ export async function POST(req: Request) {
     }),
   );
 
-  // Recommendation record at hold: copy from response if present, else recompute. Guest snapshot stays null.
-  let recommendation_record: Record<string, unknown> | null = null;
-  if (input.responseId) {
+  // Recommendation record at hold: client journey wins, else response copy, else recompute.
+  // Guest filling snapshot stays null.
+  let recommendation_record: Record<string, unknown> | null =
+    input.recommendationRecord && typeof input.recommendationRecord === "object"
+      ? input.recommendationRecord
+      : null;
+  if (!recommendation_record && input.responseId) {
     const { data: prior } = await admin
       .from("mp_config_responses")
       .select("recommendation_record")
@@ -436,6 +444,13 @@ export async function POST(req: Request) {
     if (!("error" in engineResult)) {
       recommendation_record = toPersistedRecommendationRecord(engineResult);
     }
+  }
+
+  const routeGate = assertPreStripeRouteResolved(
+    parseRecommendationRecord(recommendation_record) ?? { flowRoute: null },
+  );
+  if (!routeGate.ok) {
+    return NextResponse.json({ error: routeGate.reason }, { status: 409 });
   }
 
   const row = {
