@@ -39,7 +39,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
 
-type FillingItem = { id: number; name: string; subtype: string | null };
+export type FillingItem = { id: number; name: string; subtype: string | null };
 type TemplateRow = { id: number; name: string };
 
 /**
@@ -56,6 +56,7 @@ export function StaffAssistPanel({
   onLoadTemplate,
   sessionFillingTemplateId,
   onApplySizeTier,
+  onItemsChange,
 }: {
   current: SizeTier;
   placements: PillowPlacement[];
@@ -65,6 +66,8 @@ export function StaffAssistPanel({
   /** Kept only while the mix exactly matches the loaded template (slice 05 snapshot). */
   sessionFillingTemplateId: number | null;
   onApplySizeTier: (next: SizeTier) => Promise<void>;
+  /** Loaded filling items, surfaced for the x-ray renderer (slice 07). */
+  onItemsChange?: (items: FillingItem[]) => void;
 }) {
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
@@ -79,16 +82,19 @@ export function StaffAssistPanel({
         if (cancelled) return;
         setTemplates(d.templates ?? []);
         setItems(d.items ?? []);
+        onItemsChange?.(d.items ?? []);
       })
       .catch(() => {
         if (!cancelled) {
           setTemplates([]);
           setItems([]);
+          onItemsChange?.([]);
         }
       });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
   }, [current.size]);
 
   const itemName = (id: number) => {

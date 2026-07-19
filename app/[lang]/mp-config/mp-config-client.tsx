@@ -68,6 +68,7 @@ import { TierSuggestion } from "@/components/rules-engine/tier-suggestion";
 import {
   assertPreStripeRouteResolved,
   carryOverAnswers,
+  incompleteEngineInputs,
   isFlowRoutePending,
   missingStepsAfterCarryOver,
   parseRecommendationRecord,
@@ -127,10 +128,6 @@ import {
   togglePainArea,
 } from "@/lib/configurator/pain-areas";
 import {
-  incompleteEngineInputs,
-  wizardToEngineInputs,
-} from "@/lib/rules-engine/legacy-inputs";
-import {
   PreviewContactFields,
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
@@ -151,7 +148,9 @@ import {
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
-import { StaffAssistPanel } from "@/components/configurator/staff-assist-panel";
+import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
+import { XrayPillow } from "@/components/spatial/xray-pillow";
+import { SILHOUETTE_PATH } from "@/components/spatial/xray-assets";
 import {
   pillowPlacementsToRows,
   rowsToPillowPlacements,
@@ -179,8 +178,8 @@ function pickDefaultComponent(
   return (inStock ?? options[0]).item_id;
 }
 
-const PILLOW_PATH =
-  "M441.322 14.7728C409.558 27.3692 379.727 35.5927 331.965 35.5927C284.202 35.5927 254.372 27.3692 222.607 14.7728C182.901 -0.972711 120.418 -7.80227 69.7585 31.9038C19.099 71.6098 -2.80784 127.746 1.29974 209.896C5.52474 294.395 33.4738 349.165 83.8767 349.165C134.28 349.165 132.251 315.979 160.907 298.148C183.771 283.922 213.925 285.205 229.723 298.148C251.964 316.368 255.062 333.726 263.277 352.894C269.849 368.229 295.474 372.828 331.271 372.828L332.658 372.828C368.455 372.828 394.08 368.229 400.652 352.894C408.867 333.726 411.966 316.368 434.206 298.148C450.005 285.205 480.158 283.922 503.022 298.148C531.678 315.979 529.65 349.165 580.052 349.165C630.455 349.165 658.404 294.395 662.629 209.896C666.737 127.746 644.83 71.6098 594.171 31.9038C543.511 -7.80226 481.029 -0.972712 441.322 14.7728Z";
+// Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline).
+const PILLOW_PATH = SILHOUETTE_PATH;
 
 type Step =
   | "welcome"
@@ -301,6 +300,12 @@ export function MpConfigClient({
   // --- Staff assist mode (slice 04) — top-level so the mix survives step navigation ---
   const [assistPlacements, setAssistPlacements] = useState<PillowPlacement[]>([]);
   const [assistLoadedTemplate, setAssistLoadedTemplate] = useState<LoadedTemplate | null>(null);
+  // Filling items surfaced from the assist panel; the x-ray resolves shapes/colors by subtype.
+  const [assistItems, setAssistItems] = useState<FillingItem[]>([]);
+  const assistItemSubtypes = useMemo(
+    () => new Map(assistItems.map((i) => [i.id, i.subtype])),
+    [assistItems],
+  );
   // Kept only while the mix exactly matches the loaded template; slice 05's snapshot reads this.
   const sessionFillingTemplateId = useMemo(
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
@@ -1042,14 +1047,14 @@ export function MpConfigClient({
       : Math.round((currentStepIndex / (stepOrder.length - 1)) * 100);
 
   // Fetch shop recommendation from customize API (full mp-config path)
-  const fetchShopRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }) => {
+  const fetchShopRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }): Promise<RecommendationResponseData | null> => {
     const missing = incompleteEngineInputs(
       "premium-mpillow",
       wizardToEngineInputs(measurementData),
     );
     if (missing.length > 0) {
       toast.error("Complete all required answers before continuing");
-      return;
+      return null;
     }
 
     const shoulderCm = Number(measurementData.shoulderLength);
@@ -1100,8 +1105,10 @@ export function MpConfigClient({
         setSelectedCover(pickDefaultComponent(data.components.covers));
         setSelectedCase(pickDefaultComponent(data.components.cases));
       }
+      return data;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to get shop recommendation");
+      return null;
     } finally {
       setShopLoading(false);
     }
@@ -1684,7 +1691,11 @@ export function MpConfigClient({
                   style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
                 >
                   <svg
-                    className="absolute inset-0 pointer-events-none"
+                    className={cn(
+                      "absolute inset-0 pointer-events-none",
+                      // x-ray art direction: shell desaturates so fillings read inside
+                      staffAssist && "opacity-80 saturate-50",
+                    )}
                     viewBox="0 0 664 374"
                     xmlns="http://www.w3.org/2000/svg"
                     preserveAspectRatio="xMidYMid meet"
@@ -1713,6 +1724,13 @@ export function MpConfigClient({
                       vectorEffect="non-scaling-stroke"
                     />
                   </svg>
+                  {staffAssist && (
+                    <XrayPillow
+                      placements={assistPlacements}
+                      itemSubtypes={assistItemSubtypes}
+                      className="absolute inset-0"
+                    />
+                  )}
                   {(shopLoading || suggestionLoading) && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -1795,6 +1813,7 @@ export function MpConfigClient({
                     onLoadTemplate={setAssistLoadedTemplate}
                     sessionFillingTemplateId={sessionFillingTemplateId}
                     onApplySizeTier={applyAssistSizeTier}
+                    onItemsChange={setAssistItems}
                   />
                 ) : !shopRecommendation ? (
                   <p className="max-w-xs text-center text-xs text-white/80">
