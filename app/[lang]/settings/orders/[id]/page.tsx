@@ -65,6 +65,7 @@ import {
     groupBuildLinesByRole,
     isResultOrderBuildSnapshot,
 } from "@/lib/results/order-build-snapshot";
+import { CELLS } from "@/components/spatial/pillow-cell-grid";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -826,6 +827,10 @@ export default function OrderDetailPage() {
                                                     ? `Length: ${resultSnap.assigned_length ?? "—"}`
                                                     : `Size ${resultSnap.assigned_size ?? "—"} · ${resultSnap.assigned_tier ?? "—"} tier`;
                                             const groups = groupBuildLinesByRole(resultSnap.build_lines);
+                                            const nameByItem = new Map(
+                                                resultSnap.build_lines.map((l) => [l.item_id, l.name]),
+                                            );
+                                            const placements = resultSnap.filling_placements ?? [];
 
                                             return (
                                                 <div key={item.id} className="rounded-lg border p-4 space-y-3">
@@ -847,10 +852,48 @@ export default function OrderDetailPage() {
                                                             <span className="text-muted-foreground">Filling Template</span>
                                                             <div className="font-medium">
                                                                 {resultSnap.filling_template_name ??
-                                                                    `#${resultSnap.filling_template_id}`}
+                                                                    (resultSnap.filling_template_id != null
+                                                                        ? `#${resultSnap.filling_template_id}`
+                                                                        : "Custom mix")}
                                                             </div>
                                                         </div>
                                                     </div>
+                                                    {placements.length > 0 && (
+                                                        <div>
+                                                            <div className="text-xs font-medium text-muted-foreground mb-1">
+                                                                Placement breakdown
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {CELLS.map(({ section, subSection }) => {
+                                                                    const pieces = placements
+                                                                        .filter(
+                                                                            (p) =>
+                                                                                p.section === section &&
+                                                                                p.sub_section === subSection,
+                                                                        )
+                                                                        .sort((a, b) => a.slot - b.slot)
+                                                                        .map(
+                                                                            (p) =>
+                                                                                nameByItem.get(p.item_id) ??
+                                                                                `Item #${p.item_id}`,
+                                                                        );
+                                                                    return (
+                                                                        <div
+                                                                            key={`${section}-${subSection}`}
+                                                                            className="flex justify-between text-xs gap-2"
+                                                                        >
+                                                                            <span className="capitalize text-muted-foreground">
+                                                                                {section} · {subSection}
+                                                                            </span>
+                                                                            <span className="text-right">
+                                                                                {pieces.length ? pieces.join(", ") : "—"}
+                                                                            </span>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                     {groups.map((group) => (
                                                         <div key={group.role}>
                                                             <div className="text-xs font-medium text-muted-foreground mb-1">

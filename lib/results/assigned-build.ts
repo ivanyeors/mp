@@ -9,6 +9,7 @@ import {
   loadComposedSellable,
   type BolsterLength,
 } from "@/lib/results/composed-sellable";
+import { derivePackList, type PillowPlacementRow } from "@/lib/spatial-fillings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -16,6 +17,7 @@ type PrefLine = { item_id: number; quantity: number; category: string };
 type AddonLine = { item_id: number; quantity: number };
 
 export type AssignedBuildRow = {
+  id: string;
   product_type: string | null;
   assigned_size: string | null;
   assigned_tier: string | null;
@@ -35,6 +37,8 @@ export type AssignedBuildOk = {
   pricing: PriceResultOutput;
   shortages: ReturnType<typeof findStockShortages>;
   nameByItem: Map<number, string>;
+  /** Spatial Result snapshot rows (empty when the Result predates the spatial model). */
+  fillingPlacements: PillowPlacementRow[];
 };
 
 export type AssignedBuildErr = { ok: false; error: string };
@@ -48,7 +52,18 @@ export async function loadAssignedBuild(
   row: AssignedBuildRow,
 ): Promise<AssignedBuildOk | AssignedBuildErr> {
   const productType = (row.product_type as "pillow" | "bolster" | null) ?? "pillow";
-  if (!row.filling_template_id) {
+
+  // Fillings: the Result's spatial snapshot is the truth when present (ADR 0008);
+  // the assigned template's flat lines are the legacy fallback.
+  const { data: snapRows, error: snapErr } = await admin
+    .from("result_filling_placements")
+    .select("section, sub_section, slot, item_id")
+    .eq("result_id", row.id)
+    .order("slot");
+  if (snapErr) return { ok: false, error: snapErr.message };
+  const fillingPlacements = (snapRows ?? []) as PillowPlacementRow[];
+
+  if (!row.filling_template_id && fillingPlacements.length === 0) {
     return { ok: false, error: "Result has no Filling Template" };
   }
 
@@ -77,14 +92,20 @@ export async function loadAssignedBuild(
   const preferenceLines = (row.preference_lines ?? []) as PrefLine[];
   const addonLines = (row.addon_lines ?? []) as AddonLine[];
 
-  const { data: tplLines, error: linesErr } = await admin
-    .from("bom_template_lines")
-    .select("item_id, quantity")
-    .eq("template_id", row.filling_template_id);
-  if (linesErr) return { ok: false, error: linesErr.message };
+  let tplLines: Array<{ item_id: number; quantity: number }> = [];
+  if (fillingPlacements.length === 0 && row.filling_template_id) {
+    const { data, error: linesErr } = await admin
+      .from("bom_template_lines")
+      .select("item_id, quantity")
+      .eq("template_id", row.filling_template_id);
+    if (linesErr) return { ok: false, error: linesErr.message };
+    tplLines = (data ?? []) as Array<{ item_id: number; quantity: number }>;
+  }
 
   const composedBomRaw = composed.sellable.bomLines;
-  const fillItemIds = (tplLines ?? []).map((l) => l.item_id as number);
+  // Stock commit and COGS consume this flatten (snapshot rows win, template lines fall back).
+  const fillPack = derivePackList(fillingPlacements, tplLines);
+  const fillItemIds = fillPack.map((l) => l.item_id);
   const allItemIds = [
     ...new Set([
       ...composedBomRaw.map((l) => l.item_id),
@@ -134,10 +155,10 @@ export async function loadAssignedBuild(
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  const fillingTemplateLines = (tplLines ?? []).map((l) => ({
-    item_id: l.item_id as number,
-    quantity: Number(l.quantity),
-    category: itemById.get(l.item_id as number)?.category ?? "unknown",
+  const fillingTemplateLines = fillPack.map((l) => ({
+    item_id: l.item_id,
+    quantity: l.count,
+    category: itemById.get(l.item_id)?.category ?? "unknown",
   }));
 
   const assembled = assembleBuild({
@@ -205,5 +226,6 @@ export async function loadAssignedBuild(
     pricing,
     shortages,
     nameByItem,
+    fillingPlacements,
   };
 }

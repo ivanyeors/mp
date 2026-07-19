@@ -213,11 +213,14 @@ export async function POST(
     );
   }
 
-  const { data: fillingTpl } = await admin
-    .from("bom_templates")
-    .select("name")
-    .eq("id", row.filling_template_id!)
-    .maybeSingle();
+  // Null template id = diverged custom mix; the Result snapshot rows carry the fillings.
+  const { data: fillingTpl } = row.filling_template_id
+    ? await admin
+        .from("bom_templates")
+        .select("name")
+        .eq("id", row.filling_template_id)
+        .maybeSingle()
+    : { data: null };
 
   const snapshot = buildResultOrderSnapshot({
     resultId: id,
@@ -225,8 +228,9 @@ export async function POST(
     assignedSize: row.assigned_size,
     assignedTier: row.assigned_tier,
     assignedLength: row.assigned_length,
-    fillingTemplateId: row.filling_template_id!,
+    fillingTemplateId: row.filling_template_id,
     fillingTemplateName: fillingTpl?.name ?? null,
+    fillingPlacements: build.fillingPlacements,
     buildLines: build.lines,
     nameByItem: build.nameByItem,
     cogs: build.cogs,

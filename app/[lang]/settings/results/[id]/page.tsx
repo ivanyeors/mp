@@ -11,6 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatFillingPreview } from "@/lib/filling-preview";
+import { PillowCellGrid, type PillowGridItem } from "@/components/spatial/pillow-cell-grid";
+import {
+  flattenToPackList,
+  pillowPlacementsToRows,
+  rowsToPillowPlacements,
+  type PillowPlacement,
+  type PillowPlacementRow,
+} from "@/lib/spatial-fillings/core";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
@@ -142,6 +150,11 @@ export default function ResultDetailPage() {
   const [fillingTemplates, setFillingTemplates] = useState<FillingTemplateOption[]>([]);
   const [assignPrep, setAssignPrep] = useState<AssignPrepData | null>(null);
   const [selectedFillingPreview, setSelectedFillingPreview] = useState<Array<{ variant: string; qty: number }>>([]);
+  // Spatial editor state (pillow): confirmed template's placements, editable per cell.
+  const [placements, setPlacements] = useState<PillowPlacement[]>([]);
+  const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
+  const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [fillingItems, setFillingItems] = useState<PillowGridItem[]>([]);
   const [prepLoading, setPrepLoading] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -244,9 +257,14 @@ export default function ResultDetailPage() {
     }
   }, [canAssign, sizeKey, productType, assignLength, assignSize, assignTier]);
 
+  // Size×tier (or length) change clears the filling pick + placements; the prep
+  // effect below reloads the Default Filling Template hint for the new key.
   useEffect(() => {
     setFillingTemplateId("");
     setSelectedFillingPreview([]);
+    setPlacements([]);
+    setTemplateHadPlacements(true);
+    setTemplateLegacyLines([]);
   }, [assignSize, assignTier, assignLength, productType]);
 
   useEffect(() => {
@@ -254,10 +272,39 @@ export default function ResultDetailPage() {
     void loadAssignPrep();
   }, [row, canAssign, loadAssignPrep]);
 
+  // Filling Items for the spatial editor (pillow assign only).
+  useEffect(() => {
+    if (!canAssign || productType !== "pillow") return;
+    let cancelled = false;
+    (async () => {
+      const { supabaseClient } = await import("@/lib/supabase/client");
+      const { data } = await supabaseClient
+        .from("items")
+        .select("id,name,subtype")
+        .eq("category", "filling")
+        .eq("is_active", true)
+        .order("name");
+      if (!cancelled) {
+        setFillingItems(
+          (data ?? []).map((i) => ({
+            id: Number(i.id),
+            label: i.subtype ? `${i.name} (${i.subtype})` : i.name,
+          })),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canAssign, productType]);
+
   const loadSelectedFillingPreview = useCallback(
     async (templateId: string) => {
       if (!templateId) {
         setSelectedFillingPreview([]);
+        setPlacements([]);
+        setTemplateHadPlacements(true);
+        setTemplateLegacyLines([]);
         return;
       }
       try {
@@ -271,6 +318,15 @@ export default function ResultDetailPage() {
           item_id: Number(l.item_id),
           quantity: Number(l.quantity),
         }));
+        if (productType === "pillow") {
+          // Confirming a template loads its placements into the spatial editor;
+          // legacy flat templates load an empty grid (notice shown, like Configure).
+          const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
+          setPlacements(rowsToPillowPlacements(placementRows));
+          setTemplateHadPlacements(placementRows.length > 0);
+          setTemplateLegacyLines(lines);
+          return;
+        }
         const { supabaseClient } = await import("@/lib/supabase/client");
         const itemIds = lines.map((l) => l.item_id);
         const { data: itemRows } = itemIds.length
@@ -284,7 +340,7 @@ export default function ResultDetailPage() {
         setSelectedFillingPreview([]);
       }
     },
-    [sizeKey, to],
+    [productType, sizeKey, to],
   );
 
   const assign = useCallback(async () => {
@@ -305,6 +361,8 @@ export default function ResultDetailPage() {
               assignedSize: assignSize,
               assignedTier: assignTier,
               fillingTemplateId: Number(fillingTemplateId),
+              // Spatial Result snapshot; server clears the template id on divergence.
+              placements: pillowPlacementsToRows(placements),
             };
       const res = await fetch(`/api/results/${encodeURIComponent(id)}/assign`, {
         method: "POST",
@@ -331,12 +389,20 @@ export default function ResultDetailPage() {
     assignLength,
     assignSize,
     assignTier,
+    placements,
     load,
   ]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Derived flat pack list — same flatten the server persists (ADR 0008).
+  const packList = useMemo(() => flattenToPackList(placements), [placements]);
+  const fillingLabelById = useMemo(
+    () => new Map(fillingItems.map((i) => [i.id, i.label])),
+    [fillingItems],
+  );
 
   const refreshSuggestion = useCallback(async () => {
     if (!id) return;
@@ -485,7 +551,9 @@ export default function ResultDetailPage() {
               )}
               <div className="rounded-md border bg-muted/30 p-3">
                 <div className="text-xs text-muted-foreground">Filling Template</div>
-                <div className="font-medium">#{row.filling_template_id ?? "—"}</div>
+                <div className="font-medium">
+                  {row.filling_template_id != null ? `#${row.filling_template_id}` : "Custom mix"}
+                </div>
               </div>
               <div className="rounded-md border bg-muted/30 p-3">
                 <div className="text-xs text-muted-foreground">Final amount</div>
@@ -650,7 +718,7 @@ export default function ResultDetailPage() {
                     </Select>
                   </Field>
 
-                  {fillingTemplateId && selectedFillingPreview.length > 0 && (
+                  {productType === "bolster" && fillingTemplateId && selectedFillingPreview.length > 0 && (
                     <div className="rounded-md border bg-muted/30 p-3 text-sm">
                       <div className="text-xs text-muted-foreground mb-1">Selected preview</div>
                       <ul className="space-y-0.5">
@@ -660,6 +728,40 @@ export default function ResultDetailPage() {
                           </li>
                         ))}
                       </ul>
+                    </div>
+                  )}
+
+                  {productType === "pillow" && fillingTemplateId && (
+                    <div className="space-y-3">
+                      {!templateHadPlacements && templateLegacyLines.length > 0 && (
+                        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                          <div className="font-medium">
+                            Legacy flat recipe — saving spatially will set placements.
+                          </div>
+                          <ul className="mt-1 list-inside list-disc text-muted-foreground">
+                            {templateLegacyLines.map((l) => (
+                              <li key={l.item_id}>
+                                {fillingLabelById.get(l.item_id) ?? `Item #${l.item_id}`} × {l.quantity}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      <PillowCellGrid value={placements} onChange={setPlacements} items={fillingItems} />
+                      <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                        <div className="text-xs text-muted-foreground mb-1">Derived pack list</div>
+                        {packList.length > 0 ? (
+                          <ul className="space-y-0.5">
+                            {packList.map((line) => (
+                              <li key={line.item_id}>
+                                {fillingLabelById.get(line.item_id) ?? `Item #${line.item_id}`} ×{line.count}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-muted-foreground">No pieces placed yet.</p>
+                        )}
+                      </div>
                     </div>
                   )}
 
