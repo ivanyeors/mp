@@ -892,6 +892,27 @@ export async function renameInventoryItem(input: z.infer<typeof RenameItemSchema
   return { ok: true }
 }
 
+const ItemImageSchema = z.object({
+  itemId: z.number().int().positive(),
+  assetId: z.string().uuid().nullable(),
+})
+
+/** Slice 12: link an Item to its primary Media Asset (add-on card imagery). */
+export async function setItemPrimaryImage(input: z.infer<typeof ItemImageSchema>) {
+  const parsed = ItemImageSchema.parse(input)
+  const admin = supabaseAdmin()
+  const { data, error } = await admin
+    .from('items')
+    .update({ primary_media_asset_id: parsed.assetId })
+    .eq('id', parsed.itemId)
+    .eq('is_active', true)
+    .select('id')
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Item not found or already inactive')
+  return { ok: true }
+}
+
 export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
   const parsed = AddItemSchema.parse(input)
   const admin = supabaseAdmin()
