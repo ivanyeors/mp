@@ -32,12 +32,21 @@ import {
 } from "@/lib/configurator/pre-order-persist";
 import { getAdminContext } from "@/lib/auth/admin";
 import {
+  rowsToBolsterPlacements,
   rowsToPillowPlacements,
+  validateBolsterPlacements,
   validatePillowPlacements,
+  type BolsterPlacement,
+  type BolsterPlacementRow,
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
-import { buildFillingSnapshot, type FillingSnapshot } from "@/lib/results/filling-snapshot";
+import {
+  buildBolsterFillingSnapshot,
+  buildFillingSnapshot,
+  type BolsterFillingSnapshot,
+  type FillingSnapshot,
+} from "@/lib/results/filling-snapshot";
 import {
   assertPreStripeRouteResolved,
   inputsFromBolsterHeight,
@@ -63,13 +72,14 @@ const AddonLineSchema = z.object({
   quantity: z.number().positive().default(1),
 });
 
-/** Staff assist spatial mix (slice 05). Shape-checked here; validatePillowPlacements does the rest. */
+/** Staff assist spatial mix (slices 05/13). Shape gate — the per-kind lib validation
+ * does the rest (bolster rows carry no cell address; pillow validation rejects ""). */
 const AssistFillingSchema = z.object({
   placements: z
     .array(
       z.object({
-        section: z.string(),
-        sub_section: z.string(),
+        section: z.string().default(""),
+        sub_section: z.string().default(""),
         slot: z.number().int(),
         item_id: z.number().int().positive(),
       }),
@@ -239,16 +249,18 @@ export async function POST(req: Request) {
     input.discoverySourceOther,
   );
 
-  // Staff assist snapshot (slice 05): staff-gated, validated, template claim
-  // re-verified against the catalog's current placements. Guests never reach this.
-  let fillingSnapshot: FillingSnapshot | null = null;
+  // Staff assist snapshot (slices 05/13): staff-gated, validated per product kind,
+  // template claim re-verified against the catalog's current placements. Guests
+  // never reach this. Bolster uses its own schema — never the pillow enums.
+  let fillingSnapshot: FillingSnapshot | BolsterFillingSnapshot | null = null;
+  const snapshotTable =
+    productType === "bolster" ? "result_bolster_filling_placements" : "result_filling_placements";
   if (input.assistFilling) {
     const staff = await getAdminContext();
     if (!staff) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const placements = rowsToPillowPlacements(input.assistFilling.placements);
-    const placementItemIds = [...new Set(placements.map((p) => p.itemId))];
+    const placementItemIds = [...new Set(input.assistFilling.placements.map((p) => p.item_id))];
     const { data: fillingItems } = await admin
       .from("items")
       .select("id, category")
@@ -256,20 +268,43 @@ export async function POST(req: Request) {
     const itemCategories = new Map(
       (fillingItems ?? []).map((i) => [i.id as number, String(i.category)]),
     );
-    const valid = validatePillowPlacements(placements, itemCategories);
-    if (!valid.ok) {
-      return NextResponse.json({ error: valid.error }, { status: 400 });
-    }
     const claimedTemplateId = input.assistFilling.templateId ?? null;
-    let templatePlacements: PillowPlacement[] | null = null;
-    if (claimedTemplateId != null) {
-      const { data: tplRows } = await admin
-        .from("filling_template_placements")
-        .select("section, sub_section, slot, item_id")
-        .eq("template_id", claimedTemplateId);
-      templatePlacements = rowsToPillowPlacements((tplRows ?? []) as PillowPlacementRow[]);
+
+    if (productType === "bolster") {
+      const placements = rowsToBolsterPlacements(input.assistFilling.placements);
+      const valid = validateBolsterPlacements(placements, itemCategories);
+      if (!valid.ok) {
+        return NextResponse.json({ error: valid.error }, { status: 400 });
+      }
+      let templatePlacements: BolsterPlacement[] | null = null;
+      if (claimedTemplateId != null) {
+        const { data: tplRows } = await admin
+          .from("bolster_template_placements")
+          .select("slot, item_id")
+          .eq("template_id", claimedTemplateId);
+        templatePlacements = rowsToBolsterPlacements((tplRows ?? []) as BolsterPlacementRow[]);
+      }
+      fillingSnapshot = buildBolsterFillingSnapshot({
+        placements,
+        claimedTemplateId,
+        templatePlacements,
+      });
+    } else {
+      const placements = rowsToPillowPlacements(input.assistFilling.placements);
+      const valid = validatePillowPlacements(placements, itemCategories);
+      if (!valid.ok) {
+        return NextResponse.json({ error: valid.error }, { status: 400 });
+      }
+      let templatePlacements: PillowPlacement[] | null = null;
+      if (claimedTemplateId != null) {
+        const { data: tplRows } = await admin
+          .from("filling_template_placements")
+          .select("section, sub_section, slot, item_id")
+          .eq("template_id", claimedTemplateId);
+        templatePlacements = rowsToPillowPlacements((tplRows ?? []) as PillowPlacementRow[]);
+      }
+      fillingSnapshot = buildFillingSnapshot({ placements, claimedTemplateId, templatePlacements });
     }
-    fillingSnapshot = buildFillingSnapshot({ placements, claimedTemplateId, templatePlacements });
   }
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
@@ -497,16 +532,17 @@ export async function POST(req: Request) {
 
   if (fillingSnapshot) {
     // Replace-insert copy rows keyed by result — no FK to template placements, so
-    // later catalog template edits never change this Result (ADR 0008).
+    // later catalog template edits never change this Result (ADR 0008). Bolster
+    // rows land in their own table (own schema).
     const { error: delErr } = await admin
-      .from("result_filling_placements")
+      .from(snapshotTable)
       .delete()
       .eq("result_id", resultId);
     if (delErr) {
       return NextResponse.json({ error: delErr.message }, { status: 500 });
     }
     const { error: insErr } = await admin
-      .from("result_filling_placements")
+      .from(snapshotTable)
       .insert(fillingSnapshot.rows.map((r) => ({ result_id: resultId, ...r })));
     if (insErr) {
       return NextResponse.json({ error: insErr.message }, { status: 500 });

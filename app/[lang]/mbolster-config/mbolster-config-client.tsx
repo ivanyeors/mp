@@ -104,6 +104,19 @@ import {
   type HeightUnit,
 } from "@/lib/configurator/height-draft";
 import { soleCaseId } from "@/lib/configurator/preference-policy";
+import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
+import type { FillingItem } from "@/components/configurator/staff-assist-panel";
+import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { BOLSTER_SILHOUETTE_PATH } from "@/components/spatial/xray-assets";
+import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
+import {
+  bolsterPlacementsToRows,
+  type BolsterPlacement,
+} from "@/lib/spatial-fillings/core";
+import {
+  xrayColorVarStyle,
+  type ColorOverrideRow,
+} from "@/lib/spatial-fillings/color-overrides";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
@@ -125,9 +138,8 @@ const FLOW_UI_LABEL: Record<RuleFlow, string> = {
   mbolster: "Mbolster",
 };
 
-/** Simple capsule silhouette for the left visual panel. */
-const BOLSTER_PATH =
-  "M80 40 C80 18 120 18 160 18 L504 18 C544 18 584 18 584 40 L584 334 C584 356 544 356 504 356 L160 356 C120 356 80 356 80 334 Z";
+/** Capsule silhouette for the left visual panel — one asset pipeline (ADR 0009). */
+const BOLSTER_PATH = BOLSTER_SILHOUETTE_PATH;
 
 function toNumber(value: string): number | null {
   const trimmed = value.trim();
@@ -180,7 +192,14 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
   "zh-CN": "查看全部常见问题",
 };
 
-export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
+export function MbolsterConfigClient({
+  info,
+  staffAssist = false,
+}: {
+  info: MbolsterConfigInfo;
+  /** Staff assist mode (slice 13): true only for Staff sessions (admin_users / bootstrap). */
+  staffAssist?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -246,6 +265,32 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
   const suggestedLength = (shopRecommendation?.bolster_variant ?? null) as BolsterLength | null;
+
+  // --- Staff assist mode (slice 13) — top-level so the mix survives step navigation ---
+  const [assistPlacements, setAssistPlacements] = React.useState<BolsterPlacement[]>([]);
+  const [assistLoadedTemplate, setAssistLoadedTemplate] = React.useState<LoadedTemplate | null>(null);
+  // Filling items surfaced from the assist panel; the x-ray resolves shapes/colors by subtype.
+  const [assistItems, setAssistItems] = React.useState<FillingItem[]>([]);
+  const assistItemSubtypes = React.useMemo(
+    () => new Map(assistItems.map((i) => [i.id, i.subtype])),
+    [assistItems],
+  );
+  // Product Builder color overrides (slice 11) → CSS vars on the x-ray container.
+  const [assistColorOverrides, setAssistColorOverrides] = React.useState<ColorOverrideRow[]>([]);
+  const xrayColorVars = React.useMemo(
+    () => xrayColorVarStyle(assistColorOverrides),
+    [assistColorOverrides],
+  );
+  // Kept only while the mix exactly matches the loaded template; the hold snapshot claims this.
+  const sessionFillingTemplateId = React.useMemo(
+    () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
+    [assistLoadedTemplate, assistPlacements],
+  );
+  // Length-based eligibility: a different recommended length invalidates the loaded mix.
+  React.useEffect(() => {
+    setAssistPlacements([]);
+    setAssistLoadedTemplate(null);
+  }, [suggestedLength]);
 
   const addonTotal = React.useMemo(() => {
     let sum = 0;
@@ -752,6 +797,15 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          // Staff assist snapshot (slice 13): session mix + still-matching template claim.
+          ...(staffAssist && assistPlacements.length > 0
+            ? {
+                assistFilling: {
+                  placements: bolsterPlacementsToRows(assistPlacements),
+                  templateId: sessionFillingTemplateId,
+                },
+              }
+            : {}),
           shippingMethodId: selectedShippingId,
           shippingAddress: holdAddress,
           cancelPath: "/mbolster-config",
@@ -783,6 +837,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     state.sleepPosition,
     holdFields,
     shopRecommendation?.recommendation_record,
+    staffAssist,
+    assistPlacements,
+    sessionFillingTemplateId,
   ]);
 
   const flowRouteBlocksHold = (() => {
@@ -885,10 +942,15 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
               <div
                 className="relative"
-                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
+                // xrayColorVars: Product Builder color overrides reach the x-ray here
+                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)", ...xrayColorVars }}
               >
                 <svg
-                  className="absolute inset-0 pointer-events-none"
+                  className={cn(
+                    "absolute inset-0 pointer-events-none",
+                    // x-ray art direction: shell desaturates so fillings read inside
+                    staffAssist && "opacity-80 saturate-50",
+                  )}
                   viewBox="0 0 664 374"
                   xmlns="http://www.w3.org/2000/svg"
                   preserveAspectRatio="xMidYMid meet"
@@ -917,6 +979,13 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     vectorEffect="non-scaling-stroke"
                   />
                 </svg>
+                {staffAssist && (
+                  <XrayBolster
+                    placements={assistPlacements}
+                    itemSubtypes={assistItemSubtypes}
+                    className="absolute inset-0"
+                  />
+                )}
                 {shopLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -984,7 +1053,18 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 );
               })()}
               <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
-              {!shopRecommendation ? (
+              {staffAssist && suggestedLength ? (
+                <StaffAssistBolsterPanel
+                  length={suggestedLength}
+                  placements={assistPlacements}
+                  onPlacementsChange={setAssistPlacements}
+                  loadedTemplate={assistLoadedTemplate}
+                  onLoadTemplate={setAssistLoadedTemplate}
+                  sessionFillingTemplateId={sessionFillingTemplateId}
+                  onItemsChange={setAssistItems}
+                  onColorOverridesChange={setAssistColorOverrides}
+                />
+              ) : !shopRecommendation ? (
                 <p className="max-w-xs text-center text-xs text-white/80">
                   Fillings are chosen by our team after review.
                 </p>

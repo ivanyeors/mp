@@ -24,10 +24,15 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
 import { PillowCellGrid } from "@/components/spatial/pillow-cell-grid";
+import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment-list";
 import {
+  bolsterPlacementsToRows,
   flattenToPackList,
   pillowPlacementsToRows,
+  rowsToBolsterPlacements,
   rowsToPillowPlacements,
+  type BolsterPlacement,
+  type BolsterPlacementRow,
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
@@ -42,11 +47,12 @@ type FillingTemplateRow = {
   is_active: boolean;
 };
 
-/** Ranked unpromoted mix (slice 09): fingerprint-grouped Result snapshots for this scope. */
+/** Ranked unpromoted mix (slices 09/13): fingerprint-grouped Result snapshots for this scope.
+ * Pillow entries carry cell rows; bolster entries carry slot rows (own schema). */
 type UnpromotedEntry = {
   fingerprint: string;
   count: number;
-  placements: PillowPlacementRow[];
+  placements: Array<PillowPlacementRow | BolsterPlacementRow>;
   packList: Array<{ item_id: number; count: number }>;
 };
 
@@ -839,7 +845,6 @@ export default function ConfigureCardPage() {
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
-                  buildPayloadLines={buildPayloadLines}
                 />
               </TabsContent>
             </Tabs>
@@ -1013,7 +1018,6 @@ export default function ConfigureCardPage() {
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
-                  buildPayloadLines={buildPayloadLines}
                 />
               </TabsContent>
             </Tabs>
@@ -1138,7 +1142,6 @@ function FillingConfigPanel({
   settingsPath,
   loadFillingTemplates,
   deleteTemplateById,
-  buildPayloadLines,
 }: {
   kind: "pillow" | "bolster";
   templateKey: string;
@@ -1146,7 +1149,6 @@ function FillingConfigPanel({
   settingsPath: (path: string) => string;
   loadFillingTemplates: (kind: "pillow" | "bolster", key: string) => Promise<FillingTemplateRow[]>;
   deleteTemplateById: (templateId: number) => Promise<void>;
-  buildPayloadLines: (lines: BomLine[]) => { item_id: number; quantity: number }[];
 }) {
   const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
@@ -1154,11 +1156,13 @@ function FillingConfigPanel({
   const [notes, setNotes] = useState("");
   const [active, setActive] = useState(true);
   const [lines, setLines] = useState<BomLine[]>([]);
-  // Spatial recipe (pillow only): placements are the "where" truth; lines stay for the legacy notice.
+  // Spatial recipe: placements are the "where" truth; lines stay for the legacy notice.
+  // Pillow = 3×3 cells; bolster = single compartment slot list (own schema, no cap).
   const [placements, setPlacements] = useState<PillowPlacement[]>([]);
+  const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [hadPlacements, setHadPlacements] = useState(false);
   const [saving, setSaving] = useState(false);
-  // Unpromoted ranking + Promote (slice 09): Admin Panel only, pillow only (bolster is slice 13).
+  // Unpromoted ranking + Promote (slices 09/13): Admin Panel only.
   const [unpromoted, setUnpromoted] = useState<UnpromotedEntry[]>([]);
   const [promoteTarget, setPromoteTarget] = useState<UnpromotedEntry | null>(null);
   const [promoteName, setPromoteName] = useState("");
@@ -1171,6 +1175,7 @@ function FillingConfigPanel({
     setActive(true);
     setLines([]);
     setPlacements([]);
+    setBolsterMix([]);
     setHadPlacements(false);
   }, []);
 
@@ -1191,10 +1196,9 @@ function FillingConfigPanel({
   }, [kind, templateKey, loadFillingTemplates, resetEditor]);
 
   const fetchUnpromoted = useCallback(async (): Promise<UnpromotedEntry[]> => {
-    if (kind !== "pillow") return [];
     const res = await fetch(
       settingsPath(
-        `/settings/inventory/configure/unpromoted?kind=pillow&key=${encodeURIComponent(templateKey)}`,
+        `/settings/inventory/configure/unpromoted?kind=${kind}&key=${encodeURIComponent(templateKey)}`,
       ),
       { method: "GET" },
     );
@@ -1234,7 +1238,7 @@ function FillingConfigPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          kind: "pillow",
+          kind,
           key: templateKey,
           fingerprint: promoteTarget.fingerprint,
           name: trimmed,
@@ -1263,6 +1267,7 @@ function FillingConfigPanel({
       setActive(true);
       setLines([]);
       setPlacements([]);
+      setBolsterMix([]);
       setHadPlacements(false);
       return;
     }
@@ -1279,13 +1284,25 @@ function FillingConfigPanel({
       }
       type LineRow = { item_id: number | string; quantity: number | string };
       setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
-      const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
-      setPlacements(kind === "pillow" ? rowsToPillowPlacements(placementRows) : []);
-      setHadPlacements(placementRows.length > 0);
+      // Per-kind spatial rows: bolster rows are slot-only (never pillow enums).
+      if (kind === "pillow") {
+        const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
+        setPlacements(rowsToPillowPlacements(placementRows));
+        setHadPlacements(placementRows.length > 0);
+      } else {
+        const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
+        setBolsterMix(rowsToBolsterPlacements(placementRows));
+        setHadPlacements(placementRows.length > 0);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load template lines");
     }
   };
+
+  // Per-kind spatial payload; the PUT route validates and stores per schema.
+  const spatialRows = () =>
+    kind === "pillow" ? pillowPlacementsToRows(placements) : bolsterPlacementsToRows(bolsterMix);
+  const spatialCount = kind === "pillow" ? placements.length : bolsterMix.length;
 
   const putTemplatePlacements = async (templateId: number) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), {
@@ -1294,7 +1311,7 @@ function FillingConfigPanel({
       body: JSON.stringify({
         notes: notes.trim() || undefined,
         is_active: active,
-        placements: pillowPlacementsToRows(placements),
+        placements: spatialRows(),
       }),
     });
     const payload = await res.json().catch(() => null);
@@ -1309,9 +1326,9 @@ function FillingConfigPanel({
     }
     setSaving(true);
     try {
-      // Spatial save of an existing pillow template: PUT placements only — legacy
+      // Spatial save of an existing template: PUT placements only — legacy
       // flat lines stay untouched server-side as the pre-spatial record (ADR 0008).
-      const existing = kind === "pillow" ? templates.find((t) => t.name === trimmed) : undefined;
+      const existing = templates.find((t) => t.name === trimmed);
       if (existing) {
         await putTemplatePlacements(existing.id);
         setTemplates(await loadFillingTemplates(kind, templateKey));
@@ -1330,15 +1347,15 @@ function FillingConfigPanel({
           notes: notes.trim() || undefined,
           role: "filling",
           is_active: active,
-          lines: kind === "pillow" ? [] : buildPayloadLines(lines),
+          lines: [],
         }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to save Filling Template");
       const savedId = payload?.template?.id as number | undefined;
-      if (kind === "pillow" && savedId) {
+      if (savedId) {
         await putTemplatePlacements(savedId);
-        setHadPlacements(placements.length > 0);
+        setHadPlacements(spatialCount > 0);
       }
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
@@ -1393,7 +1410,10 @@ function FillingConfigPanel({
     [items, templateKey],
   );
   // Derived BOM: same flatten the server runs over placement rows (ADR 0008).
-  const packList = useMemo(() => flattenToPackList(placements), [placements]);
+  const packList = useMemo(
+    () => flattenToPackList(kind === "pillow" ? placements : bolsterMix),
+    [kind, placements, bolsterMix],
+  );
   const isLegacyFlat = selectedId !== "" && !hadPlacements && lines.length > 0;
   const itemLabel = (itemId: number) => {
     const item = itemsById.get(itemId);
@@ -1488,8 +1508,7 @@ function FillingConfigPanel({
           </Table>
         </div>
       )}
-      {kind === "pillow" ? (
-        <div className="space-y-3">
+      <div className="space-y-3">
           {isLegacyFlat && (
             <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
               <div className="font-medium">Legacy flat recipe — saving spatially will set placements.</div>
@@ -1502,9 +1521,16 @@ function FillingConfigPanel({
               </ul>
             </div>
           )}
-          <Section title="Spatial recipe (Section × sub-section, up to 5 pieces per cell)">
-            <PillowCellGrid value={placements} onChange={setPlacements} items={gridItems} />
-          </Section>
+          {kind === "pillow" ? (
+            <Section title="Spatial recipe (Section × sub-section, up to 5 pieces per cell)">
+              <PillowCellGrid value={placements} onChange={setPlacements} items={gridItems} />
+            </Section>
+          ) : (
+            // Mbolster: one long compartment — ordered list, no piece cap, never the 3×3 grid.
+            <Section title="Single compartment (ordered mix — no piece cap)">
+              <BolsterCompartmentList value={bolsterMix} onChange={setBolsterMix} items={gridItems} />
+            </Section>
+          )}
           <Section title="Derived pack list">
             <ConfigureTable headers={["Filling", "Count"]}>
               {packList.map((line) => (
@@ -1525,7 +1551,7 @@ function FillingConfigPanel({
           <Section title="Popular unpromoted mixes">
             {unpromoted.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No unpromoted mixes for size {templateKey} yet.
+                No unpromoted mixes for {kind === "pillow" ? "size" : "length"} {templateKey} yet.
               </p>
             ) : (
               <div className="space-y-2">
@@ -1547,9 +1573,11 @@ function FillingConfigPanel({
                         Promote
                       </Button>
                     </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {cellSummary(entry.placements).join(" · ")}
-                    </div>
+                    {kind === "pillow" && (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {cellSummary(entry.placements as PillowPlacementRow[]).join(" · ")}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1565,8 +1593,9 @@ function FillingConfigPanel({
               <DialogHeader>
                 <DialogTitle>Promote to Filling Template</DialogTitle>
                 <DialogDescription>
-                  Creates a named active catalog Filling Template for size {templateKey} from this
-                  mix. It leaves the unpromoted list once promoted.
+                  Creates a named active catalog Filling Template for{" "}
+                  {kind === "pillow" ? "size" : "length"} {templateKey} from this mix. It leaves the
+                  unpromoted list once promoted.
                 </DialogDescription>
               </DialogHeader>
               <Input
@@ -1585,10 +1614,7 @@ function FillingConfigPanel({
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
-      ) : (
-        <FillingLinesEditor items={items} lines={lines} setLines={setLines} sizeLabel={templateKey} />
-      )}
+      </div>
     </div>
   );
 }
@@ -1715,46 +1741,6 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
       )}
       <Separator />
     </div>
-  );
-}
-
-function FillingLinesEditor({
-  items,
-  lines,
-  setLines,
-  sizeLabel,
-}: {
-  items: Item[];
-  lines: BomLine[];
-  setLines: Dispatch<SetStateAction<BomLine[]>>;
-  sizeLabel: string;
-}) {
-  const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
-  const fillings = useMemo(() => items.filter((i) => i.category === "filling"), [items]);
-
-  const upsert = (itemId: number, quantity: number) => {
-    setLines((prev) => {
-      const rest = prev.filter((l) => l.item_id !== itemId);
-      if (quantity <= 0) return rest;
-      return [...rest, { item_id: itemId, quantity }];
-    });
-  };
-  const remove = (itemId: number) => setLines((prev) => prev.filter((l) => l.item_id !== itemId));
-
-  return (
-    <DynamicPartSection
-      title="Fillings"
-      sizeLabel={sizeLabel}
-      lines={lines}
-      availableItems={fillings}
-      getItem={(id) => itemsById.get(id)}
-      upsert={upsert}
-      remove={remove}
-      variantResolver={(item, fallbackSize) =>
-        item.size ?? fallbackSize ?? normalizeNameOrFallback(item.subtype ?? item.name, "filling")
-      }
-      optionLabelResolver={(item) => getFillingDisplayLabel(item, sizeLabel)}
-    />
   );
 }
 

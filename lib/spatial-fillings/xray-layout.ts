@@ -4,7 +4,14 @@
  * compare the x-ray against the physical build. Pure, no I/O.
  */
 
-import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "./core";
+import {
+  SECTIONS,
+  SUB_SECTIONS,
+  type BolsterPlacement,
+  type PillowPlacement,
+  type Section,
+  type SubSection,
+} from "./core";
 
 export const XRAY_VIEW = { width: 664, height: 374 } as const;
 
@@ -72,6 +79,56 @@ export type PieceLayout = {
 };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
+
+// --- Mbolster: single long compartment (own schema, no cells) ----------------
+
+/** Capsule interior frame inside XRAY_VIEW (single region — no cell grid). */
+export const BOLSTER_FRAME: CellFrame = {
+  x: 90,
+  y: 28,
+  w: XRAY_VIEW.width - 180,
+  h: XRAY_VIEW.height - 56,
+};
+
+export type BolsterPieceLayout = {
+  key: string;
+  slot: number;
+  itemId: number;
+  cx: number;
+  cy: number;
+  size: number;
+};
+
+/**
+ * Deterministic left-to-right rows for n pieces, n unbounded (no cap in v1):
+ * grid columns grow with sqrt(n·aspect), so pieces compress — smaller, closer —
+ * as count grows but each keeps its own outline (ADR 0009 guardrail 2).
+ */
+export function layoutBolsterPlacements(placements: BolsterPlacement[]): BolsterPieceLayout[] {
+  const pieces = [...placements].sort((a, b) => a.slot - b.slot);
+  const n = pieces.length;
+  if (n === 0) return [];
+  const cols = Math.max(1, Math.ceil(Math.sqrt((n * BOLSTER_FRAME.w) / BOLSTER_FRAME.h)));
+  const rows = Math.ceil(n / cols);
+  const cellW = BOLSTER_FRAME.w / cols;
+  const cellH = BOLSTER_FRAME.h / rows;
+  const size = r1(Math.min(cellW, cellH) * BASE_FRACTION);
+  return pieces.map((piece, idx) => {
+    const row = Math.floor(idx / cols);
+    const col = idx % cols;
+    // Last row: center the leftover pieces horizontally (still deterministic).
+    const inRow = Math.min(cols, n - row * cols);
+    const xOffset = (BOLSTER_FRAME.w - inRow * cellW) / 2;
+    return {
+      key: `compartment/${piece.slot}`,
+      slot: piece.slot,
+      itemId: piece.itemId,
+      cx: r1(BOLSTER_FRAME.x + xOffset + cellW * (col + 0.5)),
+      cy: r1(BOLSTER_FRAME.y + cellH * (row + 0.5)),
+      size,
+    };
+  });
+}
 
 /** Deterministic layout: fixed cell order, pieces sorted by slot within a cell. */
 export function layoutPlacements(placements: PillowPlacement[]): PieceLayout[] {

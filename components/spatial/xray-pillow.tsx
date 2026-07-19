@@ -59,8 +59,9 @@ const easeOut = (t: number) => t * (2 - t);
  * One filling piece. When its shape swaps (item type change in the same slot),
  * the prepared flubber interpolator animates path `d`; degenerate pairs
  * crossfade an old-shape ghost instead — attribute writes only, no re-layout.
+ * Exported for the Mbolster capsule renderer (slice 13) — one morph pipeline.
  */
-function MorphPiece({
+export function MorphPiece({
   subtype,
   visual,
   transform,

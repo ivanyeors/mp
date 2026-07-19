@@ -10,12 +10,16 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { formatFillingPreview } from "@/lib/filling-preview";
 import { PillowCellGrid, type PillowGridItem } from "@/components/spatial/pillow-cell-grid";
+import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment-list";
 import {
+  bolsterPlacementsToRows,
   flattenToPackList,
   pillowPlacementsToRows,
+  rowsToBolsterPlacements,
   rowsToPillowPlacements,
+  type BolsterPlacement,
+  type BolsterPlacementRow,
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
@@ -163,9 +167,10 @@ export default function ResultDetailPage() {
   const [fillingTemplateId, setFillingTemplateId] = useState<string>("");
   const [fillingTemplates, setFillingTemplates] = useState<FillingTemplateOption[]>([]);
   const [assignPrep, setAssignPrep] = useState<AssignPrepData | null>(null);
-  const [selectedFillingPreview, setSelectedFillingPreview] = useState<Array<{ variant: string; qty: number }>>([]);
-  // Spatial editor state (pillow): confirmed template's placements, editable per cell.
+  // Spatial editor state: confirmed template's placements, editable. Pillow =
+  // per-cell grid; bolster = single-compartment slot list (own schema, no cap).
   const [placements, setPlacements] = useState<PillowPlacement[]>([]);
+  const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
   const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [fillingItems, setFillingItems] = useState<PillowGridItem[]>([]);
@@ -318,8 +323,8 @@ export default function ResultDetailPage() {
   // effect below reloads the Default Filling Template hint for the new key.
   useEffect(() => {
     setFillingTemplateId("");
-    setSelectedFillingPreview([]);
     setPlacements([]);
+    setBolsterMix([]);
     setTemplateHadPlacements(true);
     setTemplateLegacyLines([]);
   }, [assignSize, assignTier, assignLength, productType]);
@@ -329,9 +334,9 @@ export default function ResultDetailPage() {
     void loadAssignPrep();
   }, [row, canAssign, loadAssignPrep]);
 
-  // Filling Items for the spatial editor (pillow assign only).
+  // Filling Items for the spatial editor (pillow cells or bolster compartment).
   useEffect(() => {
-    if (!canAssign || productType !== "pillow") return;
+    if (!canAssign) return;
     let cancelled = false;
     (async () => {
       const { supabaseClient } = await import("@/lib/supabase/client");
@@ -358,8 +363,8 @@ export default function ResultDetailPage() {
   const loadSelectedFillingPreview = useCallback(
     async (templateId: string) => {
       if (!templateId) {
-        setSelectedFillingPreview([]);
         setPlacements([]);
+        setBolsterMix([]);
         setTemplateHadPlacements(true);
         setTemplateLegacyLines([]);
         return;
@@ -375,29 +380,25 @@ export default function ResultDetailPage() {
           item_id: Number(l.item_id),
           quantity: Number(l.quantity),
         }));
+        // Confirming a template loads its placements into the spatial editor;
+        // legacy flat templates load an empty editor (notice shown, like Configure).
+        // Bolster rows are slot-only — never the pillow enums.
         if (productType === "pillow") {
-          // Confirming a template loads its placements into the spatial editor;
-          // legacy flat templates load an empty grid (notice shown, like Configure).
           const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
           setPlacements(rowsToPillowPlacements(placementRows));
           setTemplateHadPlacements(placementRows.length > 0);
-          setTemplateLegacyLines(lines);
-          return;
+        } else {
+          const placementRows = (payload?.placements ?? []) as BolsterPlacementRow[];
+          setBolsterMix(rowsToBolsterPlacements(placementRows));
+          setTemplateHadPlacements(placementRows.length > 0);
         }
-        const { supabaseClient } = await import("@/lib/supabase/client");
-        const itemIds = lines.map((l) => l.item_id);
-        const { data: itemRows } = itemIds.length
-          ? await supabaseClient.from("items").select("id,name,subtype,size").in("id", itemIds)
-          : { data: [] as Array<{ id: number; name: string; subtype: string | null; size: string | null }> };
-        const itemsById = new Map(
-          (itemRows ?? []).map((i) => [Number(i.id), { name: i.name, subtype: i.subtype, size: i.size }]),
-        );
-        setSelectedFillingPreview(formatFillingPreview(lines, itemsById, sizeKey));
+        setTemplateLegacyLines(lines);
       } catch {
-        setSelectedFillingPreview([]);
+        setPlacements([]);
+        setBolsterMix([]);
       }
     },
-    [productType, sizeKey, to],
+    [productType, to],
   );
 
   const assign = useCallback(async () => {
@@ -408,17 +409,18 @@ export default function ResultDetailPage() {
     }
     setAssigning(true);
     try {
+      // Spatial Result snapshot per kind; server clears the template id on divergence.
       const body =
         productType === "bolster"
           ? {
               assignedLength: assignLength || "medium",
               fillingTemplateId: Number(fillingTemplateId),
+              placements: bolsterPlacementsToRows(bolsterMix),
             }
           : {
               assignedSize: assignSize,
               assignedTier: assignTier,
               fillingTemplateId: Number(fillingTemplateId),
-              // Spatial Result snapshot; server clears the template id on divergence.
               placements: pillowPlacementsToRows(placements),
             };
       const res = await fetch(`/api/results/${encodeURIComponent(id)}/assign`, {
@@ -447,6 +449,7 @@ export default function ResultDetailPage() {
     assignSize,
     assignTier,
     placements,
+    bolsterMix,
     load,
   ]);
 
@@ -455,7 +458,10 @@ export default function ResultDetailPage() {
   }, [load]);
 
   // Derived flat pack list — same flatten the server persists (ADR 0008).
-  const packList = useMemo(() => flattenToPackList(placements), [placements]);
+  const packList = useMemo(
+    () => flattenToPackList(productType === "bolster" ? bolsterMix : placements),
+    [productType, bolsterMix, placements],
+  );
   const fillingLabelById = useMemo(
     () => new Map(fillingItems.map((i) => [i.id, i.label])),
     [fillingItems],
@@ -795,20 +801,7 @@ export default function ResultDetailPage() {
                     </Select>
                   </Field>
 
-                  {productType === "bolster" && fillingTemplateId && selectedFillingPreview.length > 0 && (
-                    <div className="rounded-md border bg-muted/30 p-3 text-sm">
-                      <div className="text-xs text-muted-foreground mb-1">Selected preview</div>
-                      <ul className="space-y-0.5">
-                        {selectedFillingPreview.map((line, idx) => (
-                          <li key={idx}>
-                            {line.variant} ×{line.qty}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {productType === "pillow" && fillingTemplateId && (
+                  {fillingTemplateId && (
                     <div className="space-y-3">
                       {!templateHadPlacements && templateLegacyLines.length > 0 && (
                         <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
@@ -824,7 +817,16 @@ export default function ResultDetailPage() {
                           </ul>
                         </div>
                       )}
-                      <PillowCellGrid value={placements} onChange={setPlacements} items={fillingItems} />
+                      {productType === "pillow" ? (
+                        <PillowCellGrid value={placements} onChange={setPlacements} items={fillingItems} />
+                      ) : (
+                        // Mbolster: single compartment — ordered list, no cap, never the 3×3 grid.
+                        <BolsterCompartmentList
+                          value={bolsterMix}
+                          onChange={setBolsterMix}
+                          items={fillingItems}
+                        />
+                      )}
                       <div className="rounded-md border bg-muted/30 p-3 text-sm">
                         <div className="text-xs text-muted-foreground mb-1">Derived pack list</div>
                         {packList.length > 0 ? (

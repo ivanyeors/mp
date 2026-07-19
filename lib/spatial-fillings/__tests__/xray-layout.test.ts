@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { PillowPlacement } from "../core";
-import { cellFrame, layoutPlacements, XRAY_VIEW } from "../xray-layout";
+import type { BolsterPlacement, PillowPlacement } from "../core";
+import {
+  BOLSTER_FRAME,
+  cellFrame,
+  layoutBolsterPlacements,
+  layoutPlacements,
+  XRAY_VIEW,
+} from "../xray-layout";
 
 const piece = (slot: number, itemId = 1): PillowPlacement => ({
   section: "center",
@@ -73,5 +79,52 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     const layout = layoutPlacements([piece(3, 9)]);
     expect(layout[0].key).toBe("center/middle/3");
     expect(layout[0].itemId).toBe(9);
+  });
+});
+
+describe("bolster xray layout (slice 13: single compartment, n unbounded)", () => {
+  const mix = (n: number): BolsterPlacement[] =>
+    Array.from({ length: n }, (_, i) => ({ slot: i + 1, itemId: 1 }));
+
+  it("same placements always produce an identical layout, regardless of input order", () => {
+    const placements = mix(7);
+    const a = layoutBolsterPlacements(placements);
+    const b = layoutBolsterPlacements([...placements].reverse());
+    expect(a).toEqual(b);
+    expect(layoutBolsterPlacements(placements)).toEqual(a);
+  });
+
+  it.each([1, 2, 5, 12, 40])("%i pieces stay distinct inside the capsule frame", (n) => {
+    const layout = layoutBolsterPlacements(mix(n));
+    expect(layout).toHaveLength(n);
+    const positions = new Set(layout.map((p) => `${p.cx},${p.cy}`));
+    expect(positions.size).toBe(n);
+    for (const p of layout) {
+      expect(p.cx).toBeGreaterThanOrEqual(BOLSTER_FRAME.x);
+      expect(p.cx).toBeLessThanOrEqual(BOLSTER_FRAME.x + BOLSTER_FRAME.w);
+      expect(p.cy).toBeGreaterThanOrEqual(BOLSTER_FRAME.y);
+      expect(p.cy).toBeLessThanOrEqual(BOLSTER_FRAME.y + BOLSTER_FRAME.h);
+    }
+  });
+
+  it("rows fill left-to-right by slot and pieces compress as count grows (no cap)", () => {
+    const layout = layoutBolsterPlacements(mix(5));
+    // First row is ordered left-to-right by slot.
+    const firstRowY = layout[0].cy;
+    const firstRow = layout.filter((p) => p.cy === firstRowY);
+    expect(firstRow.map((p) => p.slot)).toEqual([...firstRow].sort((a, b) => a.cx - b.cx).map((p) => p.slot));
+    // Size never grows with count.
+    let prev = Infinity;
+    for (const n of [1, 3, 8, 20, 60]) {
+      const size = layoutBolsterPlacements(mix(n))[0].size;
+      expect(size).toBeGreaterThan(0);
+      expect(size).toBeLessThanOrEqual(prev);
+      prev = size;
+    }
+  });
+
+  it("keys carry the compartment + slot; empty mix renders nothing", () => {
+    expect(layoutBolsterPlacements([{ slot: 4, itemId: 9 }])[0].key).toBe("compartment/4");
+    expect(layoutBolsterPlacements([])).toEqual([]);
   });
 });

@@ -66,6 +66,7 @@ import {
     isResultOrderBuildSnapshot,
 } from "@/lib/results/order-build-snapshot";
 import { CELLS } from "@/components/spatial/pillow-cell-grid";
+import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -830,7 +831,16 @@ export default function OrderDetailPage() {
                                             const nameByItem = new Map(
                                                 resultSnap.build_lines.map((l) => [l.item_id, l.name]),
                                             );
-                                            const placements = resultSnap.filling_placements ?? [];
+                                            // Pillow rows carry cell addresses; bolster rows are slot-only (own schema).
+                                            const isBolsterSnap = resultSnap.product_type === "bolster";
+                                            const placements = (resultSnap.filling_placements ?? []).filter(
+                                                (p): p is PillowPlacementRow => !isBolsterSnap && "section" in p,
+                                            );
+                                            const bolsterPieces = isBolsterSnap
+                                                ? [...(resultSnap.filling_placements ?? [])]
+                                                      .sort((a, b) => a.slot - b.slot)
+                                                      .map((p) => nameByItem.get(p.item_id) ?? `Item #${p.item_id}`)
+                                                : [];
 
                                             return (
                                                 <div key={item.id} className="rounded-lg border p-4 space-y-3">
@@ -891,6 +901,17 @@ export default function OrderDetailPage() {
                                                                         </div>
                                                                     );
                                                                 })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {bolsterPieces.length > 0 && (
+                                                        <div>
+                                                            <div className="text-xs font-medium text-muted-foreground mb-1">
+                                                                Placement breakdown
+                                                            </div>
+                                                            <div className="flex justify-between text-xs gap-2">
+                                                                <span className="text-muted-foreground">Compartment</span>
+                                                                <span className="text-right">{bolsterPieces.join(", ")}</span>
                                                             </div>
                                                         </div>
                                                     )}
