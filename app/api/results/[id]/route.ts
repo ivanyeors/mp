@@ -5,6 +5,7 @@ import { priceResult } from "@/lib/result-pricing";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
+import { derivePackList } from "@/lib/spatial-fillings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -21,6 +22,7 @@ function itemLabel(name: string, subtype: string | null | undefined): string {
 }
 
 async function buildPublicSummary(row: {
+  id: string;
   status: string | null;
   product_type: string | null;
   assigned_size: string | null;
@@ -48,19 +50,38 @@ async function buildPublicSummary(row: {
   let fillingTemplateName: string | null = null;
   let fillingSummary: string[] = [];
 
-  if (row.filling_template_id) {
-    const { data: template } = await admin
-      .from("bom_templates")
-      .select("id, name")
-      .eq("id", row.filling_template_id)
-      .maybeSingle();
-    fillingTemplateName = template?.name ?? null;
+  // Revised builds: the Result's spatial snapshot is the filling truth when present
+  // (template id may be null after a diverging edit); template lines are the fallback.
+  const { data: snapRows } = await admin
+    .from("result_filling_placements")
+    .select("item_id")
+    .eq("result_id", row.id);
+  let fillLines: Array<{ item_id: number; quantity: number }> = derivePackList(
+    (snapRows ?? []) as Array<{ item_id: number }>,
+    [],
+  ).map((l) => ({ item_id: l.item_id, quantity: l.count }));
 
-    const { data: tplLines } = await admin
-      .from("bom_template_lines")
-      .select("item_id, quantity")
-      .eq("template_id", row.filling_template_id);
-    for (const l of tplLines ?? []) fillIds.push(l.item_id as number);
+  if (row.filling_template_id || fillLines.length > 0) {
+    if (row.filling_template_id) {
+      const { data: template } = await admin
+        .from("bom_templates")
+        .select("id, name")
+        .eq("id", row.filling_template_id)
+        .maybeSingle();
+      fillingTemplateName = template?.name ?? null;
+
+      if (fillLines.length === 0) {
+        const { data: tplLines } = await admin
+          .from("bom_template_lines")
+          .select("item_id, quantity")
+          .eq("template_id", row.filling_template_id);
+        fillLines = (tplLines ?? []).map((l) => ({
+          item_id: l.item_id as number,
+          quantity: Number(l.quantity),
+        }));
+      }
+    }
+    for (const l of fillLines) fillIds.push(l.item_id);
 
     const allIds = [
       ...new Set([
@@ -76,9 +97,8 @@ async function buildPublicSummary(row: {
       (items ?? []).map((i) => [i.id as number, itemLabel(i.name, i.subtype)]),
     );
 
-    fillingSummary = (tplLines ?? []).map(
-      (l) =>
-        `${nameByItem.get(l.item_id as number) ?? `Item #${l.item_id}`} ×${Number(l.quantity)}`,
+    fillingSummary = fillLines.map(
+      (l) => `${nameByItem.get(l.item_id) ?? `Item #${l.item_id}`} ×${l.quantity}`,
     );
 
     const preferences = preferenceLines.map(

@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { lookupItemCategories } from "@/lib/bom-sanitizer";
 import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
 import { transitionResult } from "@/lib/result-lifecycle";
+import { decideFillingAssign } from "@/lib/results/filling-assign";
+import {
+  derivePackList,
+  rowsToPillowPlacements,
+  validatePillowPlacements,
+  type PillowPlacementRow,
+} from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -26,6 +34,17 @@ const AssignSchema = z.object({
   assignedTier: z.enum(["basic", "premium"]).optional(),
   assignedLength: z.enum(BOLSTER_LENGTHS).optional(),
   fillingTemplateId: z.number().int().positive(),
+  /** Spatial Result snapshot (pillow only; bolster is slice 13). Shape gate — lib validates. */
+  placements: z
+    .array(
+      z.object({
+        section: z.string().default(""),
+        sub_section: z.string().default(""),
+        slot: z.number().int(),
+        item_id: z.number().int().positive(),
+      }),
+    )
+    .optional(),
 });
 
 type PrefLine = { item_id: number; quantity: number; category: string };
@@ -205,6 +224,35 @@ export async function POST(
     );
   }
 
+  // Spatial snapshot rows (pillow only): validate cells/slots/items via the lib.
+  let placementRows: PillowPlacementRow[] | null =
+    productType === "pillow" && input.placements ? input.placements : null;
+  let tplPlacementRows: PillowPlacementRow[] = [];
+  if (placementRows) {
+    const { data: tplPl, error: tplPlErr } = await admin
+      .from("filling_template_placements")
+      .select("section, sub_section, slot, item_id")
+      .eq("template_id", input.fillingTemplateId);
+    if (tplPlErr) return NextResponse.json({ error: tplPlErr.message }, { status: 500 });
+    tplPlacementRows = (tplPl ?? []) as PillowPlacementRow[];
+
+    if (placementRows.length === 0) {
+      if (tplPlacementRows.length > 0) {
+        return NextResponse.json(
+          { error: "Place at least one filling piece (or reload the template)" },
+          { status: 400 },
+        );
+      }
+      // Legacy flat template with an untouched empty grid: assign it as-is (flat path).
+      placementRows = null;
+    } else {
+      const cats = await lookupItemCategories(admin, placementRows.map((r) => r.item_id));
+      if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 });
+      const valid = validatePillowPlacements(rowsToPillowPlacements(placementRows), cats.byId);
+      if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
+    }
+  }
+
   const lifecycle = transitionResult(
     {
       status: "held",
@@ -238,7 +286,9 @@ export async function POST(
 
   const composedBomRaw = composed.sellable.bomLines;
 
-  const fillItemIds = (tplLines ?? []).map((l) => l.item_id as number);
+  // Filling pack: flatten of the saved snapshot when provided, else the template's flat lines.
+  const fillPack = derivePackList(placementRows ?? [], tplLines ?? []);
+  const fillItemIds = fillPack.map((l) => l.item_id);
   const allItemIds = [
     ...new Set([
       ...composedBomRaw.map((l) => l.item_id),
@@ -276,10 +326,10 @@ export async function POST(
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  const fillingTemplateLines = (tplLines ?? []).map((l) => ({
-    item_id: l.item_id as number,
-    quantity: Number(l.quantity),
-    category: itemById.get(l.item_id as number)?.category ?? "unknown",
+  const fillingTemplateLines = fillPack.map((l) => ({
+    item_id: l.item_id,
+    quantity: l.count,
+    category: itemById.get(l.item_id)?.category ?? "unknown",
   }));
 
   const assembled = assembleBuild({
@@ -375,20 +425,55 @@ export async function POST(
     };
   }
 
+  // Divergence rule (PRD): keep filling_template_id only while the snapshot exactly
+  // matches the confirmed template's current placements; snapshot rows always persist.
+  let persistedTemplateId: number | null = input.fillingTemplateId;
+  let fingerprint: string | null | undefined;
+  if (placementRows) {
+    const decision = decideFillingAssign({
+      confirmedTemplateId: input.fillingTemplateId,
+      saved: rowsToPillowPlacements(placementRows),
+      templatePlacements: rowsToPillowPlacements(tplPlacementRows),
+    });
+    persistedTemplateId = decision.fillingTemplateId;
+    fingerprint = decision.fillingFingerprint;
+  }
+
   const { error: updateErr } = await admin
     .from("mp_config_responses")
     .update({
       assigned_size: assignedSize,
       assigned_tier: assignedTier,
       assigned_length: assignedLength,
-      filling_template_id: input.fillingTemplateId,
+      filling_template_id: persistedTemplateId,
       final_amount: finalAmount,
       status: lifecycle.status,
+      // Only touched when a spatial save happened; hold-create snapshots stay otherwise.
+      ...(fingerprint !== undefined ? { filling_fingerprint: fingerprint } : {}),
     })
     .eq("id", id);
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  }
+
+  // Result snapshot: replace-insert (first write for guest Results).
+  if (placementRows) {
+    const { error: delErr } = await admin
+      .from("result_filling_placements")
+      .delete()
+      .eq("result_id", id);
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
+    const { error: insErr } = await admin.from("result_filling_placements").insert(
+      placementRows.map((r) => ({
+        result_id: id,
+        section: r.section,
+        sub_section: r.sub_section,
+        slot: r.slot,
+        item_id: r.item_id,
+      })),
+    );
+    if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
   }
 
   const fillingSummary = fillingTemplateLines.map(
@@ -427,8 +512,8 @@ export async function POST(
     assignedSize,
     assignedTier,
     assignedLength,
-    fillingTemplateId: input.fillingTemplateId,
-    fillingTemplateName: template.name,
+    fillingTemplateId: persistedTemplateId,
+    fillingTemplateName: persistedTemplateId != null ? template.name : null,
     finalAmount,
     pricing: pricingBreakdown,
     emailStatus,

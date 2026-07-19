@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
 import { formatFillingPreview, type FillingItemMeta } from "@/lib/filling-preview";
+import { derivePackList } from "@/lib/spatial-fillings";
 import {
   getDefaultFillingTemplateId,
   loadComposedSellable,
@@ -68,7 +69,25 @@ export async function loadAssignPrep(
         .eq("template_id", defaultId);
       if (linesErr) return { ok: false, error: linesErr.message };
 
-      const itemIds = (defLines ?? []).map((l) => Number(l.item_id));
+      // Spatial default (pillow): preview derives from placements when present (ADR 0008).
+      let defPlacements: Array<{ item_id: number }> = [];
+      if (key.productType === "pillow") {
+        const { data: pl, error: plErr } = await admin
+          .from("filling_template_placements")
+          .select("item_id")
+          .eq("template_id", defaultId);
+        if (plErr) return { ok: false, error: plErr.message };
+        defPlacements = (pl ?? []) as Array<{ item_id: number }>;
+      }
+      const previewLines = derivePackList(
+        defPlacements,
+        (defLines ?? []).map((l) => ({
+          item_id: Number(l.item_id),
+          quantity: Number(l.quantity),
+        })),
+      ).map((l) => ({ item_id: l.item_id, quantity: l.count }));
+
+      const itemIds = previewLines.map((l) => l.item_id);
       const { data: fillItems } = itemIds.length
         ? await admin.from("items").select("id, name, subtype, size").in("id", itemIds)
         : { data: [] as Array<{ id: number; name: string; subtype: string | null; size: string | null }> };
@@ -82,14 +101,7 @@ export async function loadAssignPrep(
       defaultFillingTemplate = {
         id: defaultId,
         name: String(def.name),
-        preview: formatFillingPreview(
-          (defLines ?? []).map((l) => ({
-            item_id: Number(l.item_id),
-            quantity: Number(l.quantity),
-          })),
-          itemsById,
-          sizeKey,
-        ),
+        preview: formatFillingPreview(previewLines, itemsById, sizeKey),
       };
     }
   }

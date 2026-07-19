@@ -2,6 +2,7 @@
 
 import type { BuildLine, BuildLineRole } from "@/lib/build-assembly";
 import type { PriceResultOutput } from "@/lib/result-pricing";
+import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 
 export type NamedBuildLine = BuildLine & { name: string };
 
@@ -11,8 +12,11 @@ export type ResultOrderBuildSnapshot = {
   assigned_size: string | null;
   assigned_tier: string | null;
   assigned_length: string | null;
-  filling_template_id: number;
+  /** Null when the mix diverged from every catalog template (custom spatial mix). */
+  filling_template_id: number | null;
   filling_template_name: string | null;
+  /** Spatial placement breakdown for the warehouse (absent on pre-spatial Results). */
+  filling_placements?: PillowPlacementRow[];
   preference_lines: NamedBuildLine[];
   addon_lines: NamedBuildLine[];
   build_lines: NamedBuildLine[];
@@ -49,8 +53,9 @@ export function buildResultOrderSnapshot(input: {
   assignedSize: string | null;
   assignedTier: string | null;
   assignedLength: string | null;
-  fillingTemplateId: number;
+  fillingTemplateId: number | null;
   fillingTemplateName: string | null;
+  fillingPlacements?: PillowPlacementRow[];
   buildLines: BuildLine[];
   nameByItem: Map<number, string>;
   cogs: number;
@@ -69,6 +74,7 @@ export function buildResultOrderSnapshot(input: {
     assigned_length: input.assignedLength,
     filling_template_id: input.fillingTemplateId,
     filling_template_name: input.fillingTemplateName,
+    ...(input.fillingPlacements?.length ? { filling_placements: input.fillingPlacements } : {}),
     preference_lines: build_lines.filter((l) => l.role === "preference"),
     addon_lines: build_lines.filter((l) => l.role === "addon"),
     build_lines,
