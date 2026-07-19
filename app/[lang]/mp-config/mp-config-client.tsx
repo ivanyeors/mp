@@ -62,6 +62,7 @@ import {
   CustomizationStepComponents,
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
+import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
   SavedAddressSelect,
   useSavedShippingPrefill,
@@ -1262,6 +1263,13 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
       selectedCase,
       shopRecommendation?.components.cases ?? [],
     );
+    // Product Builder overlay (slice 10): case wins over cover; unmapped → plain silhouette.
+    const selectedOverlay =
+      (shopRecommendation?.components.cases ?? []).find((c) => c.item_id === selectedCase)
+        ?.overlay ??
+      (shopRecommendation?.components.covers ?? []).find((c) => c.item_id === selectedCover)
+        ?.overlay ??
+      null;
     const preferenceStocks = [coverStock, caseStock].filter(
       (s): s is number => s !== null,
     );
@@ -1358,6 +1366,21 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                     preserveAspectRatio="xMidYMid meet"
                   >
                     <path d={PILLOW_PATH} fill="white" />
+                    {selectedOverlay && (
+                      <>
+                        <defs>
+                          <clipPath id="mp-config-overlay-clip">
+                            <path d={PILLOW_PATH} />
+                          </clipPath>
+                        </defs>
+                        <image
+                          href={selectedOverlay.url}
+                          clipPath="url(#mp-config-overlay-clip)"
+                          preserveAspectRatio="xMidYMid slice"
+                          {...overlayFrame(selectedOverlay.fit)}
+                        />
+                      </>
+                    )}
                     <path
                       d={PILLOW_PATH}
                       fill="none"

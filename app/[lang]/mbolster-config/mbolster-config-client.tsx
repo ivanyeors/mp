@@ -74,6 +74,7 @@ import {
   type RecommendationResponseData,
   CustomizationStepComponents,
 } from "@/components/shop/customization-steps";
+import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
   SavedAddressSelect,
   useSavedShippingPrefill,
@@ -701,6 +702,10 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
       shopRecommendation?.components.cases ?? [],
     );
     const preferenceStocks = caseStock !== null ? [caseStock] : [];
+    // Product Builder overlay (slice 10): unmapped case → plain silhouette.
+    const selectedOverlay =
+      (shopRecommendation?.components.cases ?? []).find((c) => c.item_id === selectedCase)
+        ?.overlay ?? null;
     // ponytail: no rec yet → not Pre-order (CTA already disabled until rec loads)
     const preOrder = shopRecommendation
       ? isPreOrder({
@@ -792,6 +797,21 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   preserveAspectRatio="xMidYMid meet"
                 >
                   <path d={BOLSTER_PATH} fill="white" />
+                  {selectedOverlay && (
+                    <>
+                      <defs>
+                        <clipPath id="mbolster-config-overlay-clip">
+                          <path d={BOLSTER_PATH} />
+                        </clipPath>
+                      </defs>
+                      <image
+                        href={selectedOverlay.url}
+                        clipPath="url(#mbolster-config-overlay-clip)"
+                        preserveAspectRatio="xMidYMid slice"
+                        {...overlayFrame(selectedOverlay.fit)}
+                      />
+                    </>
+                  )}
                   <path
                     d={BOLSTER_PATH}
                     fill="none"

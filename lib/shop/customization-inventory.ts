@@ -3,7 +3,7 @@ import type { BolsterVariant, ComponentOption, ConfigLine, CustomizationProductT
 import type { ItemOverlay, OverlayFit } from "@/lib/product-builder/overlays";
 
 /** Product Builder overlay mappings for the given items (slice 10). */
-async function fetchOverlayMap(
+export async function fetchOverlayMap(
   admin: ReturnType<typeof supabaseAdmin>,
   itemIds: number[],
 ): Promise<Map<number, ItemOverlay>> {
@@ -257,6 +257,8 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     (prices ?? []).map((p: { item_id: number; msrp: number | null }) => [p.item_id, p.msrp ?? 0])
   );
 
+  const overlayMap = await fetchOverlayMap(admin, itemIds);
+
   const toOption = (i: {
     id: number;
     category: string;
@@ -272,6 +274,7 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
     stock_available: stockMap.get(i.id) ?? 0,
     unit_price: priceMap.get(i.id) ?? 0,
     base_quantity: bomMap.get(i.id) ?? 0,
+    overlay: overlayMap.get(i.id) ?? null,
   });
 
   return {

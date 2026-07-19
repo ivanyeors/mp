@@ -803,6 +803,8 @@ export default function MediaPage() {
             case "category": return "Category";
             case "partner": return "Partner";
             case "partners_page": return "Partners page";
+            case "item_overlay": return "Item overlay";
+            case "item_image": return "Item image";
             default: return type;
         }
     };
