@@ -23,6 +23,14 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
+import { PillowCellGrid } from "@/components/spatial/pillow-cell-grid";
+import {
+  flattenToPackList,
+  pillowPlacementsToRows,
+  rowsToPillowPlacements,
+  type PillowPlacement,
+  type PillowPlacementRow,
+} from "@/lib/spatial-fillings/core";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
@@ -822,7 +830,6 @@ export default function ConfigureCardPage() {
                   items={items}
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
-                  loadTemplateLines={loadTemplateLines}
                   deleteTemplateById={deleteTemplateById}
                   buildPayloadLines={buildPayloadLines}
                 />
@@ -997,7 +1004,6 @@ export default function ConfigureCardPage() {
                   items={items}
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
-                  loadTemplateLines={loadTemplateLines}
                   deleteTemplateById={deleteTemplateById}
                   buildPayloadLines={buildPayloadLines}
                 />
@@ -1123,7 +1129,6 @@ function FillingConfigPanel({
   items,
   settingsPath,
   loadFillingTemplates,
-  loadTemplateLines,
   deleteTemplateById,
   buildPayloadLines,
 }: {
@@ -1132,7 +1137,6 @@ function FillingConfigPanel({
   items: Item[];
   settingsPath: (path: string) => string;
   loadFillingTemplates: (kind: "pillow" | "bolster", key: string) => Promise<FillingTemplateRow[]>;
-  loadTemplateLines: (templateId: number) => Promise<BomLine[]>;
   deleteTemplateById: (templateId: number) => Promise<void>;
   buildPayloadLines: (lines: BomLine[]) => { item_id: number; quantity: number }[];
 }) {
@@ -1142,6 +1146,9 @@ function FillingConfigPanel({
   const [notes, setNotes] = useState("");
   const [active, setActive] = useState(true);
   const [lines, setLines] = useState<BomLine[]>([]);
+  // Spatial recipe (pillow only): placements are the "where" truth; lines stay for the legacy notice.
+  const [placements, setPlacements] = useState<PillowPlacement[]>([]);
+  const [hadPlacements, setHadPlacements] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const resetEditor = useCallback(() => {
@@ -1150,6 +1157,8 @@ function FillingConfigPanel({
     setNotes("");
     setActive(true);
     setLines([]);
+    setPlacements([]);
+    setHadPlacements(false);
   }, []);
 
   useEffect(() => {
@@ -1175,6 +1184,8 @@ function FillingConfigPanel({
       setNotes("");
       setActive(true);
       setLines([]);
+      setPlacements([]);
+      setHadPlacements(false);
       return;
     }
     const meta = templates.find((t) => t.id === id);
@@ -1182,10 +1193,34 @@ function FillingConfigPanel({
     setNotes(meta?.notes ?? "");
     setActive(meta?.is_active ?? true);
     try {
-      setLines(await loadTemplateLines(id));
+      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), { method: "GET" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error ?? "Failed to load template";
+        throw new Error(typeof message === "string" ? message : "Failed to load template");
+      }
+      type LineRow = { item_id: number | string; quantity: number | string };
+      setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
+      const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
+      setPlacements(kind === "pillow" ? rowsToPillowPlacements(placementRows) : []);
+      setHadPlacements(placementRows.length > 0);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load template lines");
     }
+  };
+
+  const putTemplatePlacements = async (templateId: number) => {
+    const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        notes: notes.trim() || undefined,
+        is_active: active,
+        placements: pillowPlacementsToRows(placements),
+      }),
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(payload?.error ?? "Failed to save placements");
   };
 
   const saveTemplate = async () => {
@@ -1196,6 +1231,17 @@ function FillingConfigPanel({
     }
     setSaving(true);
     try {
+      // Spatial save of an existing pillow template: PUT placements only — legacy
+      // flat lines stay untouched server-side as the pre-spatial record (ADR 0008).
+      const existing = kind === "pillow" ? templates.find((t) => t.name === trimmed) : undefined;
+      if (existing) {
+        await putTemplatePlacements(existing.id);
+        setTemplates(await loadFillingTemplates(kind, templateKey));
+        setSelectedId(existing.id);
+        setHadPlacements(true);
+        toast.success("Filling Template updated");
+        return;
+      }
       const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1206,14 +1252,18 @@ function FillingConfigPanel({
           notes: notes.trim() || undefined,
           role: "filling",
           is_active: active,
-          lines: buildPayloadLines(lines),
+          lines: kind === "pillow" ? [] : buildPayloadLines(lines),
         }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to save Filling Template");
+      const savedId = payload?.template?.id as number | undefined;
+      if (kind === "pillow" && savedId) {
+        await putTemplatePlacements(savedId);
+        setHadPlacements(placements.length > 0);
+      }
       const list = await loadFillingTemplates(kind, templateKey);
       setTemplates(list);
-      const savedId = payload?.template?.id as number | undefined;
       if (savedId) setSelectedId(savedId);
       toast.success(payload?.updatedExisting ? "Filling Template updated" : "Filling Template saved");
     } catch (e) {
@@ -1254,6 +1304,22 @@ function FillingConfigPanel({
     } finally {
       setSaving(false);
     }
+  };
+
+  const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
+  const gridItems = useMemo(
+    () =>
+      items
+        .filter((i) => i.category === "filling")
+        .map((i) => ({ id: i.id, label: getFillingDisplayLabel(i, templateKey) })),
+    [items, templateKey],
+  );
+  // Derived BOM: same flatten the server runs over placement rows (ADR 0008).
+  const packList = useMemo(() => flattenToPackList(placements), [placements]);
+  const isLegacyFlat = selectedId !== "" && !hadPlacements && lines.length > 0;
+  const itemLabel = (itemId: number) => {
+    const item = itemsById.get(itemId);
+    return item ? getFillingDisplayLabel(item, templateKey) : `Item #${itemId}`;
   };
 
   return (
@@ -1333,7 +1399,44 @@ function FillingConfigPanel({
           </Table>
         </div>
       )}
-      <FillingLinesEditor items={items} lines={lines} setLines={setLines} sizeLabel={templateKey} />
+      {kind === "pillow" ? (
+        <div className="space-y-3">
+          {isLegacyFlat && (
+            <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+              <div className="font-medium">Legacy flat recipe — saving spatially will set placements.</div>
+              <ul className="mt-1 list-inside list-disc text-muted-foreground">
+                {lines.map((l) => (
+                  <li key={l.item_id}>
+                    {itemLabel(l.item_id)} × {l.quantity}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <Section title="Spatial recipe (Section × sub-section, up to 5 pieces per cell)">
+            <PillowCellGrid value={placements} onChange={setPlacements} items={gridItems} />
+          </Section>
+          <Section title="Derived pack list">
+            <ConfigureTable headers={["Filling", "Count"]}>
+              {packList.map((line) => (
+                <TableRow key={line.item_id}>
+                  <TableCell className="font-medium">{itemLabel(line.item_id)}</TableCell>
+                  <TableCell>{line.count}</TableCell>
+                </TableRow>
+              ))}
+              {packList.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={2} className="text-sm text-muted-foreground">
+                    No pieces placed yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </ConfigureTable>
+          </Section>
+        </div>
+      ) : (
+        <FillingLinesEditor items={items} lines={lines} setLines={setLines} sizeLabel={templateKey} />
+      )}
     </div>
   );
 }
