@@ -17,10 +17,17 @@ Thin end-to-end path: a **Rule graph** can persist, validate, publish, and evalu
 
 ## Acceptance criteria
 
-- [ ] A hand-written Premium graph JSON round-trips draft → publish → evaluate via the API and returns size + size-scoped template + trace
-- [ ] Publish rejects: cycle, band gap/overlap, unreachable Fallback, off-catalog input, wrong-size template, Flow route without same-flow fallback — each with the offending node id
-- [ ] Evaluation is deterministic (same inputs → same fired terminals) and refuses on a missing required input rather than defaulting
-- [ ] Published versions are immutable; restore-to-draft copies without mutating history
+- [x] A hand-written Premium graph JSON round-trips draft → publish → evaluate via the API and returns size + size-scoped template + trace
+- [x] Publish rejects: cycle, band gap/overlap, unreachable Fallback, off-catalog input, wrong-size template, Flow route without same-flow fallback — each with the offending node id
+- [x] Evaluation is deterministic (same inputs → same fired terminals) and refuses on a missing required input rather than defaulting
+- [x] Published versions are immutable; restore-to-draft copies without mutating history
+
+## Proof (2026-07-19)
+
+- `npx vitest run lib/rules-engine` — 13 passed
+- `npx tsx lib/rules-engine/slice-01.check.ts` — ok
+- `npx tsx --env-file=.env.local lib/rules-engine/api-roundtrip.check.ts` — draft → publish → evaluate → restore; published immutable
+- Migration `20260719180000_rule_graphs.sql` applied via `npm run db:push`
 
 ## Blocked by
 
