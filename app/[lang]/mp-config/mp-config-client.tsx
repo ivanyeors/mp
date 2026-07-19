@@ -1728,6 +1728,8 @@ export function MpConfigClient({
                     <XrayPillow
                       placements={assistPlacements}
                       itemSubtypes={assistItemSubtypes}
+                      items={assistItems}
+                      onPlacementsChange={setAssistPlacements}
                       className="absolute inset-0"
                     />
                   )}
