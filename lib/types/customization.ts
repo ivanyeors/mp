@@ -2,6 +2,8 @@
 // Pillow Customization Type Definitions
 // ============================================================
 
+import type { ItemOverlay } from "@/lib/product-builder/overlays";
+
 // --- Filling & Config Lines ---
 
 export interface FillingLine {
@@ -83,6 +85,8 @@ export interface ComponentOption {
   stock_available: number;
   unit_price: number;
   base_quantity: number;
+  /** Product Builder silhouette overlay (slice 10); absent → plain silhouette. */
+  overlay?: ItemOverlay | null;
 }
 
 // --- Upsell ---
