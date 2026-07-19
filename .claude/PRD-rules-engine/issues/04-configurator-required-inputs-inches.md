@@ -17,11 +17,20 @@ The wizard's inputs become trustworthy engine inputs, end to end (`/mp-config`, 
 
 ## Acceptance criteria
 
-- [ ] Measurement steps open on inches; entered values round-trip correctly to canonical cm
-- [ ] Skipping any engine input blocks Continue on that step with field-level errors on submit; no recommendation request carries invented values
-- [ ] Pain areas requires an answer and "None" deselects other chips
-- [ ] Server-side customize/recommend endpoints reject incomplete input sets with a validation error
-- [ ] `*.check.ts` for required-input gating derived from the flow input catalog
+- [x] Measurement steps open on inches; entered values round-trip correctly to canonical cm
+- [x] Skipping any engine input blocks Continue on that step with field-level errors on submit; no recommendation request carries invented values
+- [x] Pain areas requires an answer and "None" deselects other chips
+- [x] Server-side customize/recommend endpoints reject incomplete input sets with a validation error
+- [x] `*.check.ts` for required-input gating derived from the flow input catalog
+
+## Proof (2026-07-19)
+
+- `npx tsx lib/rules-engine/slice-04.check.ts` — ok
+- `npx tsx lib/configurator/pain-areas.check.ts` — ok
+- `npx tsx lib/configurator/measurement-draft.check.ts` — ok
+- `npx tsx lib/configurator/height-draft.check.ts` — ok
+- `npx tsx components/configurator/single-select-option-rows.check.ts` — ok
+- `npx vitest run lib/rules-engine` — 13 passed
 
 ## Blocked by
 

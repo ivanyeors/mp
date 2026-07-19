@@ -4,6 +4,10 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings, getSizeBallparkFromMeasurements, getSizeBallparkFromPreferences } from "@/lib/shop/customization-llm";
 import { getAvailableComponents, validateCustomizationConfig, calculateAddonPrice, getBolsterBaseQuantities, fetchOverlayMap } from "@/lib/shop/customization-inventory";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
+import {
+  incompleteEngineInputs,
+  measurementPrefsToEngineInputs,
+} from "@/lib/rules-engine/legacy-inputs";
 
 export const runtime = "nodejs";
 
@@ -80,6 +84,15 @@ async function handleRecommend(req: Request) {
 
     // --- Bolster flow ---
     if (bolsterParsed.success) {
+      const missingBolster = incompleteEngineInputs("mbolster", {
+        height_cm: bolsterParsed.data.bolster_preferences.height_cm,
+      });
+      if (missingBolster.length > 0) {
+        return NextResponse.json(
+          { error: "Incomplete engine inputs", missing: missingBolster },
+          { status: 400 },
+        );
+      }
       const recommendation = await getBolsterRecommendation(bolsterParsed.data.bolster_preferences);
 
       // Engine returns length keys; letter sizes (S/M/L) still accepted from legacy bootstrap.
@@ -226,6 +239,19 @@ async function handleRecommend(req: Request) {
     }
 
     // --- Pillow flow (measurement-based or simple preferences) ---
+    if (measurementParsed.success) {
+      const missing = incompleteEngineInputs(
+        "premium-mpillow",
+        measurementPrefsToEngineInputs(measurementParsed.data.measurement_preferences),
+      );
+      if (missing.length > 0) {
+        return NextResponse.json(
+          { error: "Incomplete engine inputs", missing },
+          { status: 400 },
+        );
+      }
+    }
+
     const ballpark =
       measurementParsed.success
         ? measurementParsed.data.purpose === "ballpark"

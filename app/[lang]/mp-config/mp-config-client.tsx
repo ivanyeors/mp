@@ -98,6 +98,15 @@ import {
   type MeasurementUnit,
 } from "@/lib/configurator/measurement-draft";
 import {
+  PAIN_AREA_OPTIONS,
+  painAreasAnswered,
+  togglePainArea,
+} from "@/lib/configurator/pain-areas";
+import {
+  incompleteEngineInputs,
+  wizardToEngineInputs,
+} from "@/lib/rules-engine/legacy-inputs";
+import {
   PreviewContactFields,
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
@@ -453,6 +462,12 @@ export function MpConfigClient({
       message: "Select yes or no",
     },
     {
+      key: "sleepPainAreas",
+      touched: painAreasAnswered(measurementData.sleepPainAreas),
+      valid: painAreasAnswered(measurementData.sleepPainAreas),
+      message: "Select pain areas or None",
+    },
+    {
       key: "sleepPositionType",
       touched: measurementData.sleepPositionType.length > 0,
       valid: measurementData.sleepPositionType.length > 0,
@@ -469,6 +484,7 @@ export function MpConfigClient({
     measurementData.earDiscomfortSideSleep,
     measurementData.bedFirmness,
     measurementData.acidReflux,
+    measurementData.sleepPainAreas,
     measurementData.sleepPositionType,
     measurementData.usesBolster,
   ]);
@@ -959,13 +975,22 @@ export function MpConfigClient({
 
   // Fetch shop recommendation from customize API (full mp-config path)
   const fetchShopRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }) => {
+    const missing = incompleteEngineInputs(
+      "premium-mpillow",
+      wizardToEngineInputs(measurementData),
+    );
+    if (missing.length > 0) {
+      toast.error("Complete all required answers before continuing");
+      return;
+    }
+
+    const shoulderCm = Number(measurementData.shoulderLength);
+    const neckToBackCm = Number(measurementData.neckToBack);
+    const headToBackCm = Number(measurementData.headToBack);
+    const neckLengthCm = Number(measurementData.neckLength);
+
     setShopLoading(true);
     try {
-      const shoulderCm = Number(measurementData.shoulderLength);
-      const neckToBackCm = Number(measurementData.neckToBack);
-      const headToBackCm = Number(measurementData.headToBack);
-      const neckLengthCm = Number(measurementData.neckLength);
-
       const res = await fetch("/api/shop/customize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -973,10 +998,10 @@ export function MpConfigClient({
           purpose: "ballpark",
           measurement_preferences: {
             measurements: {
-              shoulder_length_cm: shoulderCm || 40,
-              neck_to_back_cm: neckToBackCm || 8,
-              head_to_back_cm: headToBackCm || 10,
-              neck_length_cm: neckLengthCm || 10,
+              shoulder_length_cm: shoulderCm,
+              neck_to_back_cm: neckToBackCm,
+              head_to_back_cm: headToBackCm,
+              neck_length_cm: neckLengthCm,
             },
             demographics: {
               gender: measurementData.gender,
@@ -1015,6 +1040,15 @@ export function MpConfigClient({
   }, [measurementData]);
 
   const fetchBasicRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }): Promise<RecommendationResponseData | null> => {
+    const missing = incompleteEngineInputs(
+      "basic-mpillow",
+      wizardToEngineInputs(measurementData),
+    );
+    if (missing.length > 0) {
+      toast.error("Complete all required answers before continuing");
+      return null;
+    }
+
     setShopLoading(true);
     try {
       const res = await fetch("/api/mp-basic/recommend", {
@@ -1142,21 +1176,6 @@ export function MpConfigClient({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoringHoldCancel, currentStep]);
-
-  // Prefetch basic recommendation when entering customize with shoulder set.
-  useEffect(() => {
-    if (!isBasic || currentStep !== "customize") return;
-    if (!measurementData.shoulderLength) return;
-    if (shopRecommendation || shopLoading) return;
-    void fetchBasicRecommendation();
-  }, [
-    isBasic,
-    currentStep,
-    measurementData.shoulderLength,
-    shopRecommendation,
-    shopLoading,
-    fetchBasicRecommendation,
-  ]);
 
   // Load size-scoped add-ons + shipping when entering purchase preview.
   useEffect(() => {
@@ -2618,17 +2637,11 @@ export function MpConfigClient({
                     ) : null}
                   </div>
 
-                  {/* Sleep pain areas (multi-select) */}
+                  {/* Sleep pain areas (multi-select; None exclusive) */}
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium">I experience one of the following during/after sleep</h3>
                     <div className="flex flex-wrap gap-2">
-                      {[
-                        { value: "neck", label: "Neck pain" },
-                        { value: "shoulder", label: "Shoulder pain" },
-                        { value: "lower-back", label: "Lower Back pain" },
-                        { value: "sleep-apnea", label: "Sleep Apnea" },
-                        { value: "bad-sleep-quality", label: "Bad Sleep Quality" },
-                      ].map((opt) => {
+                      {PAIN_AREA_OPTIONS.map((opt) => {
                         const isSelected = measurementData.sleepPainAreas.includes(opt.value);
                         return (
                           <button
@@ -2637,9 +2650,7 @@ export function MpConfigClient({
                             onClick={() => {
                               setMeasurementData((prev) => ({
                                 ...prev,
-                                sleepPainAreas: isSelected
-                                  ? prev.sleepPainAreas.filter((v) => v !== opt.value)
-                                  : [...prev.sleepPainAreas, opt.value],
+                                sleepPainAreas: togglePainArea(prev.sleepPainAreas, opt.value),
                               }));
                             }}
                             className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all ${
@@ -2654,7 +2665,11 @@ export function MpConfigClient({
                         );
                       })}
                     </div>
-                    <p className="text-xs text-muted-foreground">Select all that apply (optional)</p>
+                    {fieldErrors.sleepPainAreas ? (
+                      <p className="text-sm text-destructive">{fieldErrors.sleepPainAreas}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Select all that apply, or None</p>
+                    )}
                   </div>
 
                   {/* Sleep position type (multi-select) */}
@@ -2720,9 +2735,9 @@ export function MpConfigClient({
                 </div>
               </div>
 
-              <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
+                  <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
                 <div className="flex items-center gap-1">
-                  <h4 className="font-semibold text-lg">Photos</h4>
+                  <h4 className="font-semibold text-lg">Photos <span className="text-sm font-normal text-muted-foreground">(optional)</span></h4>
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button

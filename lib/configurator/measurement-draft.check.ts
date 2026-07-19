@@ -1,13 +1,16 @@
 /**
- * Self-check: measurement draft normalize/display (decimal typing).
+ * Self-check: measurement draft normalize/display via rules-engine units.
  * Run: npx tsx lib/configurator/measurement-draft.check.ts
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   displayMeasurement,
   normalizeMeasurementDraft,
 } from "./measurement-draft";
+import { CM_PER_INCH, inchesToCm, roundCm } from "@/lib/rules-engine/units";
 
 // Incomplete trailing decimal — keep invalid so Continue stays gated
 assert.equal(normalizeMeasurementDraft("in", "16."), null);
@@ -16,14 +19,22 @@ assert.equal(normalizeMeasurementDraft("in", ""), null);
 assert.equal(normalizeMeasurementDraft("cm", "abc"), null);
 assert.equal(normalizeMeasurementDraft("in", "0"), null);
 
-// Complete values
-assert.equal(normalizeMeasurementDraft("in", "16.5"), String(Math.round(16.5 * 2.54 * 100) / 100));
+// Complete values → canonical cm
+assert.equal(normalizeMeasurementDraft("in", "16.5"), String(roundCm(inchesToCm(16.5))));
 assert.equal(normalizeMeasurementDraft("cm", "42"), "42");
 assert.equal(normalizeMeasurementDraft("cm", "42.25"), "42.25");
 
 // Display round-trip from committed cm
 assert.equal(displayMeasurement("cm", "41.91"), "41.91");
-assert.equal(displayMeasurement("in", String(16.5 * 2.54)), "16.5");
+assert.equal(displayMeasurement("in", String(16.5 * CM_PER_INCH)), "16.5");
 assert.equal(displayMeasurement("in", ""), "");
+
+const mp = readFileSync(
+  join(process.cwd(), "app/[lang]/mp-config/mp-config-client.tsx"),
+  "utf8",
+);
+assert.match(mp, /useState<MeasurementUnit>\("in"\)/);
+assert.match(mp, /TabsTrigger value="in"/);
+assert.match(mp, /TabsTrigger value="cm"/);
 
 console.log("measurement-draft.check.ts: ok");

@@ -168,7 +168,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
 
   const [state, setState] = React.useState<State>({
     step: "welcome",
-    heightUnit: "m",
+    heightUnit: "in",
     heightCm: "",
     sleepPosition: null,
   });
@@ -233,7 +233,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         const parsed = JSON.parse(raw) as Partial<State> | null;
         if (parsed) {
           const step = normalizeStep(parsed.step);
-          const heightUnit = (parsed.heightUnit as HeightUnit) ?? "m";
+          const heightUnit = (parsed.heightUnit as HeightUnit) ?? "in";
           const heightCm = typeof parsed.heightCm === "string" ? parsed.heightCm : "";
           hydratedStep = step;
           setState((prev) => ({
@@ -263,7 +263,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
           sleepPosition: draft.sleepPosition !== undefined ? draft.sleepPosition : s.sleepPosition,
         }));
         if (draft.heightCm) {
-          setHeightDraft(displayHeight(draft.heightUnit ?? "m", draft.heightCm));
+          setHeightDraft(displayHeight(draft.heightUnit ?? "in", draft.heightCm));
         }
         const sel = draft.selections;
         setSelectedCase(sel.selectedCase);
@@ -486,7 +486,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const reset = () => {
     setState({
       step: "welcome",
-      heightUnit: "m",
+      heightUnit: "in",
       heightCm: "",
       sleepPosition: null,
     });
@@ -1236,7 +1236,13 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     setHeightDraft(displayHeight(state.heightUnit, heightCm));
                   }}
                   inputMode="decimal"
-                  placeholder={state.heightUnit === "m" ? "e.g. 1.68" : "e.g. 168"}
+                  placeholder={
+                    state.heightUnit === "in"
+                      ? "e.g. 66"
+                      : state.heightUnit === "m"
+                        ? "e.g. 1.68"
+                        : "e.g. 168"
+                  }
                   className="h-12 text-lg"
                   autoFocus
                   aria-invalid={!!fieldErrors.heightCm}
@@ -1256,8 +1262,8 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   }}
                 >
                   <TabsList className="h-12">
-                    <TabsTrigger value="m" className="px-4">
-                      m
+                    <TabsTrigger value="in" className="px-4">
+                      in
                     </TabsTrigger>
                     <TabsTrigger value="cm" className="px-4">
                       cm
