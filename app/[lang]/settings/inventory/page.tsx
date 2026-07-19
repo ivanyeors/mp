@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { collectLowStockCategories } from "@/lib/inventory/part-category-low-stock";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, Trash2 } from "lucide-react";
+import { ChevronDown, ImageIcon, Trash2 } from "lucide-react";
 import {
   sellPillow,
   sellPart,
@@ -21,7 +21,9 @@ import {
   addInventoryItem,
   deleteInventoryItem,
   renameInventoryItem,
+  setItemPrimaryImage,
 } from "./actions";
+import { ImagePicker } from "@/components/ui/image-picker";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -2510,6 +2512,25 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                                 </>
                               ) : (
                                 <>
+                                  {/* ponytail: minimal admin affordance — set-only picker, current image not shown here */}
+                                  <ImagePicker
+                                    onSelect={(sel) => {
+                                      void setItemPrimaryImage({ itemId: variant.id, assetId: sel.assetId })
+                                        .then(() => toast.success("Item image set"))
+                                        .catch((error: unknown) =>
+                                          toast.error(error instanceof Error ? error.message : "Failed to set item image"),
+                                        );
+                                    }}
+                                  >
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      aria-label={`Set image for ${description}`}
+                                      disabled={renameSaving}
+                                    >
+                                      <ImageIcon className="h-4 w-4" />
+                                    </Button>
+                                  </ImagePicker>
                                   <Button
                                     size="sm"
                                     variant="outline"
