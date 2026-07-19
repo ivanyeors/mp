@@ -30,6 +30,14 @@ import {
   loadPreOrderTriggerAtHold,
   preOrderFlagForResult,
 } from "@/lib/configurator/pre-order-persist";
+import { getAdminContext } from "@/lib/auth/admin";
+import {
+  rowsToPillowPlacements,
+  validatePillowPlacements,
+  type PillowPlacement,
+  type PillowPlacementRow,
+} from "@/lib/spatial-fillings";
+import { buildFillingSnapshot, type FillingSnapshot } from "@/lib/results/filling-snapshot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +53,22 @@ const PreferenceLineSchema = z.object({
 const AddonLineSchema = z.object({
   item_id: z.number().int().positive(),
   quantity: z.number().positive().default(1),
+});
+
+/** Staff assist spatial mix (slice 05). Shape-checked here; validatePillowPlacements does the rest. */
+const AssistFillingSchema = z.object({
+  placements: z
+    .array(
+      z.object({
+        section: z.string(),
+        sub_section: z.string(),
+        slot: z.number().int(),
+        item_id: z.number().int().positive(),
+      }),
+    )
+    .min(1),
+  /** Client's still-matching template claim — re-verified server-side, never trusted alone. */
+  templateId: z.number().int().positive().nullable().optional(),
 });
 
 const AddressSchema = z.object({
@@ -75,6 +99,8 @@ const HoldSchema = z
     addonLines: z.array(AddonLineSchema).default([]),
     shippingMethodId: z.string().uuid(),
     shippingAddress: AddressSchema,
+    /** Present only for Staff assist holds; guests send nothing. */
+    assistFilling: AssistFillingSchema.optional(),
     /** Locale-less return path when Stripe checkout is cancelled (default: /mp-config or /mbolster-config). */
     cancelPath: z.string().regex(/^\//).optional(),
   })
@@ -202,6 +228,39 @@ export async function POST(req: Request) {
     input.discoverySource,
     input.discoverySourceOther,
   );
+
+  // Staff assist snapshot (slice 05): staff-gated, validated, template claim
+  // re-verified against the catalog's current placements. Guests never reach this.
+  let fillingSnapshot: FillingSnapshot | null = null;
+  if (input.assistFilling) {
+    const staff = await getAdminContext();
+    if (!staff) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const placements = rowsToPillowPlacements(input.assistFilling.placements);
+    const placementItemIds = [...new Set(placements.map((p) => p.itemId))];
+    const { data: fillingItems } = await admin
+      .from("items")
+      .select("id, category")
+      .in("id", placementItemIds);
+    const itemCategories = new Map(
+      (fillingItems ?? []).map((i) => [i.id as number, String(i.category)]),
+    );
+    const valid = validatePillowPlacements(placements, itemCategories);
+    if (!valid.ok) {
+      return NextResponse.json({ error: valid.error }, { status: 400 });
+    }
+    const claimedTemplateId = input.assistFilling.templateId ?? null;
+    let templatePlacements: PillowPlacement[] | null = null;
+    if (claimedTemplateId != null) {
+      const { data: tplRows } = await admin
+        .from("filling_template_placements")
+        .select("section, sub_section, slot, item_id")
+        .eq("template_id", claimedTemplateId);
+      templatePlacements = rowsToPillowPlacements((tplRows ?? []) as PillowPlacementRow[]);
+    }
+    fillingSnapshot = buildFillingSnapshot({ placements, claimedTemplateId, templatePlacements });
+  }
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
   const addonIds = input.addonLines.map((l) => l.item_id);
@@ -369,6 +428,13 @@ export async function POST(req: Request) {
     access_token: accessToken,
     source: "online_purchase",
     is_pre_order,
+    // Only assist holds carry snapshot columns; guest rows stay untouched (null snapshot).
+    ...(fillingSnapshot
+      ? {
+          filling_fingerprint: fillingSnapshot.fingerprint,
+          filling_template_id: fillingSnapshot.fillingTemplateId,
+        }
+      : {}),
   };
 
   const { error: upsertErr } = await admin.from("mp_config_responses").upsert(row, {
@@ -376,6 +442,24 @@ export async function POST(req: Request) {
   });
   if (upsertErr) {
     return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+  }
+
+  if (fillingSnapshot) {
+    // Replace-insert copy rows keyed by result — no FK to template placements, so
+    // later catalog template edits never change this Result (ADR 0008).
+    const { error: delErr } = await admin
+      .from("result_filling_placements")
+      .delete()
+      .eq("result_id", resultId);
+    if (delErr) {
+      return NextResponse.json({ error: delErr.message }, { status: 500 });
+    }
+    const { error: insErr } = await admin
+      .from("result_filling_placements")
+      .insert(fillingSnapshot.rows.map((r) => ({ result_id: resultId, ...r })));
+    if (insErr) {
+      return NextResponse.json({ error: insErr.message }, { status: 500 });
+    }
   }
 
   // No inventory reserve or deduct on hold (US36).

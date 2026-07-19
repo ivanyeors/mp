@@ -120,6 +120,7 @@ import {
 } from "@/lib/configurator/staff-assist";
 import { StaffAssistPanel } from "@/components/configurator/staff-assist-panel";
 import {
+  pillowPlacementsToRows,
   rowsToPillowPlacements,
   type PillowPlacement,
   type PillowPlacementRow,
@@ -1249,6 +1250,15 @@ export function MpConfigClient({
             { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          // Staff assist snapshot (slice 05): session mix + still-matching template claim.
+          ...(staffAssist && assistPlacements.length > 0
+            ? {
+                assistFilling: {
+                  placements: pillowPlacementsToRows(assistPlacements),
+                  templateId: sessionFillingTemplateId,
+                },
+              }
+            : {}),
           shippingMethodId: selectedShippingId,
           shippingAddress: {
             ...holdAddress,
@@ -1286,6 +1296,9 @@ export function MpConfigClient({
     isBasic,
     configPath,
     holdFields,
+    staffAssist,
+    assistPlacements,
+    sessionFillingTemplateId,
   ]);
 
   const saveLabel:
