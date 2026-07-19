@@ -157,6 +157,7 @@ import {
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
+import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
 type MeasureKey = "shoulderLength" | "neckToBack" | "headToBack" | "neckLength";
 
@@ -305,6 +306,13 @@ export function MpConfigClient({
   const assistItemSubtypes = useMemo(
     () => new Map(assistItems.map((i) => [i.id, i.subtype])),
     [assistItems],
+  );
+  // Product Builder color overrides (slice 11) → CSS vars on the x-ray container;
+  // cleared overrides simply vanish and var(x, default) falls back to code defaults.
+  const [assistColorOverrides, setAssistColorOverrides] = useState<ColorOverrideRow[]>([]);
+  const xrayColorVars = useMemo(
+    () => xrayColorVarStyle(assistColorOverrides),
+    [assistColorOverrides],
   );
   // Kept only while the mix exactly matches the loaded template; slice 05's snapshot reads this.
   const sessionFillingTemplateId = useMemo(
@@ -1688,7 +1696,8 @@ export function MpConfigClient({
               <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
                 <div
                   className="relative"
-                  style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
+                  // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
+                  style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)", ...xrayColorVars }}
                 >
                   <svg
                     className={cn(
@@ -1814,6 +1823,7 @@ export function MpConfigClient({
                     sessionFillingTemplateId={sessionFillingTemplateId}
                     onApplySizeTier={applyAssistSizeTier}
                     onItemsChange={setAssistItems}
+                    onColorOverridesChange={setAssistColorOverrides}
                   />
                 ) : !shopRecommendation ? (
                   <p className="max-w-xs text-center text-xs text-white/80">

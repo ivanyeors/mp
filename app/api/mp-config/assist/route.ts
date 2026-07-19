@@ -48,25 +48,36 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid size" }, { status: 400 });
   }
 
-  const [{ data: templates, error: listErr }, { data: items, error: itemsErr }] =
-    await Promise.all([
-      admin
-        .from("bom_templates")
-        .select("id,name")
-        .eq("kind", "pillow")
-        .eq("key", size)
-        .eq("role", "filling")
-        .eq("is_active", true)
-        .order("name"),
-      admin
-        .from("items")
-        .select("id,name,subtype")
-        .eq("category", "filling")
-        .eq("is_active", true)
-        .order("name"),
-    ]);
+  const [
+    { data: templates, error: listErr },
+    { data: items, error: itemsErr },
+    { data: colorOverrides, error: colorsErr },
+  ] = await Promise.all([
+    admin
+      .from("bom_templates")
+      .select("id,name")
+      .eq("kind", "pillow")
+      .eq("key", size)
+      .eq("role", "filling")
+      .eq("is_active", true)
+      .order("name"),
+    admin
+      .from("items")
+      .select("id,name,subtype")
+      .eq("category", "filling")
+      .eq("is_active", true)
+      .order("name"),
+    // Slice 11: Product Builder color overrides for the x-ray CSS-variable pipeline.
+    admin.from("filling_color_overrides").select("subtype,color"),
+  ]);
   if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
   if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 500 });
+  if (colorsErr) return NextResponse.json({ error: colorsErr.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, templates: templates ?? [], items: items ?? [] });
+  return NextResponse.json({
+    ok: true,
+    templates: templates ?? [],
+    items: items ?? [],
+    colorOverrides: colorOverrides ?? [],
+  });
 }
