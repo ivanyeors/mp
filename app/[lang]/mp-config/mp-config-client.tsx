@@ -2568,7 +2568,70 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
               </div>
 
               <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-semibold text-lg">Photos (optional)</h4>
+                <div className="flex items-center gap-1">
+                  <h4 className="font-semibold text-lg">Photos</h4>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground"
+                        aria-label="Photo best practices"
+                      >
+                        <Info className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent
+                      hideClose
+                      className="max-h-[85vh] max-w-2xl overflow-y-auto"
+                    >
+                      <DialogHeader className="text-left sm:text-left">
+                        <DialogTitle>Photo tips</DialogTitle>
+                        <DialogDescription>
+                          Follow these examples for clear front and side view photos.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Front view</div>
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            Wear a fitted shirt; stand straight so both shoulders are clearly visible.
+                          </p>
+                          <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
+                            <Image
+                              src="/shoulderlength_800x.webp"
+                              alt="Front view photo example"
+                              fill
+                              className="object-cover"
+                              sizes="(min-width: 640px) 50vw, 100vw"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold">Side view</div>
+                          <p className="text-sm leading-relaxed text-muted-foreground">
+                            Stand straight against a wall or door frame; capture a clear side profile of head and neck.
+                          </p>
+                          <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-muted/20">
+                            <Image
+                              src="/NeckDepth_800x.webp"
+                              alt="Side view photo example"
+                              fill
+                              className="object-cover"
+                              sizes="(min-width: 640px) 50vw, 100vw"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <DialogClose asChild>
+                          <OverlayDismissButton variant="inline" />
+                        </DialogClose>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-lg border bg-background/60 p-3 space-y-3">
