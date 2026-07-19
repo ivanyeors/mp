@@ -29,11 +29,11 @@ export type PreOrderWaitingCopy = {
 const WAITING: Record<"en-US" | "zh-CN", PreOrderWaitingCopy> = {
   "en-US": {
     title: "Pre-order — waiting time",
-    body: "We can't build this combination from current inventory yet. Expect a short wait while stock returns. We'll email you when it's back; Sign in in a few days to track your customisation (Result) status.",
+    body: "We can't build this combination from current inventory yet. We'll reach out to you shortly via WhatsApp about next steps. You can also Sign in later to track your customisation (Result) status.",
   },
   "zh-CN": {
     title: "预购 — 等待时间",
-    body: "以当前库存还无法制作您选择的组合，需稍候补货。库存恢复后我们会发邮件通知；几天后登录即可查看定制结果（Result）状态。",
+    body: "以当前库存还无法制作您选择的组合。我们会尽快通过 WhatsApp 联系您说明下一步。您也可稍后登录查看定制结果（Result）状态。",
   },
 };
 

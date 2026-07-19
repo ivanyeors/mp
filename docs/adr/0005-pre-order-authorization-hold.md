@@ -16,7 +16,7 @@ Alternatives considered:
 ## Decision
 
 - **Trigger (live):** required **Customer preference** line `stock_available <= 0` (Mpillow: cover or case; Mbolster: case only), **or** recommended **Composed sellable** buildable `<= 0`. Soft low-stock badges (e.g. qty ≤ 5) do **not** flip the mode.
-- **Preview CTA:** recomputed live — **Pre-order** + fixed-i18n waiting-time section when trigger is true; otherwise normal hold CTA (**Proceed**, not “Purchase”).
+- **Preview CTA:** recomputed live — **Pre-order** + fixed-i18n waiting-time section when trigger is true (promise: WhatsApp reach-out shortly; no numeric ETA); otherwise normal hold CTA (**Proceed**, not “Purchase”).
 - **Result:** persist Pre-order mode at hold create (sticky for that submission). Same money path: hold → assign → Accept → capture → **Order**. No separate Pre-order queue in v1.
 - **Restock notice:** when inventory recovers enough that the trigger would clear, **automatically** email open Pre-order **Results** in `held` or `assigned` (idempotent). Skip expired/declined/captured/canceled. No Staff-triggered send in v1.
 - **Scope:** Mpillow (full/basic) and Mbolster. Packaged as vertical slices inside the UX polish Jul 2026 PRD.
