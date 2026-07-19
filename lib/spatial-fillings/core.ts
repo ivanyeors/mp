@@ -38,8 +38,8 @@ export type PackLine = { item_id: number; count: number };
 
 export const MAX_PIECES_PER_CELL = 5;
 
-const SECTIONS: readonly string[] = ["left", "center", "right"];
-const SUB_SECTIONS: readonly string[] = ["front", "middle", "back"];
+export const SECTIONS: readonly Section[] = ["left", "center", "right"];
+export const SUB_SECTIONS: readonly SubSection[] = ["front", "middle", "back"];
 
 type Validation = { ok: true } | { ok: false; error: string };
 
@@ -151,7 +151,7 @@ export function derivePackList(
 export type AnyPlacement = PillowPlacement | BolsterPlacement;
 
 /** Internal canonical form: cells sorted, item ids within each cell sorted — slot numbering dropped. */
-export function canonicalize(placements: AnyPlacement[]): Array<[string, number[]]> {
+export function canonicalizePlacements(placements: AnyPlacement[]): Array<[string, number[]]> {
   const cells = new Map<string, number[]>();
   for (const p of placements) {
     const key = "section" in p ? `${p.section}/${p.subSection}` : "compartment";
@@ -166,5 +166,5 @@ export function canonicalize(placements: AnyPlacement[]): Array<[string, number[
 
 /** True iff both hold the same multiset of items per cell (slot numbering/order ignored). */
 export function placementsExactMatch(a: AnyPlacement[], b: AnyPlacement[]): boolean {
-  return JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
+  return JSON.stringify(canonicalizePlacements(a)) === JSON.stringify(canonicalizePlacements(b));
 }

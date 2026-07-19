@@ -9,6 +9,8 @@ User stories covered: 33, 34, 35
 
 New Admin Panel page **Product Builder** under Landing Site: Staff map cover/case **Items** to overlay **Media Assets** (picked from the existing Media Asset Library — no new upload silo), with an optional fit transform for non-default placement on the pillow/bolster silhouette. The customisation preview reads the mapping: selecting a cover/case swaps the linked overlay on the silhouette (guests and Staff alike). Items without a mapping keep today's plain silhouette.
 
+Note: the **Rules Engine** (PRD `.claude/PRD-rules-engine/`) adds its entry point on this page (Product Builder → Rules Engine). Leave room for that entry in the page layout; the workbench itself is that PRD's slice 02, not this slice.
+
 ## Acceptance criteria
 
 - [ ] Product Builder appears under Landing Site nav with Staff permission gating consistent with sibling pages

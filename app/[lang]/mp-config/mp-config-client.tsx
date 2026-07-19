@@ -112,6 +112,18 @@ import {
   preferenceStockFor,
   preOrderWaitingCopy,
 } from "@/lib/configurator/pre-order-trigger";
+import {
+  recheckSelectionsForSize,
+  sessionTemplateId,
+  type LoadedTemplate,
+  type SizeTier,
+} from "@/lib/configurator/staff-assist";
+import { StaffAssistPanel } from "@/components/configurator/staff-assist-panel";
+import {
+  rowsToPillowPlacements,
+  type PillowPlacement,
+  type PillowPlacementRow,
+} from "@/lib/spatial-fillings/core";
 
 type MeasureKey = "shoulderLength" | "neckToBack" | "headToBack" | "neckLength";
 
@@ -188,7 +200,14 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
   "zh-CN": "查看全部常见问题",
 };
 
-export function MpConfigClient({ info }: { info: MpConfigInfo }) {
+export function MpConfigClient({
+  info,
+  staffAssist = false,
+}: {
+  info: MpConfigInfo;
+  /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
+  staffAssist?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -244,6 +263,15 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   const [selectedCase, setSelectedCase] = useState<number | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<Set<number>>(new Set());
   const [addons, setAddons] = useState<AddonOption[]>([]);
+
+  // --- Staff assist mode (slice 04) — top-level so the mix survives step navigation ---
+  const [assistPlacements, setAssistPlacements] = useState<PillowPlacement[]>([]);
+  const [assistLoadedTemplate, setAssistLoadedTemplate] = useState<LoadedTemplate | null>(null);
+  // Kept only while the mix exactly matches the loaded template; slice 05's snapshot reads this.
+  const sessionFillingTemplateId = useMemo(
+    () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
+    [assistLoadedTemplate, assistPlacements],
+  );
   const [holdEmail, setHoldEmail] = useState("");
   const [holdPhone, setHoldPhone] = useState("");
   const [discoverySource, setDiscoverySource] = useState("");
@@ -738,6 +766,8 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
     setSelectedCover(null);
     setSelectedCase(null);
     setSelectedAddons(new Set());
+    setAssistPlacements([]);
+    setAssistLoadedTemplate(null);
     // Keep holdEmail/holdAddress — signed-in shoppers stay prefilled.
     setHoldSubmitting(false);
   };
@@ -1013,6 +1043,83 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
   }, [measurementData]);
 
   const fetchRecommendation = isBasic ? fetchBasicRecommendation : fetchShopRecommendation;
+
+  /**
+   * Staff assist: confirmed size×tier change. Updates the product context as if
+   * the recommendation had that size×tier, clears the mix and loads the new
+   * size's Default Filling Template, then rechecks cover/case/add-on
+   * eligibility (wrong size → clear + note; stock 0 → keep, existing
+   * OOS/Pre-order signals apply).
+   */
+  const applyAssistSizeTier = async (next: SizeTier) => {
+    const res = await fetch(
+      `/api/mp-config/assist/context?size=${encodeURIComponent(next.size)}&tier=${encodeURIComponent(next.tier)}`,
+    );
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.pillow_product) {
+      toast.error(getApiErrorMessage(data?.error, "Failed to switch size"));
+      return;
+    }
+
+    setShopRecommendation((prev) => ({
+      ...(prev ?? {
+        ok: true,
+        recommendation: {
+          recommended_size: next.size,
+          recommended_kind: next.tier,
+          filling_lines: [],
+          summary: "",
+          explanation: "",
+        },
+        templates: [],
+        available_fillings: [],
+      }),
+      pillow_product: data.pillow_product,
+      variant: data.variant,
+      components: data.components,
+      composed_buildable: data.composed_buildable,
+    }));
+
+    const tplPlacements = rowsToPillowPlacements(
+      (data.default_template?.placements ?? []) as PillowPlacementRow[],
+    );
+    setAssistPlacements(tplPlacements);
+    setAssistLoadedTemplate(
+      data.default_template ? { id: data.default_template.id, placements: tplPlacements } : null,
+    );
+
+    const newAddons: AddonOption[] = await fetch(
+      `/api/results/addons?productType=pillow&size=${encodeURIComponent(next.size)}`,
+    )
+      .then((r) => r.json())
+      .then((d: { addons?: AddonOption[] }) => d.addons ?? [])
+      .catch(() => []);
+
+    const named = (id: number | null, options: { item_id: number; name: string }[]) =>
+      id == null
+        ? null
+        : { itemId: id, name: options.find((o) => o.item_id === id)?.name ?? `Item #${id}` };
+    const result = recheckSelectionsForSize({
+      cover: named(selectedCover, shopRecommendation?.components.covers ?? []),
+      caseSel: named(selectedCase, shopRecommendation?.components.cases ?? []),
+      addons: [...selectedAddons].map((id) => ({
+        itemId: id,
+        name: addons.find((a) => a.item_id === id)?.name ?? `Item #${id}`,
+      })),
+      offeredCovers: data.components.covers,
+      offeredCases: data.components.cases,
+      offeredAddonIds: newAddons.map((a) => a.item_id),
+    });
+    setSelectedCover(result.coverId);
+    setSelectedCase(result.caseId);
+    setSelectedAddons(new Set(result.addonIds));
+    setAddons(newAddons);
+    if (result.clearedNames.length > 0) {
+      toast.message(`Not offered for Size ${next.size}`, {
+        description: `Cleared: ${result.clearedNames.join(", ")}`,
+      });
+    }
+  };
 
   // After hold-cancel restore, re-fetch recommendation without clobbering cover/case.
   useEffect(() => {
@@ -1408,9 +1515,24 @@ export function MpConfigClient({ info }: { info: MpConfigInfo }) {
                   )}
                 </div>
                 <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
-                <p className="max-w-xs text-center text-xs text-white/80">
-                  Fillings and protector are chosen by our team after review.
-                </p>
+                {staffAssist && size && tier ? (
+                  <StaffAssistPanel
+                    current={{
+                      size: size as SizeTier["size"],
+                      tier: tier as SizeTier["tier"],
+                    }}
+                    placements={assistPlacements}
+                    onPlacementsChange={setAssistPlacements}
+                    loadedTemplate={assistLoadedTemplate}
+                    onLoadTemplate={setAssistLoadedTemplate}
+                    sessionFillingTemplateId={sessionFillingTemplateId}
+                    onApplySizeTier={applyAssistSizeTier}
+                  />
+                ) : (
+                  <p className="max-w-xs text-center text-xs text-white/80">
+                    Fillings and protector are chosen by our team after review.
+                  </p>
+                )}
               </div>
             </div>
 

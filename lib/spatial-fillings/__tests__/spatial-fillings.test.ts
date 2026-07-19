@@ -5,12 +5,12 @@ import {
   flattenToPackList,
   derivePackList,
   placementsExactMatch,
-  fingerprintPlacements,
   type PillowPlacement,
   type BolsterPlacement,
   type Section,
   type SubSection,
 } from "@/lib/spatial-fillings";
+import { fingerprintPlacements } from "@/lib/spatial-fillings/fingerprint";
 
 const categories = new Map([
   [1, "filling"],

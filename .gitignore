@@ -49,3 +49,4 @@ next-env.d.ts
 
 # supabase local CLI link artifacts
 supabase/.temp/
+.claude/worktrees/

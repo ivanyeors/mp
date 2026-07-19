@@ -152,4 +152,5 @@ In-store customisation happens on a shared device, but the "Your Custom Mpillow"
 
 - Brand language: **Mpillow** / **Mbolster** in all UI copy; "admin" in product copy is **Staff**.
 - The designer-exported SVG (silhouette + 9 cell boundary paths + per-filling fluid shapes) is a prerequisite asset for the x-ray slices; the section mockups from the grill session are the reference (`~/.cursor/projects/Volumes-Crucial-SSD-2TB-Projects-mp/assets/image-b4ddd1cf…png`, `image-1a9a0539…png`, `image-d18e24b1…png`).
+- The **Rules Engine** PRD (`.claude/PRD-rules-engine/`) builds on this PRD: soft dependency on slice 01 (Template outputs reference Filling Templates, legacy-flat or spatial), hard dependency on slice 07 only for its read-only x-ray preview upgrade. Product Builder (slice 10) hosts its entry point. Recommendation records never alter this PRD's snapshot lifecycle.
 - Pre-order WhatsApp waiting copy already shipped during the grill session (code + self-check verified) — recorded here for completeness, not a slice.

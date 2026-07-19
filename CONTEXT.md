@@ -174,6 +174,47 @@ _Avoid_: merging mirror tables/jobs with the sales queue; treating live API list
 Unmapped or uncosted **Shopify order mirror** lines. Revenue and units still count; COGS is zero/unknown until Staff fixes mapping or **Costings** and re-resolve graduates the line. Freeze-at-sale: healthy already-costed lines are not rewritten on every Costings edit.
 _Avoid_: dropping unmapped lines from totals; silently understating Shopify sales
 
+## Rules Engine (recommendations)
+
+**Rules Engine**:
+The single recommendation authority: a Staff-authored node workbench (entry point inside **Product Builder**) whose published **Rule graphs** derive every measurement → size / tier-suggestion / **Filling Template** recommendation. See ADR `docs/adr/0010-rules-engine-single-recommendation-authority.md`.
+_Avoid_: hardcoded sizing rules as a parallel truth; "recommendation engine" for the dormant LLM hooks
+
+**Rule graph**:
+One flow's decision DAG (Premium Mpillow, Basic Mpillow, or Mbolster): one editable draft plus immutable published versions. Only the published version runs live; Publish is gated by validation (DAG, band coverage, reachable **Fallback**, size-scoped **Template outputs**, same-flow fallback beside every **Flow route**).
+_Avoid_: editing a published version in place; multiple concurrently-live versions per flow
+
+**Input node**:
+Emits one typed answer from the flow's code-defined input catalog (measurements, sleep position, bed firmness, health flags, blood pressure, pain areas, uses bolster, gender, age group). Every catalog input is **required** — no "not answered" branches.
+_Avoid_: referencing inputs the flow does not collect; silent client defaults for skipped measurements
+
+**Range node**:
+Maps a numeric input to a named band via ordered ranges that must be contiguous and non-overlapping. Authored in **inches** (canonical storage stays cm).
+
+**Match node**:
+Branches on an enum/boolean input, one edge per value.
+
+**Combine node**:
+ANDs multiple branches (e.g. three measurement ranges must all match). Disjunction is expressed with parallel **Match** branches, not an OR node.
+
+**Terminal**:
+A leaf that resolves the evaluation: **Size output** (size or bolster length), **Template output** (a **Filling Template** scoped to the resolved size), **Tier suggestion** (advisory copy only — never changes the sold product), or **Flow route** (upsell/cross-sell to another flow via the **Upsell card**).
+_Avoid_: a Template output pointing across sizes; Tier suggestion mutating the held product or amount
+
+**Fallback**:
+The per-graph default terminal when no path matches. Publish requires it reachable, and every **Flow route** terminal needs a same-flow fallback sibling so declining an upsell always lands on a sellable result.
+
+**Recommendation record**:
+The engine's output persisted on the configurator response and copied to the **Result** at hold create: graph version id, fired terminals, resolved size/length, recommended template id, tier suggestion, **Evaluation trace**, and entry flow → final flow journey. It is advice — never the filling snapshot (guest snapshots stay null until Admin Panel assign); the assign hint upgrades from **Default Filling Template** to the engine-recommended template. A **Staff assist mode** mix at hold create wins over it.
+_Avoid_: conflating with **Filling configuration** snapshot; treating it as binding on production
+
+**Evaluation trace**:
+The recorded path (nodes and matched values) that produced a recommendation — the "why" shown to shoppers in plain language, to operators at assign, and replayable on the canvas.
+
+**Upsell card**:
+The consent surface on the completed preview when a **Flow route** fires: reason from the fired path, both prices, Upgrade / Keep. Accept carries shared answers over and collects only the missing target-flow steps; Decline keeps the same-flow fallback result. All routing resolves before the Stripe hold.
+_Avoid_: silent auto-redirect to another flow; holding an amount the shopper did not explicitly confirm
+
 ## Relationships
 
 - An **Item** may be a **Sellable item** when it has an MSRP
@@ -205,6 +246,9 @@ _Avoid_: dropping unmapped lines from totals; silently understating Shopify sale
 - A **Prospect** is a **Visitor** with no paid **Order**; after payment they are no longer a **Prospect**
 - **Entry source** is machine-captured at **Visit** start; **Discovery source** is self-reported later on the **Result** — never the same field
 - A **Visitor** merges to a **Customer** (or email) only via a deterministic key — never by IP, user-agent, or fingerprint alone
+- Each flow (Premium Mpillow, Basic Mpillow, Mbolster) has exactly one **Rule graph** (draft + published versions); all recommendation callers (online ballpark, in-store suggestion, basic recommend) evaluate the published version
+- A **Recommendation record** on a **Result** references the **Rule graph** version that produced it; the recommended template becomes the assign hint, and the filling snapshot rules from **Staff assist mode** / Admin Panel assign are unchanged
+- Sold tier is flow-scoped: a **Rule graph** advises (**Tier suggestion**) or routes with consent (**Flow route** → **Upsell card**) but never changes the held product or amount on its own
 
 ## Example dialogue
 
@@ -282,6 +326,15 @@ _Avoid_: dropping unmapped lines from totals; silently understating Shopify sale
 >
 > **Dev:** "What should Staff look at first on Analytics — converters or leavers?"
 > **Domain expert:** "**Prospects** and **Drop-off**. Paid **Orders** are the muted minority until Staff opt in."
+>
+> **Dev:** "Where do I change the shoulder-to-size thresholds?"
+> **Domain expert:** "On the flow's **Rule graph** in the **Rules Engine** — edit the **Range node**, test in the panel, **Publish**. Never back in code; the published graph is the only authority."
+>
+> **Dev:** "The Basic graph decided this shopper should get Premium — do we switch their product?"
+> **Domain expert:** "No. A **Flow route** shows the **Upsell card**. If they accept, their answers carry over and we collect only the neck measurements; if they decline, the same-flow **Fallback** result stands. The hold amount is always what they confirmed."
+>
+> **Dev:** "Does the engine's template pick go straight to production?"
+> **Domain expert:** "No — it's a **Recommendation record**. Guest snapshots stay null until assign; the operator sees the engine's template as the hint with its **Evaluation trace** and still confirms. An assist-session mix outranks it."
 
 ## Configure (settings)
 
@@ -496,3 +549,7 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Section child dig-in — resolved: inside **Section dive**, section child nodes and Entry/Exit ports stay compact chrome only. **Expanded node** dig-in is page-level (not while dived) for page nodes + **Converted** only.
 - Expanded node build tracking — resolved: AFK slice **14** (`.claude/PRD-prospect-journey-analytics/issues/14-expanded-node-dig-in.md`); do not reopen slice 07. PRD story 19 amended to **Expanded node**.
 - Dig-in viz + Section expand chrome — resolved: AFK slice **15** (`.claude/PRD-prospect-journey-analytics/issues/15-dig-in-viz-section-expand-chrome.md`); do not reopen slice 14.
+- Three sizing engines disagreed (shop `SIZE_MAP` vs in-store XS–XL bands vs basic recommend) — resolved: the **Rules Engine**'s published **Rule graph** per flow is the single authority; seeds use the in-store XS–XL shoulder bands; legacy engines retire after seeding (mp-maker legacy untouched). ADR `docs/adr/0010-rules-engine-single-recommendation-authority.md`; PRD `.claude/PRD-rules-engine/`.
+- Engine recommendation vs filling snapshot — resolved: engine output is a **Recommendation record** (advice + trace); the **Filling configuration** snapshot rules are unchanged (null for guests until assign; assist mix wins). The assign hint upgrades to the engine-recommended template.
+- Measurement unit default — resolved: display/authoring default is **inches** (onsite practice); canonical storage stays cm. All engine inputs are **required** (pain areas gains a "None" chip; photos stay optional); the old silent defaults (shoulder 40, neck 8/10/10) are removed.
+- Upsell/cross-sell between flows — resolved: **Flow route** terminals + **Upsell card** (consent, carry-over, gap-fill steps), always resolved before the Stripe hold; sold tier stays flow-scoped; every Flow route needs a same-flow **Fallback** sibling (publish-validated).
