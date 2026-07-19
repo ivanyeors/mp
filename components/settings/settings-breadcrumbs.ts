@@ -102,12 +102,17 @@ export function buildSettingsBreadcrumbs(
     crumbs.push({ label: entry.label, href: entry.href });
   }
 
-  // Path segments beyond the active nav entry (detail routes).
+  // Path segments beyond the active nav entry (detail routes, possibly nested).
   if (activeHref && path.length > activeHref.length) {
     const rest = path.slice(activeHref.length).replace(/^\//, "");
-    const segment = rest.split("/").filter(Boolean)[0];
-    if (segment) {
-      crumbs.push({ label: detailSegmentLabel(segment, detailLabel) });
+    const segments = rest.split("/").filter(Boolean);
+    let acc = activeHref;
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i]!;
+      acc += `/${seg}`;
+      const isLast = i === segments.length - 1;
+      const label = isLast ? detailSegmentLabel(seg, detailLabel) : titleCaseSegment(seg);
+      crumbs.push(isLast ? { label } : { label, href: acc });
     }
   } else if (!activeHref) {
     // Unknown path: walk segments with title-case fallback.

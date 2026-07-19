@@ -11,6 +11,8 @@ export * from "./recommend";
 export * from "./why";
 export * from "./reveal";
 export * from "./assign-hint";
+export * from "./flow-labels";
+export * from "./ports";
 export {
   isRuleFlow,
   getDraft,

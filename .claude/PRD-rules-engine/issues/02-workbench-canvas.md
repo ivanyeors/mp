@@ -17,11 +17,26 @@ The ComfyUI-style authoring surface: Admin Panel → Landing Site → **Product 
 
 ## Acceptance criteria
 
-- [ ] Staff (`page-builder` perm) can build, save, and publish the seeded Premium graph entirely on the canvas; guests/other perms never see the page
-- [ ] Publish failures pin errors to the offending nodes; a valid graph publishes as an immutable version
-- [ ] Test panel highlights the fired path and matches `evaluate()` output exactly for the same inputs
-- [ ] Past versions render read-only and restore to draft without mutating history
-- [ ] `*.check.ts` for page mount, perm gating, and save/publish API contract
+- [x] Staff (`page-builder` perm) can build, save, and publish the seeded Premium graph entirely on the canvas; guests/other perms never see the page
+- [x] Publish failures pin errors to the offending nodes; a valid graph publishes as an immutable version
+- [x] Test panel highlights the fired path and matches `evaluate()` output exactly for the same inputs
+- [x] Past versions render read-only and restore to draft without mutating history
+- [x] `*.check.ts` for page mount, perm gating, and save/publish API contract
+
+## Proof (2026-07-19)
+
+- `npx tsx lib/rules-engine/slice-02.check.ts` — ok (mount, `requireAdminPage("page-builder")`, API contracts, ports, evaluate parity)
+- `npx tsx components/settings/settings-breadcrumbs.check.ts` — ok (Product Builder / Rules Engine / {flow})
+- `npx tsx lib/rules-engine/slice-01.check.ts` — ok
+- `npx vitest run lib/rules-engine` — 13 passed
+- Entry: Product Builder → Rules Engine → `/settings/product-builder/rules-engine/{flow}`
+- Workbench: `@xyflow/react` canvas + palette + MiniMap; draft autosave PUT; Publish pins `validateForPublish` errors; test panel calls `evaluate()` from `lib/rules-engine`
+
+## HITL notes
+
+- Canvas UX review on a real Premium draft (seed from slice 03 or hand-built graph): pan/zoom/minimap, band handles, Match enum handles, template picker size scope, publish error pins, test-path highlight, version restore.
+- Confirm Range inches ↔ cm feels right for onsite measurement bands.
+- Palette is click-to-add (not HTML5 drag); enough for v1 — upgrade if Staff ask for drag-from-palette.
 
 ## Blocked by
 
