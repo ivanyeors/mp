@@ -1,6 +1,7 @@
-/** Spatial filling placements (ADR 0008): where each filling piece goes. Pure — no I/O. */
-
-import { createHash } from "node:crypto";
+/**
+ * Spatial filling placements (ADR 0008): where each filling piece goes.
+ * Pure — no I/O, client-safe (fingerprinting lives in ./fingerprint, server-only).
+ */
 
 export type Section = "left" | "center" | "right";
 export type SubSection = "front" | "middle" | "back";
@@ -37,8 +38,8 @@ export type PackLine = { item_id: number; count: number };
 
 export const MAX_PIECES_PER_CELL = 5;
 
-const SECTIONS: readonly string[] = ["left", "center", "right"];
-const SUB_SECTIONS: readonly string[] = ["front", "middle", "back"];
+export const SECTIONS: readonly Section[] = ["left", "center", "right"];
+export const SUB_SECTIONS: readonly SubSection[] = ["front", "middle", "back"];
 
 type Validation = { ok: true } | { ok: false; error: string };
 
@@ -137,10 +138,10 @@ export function derivePackList(
   return tally(lines.map((l) => [l.item_id, Number(l.quantity)]));
 }
 
-type AnyPlacement = PillowPlacement | BolsterPlacement;
+export type AnyPlacement = PillowPlacement | BolsterPlacement;
 
 /** Canonical form: cells sorted, item ids within each cell sorted — slot numbering dropped. */
-function canonicalize(placements: AnyPlacement[]): Array<[string, number[]]> {
+export function canonicalizePlacements(placements: AnyPlacement[]): Array<[string, number[]]> {
   const cells = new Map<string, number[]>();
   for (const p of placements) {
     const key = "section" in p ? `${p.section}/${p.subSection}` : "compartment";
@@ -155,10 +156,5 @@ function canonicalize(placements: AnyPlacement[]): Array<[string, number[]]> {
 
 /** True iff both hold the same multiset of items per cell (slot numbering/order ignored). */
 export function placementsExactMatch(a: AnyPlacement[], b: AnyPlacement[]): boolean {
-  return JSON.stringify(canonicalize(a)) === JSON.stringify(canonicalize(b));
-}
-
-/** Stable sha256 fingerprint of the canonical spatial mix (pillow or bolster). */
-export function fingerprintPlacements(placements: AnyPlacement[]): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(placements))).digest("hex");
+  return JSON.stringify(canonicalizePlacements(a)) === JSON.stringify(canonicalizePlacements(b));
 }

@@ -7,12 +7,12 @@ import { readFileSync } from "node:fs";
 
 import {
   derivePackList,
-  fingerprintPlacements,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
   validatePillowPlacements,
 } from "./index";
+import { fingerprintPlacements } from "./fingerprint";
 
 const categories = new Map([
   [1, "filling"],

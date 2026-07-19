@@ -4,6 +4,7 @@ import { getPageFaq } from "@/lib/page-faq";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
+import { getAdminContext } from "@/lib/auth/admin";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MpConfigClient } from "./mp-config-client";
 
@@ -28,9 +29,11 @@ export default async function MpConfigPage({ params }: Props) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
-  const [offer, faq] = await Promise.all([
+  // Staff assist gate: existing Staff check (admin_users / bootstrap). Guests get null.
+  const [offer, faq, staffCtx] = await Promise.all([
     getConfiguratorOfferRange("pillow"),
     getPageFaq("mp-config", locale),
+    getAdminContext(),
   ]);
 
   const jsonLd = buildConfiguratorProductJsonLd({
@@ -56,6 +59,7 @@ export default async function MpConfigPage({ params }: Props) {
           faqTitle: faq?.title ?? null,
           faqItems: faq?.items ?? [],
         }}
+        staffAssist={Boolean(staffCtx)}
       />
     </>
   );
