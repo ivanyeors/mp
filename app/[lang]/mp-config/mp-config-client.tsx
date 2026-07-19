@@ -62,6 +62,12 @@ import {
   CustomizationStepComponents,
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
+import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
+import {
+  parseRecommendationRecord,
+  plainLanguageWhy,
+  shouldRevealRecommendation,
+} from "@/lib/rules-engine";
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
   SavedAddressSelect,
@@ -1534,18 +1540,49 @@ export function MpConfigClient({
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  {size && (
-                    <Badge variant="secondary" className="px-3 py-1 text-sm">
-                      Size {size}
-                    </Badge>
-                  )}
-                  {tier && (
-                    <Badge variant="outline" className="text-xs capitalize">
-                      {tier} tier
-                    </Badge>
-                  )}
-                </div>
+                {(() => {
+                  const record = parseRecommendationRecord(
+                    shopRecommendation?.recommendation_record ?? null,
+                  );
+                  // ponytail: slice 06 sets flowRouteUnresolved while Upsell card awaits consent
+                  const revealNow = shouldRevealRecommendation({
+                    requiredInputsComplete: Boolean(shopRecommendation && size),
+                    flowRouteUnresolved: false,
+                  });
+                  const sleepPos = measurementData.sleepPositionType[0];
+                  const why = record
+                    ? plainLanguageWhy(record, { sleep_position: sleepPos })
+                    : shopRecommendation?.recommendation?.explanation ?? "";
+                  const tplId = record?.templateId;
+                  const tpl = shopRecommendation?.templates?.find(
+                    (t) => String(t.id) === String(tplId),
+                  );
+                  const mixLines = (tpl?.lines ?? []).map((l) => {
+                    const filling = shopRecommendation?.available_fillings?.find(
+                      (f) => f.item_id === l.item_id,
+                    );
+                    return {
+                      label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
+                      qty: l.quantity,
+                    };
+                  });
+                  return (
+                    <>
+                      {tier ? (
+                        <Badge variant="outline" className="text-xs capitalize text-white">
+                          {tier} tier
+                        </Badge>
+                      ) : null}
+                      <RecommendationReveal
+                        reveal={revealNow}
+                        sizeLabel={size ? `Size ${size}` : ""}
+                        why={why}
+                        templateName={tpl?.name ?? null}
+                        mixLines={mixLines}
+                      />
+                    </>
+                  );
+                })()}
                 <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
                 {staffAssist && size && tier ? (
                   <StaffAssistPanel
@@ -1560,11 +1597,11 @@ export function MpConfigClient({
                     sessionFillingTemplateId={sessionFillingTemplateId}
                     onApplySizeTier={applyAssistSizeTier}
                   />
-                ) : (
+                ) : !shopRecommendation ? (
                   <p className="max-w-xs text-center text-xs text-white/80">
                     Fillings and protector are chosen by our team after review.
                   </p>
-                )}
+                ) : null}
               </div>
             </div>
 

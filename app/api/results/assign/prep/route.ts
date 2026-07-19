@@ -14,20 +14,27 @@ const PrepQuerySchema = z.union([
     productType: z.literal("pillow"),
     size: z.enum(PILLOW_SIZES),
     tier: z.enum(["basic", "premium"]),
+    preferredTemplateId: z.coerce.number().int().positive().optional(),
+    hintSource: z.enum(["engine", "default"]).optional(),
   }),
   z.object({
     productType: z.literal("bolster"),
     length: z.enum(BOLSTER_LENGTHS),
+    preferredTemplateId: z.coerce.number().int().positive().optional(),
+    hintSource: z.enum(["engine", "default"]).optional(),
   }),
 ]);
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const preferredRaw = url.searchParams.get("preferredTemplateId");
   const raw = {
     productType: url.searchParams.get("productType"),
     size: url.searchParams.get("size") ?? undefined,
     tier: url.searchParams.get("tier") ?? undefined,
     length: url.searchParams.get("length") ?? undefined,
+    preferredTemplateId: preferredRaw ?? undefined,
+    hintSource: url.searchParams.get("hintSource") ?? undefined,
   };
   const parsed = PrepQuerySchema.safeParse(raw);
   if (!parsed.success) {
@@ -40,7 +47,10 @@ export async function GET(req: Request) {
       ? { productType: "pillow" as const, size: parsed.data.size, tier: parsed.data.tier }
       : { productType: "bolster" as const, length: parsed.data.length };
 
-  const result = await loadAssignPrep(admin, key);
+  const result = await loadAssignPrep(admin, key, {
+    preferredTemplateId: parsed.data.preferredTemplateId ?? null,
+    hintSource: parsed.data.hintSource,
+  });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

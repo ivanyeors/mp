@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `rules-engine` (`.claude/PRD-rules-engine/rules-engine-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 24, 25, 26, 27, 28, 29
 
 ## What to build
@@ -17,11 +17,17 @@ The engine's answer becomes visible — to the shopper on the completed preview,
 
 ## Acceptance criteria
 
-- [ ] Completing all inputs reveals size + why + recommended mix summary on the preview; an incomplete route shows no recommendation anywhere
-- [ ] The why copy names actual answers (measurement band, sleep position), not internal node ids
-- [ ] Assign page shows the engine-recommended template as the hint with its why; confirming writes the same rows as today
-- [ ] When Staff assist supplied a mix, the Result shows the assist mix as truth and the engine recommendation as reference only
-- [ ] `*.check.ts` for preview reveal gating
+- [x] Completing all inputs reveals size + why + recommended mix summary on the preview; an incomplete route shows no recommendation anywhere
+- [x] The why copy names actual answers (measurement band, sleep position), not internal node ids
+- [x] Assign page shows the engine-recommended template as the hint with its why; confirming writes the same rows as today
+- [x] When Staff assist supplied a mix, the Result shows the assist mix as truth and the engine recommendation as reference only
+- [x] `*.check.ts` for preview reveal gating
+
+## Proof (2026-07-19)
+
+- `npx vitest run lib/rules-engine` — includes slice-05 tests
+- `npx tsx lib/rules-engine/slice-05.check.ts` — ok
+- Base: merge of slices 03 + 04 on `feat/rules-engine-slice-05`
 
 ## Blocked by
 

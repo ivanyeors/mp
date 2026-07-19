@@ -24,7 +24,11 @@ export type AssignPrepDefault = {
 
 export type AssignPrep = {
   productLines: AssignPrepProductLine[];
+  /** Hint shown to the operator (engine-recommended or size Default FT). */
   defaultFillingTemplate: AssignPrepDefault | null;
+  /** Size's catalog Default Filling Template (always the size default, for fallback). */
+  sizeDefaultFillingTemplate: AssignPrepDefault | null;
+  hintSource: "engine" | "default";
   fillingTemplates: Array<{ id: number; name: string }>;
 };
 
@@ -32,9 +36,61 @@ function itemLabel(name: string, subtype: string | null | undefined): string {
   return subtype ? `${name} (${subtype})` : name;
 }
 
+async function loadTemplatePreview(
+  admin: SupabaseClient,
+  key: ComposedSellableKey,
+  templateId: number,
+  templates: Array<{ id: unknown; name: unknown }>,
+  sizeKey: string,
+): Promise<AssignPrepDefault | null> {
+  const def = templates.find((t) => Number(t.id) === templateId);
+  if (!def) return null;
+
+  const { data: defLines, error: linesErr } = await admin
+    .from("bom_template_lines")
+    .select("item_id, quantity")
+    .eq("template_id", templateId);
+  if (linesErr) return null;
+
+  let defPlacements: Array<{ item_id: number }> = [];
+  if (key.productType === "pillow") {
+    const { data: pl, error: plErr } = await admin
+      .from("filling_template_placements")
+      .select("item_id")
+      .eq("template_id", templateId);
+    if (plErr) return null;
+    defPlacements = (pl ?? []) as Array<{ item_id: number }>;
+  }
+  const previewLines = derivePackList(
+    defPlacements,
+    (defLines ?? []).map((l) => ({
+      item_id: Number(l.item_id),
+      quantity: Number(l.quantity),
+    })),
+  ).map((l) => ({ item_id: l.item_id, quantity: l.count }));
+
+  const itemIds = previewLines.map((l) => l.item_id);
+  const { data: fillItems } = itemIds.length
+    ? await admin.from("items").select("id, name, subtype, size").in("id", itemIds)
+    : { data: [] as Array<{ id: number; name: string; subtype: string | null; size: string | null }> };
+  const itemsById = new Map<number, FillingItemMeta>(
+    (fillItems ?? []).map((i) => [
+      Number(i.id),
+      { name: i.name, subtype: i.subtype, size: i.size },
+    ]),
+  );
+
+  return {
+    id: templateId,
+    name: String(def.name),
+    preview: formatFillingPreview(previewLines, itemsById, sizeKey),
+  };
+}
+
 export async function loadAssignPrep(
   admin: SupabaseClient,
   key: ComposedSellableKey,
+  opts?: { preferredTemplateId?: number | null; hintSource?: "engine" | "default" },
 ): Promise<{ ok: true; prep: AssignPrep } | { ok: false; error: string }> {
   const composed = await loadComposedSellable(admin, key);
   if (!composed.ok) return composed;
@@ -57,53 +113,31 @@ export async function loadAssignPrep(
     size: sizeKey,
   });
 
-  let defaultFillingTemplate: AssignPrepDefault | null = null;
+  let sizeDefaultFillingTemplate: AssignPrepDefault | null = null;
   if (defaultId != null) {
-    const def =
-      selectable.find((t) => Number(t.id) === defaultId) ??
-      (templates ?? []).find((t) => Number(t.id) === defaultId);
-    if (def) {
-      const { data: defLines, error: linesErr } = await admin
-        .from("bom_template_lines")
-        .select("item_id, quantity")
-        .eq("template_id", defaultId);
-      if (linesErr) return { ok: false, error: linesErr.message };
+    sizeDefaultFillingTemplate = await loadTemplatePreview(
+      admin,
+      key,
+      defaultId,
+      templates ?? [],
+      sizeKey,
+    );
+  }
 
-      // Spatial default (pillow): preview derives from placements when present (ADR 0008).
-      let defPlacements: Array<{ item_id: number }> = [];
-      if (key.productType === "pillow") {
-        const { data: pl, error: plErr } = await admin
-          .from("filling_template_placements")
-          .select("item_id")
-          .eq("template_id", defaultId);
-        if (plErr) return { ok: false, error: plErr.message };
-        defPlacements = (pl ?? []) as Array<{ item_id: number }>;
-      }
-      const previewLines = derivePackList(
-        defPlacements,
-        (defLines ?? []).map((l) => ({
-          item_id: Number(l.item_id),
-          quantity: Number(l.quantity),
-        })),
-      ).map((l) => ({ item_id: l.item_id, quantity: l.count }));
+  const preferred =
+    opts?.preferredTemplateId != null &&
+    selectable.some((t) => Number(t.id) === opts.preferredTemplateId)
+      ? opts.preferredTemplateId
+      : null;
 
-      const itemIds = previewLines.map((l) => l.item_id);
-      const { data: fillItems } = itemIds.length
-        ? await admin.from("items").select("id, name, subtype, size").in("id", itemIds)
-        : { data: [] as Array<{ id: number; name: string; subtype: string | null; size: string | null }> };
-      const itemsById = new Map<number, FillingItemMeta>(
-        (fillItems ?? []).map((i) => [
-          Number(i.id),
-          { name: i.name, subtype: i.subtype, size: i.size },
-        ]),
-      );
+  const hintSource: "engine" | "default" =
+    preferred != null && opts?.hintSource === "engine" ? "engine" : "default";
 
-      defaultFillingTemplate = {
-        id: defaultId,
-        name: String(def.name),
-        preview: formatFillingPreview(previewLines, itemsById, sizeKey),
-      };
-    }
+  let defaultFillingTemplate: AssignPrepDefault | null = sizeDefaultFillingTemplate;
+  if (preferred != null) {
+    defaultFillingTemplate =
+      (await loadTemplatePreview(admin, key, preferred, templates ?? [], sizeKey)) ??
+      sizeDefaultFillingTemplate;
   }
 
   const nonFilling = composed.sellable.bomLines.filter((l) => l.category !== "filling");
@@ -127,6 +161,8 @@ export async function loadAssignPrep(
     prep: {
       productLines,
       defaultFillingTemplate,
+      sizeDefaultFillingTemplate,
+      hintSource,
       fillingTemplates: selectable.map((t) => ({
         id: Number(t.id),
         name: String(t.name),

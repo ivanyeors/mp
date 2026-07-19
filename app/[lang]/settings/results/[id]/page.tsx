@@ -22,6 +22,12 @@ import {
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
+import {
+  parseRecommendationRecord,
+  plainLanguageWhy,
+  resolveAssignHintTemplateId,
+  selectAssignHintSource,
+} from "@/lib/rules-engine";
 
 type YesNoEmpty = "yes" | "no" | "";
 
@@ -73,6 +79,8 @@ type MpConfigResponseRow = {
   discovery_source_other?: string | null;
   discovery_source_label?: string | null;
   is_pre_order?: boolean | null;
+  recommendation_record?: Record<string, unknown> | null;
+  filling_fingerprint?: string | null;
 };
 
 type BomLine = {
@@ -103,6 +111,12 @@ type AssignPrepData = {
     name: string;
     preview: Array<{ variant: string; qty: number }>;
   } | null;
+  sizeDefaultFillingTemplate?: {
+    id: number;
+    name: string;
+    preview: Array<{ variant: string; qty: number }>;
+  } | null;
+  hintSource?: "engine" | "default";
   fillingTemplates: Array<{ id: number; name: string }>;
 };
 
@@ -212,6 +226,26 @@ export default function ResultDetailPage() {
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
   const canAssign = row?.status === "held";
 
+  const engineRecord = useMemo(
+    () => parseRecommendationRecord(row?.recommendation_record ?? null),
+    [row?.recommendation_record],
+  );
+  const hasAssistSnapshot = Boolean(row?.filling_fingerprint);
+  const sizeScopeChanged = useMemo(() => {
+    if (!row) return false;
+    if (productType === "bolster") {
+      return Boolean(
+        assignLength &&
+          row.suggested_length &&
+          assignLength !== row.suggested_length,
+      );
+    }
+    return (
+      (row.suggested_size != null && assignSize !== row.suggested_size) ||
+      (row.suggested_tier != null && assignTier !== row.suggested_tier)
+    );
+  }, [row, productType, assignLength, assignSize, assignTier]);
+
   const loadAssignPrep = useCallback(async () => {
     if (!canAssign || !sizeKey) {
       setAssignPrep(null);
@@ -221,6 +255,17 @@ export default function ResultDetailPage() {
     setPrepLoading(true);
     setTemplatesLoading(true);
     try {
+      const hintSource = selectAssignHintSource({
+        engineTemplateId: engineRecord?.templateId,
+        sizeScopeChanged,
+        hasAssistFillingSnapshot: hasAssistSnapshot,
+      });
+      const preferred = resolveAssignHintTemplateId({
+        engineTemplateId: engineRecord?.templateId,
+        defaultTemplateId: null,
+        sizeScopeChanged,
+        hasAssistFillingSnapshot: hasAssistSnapshot,
+      });
       const qs =
         productType === "bolster"
           ? new URLSearchParams({
@@ -232,6 +277,8 @@ export default function ResultDetailPage() {
               size: assignSize,
               tier: assignTier,
             });
+      if (preferred != null) qs.set("preferredTemplateId", String(preferred));
+      qs.set("hintSource", hintSource);
       const res = await fetch(`/api/results/assign/prep?${qs.toString()}`);
       const payload = (await res.json().catch(() => null)) as AssignPrepData | { error?: string } | null;
       if (!res.ok) throw new Error((payload as { error?: string })?.error ?? "Failed to load assignment preview");
@@ -255,7 +302,17 @@ export default function ResultDetailPage() {
       setPrepLoading(false);
       setTemplatesLoading(false);
     }
-  }, [canAssign, sizeKey, productType, assignLength, assignSize, assignTier]);
+  }, [
+    canAssign,
+    sizeKey,
+    productType,
+    assignLength,
+    assignSize,
+    assignTier,
+    engineRecord?.templateId,
+    sizeScopeChanged,
+    hasAssistSnapshot,
+  ]);
 
   // Size×tier (or length) change clears the filling pick + placements; the prep
   // effect below reloads the Default Filling Template hint for the new key.
@@ -665,13 +722,33 @@ export default function ResultDetailPage() {
                   </span>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-3 border-t px-4 py-3">
+                  {hasAssistSnapshot ? (
+                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Staff assist mix (truth on this Result)
+                      </div>
+                      <p className="text-muted-foreground">
+                        An assist-supplied filling snapshot is already on this Result. Confirm
+                        below still required — engine recommendation is reference only.
+                      </p>
+                    </div>
+                  ) : null}
                   <div className="rounded-md border bg-muted/30 p-3 text-sm">
-                    <div className="text-xs text-muted-foreground mb-1">Suggested default</div>
+                    <div className="text-xs text-muted-foreground mb-1">
+                      {assignPrep?.hintSource === "engine"
+                        ? "Engine recommendation"
+                        : "Suggested default"}
+                    </div>
                     {prepLoading ? (
                       <p className="text-muted-foreground">Loading…</p>
                     ) : assignPrep?.defaultFillingTemplate ? (
                       <>
                         <p className="font-medium">{assignPrep.defaultFillingTemplate.name}</p>
+                        {engineRecord && assignPrep.hintSource === "engine" ? (
+                          <p className="mt-1 text-muted-foreground">
+                            {plainLanguageWhy(engineRecord)}
+                          </p>
+                        ) : null}
                         {assignPrep.defaultFillingTemplate.preview.length ? (
                           <ul className="mt-1 text-muted-foreground space-y-0.5">
                             {assignPrep.defaultFillingTemplate.preview.map((line, idx) => (
@@ -681,7 +758,7 @@ export default function ResultDetailPage() {
                             ))}
                           </ul>
                         ) : (
-                          <p className="text-muted-foreground">Default has no filling lines</p>
+                          <p className="text-muted-foreground">Hint has no filling lines</p>
                         )}
                       </>
                     ) : (

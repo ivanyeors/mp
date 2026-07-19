@@ -8,6 +8,9 @@ export * from "./fixtures";
 export * from "./seeds";
 export * from "./recommendation-record";
 export * from "./recommend";
+export * from "./why";
+export * from "./reveal";
+export * from "./assign-hint";
 export {
   isRuleFlow,
   getDraft,

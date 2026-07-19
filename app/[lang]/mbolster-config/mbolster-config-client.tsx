@@ -74,6 +74,12 @@ import {
   type RecommendationResponseData,
   CustomizationStepComponents,
 } from "@/components/shop/customization-steps";
+import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
+import {
+  parseRecommendationRecord,
+  plainLanguageWhy,
+  shouldRevealRecommendation,
+} from "@/lib/rules-engine";
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
   SavedAddressSelect,
@@ -826,17 +832,46 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                {suggestedLength && (
-                  <Badge variant="secondary" className="px-3 py-1 text-sm capitalize">
-                    {suggestedLength}
-                  </Badge>
-                )}
-              </div>
+              {(() => {
+                const record = parseRecommendationRecord(
+                  shopRecommendation?.recommendation_record ?? null,
+                );
+                const revealNow = shouldRevealRecommendation({
+                  requiredInputsComplete: Boolean(shopRecommendation && suggestedLength),
+                  flowRouteUnresolved: false,
+                });
+                const why = record
+                  ? plainLanguageWhy(record)
+                  : shopRecommendation?.recommendation?.explanation ?? "";
+                const tplId = record?.templateId;
+                const tpl = shopRecommendation?.templates?.find(
+                  (t) => String(t.id) === String(tplId),
+                );
+                const mixLines = (tpl?.lines ?? []).map((l) => {
+                  const filling = shopRecommendation?.available_fillings?.find(
+                    (f) => f.item_id === l.item_id,
+                  );
+                  return {
+                    label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
+                    qty: l.quantity,
+                  };
+                });
+                return (
+                  <RecommendationReveal
+                    reveal={revealNow}
+                    sizeLabel={suggestedLength ? String(suggestedLength) : ""}
+                    why={why}
+                    templateName={tpl?.name ?? null}
+                    mixLines={mixLines}
+                  />
+                );
+              })()}
               <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
-              <p className="max-w-xs text-center text-xs text-white/80">
-                Fillings are chosen by our team after review.
-              </p>
+              {!shopRecommendation ? (
+                <p className="max-w-xs text-center text-xs text-white/80">
+                  Fillings are chosen by our team after review.
+                </p>
+              ) : null}
             </div>
           </div>
 

@@ -70,6 +70,9 @@ export interface RecommendationResponseData {
   /** Buildable units for the recommended composed sellable (size×tier or bolster length). */
   composed_buildable?: number;
   buildable_counts?: Record<string, number>;
+  /** Rules Engine recommendation record (slice 03+). */
+  recommendation_record?: Record<string, unknown> | null;
+  graph_version_id?: string | null;
 }
 
 // ─── Shared Constants ────────────────────────────────────────
