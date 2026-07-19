@@ -93,6 +93,14 @@ import {
   type RuleFlow,
 } from "@/lib/rules-engine";
 import { overlayFrame } from "@/lib/product-builder/overlays";
+import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { bolsterCapsulePath } from "@/components/spatial/xray-assets";
+import type { FillingItem } from "@/components/configurator/staff-assist-panel";
+import type { BolsterPlacement } from "@/lib/spatial-fillings/core";
+import {
+  xrayColorVarStyle,
+  type ColorOverrideRow,
+} from "@/lib/spatial-fillings/color-overrides";
 import {
   SavedAddressSelect,
   useSavedShippingPrefill,
@@ -125,9 +133,8 @@ const FLOW_UI_LABEL: Record<RuleFlow, string> = {
   mbolster: "Mbolster",
 };
 
-/** Simple capsule silhouette for the left visual panel. */
-const BOLSTER_PATH =
-  "M80 40 C80 18 120 18 160 18 L504 18 C544 18 584 18 584 40 L584 334 C584 356 544 356 504 356 L160 356 C120 356 80 356 80 334 Z";
+/** Fallback capsule length until the recommendation resolves one. */
+const DEFAULT_BOLSTER_LENGTH: BolsterLength = "medium";
 
 function toNumber(value: string): number | null {
   const trimmed = value.trim();
@@ -180,7 +187,14 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
   "zh-CN": "查看全部常见问题",
 };
 
-export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
+export function MbolsterConfigClient({
+  info,
+  staffAssist = false,
+}: {
+  info: MbolsterConfigInfo;
+  /** Staff-only x-ray filling editor on the bolster preview (slice 13). */
+  staffAssist?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -246,6 +260,44 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
   const suggestedLength = (shopRecommendation?.bolster_variant ?? null) as BolsterLength | null;
+
+  // --- Staff assist x-ray (slice 13): session-local bolster filling mix ------
+  const [assistPlacements, setAssistPlacements] = React.useState<BolsterPlacement[]>([]);
+  const [assistItems, setAssistItems] = React.useState<FillingItem[]>([]);
+  const [assistColorOverrides, setAssistColorOverrides] = React.useState<ColorOverrideRow[]>([]);
+  const assistItemSubtypes = React.useMemo(
+    () => new Map(assistItems.map((i) => [i.id, i.subtype])),
+    [assistItems],
+  );
+  const assistItemSizes = React.useMemo(
+    () => new Map(assistItems.map((i) => [i.id, i.size])),
+    [assistItems],
+  );
+  const xrayColorVars = React.useMemo(
+    () => xrayColorVarStyle(assistColorOverrides),
+    [assistColorOverrides],
+  );
+  React.useEffect(() => {
+    if (!staffAssist) return;
+    let cancelled = false;
+    // No size param: filling Items + color overrides only (staff-gated).
+    fetch("/api/mp-config/assist")
+      .then((r) => r.json())
+      .then((d: { items?: FillingItem[]; colorOverrides?: ColorOverrideRow[] }) => {
+        if (cancelled) return;
+        setAssistItems(d.items ?? []);
+        setAssistColorOverrides(d.colorOverrides ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAssistItems([]);
+          setAssistColorOverrides([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [staffAssist]);
 
   const addonTotal = React.useMemo(() => {
     let sum = 0;
@@ -885,38 +937,60 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
               <div
                 className="relative"
-                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
+                // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
+                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)", ...xrayColorVars }}
               >
-                <svg
-                  className="absolute inset-0 pointer-events-none"
-                  viewBox="0 0 664 374"
-                  xmlns="http://www.w3.org/2000/svg"
-                  preserveAspectRatio="xMidYMid meet"
-                >
-                  <path d={BOLSTER_PATH} fill="white" />
-                  {selectedOverlay && (
-                    <>
-                      <defs>
-                        <clipPath id="mbolster-config-overlay-clip">
-                          <path d={BOLSTER_PATH} />
-                        </clipPath>
-                      </defs>
-                      <image
-                        href={selectedOverlay.url}
-                        clipPath="url(#mbolster-config-overlay-clip)"
-                        preserveAspectRatio="xMidYMid slice"
-                        {...overlayFrame(selectedOverlay.fit)}
+                {(() => {
+                  // Long-pill silhouette; length follows the recommended Mbolster length.
+                  const bolsterPath = bolsterCapsulePath(suggestedLength ?? DEFAULT_BOLSTER_LENGTH);
+                  return (
+                    <svg
+                      className={cn(
+                        "absolute inset-0 pointer-events-none",
+                        // x-ray art direction: shell desaturates so fillings read inside
+                        staffAssist && "opacity-80 saturate-50",
+                      )}
+                      viewBox="0 0 664 374"
+                      xmlns="http://www.w3.org/2000/svg"
+                      preserveAspectRatio="xMidYMid meet"
+                    >
+                      <path d={bolsterPath} fill="white" />
+                      {selectedOverlay && (
+                        <>
+                          <defs>
+                            <clipPath id="mbolster-config-overlay-clip">
+                              <path d={bolsterPath} />
+                            </clipPath>
+                          </defs>
+                          <image
+                            href={selectedOverlay.url}
+                            clipPath="url(#mbolster-config-overlay-clip)"
+                            preserveAspectRatio="xMidYMid slice"
+                            {...overlayFrame(selectedOverlay.fit)}
+                          />
+                        </>
+                      )}
+                      <path
+                        d={bolsterPath}
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3"
+                        vectorEffect="non-scaling-stroke"
                       />
-                    </>
-                  )}
-                  <path
-                    d={BOLSTER_PATH}
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="3"
-                    vectorEffect="non-scaling-stroke"
+                    </svg>
+                  );
+                })()}
+                {staffAssist && (
+                  <XrayBolster
+                    placements={assistPlacements}
+                    length={suggestedLength ?? DEFAULT_BOLSTER_LENGTH}
+                    itemSubtypes={assistItemSubtypes}
+                    itemSizes={assistItemSizes}
+                    items={assistItems}
+                    onPlacementsChange={setAssistPlacements}
+                    className="absolute inset-0"
                   />
-                </svg>
+                )}
                 {shopLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />

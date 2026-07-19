@@ -9,6 +9,7 @@ import {
   placementsExactMatch,
   SECTIONS,
   SUB_SECTIONS,
+  type BolsterPlacement,
   type PillowPlacement,
   type Section,
   type SubSection,
@@ -155,6 +156,27 @@ export function removePiece(
   slot: number,
 ): PillowPlacement[] {
   return placements.filter((p) => !(inCell(p, cell) && p.slot === slot));
+}
+
+// --- Mbolster session mix (single compartment, no cap in v1 — ADR 0008) ------
+
+/** Add one bolster piece into the lowest free slot. */
+export function addBolsterPiece(
+  placements: BolsterPlacement[],
+  itemId: number,
+): BolsterPlacement[] {
+  const used = new Set(placements.map((p) => p.slot));
+  let slot = 1;
+  while (used.has(slot)) slot += 1;
+  return [...placements, { slot, itemId }];
+}
+
+/** Remove the bolster piece at slot. */
+export function removeBolsterPiece(
+  placements: BolsterPlacement[],
+  slot: number,
+): BolsterPlacement[] {
+  return placements.filter((p) => p.slot !== slot);
 }
 
 // --- Loaded-template tracking (for slice 05's snapshot) ----------------------

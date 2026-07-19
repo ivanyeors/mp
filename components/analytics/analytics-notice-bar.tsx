@@ -47,10 +47,11 @@ export function AnalyticsNoticeBar() {
 
   return (
     // pointer-events only on the bar — rest of viewport stays clickable (configurator/checkout)
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center p-3 pb-[calc(0.75rem+var(--safe-bottom))]">
+    // desktop: right side (clears center dock); mobile: above dock via --app-dock-clearance
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center p-3 pb-[calc(0.75rem+max(var(--safe-bottom),var(--app-dock-clearance)))] md:justify-end md:pb-[calc(0.75rem+var(--safe-bottom))]">
       <div
         role="status"
-        className="pointer-events-auto flex w-full max-w-3xl items-center gap-3 rounded-lg border bg-background/95 px-4 py-3 text-sm shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80"
+        className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-lg border bg-background/95 px-4 py-3 text-sm shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80"
       >
         <p className="min-w-0 flex-1 text-muted-foreground">
           By using this site, we collect visit data to improve your experience.{" "}

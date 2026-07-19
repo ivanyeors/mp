@@ -307,6 +307,11 @@ export function MpConfigClient({
     () => new Map(assistItems.map((i) => [i.id, i.subtype])),
     [assistItems],
   );
+  // Item size → pouch render scale (bigger fillings draw bigger in the x-ray).
+  const assistItemSizes = useMemo(
+    () => new Map(assistItems.map((i) => [i.id, i.size])),
+    [assistItems],
+  );
   // Product Builder color overrides (slice 11) → CSS vars on the x-ray container;
   // cleared overrides simply vanish and var(x, default) falls back to code defaults.
   const [assistColorOverrides, setAssistColorOverrides] = useState<ColorOverrideRow[]>([]);
@@ -1737,6 +1742,7 @@ export function MpConfigClient({
                     <XrayPillow
                       placements={assistPlacements}
                       itemSubtypes={assistItemSubtypes}
+                      itemSizes={assistItemSizes}
                       items={assistItems}
                       onPlacementsChange={setAssistPlacements}
                       className="absolute inset-0"

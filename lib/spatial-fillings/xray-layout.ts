@@ -4,7 +4,14 @@
  * compare the x-ray against the physical build. Pure, no I/O.
  */
 
-import { SECTIONS, SUB_SECTIONS, type PillowPlacement, type Section, type SubSection } from "./core";
+import {
+  SECTIONS,
+  SUB_SECTIONS,
+  type BolsterPlacement,
+  type PillowPlacement,
+  type Section,
+  type SubSection,
+} from "./core";
 
 export const XRAY_VIEW = { width: 664, height: 374 } as const;
 
@@ -12,8 +19,13 @@ export const XRAY_VIEW = { width: 664, height: 374 } as const;
 export const COL_X = [0, 221.3, 442.7, 664] as const;
 export const ROW_Y = [0, 124.7, 249.3, 374] as const;
 
-const INSET = 10;
-const BASE_FRACTION = 0.9;
+/**
+ * Hair of padding between the shell and the fillings: pouches run to the
+ * compartment walls and the silhouette/cell clips mold them to the shape.
+ */
+const INSET = 1;
+/** Seam between pressed pouches, in view units. */
+const GAP = 1;
 
 export type CellFrame = { x: number; y: number; w: number; h: number };
 
@@ -28,35 +40,45 @@ export function cellFrame(section: Section, subSection: SubSection): CellFrame {
   };
 }
 
+/** Piece rect in view coordinates (shape assets are normalized to 100×100). */
+export type PieceRect = { x: number; y: number; w: number; h: number };
+
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
 /**
- * Fixed arrangements per piece count (dice-like). Pieces compress — scale
- * down, sit closer — but never merge: each keeps its own outline (guardrail 2).
+ * Pack pieces into a frame like pouches stuffed into a compartment: the space
+ * is partitioned into 1–2 rows of tracts (widths weighted by each piece's item
+ * scale), so pouches press flat against their neighbors across a thin seam and
+ * a bigger pouch shoves the row over. Outlines stay distinct (guardrail 2).
+ * ponytail: space partition stands in for collision physics — deterministic,
+ * no solver; revisit only if art direction demands organic jostling.
  */
-const SLOT_LAYOUTS: Record<number, Array<{ x: number; y: number; scale: number }>> = {
-  1: [{ x: 0.5, y: 0.5, scale: 1 }],
-  2: [
-    { x: 0.3, y: 0.5, scale: 0.8 },
-    { x: 0.7, y: 0.5, scale: 0.8 },
-  ],
-  3: [
-    { x: 0.5, y: 0.32, scale: 0.7 },
-    { x: 0.3, y: 0.68, scale: 0.7 },
-    { x: 0.7, y: 0.68, scale: 0.7 },
-  ],
-  4: [
-    { x: 0.3, y: 0.3, scale: 0.62 },
-    { x: 0.7, y: 0.3, scale: 0.62 },
-    { x: 0.3, y: 0.7, scale: 0.62 },
-    { x: 0.7, y: 0.7, scale: 0.62 },
-  ],
-  5: [
-    { x: 0.28, y: 0.28, scale: 0.56 },
-    { x: 0.72, y: 0.28, scale: 0.56 },
-    { x: 0.5, y: 0.5, scale: 0.56 },
-    { x: 0.28, y: 0.72, scale: 0.56 },
-    { x: 0.72, y: 0.72, scale: 0.56 },
-  ],
-};
+function packPieces(frame: CellFrame, weights: number[], maxRows = 2): PieceRect[] {
+  const n = weights.length;
+  const fit = (r: number) => Math.min(frame.h / r, frame.w / Math.ceil(n / r));
+  const rows = maxRows > 1 && n > 1 && fit(2) > fit(1) ? 2 : 1;
+  const perRow = Math.ceil(n / rows);
+  const rowH = frame.h / rows;
+  const out: PieceRect[] = [];
+  for (let row = 0; row < rows; row++) {
+    const rowWeights = weights.slice(row * perRow, (row + 1) * perRow);
+    const total = rowWeights.reduce((a, b) => a + b, 0);
+    let x = frame.x;
+    for (const weight of rowWeights) {
+      const tract = (frame.w * weight) / total;
+      // Pieces always fill their tract — stuffed pouches conform to the
+      // compartment (the shell clip rounds off whatever meets the curve).
+      out.push({
+        x: r1(x + GAP / 2),
+        y: r1(frame.y + row * rowH + GAP / 2),
+        w: r1(tract - GAP),
+        h: r1(rowH - GAP),
+      });
+      x += tract;
+    }
+  }
+  return out;
+}
 
 export type PieceLayout = {
   key: string;
@@ -64,17 +86,17 @@ export type PieceLayout = {
   subSection: SubSection;
   slot: number;
   itemId: number;
-  /** Piece center in view coordinates. */
-  cx: number;
-  cy: number;
-  /** Rendered diameter (shape assets are normalized to a 100×100 box). */
-  size: number;
-};
+} & PieceRect;
 
-const r1 = (n: number) => Math.round(n * 10) / 10;
-
-/** Deterministic layout: fixed cell order, pieces sorted by slot within a cell. */
-export function layoutPlacements(placements: PillowPlacement[]): PieceLayout[] {
+/**
+ * Deterministic layout: fixed cell order, pieces sorted by slot within a cell,
+ * packed edge-to-edge. `itemScales` (item id → scale from the Item's size)
+ * widens/narrows a piece's tract; absent ids weigh 1.
+ */
+export function layoutPlacements(
+  placements: PillowPlacement[],
+  itemScales?: ReadonlyMap<number, number>,
+): PieceLayout[] {
   const out: PieceLayout[] = [];
   for (const section of SECTIONS) {
     for (const subSection of SUB_SECTIONS) {
@@ -82,22 +104,82 @@ export function layoutPlacements(placements: PillowPlacement[]): PieceLayout[] {
         .filter((p) => p.section === section && p.subSection === subSection)
         .sort((a, b) => a.slot - b.slot);
       if (pieces.length === 0) continue;
-      const frame = cellFrame(section, subSection);
-      const spots = SLOT_LAYOUTS[Math.min(pieces.length, 5)];
+      const rects = packPieces(
+        cellFrame(section, subSection),
+        pieces.map((p) => itemScales?.get(p.itemId) ?? 1),
+      );
       pieces.forEach((piece, idx) => {
-        const spot = spots[idx % spots.length];
         out.push({
           key: `${section}/${subSection}/${piece.slot}`,
           section,
           subSection,
           slot: piece.slot,
           itemId: piece.itemId,
-          cx: r1(frame.x + frame.w * spot.x),
-          cy: r1(frame.y + frame.h * spot.y),
-          size: r1(Math.min(frame.w, frame.h) * BASE_FRACTION * spot.scale),
+          ...rects[idx],
         });
       });
     }
   }
   return out;
+}
+
+// --- Mbolster: single long compartment (ADR 0008 amendment, slice 13) --------
+
+export type BolsterLength = "short" | "medium" | "long";
+
+/** Capsule total length per Mbolster length, in the shared 664×374 view. */
+export const BOLSTER_CAPSULE_LENGTHS: Record<BolsterLength, number> = {
+  short: 460,
+  medium: 560,
+  long: 640,
+};
+
+export const BOLSTER_CAPSULE_HEIGHT = 180;
+
+/**
+ * Inner content frame of the capsule — full bleed into the rounded ends: the
+ * capsule clip molds the end pouches to the curve (conform, no dead margin).
+ */
+export function bolsterFrame(length: BolsterLength): CellFrame {
+  const len = BOLSTER_CAPSULE_LENGTHS[length];
+  const x0 = (XRAY_VIEW.width - len) / 2;
+  const y0 = (XRAY_VIEW.height - BOLSTER_CAPSULE_HEIGHT) / 2;
+  return {
+    x: x0 + INSET,
+    y: y0 + INSET,
+    w: len - 2 * INSET,
+    h: BOLSTER_CAPSULE_HEIGHT - 2 * INSET,
+  };
+}
+
+export type BolsterPieceLayout = {
+  key: string;
+  slot: number;
+  itemId: number;
+} & PieceRect;
+
+/**
+ * Deterministic bolster layout: pieces sorted by slot, packed edge-to-edge in
+ * a SINGLE line along the capsule — the physical bolster can't stack a second
+ * layer. No cap — tracts shrink as pieces are added, outlines stay distinct
+ * (guardrail 2).
+ */
+export function layoutBolsterPlacements(
+  placements: BolsterPlacement[],
+  length: BolsterLength,
+  itemScales?: ReadonlyMap<number, number>,
+): BolsterPieceLayout[] {
+  const pieces = [...placements].sort((a, b) => a.slot - b.slot);
+  if (pieces.length === 0) return [];
+  const rects = packPieces(
+    bolsterFrame(length),
+    pieces.map((p) => itemScales?.get(p.itemId) ?? 1),
+    1,
+  );
+  return pieces.map((piece, idx) => ({
+    key: `compartment/${piece.slot}`,
+    slot: piece.slot,
+    itemId: piece.itemId,
+    ...rects[idx],
+  }));
 }

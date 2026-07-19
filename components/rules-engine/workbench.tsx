@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   Background,
   Controls,
@@ -12,18 +12,46 @@ import {
   addEdge,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
+  type XYPosition,
 } from "@xyflow/react";
-import "@xyflow/react/style.css";
-import { Loader2 } from "lucide-react";
+import "@xyflow/react/dist/style.css";
+import "./workbench.css";
+import { Loader2, PanelLeftClose } from "lucide-react";
 import { toast } from "sonner";
 
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { Button } from "@/components/ui/button";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Menubar,
+  MenubarCheckboxItem,
+  MenubarContent,
+  MenubarItem,
+  MenubarLabel,
+  MenubarMenu,
+  MenubarRadioGroup,
+  MenubarRadioItem,
+  MenubarSeparator,
+  MenubarShortcut,
+  MenubarTrigger,
+} from "@/components/ui/menubar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   catalogDef,
   inputCatalog,
@@ -36,6 +64,7 @@ import {
   rfToGraph,
   type RuleNodeData,
 } from "@/lib/rules-engine/graph-rf";
+import { layoutRuleGraph } from "@/lib/rules-engine/layout";
 import { canConnect, sourcePort, targetPort } from "@/lib/rules-engine/ports";
 import {
   BOLSTER_LENGTHS,
@@ -58,17 +87,37 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { getApiErrorMessage } from "@/lib/utils";
 import { makeNodeTypes } from "./rule-nodes";
 
-const PALETTE: { type: RuleNode["type"]; label: string }[] = [
-  { type: "input", label: "Input" },
-  { type: "range", label: "Range" },
-  { type: "match", label: "Match" },
-  { type: "combine", label: "Combine" },
-  { type: "size-output", label: "Size" },
-  { type: "template-output", label: "Template" },
-  { type: "tier-suggestion", label: "Tier" },
-  { type: "flow-route", label: "Flow route" },
-  { type: "fallback", label: "Fallback" },
+const PALETTE_GROUPS: {
+  label: string;
+  items: { type: RuleNode["type"]; label: string; hint: string }[];
+}[] = [
+  {
+    label: "Logic",
+    items: [
+      { type: "input", label: "Input", hint: "Read a measurement or answer" },
+      { type: "range", label: "Range", hint: "Band a numeric input" },
+      { type: "match", label: "Match", hint: "Branch on an enum" },
+      { type: "combine", label: "Combine", hint: "AND / join signals" },
+    ],
+  },
+  {
+    label: "Outputs",
+    items: [
+      { type: "size-output", label: "Size", hint: "Emit a size / length" },
+      { type: "template-output", label: "Template", hint: "Size + template id" },
+      { type: "tier-suggestion", label: "Tier", hint: "Premium / Basic cue" },
+      { type: "fallback", label: "Fallback", hint: "Default when nothing fires" },
+    ],
+  },
+  {
+    label: "Routing",
+    items: [
+      { type: "flow-route", label: "Flow route", hint: "Upsell / cross-flow" },
+    ],
+  },
 ];
+
+const PALETTE_DOCK_KEY = "rules-engine-palette-dock";
 
 function defaultRule(type: RuleNode["type"], flow: RuleFlow): RuleNode {
   const id = newNodeId(type);
@@ -128,11 +177,33 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const to = useCallback((p: string) => withLocale(p, locale), [locale]);
+  const { resolvedTheme } = useTheme();
+  const colorMode = resolvedTheme === "dark" ? "dark" : "light";
+  const { fitView, screenToFlowPosition } = useReactFlow();
   useSettingsBreadcrumbDetail(FLOW_LABELS[flow]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<RuleNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [paletteDocked, setPaletteDocked] = useState(false);
+  const dropPosRef = useRef<XYPosition>({ x: 120, y: 120 });
+
+  useEffect(() => {
+    try {
+      setPaletteDocked(localStorage.getItem(PALETTE_DOCK_KEY) === "1");
+    } catch {
+      /* ponytail: private mode / blocked storage */
+    }
+  }, []);
+
+  const setDocked = (next: boolean) => {
+    setPaletteDocked(next);
+    try {
+      localStorage.setItem(PALETTE_DOCK_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
   const [readOnly, setReadOnly] = useState(false);
   const [viewingVersion, setViewingVersion] = useState<RuleGraphRow | null>(null);
   const [versions, setVersions] = useState<RuleGraphRow[]>([]);
@@ -267,17 +338,75 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     [readOnly, isValidConnection, setEdges],
   );
 
-  const addNode = (type: RuleNode["type"]) => {
-    if (readOnly) return;
-    const rule = defaultRule(type, flow);
-    const node: Node<RuleNodeData> = {
-      id: rule.id,
-      type,
-      position: { x: 80 + nodes.length * 24, y: 80 + nodes.length * 16 },
-      data: { rule },
-    };
-    setNodes((ns) => [...ns, node]);
+  const addNode = useCallback(
+    (type: RuleNode["type"], at?: XYPosition) => {
+      if (readOnly) return;
+      const rule = defaultRule(type, flow);
+      const position =
+        at ??
+        ({
+          x: 80 + nodes.length * 24,
+          y: 80 + nodes.length * 16,
+        } satisfies XYPosition);
+      setNodes((ns) => [
+        ...ns,
+        { id: rule.id, type, position, data: { rule } },
+      ]);
+      setSelectedId(rule.id);
+    },
+    [flow, nodes.length, readOnly, setNodes],
+  );
+
+  const deleteSelected = useCallback(() => {
+    if (readOnly || !selectedId) return;
+    setNodes((ns) => ns.filter((n) => n.id !== selectedId));
+    setEdges((es) =>
+      es.filter((e) => e.source !== selectedId && e.target !== selectedId),
+    );
+    setSelectedId(null);
+  }, [readOnly, selectedId, setEdges, setNodes]);
+
+  const duplicateSelected = useCallback(() => {
+    if (readOnly || !selectedId) return;
+    const src = nodes.find((n) => n.id === selectedId);
+    if (!src) return;
+    const rule = structuredClone(src.data.rule);
+    rule.id = newNodeId(rule.type);
+    setNodes((ns) => [
+      ...ns,
+      {
+        id: rule.id,
+        type: rule.type,
+        position: { x: src.position.x + 40, y: src.position.y + 40 },
+        data: { rule },
+      },
+    ]);
+    setSelectedId(rule.id);
+  }, [nodes, readOnly, selectedId, setNodes]);
+
+  const goToFlow = (next: RuleFlow) => {
+    if (next === flow) return;
+    window.location.href = to(`/settings/product-builder/rules-engine/${next}`);
   };
+
+  const captureDropPos = (clientX: number, clientY: number) => {
+    dropPosRef.current = screenToFlowPosition({ x: clientX, y: clientY });
+  };
+
+  const rearrange = useCallback(() => {
+    if (readOnly || nodes.length === 0) return;
+    const pos = layoutRuleGraph(
+      nodes.map((n) => n.id),
+      edges.map((e) => ({ source: e.source, target: e.target })),
+    );
+    setNodes((ns) =>
+      ns.map((n) => ({
+        ...n,
+        position: pos.get(n.id) ?? n.position,
+      })),
+    );
+    requestAnimationFrame(() => void fitView({ padding: 0.2 }));
+  }, [edges, fitView, nodes, readOnly, setNodes]);
 
   const publish = async () => {
     const graph = currentGraph();
@@ -383,60 +512,144 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     );
   }
 
+  const saveLabel = readOnly
+    ? `Read-only · v${viewingVersion?.version}`
+    : saveState === "saving"
+      ? "Saving…"
+      : saveState === "saved"
+        ? "Draft saved"
+        : saveState === "error"
+          ? "Save error"
+          : "Draft";
+
   return (
-    <div className="flex flex-col gap-3 -mx-2 sm:-mx-3 md:-mx-6 lg:-mx-8 -mt-2">
-      <div className="flex flex-wrap items-center gap-2 px-2 sm:px-3 md:px-6 lg:px-8">
-        <h1 className="text-xl font-bold tracking-tight mr-2">Rules Engine</h1>
-        <select
-          className="h-9 rounded-md border bg-background px-2 text-sm"
-          value={flow}
-          aria-label="Flow switcher"
-          onChange={(e) => {
-            const next = e.target.value as RuleFlow;
-            window.location.href = to(
-              `/settings/product-builder/rules-engine/${next}`,
-            );
-          }}
-        >
-          {FLOW_OPTIONS.map((o) => (
-            <option key={o.id} value={o.id}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <div className="text-xs text-muted-foreground">
-          {readOnly
-            ? `Read-only · v${viewingVersion?.version}`
-            : saveState === "saving"
-              ? "Saving…"
-              : saveState === "saved"
-                ? "Draft saved"
-                : saveState === "error"
-                  ? "Save error"
-                  : "Draft"}
-        </div>
+    <div className="rules-engine-workbench -mx-2 -my-4 flex h-[calc(100svh-3.5rem)] flex-col sm:-mx-3 md:-mx-6 md:-my-8 lg:-mx-8 lg:-my-10">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 px-2 py-3 sm:px-3 md:px-6 lg:px-8">
+        {/* ponytail: mp-care Menubar pattern for product / palette / version */}
+        <Menubar className="border-none shadow-none">
+          <MenubarMenu>
+            <MenubarTrigger aria-label="Product flow">
+              {FLOW_LABELS[flow]}
+            </MenubarTrigger>
+            <MenubarContent>
+              <MenubarLabel>Product</MenubarLabel>
+              <MenubarRadioGroup
+                value={flow}
+                onValueChange={(v) => goToFlow(v as RuleFlow)}
+              >
+                {FLOW_OPTIONS.map((o) => (
+                  <MenubarRadioItem key={o.id} value={o.id}>
+                    {o.label}
+                  </MenubarRadioItem>
+                ))}
+              </MenubarRadioGroup>
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu>
+            <MenubarTrigger>Palette</MenubarTrigger>
+            <MenubarContent className="min-w-56">
+              <MenubarCheckboxItem
+                checked={paletteDocked}
+                onCheckedChange={(v) => setDocked(v === true)}
+              >
+                Dock palette
+              </MenubarCheckboxItem>
+              <MenubarSeparator />
+              {PALETTE_GROUPS.map((group, gi) => (
+                <div key={group.label}>
+                  {gi > 0 ? <MenubarSeparator /> : null}
+                  <MenubarLabel>{group.label}</MenubarLabel>
+                  {group.items.map((p) => (
+                    <MenubarItem
+                      key={p.type}
+                      disabled={readOnly}
+                      onClick={() => addNode(p.type)}
+                    >
+                      <span className="flex flex-col gap-0.5">
+                        <span>{p.label}</span>
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          {p.hint}
+                        </span>
+                      </span>
+                    </MenubarItem>
+                  ))}
+                </div>
+              ))}
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu>
+            <MenubarTrigger>
+              {viewingVersion ? `v${viewingVersion.version}` : "Draft"}
+            </MenubarTrigger>
+            <MenubarContent className="min-w-48">
+              <MenubarLabel>Version</MenubarLabel>
+              <MenubarRadioGroup
+                value={viewingVersion?.id ?? "draft"}
+                onValueChange={(id) => {
+                  if (id === "draft") viewVersion(null);
+                  else viewVersion(versions.find((x) => x.id === id) ?? null);
+                }}
+              >
+                <MenubarRadioItem value="draft">Draft</MenubarRadioItem>
+                {versions.map((v) => (
+                  <MenubarRadioItem key={v.id} value={v.id}>
+                    v{v.version}
+                    {v.published_at ? ` · ${v.published_at.slice(0, 10)}` : ""}
+                  </MenubarRadioItem>
+                ))}
+              </MenubarRadioGroup>
+              {viewingVersion ? (
+                <>
+                  <MenubarSeparator />
+                  <MenubarItem onClick={() => void restore(viewingVersion.id)}>
+                    Restore to draft
+                  </MenubarItem>
+                </>
+              ) : null}
+            </MenubarContent>
+          </MenubarMenu>
+
+          <MenubarMenu>
+            <MenubarTrigger>Graph</MenubarTrigger>
+            <MenubarContent>
+              <MenubarItem
+                disabled={!!viewingVersion}
+                onClick={() => void publish()}
+              >
+                Publish
+                <MenubarShortcut>⌘P</MenubarShortcut>
+              </MenubarItem>
+              <MenubarSeparator />
+              <MenubarItem onClick={() => void fitView({ padding: 0.2 })}>
+                Fit view
+              </MenubarItem>
+              <MenubarItem
+                disabled={readOnly || nodes.length === 0}
+                onClick={rearrange}
+              >
+                Rearrange
+              </MenubarItem>
+              <MenubarItem
+                disabled={readOnly || !selectedId}
+                onClick={duplicateSelected}
+              >
+                Duplicate selected
+              </MenubarItem>
+              <MenubarItem
+                disabled={readOnly || !selectedId}
+                onClick={deleteSelected}
+              >
+                Delete selected
+                <MenubarShortcut>⌫</MenubarShortcut>
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
+
+        <span className="text-xs text-muted-foreground">{saveLabel}</span>
         <div className="flex-1" />
-        <select
-          className="h-9 rounded-md border bg-background px-2 text-sm"
-          value={viewingVersion?.id ?? "draft"}
-          aria-label="Version"
-          onChange={(e) => {
-            const id = e.target.value;
-            if (id === "draft") viewVersion(null);
-            else {
-              const v = versions.find((x) => x.id === id) ?? null;
-              viewVersion(v);
-            }
-          }}
-        >
-          <option value="draft">Draft</option>
-          {versions.map((v) => (
-            <option key={v.id} value={v.id}>
-              v{v.version}
-              {v.published_at ? ` · ${v.published_at.slice(0, 10)}` : ""}
-            </option>
-          ))}
-        </select>
         {viewingVersion ? (
           <Button
             type="button"
@@ -447,137 +660,253 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
             Restore to draft
           </Button>
         ) : (
-          <Button type="button" size="sm" onClick={() => void publish()}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void publish()}
+          >
             Publish
           </Button>
         )}
-        <Button type="button" variant="ghost" size="sm" asChild>
-          <Link href={to("/settings/product-builder")}>Product Builder</Link>
-        </Button>
       </div>
 
-      <div className="flex gap-0 border-y bg-muted/30" style={{ height: "min(70vh, 720px)" }}>
-        {/* Palette */}
-        <aside className="w-36 shrink-0 border-r p-2 space-y-1 overflow-y-auto">
-          <div className="text-[10px] font-medium uppercase text-muted-foreground mb-1">
-            Palette
-          </div>
-          {PALETTE.map((p) => (
-            <button
-              key={p.type}
-              type="button"
-              disabled={readOnly}
-              onClick={() => addNode(p.type)}
-              className="w-full rounded border bg-background px-2 py-1.5 text-left text-xs hover:bg-accent disabled:opacity-50"
-            >
-              {p.label}
-            </button>
-          ))}
-        </aside>
+      <div className="flex min-h-0 flex-1 gap-0 border-t bg-muted/30">
+        {/* Docked palette — off by default; toggle from Palette → Dock palette */}
+        {paletteDocked ? (
+          <aside className="flex w-52 shrink-0 flex-col border-r bg-background">
+            <div className="flex items-center justify-between gap-1 border-b px-2 py-1.5">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Palette
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7 cursor-pointer"
+                title="Undock palette"
+                onClick={() => setDocked(false)}
+              >
+                <PanelLeftClose className="size-3.5" />
+              </Button>
+            </div>
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="space-y-3 px-2 py-2 pb-3">
+                {PALETTE_GROUPS.map((group) => (
+                  <div key={group.label} className="space-y-1">
+                    <div className="px-0.5 text-[10px] font-medium text-muted-foreground">
+                      {group.label}
+                    </div>
+                    {group.items.map((p) => (
+                      <Button
+                        key={p.type}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={readOnly}
+                        title={p.hint}
+                        onClick={() => addNode(p.type)}
+                        className="h-auto w-full cursor-pointer justify-start px-2 py-1.5 text-left font-normal"
+                      >
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="text-xs font-medium">{p.label}</span>
+                          <span className="text-[10px] leading-snug text-muted-foreground whitespace-normal">
+                            {p.hint}
+                          </span>
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </aside>
+        ) : null}
 
-        {/* Canvas */}
-        <div className="flex-1 min-w-0">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={readOnly ? undefined : onNodesChange}
-            onEdgesChange={readOnly ? undefined : onEdgesChange}
-            onConnect={onConnect}
-            isValidConnection={isValidConnection}
-            nodeTypes={nodeTypes}
-            onSelectionChange={({ nodes: sel }) =>
-              setSelectedId(sel[0]?.id ?? null)
-            }
-            fitView
-            proOptions={{ hideAttribution: true }}
-            nodesDraggable={!readOnly}
-            nodesConnectable={!readOnly}
-            elementsSelectable
-          >
-            <Background />
-            <Controls />
-            <MiniMap pannable zoomable />
-          </ReactFlow>
-        </div>
+        {/* Canvas + right-click menu */}
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              className="min-h-0 min-w-0 flex-1"
+              onContextMenu={(e) => captureDropPos(e.clientX, e.clientY)}
+            >
+              <ReactFlow
+                className="rules-engine-flow"
+                colorMode={colorMode}
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={readOnly ? undefined : onNodesChange}
+                onEdgesChange={readOnly ? undefined : onEdgesChange}
+                onConnect={onConnect}
+                isValidConnection={isValidConnection}
+                nodeTypes={nodeTypes}
+                onSelectionChange={({ nodes: sel }) =>
+                  setSelectedId(sel[0]?.id ?? null)
+                }
+                onNodeContextMenu={(_e, node) => setSelectedId(node.id)}
+                fitView
+                proOptions={{ hideAttribution: true }}
+                nodesDraggable={!readOnly}
+                nodesConnectable={!readOnly}
+                elementsSelectable
+              >
+                <Background />
+                <Controls />
+                <MiniMap pannable zoomable />
+              </ReactFlow>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="min-w-48">
+            <ContextMenuLabel>Canvas</ContextMenuLabel>
+            <ContextMenuSub>
+              <ContextMenuSubTrigger disabled={readOnly}>
+                Add node
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="min-w-44">
+                {PALETTE_GROUPS.map((group, gi) => (
+                  <div key={group.label}>
+                    {gi > 0 ? <ContextMenuSeparator /> : null}
+                    <ContextMenuLabel>{group.label}</ContextMenuLabel>
+                    {group.items.map((p) => (
+                      <ContextMenuItem
+                        key={p.type}
+                        disabled={readOnly}
+                        onClick={() => addNode(p.type, dropPosRef.current)}
+                      >
+                        {p.label}
+                      </ContextMenuItem>
+                    ))}
+                  </div>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+            <ContextMenuItem onClick={() => void fitView({ padding: 0.2 })}>
+              Fit view
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={readOnly || nodes.length === 0}
+              onClick={rearrange}
+            >
+              Rearrange
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              disabled={readOnly || !selectedId}
+              onClick={duplicateSelected}
+            >
+              Duplicate selected
+            </ContextMenuItem>
+            <ContextMenuItem
+              disabled={readOnly || !selectedId}
+              variant="destructive"
+              onClick={deleteSelected}
+            >
+              Delete selected
+            </ContextMenuItem>
+            {!viewingVersion ? (
+              <>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => void publish()}>
+                  Publish draft
+                </ContextMenuItem>
+              </>
+            ) : null}
+          </ContextMenuContent>
+        </ContextMenu>
 
         {/* Editor + test */}
-        <aside className="w-72 shrink-0 border-l p-3 space-y-4 overflow-y-auto text-sm">
-          <div>
-            <div className="text-[10px] font-medium uppercase text-muted-foreground mb-1">
-              Node editor
+        <aside className="flex w-72 shrink-0 flex-col overflow-hidden border-l text-sm">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+            <div>
+              <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">
+                Node editor
+              </div>
+              {selected ? (
+                <NodeEditor
+                  flow={flow}
+                  locale={locale}
+                  node={selected}
+                  readOnly={readOnly}
+                  onChange={(rule) => patchRule(selected.id, rule)}
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Select a node to edit.
+                </p>
+              )}
             </div>
-            {selected ? (
-              <NodeEditor
-                flow={flow}
-                locale={locale}
-                node={selected}
-                readOnly={readOnly}
-                onChange={(rule) => patchRule(selected.id, rule)}
-              />
-            ) : (
-              <p className="text-xs text-muted-foreground">Select a node to edit.</p>
-            )}
-          </div>
 
-          <div className="border-t pt-3">
-            <div className="text-[10px] font-medium uppercase text-muted-foreground mb-2">
-              Test panel
-            </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {inputCatalog(flow).map((def) => (
-                <div key={def.key} className="space-y-0.5">
-                  <Label className="text-[10px]">{def.key}</Label>
-                  {def.valueType === "number" ? (
-                    <Input
-                      type="number"
-                      step="any"
-                      className="h-8"
-                      value={String(testInputs[def.key] ?? "")}
-                      onChange={(e) =>
-                        setTestInputs((s) => ({ ...s, [def.key]: e.target.value }))
-                      }
-                    />
-                  ) : def.valueType === "string[]" ? (
-                    <select
-                      className="h-8 w-full rounded-md border bg-background px-2 text-xs"
-                      value={String(
-                        Array.isArray(testInputs[def.key])
-                          ? (testInputs[def.key] as string[])[0]
-                          : "",
-                      )}
-                      onChange={(e) =>
-                        setTestInputs((s) => ({ ...s, [def.key]: [e.target.value] }))
-                      }
-                    >
-                      {(def.values ?? []).map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      className="h-8 w-full rounded-md border bg-background px-2 text-xs"
-                      value={String(testInputs[def.key] ?? "")}
-                      onChange={(e) => {
-                        const v =
-                          def.valueType === "boolean"
-                            ? e.target.value === "true"
-                            : e.target.value;
-                        setTestInputs((s) => ({ ...s, [def.key]: v }));
-                      }}
-                    >
-                      {(def.values ?? []).map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              ))}
-            </div>
-            <Button type="button" size="sm" className="mt-2 w-full" onClick={runTest}>
+            <div className="border-t pt-3">
+              <div className="mb-2 text-[10px] font-medium uppercase text-muted-foreground">
+                Test panel
+              </div>
+              <div className="space-y-2">
+                {inputCatalog(flow).map((def) => (
+                  <div key={def.key} className="space-y-0.5">
+                    <Label className="text-[10px]">{def.key}</Label>
+                    {def.valueType === "number" ? (
+                      <Input
+                        type="number"
+                        step="any"
+                        className="h-8"
+                        value={String(testInputs[def.key] ?? "")}
+                        onChange={(e) =>
+                          setTestInputs((s) => ({
+                            ...s,
+                            [def.key]: e.target.value,
+                          }))
+                        }
+                      />
+                    ) : def.valueType === "string[]" ? (
+                      <select
+                        className="h-8 w-full rounded-md border bg-card px-2 text-xs"
+                        value={String(
+                          Array.isArray(testInputs[def.key])
+                            ? (testInputs[def.key] as string[])[0]
+                            : "",
+                        )}
+                        onChange={(e) =>
+                          setTestInputs((s) => ({
+                            ...s,
+                            [def.key]: [e.target.value],
+                          }))
+                        }
+                      >
+                        {(def.values ?? []).map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <select
+                        className="h-8 w-full rounded-md border bg-card px-2 text-xs"
+                        value={String(testInputs[def.key] ?? "")}
+                        onChange={(e) => {
+                          const v =
+                            def.valueType === "boolean"
+                              ? e.target.value === "true"
+                              : e.target.value;
+                          setTestInputs((s) => ({ ...s, [def.key]: v }));
+                        }}
+                      >
+                        {(def.values ?? []).map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                ))}
+              </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="mt-2 w-full"
+              onClick={runTest}
+            >
               Evaluate
             </Button>
             {testError ? (
@@ -609,6 +938,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 </div>
               </dl>
             ) : null}
+            </div>
           </div>
         </aside>
       </div>

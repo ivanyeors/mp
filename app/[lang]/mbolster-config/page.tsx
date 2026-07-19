@@ -1,5 +1,6 @@
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 import { ConfiguratorSeoIntro } from "@/components/seo/configurator-seo-intro";
+import { getAdminContext } from "@/lib/auth/admin";
 import { getPageFaq } from "@/lib/page-faq";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
@@ -28,9 +29,11 @@ export default async function MbolsterConfigPage({ params }: Props) {
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
-  const [offer, faq] = await Promise.all([
+  const [offer, faq, staffCtx] = await Promise.all([
     getConfiguratorOfferRange("bolster"),
     getPageFaq("mbolster-config", locale),
+    // Staff assist gate: same Staff check as mp-config. Guests get null.
+    getAdminContext(),
   ]);
 
   const jsonLd = buildConfiguratorProductJsonLd({
@@ -56,6 +59,7 @@ export default async function MbolsterConfigPage({ params }: Props) {
           faqTitle: faq?.title ?? null,
           faqItems: faq?.items ?? [],
         }}
+        staffAssist={Boolean(staffCtx)}
       />
     </>
   );

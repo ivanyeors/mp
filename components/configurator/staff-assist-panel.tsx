@@ -40,7 +40,7 @@ import {
 } from "@/lib/spatial-fillings/core";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
-export type FillingItem = { id: number; name: string; subtype: string | null };
+export type FillingItem = { id: number; name: string; subtype: string | null; size: string | null };
 type TemplateRow = { id: number; name: string };
 
 /**

@@ -11,7 +11,14 @@
  */
 
 import { SECTIONS, SUB_SECTIONS, type Section, type SubSection } from "@/lib/spatial-fillings/core";
-import { COL_X, ROW_Y, XRAY_VIEW } from "@/lib/spatial-fillings/xray-layout";
+import {
+  BOLSTER_CAPSULE_HEIGHT,
+  BOLSTER_CAPSULE_LENGTHS,
+  COL_X,
+  ROW_Y,
+  XRAY_VIEW,
+  type BolsterLength,
+} from "@/lib/spatial-fillings/xray-layout";
 import type { ShapeId } from "@/lib/spatial-fillings/visuals";
 
 export { XRAY_VIEW };
@@ -114,16 +121,48 @@ export const SECTION_HIT_PATHS: Record<Section, string> = {
   right: sectionPath(2),
 };
 
-// --- Fluid filling shapes (placeholder; normalized to a 100×100 box) ---------
+// --- Filling shape (normalized to a 100×100 box) -----------------------------
+// ponytail: one rounded-square pouch for every filling type; color (per
+// subtype) + scale (per Item size) differentiate. Designer fluid shapes
+// re-expand this record when they land — renderer and morph pipeline are ready.
 
+// Puffed fabric pouch: rounded square with gently bulging edges, like the
+// stuffed product pouch (photo reference), not a flat UI rect. Fills its full
+// 100×100 box so a packed pouch reaches its tract edge and presses the shell.
 export const FILLING_SHAPE_PATHS: Record<ShapeId, string> = {
-  // soft asymmetric pebble
-  pouch3d:
-    "M50 10 C72 6 90 24 90 47 C90 72 74 92 49 91 C26 90 10 74 11 49 C12 26 30 13 50 10 Z",
-  // taller pouch with a waist dimple
-  pouch6d:
-    "M50 6 C68 6 80 18 79 36 C78 48 72 50 73 60 C74 76 66 94 50 94 C34 94 26 76 27 60 C28 50 22 48 21 36 C20 18 32 6 50 6 Z",
-  // wide pouch with a top notch
-  pouch6dPlus:
-    "M50 22 C58 12 74 8 84 18 C94 28 94 48 88 62 C82 78 68 90 50 90 C32 90 18 78 12 62 C6 48 6 28 16 18 C26 8 42 12 50 22 Z",
+  pouch:
+    "M50 2 C73 2 93 8 93 28 C93 43 95 57 93 72 C93 92 73 98 50 98 " +
+    "C27 98 7 92 7 72 C5 57 5 43 7 28 C7 8 27 2 50 2 Z",
 };
+
+/**
+ * Seam between the fillings and the shell, in view units. Pieces clip to the
+ * shell inset by this, and the inset shell curve is stroked where each pouch
+ * presses it — ∂(pouch ∩ shell) = ∂pouch inside shell ∪ ∂shell inside pouch —
+ * so pouch borders visibly conform to the silhouette's rounded ends.
+ */
+export const SHELL_SEAM = 1;
+
+/** Uniform inward squeeze of the pillow silhouette by SHELL_SEAM (approx offset). */
+export const SILHOUETTE_INSET_TRANSFORM = `translate(${SHELL_SEAM} ${SHELL_SEAM}) scale(${
+  (XRAY_VIEW.width - 2 * SHELL_SEAM) / XRAY_VIEW.width
+} ${(XRAY_VIEW.height - 2 * SHELL_SEAM) / XRAY_VIEW.height})`;
+
+// --- Mbolster capsule silhouette ---------------------------------------------
+
+/**
+ * Long-pill silhouette, length driven by the Mbolster length (shared 664×374
+ * view). `inset` shrinks the capsule concentrically (exact offset curve) — the
+ * fillings clip and conform to the inset capsule.
+ */
+export function bolsterCapsulePath(length: BolsterLength, inset = 0): string {
+  const len = BOLSTER_CAPSULE_LENGTHS[length] - 2 * inset;
+  const r = BOLSTER_CAPSULE_HEIGHT / 2 - inset;
+  const x0 = (XRAY_VIEW.width - len) / 2;
+  const x1 = x0 + len;
+  const cy = XRAY_VIEW.height / 2;
+  return (
+    `M${x0 + r} ${cy - r} L${x1 - r} ${cy - r} A${r} ${r} 0 0 1 ${x1 - r} ${cy + r} ` +
+    `L${x0 + r} ${cy + r} A${r} ${r} 0 0 1 ${x0 + r} ${cy - r} Z`
+  );
+}

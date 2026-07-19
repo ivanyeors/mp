@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * Staff assist data (slice 04). Staff-gated: guests get 401, never template or
- * inventory data. Two query modes:
+ * inventory data. Three query modes:
  *   ?size=M         → active size-scoped Filling Templates + active filling Items
  *   ?templateId=12  → that template's spatial placements
+ *   (no params)     → active filling Items + color overrides only (bolster x-ray)
  */
 export async function GET(req: NextRequest) {
   const staff = await getAdminContext();
@@ -43,8 +44,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, placements: placements ?? [] });
   }
 
-  const size = searchParams.get("size")?.toUpperCase() ?? "";
-  if (!(PILLOW_SIZES as readonly string[]).includes(size)) {
+  // No size param → items + color overrides only (the bolster x-ray has no
+  // size-scoped pillow templates). A present-but-invalid size still 400s.
+  const sizeParam = searchParams.get("size");
+  const size = sizeParam?.toUpperCase() ?? null;
+  if (size !== null && !(PILLOW_SIZES as readonly string[]).includes(size)) {
     return NextResponse.json({ error: "Invalid size" }, { status: 400 });
   }
 
@@ -53,17 +57,19 @@ export async function GET(req: NextRequest) {
     { data: items, error: itemsErr },
     { data: colorOverrides, error: colorsErr },
   ] = await Promise.all([
-    admin
-      .from("bom_templates")
-      .select("id,name")
-      .eq("kind", "pillow")
-      .eq("key", size)
-      .eq("role", "filling")
-      .eq("is_active", true)
-      .order("name"),
+    size === null
+      ? Promise.resolve({ data: [], error: null })
+      : admin
+          .from("bom_templates")
+          .select("id,name")
+          .eq("kind", "pillow")
+          .eq("key", size)
+          .eq("role", "filling")
+          .eq("is_active", true)
+          .order("name"),
     admin
       .from("items")
-      .select("id,name,subtype")
+      .select("id,name,subtype,size")
       .eq("category", "filling")
       .eq("is_active", true)
       .order("name"),

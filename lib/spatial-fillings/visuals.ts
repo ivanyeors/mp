@@ -5,7 +5,9 @@
  * apply without a deploy. Pure + browser-safe.
  */
 
-export type ShapeId = "pouch3d" | "pouch6d" | "pouch6dPlus";
+// ponytail: one rounded-square pouch for every filling type — color + size
+// carry the distinction; per-family designer fluid shapes slot back in here.
+export type ShapeId = "pouch";
 
 export type FillingVisual = {
   shape: ShapeId;
@@ -15,13 +17,20 @@ export type FillingVisual = {
 };
 
 /** Order matters: "6D+" must match before "6D". */
-const FAMILY_DEFAULTS: Array<{ prefix: string; shape: ShapeId; color: string }> = [
-  { prefix: "6D+", shape: "pouch6dPlus", color: "#f59e0b" },
-  { prefix: "6D", shape: "pouch6d", color: "#38bdf8" },
-  { prefix: "3D", shape: "pouch3d", color: "#a78bfa" },
+const FAMILY_DEFAULTS: Array<{ prefix: string; color: string }> = [
+  { prefix: "6D+", color: "#f59e0b" },
+  { prefix: "6D", color: "#38bdf8" },
+  { prefix: "3D", color: "#a78bfa" },
 ];
 
-const FALLBACK: { shape: ShapeId; color: string } = { shape: "pouch6d", color: "#94a3b8" };
+const FALLBACK_COLOR = "#94a3b8";
+
+/** Pouch render scale per Item size (items.size); unknown/null sizes render at 1. */
+const SIZE_SCALES: Record<string, number> = { XS: 0.7, S: 0.85, M: 1, L: 1.15, XL: 1.3 };
+
+export function sizeScale(size: string | null | undefined): number {
+  return SIZE_SCALES[size?.toUpperCase() ?? ""] ?? 1;
+}
 
 /** CSS-safe slug for a subtype: "6D+ (Folded)" → "6d-plus-folded". */
 export function subtypeSlug(subtype: string | null): string {
@@ -37,8 +46,8 @@ export function subtypeSlug(subtype: string | null): string {
 export function fillingVisual(subtype: string | null): FillingVisual {
   const family = subtype ? FAMILY_DEFAULTS.find((f) => subtype.startsWith(f.prefix)) : undefined;
   return {
-    shape: family?.shape ?? FALLBACK.shape,
+    shape: "pouch",
     cssVar: `--xray-fill-${subtypeSlug(subtype)}`,
-    defaultColor: family?.color ?? FALLBACK.color,
+    defaultColor: family?.color ?? FALLBACK_COLOR,
   };
 }

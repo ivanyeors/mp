@@ -38,16 +38,22 @@ import {
   type Section,
 } from "@/lib/spatial-fillings/core";
 import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
-import { fillingVisual, type FillingVisual } from "@/lib/spatial-fillings/visuals";
+import { fillingVisual, sizeScale, type FillingVisual } from "@/lib/spatial-fillings/visuals";
 import { COL_X, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
 import {
   CELL_CLIP_PATHS,
   FILLING_SHAPE_PATHS,
   SECTION_HIT_PATHS,
+  SILHOUETTE_INSET_TRANSFORM,
   SILHOUETTE_PATH,
   XRAY_VIEW,
   type CellKey,
 } from "./xray-assets";
+
+/** item id → pouch render scale, from each Item's size. */
+export function itemScaleMap(itemSizes: ReadonlyMap<number, string | null>): Map<number, number> {
+  return new Map([...itemSizes].map(([id, size]) => [id, sizeScale(size)]));
+}
 
 // useLayoutEffect starts morphs before paint (no first-frame flash); SSR no-ops.
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -59,16 +65,24 @@ const easeOut = (t: number) => t * (2 - t);
  * One filling piece. When its shape swaps (item type change in the same slot),
  * the prepared flubber interpolator animates path `d`; degenerate pairs
  * crossfade an old-shape ghost instead — attribute writes only, no re-layout.
+ *
+ * `conform` paths are shell boundaries this piece may press against: each is
+ * stroked clipped to the pouch, completing the intersection border —
+ * ∂(pouch ∩ shell) = ∂pouch inside shell ∪ ∂shell inside pouch — so a clipped
+ * pouch's outline follows the shell curve instead of ending cut off.
  */
-function MorphPiece({
+export function MorphPiece({
   subtype,
   visual,
   transform,
+  conform,
 }: {
   subtype: string | null;
   visual: FillingVisual;
   transform: string;
+  conform?: ReadonlyArray<{ d: string; transform?: string }>;
 }) {
+  const pieceClip = useId();
   const shape = visual.shape;
   const ref = useRef<SVGPathElement>(null);
   const ghostRef = useRef<SVGPathElement>(null);
@@ -126,6 +140,26 @@ function MorphPiece({
     <>
       {ghost && <path ref={ghostRef} d={FILLING_SHAPE_PATHS[ghost]} {...paint} />}
       <path ref={ref} d={FILLING_SHAPE_PATHS[shape]} {...paint} />
+      {conform && conform.length > 0 && (
+        <>
+          <clipPath id={pieceClip}>
+            <path d={FILLING_SHAPE_PATHS[shape]} transform={transform} />
+          </clipPath>
+          {conform.map((b, i) => (
+            <path
+              key={i}
+              d={b.d}
+              transform={b.transform}
+              clipPath={`url(#${pieceClip})`}
+              fill="none"
+              stroke="rgba(255,255,255,0.9)"
+              strokeWidth={2}
+              vectorEffect="non-scaling-stroke"
+              pointerEvents="none"
+            />
+          ))}
+        </>
+      )}
     </>
   );
 }
@@ -133,6 +167,7 @@ function MorphPiece({
 export function XrayPillow({
   placements,
   itemSubtypes,
+  itemSizes,
   items,
   onPlacementsChange,
   className,
@@ -140,6 +175,8 @@ export function XrayPillow({
   placements: PillowPlacement[];
   /** item id → subtype (resolves fluid shape + color). */
   itemSubtypes: ReadonlyMap<number, string | null>;
+  /** item id → Item size (scales the pouch); absent ids render at 1. */
+  itemSizes?: ReadonlyMap<number, string | null>;
   /** Inventory filling Items for the dive editor picker; read-only when omitted. */
   items?: FillingItem[];
   /** Same lifted session-mix state the list editor writes (never forked). */
@@ -161,7 +198,7 @@ export function XrayPillow({
     return () => window.removeEventListener("keydown", onKey);
   }, [dived]);
 
-  const pieces = layoutPlacements(placements);
+  const pieces = layoutPlacements(placements, itemSizes ? itemScaleMap(itemSizes) : undefined);
   const cellsInUse = [...new Set(pieces.map((p) => `${p.section}/${p.subSection}` as CellKey))];
   const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
@@ -199,6 +236,11 @@ export function XrayPillow({
           <clipPath id={clipId("sil")}>
             <path d={SILHOUETTE_PATH} />
           </clipPath>
+          {/* pieces clip to the shell inset by the seam; its curve is stroked
+              per pouch so borders conform to the silhouette */}
+          <clipPath id={clipId("sil-inner")}>
+            <path d={SILHOUETTE_PATH} transform={SILHOUETTE_INSET_TRANSFORM} />
+          </clipPath>
           {cellsInUse.map((key) => (
             <clipPath key={key} id={clipId(key)}>
               <path d={CELL_CLIP_PATHS[key]} />
@@ -211,26 +253,29 @@ export function XrayPillow({
           <g clipPath={`url(#${clipId("sil")})`}>
             <path d={SILHOUETTE_PATH} fill="rgba(15,23,42,0.5)" />
 
-            {/* nested clipping: silhouette ∩ cell — pieces conform, never box-cropped */}
-            {cellsInUse.map((key) => (
-              <g key={key} clipPath={`url(#${clipId(key)})`}>
-                {pieces
-                  .filter((p) => `${p.section}/${p.subSection}` === key)
-                  .map((p) => {
-                    const subtype = itemSubtypes.get(p.itemId) ?? null;
-                    const visual = fillingVisual(subtype);
-                    const s = p.size / 100;
-                    return (
-                      <MorphPiece
-                        key={p.key}
-                        subtype={subtype}
-                        visual={visual}
-                        transform={`translate(${p.cx - 50 * s} ${p.cy - 50 * s}) scale(${s})`}
-                      />
-                    );
-                  })}
-              </g>
-            ))}
+            {/* nested clipping: inset silhouette ∩ cell — pieces conform, never box-cropped */}
+            <g clipPath={`url(#${clipId("sil-inner")})`}>
+              {cellsInUse.map((key) => (
+                <g key={key} clipPath={`url(#${clipId(key)})`}>
+                  {pieces
+                    .filter((p) => `${p.section}/${p.subSection}` === key)
+                    .map((p) => {
+                      const subtype = itemSubtypes.get(p.itemId) ?? null;
+                      return (
+                        <MorphPiece
+                          key={p.key}
+                          subtype={subtype}
+                          visual={fillingVisual(subtype)}
+                          // non-uniform scale: the pouch squashes into its tract,
+                          // pressing flat against its neighbors
+                          transform={`translate(${p.x} ${p.y}) scale(${p.w / 100} ${p.h / 100})`}
+                          conform={[{ d: SILHOUETTE_PATH, transform: SILHOUETTE_INSET_TRANSFORM }]}
+                        />
+                      );
+                    })}
+                </g>
+              ))}
+            </g>
 
             {hovered && hovered !== dived && (
               <path d={SECTION_HIT_PATHS[hovered]} fill="white" fillOpacity={0.15} />
