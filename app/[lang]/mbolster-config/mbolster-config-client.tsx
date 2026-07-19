@@ -58,6 +58,11 @@ import {
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
 import {
+  AddonOptionButton,
+  SelectedAddonPreviews,
+  type AddonOption,
+} from "@/components/configurator/addon-cards";
+import {
   holdCtaLabel,
   isPreOrder,
   preferenceStockFor,
@@ -173,9 +178,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const [shopLoading, setShopLoading] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<number | null>(null);
   const [selectedAddons, setSelectedAddons] = React.useState<Set<number>>(new Set());
-  const [addons, setAddons] = React.useState<
-    { item_id: number; name: string; msrp: number; currency: string }[]
-  >([]);
+  const [addons, setAddons] = React.useState<AddonOption[]>([]);
   const [holdEmail, setHoldEmail] = React.useState("");
   const [holdPhone, setHoldPhone] = React.useState("");
   const [discoverySource, setDiscoverySource] = React.useState("");
@@ -810,6 +813,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                   </Badge>
                 )}
               </div>
+              <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
               <p className="max-w-xs text-center text-xs text-white/80">
                 Fillings are chosen by our team after review.
               </p>
@@ -880,32 +884,21 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                     Add-ons for your Mbolster (optional)
                   </Label>
                   <div className="space-y-2">
-                    {addons.map((a) => {
-                      const on = selectedAddons.has(a.item_id);
-                      return (
-                        <button
-                          key={a.item_id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedAddons((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(a.item_id)) next.delete(a.item_id);
-                              else next.add(a.item_id);
-                              return next;
-                            });
-                          }}
-                          className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
-                            on ? "border-primary bg-primary/5" : "border-border"
-                          }`}
-                        >
-                          <span className="text-sm font-medium">{a.name}</span>
-                          <span className="text-sm tabular-nums text-muted-foreground">
-                            {a.currency} {a.msrp.toFixed(2)}
-                            {on && <Check className="ml-2 inline size-4 text-primary" />}
-                          </span>
-                        </button>
-                      );
-                    })}
+                    {addons.map((a) => (
+                      <AddonOptionButton
+                        key={a.item_id}
+                        addon={a}
+                        selected={selectedAddons.has(a.item_id)}
+                        onToggle={() => {
+                          setSelectedAddons((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(a.item_id)) next.delete(a.item_id);
+                            else next.add(a.item_id);
+                            return next;
+                          });
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
               )}

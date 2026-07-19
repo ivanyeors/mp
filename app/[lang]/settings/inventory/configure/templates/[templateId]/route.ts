@@ -3,6 +3,13 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
 import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
+import {
+  derivePackList,
+  rowsToBolsterPlacements,
+  rowsToPillowPlacements,
+  validateBolsterPlacements,
+  validatePillowPlacements,
+} from '@/lib/spatial-fillings'
 
 export const runtime = 'nodejs'
 
@@ -56,13 +63,33 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
     .eq('template_id', id)
   if (lErr) return NextResponse.json({ error: lErr.message }, { status: 500 })
 
-  return NextResponse.json({ ok: true, template: tpl, lines: lines ?? [] })
+  let placements: Array<{ item_id: number }> = []
+  if (tpl.role === 'filling') {
+    const table = tpl.kind === 'bolster' ? 'bolster_template_placements' : 'filling_template_placements'
+    const cols = tpl.kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id'
+    const { data: pl, error: pErr } = await admin.from(table).select(cols).eq('template_id', id).order('slot')
+    if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
+    placements = (pl ?? []) as unknown as Array<{ item_id: number }>
+  }
+  // Pack list is derived: placements when present, legacy flat lines otherwise (ADR 0008)
+  const packList = derivePackList(placements, lines ?? [])
+
+  return NextResponse.json({ ok: true, template: tpl, lines: lines ?? [], placements, packList })
 }
+
+// Shape gate only; the spatial-fillings lib does the semantic validation per kind.
+const PlacementRowSchema = z.object({
+  section: z.string().default(''),
+  sub_section: z.string().default(''),
+  slot: z.number().int(),
+  item_id: z.number().int().positive(),
+})
 
 const UpdateSchema = z.object({
   notes: z.string().trim().max(500).optional(),
   is_active: z.boolean().optional(),
   lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })).optional(),
+  placements: z.array(PlacementRowSchema).optional(),
 })
 
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId: string }> }) {
@@ -78,7 +105,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
 
   const { data: tpl, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,notes,role,is_active')
+    .select('id,kind,notes,role,is_active')
     .eq('id', id)
     .maybeSingle()
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
@@ -116,6 +143,39 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
       const payload = safeLines.map((l) => ({ template_id: id, item_id: l.item_id, quantity: l.quantity }))
       const { error: linesErr } = await admin.from('bom_template_lines').upsert(payload, { onConflict: 'template_id,item_id' })
       if (linesErr) return NextResponse.json({ error: linesErr.message }, { status: 500 })
+    }
+  }
+
+  if (parsed.data.placements !== undefined) {
+    if (tpl.role !== 'filling') {
+      return NextResponse.json(
+        { error: 'Placements are only allowed on Filling Templates (role=filling)' },
+        { status: 400 },
+      )
+    }
+    const rows = parsed.data.placements
+    const cats = await lookupItemCategories(admin, rows.map((r) => r.item_id))
+    if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
+
+    const isBolster = tpl.kind === 'bolster'
+    const valid = isBolster
+      ? validateBolsterPlacements(rowsToBolsterPlacements(rows), cats.byId)
+      : validatePillowPlacements(rowsToPillowPlacements(rows), cats.byId)
+    if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 })
+
+    // Placements are the "where" truth; legacy bom_template_lines stay untouched
+    // as the pack-list fallback for templates without placements (ADR 0008).
+    const table = isBolster ? 'bolster_template_placements' : 'filling_template_placements'
+    const payload = rows.map((r) =>
+      isBolster
+        ? { template_id: id, slot: r.slot, item_id: r.item_id }
+        : { template_id: id, section: r.section, sub_section: r.sub_section, slot: r.slot, item_id: r.item_id },
+    )
+    const { error: delErr } = await admin.from(table).delete().eq('template_id', id)
+    if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })
+    if (payload.length) {
+      const { error: insErr } = await admin.from(table).insert(payload)
+      if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 })
     }
   }
 

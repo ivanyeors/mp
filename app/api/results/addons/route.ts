@@ -6,6 +6,7 @@ import {
   suggestAddons,
   type AddonProductType,
 } from "@/lib/results/addons";
+import { resolveAddonImageUrls, type AddonMediaAsset } from "@/lib/results/addon-images";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
   const admin = supabaseAdmin();
   const { data: items, error } = await admin
     .from("items")
-    .select("id, name, category, size, subtype, alteration_of_item_id")
+    .select("id, name, category, size, subtype, alteration_of_item_id, primary_media_asset_id")
     .eq("is_active", true)
     .eq("category", "accessories")
     .is("alteration_of_item_id", null);
@@ -71,6 +72,32 @@ export async function GET(req: Request) {
     });
   }
 
-  const addons = suggestAddons(rows, msrpByItem, { productType, sizeKey });
+  const suggested = suggestAddons(rows, msrpByItem, { productType, sizeKey });
+
+  // Add-on card imagery from the Item's primary Media Asset (slice 12).
+  const mediaRefs = (items ?? []).map((i) => ({
+    id: i.id as number,
+    primary_media_asset_id: (i.primary_media_asset_id as string | null) ?? null,
+  }));
+  const assetIds = [
+    ...new Set(
+      suggested
+        .map((a) => mediaRefs.find((r) => r.id === a.item_id)?.primary_media_asset_id)
+        .filter((v): v is string => Boolean(v)),
+    ),
+  ];
+  let imageByItem = new Map<number, string>();
+  if (assetIds.length > 0) {
+    const { data: assets } = await admin
+      .from("media_assets")
+      .select("id, kind, hosted_url")
+      .in("id", assetIds);
+    imageByItem = resolveAddonImageUrls(mediaRefs, (assets ?? []) as AddonMediaAsset[]);
+  }
+
+  const addons = suggested.map((a) => ({
+    ...a,
+    image_url: imageByItem.get(a.item_id) ?? null,
+  }));
   return NextResponse.json({ addons, productType, sizeKey });
 }

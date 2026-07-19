@@ -1,4 +1,4 @@
-# Money Pillow (mp)
+# Mpillow (mp)
 
 Inventory-backed catalog and storefront for custom pillows, bolsters, and accessories. Costings is the single source of sell price; storefront products are a projection of inventory.
 
@@ -67,7 +67,30 @@ The end of a **Visit** without conversion: last page, last section when known, a
 _Avoid_: bounce (too narrow); exit intent; “why they left” as captured fact
 
 **Filling Template**:
-A Configure BOM template that contains filling lines only, scoped by product type and size. A **Composed sellable** may designate one active Filling Template as its **Default Filling Template** (baseline mix). At assignment the operator may keep that default or pick another template from the same size-scoped catalog; the choice is stored on the **Result**. Fillings never come from customer input or from raw filling lines on the composed sellable BOM. Affects COGS and fulfillment, not sell price.
+A named, size-scoped filling recipe in the **Admin Panel** (Configure) catalog for **Mpillow** (and bolster where applicable). One template = all nine **cells** (**Section** × **sub-section**) as a single recipe. The persisted model must record **where** each filling **Item** goes (**Section** + **sub-section** + order within the cell) — not only a flat item list. A flat BOM projection (summed `item_id × count` across cells) is derived for stock/COGS display. A **Composed sellable** may designate one active template as its **Default Filling Template**. **Staff assist mode** may load and mutate a template’s mix for the live session, but must not create a catalog **Filling Template** from the configurator — create and **Promote** happen only in the **Admin Panel**. Every filling line must reference an inventory **Item** (no free-text shapes). Fillings never come from guest customer input or from raw filling lines on the composed sellable BOM. Affects COGS and fulfillment, not sell price.
+
+**Filling configuration**:
+The concrete spatial mix used on one customisation (**Result** / assist session): all **cells** with their filling **Item** lines. May start from a **Filling Template** and diverge. When present on a **Result**, it is a full spatial snapshot (fulfillment + analytics truth). Optionally also stores `filling_template_id` when the snapshot still exactly matches a catalog **Filling Template**. Analytics fingerprints are derived from the snapshot. Written at hold create when **Staff assist mode** supplied a mix; otherwise first written when **Staff** assigns in the **Admin Panel**. **Staff** may revise it in the Admin Panel after hold and send the updated build to the shopper. On shopper **Accept** or **Decline**, the **Result** retains that snapshot for records (Decline does not Stripe-capture payment — “capture” here means persist the mix, not charge the card).
+
+**Unpromoted configuration**:
+A **Filling configuration** (or equivalent recipe fingerprint) that has been used on one or more **Results** but is not yet a catalog **Filling Template**. Analytics ranks these by usage so **Staff** can **Promote** the highest ones into permanent templates.
+
+**Promote** (fillings):
+Staff action in the **Admin Panel** that turns an **Unpromoted configuration** into a named catalog **Filling Template**. Not available on the storefront configurator in v1.
+
+**Placement** (pillow fillings):
+One persisted filling piece in a **Filling Template** or **Filling configuration** snapshot: inventory `item_id` + **Section** + **sub-section** + slot (1–5). Source of truth for “where.” The pack list is derived by aggregating **Placements** — never an independently edited filling BOM, and never stored on a **Warehouse template**.
+
+**Section** (pillow fillings):
+One of the three vertical compartments of an **Mpillow**: `left` | `center` | `right`. Side-sleep support lives in left/right; back-sleep support in center. **Mbolster** does not use this enum — it has its own spatial schema (single long compartment, no piece cap in v1); only the filling **Items** come from the same inventory.
+_Avoid_: “middle section” for the column (use **center**); **Filling section** as a longer synonym — prefer **Section** in this grid; conflating with **sub-section**; reusing the Mpillow section/sub-section enums for **Mbolster**
+
+**sub-section** (pillow fillings):
+One of the three bands inside a **Section**: `front` | `middle` | `back`. Together with **Section**, forms a 3×3 grid of **cells**. Canonical ids match the existing LLM model API (`front`, not `top`).
+_Avoid_: “top” for this band; using “middle” alone without saying **Section** vs **sub-section**
+
+**cell** (pillow fillings):
+The addressable slot at one **Section** × **sub-section** (9 cells on **Mpillow**). Holds an ordered list of filling **Item** pieces chosen from inventory (add/remove in assist or Configure). UI starts with one piece slot; Staff may add more as needed. Cap: **at most 5 filling pieces per cell** (v1); the same **Item** may repeat (e.g. five × 6D Small in one **sub-section**). Empty cells allowed. Each piece is one inventory-linked unit (qty 1 per row); stock/COGS flatten by summing identical `item_id`s across all cells — spatial columns remain the source of truth for placement.
 
 **Default Filling Template**:
 The baseline filling mix for one Configure product card (e.g. Basic Size S, Premium Size M, Bolster medium). Stored on that **Composed sellable**, not on a warehouse preset name. Shown as a hint at assignment; the operator must actively confirm or override. Changing assigned size×tier (or length) on a **Result** clears any filling selection and reloads the hint for the new product card.
@@ -77,7 +100,7 @@ Shopper-chosen **Item**s on a customisation preview. **Mpillow** (full/basic): c
 _Avoid_: showing a Cover Style picker on mbolster-config; treating bolster protector as a shopper choice
 
 **Add-on**:
-An accessory (or optional extra) line at item **MSRP**, chosen during customisation.
+An accessory (or optional extra) line at item **MSRP**, chosen during customisation. Preview cards use the **Item**’s primary **Media Asset** image (not **Product Builder** overlays).
 
 **Authorization hold**:
 An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
@@ -85,12 +108,12 @@ An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** 
 **Pre-order**:
 A customise-preview fulfillment mode when immediate build is not possible from current inventory: a required **Customer preference** line has `stock_available <= 0` (Mpillow: cover or case; Mbolster: case), **or** the recommended **Composed sellable** (size×tier / length) has buildable `<= 0`. Applies to **Mpillow** (full/basic) and **Mbolster**.
 
-- **Live preview CTA:** recomputed from current inventory. When trigger is false, new shoppers see the normal hold CTA (e.g. Proceed) — not Pre-order. When true, CTA + waiting-time section use Pre-order copy (fixed i18n in v1).
+- **Live preview CTA:** recomputed from current inventory. When trigger is false, new shoppers see the normal hold CTA (e.g. Proceed) — not Pre-order. When true, CTA + waiting-time section use Pre-order copy (fixed i18n in v1). Waiting body tells the shopper **Staff will reach out shortly via WhatsApp** (not a numeric ETA; not CMS-edited in v1).
 - **Persisted Result mode:** at hold create, if the shopper submitted under Pre-order, the **Result** keeps that mode (sticky for that submission).
-- **Restock notice:** when inventory recovers enough that the Pre-order trigger would clear, open Pre-order **Results** in status **`held`** or **`assigned`** are **automatically** emailed that stock is back and they can Sign in in a few days to track customisation (**Result**) status (idempotent; skip expired/declined/captured/canceled; no Staff-triggered send in v1). New sessions on the configurator flip back to the normal hold CTA.
+- **Restock notice:** when inventory recovers enough that the Pre-order trigger would clear, open Pre-order **Results** in status **`held`** or **`assigned`** are **automatically** emailed that stock is back and they can Sign in in a few days to track customisation (**Result**) status (idempotent; skip expired/declined/captured/canceled; no Staff-triggered send in v1). New sessions on the configurator flip back to the normal hold CTA. (Restock channel remains email unless separately changed; preview waiting promise is WhatsApp outreach.)
 
 Same money path: hold → **Result** → assign → Accept → capture → **Order**; no separate Pre-order queue in v1.
-_Avoid_: conflating soft “low stock” badges with Pre-order; calling the held **Result** an **Order** before Accept + capture; “Purchase” as the hold CTA (payment is still an **Authorization hold**); UI-only Pre-order that vanishes after Stripe; bolster-only rules; CMS editing of waiting-time copy in v1; manual restock notice as the v1 path
+_Avoid_: conflating soft “low stock” badges with Pre-order; calling the held **Result** an **Order** before Accept + capture; “Purchase” as the hold CTA (payment is still an **Authorization hold**); UI-only Pre-order that vanishes after Stripe; bolster-only rules; CMS editing of waiting-time copy in v1; manual restock notice as the v1 path; inventing a per-SKU ETA field in v1
 
 **Appointment**:
 A scheduled in-store Customisation or Re-adjustment session booked via Google Appointment Scheduling (Calendar Events on `admin@mpillow.com`).
@@ -121,7 +144,15 @@ _Avoid_: adding a second Profile control on the landing dock
 
 **Staff**:
 An authorized back-office actor: active row in `admin_users`, or bootstrap allowlist. Shares the same Supabase session as a possible **Customer** record; when both apply, **Staff** wins for Menu chrome.
-_Avoid_: treating every signed-in user as staff; calling the back office “Settings” in UI copy
+_Avoid_: treating every signed-in user as staff; calling the back office “Settings” in UI copy; saying “admin” in product language when you mean **Staff**
+
+**Staff assist mode**:
+Extra configuration controls on the customisation preview (**Your Custom Mpillow** / parallel bolster preview) that appear only when **Staff** is signed in. Used on a shared in-store device — the shopper uses Staff’s device; no separate customer session or multi-device sync. Guests (no **Staff** session) see the normal preview with no filling editors — cover/case/**Add-on** flow unchanged. Layout: **left** = pillow silhouette (cover/case overlays + selected **Add-on** preview images under it) and, when Staff, the **x-ray filling editor**; **right** = shopper controls including **Add-on** selection, cover, case, contact, discovery, shipping, hold CTA.
+_Avoid_: co-browse / remote assist; requiring a **Customer** Sign-in for in-store customisation; duplicating this editor as a third surface beyond preview + **Result** assign; showing assist chrome to non-Staff; moving **Add-on** *selection* off the right rail (left only *previews* selected add-ons)
+
+**X-ray filling editor**:
+Staff-only left-column interaction on the pillow silhouette: an “x-ray” / cutaway art direction that reveals internal **Sections**. Hover highlights the three **Sections**; click dives into that section’s **sub-sections** to add/remove inventory filling **Placements** (max 5 per **cell**). Not shown to guests.
+_Avoid_: treating this as a shopper-facing game; requiring WebGL/3D unless research proves 2D SVG insufficient
 
 **Customer**:
 A shopper account identity after Sign in when the session is not **Staff**. Menu pill → **Profile**; logout lives in account UI, not the landing Menu.
@@ -158,8 +189,16 @@ _Avoid_: dropping unmapped lines from totals; silently understating Shopify sale
 - Fillings live only in **Filling Templates** — never in composed sellable BOM or warehouse presets. Legacy filling rows are migrated into Filling Templates (seed defaults per product card), then removed from live BOMs
 - Fillings affect COGS/fulfillment only; sell price is **Costings** **MSRP** for the composed sellable plus preference/add-on item **MSRP**s, plus shipping and tax
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
-- A **Media Asset** is the library record; landing slots, blogs, products, and slide configs are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
+- A **Media Asset** is the library record; landing slots, blogs, products, slide configs, and **Product Builder** overlays are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
+- **Product Builder** (Landing Site) links cover/case **Items** to overlay **Media Assets** for the configurator silhouette; preview selection reflects that mapping (**C**: thumbnails on **Item**, overlay fit in Product Builder when needed).
 - The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), or **Admin Panel** (**Staff**). When the session is **Staff**, prefer **Admin Panel** over **Profile**.
+- **Staff assist mode** appears on the customisation preview only when the session is **Staff**; the shopper operates that shared device. It does not replace **Result** assign in the **Admin Panel**.
+- **Staff assist mode** may load/edit a **Filling configuration** (from a **Filling Template** or scratch) for the live customisation; catalog create/**Promote** of **Filling Templates** stays in the **Admin Panel** only.
+- Every used **Filling configuration** is tracked for analytics; **Unpromoted configurations** are ranked by usage to guide **Promote**.
+- With **Staff assist mode**, the **Result** receives a spatial **Filling configuration** snapshot at hold create; without assist (guest), the snapshot is first set at Admin Panel assign. `filling_template_id` is optional and only on exact catalog match.
+- After assign, Admin Panel revisions are what the shopper reviews; on **Accept** or **Decline** the **Result** keeps that **Filling configuration** snapshot for records/analytics. Payment Stripe-capture happens only on Accept (when a hold exists) — not on Decline.
+- One **Filling Template** (or **Filling configuration**) owns all nine **cells**. Pack list / stock / COGS = flattened inventory **Item** lines derived from placements (**A**). Per-**cell** editor: inventory-linked fillings only; UI starts at 1 piece, max 5 pieces per cell in v1.
+- Spatial persistence — resolved (**B** refined / **Q10-A**): dedicated **placement** rows are the “where” source of truth; flat pack list is always derived; **Warehouse template** stays non-filling (ADR 0003).
 - Analytics is retrospective P&L: sales windows use **`paid_at`** on platform **Orders** and the **Shopify order mirror**. On-hand stock value KPIs (inventory at cost, potential MSRP revenue, unrealized margin, weighted margin %) live on **Costings** as-of-now, not on Analytics.
 - **Analytics channel** All = paid **Orders** ∪ **Shopify order mirror** only; `shopify_sales_queue` is ops, not a finance channel.
 - A **Visitor** has zero or more **Visits**; each **Visit** has one **Entry source** and may end in a **Drop-off** or a paid **Order**
@@ -196,6 +235,42 @@ _Avoid_: dropping unmapped lines from totals; silently understating Shopify sale
 > **Dev:** "Staff still need a separate Settings login page, right?"
 > **Domain expert:** "No — one **Sign in** at `/account/login`. After the session, **Staff** go to the **Admin Panel**; everyone else is a **Customer** on **Profile**. Keep the `/settings` path; just don't call it Settings in the UI."
 >
+> **Dev:** "In-store, can Staff edit fillings on the same Your Custom Mpillow page the shopper is using?"
+> **Domain expert:** "Yes — **Staff assist mode** on that shared device when **Staff** is signed in. No second login for the shopper, no remote co-browse."
+>
+> **Dev:** "Can they Save as template from the configurator?"
+> **Domain expert:** "No. Assist can change the **Filling configuration** for this session. Creating or **Promote**-ing a **Filling Template** is Admin Panel only. Analytics tracks every used mix so Staff can promote the most common **Unpromoted configurations** later."
+>
+> **Dev:** "Does the Result store the template id or the actual mix?"
+> **Domain expert:** "The full spatial **Filling configuration** snapshot. Template id is optional, only when that snapshot still exactly matches a catalog **Filling Template**."
+>
+> **Dev:** "Guest on mp-config with no Staff login — do they see filling editors?"
+> **Domain expert:** "No. Normal preview only. Fillings are set later in the Admin Panel (or at hold if the session was **Staff assist mode**)."
+>
+> **Dev:** "Staff changes the mix in the Admin Panel after hold, customer Declines — do we keep the mix?"
+> **Domain expert:** "Yes. Accept and Decline both retain the **Filling configuration** snapshot for records. Decline does not Stripe-capture."
+>
+> **Dev:** "Is a Filling Template just a flat BOM?"
+> **Domain expert:** "No — it stores **where** each filling piece goes (**Section** + **sub-section** + slot). The flat BOM is a projection for stock/COGS. Same **Item** can appear up to five times in one **cell**. See ADR 0008."
+>
+> **Dev:** "Where do assist controls sit on Your Custom Mpillow?"
+> **Domain expert:** "Left: spatial fillings (and size×tier if Staff changes size). Right: cover, case, add-ons, and the rest of the purchase inputs — same as the guest preview."
+>
+> **Dev:** "Staff changes size and the chosen case isn’t made in that size?"
+> **Domain expert:** "If it’s not offered for that size, clear it and make them re-pick. If it’s offered but stock is 0, keep it and use the normal out-of-stock / **Pre-order** path."
+>
+> **Dev:** "Where do cover overlays get assigned?"
+> **Domain expert:** "**Product Builder** under Landing Site — pick a **Media Asset** per cover/case **Item**. The Your Custom Mpillow preview shows that overlay when the shopper selects the option."
+>
+> **Dev:** "Pre-order waiting — do we show weeks?"
+> **Domain expert:** "No numeric ETA in v1. Fixed copy: we’ll reach out shortly via WhatsApp. Restock automation email is separate."
+>
+> **Dev:** "Add-ons on left or right?"
+> **Domain expert:** "Select on the right. Left only shows images of the *selected* add-ons under the pillow so you can see what you picked."
+>
+> **Dev:** "How do Staff edit fillings on the pillow?"
+> **Domain expert:** "**X-ray filling editor** — hover the three **Sections**, click to dive into **sub-sections**, place inventory fillings. Guests never see that mode."
+>
 > **Dev:** "Should Analytics pull Shopify sales live from the Admin API?"
 > **Domain expert:** "No — read the **Shopify order mirror**. Unmapped lines stay under **Others** with revenue counted. On-hand stock value belongs on **Costings**, not Analytics."
 >
@@ -213,11 +288,15 @@ _Avoid_: dropping unmapped lines from totals; silently understating Shopify sale
 **Product tab**:
 The composed sellable recipe editor in Configure: non-filling BOM lines (cover, case, protector, packaging, etc.) plus the **Default Filling Template** picker for that size×tier or length.
 
+**Configure product page**:
+Clicking a Configure product card opens a **full page** with breadcrumbs (e.g. Configure / Premium Mpillow / Size M) hosting the Product and **Filling Config** tabs — replacing the previous slide-in drawer/sheet.
+_Avoid_: reintroducing the drawer for product card editing; breadcrumb-less deep pages
+
 **Complete product**:
 What gets sold and fulfilled for one order: non-filling **Composed sellable** lines for the assigned size×tier (or length) plus the operator-**confirmed** **Filling Template** at assignment. Configure maintains the recipe and catalog separately; they come together only when the operator confirms assignment on a **Result**.
 
 **Filling Config tab**:
-The filling-only catalog and editor inside the same product drawer. Scoped to that product type and size (or length) only — pillow drawers never show bolster mixes and vice versa. Create, edit, and activate mixes; set which one is default on the Product tab. Auto-seeded templates from legacy BOM data are named `{size} - {tier} - default` (pillow) or `{length} - default` (bolster), active immediately.
+The filling-only catalog and editor inside the same product card page. Scoped to that product type and size (or length) only — pillow cards never show bolster mixes and vice versa. Create, edit, and activate mixes; set which one is default on the Product tab. Auto-seeded templates from legacy BOM data are named `{size} - {tier} - default` (pillow) or `{length} - default` (bolster), active immediately. Also hosts the ranked **Unpromoted configuration** list for that product card (usage counts, **Promote** in place) — segmented per product and size, not a global list.
 
 **Warehouse template**:
 A named non-filling BOM preset (`role: warehouse`) for Apply-to-active-BOM. Must not include filling lines — fillings live only in **Filling Templates**. See ADR `docs/adr/0003-fillings-only-in-filling-templates.md`.
@@ -273,6 +352,14 @@ Timestamp of the last attach, replace, or save in a consumer that referenced the
 
 **Media Asset Library**:
 The Settings → Media DAM and shared Asset picker. Separate from **Product slide section config** media props (code-config paths) until those configs are adopted onto Assets.
+
+**Product Builder**:
+Admin Panel page under **Landing Site** where **Staff** map inventory cover/case (and related) **Items** to overlay **Media Assets** (and optional fit) for the customisation preview silhouette (**Your Custom Mpillow** / bolster preview), and view/edit **Filling visual** colors. Card thumbnails come from the **Item**; non-default overlay placement on the SVG is presentation config here. Choosing a cover/case on the preview shows the linked overlay from this page.
+_Avoid_: a parallel upload silo outside **Media Assets**; hard-coding overlay files in the configurator; putting this under Inventory Configure (recipe) instead of Landing Site presentation
+
+**Filling visual**:
+The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. Staff can see the mapping and edit the **color** in **Product Builder**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
+_Avoid_: rect/bounding-box cropping of filling shapes; gooey-merging pieces so the count is unreadable; generating random blob shapes in v1
 
 **Learn-more slide-in**:
 The full-height sheet opened from landing-page "Learn more" CTAs (Basic Mpillow, Premium Mpillow, Mbolster). Primary job: product story + route to customisation or book appointment. Layout redesign target: reuse shared section templates across the three slide-ins with minimal hard-coded layout.
@@ -357,12 +444,32 @@ Shared React components in `components/sections/product/` receive JSONB-serializ
 _Avoid_: changing `components/sections/landing/`, homepage page builder, or `landing_sections` in this exercise
 
 ## Flagged ambiguities
+- Pre-order preview waiting copy — resolved: fixed i18n promises WhatsApp reach-out shortly (implemented in `preOrderWaitingCopy`); restock automation stays email for now.
+- "admin" on the customisation page — resolved: product language is **Staff**; UI capability is **Staff assist mode** (shared in-store device, preview only when signed in as **Staff**).
+- Mpillow spatial fillings — resolved: **Section** = left | center | right; **sub-section** = front | middle | back → nine **cells**. A **cell** may hold **multiple** filling **Item** lines (stuffing). Prefer these short names over “Filling section/cell”. Band id is **front** (not top) to match the LLM model API.
+- Assist-session “Save as template” — resolved for v1: **no**. Catalog **Filling Template** create/**Promote** only in **Admin Panel**. Assist mutates the live **Filling configuration**; analytics tracks all used mixes and ranks **Unpromoted configurations** for later **Promote**.
+- **Result** filling truth — resolved: full spatial **Filling configuration** snapshot; optional `filling_template_id` only on exact catalog match.
+- Snapshot write timing — resolved (**A**): with **Staff assist mode**, at hold create from the session mix; without assist, at Admin Panel assign. Post-hold edits stay in Admin Panel (no Result-reopen assist in v1). Accept and Decline both retain the snapshot for records; Decline ≠ Stripe-capture.
+- Snapshot semantics — resolved (yes/yes): an edit that diverges from the loaded **Filling Template** clears `filling_template_id` immediately (snapshot is sole truth); a guest hold carries a **null** filling snapshot until Admin Panel assign writes it.
+- Mbolster scope — resolved: included in v1. Same x-ray effect, case overlays, and add-on image cards as Mpillow, but **its own spatial schema**: one long compartment, **no piece cap** in v1, no left/center/right or sub-section enums borrowed from Mpillow. Filling **Items** come from the same inventory; pack list still derived from placements (ADR 0008 applies to both).
+- Inventory math — resolved (**A**): flatten nine **cells** to item totals for stock/COGS; spatial layout is placement + analytics. One template = all nine cells and **where** each piece goes. Cell editor: inventory **Items** only; max **5 pieces per cell**; same Item may repeat (e.g. 5× 6D Small); UI starts with 1; each persisted row is one piece (qty 1).
+- Spatial persistence — resolved: dedicated placement rows (e.g. `filling_template_placements`) = **where**; pack list always **derived** (not a second editable filling BOM); **Warehouse template** remains non-filling. Exact table/column names left to implementation; Result snapshot copies placement rows. ADR: `docs/adr/0008-spatial-filling-placements.md`.
+- **Staff assist** layout — resolved: left = fillings (+ size×**tier** when changed in assist); right = existing cover/case/**Add-on**/checkout inputs. On size change, re-check size-scoped cover/case/**Add-on** eligibility: auto-clear when the **Item** is not offered for that size; if offered but stock is 0, keep selection and use existing out-of-stock / **Pre-order** signals (**C**).
+- Assist size×tier change vs placements — resolved (**A**): clears current **Placements** (confirm dialog first) and loads the new size's **Default Filling Template** as the starting mix — same size-scoping rule as **Result** assign.
+- Unpromoted ranking surface — resolved (**A**): inside Configure → **Filling Config tab**, segmented per product card and size; **Promote** in place. No separate Analytics surface in v1.
+- Configure drawer → page — resolved: product cards open a full **Configure product page** with breadcrumbs instead of the slide-in drawer (glossary references to “drawer” describe the old UX).
+- `/mp-basic` scope — resolved: **yes**, all preview features (**Staff assist mode**, x-ray editor, overlays, add-on cards) apply to the basic flow too — one shared preview surface; tier only scopes which composed sellables and **Filling Templates** load.
 - "price" was used for both the editable Costings field and the storefront mirror — resolved: **MSRP** is the source; `product_variants.price` is the mirror.
 - "kind" was used for basic/premium — resolved: human-facing language is **tier**. Existing DB columns may remain `kind` / `pillow_kind`; UI, emails, and new human-facing API field labels use `tier`.
 - **Filling Template** (filling-only Configure BOM template, operator-selected) vs **Composed sellable** (size×tier or length BOM owning packaging/protector defaults and sell **MSRP**) vs **Storefront product** (shop listing projection) — three different things; do not conflate.
 - Protector is owned on the **Composed sellable** BOM, not a **Customer preference**. Fillings come from **Filling Templates** only.
 - Mbolster “covers” — resolved: inventory/Configure have **Bolster Case** + **Bolster Protector** (plus packaging/etc.); no cover category. **Customer preference** on mbolster-config is case only; customise UI must not show Cover Style or require `selectedCover`.
-- Customise “sold out / low stock / still pay” — resolved: **Pre-order** when a required preference line on-hand is 0 **or** composed sellable buildable is 0. Preview CTA is **live**; **Result** mode is **sticky** at hold create; **automated** restock email to **`held`/`assigned`** Pre-order Results when stock recovers (idempotent; no manual send in v1). Scope: Mpillow + Mbolster. Waiting-time copy: fixed i18n. No separate ops queue in v1. Hold CTA: Proceed vs Pre-order (not “Purchase”). Packaged inside **UX polish Jul 2026** PRD (single backlog; Pre-order is vertical slices within it, not a separate PRD). ADR: `docs/adr/0005-pre-order-authorization-hold.md`.
+- Customise “sold out / low stock / still pay” — resolved: **Pre-order** when a required preference line on-hand is 0 **or** composed sellable buildable is 0. Preview CTA is **live**; **Result** mode is **sticky** at hold create; **automated** restock email to **`held`/`assigned`** Pre-order Results when stock recovers (idempotent; no manual send in v1). Scope: Mpillow + Mbolster. Waiting-time copy: fixed i18n — promise is **WhatsApp reach-out shortly** (not numeric ETA; **Q13b-A**). Restock notice channel stays email unless separately changed. No separate ops queue in v1. Hold CTA: Proceed vs Pre-order (not “Purchase”). Packaged inside **UX polish Jul 2026** PRD (single backlog; Pre-order is vertical slices within it, not a separate PRD). ADR: `docs/adr/0005-pre-order-authorization-hold.md`.
+- Cover/case overlays on configurator — resolved (**C**): **Product Builder** under Landing Site maps **Items** → **Media Asset** overlays (optional fit); **Item** supplies card thumbnails; preview reflects the mapping when cover/case changes.
+- **Add-on** cards — resolved (**A** + clarify): selection stays on the **right**; left shows image previews of *selected* add-ons under the silhouette (desktop row / mobile stack). **Item** primary **Media Asset** supplies the image.
+- **X-ray filling editor** — resolved as Staff-only left silhouette interaction: hover → 3 **Sections**; click → dive into **sub-sections** / **Placements**. Art direction = x-ray/cutaway of fillings inside the pillow shape.
+- X-ray implementation — resolved (**A** + amendments): layered interactive SVG. Designer-exported silhouette + per-cell boundary paths become `clipPath` regions; each filling type = one fluid path asset tagged by item subtype + color; blobs conform via nested clipping; deterministic 1–5 compressed-but-distinct layout per cell; `framer-motion`/`gsap` (installed) for hover/dive; **`flubber` approved** as the one new dependency (shape morphs), installed when the editor is built. Gooey merge rejected as default (piece count must stay legible). Guardrails ADR: `docs/adr/0009-xray-filling-visuals.md`.
+- Filling-type → shape + color map — resolved (**C** extended): shape defaults in code config now; **Product Builder** surfaces the mapping read/write for **color** (shape stays designer/code). Migrate shape editing into Product Builder only if shapes churn without deploys.
 - Marketing app dock scroll — resolved: hide on scroll-down, show on scroll-up / near top, **and** show when near document bottom; configurator post-welcome `dock-hidden` unchanged. Trim excess bottom padding that double-counts dock clearance.
 - Mbolster (i) FAQ dismiss — resolved: **`hideClose` + inline close below the FAQ accordion** (scrolls with content), matching Mpillow FAQ — not a fixed/corner X.
 - Mbolster height “can’t type `.`” — resolved as AFK bug: input round-trips through `parseFloat`/`toDisplayHeight` on every keystroke so intermediate values like `1.` become `1`. Keep a draft display string while typing; normalize/clamp on blur or Continue.
