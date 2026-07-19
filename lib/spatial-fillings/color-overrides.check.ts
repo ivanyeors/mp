@@ -37,8 +37,8 @@ const route = readFileSync("app/[lang]/settings/product-builder/filling-visuals/
 assert.doesNotMatch(route, /shape\s*:/i, "API accepts no shape field — color only");
 assert.equal(
   route.match(/const denied = await requireAdmin\('page-builder'\)/g)?.length,
-  2,
-  "POST and DELETE are admin-gated",
+  3,
+  "GET, POST, and DELETE are admin-gated (settings-route policy)",
 );
 assert.match(route, /export async function GET/, "read path for the settings table");
 
