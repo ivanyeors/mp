@@ -225,18 +225,11 @@ export async function persistJourneyIngest(
 
   if (events.length === 0) return { ok: true };
 
-  const { data: existingVisit, error: lookErr } = await db
-    .from("analytics_visits")
-    .select("id")
-    .eq("id", visitId)
-    .maybeSingle();
-  if (lookErr) return { ok: false, error: lookErr.message };
-
-  if (!existingVisit) {
-    // Freeze Entry source + country on INSERT only — never overwrite on later beacons.
-    const resolved = resolveEntrySource(body.entry ?? {});
-    const country = normalizeCountryCode(body.country) || UNKNOWN_COUNTRY;
-    const { error: visitErr } = await db.from("analytics_visits").insert({
+  // Freeze Entry source + country on first INSERT only — race-safe like visitors.
+  const resolved = resolveEntrySource(body.entry ?? {});
+  const country = normalizeCountryCode(body.country) || UNKNOWN_COUNTRY;
+  const { error: visitErr } = await db.from("analytics_visits").upsert(
+    {
       id: visitId,
       visitor_id: visitorId,
       entry_source: resolved.entrySource,
@@ -244,9 +237,10 @@ export async function persistJourneyIngest(
       entry_campaign: resolved.entryCampaign,
       referrer_host: resolved.referrerHost,
       country,
-    });
-    if (visitErr) return { ok: false, error: visitErr.message };
-  }
+    },
+    { onConflict: "id", ignoreDuplicates: true },
+  );
+  if (visitErr) return { ok: false, error: visitErr.message };
 
   const rows = events.map((e) => ({
     visit_id: visitId,

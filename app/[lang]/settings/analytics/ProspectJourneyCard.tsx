@@ -59,6 +59,7 @@ import {
   isDivePort,
   layoutDiveGraph,
 } from "@/lib/analytics/journey/dive";
+import { layoutJourneyGraph } from "@/lib/analytics/journey/layout";
 import {
   exitSectionHref,
   isSectionChildPath,
@@ -207,39 +208,6 @@ function isTypingTarget(el: EventTarget | null) {
 type LayoutNode = JourneyTransitionNode & { x: number; y: number };
 type PosMap = Record<string, { x: number; y: number }>;
 type Camera = { x: number; y: number; k: number };
-
-function layoutGraph(
-  nodes: JourneyTransitionNode[],
-  width: number,
-  height: number,
-): LayoutNode[] {
-  const dropOffSink = nodes.find((n) => n.path === DROP_OFF);
-  const convertedSink = nodes.find((n) => n.path === CONVERTED);
-  const pages = nodes.filter(
-    (n) =>
-      n.path !== DROP_OFF &&
-      n.path !== CONVERTED &&
-      !isSectionChildPath(n.path) &&
-      !isDivePort(n.path),
-  );
-  const cx = width * 0.42;
-  const cy = height * 0.5;
-  const r = Math.min(width, height) * 0.32;
-  const laid: LayoutNode[] = pages.map((n, i) => {
-    const angle = pages.length === 1 ? -Math.PI / 2 : (i / pages.length) * Math.PI * 2 - Math.PI / 2;
-    return { ...n, x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
-  });
-  const sinkX = width * 0.88;
-  if (dropOffSink && convertedSink) {
-    laid.push({ ...dropOffSink, x: sinkX, y: cy - 52 });
-    laid.push({ ...convertedSink, x: sinkX, y: cy + 52 });
-  } else if (dropOffSink) {
-    laid.push({ ...dropOffSink, x: sinkX, y: cy });
-  } else if (convertedSink) {
-    laid.push({ ...convertedSink, x: sinkX, y: cy });
-  }
-  return laid;
-}
 
 function loadPositions(key: string): PosMap {
   try {
@@ -916,8 +884,8 @@ function JourneyGraph({
     if (divePath) {
       return layoutDiveGraph(nodes, WORLD_W, WORLD_H) as LayoutNode[];
     }
-    return layoutGraph(nodes, WORLD_W, WORLD_H);
-  }, [nodes, divePath]);
+    return layoutJourneyGraph(nodes, edges, WORLD_W, WORLD_H) as LayoutNode[];
+  }, [nodes, edges, divePath]);
   const laid = useMemo(() => {
     return seeded.map((n) => {
       const o = overrides[n.path];
@@ -1082,7 +1050,7 @@ function JourneyGraph({
     setFittedKey("");
     const next = divePath
       ? (layoutDiveGraph(nodes, WORLD_W, WORLD_H) as LayoutNode[])
-      : layoutGraph(nodes, WORLD_W, WORLD_H);
+      : (layoutJourneyGraph(nodes, edges, WORLD_W, WORLD_H) as LayoutNode[]);
     setCamera(fitCamera(next, viewport.w, viewport.h));
   }
 
@@ -1228,7 +1196,7 @@ function JourneyGraph({
 
   const shellClass = fullscreen
     ? `fixed inset-0 z-50 flex flex-col bg-background ${cursorClass}`
-    : `relative h-[min(70vh,720px)] w-full overflow-hidden rounded-md border bg-muted/30 ${cursorClass}`;
+    : `relative h-[min(80vh,860px)] w-full overflow-hidden bg-muted/30 ${cursorClass}`;
 
   return (
     <div ref={shellRef} className={shellClass} tabIndex={0}>
@@ -1897,8 +1865,8 @@ export function ProspectJourneyCard({ from, to }: Props) {
   );
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+    <Card className="gap-0 overflow-hidden py-0">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 px-4 py-3">
         <CardTitle className="text-base font-medium">Prospect journey</CardTitle>
         <Button
           type="button"
@@ -1911,17 +1879,17 @@ export function ProspectJourneyCard({ from, to }: Props) {
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </Button>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="p-0">
         {loading ? (
-          <Skeleton className="h-[min(70vh,720px)] w-full" />
+          <Skeleton className="h-[min(80vh,860px)] w-full rounded-none" />
         ) : error ? (
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="px-4 py-3 text-sm text-destructive">{error}</p>
         ) : rawNodes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="px-4 py-3 text-sm text-muted-foreground">
             No page views in this range yet. Browse the storefront to generate transitions.
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="relative">
             <JourneyGraph
               nodes={nodes}
               edges={edges}
@@ -1940,7 +1908,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
             />
             {countryLegend.length >= 2 ? (
               <ul
-                className="flex flex-wrap gap-3 text-xs"
+                className="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex flex-wrap gap-3 rounded-md border bg-background/95 px-2 py-1.5 text-xs shadow-sm"
                 aria-label="Country color legend"
               >
                 {countryLegend.map((c) => (
