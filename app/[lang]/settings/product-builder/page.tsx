@@ -6,8 +6,9 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ImageIcon, Loader2, Trash2 } from "lucide-react";
+import { GitBranch, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -114,13 +115,21 @@ export default function ProductBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Product Builder</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Map cover and case items to overlay images from the Media Asset Library.
-          The configurator preview swaps the overlay when the item is selected;
-          unmapped items keep the plain silhouette.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Product Builder</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Map cover and case items to overlay images from the Media Asset Library.
+            The configurator preview swaps the overlay when the item is selected;
+            unmapped items keep the plain silhouette.
+          </p>
+        </div>
+        <Button type="button" variant="outline" asChild>
+          <Link href={settingsPath("/settings/product-builder/rules-engine")}>
+            <GitBranch className="mr-1.5 h-4 w-4" />
+            Rules Engine
+          </Link>
+        </Button>
       </div>
 
       {loading ? (

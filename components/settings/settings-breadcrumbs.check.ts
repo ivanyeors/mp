@@ -99,4 +99,39 @@ assertEqual(
   "non-opaque segment title-cases",
 );
 
+// Two-level detail routes (e.g. Product Builder / Rules Engine / {flow}).
+assertEqual(
+  labels("/settings/inventory/configure/rules-engine/premium-mpillow"),
+  ["Admin Panel", "Inventory", "Configure", "Rules Engine", "Premium Mpillow"],
+  "nested detail segments each get a crumb",
+);
+assertEqual(
+  hrefs("/settings/inventory/configure/rules-engine/premium-mpillow"),
+  ["/settings", "/settings/inventory", "/settings/inventory/configure", "/settings/inventory/configure/rules-engine", null],
+  "only the final nested segment is non-linked",
+);
+assertEqual(
+  labels("/settings/inventory/configure/rules-engine/premium-mpillow", "Premium Mpillow"),
+  ["Admin Panel", "Inventory", "Configure", "Rules Engine", "Premium Mpillow"],
+  "detailLabel overrides only the last nested segment",
+);
+
+// Product Builder → Rules Engine → {flow} (slice 02 mount path).
+const PB_NAV: BreadcrumbNavGroup[] = [
+  {
+    label: "Landing Site",
+    items: [
+      { href: "/settings/product-builder", label: "Product Builder" },
+    ],
+  },
+];
+assertEqual(
+  buildSettingsBreadcrumbs(
+    "/settings/product-builder/rules-engine/premium-mpillow",
+    PB_NAV,
+  ).map((c) => c.label),
+  ["Admin Panel", "Product Builder", "Rules Engine", "Premium Mpillow"],
+  "Product Builder / Rules Engine / flow crumbs",
+);
+
 console.log("settings-breadcrumbs: all checks passed");

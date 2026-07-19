@@ -29,7 +29,12 @@ export type RangeBand = {
   label: string;
 };
 
-export type NodeBase = { id: string; label?: string };
+export type NodeBase = {
+  id: string;
+  label?: string;
+  /** Canvas authoring position (workbench UI only; ignored by evaluate/validate). */
+  position?: { x: number; y: number };
+};
 
 export type InputNode = NodeBase & { type: "input"; inputKey: string };
 export type RangeNode = NodeBase & { type: "range"; inputKey: string; bands: RangeBand[] };
