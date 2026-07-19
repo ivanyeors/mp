@@ -2,7 +2,7 @@
  * Slice 13 — In-store measurement-only Results (no Stripe hold).
  * Maps to .claude/PRD-template-linked-customisation/issues/13-instore-review-only.md
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { transitionResult } from "@/lib/result-lifecycle";
 import {
   ballparkFromMpConfigData,
@@ -13,10 +13,17 @@ import {
   shouldCreateInstoreReviewOnly,
 } from "@/lib/results/instore-finalize";
 
+vi.mock("@/lib/rules-engine/persist", () => ({
+  getLatestPublished: async () => null,
+}));
+
 describe("slice 13 — in-store review-only Results", () => {
-  it("AC1: finalize patch creates held Result with no payment fields", () => {
-    const patch = buildInstoreReviewOnlyPatch({
+  it("AC1: finalize patch creates held Result with no payment fields", async () => {
+    const patch = await buildInstoreReviewOnlyPatch({
       shoulderLength: "42",
+      neckToBack: "10",
+      headToBack: "12",
+      neckLength: "10",
       acidReflux: "no",
       earDiscomfortSideSleep: "no",
     });
@@ -25,7 +32,9 @@ describe("slice 13 — in-store review-only Results", () => {
     expect(patch.authorized_amount).toBeNull();
     expect(patch.product_type).toBe("pillow");
     expect(patch.suggested_size).toBe("M");
-    expect(patch.suggested_tier).toBe("basic");
+    // Premium flow sold tier is flow-scoped (rules-engine cutover).
+    expect(patch.suggested_tier).toBe("premium");
+    expect(patch.recommendation_record).toBeTruthy();
   });
 
   it("AC1/AC7: skips review-only when online purchase hold already exists", () => {
@@ -43,7 +52,7 @@ describe("slice 13 — in-store review-only Results", () => {
     );
   });
 
-  it("AC2/AC4: ballpark suggests size×tier only — no fillings invented for sale", () => {
+  it("AC2/AC4: legacy ballpark suggests size×tier only — no fillings invented for sale", () => {
     const ballpark = ballparkFromMpConfigData({
       shoulderLength: "48",
       acidReflux: "yes",

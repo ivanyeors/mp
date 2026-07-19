@@ -61,7 +61,7 @@ export function evaluate(
   graph: RuleGraphJson,
   inputs: EngineInputs,
 ): EvaluateResult | { error: string; missing: string[] } {
-  const missing = missingRequiredInputs(flow, inputs);
+  const missing = missingRequiredInputs(flow, inputs, graph);
   if (missing.length > 0) {
     return {
       error: `Missing required inputs: ${missing.join(", ")}`,

@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
-  inferSizeFromMeasurements,
-  inferTierFromQuestions,
-  type PillowSize,
-  type PillowTier,
-} from "@/lib/results/instore-ballpark";
+  inputsFromMpConfigData,
+  recommendWithEngine,
+  toPersistedRecommendationRecord,
+} from "@/lib/rules-engine";
 import {
   getDiscoverySourceCatalog,
   resolveDiscoverySourceLabel,
@@ -37,7 +36,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const { data: responseRow, error: rErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,customer_email,customer_phone,discovery_source,discovery_source_other,is_pre_order",
+      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,customer_email,customer_phone,discovery_source,discovery_source_other,is_pre_order,recommendation_record",
     )
     .eq("id", parsedParams.data.id)
     .maybeSingle();
@@ -52,7 +51,6 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     DEFAULT_LOCALE,
   );
 
-  // Fetch linked order number if present
   let orderNumber: string | null = null;
   if (responseRow.order_id) {
     const { data: orderRow } = await admin
@@ -64,31 +62,54 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const data = (responseRow.data ?? {}) as Record<string, unknown>;
-  const sizeGuess = inferSizeFromMeasurements(data);
-  const tierGuess = inferTierFromQuestions(data);
+  const engineResult = await recommendWithEngine("premium-mpillow", inputsFromMpConfigData(data));
 
-  // Try to find an active product matching the recommendation; if missing, fall back to basic.
-  const tryFindProduct = async (tier: PillowTier) => {
+  if ("error" in engineResult) {
+    return NextResponse.json(
+      { error: engineResult.error, missing: engineResult.missing },
+      { status: 422 },
+    );
+  }
+
+  const size = String(engineResult.size ?? "M");
+  const tier = engineResult.soldTier ?? "premium";
+  const reasons: string[] = [
+    `Rules Engine ${engineResult.usedLegacyBootstrap ? "(legacy bootstrap)" : `graph ${engineResult.graphVersionId}`}`,
+    `Shoulder → size ${size}`,
+    `Premium flow → tier ${tier}`,
+  ];
+  if (engineResult.tierSuggestion && engineResult.tierSuggestion !== tier) {
+    reasons.push(`Advisory tier suggestion: ${engineResult.tierSuggestion}`);
+  }
+
+  // Persist recommendation record on the response (preview / suggestion).
+  if (!responseRow.recommendation_record) {
+    await admin
+      .from("mp_config_responses")
+      .update({ recommendation_record: toPersistedRecommendationRecord(engineResult) })
+      .eq("id", parsedParams.data.id);
+  }
+
+  const tryFindProduct = async (productTier: "basic" | "premium") => {
     return await admin
       .from("pillow_products")
       .select("id,size,kind,is_active")
-      .eq("size", sizeGuess.size)
-      .eq("kind", tier)
+      .eq("size", size)
+      .eq("kind", productTier)
       .eq("is_active", true)
       .maybeSingle();
   };
 
-  const { data: productPreferred, error: pErr1 } = await tryFindProduct(tierGuess.tier);
+  const { data: productPreferred, error: pErr1 } = await tryFindProduct(tier);
   if (pErr1) return NextResponse.json({ error: pErr1.message }, { status: 500 });
 
-  let product = productPreferred as { id: number; size: PillowSize; kind: PillowTier } | null;
-  const productReasons: string[] = [];
-  if (!product && tierGuess.tier === "premium") {
+  let product = productPreferred as { id: number; size: string; kind: "basic" | "premium" } | null;
+  if (!product && tier === "premium") {
     const { data: fallback, error: pErr2 } = await tryFindProduct("basic");
     if (pErr2) return NextResponse.json({ error: pErr2.message }, { status: 500 });
     if (fallback) {
-      product = fallback as { id: number; size: PillowSize; kind: PillowTier };
-      productReasons.push("Preferred premium product not available; fell back to basic for this size");
+      product = fallback as { id: number; size: string; kind: "basic" | "premium" };
+      reasons.push("Preferred premium product not available; fell back to basic for this size");
     }
   }
 
@@ -107,18 +128,22 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     response: {
       ...responseRow,
       discovery_source_label,
+      recommendation_record:
+        responseRow.recommendation_record ?? toPersistedRecommendationRecord(engineResult),
     },
     order_number: orderNumber,
     suggestion: {
       recommended: {
-        size: sizeGuess.size,
-        tier: tierGuess.tier,
+        size,
+        tier,
       },
       product: product
         ? { id: product.id, size: product.size, tier: product.kind }
         : null,
       bom: bomLines,
-      reasons: [...sizeGuess.reasons, ...tierGuess.reasons, ...productReasons],
+      reasons,
+      graph_version_id: engineResult.graphVersionId,
+      recommendation_record: toPersistedRecommendationRecord(engineResult),
     },
   });
 }
@@ -134,4 +159,3 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
 
   return NextResponse.json({ ok: true });
 }
-

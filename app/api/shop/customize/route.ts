@@ -82,9 +82,20 @@ async function handleRecommend(req: Request) {
     if (bolsterParsed.success) {
       const recommendation = await getBolsterRecommendation(bolsterParsed.data.bolster_preferences);
 
-      // Map bolster size (S/M/L) to bolster variant name used in bolster_bom_lines
-      const sizeToVariant: Record<string, string> = { S: "short", M: "medium", L: "long" };
-      const bolsterVariant = sizeToVariant[recommendation.recommended_size] ?? "medium";
+      // Engine returns length keys; letter sizes (S/M/L) still accepted from legacy bootstrap.
+      const sizeToVariant: Record<string, string> = {
+        S: "short",
+        M: "medium",
+        L: "long",
+        short: "short",
+        medium: "medium",
+        long: "long",
+      };
+      const fromRecord = recommendation.recommendation_record?.size;
+      const bolsterVariant =
+        (fromRecord && sizeToVariant[String(fromRecord)]) ||
+        sizeToVariant[recommendation.recommended_size] ||
+        "medium";
 
       // Find the bolster ecommerce product (by product_type or slug pattern)
       const { data: bolsterProducts } = await admin
@@ -193,6 +204,8 @@ async function handleRecommend(req: Request) {
           slug: bolsterProduct.slug,
         } : null,
         recommendation,
+        graph_version_id: recommendation.graph_version_id ?? null,
+        recommendation_record: recommendation.recommendation_record ?? null,
         pillow_product: {
           id: 0,
           size: recommendation.recommended_size,
@@ -220,13 +233,13 @@ async function handleRecommend(req: Request) {
 
     const recommendation = measurementParsed.success
       ? ballpark
-        ? getSizeBallparkFromMeasurements(measurementParsed.data.measurement_preferences)
+        ? await getSizeBallparkFromMeasurements(measurementParsed.data.measurement_preferences)
         : await getRecommendationFromMeasurements(measurementParsed.data.measurement_preferences)
       : ballpark
         ? getSizeBallparkFromPreferences(simpleParsed.data!.preferences)
         : await getFillingRecommendation(simpleParsed.data!.preferences);
 
-    // Resolve the pillow_product_id for the recommended size/kind
+    // Resolve the pillow_product_id for the recommended size/tier (Premium flow → premium)
     const { data: pillowProduct } = await admin
       .from("pillow_products")
       .select("id, size, kind")
@@ -279,6 +292,12 @@ async function handleRecommend(req: Request) {
       ok: true,
       product_type: "pillow",
       recommendation,
+      graph_version_id:
+        "graph_version_id" in recommendation ? recommendation.graph_version_id ?? null : null,
+      recommendation_record:
+        "recommendation_record" in recommendation
+          ? (recommendation as { recommendation_record?: unknown }).recommendation_record ?? null
+          : null,
       pillow_product: {
         id: pillowProduct.id,
         size: pillowProduct.size,

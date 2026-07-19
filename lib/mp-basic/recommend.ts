@@ -29,7 +29,7 @@ export type BasicMpillowRecommendation = {
   explanation: string;
 };
 
-// ponytail: placeholder — shoulder thresholds only; swap this module when real basic rules land
+// ponytail: bootstrap/legacy — /api/mp-basic/recommend uses lib/rules-engine when published
 export function recommendBasicMpillow(input: BasicMpillowInput): BasicMpillowRecommendation {
   const { size, reasons } = inferSizeFromMeasurements({ shoulderLength: input.shoulderLength });
   const recommended_kind: PillowTier = "basic";

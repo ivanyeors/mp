@@ -113,6 +113,7 @@ function buildExplanation(prefs: CustomerPreferences, size: string, firmLabel: s
 /**
  * Size/tier ballpark for authorize-then-capture (mp-config / mbolster-config).
  * No filling lines — operator Filling Template is authoritative after review.
+ * // ponytail: bootstrap/legacy only — shop ballpark uses lib/rules-engine/recommend when published
  */
 export function recommendSizeFromPreferences(
   preferences: CustomerPreferences,
@@ -132,6 +133,7 @@ export function recommendSizeFromPreferences(
 
 /**
  * Measurement-based size ballpark — same as recommendSizeFromMeasurements inputs.
+ * // ponytail: bootstrap/legacy + mp-maker — Premium online uses rules-engine (sold tier premium)
  */
 export function recommendSizeFromMeasurements(
   input: MeasurementBasedPreferences,
@@ -267,6 +269,7 @@ export function recommendFromMeasurements(
 
 /**
  * Bolster recommendation: height → size.
+ * // ponytail: bootstrap/legacy — mbolster ballpark uses lib/rules-engine/recommend when published
  */
 export function recommendBolster(input: BolsterPreferences): CustomizationResult {
   const heightM = input.height_cm / 100;

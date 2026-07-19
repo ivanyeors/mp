@@ -1,4 +1,7 @@
-/** Rule-based size×tier ballpark for in-store mp-config measurements (no filling lines). */
+/**
+ * Rule-based size×tier ballpark for in-store mp-config measurements (no filling lines).
+ * // ponytail: bootstrap/legacy — callers use lib/rules-engine/recommend when a graph is published
+ */
 
 export type PillowSize = "XS" | "S" | "M" | "L" | "XL";
 export type PillowTier = "basic" | "premium";

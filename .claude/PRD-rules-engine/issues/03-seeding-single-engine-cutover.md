@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `rules-engine` (`.claude/PRD-rules-engine/rules-engine-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 16, 17, 18, 19, 36, 37
 
 ## What to build
@@ -18,11 +18,27 @@ The published **Rule graph** becomes the single recommendation authority; legacy
 
 ## Acceptance criteria
 
-- [ ] All three recommendation endpoints return graph-derived results with the graph version id attached; shop and in-store surfaces can no longer disagree on size
-- [ ] Seed-equivalence tests pass: seeded graph outputs match legacy engine outputs for representative and boundary inputs
-- [ ] Premium online path recommends premium tier product cards (no more hardcoded basic)
-- [ ] A Result created after cutover carries the full recommendation record; filling snapshot remains null for guest holds
-- [ ] Legacy engine code paths are deleted (except mp-maker), or unreachable behind the bootstrap guard with a ponytail comment
+- [x] All three recommendation endpoints return graph-derived results with the graph version id attached; shop and in-store surfaces can no longer disagree on size
+- [x] Seed-equivalence tests pass: seeded graph outputs match legacy engine outputs for representative and boundary inputs
+- [x] Premium online path recommends premium tier product cards (no more hardcoded basic)
+- [x] A Result created after cutover carries the full recommendation record; filling snapshot remains null for guest holds
+- [x] Legacy engine code paths are deleted (except mp-maker), or unreachable behind the bootstrap guard with a ponytail comment
+
+## Proof (2026-07-19)
+
+- `npx vitest run lib/rules-engine lib/results/__tests__/slice-13-instore-review-only.test.ts` — 52+ passed (seed-equivalence, recommendation-record, evaluate/validate)
+- `npx tsx lib/rules-engine/slice-03.check.ts` — ok
+- `npx tsx lib/rules-engine/slice-01.check.ts` — ok
+- Migration `20260719200000_recommendation_record.sql` applied via `npm run db:push`
+- Seeds published: `npm run db:seed-rule-graphs` → premium / basic / mbolster v1
+- Bootstrap guard remains in `recommendWithEngine` with ponytail comment for envs without seeds; unreachable once v1 is published
+
+## Re-seed
+
+```bash
+npm run db:seed-rule-graphs           # no-op if published versions exist
+npm run db:seed-rule-graphs -- --force  # publish next version from current Default Filling Templates
+```
 
 ## Blocked by
 

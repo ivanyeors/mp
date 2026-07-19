@@ -1,4 +1,4 @@
-import type { InputDef, RuleFlow } from "./types";
+import type { InputDef, RuleFlow, RuleGraphJson } from "./types";
 
 /** Shared customize-step answers collected by Premium + Basic. */
 const CUSTOMIZE_INPUTS: readonly InputDef[] = [
@@ -76,13 +76,30 @@ export function catalogDef(flow: RuleFlow, key: string): InputDef | undefined {
   return inputCatalog(flow).find((d) => d.key === key);
 }
 
-/** All catalog keys are required — missing any is a hard evaluation error. */
+/** Input keys referenced by Input / Range / Match nodes in a graph. */
+export function referencedInputKeys(graph: RuleGraphJson): ReadonlySet<string> {
+  const keys = new Set<string>();
+  for (const n of graph.nodes) {
+    if (n.type === "input" || n.type === "range" || n.type === "match") {
+      keys.add(n.inputKey);
+    }
+  }
+  return keys;
+}
+
+/**
+ * Required inputs for evaluation. When `graph` is provided, only keys the graph
+ * actually references are required (seeds may omit unused catalog answers).
+ */
 export function missingRequiredInputs(
   flow: RuleFlow,
   inputs: Record<string, unknown>,
+  graph?: RuleGraphJson,
 ): string[] {
+  const needed = graph ? referencedInputKeys(graph) : null;
   const missing: string[] = [];
   for (const def of inputCatalog(flow)) {
+    if (needed && !needed.has(def.key)) continue;
     const v = inputs[def.key];
     if (v === undefined || v === null || v === "") {
       missing.push(def.key);

@@ -38,6 +38,12 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
 import { buildFillingSnapshot, type FillingSnapshot } from "@/lib/results/filling-snapshot";
+import {
+  inputsFromBolsterHeight,
+  inputsFromMpConfigData,
+  recommendWithEngine,
+  toPersistedRecommendationRecord,
+} from "@/lib/rules-engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -403,6 +409,35 @@ export async function POST(req: Request) {
     }),
   );
 
+  // Recommendation record at hold: copy from response if present, else recompute. Guest snapshot stays null.
+  let recommendation_record: Record<string, unknown> | null = null;
+  if (input.responseId) {
+    const { data: prior } = await admin
+      .from("mp_config_responses")
+      .select("recommendation_record")
+      .eq("id", input.responseId)
+      .maybeSingle();
+    if (prior?.recommendation_record && typeof prior.recommendation_record === "object") {
+      recommendation_record = prior.recommendation_record as Record<string, unknown>;
+    }
+  }
+  if (!recommendation_record) {
+    const measurements = (input.measurements ?? {}) as Record<string, unknown>;
+    const engineResult =
+      productType === "bolster"
+        ? await recommendWithEngine(
+            "mbolster",
+            inputsFromBolsterHeight(Number(measurements.height_cm)),
+          )
+        : await recommendWithEngine(
+            input.suggestedTier === "basic" ? "basic-mpillow" : "premium-mpillow",
+            inputsFromMpConfigData(measurements),
+          );
+    if (!("error" in engineResult)) {
+      recommendation_record = toPersistedRecommendationRecord(engineResult);
+    }
+  }
+
   const row = {
     id: resultId,
     data: input.measurements ?? {},
@@ -428,6 +463,7 @@ export async function POST(req: Request) {
     access_token: accessToken,
     source: "online_purchase",
     is_pre_order,
+    ...(recommendation_record ? { recommendation_record } : {}),
     // Only assist holds carry snapshot columns; guest rows stay untouched (null snapshot).
     ...(fillingSnapshot
       ? {

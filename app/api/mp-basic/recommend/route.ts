@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { recommendBasicMpillow } from "@/lib/mp-basic/recommend";
+import {
+  inputsFromBasicShoulder,
+  recommendWithEngine,
+  toPersistedRecommendationRecord,
+} from "@/lib/rules-engine";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
 
 export const runtime = "nodejs";
@@ -34,20 +38,32 @@ export async function POST(req: Request) {
   }
 
   try {
-    const recommendation = recommendBasicMpillow(parsed.data);
+    const engineResult = await recommendWithEngine(
+      "basic-mpillow",
+      inputsFromBasicShoulder(shoulderCm),
+    );
+    if ("error" in engineResult) {
+      return NextResponse.json(
+        { error: engineResult.error, missing: engineResult.missing },
+        { status: 422 },
+      );
+    }
+
+    const recommended_size = String(engineResult.size ?? "M");
+    const recommended_kind = engineResult.soldTier ?? "basic";
     const admin = supabaseAdmin();
 
     const { data: pillowProduct } = await admin
       .from("pillow_products")
       .select("id, size, kind")
-      .eq("size", recommendation.recommended_size)
-      .eq("kind", "basic")
+      .eq("size", recommended_size)
+      .eq("kind", recommended_kind)
       .eq("is_active", true)
       .single();
 
     if (!pillowProduct) {
       return NextResponse.json(
-        { error: `No basic pillow product found for size ${recommendation.recommended_size}` },
+        { error: `No basic pillow product found for size ${recommended_size}` },
         { status: 404 },
       );
     }
@@ -68,24 +84,31 @@ export async function POST(req: Request) {
     for (const row of pillowBuildable ?? []) {
       buildable_counts[row.size] = row.buildable ?? 0;
     }
-    // Prefer product_id so basic vs premium of the same size do not collide.
     const composed_buildable = Number(
       pillowBuildable?.find((r) => r.product_id === pillowProduct.id)?.buildable ??
         buildable_counts[pillowProduct.size] ??
         0,
     );
 
+    const reasons = [
+      `Shoulder length ${shoulderCm}cm → ${recommended_size}`,
+      "Basic Mpillow flow — tier locked to basic",
+    ];
+
     return NextResponse.json({
       ok: true,
       product_type: "pillow",
       recommendation: {
-        recommended_size: recommendation.recommended_size,
-        recommended_kind: recommendation.recommended_kind,
+        recommended_size,
+        recommended_kind,
         filling_lines: [],
-        summary: recommendation.summary,
-        explanation: recommendation.explanation,
-        reasons: recommendation.reasons,
+        summary: `Size ${recommended_size} — Basic`,
+        explanation: `Based on your shoulder measurement, we recommend Size ${recommended_size} Basic Mpillow. ${reasons.join(". ")}.`,
+        reasons,
+        graph_version_id: engineResult.graphVersionId,
       },
+      recommendation_record: toPersistedRecommendationRecord(engineResult),
+      graph_version_id: engineResult.graphVersionId,
       pillow_product: {
         id: pillowProduct.id,
         size: pillowProduct.size,

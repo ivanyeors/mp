@@ -344,13 +344,17 @@ export async function POST(req: Request) {
     }
   }
 
+  let reviewOnlyPatch: Awaited<ReturnType<typeof buildInstoreReviewOnlyPatch>> | null = null;
   if (
     isFinal &&
     !wasFinal &&
     shouldCreateInstoreReviewOnly(existingForFinalize) &&
     parsed.data.data
   ) {
-    Object.assign(row, buildInstoreReviewOnlyPatch(parsed.data.data as Record<string, unknown>));
+    reviewOnlyPatch = await buildInstoreReviewOnlyPatch(
+      parsed.data.data as Record<string, unknown>,
+    );
+    Object.assign(row, reviewOnlyPatch);
   }
 
   const { error } = await admin.from("mp_config_responses").upsert(row, { onConflict: "id" });
@@ -440,9 +444,7 @@ export async function POST(req: Request) {
     id,
     telegramStatus,
     reviewOnly,
-    ...(reviewOnly
-      ? buildInstoreReviewOnlyPatch(parsed.data.data as Record<string, unknown>)
-      : {}),
+    ...(reviewOnly && reviewOnlyPatch ? reviewOnlyPatch : {}),
   });
 }
 

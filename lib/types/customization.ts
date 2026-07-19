@@ -72,6 +72,8 @@ export interface CustomizationResult {
   filling_lines: FillingLine[];
   summary: string;
   explanation: string;
+  /** Published Rule graph version id when Rules Engine authored the result. */
+  graph_version_id?: string | null;
 }
 
 // --- Available Component Options (returned to frontend) ---

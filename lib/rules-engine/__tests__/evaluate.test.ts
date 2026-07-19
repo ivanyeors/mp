@@ -38,6 +38,12 @@ describe("evaluate", () => {
     }
   });
 
+  it("only requires inputs the graph references", () => {
+    const r = evaluate("premium-mpillow", graph, { shoulder_length_cm: 42 });
+    expect("error" in r).toBe(false);
+    if (!("error" in r)) expect(r.size).toBe("M");
+  });
+
   it("maps boundary bands: 36 → S, 40 → M, 52 → XL", () => {
     expect(
       evaluateOrThrow("premium-mpillow", graph, premiumSampleInputs({ shoulder_length_cm: 36 }))

@@ -10,9 +10,14 @@ import {
   recommendFromPreferences,
   recommendFromMeasurements,
   recommendSizeFromPreferences,
-  recommendSizeFromMeasurements,
-  recommendBolster,
 } from "@/lib/shop/recommendation/rules";
+import {
+  inputsFromBolsterHeight,
+  inputsFromMeasurementPrefs,
+  lengthToBolsterLetter,
+  recommendWithEngine,
+  type RecommendationRecord,
+} from "@/lib/rules-engine";
 
 interface FillingItem {
   item_id: number;
@@ -120,14 +125,45 @@ export async function getBomTemplates(kind: string, size: string): Promise<BomTe
 export function getSizeBallparkFromPreferences(
   preferences: CustomerPreferences,
 ): CustomizationResult {
+  // Preferences-only shape has no measurement graph; keep SIZE_MAP (mp-maker / legacy).
   return recommendSizeFromPreferences(preferences);
 }
 
-/** Measurement size ballpark only — rule-based, no fillings (online purchase path). */
-export function getSizeBallparkFromMeasurements(
+function ballparkFromRecord(
+  record: RecommendationRecord,
+  explanation: string,
+): CustomizationResult & { recommendation_record: RecommendationRecord } {
+  const size =
+    record.flow === "mbolster" && record.size
+      ? lengthToBolsterLetter(record.size)
+      : String(record.size ?? "M");
+  const kind = record.soldTier ?? record.tierSuggestion ?? "basic";
+  return {
+    recommended_size: size,
+    recommended_kind: kind,
+    filling_lines: [],
+    summary: record.flow === "mbolster" ? `Mbolster ${record.size}` : `Size ${size} — ${kind}`,
+    explanation,
+    graph_version_id: record.graphVersionId,
+    recommendation_record: record,
+  };
+}
+
+/** Measurement size ballpark — Premium Rules Engine (sold tier premium). */
+export async function getSizeBallparkFromMeasurements(
   input: MeasurementBasedPreferences,
-): CustomizationResult {
-  return recommendSizeFromMeasurements(input);
+): Promise<CustomizationResult & { recommendation_record: RecommendationRecord }> {
+  const result = await recommendWithEngine(
+    "premium-mpillow",
+    inputsFromMeasurementPrefs(input),
+  );
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return ballparkFromRecord(
+    result,
+    `Based on your measurements, we recommend Size ${result.size} (${result.soldTier}).`,
+  );
 }
 
 /**
@@ -156,10 +192,17 @@ export async function getRecommendationFromMeasurements(
 }
 
 /**
- * Bolster recommendation (height + sleep position).
+ * Bolster recommendation (height + sleep position) — Mbolster Rules Engine.
  */
 export async function getBolsterRecommendation(
   input: BolsterPreferences,
-): Promise<CustomizationResult> {
-  return recommendWithFallback({ bolster_preferences: input }, () => recommendBolster(input));
+): Promise<CustomizationResult & { recommendation_record?: RecommendationRecord }> {
+  const result = await recommendWithEngine("mbolster", inputsFromBolsterHeight(input.height_cm));
+  if ("error" in result) {
+    throw new Error(result.error);
+  }
+  return ballparkFromRecord(
+    result,
+    `Height ${input.height_cm}cm → ${result.size} Mbolster.`,
+  );
 }
