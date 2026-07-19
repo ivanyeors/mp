@@ -26,4 +26,17 @@ assert.match(card, /notFound\(\)/, "unknown card ids must 404");
 assert.match(card, /TabsTrigger value="product"/, "Product tab must exist");
 assert.match(card, /TabsTrigger value="filling"/, "Filling Config tab must exist");
 
+// Slice 09: unpromoted ranking + Promote live in the Filling Config tab, Admin Panel only.
+assert.match(card, /Popular unpromoted mixes/, "unpromoted ranking section must render in the Filling Config tab");
+assert.match(card, /configure\/unpromoted/, "card page must call the unpromoted API");
+const configurator = readFileSync(
+  join(process.cwd(), "app", "[lang]", "mp-config", "mp-config-client.tsx"),
+  "utf8",
+);
+assert.doesNotMatch(
+  configurator,
+  /unpromoted|promote/i,
+  "Promote is Admin Panel only — no configurator entry point",
+);
+
 console.log("configure-card-page.check: all assertions passed");

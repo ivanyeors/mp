@@ -42,6 +42,14 @@ type FillingTemplateRow = {
   is_active: boolean;
 };
 
+/** Ranked unpromoted mix (slice 09): fingerprint-grouped Result snapshots for this scope. */
+type UnpromotedEntry = {
+  fingerprint: string;
+  count: number;
+  placements: PillowPlacementRow[];
+  packList: Array<{ item_id: number; count: number }>;
+};
+
 type Item = {
   id: number;
   category:
@@ -1150,6 +1158,11 @@ function FillingConfigPanel({
   const [placements, setPlacements] = useState<PillowPlacement[]>([]);
   const [hadPlacements, setHadPlacements] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Unpromoted ranking + Promote (slice 09): Admin Panel only, pillow only (bolster is slice 13).
+  const [unpromoted, setUnpromoted] = useState<UnpromotedEntry[]>([]);
+  const [promoteTarget, setPromoteTarget] = useState<UnpromotedEntry | null>(null);
+  const [promoteName, setPromoteName] = useState("");
+  const [promoting, setPromoting] = useState(false);
 
   const resetEditor = useCallback(() => {
     setSelectedId("");
@@ -1176,6 +1189,71 @@ function FillingConfigPanel({
       cancelled = true;
     };
   }, [kind, templateKey, loadFillingTemplates, resetEditor]);
+
+  const fetchUnpromoted = useCallback(async (): Promise<UnpromotedEntry[]> => {
+    if (kind !== "pillow") return [];
+    const res = await fetch(
+      settingsPath(
+        `/settings/inventory/configure/unpromoted?kind=pillow&key=${encodeURIComponent(templateKey)}`,
+      ),
+      { method: "GET" },
+    );
+    const payload = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(payload?.error ?? "Failed to load unpromoted mixes");
+    return (payload?.entries ?? []) as UnpromotedEntry[];
+  }, [kind, templateKey, settingsPath]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const entries = await fetchUnpromoted();
+        if (!cancelled) setUnpromoted(entries);
+      } catch (e) {
+        if (!cancelled) {
+          setUnpromoted([]);
+          toast.error(e instanceof Error ? e.message : "Failed to load unpromoted mixes");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchUnpromoted]);
+
+  const promoteMix = async () => {
+    if (!promoteTarget) return;
+    const trimmed = promoteName.trim();
+    if (!trimmed) {
+      toast.message("Enter a template name");
+      return;
+    }
+    setPromoting(true);
+    try {
+      const res = await fetch(settingsPath("/settings/inventory/configure/unpromoted"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "pillow",
+          key: templateKey,
+          fingerprint: promoteTarget.fingerprint,
+          name: trimmed,
+        }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to promote");
+      setPromoteTarget(null);
+      setPromoteName("");
+      // Promoted mixes match a template now: refresh both the picker and the ranking.
+      setTemplates(await loadFillingTemplates(kind, templateKey));
+      setUnpromoted(await fetchUnpromoted());
+      toast.success("Promoted to Filling Template");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to promote");
+    } finally {
+      setPromoting(false);
+    }
+  };
 
   const selectTemplate = async (id: number | "") => {
     setSelectedId(id);
@@ -1321,6 +1399,17 @@ function FillingConfigPanel({
     const item = itemsById.get(itemId);
     return item ? getFillingDisplayLabel(item, templateKey) : `Item #${itemId}`;
   };
+  // Compact per-cell breakdown for an unpromoted mix: "left/front: Soft, Soft".
+  const cellSummary = (rows: PillowPlacementRow[]) => {
+    const cells = new Map<string, number[]>();
+    for (const r of rows) {
+      const cell = `${r.section}/${r.sub_section}`;
+      cells.set(cell, [...(cells.get(cell) ?? []), r.item_id]);
+    }
+    return Array.from(cells.entries()).map(
+      ([cell, ids]) => `${cell}: ${ids.map((id) => itemLabel(id)).join(", ")}`,
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -1433,6 +1522,69 @@ function FillingConfigPanel({
               )}
             </ConfigureTable>
           </Section>
+          <Section title="Popular unpromoted mixes">
+            {unpromoted.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No unpromoted mixes for size {templateKey} yet.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {unpromoted.map((entry, idx) => (
+                  <div key={entry.fingerprint} className="rounded-lg border p-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="font-medium">
+                        #{idx + 1} · {entry.count} Result{entry.count === 1 ? "" : "s"} ·{" "}
+                        {entry.packList.map((l) => `${itemLabel(l.item_id)} ×${l.count}`).join(", ")}
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setPromoteTarget(entry);
+                          setPromoteName("");
+                        }}
+                      >
+                        Promote
+                      </Button>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {cellSummary(entry.placements).join(" · ")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+          <Dialog
+            open={promoteTarget != null}
+            onOpenChange={(o) => {
+              if (!o) setPromoteTarget(null);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Promote to Filling Template</DialogTitle>
+                <DialogDescription>
+                  Creates a named active catalog Filling Template for size {templateKey} from this
+                  mix. It leaves the unpromoted list once promoted.
+                </DialogDescription>
+              </DialogHeader>
+              <Input
+                placeholder="Template name"
+                value={promoteName}
+                onChange={(e) => setPromoteName(e.target.value)}
+                autoFocus
+              />
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setPromoteTarget(null)} disabled={promoting}>
+                  Cancel
+                </Button>
+                <Button onClick={() => void promoteMix()} disabled={promoting}>
+                  {promoting ? "Promoting…" : "Promote"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       ) : (
         <FillingLinesEditor items={items} lines={lines} setLines={setLines} sizeLabel={templateKey} />
