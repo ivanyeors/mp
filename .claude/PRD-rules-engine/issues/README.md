@@ -9,7 +9,7 @@ Parent PRD: `.claude/PRD-rules-engine/rules-engine-prd.md`
 | 03 | Seeding + single-engine cutover | AFK | done | 01 | 16–19, 36, 37 |
 | 04 | Configurator inputs: inches default, all required | AFK | done | 01 | 20–23 |
 | 05 | Preview recommendation display + assign hint upgrade | AFK | done | 03, 04 | 24–29 |
-| 06 | Flow route: upsell/cross-sell + carry-over + journey | HITL | needs-triage | 03, 05 | 11, 30–35 |
+| 06 | Flow route: upsell/cross-sell + carry-over + journey | HITL | hitl-review | 03, 05 | 11, 30–35 |
 | 07 | X-ray read-only preview upgrade | AFK | needs-triage | 05, spatial PRD slice 07 | 38, 39 |
 
 Parallelizable after 01: slices 02, 03, 04 are independent of each other.

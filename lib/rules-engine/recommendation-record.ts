@@ -5,6 +5,7 @@
 import type {
   EvaluateResult,
   FiredTerminal,
+  FlowRouteDecision,
   RuleFlow,
   SizeOrLength,
   TraceStep,
@@ -22,6 +23,8 @@ export type RecommendationRecord = {
   /** Flow-scoped sold tier for pillow product resolution. */
   soldTier: "basic" | "premium" | null;
   flowRoute: EvaluateResult["flowRoute"];
+  /** Set when flowRoute fires; resolved by accept/decline before Stripe hold. */
+  flowRouteDecision: FlowRouteDecision | null;
   firedTerminals: FiredTerminal[];
   trace: TraceStep[];
   usedFallback: boolean;
@@ -45,6 +48,7 @@ export function recordFromEvaluate(
     tierSuggestion: result.tierSuggestion,
     soldTier,
     flowRoute: result.flowRoute,
+    flowRouteDecision: result.flowRoute ? "pending" : null,
     firedTerminals: result.firedTerminals,
     trace: result.trace,
     usedFallback: result.usedFallback,
@@ -68,6 +72,7 @@ export function legacyBootstrapRecord(
     tierSuggestion,
     soldTier,
     flowRoute: null,
+    flowRouteDecision: null,
     firedTerminals: [],
     trace: [],
     usedFallback: false,

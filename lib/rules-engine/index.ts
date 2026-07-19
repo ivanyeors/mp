@@ -11,6 +11,8 @@ export * from "./recommend";
 export * from "./why";
 export * from "./reveal";
 export * from "./assign-hint";
+export * from "./carry-over";
+export * from "./journey";
 export {
   isRuleFlow,
   getDraft,

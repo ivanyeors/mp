@@ -63,10 +63,22 @@ import {
   type RecommendationResponseData,
 } from "@/components/shop/customization-steps";
 import { RecommendationReveal } from "@/components/rules-engine/recommendation-reveal";
+import { UpsellCard } from "@/components/rules-engine/upsell-card";
+import { TierSuggestion } from "@/components/rules-engine/tier-suggestion";
 import {
+  assertPreStripeRouteResolved,
+  carryOverAnswers,
+  isFlowRoutePending,
+  missingStepsAfterCarryOver,
   parseRecommendationRecord,
   plainLanguageWhy,
   shouldRevealRecommendation,
+  stampAcceptedTargetRecord,
+  wizardToEngineInputs,
+  withJourneyOnAccept,
+  withJourneyOnDecline,
+  type RecommendationRecord,
+  type RuleFlow,
 } from "@/lib/rules-engine";
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
@@ -81,6 +93,12 @@ import {
   variantFromPathname,
   type MpConfigVariant,
 } from "@/lib/mp-config/flow-variant";
+
+const FLOW_UI_LABEL: Record<RuleFlow, string> = {
+  "basic-mpillow": "Basic Mpillow",
+  "premium-mpillow": "Premium Mpillow",
+  mbolster: "Mbolster",
+};
 import {
   HOLD_CANCELLED_NOTICE,
   clearHoldCancelDraft,
@@ -313,6 +331,12 @@ export function MpConfigClient({
   const [selectedShippingId, setSelectedShippingId] = useState("");
   const [holdSubmitting, setHoldSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  /** Basic → Premium accept: collect only missing neck steps, then re-eval Premium. */
+  const [upsoldToPremium, setUpsoldToPremium] = useState(false);
+  const [postUpsellSteps, setPostUpsellSteps] = useState<Step[] | null>(null);
+  const [routeAltPrice, setRouteAltPrice] = useState<number | null>(null);
+  const [routeBusy, setRouteBusy] = useState(false);
+  const entryJourneyRef = useRef<RecommendationRecord | null>(null);
 
   type PhotoView = "front" | "side";
   const frontInputRef = useRef<HTMLInputElement | null>(null);
@@ -326,7 +350,45 @@ export function MpConfigClient({
     side: false,
   });
 
-  const stepOrder = stepOrderFor(variant) as Step[];
+  const stepOrder = (postUpsellSteps ?? stepOrderFor(variant)) as Step[];
+  const showNeckSteps = !isBasic || upsoldToPremium;
+  const soldAsPremium = upsoldToPremium || !isBasic;
+  const flowRouteBlocksHold = useMemo(() => {
+    const r = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    return Boolean(r && isFlowRoutePending(r));
+  }, [shopRecommendation?.recommendation_record]);
+
+  const patchRecommendationRecord = useCallback((next: RecommendationRecord) => {
+    setShopRecommendation((prev) =>
+      prev ? { ...prev, recommendation_record: next } : prev,
+    );
+  }, []);
+
+  // Bolster → Mpillow handoff (sessionStorage from mbolster Upsell Upgrade).
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem("mp_flow_route_handoff");
+      if (!raw) return;
+      window.sessionStorage.removeItem("mp_flow_route_handoff");
+      const handoff = JSON.parse(raw) as {
+        journey?: RecommendationRecord;
+        targetFlow?: RuleFlow;
+        missingSteps?: Step[];
+      };
+      if (!handoff.journey?.flowRoute) return;
+      entryJourneyRef.current = handoff.journey;
+      const missing = (handoff.missingSteps ?? []) as Step[];
+      if (handoff.targetFlow === "premium-mpillow") setUpsoldToPremium(true);
+      if (missing.length > 0) {
+        setPostUpsellSteps([...missing, "preview"]);
+        setCurrentStep(missing[0]!);
+      }
+    } catch {
+      // ponytail: ignore corrupt handoff
+    }
+  }, []);
 
   const clearTransitionTimers = () => {
     if (transitionTimeoutRef.current !== null) {
@@ -1229,19 +1291,132 @@ export function MpConfigClient({
     holdAddress.country,
   ]);
 
+  // Fetch alt-tier price while a Flow route awaits Upgrade / Keep.
+  useEffect(() => {
+    const record = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    if (!record?.flowRoute || !isFlowRoutePending(record)) {
+      setRouteAltPrice(null);
+      return;
+    }
+    const size = shopRecommendation?.pillow_product?.size;
+    if (!size) return;
+    const tier =
+      record.flowRoute.targetFlow === "basic-mpillow" ? "basic" : "premium";
+    let cancelled = false;
+    fetch(
+      `/api/mp-config/assist/context?size=${encodeURIComponent(size)}&tier=${tier}`,
+    )
+      .then((r) => r.json())
+      .then((d: { variant?: { price?: number } | null }) => {
+        if (!cancelled) setRouteAltPrice(d.variant?.price ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setRouteAltPrice(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    shopRecommendation?.recommendation_record,
+    shopRecommendation?.pillow_product?.size,
+  ]);
+
+  const handleKeepFlowRoute = useCallback(() => {
+    const record = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    if (!record?.flowRoute) return;
+    setRouteBusy(true);
+    patchRecommendationRecord(withJourneyOnDecline(record));
+    setRouteBusy(false);
+  }, [shopRecommendation?.recommendation_record, patchRecommendationRecord]);
+
+  const handleUpgradeFlowRoute = useCallback(async () => {
+    const record = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    if (!record?.flowRoute) return;
+    const target = record.flowRoute.targetFlow;
+    if (target !== "premium-mpillow" && target !== "basic-mpillow") return;
+
+    setRouteBusy(true);
+    try {
+      const fromFlow: RuleFlow = isBasic ? "basic-mpillow" : "premium-mpillow";
+      const carried = carryOverAnswers(fromFlow, target, wizardToEngineInputs(measurementData));
+      const missing = missingStepsAfterCarryOver(fromFlow, target, carried) as Step[];
+      const accepted = withJourneyOnAccept(record, target);
+      entryJourneyRef.current = accepted;
+      patchRecommendationRecord(accepted);
+
+      if (target === "premium-mpillow" && isBasic) {
+        setUpsoldToPremium(true);
+        setPostUpsellSteps([...missing, "preview"]);
+        if (missing.length > 0) {
+          setCurrentStep(missing[0] as Step);
+        } else {
+          const rec = await fetchShopRecommendation({ preserveSelections: true });
+          if (rec?.recommendation_record && entryJourneyRef.current) {
+            const stamped = stampAcceptedTargetRecord(
+              entryJourneyRef.current,
+              parseRecommendationRecord(rec.recommendation_record) ??
+                (rec.recommendation_record as RecommendationRecord),
+            );
+            patchRecommendationRecord(stamped);
+          }
+        }
+      }
+    } finally {
+      setRouteBusy(false);
+    }
+  }, [
+    shopRecommendation?.recommendation_record,
+    isBasic,
+    measurementData,
+    patchRecommendationRecord,
+    fetchShopRecommendation,
+  ]);
+
+  const finishPostUpsellNeck = useCallback(async () => {
+    const rec = await fetchShopRecommendation({ preserveSelections: false });
+    if (rec?.recommendation_record && entryJourneyRef.current) {
+      const stamped = stampAcceptedTargetRecord(
+        entryJourneyRef.current,
+        parseRecommendationRecord(rec.recommendation_record) ??
+          (rec.recommendation_record as RecommendationRecord),
+      );
+      patchRecommendationRecord(stamped);
+    }
+    setCurrentStep("preview");
+  }, [fetchShopRecommendation, patchRecommendationRecord]);
+
   const handleAuthorizeHold = useCallback(async () => {
     const size =
       shopRecommendation?.pillow_product?.size ??
       suggestion?.recommended?.size ??
       suggestion?.product?.size;
-    const tier = isBasic
-      ? ("basic" as const)
-      : ((shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
-        suggestion?.recommended?.kind ??
-        suggestion?.product?.kind);
+    const tier = soldAsPremium
+      ? ("premium" as const)
+      : isBasic
+        ? ("basic" as const)
+        : ((shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
+          suggestion?.recommended?.kind ??
+          suggestion?.product?.kind);
 
     if (!size || !tier) {
       toast.error("Missing size or tier suggestion");
+      return;
+    }
+
+    const journeyRecord = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    const routeGate = assertPreStripeRouteResolved(
+      journeyRecord ?? { flowRoute: null },
+    );
+    if (!routeGate.ok) {
+      toast.error(routeGate.reason);
       return;
     }
 
@@ -1290,6 +1465,9 @@ export function MpConfigClient({
             recipient: holdAddress.recipient || measurementData.name,
           },
           cancelPath: configPath,
+          ...(journeyRecord
+            ? { recommendationRecord: journeyRecord }
+            : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -1319,6 +1497,7 @@ export function MpConfigClient({
     measurementData,
     upsertToDb,
     isBasic,
+    soldAsPremium,
     configPath,
     holdFields,
     staffAssist,
@@ -1544,10 +1723,10 @@ export function MpConfigClient({
                   const record = parseRecommendationRecord(
                     shopRecommendation?.recommendation_record ?? null,
                   );
-                  // ponytail: slice 06 sets flowRouteUnresolved while Upsell card awaits consent
+                  const routePending = Boolean(record && isFlowRoutePending(record));
                   const revealNow = shouldRevealRecommendation({
                     requiredInputsComplete: Boolean(shopRecommendation && size),
-                    flowRouteUnresolved: false,
+                    flowRouteUnresolved: routePending,
                   });
                   const sleepPos = measurementData.sleepPositionType[0];
                   const why = record
@@ -1566,12 +1745,32 @@ export function MpConfigClient({
                       qty: l.quantity,
                     };
                   });
+                  const soldTierLabel = soldAsPremium ? "premium" : tier;
+                  const showTierAdvice =
+                    record?.tierSuggestion &&
+                    record.tierSuggestion !== (record.soldTier ?? soldTierLabel);
                   return (
                     <>
-                      {tier ? (
+                      {soldTierLabel ? (
                         <Badge variant="outline" className="text-xs capitalize text-white">
-                          {tier} tier
+                          {soldTierLabel} tier
                         </Badge>
+                      ) : null}
+                      {showTierAdvice && record?.tierSuggestion ? (
+                        <TierSuggestion tier={record.tierSuggestion} />
+                      ) : null}
+                      {routePending && record?.flowRoute ? (
+                        <UpsellCard
+                          reason={record.flowRoute.reason}
+                          fromLabel={FLOW_UI_LABEL[record.flow]}
+                          toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
+                          fromPrice={basePrice}
+                          toPrice={routeAltPrice}
+                          currency={currency}
+                          onUpgrade={() => void handleUpgradeFlowRoute()}
+                          onKeep={handleKeepFlowRoute}
+                          busy={routeBusy}
+                        />
                       ) : null}
                       <RecommendationReveal
                         reveal={revealNow}
@@ -1905,7 +2104,12 @@ export function MpConfigClient({
                     className="flex-[2]"
                     size="lg"
                     onClick={() => void handleAuthorizeHold()}
-                    disabled={holdSubmitting || shopLoading || !shopRecommendation}
+                    disabled={
+                      holdSubmitting ||
+                      shopLoading ||
+                      !shopRecommendation ||
+                      flowRouteBlocksHold
+                    }
                   >
                     {holdCta}
                     <ArrowRight className="size-4" />
@@ -2308,7 +2512,7 @@ export function MpConfigClient({
           )}
 
           {/* Neck to Back Measurement */}
-          {!isBasic && currentStep === "neck-to-back" && (
+          {showNeckSteps && currentStep === "neck-to-back" && (
             <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <Image
@@ -2392,7 +2596,7 @@ export function MpConfigClient({
           )}
 
           {/* Head to Back Measurement */}
-          {!isBasic && currentStep === "head-to-back" && (
+          {showNeckSteps && currentStep === "head-to-back" && (
             <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <Image
@@ -2476,7 +2680,7 @@ export function MpConfigClient({
           )}
 
           {/* Neck Length Measurement */}
-          {!isBasic && currentStep === "neck-length" && (
+          {showNeckSteps && currentStep === "neck-length" && (
             <Card className={cn("bg-card/80 backdrop-blur-sm gap-4", configuratorCardPadClassName)}>
               <div className="text-center space-y-2">
                 <Image
@@ -2537,6 +2741,10 @@ export function MpConfigClient({
                     onClick={() =>
                       tryAdvance(measureField("neckLength"), () => {
                         commitMeasureDraft("neckLength");
+                        if (upsoldToPremium) {
+                          void finishPostUpsellNeck();
+                          return;
+                        }
                         goToNextStep();
                       })
                     }
