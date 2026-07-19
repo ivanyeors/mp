@@ -12,6 +12,9 @@ export const runtime = 'nodejs'
  */
 
 export async function GET() {
+  const denied = await requireAdmin('page-builder')
+  if (denied) return denied
+
   const admin = supabaseAdmin()
   const [items, overrides] = await Promise.all([
     admin
