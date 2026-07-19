@@ -38,6 +38,7 @@ import {
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
+import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
 export type FillingItem = { id: number; name: string; subtype: string | null };
 type TemplateRow = { id: number; name: string };
@@ -57,6 +58,7 @@ export function StaffAssistPanel({
   sessionFillingTemplateId,
   onApplySizeTier,
   onItemsChange,
+  onColorOverridesChange,
 }: {
   current: SizeTier;
   placements: PillowPlacement[];
@@ -68,6 +70,8 @@ export function StaffAssistPanel({
   onApplySizeTier: (next: SizeTier) => Promise<void>;
   /** Loaded filling items, surfaced for the x-ray renderer (slice 07). */
   onItemsChange?: (items: FillingItem[]) => void;
+  /** Product Builder color overrides, surfaced for the x-ray CSS vars (slice 11). */
+  onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
 }) {
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
@@ -78,17 +82,25 @@ export function StaffAssistPanel({
     let cancelled = false;
     fetch(`/api/mp-config/assist?size=${encodeURIComponent(current.size)}`)
       .then((r) => r.json())
-      .then((d: { templates?: TemplateRow[]; items?: FillingItem[] }) => {
-        if (cancelled) return;
-        setTemplates(d.templates ?? []);
-        setItems(d.items ?? []);
-        onItemsChange?.(d.items ?? []);
-      })
+      .then(
+        (d: {
+          templates?: TemplateRow[];
+          items?: FillingItem[];
+          colorOverrides?: ColorOverrideRow[];
+        }) => {
+          if (cancelled) return;
+          setTemplates(d.templates ?? []);
+          setItems(d.items ?? []);
+          onItemsChange?.(d.items ?? []);
+          onColorOverridesChange?.(d.colorOverrides ?? []);
+        },
+      )
       .catch(() => {
         if (!cancelled) {
           setTemplates([]);
           setItems([]);
           onItemsChange?.([]);
+          onColorOverridesChange?.([]);
         }
       });
     return () => {
