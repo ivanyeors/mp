@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
 import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
 
@@ -70,6 +71,9 @@ async function assertFillingLines(
 }
 
 export async function GET(req: NextRequest) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const { searchParams } = new URL(req.url)
   const pillowKindParam = searchParams.get('pillowKind') ?? undefined
   const pillowVariantParam = searchParams.get('pillowVariant') ?? undefined
@@ -114,6 +118,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const json = await req.json().catch(() => null)
   const parsed = CreateSchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
@@ -212,6 +219,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const json = await req.json().catch(() => null)
   const parsed = DeleteSchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })

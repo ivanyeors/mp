@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import { z } from 'zod'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
 import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
@@ -44,6 +45,9 @@ async function assertFillingLines(
 }
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId: string }> }) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const { templateId } = await ctx.params
   const id = Number(templateId)
   if (!Number.isFinite(id) || id <= 0) return NextResponse.json({ error: 'Invalid templateId' }, { status: 400 })
@@ -93,6 +97,9 @@ const UpdateSchema = z.object({
 })
 
 export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId: string }> }) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const { templateId } = await ctx.params
   const id = Number(templateId)
   if (!Number.isFinite(id) || id <= 0) return NextResponse.json({ error: 'Invalid templateId' }, { status: 400 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import { lookupItemCategories, stripFillingLines } from '@/lib/bom-sanitizer'
 import { setDefaultFillingTemplateId } from '@/lib/results/composed-sellable'
 
@@ -37,6 +38,9 @@ const BolsterBodySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const json = await req.json().catch(() => null)
   if (!json) return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   // Two modes: standard pillow product BOM, or bolster pseudo-product using size='Bolster'

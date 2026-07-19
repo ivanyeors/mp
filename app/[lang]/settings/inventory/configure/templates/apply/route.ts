@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import { lookupItemCategories, stripFillingLines } from '@/lib/bom-sanitizer'
 
 export const runtime = 'nodejs'
@@ -10,6 +11,9 @@ const ApplySchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const json = await req.json().catch(() => null)
   const parsed = ApplySchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import {
   rankUnpromoted,
   verifyPromotedMix,
@@ -59,6 +60,9 @@ type ResultScopeRow = {
 const resultScopeKey = (r: ResultScopeRow) => r.assigned_size ?? r.suggested_size
 
 export async function GET(req: NextRequest) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const { searchParams } = new URL(req.url)
   const parsed = ScopeSchema.safeParse({ kind: searchParams.get('kind'), key: searchParams.get('key') })
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
@@ -117,6 +121,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin('inventory')
+  if (denied) return denied
+
   const json = await req.json().catch(() => null)
   const parsed = PromoteSchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })

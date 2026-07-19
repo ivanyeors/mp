@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import { OverlayFitSchema } from '@/lib/product-builder/overlays'
 
 export const runtime = 'nodejs'
@@ -16,6 +17,9 @@ type MappingRow = {
 }
 
 export async function GET() {
+  const denied = await requireAdmin('page-builder')
+  if (denied) return denied
+
   const admin = supabaseAdmin()
   const [items, mappings] = await Promise.all([
     admin
@@ -62,6 +66,9 @@ const UpsertSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin('page-builder')
+  if (denied) return denied
+
   const json = await req.json().catch(() => null)
   const parsed = UpsertSchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
@@ -84,6 +91,9 @@ export async function POST(req: NextRequest) {
 const DeleteSchema = z.object({ itemId: z.number().int().positive() })
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdmin('page-builder')
+  if (denied) return denied
+
   const json = await req.json().catch(() => null)
   const parsed = DeleteSchema.safeParse(json)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
