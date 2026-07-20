@@ -8,17 +8,17 @@ export type SubSection = "front" | "middle" | "back";
 
 /**
  * One Mpillow piece: cell (Section × sub-section) + slot 1–5 + inventory item.
- * `row` is the x-ray stacking lane within the cell: 0 = top, 1 = bottom;
- * undefined = auto layout (backward-compatible default). All pieces row 0 reads
- * side-by-side, a split reads top/bottom, an arbitrary mix is per-piece control.
- * Visual only — the pack list ignores it, so it stays out of the fingerprint.
+ * `row` is the x-ray stack DEPTH within the cell (the view is top-down): 0 = top
+ * (front), increasing = deeper into the pillow; depths are distinct per cell.
+ * undefined = side-by-side / auto layout (backward-compatible default). Visual
+ * only — the pack list ignores it, so it stays out of the fingerprint.
  */
 export type PillowPlacement = {
   section: Section;
   subSection: SubSection;
   slot: number;
   itemId: number;
-  row?: 0 | 1;
+  row?: number;
 };
 
 /** One Mbolster piece: single compartment, slot ≥ 1, no cap in v1. */
@@ -58,7 +58,7 @@ export function rowsToPillowPlacements(rows: PillowPlacementRow[]): PillowPlacem
     subSection: r.sub_section as SubSection,
     slot: r.slot,
     itemId: r.item_id,
-    ...(r.row_index == null ? {} : { row: r.row_index as 0 | 1 }),
+    ...(r.row_index == null ? {} : { row: r.row_index }),
   }));
 }
 
@@ -104,6 +104,7 @@ export function validatePillowPlacements(
   itemCategories: ReadonlyMap<number, string>,
 ): Validation {
   const seen = new Set<string>();
+  const depthSeen = new Set<string>();
   for (const p of placements) {
     if (!SECTIONS.includes(p.section) || !SUB_SECTIONS.includes(p.subSection)) {
       return { ok: false, error: `Invalid cell address: ${p.section}/${p.subSection}` };
@@ -114,8 +115,15 @@ export function validatePillowPlacements(
         error: `Slot must be an integer 1–${MAX_PIECES_PER_CELL}, max ${MAX_PIECES_PER_CELL} pieces per cell (got ${p.slot})`,
       };
     }
-    if (p.row !== undefined && p.row !== 0 && p.row !== 1) {
-      return { ok: false, error: `Row must be 0 (top) or 1 (bottom) (got ${p.row})` };
+    if (p.row !== undefined) {
+      if (!Number.isInteger(p.row) || p.row < 0 || p.row > MAX_PIECES_PER_CELL - 1) {
+        return { ok: false, error: `Stack depth must be an integer 0–${MAX_PIECES_PER_CELL - 1} (got ${p.row})` };
+      }
+      const depthKey = `${p.section}/${p.subSection}/${p.row}`;
+      if (depthSeen.has(depthKey)) {
+        return { ok: false, error: `Duplicate stack depth ${p.row} at ${p.section}/${p.subSection}` };
+      }
+      depthSeen.add(depthKey);
     }
     const slotKey = `${p.section}/${p.subSection}/${p.slot}`;
     if (seen.has(slotKey)) return { ok: false, error: `Duplicate placement at ${slotKey}` };

@@ -98,16 +98,24 @@ describe("validatePillowPlacements", () => {
     ).toBe(false);
   });
 
-  it("accepts row 0/1 and rejects any other row", () => {
+  it("accepts stack depth 0–4, rejects out-of-range depth", () => {
     expect(
-      validatePillowPlacements([{ section: "left", subSection: "front", slot: 1, itemId: 1, row: 1 }], categories).ok,
+      validatePillowPlacements([{ section: "left", subSection: "front", slot: 1, itemId: 1, row: 4 }], categories).ok,
     ).toBe(true);
     expect(
-      validatePillowPlacements(
-        [{ section: "left", subSection: "front", slot: 1, itemId: 1, row: 2 as 0 | 1 }],
-        categories,
-      ).ok,
+      validatePillowPlacements([{ section: "left", subSection: "front", slot: 1, itemId: 1, row: 5 }], categories).ok,
     ).toBe(false);
+  });
+
+  it("rejects two pieces sharing a stack depth in one cell", () => {
+    const dup = validatePillowPlacements(
+      [
+        { section: "left", subSection: "front", slot: 1, itemId: 1, row: 0 },
+        { section: "left", subSection: "front", slot: 2, itemId: 1, row: 0 },
+      ],
+      categories,
+    );
+    expect(dup.ok).toBe(false);
   });
 });
 

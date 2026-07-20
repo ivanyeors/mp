@@ -89,12 +89,34 @@ function packPieces(frame: CellFrame, weights: number[], maxRows = 2): PieceRect
   return packRows(frame, groups);
 }
 
+/** Depth overlay offsets (view units): deeper layers shift down + a hair right. */
+const DEPTH_OFX = 7;
+const DEPTH_OFY = 14;
+
+/**
+ * Stacked overlay: the x-ray is top-down, so a stacked cell fakes depth — each
+ * near-full-cell layer shifts down/right by its depth so the pieces read as a
+ * front-to-back stack (index 0 = top/front). Returned by depth (index 0 first).
+ */
+function packDepthStack(frame: CellFrame, count: number): PieceRect[] {
+  const maxD = Math.max(count - 1, 0);
+  const w = frame.w - DEPTH_OFX * maxD;
+  const h = frame.h - DEPTH_OFY * maxD;
+  const out: PieceRect[] = [];
+  for (let d = 0; d < count; d++) {
+    out.push({ x: r1(frame.x + DEPTH_OFX * d), y: r1(frame.y + DEPTH_OFY * d), w: r1(w), h: r1(h) });
+  }
+  return out;
+}
+
 export type PieceLayout = {
   key: string;
   section: Section;
   subSection: SubSection;
   slot: number;
   itemId: number;
+  /** Stack depth in a stacked cell: 0 = top/front, increasing = deeper; 0 otherwise. */
+  depth: number;
 } & PieceRect;
 
 /**
@@ -115,27 +137,39 @@ export function layoutPlacements(
         .sort((a, b) => a.slot - b.slot);
       if (pieces.length === 0) continue;
       const frame = cellFrame(section, subSection);
-      // Explicit row set → top (row 0/undefined) over bottom (row 1); else auto.
-      let ordered = pieces;
-      let rects: PieceRect[];
+      // Explicit depth → stacked overlay (top→deep, painted back-to-front);
+      // else side-by-side / auto packing.
       if (pieces.some((p) => p.row !== undefined)) {
-        const groups = [pieces.filter((p) => (p.row ?? 0) === 0), pieces.filter((p) => p.row === 1)]
-          .filter((g) => g.length > 0);
-        ordered = groups.flat();
-        rects = packRows(frame, groups.map((g) => g.map(weight)));
+        // Order top→deep; a piece with no depth yet lands on top (front).
+        const topToDeep = [...pieces].sort((a, b) => (a.row ?? -1) - (b.row ?? -1));
+        const depthRects = packDepthStack(frame, topToDeep.length);
+        // Emit deepest-first so the renderer paints the top layer last (on top).
+        for (let d = topToDeep.length - 1; d >= 0; d--) {
+          const piece = topToDeep[d];
+          out.push({
+            key: `${section}/${subSection}/${piece.slot}`,
+            section,
+            subSection,
+            slot: piece.slot,
+            itemId: piece.itemId,
+            depth: d,
+            ...depthRects[d],
+          });
+        }
       } else {
-        rects = packPieces(frame, pieces.map(weight));
-      }
-      ordered.forEach((piece, idx) => {
-        out.push({
-          key: `${section}/${subSection}/${piece.slot}`,
-          section,
-          subSection,
-          slot: piece.slot,
-          itemId: piece.itemId,
-          ...rects[idx],
+        const rects = packPieces(frame, pieces.map(weight));
+        pieces.forEach((piece, idx) => {
+          out.push({
+            key: `${section}/${subSection}/${piece.slot}`,
+            section,
+            subSection,
+            slot: piece.slot,
+            itemId: piece.itemId,
+            depth: 0,
+            ...rects[idx],
+          });
         });
-      });
+      }
     }
   }
   return out;

@@ -10,6 +10,7 @@ import {
   addPiece,
   cellArrangement,
   cellPieces,
+  cellStack,
   confirmGate,
   PILLOW_CELLS,
   recheckSelectionsForSize,
@@ -17,7 +18,7 @@ import {
   removePiece,
   sessionTemplateId,
   setCellArrangement,
-  setPieceRow,
+  setDepthOrder,
   type Cell,
   type SizeTier,
 } from "./staff-assist";
@@ -103,21 +104,25 @@ assert.ok(readd.ok, "re-add after remove fits");
 const diverged = readd.placements;
 assert.ok(cellPieces(diverged, cell).some((p) => p.slot === 3 && p.itemId === 2), "re-add reuses lowest free slot");
 
-// --- X-ray arrangement: side ⇄ stacked + per-piece mix ----------------------
+// --- X-ray arrangement: side ⇄ stacked depth + drag reorder -----------------
 let arr: PillowPlacement[] = [];
 for (let i = 0; i < 4; i++) arr = (addPiece(arr, cell, 1) as { placements: PillowPlacement[] }).placements;
 assert.equal(cellArrangement(arr, cell), "side", "untouched cell reads side-by-side");
 arr = setCellArrangement(arr, cell, "stacked");
-assert.equal(cellArrangement(arr, cell), "stacked", "stacked once a piece sits in row 1");
+assert.equal(cellArrangement(arr, cell), "stacked", "stacked once pieces carry a depth");
 assert.deepEqual(
   cellPieces(arr, cell).map((p) => p.row),
-  [0, 0, 1, 1],
-  "stacked splits the slot-ordered pieces top then bottom",
+  [0, 1, 2, 3],
+  "stacked assigns depth 0..N-1 in slot order (slot 1 = top)",
 );
-arr = setPieceRow(arr, cell, 1, 1);
-assert.equal(cellPieces(arr, cell).find((p) => p.slot === 1)?.row, 1, "mix moves one piece to the bottom");
+// Drag slot 1 (top) to the bottom of the stack → depths reindex from the new order.
+const stackSlots = cellStack(arr, cell).map((p) => p.slot); // [1,2,3,4] top→deep
+const moved = [...stackSlots.slice(1), stackSlots[0]]; // [2,3,4,1]
+arr = setDepthOrder(arr, cell, moved);
+assert.equal(cellPieces(arr, cell).find((p) => p.slot === 1)?.row, 3, "reorder pushes the old top to the deepest");
+assert.deepEqual(cellStack(arr, cell).map((p) => p.slot), [2, 3, 4, 1], "cellStack reads top→deep after reorder");
 arr = setCellArrangement(arr, cell, "side");
-assert.ok(cellPieces(arr, cell).every((p) => p.row === undefined), "side clears every row (one row)");
+assert.ok(cellPieces(arr, cell).every((p) => p.row === undefined), "side clears every depth");
 
 // --- Mbolster session mix: single compartment, no cap (ADR 0008) ------------
 let bolsterMix: BolsterPlacement[] = [];

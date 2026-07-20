@@ -47,7 +47,9 @@ assert.match(renderer, /from "@\/lib\/configurator\/staff-assist"/, "edits go th
 assert.match(renderer, /addPiece\(placements, cell, itemId\)/, "add uses addPiece (cap + slot rules)");
 assert.match(renderer, /removePiece\(placements, cell, lastSlot\)/, "remove uses removePiece (collated chip → last slot)");
 assert.match(renderer, /setCellArrangement\(placements, cell, mode\)/, "arrangement toggle writes through the shared lib");
-assert.match(renderer, /setPieceRow\(placements, cell, lastSlot, moveTo\)/, "per-piece mix moves rows through the lib");
+assert.match(renderer, /setDepthOrder\(placements, cell,/, "drag reorders stack depth through the lib");
+assert.match(renderer, /<DragDropProvider onDragEnd=\{onStackDragEnd\}>/, "stacked labels are drag-sortable");
+assert.doesNotMatch(renderer, /setPieceRow|ChevronUp|ChevronDown/, "chevrons gone — drag replaces the move buttons");
 assert.match(renderer, /toast\.error\(result\.error\)/, "cap/inventory errors surface on-canvas");
 assert.match(renderer, /Cell full \(max 5\)/, "cap state visible on-canvas");
 assert.match(renderer, /e\.key === "Escape"/, "Escape returns to full view");

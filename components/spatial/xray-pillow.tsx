@@ -10,9 +10,11 @@
  * Staff-only: callers mount this behind the staff assist gate.
  */
 
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { GripVertical, Plus, X } from "lucide-react";
+import { DragDropProvider } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
 
 import { SunburstMenu } from "@/components/ui/sunburst-menu";
 import { fillingItemsToSunburst, fillingLabel } from "@/lib/spatial-fillings/filling-groups";
@@ -21,9 +23,10 @@ import {
   addPiece,
   cellArrangement,
   cellPieces,
+  cellStack,
   removePiece,
   setCellArrangement,
-  setPieceRow,
+  setDepthOrder,
   type Cell,
 } from "@/lib/configurator/staff-assist";
 import {
@@ -32,6 +35,7 @@ import {
   SUB_SECTIONS,
   type PillowPlacement,
   type Section,
+  type SubSection,
 } from "@/lib/spatial-fillings/core";
 import {
   conformPouchPath,
@@ -40,7 +44,7 @@ import {
 } from "@/lib/spatial-fillings/conform";
 import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
 import { fillingVisual, sizeScale, type FillingVisual } from "@/lib/spatial-fillings/visuals";
-import { COL_X, GAP, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
+import { COL_X, GAP, layoutPlacements, ROW_Y } from "@/lib/spatial-fillings/xray-layout";
 import {
   CELL_CLIP_PATHS,
   CELL_POLYGONS,
@@ -152,6 +156,59 @@ export function MorphPiece({
   );
 }
 
+function assignRef<T>(ref: unknown, el: T | null) {
+  if (typeof ref === "function") (ref as (el: T | null) => void)(el);
+  else if (ref && typeof ref === "object") (ref as { current: T | null }).current = el;
+}
+
+/**
+ * One external stack label (staff dive, stacked cells): draggable to reorder the
+ * cell's depth (top→deep). `register` reports the DOM node so the parent can
+ * anchor the bezier leader-line; the sortable id is the piece key `sec/sub/slot`.
+ */
+function StackLabel({
+  id,
+  index,
+  label,
+  onRemove,
+  register,
+}: {
+  id: string;
+  index: number;
+  label: string;
+  onRemove: () => void;
+  register: (id: string, el: HTMLElement | null) => void;
+}) {
+  const { ref, isDragging, handleRef } = useSortable({ id, index });
+  return (
+    <div
+      ref={(el) => {
+        assignRef(ref, el);
+        register(id, el);
+      }}
+      className={`pointer-events-auto flex items-center gap-0.5 rounded border bg-background/90 px-1 text-[9px] leading-4 shadow-sm ${isDragging ? "opacity-70 shadow-lg" : ""}`}
+    >
+      <button
+        ref={handleRef}
+        type="button"
+        className="shrink-0 cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        aria-label={`Drag ${label} to reorder depth`}
+      >
+        <GripVertical className="size-2.5" />
+      </button>
+      <span className="max-w-24 truncate">{label}</span>
+      <button
+        type="button"
+        className="shrink-0 rounded hover:bg-destructive/20"
+        aria-label={`Remove one ${label}`}
+        onClick={onRemove}
+      >
+        <X className="size-2.5" />
+      </button>
+    </div>
+  );
+}
+
 export function XrayPillow({
   placements,
   itemSubtypes,
@@ -220,30 +277,13 @@ export function XrayPillow({
     return item ? fillingLabel(item) : `Item #${itemId}`;
   };
 
-  // One collated piece label (type ×count) with remove + optional move-row.
-  // Rendered floating over the pouch(es) it represents; actions target the
-  // group's last slot so one click affects one piece.
-  const pieceChip = (
-    cell: Cell,
-    subSection: string,
-    itemId: number,
-    slots: number[],
-    moveTo?: 0 | 1,
-  ) => {
+  // Side-by-side chip: collated type label (×count) + remove, floated over the
+  // pouch group at its centroid. Stacked cells use the external labels instead.
+  const pieceChip = (cell: Cell, itemId: number, slots: number[]) => {
     const label = pieceLabel(itemId);
     const lastSlot = slots[slots.length - 1];
     return (
       <span className="flex items-center gap-0.5 rounded border bg-background/90 px-1 text-[9px] leading-4 shadow-sm">
-        {moveTo !== undefined && (
-          <button
-            type="button"
-            className="shrink-0 rounded hover:bg-accent"
-            aria-label={`Move one ${label} to ${moveTo === 0 ? "top" : "bottom"} in ${cell.section} ${subSection}`}
-            onClick={() => onPlacementsChange?.(setPieceRow(placements, cell, lastSlot, moveTo))}
-          >
-            {moveTo === 0 ? <ChevronUp className="size-2.5" /> : <ChevronDown className="size-2.5" />}
-          </button>
-        )}
         <span className="max-w-24 truncate">
           {label}
           {slots.length > 1 ? ` ×${slots.length}` : ""}
@@ -251,7 +291,7 @@ export function XrayPillow({
         <button
           type="button"
           className="shrink-0 rounded hover:bg-destructive/20"
-          aria-label={`Remove one ${label} from ${cell.section} ${subSection}`}
+          aria-label={`Remove one ${label} from ${cell.section} ${cell.subSection}`}
           onClick={() => onPlacementsChange?.(removePiece(placements, cell, lastSlot))}
         >
           <X className="size-2.5" />
@@ -260,36 +300,148 @@ export function XrayPillow({
     );
   };
 
-  // Float one chip per collated pouch group in the dived section, at the group's
-  // pouch-rect centroid (view coords). Stacked cells collate per row so a chip
-  // sits over its own row; side cells collate per type across the whole cell.
   const rectByKey = new Map(pieces.map((pl) => [pl.key, pl] as const));
-  const floatingChips =
+  // External control cluster aligns to the dived section's OWN side (left /
+  // center / right) so its labels sit by the pouches they control.
+  const externalSide: "left" | "center" | "right" =
+    divedIdx === 0 ? "left" : divedIdx === 2 ? "right" : "center";
+
+  // Side-by-side cells keep centroid chips (collated per type); stacked cells
+  // move their per-piece labels outside the pillow (see clusters below).
+  const sideChips =
     dived === null
       ? []
       : SUB_SECTIONS.flatMap((subSection) => {
           const cell: Cell = { section: dived, subSection };
           const cellPcs = cellPieces(placements, cell);
-          const isStacked = cellPcs.length >= 2 && cellArrangement(placements, cell) === "stacked";
-          const groups = new Map<string, { itemId: number; row: 0 | 1; slots: number[] }>();
+          if (cellPcs.length === 0) return [];
+          if (cellPcs.length >= 2 && cellArrangement(placements, cell) === "stacked") return [];
+          const groups = new Map<number, number[]>();
           for (const p of cellPcs) {
-            const row = (p.row === 1 ? 1 : 0) as 0 | 1;
-            const gkey = `${p.itemId}|${isStacked ? row : 0}`;
-            const g = groups.get(gkey);
-            if (g) g.slots.push(p.slot);
-            else groups.set(gkey, { itemId: p.itemId, row, slots: [p.slot] });
+            const s = groups.get(p.itemId);
+            if (s) s.push(p.slot);
+            else groups.set(p.itemId, [p.slot]);
           }
-          return [...groups.values()].flatMap((g) => {
-            const centers = g.slots.flatMap((slot) => {
+          return [...groups].flatMap(([itemId, slots]) => {
+            const centers = slots.flatMap((slot) => {
               const r = rectByKey.get(`${dived}/${subSection}/${slot}`);
               return r ? [[r.x + r.w / 2, r.y + r.h / 2] as const] : [];
             });
             if (centers.length === 0) return [];
             const cx = centers.reduce((s, c) => s + c[0], 0) / centers.length;
             const cy = centers.reduce((s, c) => s + c[1], 0) / centers.length;
-            return [{ cell, subSection, itemId: g.itemId, row: g.row, slots: g.slots, isStacked, cx, cy }];
+            return [{ subSection, cell, itemId, slots, cx, cy }];
           });
         });
+
+  // Per-sub-section external cluster data for the dived section: toggle always
+  // (2+ pieces), plus the ordered stack (top→deep) when the cell is stacked.
+  const clusters =
+    dived === null
+      ? []
+      : SUB_SECTIONS.map((subSection, b) => {
+          const cell: Cell = { section: dived, subSection };
+          const cellPcs = cellPieces(placements, cell);
+          const stacked = cellPcs.length >= 2 && cellArrangement(placements, cell) === "stacked";
+          return { subSection, b, cell, cellPcs, stacked, stack: stacked ? cellStack(placements, cell) : [] };
+        });
+  // Flat top→deep order across the dived section → stable sortable indices.
+  const stackKeys = clusters.flatMap((c) =>
+    c.stack.map((p) => `${c.cell.section}/${c.cell.subSection}/${p.slot}`),
+  );
+
+  // Measure each external label's inner edge (in view coords) so the bezier
+  // leader-line lands exactly on it; re-run on layout / resize / edits.
+  const labelRefs = useRef(new Map<string, HTMLElement>());
+  const register = useCallback((id: string, el: HTMLElement | null) => {
+    if (el) labelRefs.current.set(id, el);
+    else labelRefs.current.delete(id);
+  }, []);
+  const [anchors, setAnchors] = useState<Map<string, { x: number; y: number }>>(new Map());
+  useIsoLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || dived === null) {
+      setAnchors(new Map());
+      return;
+    }
+    const compute = () => {
+      const box = root.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) return;
+      const next = new Map<string, { x: number; y: number }>();
+      for (const [key, el] of labelRefs.current) {
+        const r = el.getBoundingClientRect();
+        // Leader meets the label edge facing the pillow: side gutters → the inner
+        // vertical edge; top gutter (center section) → the bottom edge.
+        const px =
+          externalSide === "center" ? r.left + r.width / 2 : externalSide === "right" ? r.left : r.right;
+        const py = externalSide === "center" ? r.bottom : r.top + r.height / 2;
+        next.set(key, {
+          x: ((px - box.left) / box.width) * XRAY_VIEW.width,
+          y: ((py - box.top) / box.height) * XRAY_VIEW.height,
+        });
+      }
+      setAnchors(next);
+    };
+    compute();
+    // Re-measure on the next frame (first-paint layout settle) and whenever a
+    // label reflows — the justify-around column shifts every label's Y when one
+    // changes height, so observe them all, not just the box.
+    const raf = requestAnimationFrame(compute);
+    const ro = new ResizeObserver(compute);
+    ro.observe(root);
+    for (const el of labelRefs.current.values()) ro.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [dived, placements, externalSide]);
+
+  // One cubic-bezier leader per stacked label, anchored on the layer's BORDER
+  // facing the label (not a shared centroid). Deeper layers are offset
+  // down-right, so the start points fan out and each line clearly points at its
+  // own stacked layer.
+  const connectors = clusters.flatMap((c) =>
+    c.stack.flatMap((p) => {
+      const key = `${c.cell.section}/${c.cell.subSection}/${p.slot}`;
+      const r = rectByKey.get(key);
+      const a = anchors.get(key);
+      if (!r || !a) return [];
+      if (externalSide === "center") {
+        // Top gutter: start at the layer's top border, curve up to the label.
+        const sx = r.x + r.w / 2;
+        const sy = r.y;
+        const dyc = (a.y - sy) * 0.5;
+        return [{ key, d: `M ${sx} ${sy} C ${sx} ${sy + dyc} ${a.x} ${a.y - dyc} ${a.x} ${a.y}` }];
+      }
+      const sx = externalSide === "right" ? r.x + r.w : r.x;
+      const sy = r.y + r.h / 2;
+      const dxc = (a.x - sx) * 0.5;
+      return [{ key, d: `M ${sx} ${sy} C ${sx + dxc} ${sy} ${a.x - dxc} ${a.y} ${a.x} ${a.y}` }];
+    }),
+  );
+
+  // Drag a stacked label onto another → reorder that cell's depth (top→deep).
+  const onStackDragEnd = (event: {
+    operation?: { source?: { id?: string | number } | null; target?: { id?: string | number } | null };
+  }) => {
+    const src = event.operation?.source?.id;
+    const tgt = event.operation?.target?.id;
+    if (src == null || tgt == null || src === tgt) return;
+    const srcKey = String(src);
+    const tgtKey = String(tgt);
+    const [ssec, ssub] = srcKey.split("/");
+    const [tsec, tsub] = tgtKey.split("/");
+    if (ssec !== tsec || ssub !== tsub) return; // depth reorders within one cell
+    const cell: Cell = { section: ssec as Section, subSection: ssub as SubSection };
+    const order = cellStack(placements, cell).map((p) => `${cell.section}/${cell.subSection}/${p.slot}`);
+    const from = order.indexOf(srcKey);
+    const to = order.indexOf(tgtKey);
+    if (from < 0 || to < 0) return;
+    const reordered = [...order];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    onPlacementsChange?.(setDepthOrder(placements, cell, reordered.map((k) => Number(k.split("/")[2]))));
+  };
 
   return (
     <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
@@ -317,20 +469,23 @@ export function XrayPillow({
             <path d={SILHOUETTE_PATH} fill="rgba(15,23,42,0.5)" />
 
             {/* nested clipping: silhouette ∩ cell — belt only; the pouch
-                geometry itself deforms to stay a seam inside both regions */}
+                geometry itself deforms to stay a seam inside both regions.
+                Stacked layers paint deepest-first with a depth scrim (deeper =
+                darker) so the overlap reads as a front-to-back stack. */}
             {cellsInUse.map((key) => (
               <g key={key} clipPath={`url(#${clipId(key)})`}>
                 {pieces
                   .filter((p) => `${p.section}/${p.subSection}` === key)
                   .map((p) => {
                     const subtype = itemSubtypes.get(p.itemId) ?? null;
+                    const d = conformPouchPath(p, [SIL_REGION, CELL_REGIONS[key]]);
                     return (
-                      <MorphPiece
-                        key={p.key}
-                        subtype={subtype}
-                        visual={fillingVisual(subtype)}
-                        d={conformPouchPath(p, [SIL_REGION, CELL_REGIONS[key]])}
-                      />
+                      <g key={p.key}>
+                        <MorphPiece subtype={subtype} visual={fillingVisual(subtype)} d={d} />
+                        {p.depth > 0 && (
+                          <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
+                        )}
+                      </g>
                     );
                   })}
               </g>
@@ -373,14 +528,34 @@ export function XrayPillow({
         </g>
       </svg>
 
-      {/* Dive editor overlay: three sub-section cells of the centered column */}
+      {/* Dive editor overlay: controls live OUTSIDE the pillow; stacked labels
+          connect back to their pouch with a bezier leader-line. */}
       {dived && editable && (
         <div className="absolute inset-0" style={{ pointerEvents: "none" }} data-xray-dive>
-          {/* Collated type labels floated over each pouch group in the dived
-              section (view coords → %; svg fills the container at that aspect). */}
-          {floatingChips.map((fc) => (
+          {/* Bezier leaders (view coords, linear map matches the HTML %). */}
+          <svg
+            className="absolute inset-0 h-full w-full"
+            viewBox={`0 0 ${XRAY_VIEW.width} ${XRAY_VIEW.height}`}
+            preserveAspectRatio="none"
+            style={{ pointerEvents: "none", overflow: "visible" }}
+            aria-hidden
+          >
+            {connectors.map((c) => (
+              <path
+                key={c.key}
+                d={c.d}
+                fill="none"
+                stroke="rgba(255,255,255,0.55)"
+                strokeWidth={1}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+
+          {/* Side-by-side cells: centroid chips over their pouch group. */}
+          {sideChips.map((fc) => (
             <div
-              key={`${fc.subSection}-${fc.itemId}-${fc.row}`}
+              key={`${fc.subSection}-${fc.itemId}`}
               className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
               style={{
                 left: `${(fc.cx / XRAY_VIEW.width) * 100}%`,
@@ -388,16 +563,82 @@ export function XrayPillow({
                 pointerEvents: "auto",
               }}
             >
-              {pieceChip(
-                fc.cell,
-                fc.subSection,
-                fc.itemId,
-                fc.slots,
-                fc.isStacked ? (fc.row === 0 ? 1 : 0) : undefined,
-              )}
+              {pieceChip(fc.cell, fc.itemId, fc.slots)}
             </div>
           ))}
-          {/* Per-cell footer controls, aligned to the dived column in place. */}
+
+          {/* External per-sub-section clusters: arrangement toggle + (stacked)
+              the draggable top→deep label list, aligned to each ROW_Y band. */}
+          <DragDropProvider onDragEnd={onStackDragEnd}>
+            {clusters.map(({ subSection, b, cell, cellPcs, stacked, stack }) => {
+              if (cellPcs.length < 2) return null;
+              // Park the controls OUTSIDE the box in the section's dark margin:
+              // left section → left gutter, right → right gutter, center → on top.
+              const band = {
+                top: `${(ROW_Y[b] / XRAY_VIEW.height) * 100}%`,
+                height: `${((ROW_Y[b + 1] - ROW_Y[b]) / XRAY_VIEW.height) * 100}%`,
+              };
+              const pos: CSSProperties =
+                externalSide === "center"
+                  ? { bottom: "100%", left: `${b * (100 / 3)}%`, width: `${100 / 3}%`, marginBottom: 8 }
+                  : externalSide === "right"
+                    ? { ...band, left: "100%", width: "22%", marginLeft: 8 }
+                    : { ...band, right: "100%", width: "22%", marginRight: 8 };
+              const justify =
+                externalSide === "center" ? "justify-center" : externalSide === "right" ? "justify-start" : "justify-end";
+              const items =
+                externalSide === "center" ? "items-center" : externalSide === "right" ? "items-start" : "items-end";
+              return (
+                <div
+                  key={subSection}
+                  className="absolute z-10 flex flex-col gap-1 p-1"
+                  style={{ pointerEvents: "none", ...pos }}
+                >
+                  <div className={`flex ${justify}`} style={{ pointerEvents: "auto" }}>
+                    <div
+                      className="flex overflow-hidden rounded border text-[9px] leading-4"
+                      role="group"
+                      aria-label={`${cell.section} ${subSection} arrangement`}
+                    >
+                      {(["side", "stacked"] as const).map((mode) => {
+                        const on = (mode === "stacked") === stacked;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            aria-pressed={on}
+                            className={`px-1.5 py-0.5 ${on ? "bg-primary text-primary-foreground" : "bg-background/85 hover:bg-accent"}`}
+                            onClick={() => onPlacementsChange?.(setCellArrangement(placements, cell, mode))}
+                          >
+                            {mode === "side" ? "Side" : "Stacked"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {stacked && (
+                    <div className={`flex min-h-0 flex-1 flex-col justify-around ${items}`}>
+                      {stack.map((p) => {
+                        const key = `${cell.section}/${cell.subSection}/${p.slot}`;
+                        return (
+                          <StackLabel
+                            key={key}
+                            id={key}
+                            index={stackKeys.indexOf(key)}
+                            label={pieceLabel(p.itemId)}
+                            onRemove={() => onPlacementsChange?.(removePiece(placements, cell, p.slot))}
+                            register={register}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </DragDropProvider>
+
+          {/* Add-filling picker stays in the dived column footer. */}
           <div
             className="absolute inset-y-0 flex flex-col"
             style={{
@@ -410,39 +651,12 @@ export function XrayPillow({
               const cellPcs = cellPieces(placements, cell);
               const full = cellPcs.length >= MAX_PIECES_PER_CELL;
               const otherOpen = openSub !== null && openSub !== subSection;
-              // Stacked (top/bottom) once 2+ pieces and the cell has an explicit
-              // row split; else side-by-side. A lone piece always reads side.
-              const stacked = cellPcs.length >= 2 && cellArrangement(placements, cell) === "stacked";
               return (
                 <div
                   key={subSection}
                   className="flex flex-1 flex-col items-center justify-end gap-0.5 p-1"
                   style={{ pointerEvents: "auto" }}
                 >
-                  {cellPcs.length >= 2 && (
-                    <div
-                      className="flex overflow-hidden rounded border text-[9px] leading-4"
-                      role="group"
-                      aria-label={`${dived} ${subSection} arrangement`}
-                    >
-                      {(["side", "stacked"] as const).map((mode) => {
-                        const on = (mode === "stacked") === stacked;
-                        return (
-                          <button
-                            key={mode}
-                            type="button"
-                            aria-pressed={on}
-                            className={`px-1.5 py-0.5 ${on ? "bg-primary text-primary-foreground" : "bg-background/85 hover:bg-accent"}`}
-                            onClick={() =>
-                              onPlacementsChange?.(setCellArrangement(placements, cell, mode))
-                            }
-                          >
-                            {mode === "side" ? "Side by side" : "Stacked"}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
                   {full ? (
                     <span
                       className="rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground"

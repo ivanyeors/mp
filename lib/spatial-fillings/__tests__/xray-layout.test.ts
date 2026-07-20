@@ -96,37 +96,30 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     expect(large.w).toBeGreaterThan(small.w);
   });
 
-  it("explicit rows stack top over bottom, each spanning ~full width", () => {
+  it("explicit depth stacks as a back-to-front overlay (deeper shifts down-right)", () => {
     const layout = layoutPlacements([
       { ...piece(1), row: 0 },
       { ...piece(2), row: 1 },
+      { ...piece(3), row: 2 },
     ]);
-    const top = layout.find((p) => p.slot === 1)!;
-    const bottom = layout.find((p) => p.slot === 2)!;
-    expect(top.y).toBeLessThan(bottom.y); // row 0 above row 1
+    const byDepth = new Map(layout.map((p) => [p.depth, p]));
+    const top = byDepth.get(0)!;
+    const deep = byDepth.get(2)!;
     const frame = cellFrame("center", "middle");
-    expect(top.w).toBeGreaterThan(frame.w * 0.8);
-    expect(bottom.w).toBeGreaterThan(frame.w * 0.8);
-    disjoint(layout);
+    expect(top.w).toBeGreaterThan(frame.w * 0.6); // near-full-cell layers, not split rows
+    expect(deep.y).toBeGreaterThan(top.y); // deeper = further down
+    expect(deep.x).toBeGreaterThan(top.x); // + a hair right
+    expect(layout[0].depth).toBe(2); // emitted deepest-first…
+    expect(layout[layout.length - 1].depth).toBe(0); // …so the top layer paints last
   });
 
-  it("all row 0 lays side-by-side: one y-band, split width", () => {
-    const layout = layoutPlacements([
-      { ...piece(1), row: 0 },
-      { ...piece(2), row: 0 },
-    ]);
-    expect(layout[0].y).toBe(layout[1].y); // single row
-    const frame = cellFrame("center", "middle");
-    expect(layout[0].w).toBeLessThan(frame.w * 0.7); // shared width
-    disjoint(layout);
-  });
-
-  it("row: undefined is identical to omitting row (auto fallback unchanged)", () => {
+  it("side-by-side (no explicit row) is unchanged and reports depth 0", () => {
     const withUndef = layoutPlacements([
       { ...piece(1), row: undefined },
       { ...piece(2), row: undefined },
     ]);
     expect(withUndef).toEqual(layoutPlacements([piece(1), piece(2)]));
+    expect(withUndef.every((p) => p.depth === 0)).toBe(true);
   });
 });
 
