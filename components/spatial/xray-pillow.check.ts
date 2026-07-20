@@ -64,12 +64,26 @@ assert.match(renderer, /layoutPlacements\(placements,/, "deterministic layout en
 assert.match(renderer, /itemScaleMap\(itemSizes\)/, "Item size scales the pouch");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 
-// --- Wiring: staff-gated mount over the silhouette ---------------------------
+// --- Wiring: one gated mount over the silhouette (RE slice 07: guests read-only) ---
 const client = readFileSync(join(process.cwd(), "app", "[lang]", "mp-config", "mp-config-client.tsx"), "utf8");
-assert.match(client, /\{staffAssist && \(\s*<XrayPillow/, "x-ray mounts only for Staff — guests never see it");
+assert.match(client, /\{xrayVisible && \(\s*<XrayPillow/, "x-ray mounts behind one visibility gate");
+assert.match(
+  client,
+  /const xrayVisible = staffAssist \|\| guestXray/,
+  "gate = staff assist OR revealed spatial template — nothing else",
+);
+assert.match(
+  client,
+  /previewMixMode\(guestPlacements\) === "xray"/,
+  "guest fallback selection goes through previewMixMode (legacy-flat keeps text)",
+);
 assert.equal(client.match(/<XrayPillow/g)?.length, 1, "single x-ray mount point");
-assert.match(client, /placements=\{assistPlacements\}/, "renders the assist session mix live");
-assert.match(client, /staffAssist && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
+assert.match(
+  client,
+  /placements=\{staffAssist \? assistPlacements : guestPlacements\}/,
+  "staff renders the assist session mix live; guests the recommended template",
+);
+assert.match(client, /xrayVisible && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
 assert.match(client, /const PILLOW_PATH = SILHOUETTE_PATH/, "one silhouette source (guardrail 5)");
 
 console.log("xray-pillow.check: all assertions passed");

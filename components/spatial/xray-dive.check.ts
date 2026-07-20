@@ -56,15 +56,18 @@ assert.doesNotMatch(renderer, /animate=\{\{ x/, "dive never pans — the x-ray o
 assert.match(renderer, /setAttribute\("d"/, "morphs write path d only (no layout thrash)");
 assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1)");
 
-// --- Gating: editable x-ray mounts only behind staffAssist --------------------
+// --- Gating: edit affordances only behind staffAssist (guests read-only) -----
 const client = readFileSync(join(process.cwd(), "app", "[lang]", "mp-config", "mp-config-client.tsx"), "utf8");
-assert.match(client, /\{staffAssist && \(\s*<XrayPillow/, "dive editor gated — guests never see it");
-assert.equal(client.match(/<XrayPillow/g)?.length, 1, "single mount point");
-assert.match(client, /items=\{assistItems\}/, "picker reuses the panel's inventory FillingItems");
 assert.match(
   client,
-  /onPlacementsChange=\{setAssistPlacements\}/,
-  "canvas edits land in the same assistPlacements state as the list editor",
+  /items=\{staffAssist \? assistItems : undefined\}/,
+  "dive editor gated — guests never see it; the staff picker reuses the panel's inventory FillingItems",
+);
+assert.equal(client.match(/<XrayPillow/g)?.length, 1, "single mount point");
+assert.match(
+  client,
+  /onPlacementsChange=\{staffAssist \? setAssistPlacements : undefined\}/,
+  "staff canvas edits land in the same assistPlacements state as the list editor — guests get no write path",
 );
 
 console.log("xray-dive.check: all assertions passed");
