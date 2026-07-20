@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import {
   addBolsterPiece,
   addPiece,
+  cellArrangement,
   cellPieces,
   confirmGate,
   PILLOW_CELLS,
@@ -15,6 +16,8 @@ import {
   removeBolsterPiece,
   removePiece,
   sessionTemplateId,
+  setCellArrangement,
+  setPieceRow,
   type Cell,
   type SizeTier,
 } from "./staff-assist";
@@ -99,6 +102,22 @@ const readd = addPiece(mix, cell, 2);
 assert.ok(readd.ok, "re-add after remove fits");
 const diverged = readd.placements;
 assert.ok(cellPieces(diverged, cell).some((p) => p.slot === 3 && p.itemId === 2), "re-add reuses lowest free slot");
+
+// --- X-ray arrangement: side ⇄ stacked + per-piece mix ----------------------
+let arr: PillowPlacement[] = [];
+for (let i = 0; i < 4; i++) arr = (addPiece(arr, cell, 1) as { placements: PillowPlacement[] }).placements;
+assert.equal(cellArrangement(arr, cell), "side", "untouched cell reads side-by-side");
+arr = setCellArrangement(arr, cell, "stacked");
+assert.equal(cellArrangement(arr, cell), "stacked", "stacked once a piece sits in row 1");
+assert.deepEqual(
+  cellPieces(arr, cell).map((p) => p.row),
+  [0, 0, 1, 1],
+  "stacked splits the slot-ordered pieces top then bottom",
+);
+arr = setPieceRow(arr, cell, 1, 1);
+assert.equal(cellPieces(arr, cell).find((p) => p.slot === 1)?.row, 1, "mix moves one piece to the bottom");
+arr = setCellArrangement(arr, cell, "side");
+assert.ok(cellPieces(arr, cell).every((p) => p.row === undefined), "side clears every row (one row)");
 
 // --- Mbolster session mix: single compartment, no cap (ADR 0008) ------------
 let bolsterMix: BolsterPlacement[] = [];

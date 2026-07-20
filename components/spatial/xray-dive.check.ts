@@ -45,9 +45,11 @@ assert.equal(ringSelfIntersects([[0, 0], [10, 0], [10, 10], [0, 10]]), false, "s
 const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray-pillow.tsx"), "utf8");
 assert.match(renderer, /from "@\/lib\/configurator\/staff-assist"/, "edits go through the shared lib");
 assert.match(renderer, /addPiece\(placements, cell, itemId\)/, "add uses addPiece (cap + slot rules)");
-assert.match(renderer, /removePiece\(placements, cell, p\.slot\)/, "remove uses removePiece");
+assert.match(renderer, /removePiece\(placements, cell, lastSlot\)/, "remove uses removePiece (collated chip → last slot)");
+assert.match(renderer, /setCellArrangement\(placements, cell, mode\)/, "arrangement toggle writes through the shared lib");
+assert.match(renderer, /setPieceRow\(placements, cell, lastSlot, moveTo\)/, "per-piece mix moves rows through the lib");
 assert.match(renderer, /toast\.error\(result\.error\)/, "cap/inventory errors surface on-canvas");
-assert.match(renderer, /full \? "Cell full \(max 5\)" : "Add filling…"/, "cap state visible in picker");
+assert.match(renderer, /Cell full \(max 5\)/, "cap state visible on-canvas");
 assert.match(renderer, /e\.key === "Escape"/, "Escape returns to full view");
 assert.match(renderer, /setDived\(null\)/, "back button returns to full view");
 assert.match(renderer, /getShapeMorph\(from, shape\)/, "shape swaps use prepared morphs");

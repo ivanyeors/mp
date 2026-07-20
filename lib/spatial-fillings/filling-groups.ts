@@ -39,6 +39,11 @@ function descriptorOf(item: FillingItemLike): string {
   return (item.name || item.subtype || "").trim();
 }
 
+/** Clean type label for a placed piece chip, e.g. "6D (L)" — not "filling (6D (L))". */
+export function fillingLabel(item: FillingItemLike): string {
+  return descriptorOf(item) || item.name.trim() || `Item #${item.id}`;
+}
+
 /** Variant within a family: the parenthetical, else the descriptor minus its density. */
 function variantLabel(descriptor: string): string {
   const paren = descriptor.match(/\(([^)]+)\)/)?.[1];

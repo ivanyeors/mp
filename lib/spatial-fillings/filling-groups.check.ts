@@ -2,7 +2,7 @@
  * Run: npx tsx lib/spatial-fillings/filling-groups.check.ts
  */
 import assert from "node:assert/strict";
-import { fillingFamily, fillingItemsToSunburst, type FillingItemLike } from "./filling-groups";
+import { fillingFamily, fillingItemsToSunburst, fillingLabel, type FillingItemLike } from "./filling-groups";
 
 // Family derivation — parenthetical (seed), legacy hyphen, premium, lowercase.
 assert.deepEqual(fillingFamily("3D (S)"), { key: "3d", label: "3D" });
@@ -56,5 +56,10 @@ const deduped = fillingItemsToSunburst([
 ]);
 assert.equal(deduped[0].children!.length, 1);
 assert.equal(deduped[0].children![0].id, "2");
+
+// Chip label: the clean type descriptor, not the "filling" placeholder name.
+assert.equal(fillingLabel({ id: 3, name: "filling", subtype: "6D (L)", size: null }), "6D (L)");
+assert.equal(fillingLabel({ id: 9, name: "6D Firm", subtype: null, size: null }), "6D Firm");
+assert.equal(fillingLabel({ id: 8, name: "Mystery Fluff", subtype: null, size: null }), "Mystery Fluff");
 
 console.log("filling-groups.check.ts: ok");

@@ -12,16 +12,18 @@
 
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { SunburstMenu } from "@/components/ui/sunburst-menu";
-import { fillingItemsToSunburst } from "@/lib/spatial-fillings/filling-groups";
+import { fillingItemsToSunburst, fillingLabel } from "@/lib/spatial-fillings/filling-groups";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import {
   addPiece,
+  cellArrangement,
   cellPieces,
   removePiece,
+  setCellArrangement,
+  setPieceRow,
   type Cell,
 } from "@/lib/configurator/staff-assist";
 import {
@@ -170,20 +172,30 @@ export function XrayPillow({
   className?: string;
 }) {
   const uid = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<Section | null>(null);
   const [dived, setDived] = useState<Section | null>(null);
+  // Which sub-section's Add-filling menu is blooming — the others hide while it is.
+  const [openSub, setOpenSub] = useState<string | null>(null);
   const editable = Boolean(items && onPlacementsChange);
   // Ring 1 = filling family (3D/6D/6D+), leaves = deduped inventory items.
   const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
 
-  // Escape returns to the full view.
+  // Exit the dive on Escape or a click anywhere outside the pillow — no CTA needed.
   useEffect(() => {
     if (!dived) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setDived(null);
     };
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setDived(null);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
   }, [dived]);
 
   const pieces = layoutPlacements(placements, itemSizes ? itemScaleMap(itemSizes) : undefined);
@@ -203,14 +215,84 @@ export function XrayPillow({
     onPlacementsChange?.(result.placements);
   };
 
-  const itemLabel = (i: FillingItem) => (i.subtype ? `${i.name} (${i.subtype})` : i.name);
   const pieceLabel = (itemId: number) => {
     const item = items?.find((i) => i.id === itemId);
-    return item ? itemLabel(item) : `Item #${itemId}`;
+    return item ? fillingLabel(item) : `Item #${itemId}`;
   };
 
+  // One collated piece label (type ×count) with remove + optional move-row.
+  // Rendered floating over the pouch(es) it represents; actions target the
+  // group's last slot so one click affects one piece.
+  const pieceChip = (
+    cell: Cell,
+    subSection: string,
+    itemId: number,
+    slots: number[],
+    moveTo?: 0 | 1,
+  ) => {
+    const label = pieceLabel(itemId);
+    const lastSlot = slots[slots.length - 1];
+    return (
+      <span className="flex items-center gap-0.5 rounded border bg-background/90 px-1 text-[9px] leading-4 shadow-sm">
+        {moveTo !== undefined && (
+          <button
+            type="button"
+            className="shrink-0 rounded hover:bg-accent"
+            aria-label={`Move one ${label} to ${moveTo === 0 ? "top" : "bottom"} in ${cell.section} ${subSection}`}
+            onClick={() => onPlacementsChange?.(setPieceRow(placements, cell, lastSlot, moveTo))}
+          >
+            {moveTo === 0 ? <ChevronUp className="size-2.5" /> : <ChevronDown className="size-2.5" />}
+          </button>
+        )}
+        <span className="max-w-24 truncate">
+          {label}
+          {slots.length > 1 ? ` ×${slots.length}` : ""}
+        </span>
+        <button
+          type="button"
+          className="shrink-0 rounded hover:bg-destructive/20"
+          aria-label={`Remove one ${label} from ${cell.section} ${subSection}`}
+          onClick={() => onPlacementsChange?.(removePiece(placements, cell, lastSlot))}
+        >
+          <X className="size-2.5" />
+        </button>
+      </span>
+    );
+  };
+
+  // Float one chip per collated pouch group in the dived section, at the group's
+  // pouch-rect centroid (view coords). Stacked cells collate per row so a chip
+  // sits over its own row; side cells collate per type across the whole cell.
+  const rectByKey = new Map(pieces.map((pl) => [pl.key, pl] as const));
+  const floatingChips =
+    dived === null
+      ? []
+      : SUB_SECTIONS.flatMap((subSection) => {
+          const cell: Cell = { section: dived, subSection };
+          const cellPcs = cellPieces(placements, cell);
+          const isStacked = cellPcs.length >= 2 && cellArrangement(placements, cell) === "stacked";
+          const groups = new Map<string, { itemId: number; row: 0 | 1; slots: number[] }>();
+          for (const p of cellPcs) {
+            const row = (p.row === 1 ? 1 : 0) as 0 | 1;
+            const gkey = `${p.itemId}|${isStacked ? row : 0}`;
+            const g = groups.get(gkey);
+            if (g) g.slots.push(p.slot);
+            else groups.set(gkey, { itemId: p.itemId, row, slots: [p.slot] });
+          }
+          return [...groups.values()].flatMap((g) => {
+            const centers = g.slots.flatMap((slot) => {
+              const r = rectByKey.get(`${dived}/${subSection}/${slot}`);
+              return r ? [[r.x + r.w / 2, r.y + r.h / 2] as const] : [];
+            });
+            if (centers.length === 0) return [];
+            const cx = centers.reduce((s, c) => s + c[0], 0) / centers.length;
+            const cy = centers.reduce((s, c) => s + c[1], 0) / centers.length;
+            return [{ cell, subSection, itemId: g.itemId, row: g.row, slots: g.slots, isStacked, cx, cy }];
+          });
+        });
+
   return (
-    <div className={className} style={{ pointerEvents: "none" }}>
+    <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
       <svg
         viewBox={`0 0 ${XRAY_VIEW.width} ${XRAY_VIEW.height}`}
         xmlns="http://www.w3.org/2000/svg"
@@ -294,17 +376,28 @@ export function XrayPillow({
       {/* Dive editor overlay: three sub-section cells of the centered column */}
       {dived && editable && (
         <div className="absolute inset-0" style={{ pointerEvents: "none" }} data-xray-dive>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="absolute left-1 top-1 h-6 px-2 text-xs"
-            style={{ pointerEvents: "auto" }}
-            onClick={() => setDived(null)}
-          >
-            ← Back (Esc)
-          </Button>
-          {/* Overlay aligns to the dived column in place (svg fills the container at the same aspect ratio) */}
+          {/* Collated type labels floated over each pouch group in the dived
+              section (view coords → %; svg fills the container at that aspect). */}
+          {floatingChips.map((fc) => (
+            <div
+              key={`${fc.subSection}-${fc.itemId}-${fc.row}`}
+              className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: `${(fc.cx / XRAY_VIEW.width) * 100}%`,
+                top: `${(fc.cy / XRAY_VIEW.height) * 100}%`,
+                pointerEvents: "auto",
+              }}
+            >
+              {pieceChip(
+                fc.cell,
+                fc.subSection,
+                fc.itemId,
+                fc.slots,
+                fc.isStacked ? (fc.row === 0 ? 1 : 0) : undefined,
+              )}
+            </div>
+          ))}
+          {/* Per-cell footer controls, aligned to the dived column in place. */}
           <div
             className="absolute inset-y-0 flex flex-col"
             style={{
@@ -316,26 +409,40 @@ export function XrayPillow({
               const cell: Cell = { section: dived, subSection };
               const cellPcs = cellPieces(placements, cell);
               const full = cellPcs.length >= MAX_PIECES_PER_CELL;
+              const otherOpen = openSub !== null && openSub !== subSection;
+              // Stacked (top/bottom) once 2+ pieces and the cell has an explicit
+              // row split; else side-by-side. A lone piece always reads side.
+              const stacked = cellPcs.length >= 2 && cellArrangement(placements, cell) === "stacked";
               return (
                 <div
                   key={subSection}
                   className="flex flex-1 flex-col items-center justify-end gap-0.5 p-1"
                   style={{ pointerEvents: "auto" }}
                 >
-                  <div className="flex flex-wrap items-center justify-center gap-0.5">
-                    {cellPcs.map((p) => (
-                      <button
-                        key={p.slot}
-                        type="button"
-                        className="flex items-center gap-0.5 rounded border bg-background/85 px-1 text-[9px] leading-4 hover:bg-destructive/20"
-                        aria-label={`Remove ${pieceLabel(p.itemId)} from ${dived} ${subSection}`}
-                        onClick={() => onPlacementsChange?.(removePiece(placements, cell, p.slot))}
-                      >
-                        <span className="max-w-24 truncate">{pieceLabel(p.itemId)}</span>
-                        <X className="size-2.5 shrink-0" />
-                      </button>
-                    ))}
-                  </div>
+                  {cellPcs.length >= 2 && (
+                    <div
+                      className="flex overflow-hidden rounded border text-[9px] leading-4"
+                      role="group"
+                      aria-label={`${dived} ${subSection} arrangement`}
+                    >
+                      {(["side", "stacked"] as const).map((mode) => {
+                        const on = (mode === "stacked") === stacked;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            aria-pressed={on}
+                            className={`px-1.5 py-0.5 ${on ? "bg-primary text-primary-foreground" : "bg-background/85 hover:bg-accent"}`}
+                            onClick={() =>
+                              onPlacementsChange?.(setCellArrangement(placements, cell, mode))
+                            }
+                          >
+                            {mode === "side" ? "Side by side" : "Stacked"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   {full ? (
                     <span
                       className="rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground"
@@ -343,7 +450,7 @@ export function XrayPillow({
                     >
                       Cell full (max 5)
                     </span>
-                  ) : (
+                  ) : otherOpen ? null : (
                     <SunburstMenu
                       root={fillingTree}
                       display="text"
@@ -352,6 +459,7 @@ export function XrayPillow({
                       holeRadius={18}
                       centerIcon={Plus}
                       ariaLabel={`Add filling to ${dived} ${subSection}`}
+                      onOpenChange={(o) => setOpenSub(o ? subSection : null)}
                       onSelect={(leaf) => addToCell(cell, Number(leaf.id))}
                     />
                   )}

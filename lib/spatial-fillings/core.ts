@@ -6,12 +6,19 @@
 export type Section = "left" | "center" | "right";
 export type SubSection = "front" | "middle" | "back";
 
-/** One Mpillow piece: cell (Section × sub-section) + slot 1–5 + inventory item. */
+/**
+ * One Mpillow piece: cell (Section × sub-section) + slot 1–5 + inventory item.
+ * `row` is the x-ray stacking lane within the cell: 0 = top, 1 = bottom;
+ * undefined = auto layout (backward-compatible default). All pieces row 0 reads
+ * side-by-side, a split reads top/bottom, an arbitrary mix is per-piece control.
+ * Visual only — the pack list ignores it, so it stays out of the fingerprint.
+ */
 export type PillowPlacement = {
   section: Section;
   subSection: SubSection;
   slot: number;
   itemId: number;
+  row?: 0 | 1;
 };
 
 /** One Mbolster piece: single compartment, slot ≥ 1, no cap in v1. */
@@ -26,6 +33,7 @@ export type PillowPlacementRow = {
   sub_section: string;
   slot: number;
   item_id: number;
+  row_index?: number | null;
 };
 
 /** Snake_case API/DB row shape for bolster placements. */
@@ -50,6 +58,7 @@ export function rowsToPillowPlacements(rows: PillowPlacementRow[]): PillowPlacem
     subSection: r.sub_section as SubSection,
     slot: r.slot,
     itemId: r.item_id,
+    ...(r.row_index == null ? {} : { row: r.row_index as 0 | 1 }),
   }));
 }
 
@@ -60,6 +69,7 @@ export function pillowPlacementsToRows(placements: PillowPlacement[]): PillowPla
     sub_section: p.subSection,
     slot: p.slot,
     item_id: p.itemId,
+    row_index: p.row ?? null,
   }));
 }
 
@@ -103,6 +113,9 @@ export function validatePillowPlacements(
         ok: false,
         error: `Slot must be an integer 1–${MAX_PIECES_PER_CELL}, max ${MAX_PIECES_PER_CELL} pieces per cell (got ${p.slot})`,
       };
+    }
+    if (p.row !== undefined && p.row !== 0 && p.row !== 1) {
+      return { ok: false, error: `Row must be 0 (top) or 1 (bottom) (got ${p.row})` };
     }
     const slotKey = `${p.section}/${p.subSection}/${p.slot}`;
     if (seen.has(slotKey)) return { ok: false, error: `Duplicate placement at ${slotKey}` };

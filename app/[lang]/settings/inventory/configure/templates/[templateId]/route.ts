@@ -70,7 +70,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
   let placements: Array<{ item_id: number }> = []
   if (tpl.role === 'filling') {
     const table = tpl.kind === 'bolster' ? 'bolster_template_placements' : 'filling_template_placements'
-    const cols = tpl.kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id'
+    const cols = tpl.kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id,row_index'
     const { data: pl, error: pErr } = await admin.from(table).select(cols).eq('template_id', id).order('slot')
     if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
     placements = (pl ?? []) as unknown as Array<{ item_id: number }>
@@ -87,6 +87,7 @@ const PlacementRowSchema = z.object({
   sub_section: z.string().default(''),
   slot: z.number().int(),
   item_id: z.number().int().positive(),
+  row_index: z.number().int().min(0).max(1).nullable().optional(),
 })
 
 const UpdateSchema = z.object({
@@ -176,7 +177,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
     const payload = rows.map((r) =>
       isBolster
         ? { template_id: id, slot: r.slot, item_id: r.item_id }
-        : { template_id: id, section: r.section, sub_section: r.sub_section, slot: r.slot, item_id: r.item_id },
+        : { template_id: id, section: r.section, sub_section: r.sub_section, slot: r.slot, item_id: r.item_id, row_index: r.row_index ?? null },
     )
     const { error: delErr } = await admin.from(table).delete().eq('template_id', id)
     if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 })

@@ -35,6 +35,8 @@ export type SunburstMenuProps = {
   centerIcon?: React.ComponentType<{ className?: string }>;
   /** Accessible label for the menu / closed trigger (e.g. "Add filling to top"). */
   ariaLabel?: string;
+  /** Fired when the bloom opens/closes — lets a parent hide sibling menus. */
+  onOpenChange?: (open: boolean) => void;
   className?: string;
 };
 
@@ -64,9 +66,21 @@ export function SunburstMenu({
   holeRadius = size * 0.1375, // ~44 at 320; trigger size unless overridden
   centerIcon: CenterIcon = Menu,
   ariaLabel,
+  onOpenChange,
   className,
 }: SunburstMenuProps) {
   const [open, setOpen] = React.useState(false);
+  // Fire onOpenChange only when `open` flips — via a ref so a fresh inline
+  // callback each parent render doesn't retrigger it (that would thrash the
+  // parent's "hide siblings" state). The sync effect is declared first, so the
+  // ref holds the latest callback before the open effect reads it.
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
+  React.useEffect(() => {
+    onOpenChangeRef.current?.(open);
+  }, [open]);
   const [expansionPath, setExpansionPath] = React.useState<string[]>([]);
   const [hoverId, setHoverId] = React.useState<string | null>(null);
   const [focusId, setFocusId] = React.useState<string | null>(null);

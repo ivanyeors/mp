@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
       admin.from("bom_templates").select("id,name").eq("id", templateId).maybeSingle(),
       admin
         .from("filling_template_placements")
-        .select("section,sub_section,slot,item_id")
+        .select("section,sub_section,slot,item_id,row_index")
         .eq("template_id", templateId)
         .order("slot"),
     ]);

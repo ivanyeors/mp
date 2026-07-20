@@ -46,6 +46,7 @@ const AssignSchema = z.object({
         sub_section: z.string().default(""),
         slot: z.number().int(),
         item_id: z.number().int().positive(),
+        row_index: z.number().int().min(0).max(1).nullable().optional(),
       }),
     )
     .optional(),
@@ -238,7 +239,7 @@ export async function POST(
       ? rowsToBolsterPlacements(rows.map((r) => ({ slot: r.slot, item_id: r.item_id })))
       : rowsToPillowPlacements(rows as PillowPlacementRow[]);
 
-  let placementRows: Array<{ section: string; sub_section: string; slot: number; item_id: number }> | null =
+  let placementRows: Array<{ section: string; sub_section: string; slot: number; item_id: number; row_index?: number | null }> | null =
     input.placements ?? null;
   let tplPlacementRows: Array<PillowPlacementRow | BolsterPlacementRow> = [];
   if (placementRows) {
@@ -488,6 +489,7 @@ export async function POST(
               sub_section: r.sub_section,
               slot: r.slot,
               item_id: r.item_id,
+              row_index: r.row_index ?? null,
             },
       ),
     );

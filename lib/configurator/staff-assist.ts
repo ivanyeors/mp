@@ -159,6 +159,41 @@ export function removePiece(
   return placements.filter((p) => !(inCell(p, cell) && p.slot === slot));
 }
 
+// --- X-ray arrangement (side-by-side / top-bottom / mix within a cell) --------
+
+export type CellArrangement = "side" | "stacked";
+
+/** A cell reads "stacked" once any piece sits in row 1 (bottom); else "side". */
+export function cellArrangement(placements: PillowPlacement[], cell: Cell): CellArrangement {
+  return placements.some((p) => inCell(p, cell) && p.row === 1) ? "stacked" : "side";
+}
+
+/**
+ * Set a whole cell's arrangement: "side" clears `row` (one row, side-by-side);
+ * "stacked" splits the slot-ordered pieces into top (row 0) then bottom (row 1).
+ */
+export function setCellArrangement(
+  placements: PillowPlacement[],
+  cell: Cell,
+  mode: CellArrangement,
+): PillowPlacement[] {
+  const slots = cellPieces(placements, cell).map((p) => p.slot);
+  const half = Math.ceil(slots.length / 2);
+  const rowFor = (slot: number): 0 | 1 | undefined =>
+    mode === "side" ? undefined : slots.indexOf(slot) < half ? 0 : 1;
+  return placements.map((p) => (inCell(p, cell) ? { ...p, row: rowFor(p.slot) } : p));
+}
+
+/** Move one piece to top (0) or bottom (1) — the per-piece mix control. */
+export function setPieceRow(
+  placements: PillowPlacement[],
+  cell: Cell,
+  slot: number,
+  row: 0 | 1,
+): PillowPlacement[] {
+  return placements.map((p) => (inCell(p, cell) && p.slot === slot ? { ...p, row } : p));
+}
+
 // --- Mbolster session mix (single compartment, no cap in v1 — ADR 0008) ------
 
 /** Add one piece into the lowest free slot — no piece cap for Mbolster in v1. */

@@ -97,6 +97,18 @@ describe("validatePillowPlacements", () => {
       validatePillowPlacements([{ section: "left", subSection: "front", slot: 1.5, itemId: 1 }], categories).ok,
     ).toBe(false);
   });
+
+  it("accepts row 0/1 and rejects any other row", () => {
+    expect(
+      validatePillowPlacements([{ section: "left", subSection: "front", slot: 1, itemId: 1, row: 1 }], categories).ok,
+    ).toBe(true);
+    expect(
+      validatePillowPlacements(
+        [{ section: "left", subSection: "front", slot: 1, itemId: 1, row: 2 as 0 | 1 }],
+        categories,
+      ).ok,
+    ).toBe(false);
+  });
 });
 
 describe("validateBolsterPlacements", () => {
@@ -207,5 +219,11 @@ describe("fingerprintPlacements", () => {
     ];
     expect(fingerprintPlacements(a)).toBe(fingerprintPlacements(b));
     expect(fingerprintPlacements(a)).not.toBe(fingerprintPlacements([{ slot: 1, itemId: 1 }]));
+  });
+
+  it("ignores row arrangement — same mix, same fingerprint (visual only)", () => {
+    const flat = nineCells();
+    const arranged = nineCells().map((p, i) => ({ ...p, row: (i % 2) as 0 | 1 }));
+    expect(fingerprintPlacements(arranged)).toBe(fingerprintPlacements(flat));
   });
 });

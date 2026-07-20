@@ -95,6 +95,39 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     const large = layout.find((p) => p.itemId === 9)!;
     expect(large.w).toBeGreaterThan(small.w);
   });
+
+  it("explicit rows stack top over bottom, each spanning ~full width", () => {
+    const layout = layoutPlacements([
+      { ...piece(1), row: 0 },
+      { ...piece(2), row: 1 },
+    ]);
+    const top = layout.find((p) => p.slot === 1)!;
+    const bottom = layout.find((p) => p.slot === 2)!;
+    expect(top.y).toBeLessThan(bottom.y); // row 0 above row 1
+    const frame = cellFrame("center", "middle");
+    expect(top.w).toBeGreaterThan(frame.w * 0.8);
+    expect(bottom.w).toBeGreaterThan(frame.w * 0.8);
+    disjoint(layout);
+  });
+
+  it("all row 0 lays side-by-side: one y-band, split width", () => {
+    const layout = layoutPlacements([
+      { ...piece(1), row: 0 },
+      { ...piece(2), row: 0 },
+    ]);
+    expect(layout[0].y).toBe(layout[1].y); // single row
+    const frame = cellFrame("center", "middle");
+    expect(layout[0].w).toBeLessThan(frame.w * 0.7); // shared width
+    disjoint(layout);
+  });
+
+  it("row: undefined is identical to omitting row (auto fallback unchanged)", () => {
+    const withUndef = layoutPlacements([
+      { ...piece(1), row: undefined },
+      { ...piece(2), row: undefined },
+    ]);
+    expect(withUndef).toEqual(layoutPlacements([piece(1), piece(2)]));
+  });
 });
 
 const bolsterPiece = (slot: number, itemId = 1): BolsterPlacement => ({ slot, itemId });

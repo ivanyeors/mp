@@ -46,22 +46,16 @@ export type PieceRect = { x: number; y: number; w: number; h: number };
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 /**
- * Pack pieces into a frame like pouches stuffed into a compartment: the space
- * is partitioned into 1–2 rows of tracts (widths weighted by each piece's item
- * scale), so pouches press flat against their neighbors across a thin seam and
- * a bigger pouch shoves the row over. Outlines stay distinct (guardrail 2).
+ * Pack explicit rows of tracts: each row splits the frame width by weight so
+ * pouches press flat against their neighbors across a thin seam and a bigger
+ * pouch shoves the row over. Rects come back flattened in row-then-order.
  * ponytail: space partition stands in for collision physics — deterministic,
  * no solver; revisit only if art direction demands organic jostling.
  */
-function packPieces(frame: CellFrame, weights: number[], maxRows = 2): PieceRect[] {
-  const n = weights.length;
-  const fit = (r: number) => Math.min(frame.h / r, frame.w / Math.ceil(n / r));
-  const rows = maxRows > 1 && n > 1 && fit(2) > fit(1) ? 2 : 1;
-  const perRow = Math.ceil(n / rows);
-  const rowH = frame.h / rows;
+function packRows(frame: CellFrame, rowsOfWeights: number[][]): PieceRect[] {
+  const rowH = frame.h / rowsOfWeights.length;
   const out: PieceRect[] = [];
-  for (let row = 0; row < rows; row++) {
-    const rowWeights = weights.slice(row * perRow, (row + 1) * perRow);
+  rowsOfWeights.forEach((rowWeights, row) => {
     const total = rowWeights.reduce((a, b) => a + b, 0);
     let x = frame.x;
     for (const weight of rowWeights) {
@@ -76,8 +70,23 @@ function packPieces(frame: CellFrame, weights: number[], maxRows = 2): PieceRect
       });
       x += tract;
     }
-  }
+  });
   return out;
+}
+
+/**
+ * Auto-pack: partition the space into 1–2 rows (whichever fits the pieces
+ * bigger) and delegate to packRows. Used when a cell has no explicit `row`
+ * arrangement (backward-compatible default; also the guest default).
+ */
+function packPieces(frame: CellFrame, weights: number[], maxRows = 2): PieceRect[] {
+  const n = weights.length;
+  const fit = (r: number) => Math.min(frame.h / r, frame.w / Math.ceil(n / r));
+  const rows = maxRows > 1 && n > 1 && fit(2) > fit(1) ? 2 : 1;
+  const perRow = Math.ceil(n / rows);
+  const groups: number[][] = [];
+  for (let row = 0; row < rows; row++) groups.push(weights.slice(row * perRow, (row + 1) * perRow));
+  return packRows(frame, groups);
 }
 
 export type PieceLayout = {
@@ -98,17 +107,26 @@ export function layoutPlacements(
   itemScales?: ReadonlyMap<number, number>,
 ): PieceLayout[] {
   const out: PieceLayout[] = [];
+  const weight = (p: PillowPlacement) => itemScales?.get(p.itemId) ?? 1;
   for (const section of SECTIONS) {
     for (const subSection of SUB_SECTIONS) {
       const pieces = placements
         .filter((p) => p.section === section && p.subSection === subSection)
         .sort((a, b) => a.slot - b.slot);
       if (pieces.length === 0) continue;
-      const rects = packPieces(
-        cellFrame(section, subSection),
-        pieces.map((p) => itemScales?.get(p.itemId) ?? 1),
-      );
-      pieces.forEach((piece, idx) => {
+      const frame = cellFrame(section, subSection);
+      // Explicit row set → top (row 0/undefined) over bottom (row 1); else auto.
+      let ordered = pieces;
+      let rects: PieceRect[];
+      if (pieces.some((p) => p.row !== undefined)) {
+        const groups = [pieces.filter((p) => (p.row ?? 0) === 0), pieces.filter((p) => p.row === 1)]
+          .filter((g) => g.length > 0);
+        ordered = groups.flat();
+        rects = packRows(frame, groups.map((g) => g.map(weight)));
+      } else {
+        rects = packPieces(frame, pieces.map(weight));
+      }
+      ordered.forEach((piece, idx) => {
         out.push({
           key: `${section}/${subSection}/${piece.slot}`,
           section,

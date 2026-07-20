@@ -332,7 +332,7 @@ async function handleRecommend(req: Request) {
     // preview can render the recommended template in the read-only x-ray.
     const { data: tplPlacements } = await admin
       .from("filling_template_placements")
-      .select("template_id, section, sub_section, slot, item_id")
+      .select("template_id, section, sub_section, slot, item_id, row_index")
       .in("template_id", templates.map((t) => t.id))
       .order("slot");
     const { data: colorOverrides } = await admin
