@@ -6,17 +6,19 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
+  addBolsterPiece,
   addPiece,
   cellPieces,
   confirmGate,
   PILLOW_CELLS,
   recheckSelectionsForSize,
+  removeBolsterPiece,
   removePiece,
   sessionTemplateId,
   type Cell,
   type SizeTier,
 } from "./staff-assist";
-import type { PillowPlacement } from "@/lib/spatial-fillings";
+import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings";
 
 // --- Confirm-gate state machine: apply only via request → confirm ---
 const m: SizeTier = { size: "M", tier: "premium" };
@@ -98,6 +100,15 @@ assert.ok(readd.ok, "re-add after remove fits");
 const diverged = readd.placements;
 assert.ok(cellPieces(diverged, cell).some((p) => p.slot === 3 && p.itemId === 2), "re-add reuses lowest free slot");
 
+// --- Mbolster session mix: single compartment, no cap (ADR 0008) ------------
+let bolsterMix: BolsterPlacement[] = [];
+for (let i = 0; i < 7; i++) bolsterMix = addBolsterPiece(bolsterMix, 1);
+assert.equal(bolsterMix.length, 7, "no piece cap on the bolster");
+assert.deepEqual(bolsterMix.map((p) => p.slot), [1, 2, 3, 4, 5, 6, 7], "slots fill in order");
+bolsterMix = removeBolsterPiece(bolsterMix, 3);
+assert.equal(bolsterMix.length, 6, "remove drops one bolster piece");
+assert.equal(addBolsterPiece(bolsterMix, 2).find((p) => p.itemId === 2)?.slot, 3, "re-add reuses lowest free slot");
+
 // --- sessionFillingTemplateId: kept on exact match, cleared on divergence ---
 const tpl = { id: 7, placements: mix };
 assert.equal(sessionTemplateId(tpl, [...mix].reverse()), 7, "order-insensitive exact match keeps id");
@@ -126,6 +137,12 @@ assert.doesNotMatch(client, /fetch\(["'`]\/api\/mp-config\/assist/, "client make
 const panel = readFileSync("components/configurator/staff-assist-panel.tsx", "utf8");
 assert.match(panel, /\/api\/mp-config\/assist\?size=/, "panel loads templates/items from the staff-gated endpoint");
 assert.doesNotMatch(panel, /save.{0,10}template|create.{0,10}template|promote/i, "no template create / save-as-template control in assist");
+assert.doesNotMatch(panel, /Add filling/, "no list editor in the panel — per-piece edits live on the x-ray");
+assert.doesNotMatch(
+  readFileSync("components/configurator/staff-assist-bolster-panel.tsx", "utf8"),
+  /Add filling|BolsterCompartmentList/,
+  "bolster panel is picker-only — per-piece edits live on the x-ray",
+);
 
 for (const route of [
   "app/api/mp-config/assist/route.ts",

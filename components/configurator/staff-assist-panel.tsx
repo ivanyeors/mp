@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,37 +20,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  addPiece,
-  cellPieces,
   confirmGate,
-  PILLOW_CELLS,
   PILLOW_SIZES,
   PILLOW_TIERS,
-  removePiece,
   type ConfirmGateState,
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
 import {
-  MAX_PIECES_PER_CELL,
   rowsToPillowPlacements,
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
-export type FillingItem = { id: number; name: string; subtype: string | null };
+export type FillingItem = { id: number; name: string; subtype: string | null; size: string | null };
 type TemplateRow = { id: number; name: string };
 
 /**
  * Staff assist mode panel (slice 04, Staff-only): size×tier control with a
- * confirm gate, size-scoped Filling Template picker, and the v1 per-cell list
- * editor (x-ray replaces it in slices 07/08). No template create/save-as here —
- * catalog stays curated in the Admin Panel.
+ * confirm gate and a size-scoped Filling Template picker. Per-piece filling
+ * edits live on the x-ray itself (slices 07/08) — no list editor here. No
+ * template create/save-as — catalog stays curated in the Admin Panel.
  */
 export function StaffAssistPanel({
   current,
-  placements,
   onPlacementsChange,
   loadedTemplate,
   onLoadTemplate,
@@ -61,7 +54,6 @@ export function StaffAssistPanel({
   onColorOverridesChange,
 }: {
   current: SizeTier;
-  placements: PillowPlacement[];
   onPlacementsChange: (next: PillowPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
@@ -76,7 +68,6 @@ export function StaffAssistPanel({
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
-  const [items, setItems] = useState<FillingItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,7 +81,6 @@ export function StaffAssistPanel({
         }) => {
           if (cancelled) return;
           setTemplates(d.templates ?? []);
-          setItems(d.items ?? []);
           onItemsChange?.(d.items ?? []);
           onColorOverridesChange?.(d.colorOverrides ?? []);
         },
@@ -98,7 +88,6 @@ export function StaffAssistPanel({
       .catch(() => {
         if (!cancelled) {
           setTemplates([]);
-          setItems([]);
           onItemsChange?.([]);
           onColorOverridesChange?.([]);
         }
@@ -108,12 +97,6 @@ export function StaffAssistPanel({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
   }, [current.size]);
-
-  const itemName = (id: number) => {
-    const item = items.find((i) => i.id === id);
-    if (!item) return `Item #${id}`;
-    return item.subtype ? `${item.name} (${item.subtype})` : item.name;
-  };
 
   const request = (next: SizeTier) => {
     setGate((g) => confirmGate(g, { type: "request", current, next }).state);
@@ -142,15 +125,6 @@ export function StaffAssistPanel({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load template");
     }
-  };
-
-  const addToCell = (cell: (typeof PILLOW_CELLS)[number], itemId: number) => {
-    const result = addPiece(placements, cell, itemId);
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
-    onPlacementsChange(result.placements);
   };
 
   return (
@@ -198,80 +172,26 @@ export function StaffAssistPanel({
         </Select>
       </div>
 
-      {/* Filling Template picker (active, size-scoped) */}
-      <div className="mb-3">
-        <Select
-          value={loadedTemplate ? String(loadedTemplate.id) : ""}
-          onValueChange={(v) => void loadTemplate(Number(v))}
-        >
-          <SelectTrigger aria-label="Filling Template" className="w-full min-w-0">
-            <SelectValue
-              placeholder={
-                templates.length === 0 ? "No templates for this size" : "Load Filling Template…"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {templates.map((t) => (
-              <SelectItem key={t.id} value={String(t.id)}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* v1 per-cell list editor (Section × sub-section; x-ray replaces in 07/08) */}
-      <div className="max-h-[38vh] space-y-2 overflow-y-auto pr-1">
-        {PILLOW_CELLS.map((cell) => {
-          const pieces = cellPieces(placements, cell);
-          const full = pieces.length >= MAX_PIECES_PER_CELL;
-          return (
-            <div key={`${cell.section}-${cell.subSection}`} className="rounded-lg border p-2">
-              <p className="mb-1 text-xs font-medium capitalize text-muted-foreground">
-                {cell.section} · {cell.subSection}
-                {full ? " — max 5 pieces" : ""}
-              </p>
-              {pieces.length > 0 && (
-                <ul className="mb-1 space-y-1">
-                  {pieces.map((p) => (
-                    <li key={p.slot} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="truncate">{itemName(p.itemId)}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-5 shrink-0"
-                        aria-label={`Remove ${itemName(p.itemId)}`}
-                        onClick={() => onPlacementsChange(removePiece(placements, cell, p.slot))}
-                      >
-                        <X className="size-3" />
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Select value="" onValueChange={(v) => addToCell(cell, Number(v))}>
-                <SelectTrigger
-                  size="sm"
-                  className="w-full min-w-0"
-                  disabled={full}
-                  aria-label={`Add filling to ${cell.section} ${cell.subSection}`}
-                >
-                  <SelectValue placeholder={full ? "Cell full (max 5)" : "Add filling…"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {items.map((i) => (
-                    <SelectItem key={i.id} value={String(i.id)}>
-                      {i.subtype ? `${i.name} (${i.subtype})` : i.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          );
-        })}
-      </div>
+      {/* Filling Template picker (active, size-scoped); edits happen on the x-ray */}
+      <Select
+        value={loadedTemplate ? String(loadedTemplate.id) : ""}
+        onValueChange={(v) => void loadTemplate(Number(v))}
+      >
+        <SelectTrigger aria-label="Filling Template" className="w-full min-w-0">
+          <SelectValue
+            placeholder={
+              templates.length === 0 ? "No templates for this size" : "Load Filling Template…"
+            }
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {templates.map((t) => (
+            <SelectItem key={t.id} value={String(t.id)}>
+              {t.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {/* Confirm gate: without confirm, placements stay untouched */}
       <Dialog open={gate.pending !== null} onOpenChange={(open) => !open && void resolveGate("cancel")}>

@@ -24,6 +24,8 @@ import type {
   ComponentOption,
   UpsellItem,
 } from "@/lib/types/customization";
+import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
+import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
 // ─── Shared Types ────────────────────────────────────────────
 
@@ -60,13 +62,18 @@ export interface RecommendationResponseData {
     id: number;
     name: string;
     lines: { item_id: number; subtype: string; quantity: number }[];
+    /** RE slice 07: spatial rows for the read-only x-ray; absent on legacy-flat templates. */
+    placements?: PillowPlacementRow[];
   }[];
   available_fillings: {
     item_id: number;
     subtype: string;
     name: string;
+    size?: string | null;
     on_hand: number;
   }[];
+  /** RE slice 07: filling color overrides so guest x-ray matches staff assist. */
+  color_overrides?: ColorOverrideRow[];
   /** Buildable units for the recommended composed sellable (size×tier or bolster length). */
   composed_buildable?: number;
   buildable_counts?: Record<string, number>;

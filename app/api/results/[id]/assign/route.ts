@@ -8,8 +8,12 @@ import { transitionResult } from "@/lib/result-lifecycle";
 import { decideFillingAssign } from "@/lib/results/filling-assign";
 import {
   derivePackList,
+  rowsToBolsterPlacements,
   rowsToPillowPlacements,
+  validateBolsterPlacements,
   validatePillowPlacements,
+  type AnyPlacement,
+  type BolsterPlacementRow,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
@@ -34,7 +38,7 @@ const AssignSchema = z.object({
   assignedTier: z.enum(["basic", "premium"]).optional(),
   assignedLength: z.enum(BOLSTER_LENGTHS).optional(),
   fillingTemplateId: z.number().int().positive(),
-  /** Spatial Result snapshot (pillow only; bolster is slice 13). Shape gate — lib validates. */
+  /** Spatial Result snapshot (pillow cells or bolster slots). Shape gate — lib validates per kind. */
   placements: z
     .array(
       z.object({
@@ -224,17 +228,26 @@ export async function POST(
     );
   }
 
-  // Spatial snapshot rows (pillow only): validate cells/slots/items via the lib.
-  let placementRows: PillowPlacementRow[] | null =
-    productType === "pillow" && input.placements ? input.placements : null;
-  let tplPlacementRows: PillowPlacementRow[] = [];
+  // Spatial snapshot rows: validate per product kind via the lib. Bolster rows
+  // carry only slot/item_id and never validate against the pillow enums.
+  const isBolster = productType === "bolster";
+  const toPlacements = (
+    rows: Array<{ section?: string; sub_section?: string; slot: number; item_id: number }>,
+  ): AnyPlacement[] =>
+    isBolster
+      ? rowsToBolsterPlacements(rows.map((r) => ({ slot: r.slot, item_id: r.item_id })))
+      : rowsToPillowPlacements(rows as PillowPlacementRow[]);
+
+  let placementRows: Array<{ section: string; sub_section: string; slot: number; item_id: number }> | null =
+    input.placements ?? null;
+  let tplPlacementRows: Array<PillowPlacementRow | BolsterPlacementRow> = [];
   if (placementRows) {
     const { data: tplPl, error: tplPlErr } = await admin
-      .from("filling_template_placements")
-      .select("section, sub_section, slot, item_id")
+      .from(isBolster ? "bolster_template_placements" : "filling_template_placements")
+      .select(isBolster ? "slot, item_id" : "section, sub_section, slot, item_id")
       .eq("template_id", input.fillingTemplateId);
     if (tplPlErr) return NextResponse.json({ error: tplPlErr.message }, { status: 500 });
-    tplPlacementRows = (tplPl ?? []) as PillowPlacementRow[];
+    tplPlacementRows = (tplPl ?? []) as unknown as Array<PillowPlacementRow | BolsterPlacementRow>;
 
     if (placementRows.length === 0) {
       if (tplPlacementRows.length > 0) {
@@ -248,7 +261,9 @@ export async function POST(
     } else {
       const cats = await lookupItemCategories(admin, placementRows.map((r) => r.item_id));
       if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 });
-      const valid = validatePillowPlacements(rowsToPillowPlacements(placementRows), cats.byId);
+      const valid = isBolster
+        ? validateBolsterPlacements(rowsToBolsterPlacements(placementRows), cats.byId)
+        : validatePillowPlacements(rowsToPillowPlacements(placementRows), cats.byId);
       if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
     }
   }
@@ -432,8 +447,8 @@ export async function POST(
   if (placementRows) {
     const decision = decideFillingAssign({
       confirmedTemplateId: input.fillingTemplateId,
-      saved: rowsToPillowPlacements(placementRows),
-      templatePlacements: rowsToPillowPlacements(tplPlacementRows),
+      saved: toPlacements(placementRows),
+      templatePlacements: toPlacements(tplPlacementRows),
     });
     persistedTemplateId = decision.fillingTemplateId;
     fingerprint = decision.fillingFingerprint;
@@ -457,21 +472,24 @@ export async function POST(
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
 
-  // Result snapshot: replace-insert (first write for guest Results).
+  // Result snapshot: replace-insert (first write for guest Results). Bolster
+  // snapshots land in their own table (own schema).
   if (placementRows) {
-    const { error: delErr } = await admin
-      .from("result_filling_placements")
-      .delete()
-      .eq("result_id", id);
+    const snapshotTable = isBolster ? "result_bolster_filling_placements" : "result_filling_placements";
+    const { error: delErr } = await admin.from(snapshotTable).delete().eq("result_id", id);
     if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
-    const { error: insErr } = await admin.from("result_filling_placements").insert(
-      placementRows.map((r) => ({
-        result_id: id,
-        section: r.section,
-        sub_section: r.sub_section,
-        slot: r.slot,
-        item_id: r.item_id,
-      })),
+    const { error: insErr } = await admin.from(snapshotTable).insert(
+      placementRows.map((r) =>
+        isBolster
+          ? { result_id: id, slot: r.slot, item_id: r.item_id }
+          : {
+              result_id: id,
+              section: r.section,
+              sub_section: r.sub_section,
+              slot: r.slot,
+              item_id: r.item_id,
+            },
+      ),
     );
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
   }

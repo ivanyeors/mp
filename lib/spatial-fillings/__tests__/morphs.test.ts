@@ -6,13 +6,14 @@ import {
   prepareMorph,
   ringSelfIntersects,
   SHAPE_MORPHS,
-  type MorphKey,
 } from "@/lib/spatial-fillings/morphs";
 import type { ShapeId } from "@/lib/spatial-fillings/visuals";
 
 const IDS = Object.keys(FILLING_SHAPE_PATHS) as ShapeId[];
 
 describe("SHAPE_MORPHS pair table", () => {
+  // ponytail: single pouch shape today → empty pair table; the table contract
+  // and the interpolation machinery stay covered so designer shapes drop in.
   it("prepares every ordered pair of distinct shapes at load", () => {
     const expected = IDS.flatMap((a) => IDS.filter((b) => b !== a).map((b) => `${a}->${b}`));
     expect([...SHAPE_MORPHS.keys()].sort()).toEqual(expected.sort());
@@ -24,29 +25,23 @@ describe("SHAPE_MORPHS pair table", () => {
     }
   });
 
-  it("designer shape pairs morph (no crossfade fallback needed)", () => {
-    for (const [key, morph] of SHAPE_MORPHS) {
-      expect(morph.crossfade, `${key} should have a prepared interpolator`).toBe(false);
-    }
-  });
-
-  it("reverse morph is the forward interpolator at 1 − t (deterministic)", () => {
-    const fwd = SHAPE_MORPHS.get(`${IDS[0]}->${IDS[1]}` as MorphKey)!;
-    const rev = SHAPE_MORPHS.get(`${IDS[1]}->${IDS[0]}` as MorphKey)!;
-    // exact binary fractions: 1 − 0.75 === 0.25 with no float drift
-    expect(fwd.interpolator!(0.25)).toBe(rev.interpolator!(0.75));
-    expect(fwd.interpolator!(0.25)).toBe(fwd.interpolator!(0.25));
+  it("prepared morphs are deterministic frame-for-frame", () => {
+    const morph = prepareMorph(FILLING_SHAPE_PATHS.pouch, "M20 0 L40 20 L20 40 L0 20 Z");
+    expect(morph.crossfade).toBe(false);
+    expect(morph.interpolator!(0.25)).toBe(morph.interpolator!(0.25));
   });
 });
 
 describe("getShapeMorph", () => {
   it("returns null for an unchanged shape (nothing to animate)", () => {
-    expect(getShapeMorph("pouch3d", "pouch3d")).toBeNull();
+    expect(getShapeMorph("pouch", "pouch")).toBeNull();
   });
 
-  it("returns the prepared entry for a swap", () => {
-    const morph = getShapeMorph("pouch3d", "pouch6d");
-    expect(morph).toBe(SHAPE_MORPHS.get("pouch3d->pouch6d"));
+  it("falls back to crossfade for a pair missing from the table", () => {
+    expect(getShapeMorph("pouch", "future-shape" as ShapeId)).toEqual({
+      interpolator: null,
+      crossfade: true,
+    });
   });
 });
 
@@ -58,7 +53,7 @@ describe("prepareMorph degeneracy fallback", () => {
   });
 
   it("unparseable path falls back to crossfade", () => {
-    const morph = prepareMorph("not a path", FILLING_SHAPE_PATHS.pouch3d);
+    const morph = prepareMorph("not a path", FILLING_SHAPE_PATHS.pouch);
     expect(morph).toEqual({ interpolator: null, crossfade: true });
   });
 

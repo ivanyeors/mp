@@ -1,0 +1,27 @@
+/* Strip xyflow default chrome so Shell owns node look; colorMode still themes controls/minimap. */
+.rules-engine-flow.react-flow .react-flow__node {
+  background: transparent;
+  border: none;
+  padding: 0;
+  width: auto;
+  border-radius: 0;
+  box-shadow: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.rules-engine-flow.react-flow .react-flow__node.dragging {
+  cursor: grabbing;
+}
+
+/* Node editor / test panel / palette — pointer on anything clickable */
+.rules-engine-workbench select:not(:disabled),
+.rules-engine-workbench button:not(:disabled) {
+  cursor: pointer;
+}
+
+.rules-engine-workbench select:disabled,
+.rules-engine-workbench button:disabled {
+  cursor: not-allowed;
+}

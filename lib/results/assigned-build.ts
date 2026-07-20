@@ -9,7 +9,11 @@ import {
   loadComposedSellable,
   type BolsterLength,
 } from "@/lib/results/composed-sellable";
-import { derivePackList, type PillowPlacementRow } from "@/lib/spatial-fillings";
+import {
+  derivePackList,
+  type BolsterPlacementRow,
+  type PillowPlacementRow,
+} from "@/lib/spatial-fillings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -37,8 +41,9 @@ export type AssignedBuildOk = {
   pricing: PriceResultOutput;
   shortages: ReturnType<typeof findStockShortages>;
   nameByItem: Map<number, string>;
-  /** Spatial Result snapshot rows (empty when the Result predates the spatial model). */
-  fillingPlacements: PillowPlacementRow[];
+  /** Spatial Result snapshot rows (empty when the Result predates the spatial model).
+   * Pillow cell rows or bolster slot rows, per product type. */
+  fillingPlacements: Array<PillowPlacementRow | BolsterPlacementRow>;
 };
 
 export type AssignedBuildErr = { ok: false; error: string };
@@ -54,14 +59,18 @@ export async function loadAssignedBuild(
   const productType = (row.product_type as "pillow" | "bolster" | null) ?? "pillow";
 
   // Fillings: the Result's spatial snapshot is the truth when present (ADR 0008);
-  // the assigned template's flat lines are the legacy fallback.
+  // the assigned template's flat lines are the legacy fallback. Bolster snapshots
+  // live in their own table (own schema — slot rows only).
+  const isBolster = productType === "bolster";
   const { data: snapRows, error: snapErr } = await admin
-    .from("result_filling_placements")
-    .select("section, sub_section, slot, item_id")
+    .from(isBolster ? "result_bolster_filling_placements" : "result_filling_placements")
+    .select(isBolster ? "slot, item_id" : "section, sub_section, slot, item_id")
     .eq("result_id", row.id)
     .order("slot");
   if (snapErr) return { ok: false, error: snapErr.message };
-  const fillingPlacements = (snapRows ?? []) as PillowPlacementRow[];
+  const fillingPlacements = (snapRows ?? []) as unknown as Array<
+    PillowPlacementRow | BolsterPlacementRow
+  >;
 
   if (!row.filling_template_id && fillingPlacements.length === 0) {
     return { ok: false, error: "Result has no Filling Template" };

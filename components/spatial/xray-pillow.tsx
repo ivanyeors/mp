@@ -11,7 +11,6 @@
  */
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
@@ -37,17 +36,39 @@ import {
   type PillowPlacement,
   type Section,
 } from "@/lib/spatial-fillings/core";
+import {
+  conformPouchPath,
+  makeRegion,
+  type ConformRegion,
+} from "@/lib/spatial-fillings/conform";
 import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
-import { fillingVisual, type FillingVisual } from "@/lib/spatial-fillings/visuals";
-import { COL_X, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
+import { fillingVisual, sizeScale, type FillingVisual } from "@/lib/spatial-fillings/visuals";
+import { COL_X, GAP, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
 import {
   CELL_CLIP_PATHS,
+  CELL_POLYGONS,
   FILLING_SHAPE_PATHS,
   SECTION_HIT_PATHS,
+  SHELL_SEAM,
   SILHOUETTE_PATH,
+  SILHOUETTE_POLYGON,
   XRAY_VIEW,
   type CellKey,
 } from "./xray-assets";
+
+// Shell regions pouches deform against: the silhouette (wide seam) and each
+// cell's wavy boundary (thin seam, matching the pouch-to-pouch gap).
+const SIL_REGION = makeRegion(SILHOUETTE_POLYGON, SHELL_SEAM);
+const CELL_REGIONS = Object.fromEntries(
+  (Object.entries(CELL_POLYGONS) as Array<[CellKey, typeof SILHOUETTE_POLYGON]>).map(
+    ([key, poly]) => [key, makeRegion(poly, GAP)],
+  ),
+) as Record<CellKey, ConformRegion>;
+
+/** item id → pouch render scale, from each Item's size. */
+export function itemScaleMap(itemSizes: ReadonlyMap<number, string | null>): Map<number, number> {
+  return new Map([...itemSizes].map(([id, size]) => [id, sizeScale(size)]));
+}
 
 // useLayoutEffect starts morphs before paint (no first-frame flash); SSR no-ops.
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -56,18 +77,23 @@ const MORPH_MS = 320;
 const easeOut = (t: number) => t * (2 - t);
 
 /**
- * One filling piece. When its shape swaps (item type change in the same slot),
- * the prepared flubber interpolator animates path `d`; degenerate pairs
- * crossfade an old-shape ghost instead — attribute writes only, no re-layout.
+ * One filling piece; `d` is its conform-deformed outline in view coordinates
+ * (see conform.ts), so its border follows the shell curve with no sharp cut
+ * corners. When its shape swaps (item type change in the same slot), the
+ * prepared flubber interpolator animates path `d`; degenerate pairs crossfade
+ * an old-shape ghost instead — attribute writes only, no re-layout.
+ * ponytail: swap morphs interpolate the normalized asset shapes, not the
+ * conformed outline — rebase them through conformPouchPath when a second
+ * ShapeId exists; today there is only the pouch, so no swap ever runs.
  */
-function MorphPiece({
+export function MorphPiece({
   subtype,
   visual,
-  transform,
+  d,
 }: {
   subtype: string | null;
   visual: FillingVisual;
-  transform: string;
+  d: string;
 }) {
   const shape = visual.shape;
   const ref = useRef<SVGPathElement>(null);
@@ -114,7 +140,6 @@ function MorphPiece({
 
   const paint = {
     "data-item-subtype": subtype ?? "",
-    transform,
     fill: `var(${visual.cssVar}, ${visual.defaultColor})`,
     fillOpacity: 0.9,
     stroke: "rgba(255,255,255,0.9)",
@@ -124,8 +149,8 @@ function MorphPiece({
 
   return (
     <>
-      {ghost && <path ref={ghostRef} d={FILLING_SHAPE_PATHS[ghost]} {...paint} />}
-      <path ref={ref} d={FILLING_SHAPE_PATHS[shape]} {...paint} />
+      {ghost && <path ref={ghostRef} d={d} {...paint} />}
+      <path ref={ref} d={d} {...paint} />
     </>
   );
 }
@@ -133,6 +158,7 @@ function MorphPiece({
 export function XrayPillow({
   placements,
   itemSubtypes,
+  itemSizes,
   items,
   onPlacementsChange,
   className,
@@ -140,6 +166,8 @@ export function XrayPillow({
   placements: PillowPlacement[];
   /** item id → subtype (resolves fluid shape + color). */
   itemSubtypes: ReadonlyMap<number, string | null>;
+  /** item id → Item size (scales the pouch); absent ids render at 1. */
+  itemSizes?: ReadonlyMap<number, string | null>;
   /** Inventory filling Items for the dive editor picker; read-only when omitted. */
   items?: FillingItem[];
   /** Same lifted session-mix state the list editor writes (never forked). */
@@ -161,15 +189,13 @@ export function XrayPillow({
     return () => window.removeEventListener("keydown", onKey);
   }, [dived]);
 
-  const pieces = layoutPlacements(placements);
+  const pieces = layoutPlacements(placements, itemSizes ? itemScaleMap(itemSizes) : undefined);
   const cellsInUse = [...new Set(pieces.map((p) => `${p.section}/${p.subSection}` as CellKey))];
   const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
-  // Dive = pan the dived Section's column to center (transform-only animation).
-  // ponytail: scale stays 1 — Sections are full-height, so any zoom-in crops
-  // sub-section cells; revisit if the designer export adds vertical margin.
+  // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
+  // the editor overlay aligns to the dived column in place.
   const divedIdx = dived ? SECTIONS.indexOf(dived) : -1;
-  const diveX = dived ? XRAY_VIEW.width / 2 - (COL_X[divedIdx] + COL_X[divedIdx + 1]) / 2 : 0;
 
   const addToCell = (cell: Cell, itemId: number) => {
     const result = addPiece(placements, cell, itemId);
@@ -206,26 +232,25 @@ export function XrayPillow({
           ))}
         </defs>
 
-        <motion.g animate={{ x: diveX }} transition={{ duration: 0.35, ease: "easeInOut" }}>
+        <g>
           {/* x-ray art direction: shell interior darkens so fillings read inside */}
           <g clipPath={`url(#${clipId("sil")})`}>
             <path d={SILHOUETTE_PATH} fill="rgba(15,23,42,0.5)" />
 
-            {/* nested clipping: silhouette ∩ cell — pieces conform, never box-cropped */}
+            {/* nested clipping: silhouette ∩ cell — belt only; the pouch
+                geometry itself deforms to stay a seam inside both regions */}
             {cellsInUse.map((key) => (
               <g key={key} clipPath={`url(#${clipId(key)})`}>
                 {pieces
                   .filter((p) => `${p.section}/${p.subSection}` === key)
                   .map((p) => {
                     const subtype = itemSubtypes.get(p.itemId) ?? null;
-                    const visual = fillingVisual(subtype);
-                    const s = p.size / 100;
                     return (
                       <MorphPiece
                         key={p.key}
                         subtype={subtype}
-                        visual={visual}
-                        transform={`translate(${p.cx - 50 * s} ${p.cy - 50 * s}) scale(${s})`}
+                        visual={fillingVisual(subtype)}
+                        d={conformPouchPath(p, [SIL_REGION, CELL_REGIONS[key]])}
                       />
                     );
                   })}
@@ -266,7 +291,7 @@ export function XrayPillow({
               onClick={editable ? () => setDived(section) : undefined}
             />
           ))}
-        </motion.g>
+        </g>
       </svg>
 
       {/* Dive editor overlay: three sub-section cells of the centered column */}
@@ -282,8 +307,14 @@ export function XrayPillow({
           >
             ← Back (Esc)
           </Button>
-          {/* Column is panned to center at scale 1, so the middle third + equal-third rows align with the cells */}
-          <div className="absolute inset-y-0 left-1/3 flex w-1/3 flex-col">
+          {/* Overlay aligns to the dived column in place (svg fills the container at the same aspect ratio) */}
+          <div
+            className="absolute inset-y-0 flex flex-col"
+            style={{
+              left: `${(COL_X[divedIdx] / XRAY_VIEW.width) * 100}%`,
+              width: `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
+            }}
+          >
             {SUB_SECTIONS.map((subSection) => {
               const cell: Cell = { section: dived, subSection };
               const cellPcs = cellPieces(placements, cell);

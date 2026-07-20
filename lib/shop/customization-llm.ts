@@ -23,6 +23,8 @@ interface FillingItem {
   item_id: number;
   subtype: string;
   name: string;
+  /** Item size (XS…XL) — scales the x-ray pouch (RE slice 07 read-only render). */
+  size: string | null;
   on_hand: number;
 }
 
@@ -42,7 +44,7 @@ export async function getAvailableFillings(): Promise<FillingItem[]> {
   const admin = supabaseAdmin();
   const { data: items } = await admin
     .from("items")
-    .select("id, subtype, name")
+    .select("id, subtype, name, size")
     .eq("category", "filling")
     .eq("is_active", true);
 
@@ -58,10 +60,11 @@ export async function getAvailableFillings(): Promise<FillingItem[]> {
     (balances ?? []).map((b: { item_id: number; on_hand: number }) => [b.item_id, b.on_hand])
   );
 
-  return items.map((i: { id: number; subtype: string; name: string }) => ({
+  return items.map((i: { id: number; subtype: string; name: string; size: string | null }) => ({
     item_id: i.id,
     subtype: i.subtype ?? "",
     name: i.name,
+    size: i.size ?? null,
     on_hand: stockMap.get(i.id) ?? 0,
   }));
 }

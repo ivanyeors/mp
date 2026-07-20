@@ -93,6 +93,20 @@ import {
   type RuleFlow,
 } from "@/lib/rules-engine";
 import { overlayFrame } from "@/lib/product-builder/overlays";
+import { previewMixMode } from "@/lib/rules-engine/preview-xray";
+import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { bolsterCapsulePath } from "@/components/spatial/xray-assets";
+import type { FillingItem } from "@/components/configurator/staff-assist-panel";
+import {
+  bolsterPlacementsToRows,
+  rowsToBolsterPlacements,
+  type BolsterPlacement,
+  type BolsterPlacementRow,
+} from "@/lib/spatial-fillings/core";
+import {
+  xrayColorVarStyle,
+  type ColorOverrideRow,
+} from "@/lib/spatial-fillings/color-overrides";
 import {
   SavedAddressSelect,
   useSavedShippingPrefill,
@@ -104,10 +118,26 @@ import {
   type HeightUnit,
 } from "@/lib/configurator/height-draft";
 import { soleCaseId } from "@/lib/configurator/preference-policy";
+import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
+import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
 type BolsterLength = "short" | "medium" | "long";
+
+/** RE slice 07: the bolster customize response also ships spatial placements + color overrides. */
+type ShopRecommendationData = Omit<
+  RecommendationResponseData,
+  "templates" | "available_fillings"
+> & {
+  templates: (RecommendationResponseData["templates"][number] & {
+    placements?: BolsterPlacementRow[];
+  })[];
+  available_fillings: (RecommendationResponseData["available_fillings"][number] & {
+    size?: string | null;
+  })[];
+  color_overrides?: ColorOverrideRow[];
+};
 
 type State = {
   step: Step;
@@ -125,9 +155,8 @@ const FLOW_UI_LABEL: Record<RuleFlow, string> = {
   mbolster: "Mbolster",
 };
 
-/** Simple capsule silhouette for the left visual panel. */
-const BOLSTER_PATH =
-  "M80 40 C80 18 120 18 160 18 L504 18 C544 18 584 18 584 40 L584 334 C584 356 544 356 504 356 L160 356 C120 356 80 356 80 334 Z";
+/** Fallback capsule length until the recommendation resolves one. */
+const DEFAULT_BOLSTER_LENGTH: BolsterLength = "medium";
 
 function toNumber(value: string): number | null {
   const trimmed = value.trim();
@@ -180,7 +209,14 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
   "zh-CN": "查看全部常见问题",
 };
 
-export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
+export function MbolsterConfigClient({
+  info,
+  staffAssist = false,
+}: {
+  info: MbolsterConfigInfo;
+  /** Staff-only x-ray filling editor on the bolster preview (slice 13). */
+  staffAssist?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -200,7 +236,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const [heightDraft, setHeightDraft] = React.useState("");
 
   const [shopRecommendation, setShopRecommendation] =
-    React.useState<RecommendationResponseData | null>(null);
+    React.useState<ShopRecommendationData | null>(null);
   const [shopLoading, setShopLoading] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<number | null>(null);
   const [selectedAddons, setSelectedAddons] = React.useState<Set<number>>(new Set());
@@ -246,6 +282,66 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
   const shopCurrency = shopRecommendation?.variant?.currency ?? "SGD";
   const shopBasePrice = shopRecommendation?.variant?.price ?? 0;
   const suggestedLength = (shopRecommendation?.bolster_variant ?? null) as BolsterLength | null;
+
+  // --- Staff assist (slice 13) — top-level so the session mix survives step navigation ---
+  const [assistPlacements, setAssistPlacements] = React.useState<BolsterPlacement[]>([]);
+  const [assistLoadedTemplate, setAssistLoadedTemplate] = React.useState<LoadedTemplate | null>(null);
+  // Filling items surfaced from the assist panel; the x-ray resolves colors/scale by subtype/size.
+  const [assistItems, setAssistItems] = React.useState<FillingItem[]>([]);
+  const [assistColorOverrides, setAssistColorOverrides] = React.useState<ColorOverrideRow[]>([]);
+  const assistItemSubtypes = React.useMemo(
+    () => new Map(assistItems.map((i) => [i.id, i.subtype])),
+    [assistItems],
+  );
+  const assistItemSizes = React.useMemo(
+    () => new Map(assistItems.map((i) => [i.id, i.size])),
+    [assistItems],
+  );
+  // Same DB table either way — assist rows win once the Staff panel loads them,
+  // guests ride the shop customize response (RE slice 07).
+  const shopColorOverrides = shopRecommendation?.color_overrides;
+  const xrayColorVars = React.useMemo(
+    () =>
+      xrayColorVarStyle(
+        assistColorOverrides.length ? assistColorOverrides : (shopColorOverrides ?? []),
+      ),
+    [assistColorOverrides, shopColorOverrides],
+  );
+  // Kept only while the mix exactly matches the loaded template; the hold snapshot claims this.
+  const sessionFillingTemplateId = React.useMemo(
+    () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
+    [assistLoadedTemplate, assistPlacements],
+  );
+  // Length-based eligibility: a different recommended length invalidates the loaded mix.
+  React.useEffect(() => {
+    setAssistPlacements([]);
+    setAssistLoadedTemplate(null);
+  }, [suggestedLength]);
+
+  // --- RE slice 07: reveal + recommended-template derivation shared by the x-ray
+  // mount and the reveal card. Guest data rides the shop customize response —
+  // the client never fetches assist endpoints for guests.
+  const previewRecord = parseRecommendationRecord(
+    shopRecommendation?.recommendation_record ?? null,
+  );
+  const routePending = Boolean(previewRecord && isFlowRoutePending(previewRecord));
+  const revealNow = shouldRevealRecommendation({
+    requiredInputsComplete: Boolean(shopRecommendation && suggestedLength),
+    flowRouteUnresolved: routePending,
+  });
+  const recommendedTemplate = shopRecommendation?.templates?.find(
+    (t) => String(t.id) === String(previewRecord?.templateId),
+  );
+  const guestPlacements = rowsToBolsterPlacements(recommendedTemplate?.placements ?? []);
+  const guestItemSubtypes = new Map(
+    (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.subtype]),
+  );
+  const guestItemSizes = new Map(
+    (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.size ?? null]),
+  );
+  // Legacy-flat templates (no placements) keep the text mix summary.
+  const guestXray = revealNow && previewMixMode(recommendedTemplate?.placements) === "xray";
+  const xrayVisible = staffAssist || guestXray;
 
   const addonTotal = React.useMemo(() => {
     let sum = 0;
@@ -586,7 +682,7 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
         );
       }
 
-      const data: RecommendationResponseData = await res.json();
+      const data: ShopRecommendationData = await res.json();
       setShopRecommendation(data);
 
       if (!opts?.preserveSelections) {
@@ -752,6 +848,15 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             { item_id: selectedCase!, quantity: 1, category: "case" },
           ],
           addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          // Staff assist snapshot (slice 13): session mix + still-matching template claim.
+          ...(staffAssist && assistPlacements.length > 0
+            ? {
+                assistFilling: {
+                  placements: bolsterPlacementsToRows(assistPlacements),
+                  templateId: sessionFillingTemplateId,
+                },
+              }
+            : {}),
           shippingMethodId: selectedShippingId,
           shippingAddress: holdAddress,
           cancelPath: "/mbolster-config",
@@ -783,6 +888,9 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
     state.sleepPosition,
     holdFields,
     shopRecommendation?.recommendation_record,
+    staffAssist,
+    assistPlacements,
+    sessionFillingTemplateId,
   ]);
 
   const flowRouteBlocksHold = (() => {
@@ -885,38 +993,61 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
             <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
               <div
                 className="relative"
-                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)" }}
+                // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
+                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)", ...xrayColorVars }}
               >
-                <svg
-                  className="absolute inset-0 pointer-events-none"
-                  viewBox="0 0 664 374"
-                  xmlns="http://www.w3.org/2000/svg"
-                  preserveAspectRatio="xMidYMid meet"
-                >
-                  <path d={BOLSTER_PATH} fill="white" />
-                  {selectedOverlay && (
-                    <>
-                      <defs>
-                        <clipPath id="mbolster-config-overlay-clip">
-                          <path d={BOLSTER_PATH} />
-                        </clipPath>
-                      </defs>
-                      <image
-                        href={selectedOverlay.url}
-                        clipPath="url(#mbolster-config-overlay-clip)"
-                        preserveAspectRatio="xMidYMid slice"
-                        {...overlayFrame(selectedOverlay.fit)}
+                {(() => {
+                  // Long-pill silhouette; length follows the recommended Mbolster length.
+                  const bolsterPath = bolsterCapsulePath(suggestedLength ?? DEFAULT_BOLSTER_LENGTH);
+                  return (
+                    <svg
+                      className={cn(
+                        "absolute inset-0 pointer-events-none",
+                        // x-ray art direction: shell desaturates so fillings read inside
+                        xrayVisible && "opacity-80 saturate-50",
+                      )}
+                      viewBox="0 0 664 374"
+                      xmlns="http://www.w3.org/2000/svg"
+                      preserveAspectRatio="xMidYMid meet"
+                    >
+                      <path d={bolsterPath} fill="white" />
+                      {selectedOverlay && (
+                        <>
+                          <defs>
+                            <clipPath id="mbolster-config-overlay-clip">
+                              <path d={bolsterPath} />
+                            </clipPath>
+                          </defs>
+                          <image
+                            href={selectedOverlay.url}
+                            clipPath="url(#mbolster-config-overlay-clip)"
+                            preserveAspectRatio="xMidYMid slice"
+                            {...overlayFrame(selectedOverlay.fit)}
+                          />
+                        </>
+                      )}
+                      <path
+                        d={bolsterPath}
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3"
+                        vectorEffect="non-scaling-stroke"
                       />
-                    </>
-                  )}
-                  <path
-                    d={BOLSTER_PATH}
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="3"
-                    vectorEffect="non-scaling-stroke"
+                    </svg>
+                  );
+                })()}
+                {xrayVisible && (
+                  <XrayBolster
+                    placements={staffAssist ? assistPlacements : guestPlacements}
+                    length={suggestedLength ?? DEFAULT_BOLSTER_LENGTH}
+                    itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                    itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                    // Guests view, never edit: omitting these keeps the renderer read-only.
+                    items={staffAssist ? assistItems : undefined}
+                    onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
+                    className="absolute inset-0"
                   />
-                </svg>
+                )}
                 {shopLoading && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="size-12 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -924,46 +1055,37 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                 )}
               </div>
               {(() => {
-                const record = parseRecommendationRecord(
-                  shopRecommendation?.recommendation_record ?? null,
-                );
-                const routePending = Boolean(record && isFlowRoutePending(record));
-                const revealNow = shouldRevealRecommendation({
-                  requiredInputsComplete: Boolean(shopRecommendation && suggestedLength),
-                  flowRouteUnresolved: routePending,
-                });
-                const why = record
-                  ? plainLanguageWhy(record)
+                const why = previewRecord
+                  ? plainLanguageWhy(previewRecord)
                   : shopRecommendation?.recommendation?.explanation ?? "";
-                const tplId = record?.templateId;
-                const tpl = shopRecommendation?.templates?.find(
-                  (t) => String(t.id) === String(tplId),
-                );
-                const mixLines = (tpl?.lines ?? []).map((l) => {
-                  const filling = shopRecommendation?.available_fillings?.find(
-                    (f) => f.item_id === l.item_id,
-                  );
-                  return {
-                    label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
-                    qty: l.quantity,
-                  };
-                });
+                // Guest x-ray replaces the text mix summary; legacy-flat templates keep it.
+                const mixLines = guestXray
+                  ? []
+                  : (recommendedTemplate?.lines ?? []).map((l) => {
+                      const filling = shopRecommendation?.available_fillings?.find(
+                        (f) => f.item_id === l.item_id,
+                      );
+                      return {
+                        label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
+                        qty: l.quantity,
+                      };
+                    });
                 const showTierAdvice =
-                  record?.tierSuggestion &&
-                  record.tierSuggestion !== record.soldTier;
+                  previewRecord?.tierSuggestion &&
+                  previewRecord.tierSuggestion !== previewRecord.soldTier;
                 const targetIsMpillow =
-                  record?.flowRoute?.targetFlow === "basic-mpillow" ||
-                  record?.flowRoute?.targetFlow === "premium-mpillow";
+                  previewRecord?.flowRoute?.targetFlow === "basic-mpillow" ||
+                  previewRecord?.flowRoute?.targetFlow === "premium-mpillow";
                 return (
                   <>
-                    {showTierAdvice && record?.tierSuggestion ? (
-                      <TierSuggestion tier={record.tierSuggestion} />
+                    {showTierAdvice && previewRecord?.tierSuggestion ? (
+                      <TierSuggestion tier={previewRecord.tierSuggestion} />
                     ) : null}
-                    {routePending && record?.flowRoute ? (
+                    {routePending && previewRecord?.flowRoute ? (
                       <UpsellCard
-                        reason={record.flowRoute.reason}
+                        reason={previewRecord.flowRoute.reason}
                         fromLabel="Mbolster"
-                        toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
+                        toLabel={FLOW_UI_LABEL[previewRecord.flowRoute.targetFlow]}
                         fromPrice={shopBasePrice > 0 ? shopBasePrice : null}
                         toPrice={null}
                         currency={shopCurrency}
@@ -977,14 +1099,24 @@ export function MbolsterConfigClient({ info }: { info: MbolsterConfigInfo }) {
                       reveal={revealNow}
                       sizeLabel={suggestedLength ? String(suggestedLength) : ""}
                       why={why}
-                      templateName={tpl?.name ?? null}
+                      templateName={recommendedTemplate?.name ?? null}
                       mixLines={mixLines}
                     />
                   </>
                 );
               })()}
               <SelectedAddonPreviews addons={addons} selectedIds={selectedAddons} />
-              {!shopRecommendation ? (
+              {staffAssist && suggestedLength ? (
+                <StaffAssistBolsterPanel
+                  length={suggestedLength}
+                  onPlacementsChange={setAssistPlacements}
+                  loadedTemplate={assistLoadedTemplate}
+                  onLoadTemplate={setAssistLoadedTemplate}
+                  sessionFillingTemplateId={sessionFillingTemplateId}
+                  onItemsChange={setAssistItems}
+                  onColorOverridesChange={setAssistColorOverrides}
+                />
+              ) : !shopRecommendation ? (
                 <p className="max-w-xs text-center text-xs text-white/80">
                   Fillings are chosen by our team after review.
                 </p>

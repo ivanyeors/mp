@@ -68,6 +68,11 @@ export function rowsToBolsterPlacements(rows: BolsterPlacementRow[]): BolsterPla
   return rows.map((r) => ({ slot: r.slot, itemId: r.item_id }));
 }
 
+/** Map lib bolster placements back to snake_case API/DB rows (inverse of rowsToBolsterPlacements). */
+export function bolsterPlacementsToRows(placements: BolsterPlacement[]): BolsterPlacementRow[] {
+  return placements.map((p) => ({ slot: p.slot, item_id: p.itemId }));
+}
+
 function assertFillingItem(
   itemId: number,
   itemCategories: ReadonlyMap<number, string>,

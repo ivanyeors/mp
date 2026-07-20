@@ -11,10 +11,27 @@
  */
 
 import { SECTIONS, SUB_SECTIONS, type Section, type SubSection } from "@/lib/spatial-fillings/core";
-import { COL_X, ROW_Y, XRAY_VIEW } from "@/lib/spatial-fillings/xray-layout";
+import { parsePathPolygon } from "@/lib/spatial-fillings/conform";
+import {
+  BOLSTER_CAPSULE_HEIGHT,
+  BOLSTER_CAPSULE_LENGTHS,
+  COL_X,
+  ROW_Y,
+  XRAY_VIEW,
+  type BolsterLength,
+} from "@/lib/spatial-fillings/xray-layout";
 import type { ShapeId } from "@/lib/spatial-fillings/visuals";
 
 export { XRAY_VIEW };
+
+/**
+ * Mbolster capsule silhouette (shared with the /mbolster-config preview).
+ * PLACEHOLDER path with the same drop-in contract — the designer export
+ * replaces the data; the capsule renderer clips against this path only
+ * (single region: no cell/section paths for bolster, ADR 0008 amendment).
+ */
+export const BOLSTER_SILHOUETTE_PATH =
+  "M80 40 C80 18 120 18 160 18 L504 18 C544 18 584 18 584 40 L584 334 C584 356 544 356 504 356 L160 356 C120 356 80 356 80 334 Z";
 
 /** Pillow silhouette (shared with the configurator preview). */
 export const SILHOUETTE_PATH =
@@ -60,8 +77,8 @@ function hEdge(j: number, i0: number, i1: number): Pt[] {
 
 const poly = (pts: Pt[]) => `M${pts.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
 
-function cellPath(a: number, b: number): string {
-  return poly([
+function cellPts(a: number, b: number): Pt[] {
+  return [
     corner(a, b),
     ...hEdge(b, a, a + 1),
     corner(a + 1, b),
@@ -70,7 +87,7 @@ function cellPath(a: number, b: number): string {
     ...hEdge(b + 1, a + 1, a),
     corner(a, b + 1),
     ...vEdge(a, b + 1, b),
-  ]);
+  ];
 }
 
 function sectionPath(a: number): string {
@@ -97,15 +114,16 @@ function sectionPath(a: number): string {
 export type CellKey = `${Section}/${SubSection}`;
 
 /** Nine cell boundary paths — `clipPath` regions (columns = Sections, rows = sub-sections). */
-export const CELL_CLIP_PATHS: Record<CellKey, string> = (() => {
-  const paths = {} as Record<CellKey, string>;
-  SECTIONS.forEach((section, a) => {
-    SUB_SECTIONS.forEach((subSection, b) => {
-      paths[`${section}/${subSection}`] = cellPath(a, b);
-    });
+export const CELL_CLIP_PATHS = {} as Record<CellKey, string>;
+/** The same nine cell regions as sampled polygons, for pouch-conform geometry. */
+export const CELL_POLYGONS = {} as Record<CellKey, Pt[]>;
+SECTIONS.forEach((section, a) => {
+  SUB_SECTIONS.forEach((subSection, b) => {
+    const pts = cellPts(a, b);
+    CELL_CLIP_PATHS[`${section}/${subSection}`] = poly(pts);
+    CELL_POLYGONS[`${section}/${subSection}`] = pts;
   });
-  return paths;
-})();
+});
 
 /** Three full-height Section regions for hover highlight / dive hit areas. */
 export const SECTION_HIT_PATHS: Record<Section, string> = {
@@ -114,16 +132,42 @@ export const SECTION_HIT_PATHS: Record<Section, string> = {
   right: sectionPath(2),
 };
 
-// --- Fluid filling shapes (placeholder; normalized to a 100×100 box) ---------
+// --- Filling shape (normalized to a 100×100 box) -----------------------------
+// ponytail: one rounded-square pouch for every filling type; color (per
+// subtype) + scale (per Item size) differentiate. Designer fluid shapes
+// re-expand this record when they land — renderer and morph pipeline are ready.
 
+// Puffed fabric pouch: rounded square with gently bulging edges, like the
+// stuffed product pouch (photo reference), not a flat UI rect. Fills its full
+// 100×100 box so a packed pouch reaches its tract edge and presses the shell.
 export const FILLING_SHAPE_PATHS: Record<ShapeId, string> = {
-  // soft asymmetric pebble
-  pouch3d:
-    "M50 10 C72 6 90 24 90 47 C90 72 74 92 49 91 C26 90 10 74 11 49 C12 26 30 13 50 10 Z",
-  // taller pouch with a waist dimple
-  pouch6d:
-    "M50 6 C68 6 80 18 79 36 C78 48 72 50 73 60 C74 76 66 94 50 94 C34 94 26 76 27 60 C28 50 22 48 21 36 C20 18 32 6 50 6 Z",
-  // wide pouch with a top notch
-  pouch6dPlus:
-    "M50 22 C58 12 74 8 84 18 C94 28 94 48 88 62 C82 78 68 90 50 90 C32 90 18 78 12 62 C6 48 6 28 16 18 C26 8 42 12 50 22 Z",
+  pouch:
+    "M50 2 C73 2 93 8 93 28 C93 43 95 57 93 72 C93 92 73 98 50 98 " +
+    "C27 98 7 92 7 72 C5 57 5 43 7 28 C7 8 27 2 50 2 Z",
 };
+
+/**
+ * Visible air line between the fillings and the shell, in view units — pouch
+ * outlines deform to stay this far inside the shell (see conform.ts), so the
+ * seam reads at the rounded ends too. Pouch-to-pouch seams stay at the layout
+ * GAP; this one is wider so it survives next to the shell's thick outline.
+ */
+export const SHELL_SEAM = 4;
+
+/** Pillow silhouette sampled as a polygon, for pouch-conform geometry. */
+export const SILHOUETTE_POLYGON = parsePathPolygon(SILHOUETTE_PATH, 10);
+
+// --- Mbolster capsule silhouette ---------------------------------------------
+
+/** Long-pill silhouette, length driven by the Mbolster length (shared 664×374 view). */
+export function bolsterCapsulePath(length: BolsterLength): string {
+  const len = BOLSTER_CAPSULE_LENGTHS[length];
+  const r = BOLSTER_CAPSULE_HEIGHT / 2;
+  const x0 = (XRAY_VIEW.width - len) / 2;
+  const x1 = x0 + len;
+  const cy = XRAY_VIEW.height / 2;
+  return (
+    `M${x0 + r} ${cy - r} L${x1 - r} ${cy - r} A${r} ${r} 0 0 1 ${x1 - r} ${cy + r} ` +
+    `L${x0 + r} ${cy + r} A${r} ${r} 0 0 1 ${x0 + r} ${cy - r} Z`
+  );
+}

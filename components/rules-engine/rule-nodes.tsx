@@ -25,9 +25,9 @@ function Shell({
   return (
     <div
       className={cn(
-        "min-w-[160px] max-w-[220px] rounded-md border bg-background px-2 py-1.5 text-xs shadow-sm",
+        "min-w-[160px] max-w-[220px] rounded-md border bg-card px-2 py-1.5 text-xs shadow-sm",
         selected && "ring-2 ring-ring",
-        fired && "border-green-600 bg-green-50 dark:bg-green-950/30",
+        fired && "border-green-600 bg-green-50 dark:bg-green-950/40",
         error && "border-destructive",
       )}
     >
