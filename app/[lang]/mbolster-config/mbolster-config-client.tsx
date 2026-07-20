@@ -93,10 +93,16 @@ import {
   type RuleFlow,
 } from "@/lib/rules-engine";
 import { overlayFrame } from "@/lib/product-builder/overlays";
+import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
 import { bolsterCapsulePath } from "@/components/spatial/xray-assets";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import { bolsterPlacementsToRows, type BolsterPlacement } from "@/lib/spatial-fillings/core";
+import {
+  bolsterPlacementsToRows,
+  rowsToBolsterPlacements,
+  type BolsterPlacement,
+  type BolsterPlacementRow,
+} from "@/lib/spatial-fillings/core";
 import {
   xrayColorVarStyle,
   type ColorOverrideRow,
@@ -118,6 +124,20 @@ import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
 type BolsterLength = "short" | "medium" | "long";
+
+/** RE slice 07: the bolster customize response also ships spatial placements + color overrides. */
+type ShopRecommendationData = Omit<
+  RecommendationResponseData,
+  "templates" | "available_fillings"
+> & {
+  templates: (RecommendationResponseData["templates"][number] & {
+    placements?: BolsterPlacementRow[];
+  })[];
+  available_fillings: (RecommendationResponseData["available_fillings"][number] & {
+    size?: string | null;
+  })[];
+  color_overrides?: ColorOverrideRow[];
+};
 
 type State = {
   step: Step;
@@ -216,7 +236,7 @@ export function MbolsterConfigClient({
   const [heightDraft, setHeightDraft] = React.useState("");
 
   const [shopRecommendation, setShopRecommendation] =
-    React.useState<RecommendationResponseData | null>(null);
+    React.useState<ShopRecommendationData | null>(null);
   const [shopLoading, setShopLoading] = React.useState(false);
   const [selectedCase, setSelectedCase] = React.useState<number | null>(null);
   const [selectedAddons, setSelectedAddons] = React.useState<Set<number>>(new Set());
@@ -277,9 +297,15 @@ export function MbolsterConfigClient({
     () => new Map(assistItems.map((i) => [i.id, i.size])),
     [assistItems],
   );
+  // Same DB table either way — assist rows win once the Staff panel loads them,
+  // guests ride the shop customize response (RE slice 07).
+  const shopColorOverrides = shopRecommendation?.color_overrides;
   const xrayColorVars = React.useMemo(
-    () => xrayColorVarStyle(assistColorOverrides),
-    [assistColorOverrides],
+    () =>
+      xrayColorVarStyle(
+        assistColorOverrides.length ? assistColorOverrides : (shopColorOverrides ?? []),
+      ),
+    [assistColorOverrides, shopColorOverrides],
   );
   // Kept only while the mix exactly matches the loaded template; the hold snapshot claims this.
   const sessionFillingTemplateId = React.useMemo(
@@ -291,6 +317,31 @@ export function MbolsterConfigClient({
     setAssistPlacements([]);
     setAssistLoadedTemplate(null);
   }, [suggestedLength]);
+
+  // --- RE slice 07: reveal + recommended-template derivation shared by the x-ray
+  // mount and the reveal card. Guest data rides the shop customize response —
+  // the client never fetches assist endpoints for guests.
+  const previewRecord = parseRecommendationRecord(
+    shopRecommendation?.recommendation_record ?? null,
+  );
+  const routePending = Boolean(previewRecord && isFlowRoutePending(previewRecord));
+  const revealNow = shouldRevealRecommendation({
+    requiredInputsComplete: Boolean(shopRecommendation && suggestedLength),
+    flowRouteUnresolved: routePending,
+  });
+  const recommendedTemplate = shopRecommendation?.templates?.find(
+    (t) => String(t.id) === String(previewRecord?.templateId),
+  );
+  const guestPlacements = rowsToBolsterPlacements(recommendedTemplate?.placements ?? []);
+  const guestItemSubtypes = new Map(
+    (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.subtype]),
+  );
+  const guestItemSizes = new Map(
+    (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.size ?? null]),
+  );
+  // Legacy-flat templates (no placements) keep the text mix summary.
+  const guestXray = revealNow && previewMixMode(recommendedTemplate?.placements) === "xray";
+  const xrayVisible = staffAssist || guestXray;
 
   const addonTotal = React.useMemo(() => {
     let sum = 0;
@@ -631,7 +682,7 @@ export function MbolsterConfigClient({
         );
       }
 
-      const data: RecommendationResponseData = await res.json();
+      const data: ShopRecommendationData = await res.json();
       setShopRecommendation(data);
 
       if (!opts?.preserveSelections) {
@@ -953,7 +1004,7 @@ export function MbolsterConfigClient({
                       className={cn(
                         "absolute inset-0 pointer-events-none",
                         // x-ray art direction: shell desaturates so fillings read inside
-                        staffAssist && "opacity-80 saturate-50",
+                        xrayVisible && "opacity-80 saturate-50",
                       )}
                       viewBox="0 0 664 374"
                       xmlns="http://www.w3.org/2000/svg"
@@ -985,14 +1036,15 @@ export function MbolsterConfigClient({
                     </svg>
                   );
                 })()}
-                {staffAssist && (
+                {xrayVisible && (
                   <XrayBolster
-                    placements={assistPlacements}
+                    placements={staffAssist ? assistPlacements : guestPlacements}
                     length={suggestedLength ?? DEFAULT_BOLSTER_LENGTH}
-                    itemSubtypes={assistItemSubtypes}
-                    itemSizes={assistItemSizes}
-                    items={assistItems}
-                    onPlacementsChange={setAssistPlacements}
+                    itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                    itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                    // Guests view, never edit: omitting these keeps the renderer read-only.
+                    items={staffAssist ? assistItems : undefined}
+                    onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
                     className="absolute inset-0"
                   />
                 )}
@@ -1003,46 +1055,37 @@ export function MbolsterConfigClient({
                 )}
               </div>
               {(() => {
-                const record = parseRecommendationRecord(
-                  shopRecommendation?.recommendation_record ?? null,
-                );
-                const routePending = Boolean(record && isFlowRoutePending(record));
-                const revealNow = shouldRevealRecommendation({
-                  requiredInputsComplete: Boolean(shopRecommendation && suggestedLength),
-                  flowRouteUnresolved: routePending,
-                });
-                const why = record
-                  ? plainLanguageWhy(record)
+                const why = previewRecord
+                  ? plainLanguageWhy(previewRecord)
                   : shopRecommendation?.recommendation?.explanation ?? "";
-                const tplId = record?.templateId;
-                const tpl = shopRecommendation?.templates?.find(
-                  (t) => String(t.id) === String(tplId),
-                );
-                const mixLines = (tpl?.lines ?? []).map((l) => {
-                  const filling = shopRecommendation?.available_fillings?.find(
-                    (f) => f.item_id === l.item_id,
-                  );
-                  return {
-                    label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
-                    qty: l.quantity,
-                  };
-                });
+                // Guest x-ray replaces the text mix summary; legacy-flat templates keep it.
+                const mixLines = guestXray
+                  ? []
+                  : (recommendedTemplate?.lines ?? []).map((l) => {
+                      const filling = shopRecommendation?.available_fillings?.find(
+                        (f) => f.item_id === l.item_id,
+                      );
+                      return {
+                        label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
+                        qty: l.quantity,
+                      };
+                    });
                 const showTierAdvice =
-                  record?.tierSuggestion &&
-                  record.tierSuggestion !== record.soldTier;
+                  previewRecord?.tierSuggestion &&
+                  previewRecord.tierSuggestion !== previewRecord.soldTier;
                 const targetIsMpillow =
-                  record?.flowRoute?.targetFlow === "basic-mpillow" ||
-                  record?.flowRoute?.targetFlow === "premium-mpillow";
+                  previewRecord?.flowRoute?.targetFlow === "basic-mpillow" ||
+                  previewRecord?.flowRoute?.targetFlow === "premium-mpillow";
                 return (
                   <>
-                    {showTierAdvice && record?.tierSuggestion ? (
-                      <TierSuggestion tier={record.tierSuggestion} />
+                    {showTierAdvice && previewRecord?.tierSuggestion ? (
+                      <TierSuggestion tier={previewRecord.tierSuggestion} />
                     ) : null}
-                    {routePending && record?.flowRoute ? (
+                    {routePending && previewRecord?.flowRoute ? (
                       <UpsellCard
-                        reason={record.flowRoute.reason}
+                        reason={previewRecord.flowRoute.reason}
                         fromLabel="Mbolster"
-                        toLabel={FLOW_UI_LABEL[record.flowRoute.targetFlow]}
+                        toLabel={FLOW_UI_LABEL[previewRecord.flowRoute.targetFlow]}
                         fromPrice={shopBasePrice > 0 ? shopBasePrice : null}
                         toPrice={null}
                         currency={shopCurrency}
@@ -1056,7 +1099,7 @@ export function MbolsterConfigClient({
                       reveal={revealNow}
                       sizeLabel={suggestedLength ? String(suggestedLength) : ""}
                       why={why}
-                      templateName={tpl?.name ?? null}
+                      templateName={recommendedTemplate?.name ?? null}
                       mixLines={mixLines}
                     />
                   </>

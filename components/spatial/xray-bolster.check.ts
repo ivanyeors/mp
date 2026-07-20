@@ -48,10 +48,13 @@ const client = readFileSync(
   "utf8",
 );
 assert.match(client, /staffAssist = false/, "assist defaults off (guest)");
-assert.match(client, /\{staffAssist && \(\s*<XrayBolster/, "x-ray mounts only for Staff");
+// RE slice 07: guests also see the x-ray (read-only) once the reveal fires.
+assert.match(client, /\{xrayVisible && \(\s*<XrayBolster/, "x-ray mounts behind the staff / guest-reveal gate");
+assert.match(client, /items=\{staffAssist \? assistItems : undefined\}/, "guests get no item picker (read-only renderer)");
+assert.match(client, /onPlacementsChange=\{staffAssist \? setAssistPlacements : undefined\}/, "guests get no placement editing (read-only renderer)");
 assert.equal(client.match(/<XrayBolster/g)?.length, 1, "single x-ray mount point");
 assert.match(client, /bolsterCapsulePath\(suggestedLength \?\? DEFAULT_BOLSTER_LENGTH\)/, "silhouette follows the recommended length");
-assert.match(client, /staffAssist && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
+assert.match(client, /xrayVisible && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
 assert.match(client, /\{staffAssist && suggestedLength \? \(\s*<StaffAssistBolsterPanel/, "assist panel gated to Staff");
 assert.doesNotMatch(client, /fetch\(["'`]\/api\/mp-config\/assist/, "client makes no assist fetches itself — they live in the Staff-only panel");
 
