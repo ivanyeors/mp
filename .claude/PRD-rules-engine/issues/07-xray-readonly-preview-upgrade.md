@@ -16,10 +16,10 @@ Swap the completed preview's text mix summary for the spatial x-ray renderer in 
 
 ## Acceptance criteria
 
-- [ ] A spatially-defined recommended template renders in the x-ray silhouette on the completed preview; guests get no edit affordances (no hover-dive, no add/remove)
-- [ ] Legacy-flat templates fall back to the text mix summary without error
-- [ ] Identical placements render identically here and in Staff assist (shared renderer, deterministic slots)
-- [ ] `*.check.ts` for the read-only mode flag and fallback selection
+- [x] A spatially-defined recommended template renders in the x-ray silhouette on the completed preview; guests get no edit affordances (no hover-dive, no add/remove)
+- [x] Legacy-flat templates fall back to the text mix summary without error
+- [x] Identical placements render identically here and in Staff assist (shared renderer, deterministic slots)
+- [x] `*.check.ts` for the read-only mode flag and fallback selection (`lib/rules-engine/slice-07.check.ts`)
 
 ## Blocked by
 
