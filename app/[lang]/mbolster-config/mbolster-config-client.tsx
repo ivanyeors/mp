@@ -1066,7 +1066,6 @@ export function MbolsterConfigClient({
               {staffAssist && suggestedLength ? (
                 <StaffAssistBolsterPanel
                   length={suggestedLength}
-                  placements={assistPlacements}
                   onPlacementsChange={setAssistPlacements}
                   loadedTemplate={assistLoadedTemplate}
                   onLoadTemplate={setAssistLoadedTemplate}

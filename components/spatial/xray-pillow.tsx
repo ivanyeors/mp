@@ -11,7 +11,6 @@
  */
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 
@@ -37,18 +36,34 @@ import {
   type PillowPlacement,
   type Section,
 } from "@/lib/spatial-fillings/core";
+import {
+  conformPouchPath,
+  makeRegion,
+  type ConformRegion,
+} from "@/lib/spatial-fillings/conform";
 import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
 import { fillingVisual, sizeScale, type FillingVisual } from "@/lib/spatial-fillings/visuals";
-import { COL_X, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
+import { COL_X, GAP, layoutPlacements } from "@/lib/spatial-fillings/xray-layout";
 import {
   CELL_CLIP_PATHS,
+  CELL_POLYGONS,
   FILLING_SHAPE_PATHS,
   SECTION_HIT_PATHS,
-  SILHOUETTE_INSET_TRANSFORM,
+  SHELL_SEAM,
   SILHOUETTE_PATH,
+  SILHOUETTE_POLYGON,
   XRAY_VIEW,
   type CellKey,
 } from "./xray-assets";
+
+// Shell regions pouches deform against: the silhouette (wide seam) and each
+// cell's wavy boundary (thin seam, matching the pouch-to-pouch gap).
+const SIL_REGION = makeRegion(SILHOUETTE_POLYGON, SHELL_SEAM);
+const CELL_REGIONS = Object.fromEntries(
+  (Object.entries(CELL_POLYGONS) as Array<[CellKey, typeof SILHOUETTE_POLYGON]>).map(
+    ([key, poly]) => [key, makeRegion(poly, GAP)],
+  ),
+) as Record<CellKey, ConformRegion>;
 
 /** item id → pouch render scale, from each Item's size. */
 export function itemScaleMap(itemSizes: ReadonlyMap<number, string | null>): Map<number, number> {
@@ -62,27 +77,24 @@ const MORPH_MS = 320;
 const easeOut = (t: number) => t * (2 - t);
 
 /**
- * One filling piece. When its shape swaps (item type change in the same slot),
- * the prepared flubber interpolator animates path `d`; degenerate pairs
- * crossfade an old-shape ghost instead — attribute writes only, no re-layout.
- *
- * `conform` paths are shell boundaries this piece may press against: each is
- * stroked clipped to the pouch, completing the intersection border —
- * ∂(pouch ∩ shell) = ∂pouch inside shell ∪ ∂shell inside pouch — so a clipped
- * pouch's outline follows the shell curve instead of ending cut off.
+ * One filling piece; `d` is its conform-deformed outline in view coordinates
+ * (see conform.ts), so its border follows the shell curve with no sharp cut
+ * corners. When its shape swaps (item type change in the same slot), the
+ * prepared flubber interpolator animates path `d`; degenerate pairs crossfade
+ * an old-shape ghost instead — attribute writes only, no re-layout.
+ * ponytail: swap morphs interpolate the normalized asset shapes, not the
+ * conformed outline — rebase them through conformPouchPath when a second
+ * ShapeId exists; today there is only the pouch, so no swap ever runs.
  */
 export function MorphPiece({
   subtype,
   visual,
-  transform,
-  conform,
+  d,
 }: {
   subtype: string | null;
   visual: FillingVisual;
-  transform: string;
-  conform?: ReadonlyArray<{ d: string; transform?: string }>;
+  d: string;
 }) {
-  const pieceClip = useId();
   const shape = visual.shape;
   const ref = useRef<SVGPathElement>(null);
   const ghostRef = useRef<SVGPathElement>(null);
@@ -128,7 +140,6 @@ export function MorphPiece({
 
   const paint = {
     "data-item-subtype": subtype ?? "",
-    transform,
     fill: `var(${visual.cssVar}, ${visual.defaultColor})`,
     fillOpacity: 0.9,
     stroke: "rgba(255,255,255,0.9)",
@@ -138,28 +149,8 @@ export function MorphPiece({
 
   return (
     <>
-      {ghost && <path ref={ghostRef} d={FILLING_SHAPE_PATHS[ghost]} {...paint} />}
-      <path ref={ref} d={FILLING_SHAPE_PATHS[shape]} {...paint} />
-      {conform && conform.length > 0 && (
-        <>
-          <clipPath id={pieceClip}>
-            <path d={FILLING_SHAPE_PATHS[shape]} transform={transform} />
-          </clipPath>
-          {conform.map((b, i) => (
-            <path
-              key={i}
-              d={b.d}
-              transform={b.transform}
-              clipPath={`url(#${pieceClip})`}
-              fill="none"
-              stroke="rgba(255,255,255,0.9)"
-              strokeWidth={2}
-              vectorEffect="non-scaling-stroke"
-              pointerEvents="none"
-            />
-          ))}
-        </>
-      )}
+      {ghost && <path ref={ghostRef} d={d} {...paint} />}
+      <path ref={ref} d={d} {...paint} />
     </>
   );
 }
@@ -202,11 +193,9 @@ export function XrayPillow({
   const cellsInUse = [...new Set(pieces.map((p) => `${p.section}/${p.subSection}` as CellKey))];
   const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
-  // Dive = pan the dived Section's column to center (transform-only animation).
-  // ponytail: scale stays 1 — Sections are full-height, so any zoom-in crops
-  // sub-section cells; revisit if the designer export adds vertical margin.
+  // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
+  // the editor overlay aligns to the dived column in place.
   const divedIdx = dived ? SECTIONS.indexOf(dived) : -1;
-  const diveX = dived ? XRAY_VIEW.width / 2 - (COL_X[divedIdx] + COL_X[divedIdx + 1]) / 2 : 0;
 
   const addToCell = (cell: Cell, itemId: number) => {
     const result = addPiece(placements, cell, itemId);
@@ -236,11 +225,6 @@ export function XrayPillow({
           <clipPath id={clipId("sil")}>
             <path d={SILHOUETTE_PATH} />
           </clipPath>
-          {/* pieces clip to the shell inset by the seam; its curve is stroked
-              per pouch so borders conform to the silhouette */}
-          <clipPath id={clipId("sil-inner")}>
-            <path d={SILHOUETTE_PATH} transform={SILHOUETTE_INSET_TRANSFORM} />
-          </clipPath>
           {cellsInUse.map((key) => (
             <clipPath key={key} id={clipId(key)}>
               <path d={CELL_CLIP_PATHS[key]} />
@@ -248,34 +232,30 @@ export function XrayPillow({
           ))}
         </defs>
 
-        <motion.g animate={{ x: diveX }} transition={{ duration: 0.35, ease: "easeInOut" }}>
+        <g>
           {/* x-ray art direction: shell interior darkens so fillings read inside */}
           <g clipPath={`url(#${clipId("sil")})`}>
             <path d={SILHOUETTE_PATH} fill="rgba(15,23,42,0.5)" />
 
-            {/* nested clipping: inset silhouette ∩ cell — pieces conform, never box-cropped */}
-            <g clipPath={`url(#${clipId("sil-inner")})`}>
-              {cellsInUse.map((key) => (
-                <g key={key} clipPath={`url(#${clipId(key)})`}>
-                  {pieces
-                    .filter((p) => `${p.section}/${p.subSection}` === key)
-                    .map((p) => {
-                      const subtype = itemSubtypes.get(p.itemId) ?? null;
-                      return (
-                        <MorphPiece
-                          key={p.key}
-                          subtype={subtype}
-                          visual={fillingVisual(subtype)}
-                          // non-uniform scale: the pouch squashes into its tract,
-                          // pressing flat against its neighbors
-                          transform={`translate(${p.x} ${p.y}) scale(${p.w / 100} ${p.h / 100})`}
-                          conform={[{ d: SILHOUETTE_PATH, transform: SILHOUETTE_INSET_TRANSFORM }]}
-                        />
-                      );
-                    })}
-                </g>
-              ))}
-            </g>
+            {/* nested clipping: silhouette ∩ cell — belt only; the pouch
+                geometry itself deforms to stay a seam inside both regions */}
+            {cellsInUse.map((key) => (
+              <g key={key} clipPath={`url(#${clipId(key)})`}>
+                {pieces
+                  .filter((p) => `${p.section}/${p.subSection}` === key)
+                  .map((p) => {
+                    const subtype = itemSubtypes.get(p.itemId) ?? null;
+                    return (
+                      <MorphPiece
+                        key={p.key}
+                        subtype={subtype}
+                        visual={fillingVisual(subtype)}
+                        d={conformPouchPath(p, [SIL_REGION, CELL_REGIONS[key]])}
+                      />
+                    );
+                  })}
+              </g>
+            ))}
 
             {hovered && hovered !== dived && (
               <path d={SECTION_HIT_PATHS[hovered]} fill="white" fillOpacity={0.15} />
@@ -311,7 +291,7 @@ export function XrayPillow({
               onClick={editable ? () => setDived(section) : undefined}
             />
           ))}
-        </motion.g>
+        </g>
       </svg>
 
       {/* Dive editor overlay: three sub-section cells of the centered column */}
@@ -327,8 +307,14 @@ export function XrayPillow({
           >
             ← Back (Esc)
           </Button>
-          {/* Column is panned to center at scale 1, so the middle third + equal-third rows align with the cells */}
-          <div className="absolute inset-y-0 left-1/3 flex w-1/3 flex-col">
+          {/* Overlay aligns to the dived column in place (svg fills the container at the same aspect ratio) */}
+          <div
+            className="absolute inset-y-0 flex flex-col"
+            style={{
+              left: `${(COL_X[divedIdx] / XRAY_VIEW.width) * 100}%`,
+              width: `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
+            }}
+          >
             {SUB_SECTIONS.map((subSection) => {
               const cell: Cell = { section: dived, subSection };
               const cellPcs = cellPieces(placements, cell);

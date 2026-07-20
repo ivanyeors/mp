@@ -10,10 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  BolsterCompartmentList,
-  type BolsterListItem,
-} from "@/components/spatial/bolster-compartment-list";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import type { LoadedTemplate } from "@/lib/configurator/staff-assist";
 import {
@@ -29,13 +25,12 @@ type TemplateRow = { id: number; name: string };
  * Staff assist panel for /mbolster-config (slice 13, Staff-only). Mirrors the
  * pillow panel minus the size×tier confirm gate — the surface models length
  * from the height recommendation, so templates scope to that length
- * (length-based eligibility). Single-compartment list editor, NO cap, never
- * the pillow cell grid (ADR 0008 amendment). No template create/save-as —
- * catalog stays curated in the Admin Panel.
+ * (length-based eligibility). Per-piece edits live on the x-ray itself —
+ * no list editor here. No template create/save-as — catalog stays curated
+ * in the Admin Panel.
  */
 export function StaffAssistBolsterPanel({
   length,
-  placements,
   onPlacementsChange,
   loadedTemplate,
   onLoadTemplate,
@@ -45,7 +40,6 @@ export function StaffAssistBolsterPanel({
 }: {
   /** Recommended bolster length (short | medium | long) — scopes the template picker. */
   length: string;
-  placements: BolsterPlacement[];
   onPlacementsChange: (next: BolsterPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
@@ -57,7 +51,6 @@ export function StaffAssistBolsterPanel({
   onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
 }) {
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
-  const [items, setItems] = useState<FillingItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,7 +64,6 @@ export function StaffAssistBolsterPanel({
         }) => {
           if (cancelled) return;
           setTemplates(d.templates ?? []);
-          setItems(d.items ?? []);
           onItemsChange?.(d.items ?? []);
           onColorOverridesChange?.(d.colorOverrides ?? []);
         },
@@ -79,7 +71,6 @@ export function StaffAssistBolsterPanel({
       .catch(() => {
         if (!cancelled) {
           setTemplates([]);
-          setItems([]);
           onItemsChange?.([]);
           onColorOverridesChange?.([]);
         }
@@ -103,11 +94,6 @@ export function StaffAssistBolsterPanel({
     }
   };
 
-  const listItems: BolsterListItem[] = items.map((i) => ({
-    id: i.id,
-    label: i.subtype ? `${i.name} (${i.subtype})` : i.name,
-  }));
-
   return (
     <div className="w-full max-w-md rounded-xl border bg-background/95 p-4 text-left shadow-lg backdrop-blur">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -121,33 +107,26 @@ export function StaffAssistBolsterPanel({
         ) : null}
       </div>
 
-      {/* Filling Template picker (active, length-scoped) */}
-      <div className="mb-3">
-        <Select
-          value={loadedTemplate ? String(loadedTemplate.id) : ""}
-          onValueChange={(v) => void loadTemplate(Number(v))}
-        >
-          <SelectTrigger aria-label="Filling Template" className="w-full min-w-0">
-            <SelectValue
-              placeholder={
-                templates.length === 0 ? "No templates for this length" : "Load Filling Template…"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {templates.map((t) => (
-              <SelectItem key={t.id} value={String(t.id)}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Single long compartment: ordered list, add/remove, no cap */}
-      <div className="max-h-[38vh] overflow-y-auto pr-1">
-        <BolsterCompartmentList value={placements} onChange={onPlacementsChange} items={listItems} />
-      </div>
+      {/* Filling Template picker (active, length-scoped); edits happen on the x-ray */}
+      <Select
+        value={loadedTemplate ? String(loadedTemplate.id) : ""}
+        onValueChange={(v) => void loadTemplate(Number(v))}
+      >
+        <SelectTrigger aria-label="Filling Template" className="w-full min-w-0">
+          <SelectValue
+            placeholder={
+              templates.length === 0 ? "No templates for this length" : "Load Filling Template…"
+            }
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {templates.map((t) => (
+            <SelectItem key={t.id} value={String(t.id)}>
+              {t.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

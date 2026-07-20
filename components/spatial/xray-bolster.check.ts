@@ -15,7 +15,6 @@ for (const length of ["short", "medium", "long"] as const) {
   const d = bolsterCapsulePath(length);
   assert.match(d, /^M.*Z$/, `${length}: closed path`);
   assert.equal((d.match(/A/g) ?? []).length, 2, `${length}: two semicircular end caps`);
-  assert.notEqual(bolsterCapsulePath(length, 3), d, `${length}: inset capsule shrinks concentrically`);
 }
 assert.ok(
   BOLSTER_CAPSULE_LENGTHS.short < BOLSTER_CAPSULE_LENGTHS.medium &&
@@ -27,8 +26,12 @@ assert.ok(
 const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray-bolster.tsx"), "utf8");
 assert.doesNotMatch(renderer, /<rect/, "no box crops (guardrail 1)");
 assert.match(renderer, /clipPath=\{`url\(#\$\{uid\}-capsule\)`\}/, "shell art clips to the capsule");
-assert.match(renderer, /clipPath=\{`url\(#\$\{uid\}-capsule-inner\)`\}/, "pieces clip to the inset capsule");
-assert.match(renderer, /conform=\{\[\{ d: capsuleInner \}\]\}/, "pouch borders conform to the rounded ends");
+assert.match(
+  renderer,
+  /conformPouchPath\(p, \[SHELL_REGIONS\[length\]\]\)/,
+  "pouch geometry deforms to the capsule (rounded, no cut corners)",
+);
+assert.match(renderer, /bolsterShellPolygon\(/, "capsule sampled for conform geometry");
 assert.match(renderer, /layoutBolsterPlacements\(/, "deterministic layout engine renders the mix");
 assert.match(renderer, /itemScaleMap\(itemSizes\)/, "Item size scales the pouch");
 assert.match(renderer, /addBolsterPiece\(placements, itemId\)/, "add goes through the shared lib");
@@ -49,11 +52,12 @@ assert.match(client, /\{staffAssist && \(\s*<XrayBolster/, "x-ray mounts only fo
 assert.equal(client.match(/<XrayBolster/g)?.length, 1, "single x-ray mount point");
 assert.match(client, /bolsterCapsulePath\(suggestedLength \?\? DEFAULT_BOLSTER_LENGTH\)/, "silhouette follows the recommended length");
 assert.match(client, /staffAssist && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
-assert.match(client, /if \(!staffAssist\) return;/, "guests never fetch assist data");
+assert.match(client, /\{staffAssist && suggestedLength \? \(\s*<StaffAssistBolsterPanel/, "assist panel gated to Staff");
+assert.doesNotMatch(client, /fetch\(["'`]\/api\/mp-config\/assist/, "client makes no assist fetches itself — they live in the Staff-only panel");
 
-// --- API: items-only mode stays staff-gated -----------------------------------
+// --- API: bolster length scope stays staff-gated ------------------------------
 const route = readFileSync(join(process.cwd(), "app", "api", "mp-config", "assist", "route.ts"), "utf8");
-assert.match(route, /size !== null && !\(PILLOW_SIZES/, "present-but-invalid size still 400s");
+assert.match(route, /Invalid length/, "present-but-invalid length still 400s");
 assert.match(route, /select\("id,name,subtype,size"\)/, "items carry size for the pouch scale");
 
 console.log("xray-bolster.check: all assertions passed");

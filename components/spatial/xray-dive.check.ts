@@ -52,7 +52,7 @@ assert.match(renderer, /e\.key === "Escape"/, "Escape returns to full view");
 assert.match(renderer, /setDived\(null\)/, "back button returns to full view");
 assert.match(renderer, /getShapeMorph\(from, shape\)/, "shape swaps use prepared morphs");
 assert.match(renderer, /setGhost\(from\)/, "crossfade ghost wired for degenerate pairs");
-assert.match(renderer, /animate=\{\{ x: diveX \}\}/, "dive animates transform only");
+assert.doesNotMatch(renderer, /animate=\{\{ x/, "dive never pans — the x-ray overlays the shell in place");
 assert.match(renderer, /setAttribute\("d"/, "morphs write path d only (no layout thrash)");
 assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1)");
 

@@ -11,6 +11,7 @@
  */
 
 import { SECTIONS, SUB_SECTIONS, type Section, type SubSection } from "@/lib/spatial-fillings/core";
+import { parsePathPolygon } from "@/lib/spatial-fillings/conform";
 import {
   BOLSTER_CAPSULE_HEIGHT,
   BOLSTER_CAPSULE_LENGTHS,
@@ -76,8 +77,8 @@ function hEdge(j: number, i0: number, i1: number): Pt[] {
 
 const poly = (pts: Pt[]) => `M${pts.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
 
-function cellPath(a: number, b: number): string {
-  return poly([
+function cellPts(a: number, b: number): Pt[] {
+  return [
     corner(a, b),
     ...hEdge(b, a, a + 1),
     corner(a + 1, b),
@@ -86,7 +87,7 @@ function cellPath(a: number, b: number): string {
     ...hEdge(b + 1, a + 1, a),
     corner(a, b + 1),
     ...vEdge(a, b + 1, b),
-  ]);
+  ];
 }
 
 function sectionPath(a: number): string {
@@ -113,15 +114,16 @@ function sectionPath(a: number): string {
 export type CellKey = `${Section}/${SubSection}`;
 
 /** Nine cell boundary paths — `clipPath` regions (columns = Sections, rows = sub-sections). */
-export const CELL_CLIP_PATHS: Record<CellKey, string> = (() => {
-  const paths = {} as Record<CellKey, string>;
-  SECTIONS.forEach((section, a) => {
-    SUB_SECTIONS.forEach((subSection, b) => {
-      paths[`${section}/${subSection}`] = cellPath(a, b);
-    });
+export const CELL_CLIP_PATHS = {} as Record<CellKey, string>;
+/** The same nine cell regions as sampled polygons, for pouch-conform geometry. */
+export const CELL_POLYGONS = {} as Record<CellKey, Pt[]>;
+SECTIONS.forEach((section, a) => {
+  SUB_SECTIONS.forEach((subSection, b) => {
+    const pts = cellPts(a, b);
+    CELL_CLIP_PATHS[`${section}/${subSection}`] = poly(pts);
+    CELL_POLYGONS[`${section}/${subSection}`] = pts;
   });
-  return paths;
-})();
+});
 
 /** Three full-height Section regions for hover highlight / dive hit areas. */
 export const SECTION_HIT_PATHS: Record<Section, string> = {
@@ -145,28 +147,22 @@ export const FILLING_SHAPE_PATHS: Record<ShapeId, string> = {
 };
 
 /**
- * Seam between the fillings and the shell, in view units. Pieces clip to the
- * shell inset by this, and the inset shell curve is stroked where each pouch
- * presses it — ∂(pouch ∩ shell) = ∂pouch inside shell ∪ ∂shell inside pouch —
- * so pouch borders visibly conform to the silhouette's rounded ends.
+ * Visible air line between the fillings and the shell, in view units — pouch
+ * outlines deform to stay this far inside the shell (see conform.ts), so the
+ * seam reads at the rounded ends too. Pouch-to-pouch seams stay at the layout
+ * GAP; this one is wider so it survives next to the shell's thick outline.
  */
-export const SHELL_SEAM = 1;
+export const SHELL_SEAM = 4;
 
-/** Uniform inward squeeze of the pillow silhouette by SHELL_SEAM (approx offset). */
-export const SILHOUETTE_INSET_TRANSFORM = `translate(${SHELL_SEAM} ${SHELL_SEAM}) scale(${
-  (XRAY_VIEW.width - 2 * SHELL_SEAM) / XRAY_VIEW.width
-} ${(XRAY_VIEW.height - 2 * SHELL_SEAM) / XRAY_VIEW.height})`;
+/** Pillow silhouette sampled as a polygon, for pouch-conform geometry. */
+export const SILHOUETTE_POLYGON = parsePathPolygon(SILHOUETTE_PATH, 10);
 
 // --- Mbolster capsule silhouette ---------------------------------------------
 
-/**
- * Long-pill silhouette, length driven by the Mbolster length (shared 664×374
- * view). `inset` shrinks the capsule concentrically (exact offset curve) — the
- * fillings clip and conform to the inset capsule.
- */
-export function bolsterCapsulePath(length: BolsterLength, inset = 0): string {
-  const len = BOLSTER_CAPSULE_LENGTHS[length] - 2 * inset;
-  const r = BOLSTER_CAPSULE_HEIGHT / 2 - inset;
+/** Long-pill silhouette, length driven by the Mbolster length (shared 664×374 view). */
+export function bolsterCapsulePath(length: BolsterLength): string {
+  const len = BOLSTER_CAPSULE_LENGTHS[length];
+  const r = BOLSTER_CAPSULE_HEIGHT / 2;
   const x0 = (XRAY_VIEW.width - len) / 2;
   const x1 = x0 + len;
   const cy = XRAY_VIEW.height / 2;

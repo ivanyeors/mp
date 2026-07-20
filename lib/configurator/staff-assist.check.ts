@@ -137,6 +137,12 @@ assert.doesNotMatch(client, /fetch\(["'`]\/api\/mp-config\/assist/, "client make
 const panel = readFileSync("components/configurator/staff-assist-panel.tsx", "utf8");
 assert.match(panel, /\/api\/mp-config\/assist\?size=/, "panel loads templates/items from the staff-gated endpoint");
 assert.doesNotMatch(panel, /save.{0,10}template|create.{0,10}template|promote/i, "no template create / save-as-template control in assist");
+assert.doesNotMatch(panel, /Add filling/, "no list editor in the panel — per-piece edits live on the x-ray");
+assert.doesNotMatch(
+  readFileSync("components/configurator/staff-assist-bolster-panel.tsx", "utf8"),
+  /Add filling|BolsterCompartmentList/,
+  "bolster panel is picker-only — per-piece edits live on the x-ray",
+);
 
 for (const route of [
   "app/api/mp-config/assist/route.ts",

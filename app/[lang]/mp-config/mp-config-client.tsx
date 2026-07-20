@@ -1824,7 +1824,6 @@ export function MpConfigClient({
                       size: size as SizeTier["size"],
                       tier: tier as SizeTier["tier"],
                     }}
-                    placements={assistPlacements}
                     onPlacementsChange={setAssistPlacements}
                     loadedTemplate={assistLoadedTemplate}
                     onLoadTemplate={setAssistLoadedTemplate}

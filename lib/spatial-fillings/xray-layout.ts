@@ -24,8 +24,8 @@ export const ROW_Y = [0, 124.7, 249.3, 374] as const;
  * compartment walls and the silhouette/cell clips mold them to the shape.
  */
 const INSET = 1;
-/** Seam between pressed pouches, in view units. */
-const GAP = 1;
+/** Seam between pressed pouches, in view units (also the cell-divider seam). */
+export const GAP = 1;
 
 export type CellFrame = { x: number; y: number; w: number; h: number };
 

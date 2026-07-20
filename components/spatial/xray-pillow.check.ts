@@ -9,10 +9,11 @@ import assert from "node:assert/strict";
 
 import {
   CELL_CLIP_PATHS,
+  CELL_POLYGONS,
   FILLING_SHAPE_PATHS,
   SECTION_HIT_PATHS,
-  SILHOUETTE_INSET_TRANSFORM,
   SILHOUETTE_PATH,
+  SILHOUETTE_POLYGON,
 } from "./xray-assets";
 import { fillingVisual, sizeScale, subtypeSlug } from "@/lib/spatial-fillings/visuals";
 
@@ -23,7 +24,8 @@ assert.equal(Object.keys(SECTION_HIT_PATHS).length, 3, "three Section regions");
 // fluid shapes land; color (subtype) + scale (Item size) differentiate.
 assert.equal(Object.keys(FILLING_SHAPE_PATHS).length, 1, "single pouch shape");
 assert.match(FILLING_SHAPE_PATHS.pouch, /^M.*Z$/, "pouch is a closed path");
-assert.match(SILHOUETTE_INSET_TRANSFORM, /^translate.*scale/, "inset silhouette for shell conform");
+assert.ok(SILHOUETTE_POLYGON.length > 50, "silhouette sampled densely for conform geometry");
+assert.equal(Object.keys(CELL_POLYGONS).length, 9, "cell polygons mirror the clip paths");
 assert.match(SILHOUETTE_PATH, /^M441\.322/, "silhouette is the shared configurator path");
 for (const [key, d] of Object.entries(CELL_CLIP_PATHS)) {
   assert.match(d, /^M[\d.\- ]+(L[\d.\- ]+)+Z$/, `${key} is a closed polygon path`);
@@ -50,12 +52,11 @@ const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray
 assert.doesNotMatch(renderer, /<rect/, "no box crops anywhere (ADR 0009 guardrail 1)");
 assert.doesNotMatch(renderer, /d="M/, "no hard-coded paths — assets only (guardrail 5)");
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "silhouette clip");
-assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil-inner"\)\}\)`\}/, "pieces clip to the inset shell");
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\(key\)\}\)`\}/, "nested cell clip inside silhouette");
 assert.match(
   renderer,
-  /conform=\{\[\{ d: SILHOUETTE_PATH, transform: SILHOUETTE_INSET_TRANSFORM \}\]\}/,
-  "pouch borders conform to the silhouette (∂shell inside pouch stroked)",
+  /conformPouchPath\(p, \[SIL_REGION, CELL_REGIONS\[key\]\]\)/,
+  "pouch geometry deforms to the silhouette and cell (rounded, no cut corners)",
 );
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");

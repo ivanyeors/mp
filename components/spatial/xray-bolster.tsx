@@ -24,8 +24,20 @@ import { addBolsterPiece, removeBolsterPiece } from "@/lib/configurator/staff-as
 import type { BolsterPlacement } from "@/lib/spatial-fillings/core";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { layoutBolsterPlacements, type BolsterLength } from "@/lib/spatial-fillings/xray-layout";
+import {
+  bolsterShellPolygon,
+  conformPouchPath,
+  makeRegion,
+} from "@/lib/spatial-fillings/conform";
 import { itemScaleMap, MorphPiece } from "./xray-pillow";
 import { bolsterCapsulePath, SHELL_SEAM, XRAY_VIEW } from "./xray-assets";
+
+// Pouches deform to stay a seam inside the capsule (see conform.ts).
+const SHELL_REGIONS = {
+  short: makeRegion(bolsterShellPolygon("short"), SHELL_SEAM),
+  medium: makeRegion(bolsterShellPolygon("medium"), SHELL_SEAM),
+  long: makeRegion(bolsterShellPolygon("long"), SHELL_SEAM),
+} as const;
 
 export function XrayBolster({
   placements,
@@ -53,9 +65,6 @@ export function XrayBolster({
   const [hovered, setHovered] = useState(false);
   const editable = Boolean(items && onPlacementsChange);
   const capsule = bolsterCapsulePath(length);
-  // Pieces clip to the capsule inset by the seam; its curve is stroked per
-  // pouch so borders conform to the rounded ends.
-  const capsuleInner = bolsterCapsulePath(length, SHELL_SEAM);
   const pieces = layoutBolsterPlacements(
     placements,
     length,
@@ -89,30 +98,24 @@ export function XrayBolster({
           <clipPath id={`${uid}-capsule`}>
             <path d={capsule} />
           </clipPath>
-          <clipPath id={`${uid}-capsule-inner`}>
-            <path d={capsuleInner} />
-          </clipPath>
         </defs>
 
-        {/* x-ray art direction: shell interior darkens so fillings read inside */}
+        {/* x-ray art direction: shell interior darkens so fillings read inside.
+            The capsule clip is belt only; pouch geometry deforms to stay a
+            seam inside the shell. */}
         <g clipPath={`url(#${uid}-capsule)`}>
           <path d={capsule} fill="rgba(15,23,42,0.5)" />
-          <g clipPath={`url(#${uid}-capsule-inner)`}>
-            {pieces.map((p) => {
-              const subtype = itemSubtypes.get(p.itemId) ?? null;
-              return (
-                <MorphPiece
-                  key={p.key}
-                  subtype={subtype}
-                  visual={fillingVisual(subtype)}
-                  // non-uniform scale: the pouch squashes into its tract,
-                  // pressing flat against its neighbors
-                  transform={`translate(${p.x} ${p.y}) scale(${p.w / 100} ${p.h / 100})`}
-                  conform={[{ d: capsuleInner }]}
-                />
-              );
-            })}
-          </g>
+          {pieces.map((p) => {
+            const subtype = itemSubtypes.get(p.itemId) ?? null;
+            return (
+              <MorphPiece
+                key={p.key}
+                subtype={subtype}
+                visual={fillingVisual(subtype)}
+                d={conformPouchPath(p, [SHELL_REGIONS[length]])}
+              />
+            );
+          })}
           {hovered && editable && <path d={capsule} fill="white" fillOpacity={0.15} />}
         </g>
 
