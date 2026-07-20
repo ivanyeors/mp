@@ -208,6 +208,26 @@ async function handleRecommend(req: Request) {
       }
       const composed_buildable = buildable_counts[bolsterVariant] ?? 0;
 
+      // RE slice 07: length-scoped Filling Templates + spatial placements +
+      // color overrides so the completed preview can render the read-only x-ray.
+      const { data: fillingTemplates } = await admin
+        .from("bom_templates")
+        .select("id, name")
+        .eq("kind", "bolster")
+        .eq("key", bolsterVariant)
+        .eq("role", "filling")
+        .eq("is_active", true)
+        .order("name");
+      const { data: tplPlacements } = await admin
+        .from("bolster_template_placements")
+        .select("template_id, slot, item_id")
+        .in("template_id", (fillingTemplates ?? []).map((t: { id: number }) => t.id))
+        .order("slot");
+      const { data: colorOverrides } = await admin
+        .from("filling_color_overrides")
+        .select("subtype, color");
+      const availableFillings = await getAvailableFillings();
+
       return NextResponse.json({
         ok: true,
         product_type: "bolster",
@@ -231,8 +251,16 @@ async function handleRecommend(req: Request) {
           currency: variant.currency,
         } : null,
         components,
-        templates: [],
-        available_fillings: [],
+        templates: (fillingTemplates ?? []).map((t: { id: number; name: string }) => ({
+          id: t.id,
+          name: t.name,
+          lines: [], // bolster fillings are spatial-only (ADR 0008) — no flat lines
+          placements: (tplPlacements ?? []).filter(
+            (p: { template_id: number }) => p.template_id === t.id,
+          ),
+        })),
+        available_fillings: availableFillings,
+        color_overrides: colorOverrides ?? [],
         buildable_counts,
         composed_buildable,
       });
@@ -300,6 +328,17 @@ async function handleRecommend(req: Request) {
     // Get available fillings for display
     const fillings = await getAvailableFillings();
 
+    // RE slice 07: spatial placements + color overrides so the completed
+    // preview can render the recommended template in the read-only x-ray.
+    const { data: tplPlacements } = await admin
+      .from("filling_template_placements")
+      .select("template_id, section, sub_section, slot, item_id")
+      .in("template_id", templates.map((t) => t.id))
+      .order("slot");
+    const { data: colorOverrides } = await admin
+      .from("filling_color_overrides")
+      .select("subtype, color");
+
     // Fetch pillow buildable counts; composed uses product_id (kind×size).
     const { data: pillowBuildable } = await admin
       .from("product_buildable")
@@ -340,8 +379,12 @@ async function handleRecommend(req: Request) {
         id: t.id,
         name: t.name,
         lines: t.lines,
+        placements: (tplPlacements ?? []).filter(
+          (p: { template_id: number }) => p.template_id === t.id,
+        ),
       })),
       available_fillings: fillings,
+      color_overrides: colorOverrides ?? [],
       buildable_counts,
       composed_buildable,
     });

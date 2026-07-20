@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { recommendWithEngine, toPersistedRecommendationRecord } from "@/lib/rules-engine";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
+import { getAvailableFillings, getBomTemplates } from "@/lib/shop/customization-llm";
 import {
   basicBodyToEngineInputs,
   incompleteEngineInputs,
@@ -106,6 +107,19 @@ export async function POST(req: Request) {
       "Basic Mpillow flow — tier locked to basic",
     ];
 
+    // RE slice 07: templates + spatial placements + color overrides so the
+    // completed preview can render the recommended mix in the read-only x-ray.
+    const templates = await getBomTemplates(pillowProduct.kind ?? "basic", pillowProduct.size);
+    const fillings = await getAvailableFillings();
+    const { data: tplPlacements } = await admin
+      .from("filling_template_placements")
+      .select("template_id, section, sub_section, slot, item_id")
+      .in("template_id", templates.map((t) => t.id))
+      .order("slot");
+    const { data: colorOverrides } = await admin
+      .from("filling_color_overrides")
+      .select("subtype, color");
+
     return NextResponse.json({
       ok: true,
       product_type: "pillow",
@@ -134,8 +148,16 @@ export async function POST(req: Request) {
           }
         : null,
       components,
-      templates: [],
-      available_fillings: [],
+      templates: templates.map((t) => ({
+        id: t.id,
+        name: t.name,
+        lines: t.lines,
+        placements: (tplPlacements ?? []).filter(
+          (p: { template_id: number }) => p.template_id === t.id,
+        ),
+      })),
+      available_fillings: fillings,
+      color_overrides: colorOverrides ?? [],
       buildable_counts,
       composed_buildable,
     });
