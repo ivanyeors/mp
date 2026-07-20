@@ -81,6 +81,7 @@ import {
   type RecommendationRecord,
   type RuleFlow,
 } from "@/lib/rules-engine";
+import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import {
   SavedAddressSelect,
@@ -315,9 +316,15 @@ export function MpConfigClient({
   // Product Builder color overrides (slice 11) → CSS vars on the x-ray container;
   // cleared overrides simply vanish and var(x, default) falls back to code defaults.
   const [assistColorOverrides, setAssistColorOverrides] = useState<ColorOverrideRow[]>([]);
+  // RE slice 07: guests read the same filling_color_overrides table via the shop
+  // response; staff panel overrides win once loaded.
+  const shopColorOverrides = shopRecommendation?.color_overrides;
   const xrayColorVars = useMemo(
-    () => xrayColorVarStyle(assistColorOverrides),
-    [assistColorOverrides],
+    () =>
+      xrayColorVarStyle(
+        assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? [],
+      ),
+    [assistColorOverrides, shopColorOverrides],
   );
   // Kept only while the mix exactly matches the loaded template; slice 05's snapshot reads this.
   const sessionFillingTemplateId = useMemo(
@@ -1594,6 +1601,29 @@ export function MpConfigClient({
       shopRecommendation?.pillow_product?.kind ??
       suggestion?.recommended?.kind ??
       suggestion?.product?.kind;
+    // RE slice 07: one derivation shared by the x-ray mount and the reveal below.
+    const record = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    const routePending = Boolean(record && isFlowRoutePending(record));
+    const revealNow = shouldRevealRecommendation({
+      requiredInputsComplete: Boolean(shopRecommendation && size),
+      flowRouteUnresolved: routePending,
+    });
+    const tpl = shopRecommendation?.templates?.find(
+      (t) => String(t.id) === String(record?.templateId),
+    );
+    const guestPlacements = rowsToPillowPlacements(tpl?.placements ?? []);
+    // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
+    const guestXray = revealNow && previewMixMode(guestPlacements) === "xray";
+    const xrayVisible = staffAssist || guestXray;
+    const guestFillings = shopRecommendation?.available_fillings ?? [];
+    const guestItemSubtypes = new Map(
+      guestFillings.map((f) => [f.item_id, f.subtype || null] as const),
+    );
+    const guestItemSizes = new Map(
+      guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
+    );
     const currency = shopRecommendation?.variant?.currency ?? "SGD";
     const basePrice = shopRecommendation?.variant?.price ?? 0;
     const addonTotal = addons
@@ -1708,7 +1738,7 @@ export function MpConfigClient({
                     className={cn(
                       "absolute inset-0 pointer-events-none",
                       // x-ray art direction: shell desaturates so fillings read inside
-                      staffAssist && "opacity-80 saturate-50",
+                      xrayVisible && "opacity-80 saturate-50",
                     )}
                     viewBox="0 0 664 374"
                     xmlns="http://www.w3.org/2000/svg"
@@ -1738,13 +1768,14 @@ export function MpConfigClient({
                       vectorEffect="non-scaling-stroke"
                     />
                   </svg>
-                  {staffAssist && (
+                  {xrayVisible && (
                     <XrayPillow
-                      placements={assistPlacements}
-                      itemSubtypes={assistItemSubtypes}
-                      itemSizes={assistItemSizes}
-                      items={assistItems}
-                      onPlacementsChange={setAssistPlacements}
+                      placements={staffAssist ? assistPlacements : guestPlacements}
+                      itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                      itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                      // read-only for guests: no items / no change handler → no edit affordances
+                      items={staffAssist ? assistItems : undefined}
+                      onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
                       className="absolute inset-0"
                     />
                   )}
@@ -1755,31 +1786,23 @@ export function MpConfigClient({
                   )}
                 </div>
                 {(() => {
-                  const record = parseRecommendationRecord(
-                    shopRecommendation?.recommendation_record ?? null,
-                  );
-                  const routePending = Boolean(record && isFlowRoutePending(record));
-                  const revealNow = shouldRevealRecommendation({
-                    requiredInputsComplete: Boolean(shopRecommendation && size),
-                    flowRouteUnresolved: routePending,
-                  });
                   const sleepPos = measurementData.sleepPositionType[0];
                   const why = record
                     ? plainLanguageWhy(record, { sleep_position: sleepPos })
                     : shopRecommendation?.recommendation?.explanation ?? "";
-                  const tplId = record?.templateId;
-                  const tpl = shopRecommendation?.templates?.find(
-                    (t) => String(t.id) === String(tplId),
-                  );
-                  const mixLines = (tpl?.lines ?? []).map((l) => {
-                    const filling = shopRecommendation?.available_fillings?.find(
-                      (f) => f.item_id === l.item_id,
-                    );
-                    return {
-                      label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
-                      qty: l.quantity,
-                    };
-                  });
+                  // x-ray already shows the mix → suppress the text summary here
+                  // (template name + specialists line stay in the reveal).
+                  const mixLines = guestXray
+                    ? []
+                    : (tpl?.lines ?? []).map((l) => {
+                        const filling = shopRecommendation?.available_fillings?.find(
+                          (f) => f.item_id === l.item_id,
+                        );
+                        return {
+                          label: filling?.name ?? l.subtype ?? `Item ${l.item_id}`,
+                          qty: l.quantity,
+                        };
+                      });
                   const soldTierLabel = soldAsPremium ? "premium" : tier;
                   const showTierAdvice =
                     record?.tierSuggestion &&

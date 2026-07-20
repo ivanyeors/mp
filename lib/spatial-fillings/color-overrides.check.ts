@@ -56,6 +56,10 @@ assert.ok(
   client.indexOf("...xrayColorVars") < client.indexOf("<XrayPillow"),
   "spread sits on the element containing <XrayPillow> so var() resolves",
 );
-assert.match(client, /xrayColorVarStyle\(assistColorOverrides\)/, "style built by the shared resolver");
+assert.match(
+  client,
+  /xrayColorVarStyle\(\s*assistColorOverrides\.length \? assistColorOverrides : shopColorOverrides \?\? \[\]/,
+  "style built by the shared resolver — staff overrides win, shop response covers guests",
+);
 
 console.log("color-overrides.check: all assertions passed");
