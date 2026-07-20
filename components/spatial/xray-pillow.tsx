@@ -10,18 +10,13 @@
  * Staff-only: callers mount this behind the staff assist gate.
  */
 
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SunburstMenu } from "@/components/ui/sunburst-menu";
+import { fillingItemsToSunburst } from "@/lib/spatial-fillings/filling-groups";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import {
   addPiece,
@@ -178,6 +173,8 @@ export function XrayPillow({
   const [hovered, setHovered] = useState<Section | null>(null);
   const [dived, setDived] = useState<Section | null>(null);
   const editable = Boolean(items && onPlacementsChange);
+  // Ring 1 = filling family (3D/6D/6D+), leaves = deduped inventory items.
+  const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
 
   // Escape returns to the full view.
   useEffect(() => {
@@ -339,23 +336,25 @@ export function XrayPillow({
                       </button>
                     ))}
                   </div>
-                  <Select value="" onValueChange={(v) => addToCell(cell, Number(v))}>
-                    <SelectTrigger
-                      size="sm"
-                      className="h-6 w-full min-w-0 bg-background/85 text-[10px]"
-                      disabled={full}
-                      aria-label={`Add filling to ${dived} ${subSection}`}
+                  {full ? (
+                    <span
+                      className="rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                      aria-label={`${dived} ${subSection} cell full`}
                     >
-                      <SelectValue placeholder={full ? "Cell full (max 5)" : "Add filling…"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(items ?? []).map((i) => (
-                        <SelectItem key={i.id} value={String(i.id)}>
-                          {itemLabel(i)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      Cell full (max 5)
+                    </span>
+                  ) : (
+                    <SunburstMenu
+                      root={fillingTree}
+                      display="text"
+                      size={220}
+                      ringWidth={40}
+                      holeRadius={18}
+                      centerIcon={Plus}
+                      ariaLabel={`Add filling to ${dived} ${subSection}`}
+                      onSelect={(leaf) => addToCell(cell, Number(leaf.id))}
+                    />
+                  )}
                 </div>
               );
             })}
