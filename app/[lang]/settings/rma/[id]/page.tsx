@@ -6,7 +6,13 @@ import { withLocale } from "@/lib/i18n/routing";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { humanizeToken } from "@/lib/rma/admin-view";
-import { saveAdminNoteForm } from "../actions";
+import { nextStatuses, type RmaStatus } from "@/lib/rma/transitions";
+import {
+  saveAdminNoteForm,
+  approveRmaForm,
+  rejectRmaForm,
+  sendInstructionsForm,
+} from "../actions";
 
 export const runtime = "nodejs";
 
@@ -94,6 +100,11 @@ export default async function RmaDetailPage({
   const items = (itemsData ?? []) as unknown as ItemRow[];
   const events = (eventsData ?? []) as unknown as EventRow[];
   const photos = rma.photo_urls ?? [];
+  const next = nextStatuses(rma.status as RmaStatus);
+  const hasActions =
+    next.includes("approved") ||
+    next.includes("rejected") ||
+    next.includes("instructions_sent");
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -191,7 +202,53 @@ export default async function RmaDetailPage({
         )}
       </section>
 
-      {/* Status timeline (read-only in slice 04; transitions are slice 05) */}
+      {/* Lifecycle actions (slice 05) — only the transitions the state machine allows. */}
+      {hasActions ? (
+        <section className="space-y-4 rounded-lg border p-4">
+          <h2 className="text-sm font-medium">Actions</h2>
+          <div className="flex flex-wrap gap-2">
+            {next.includes("approved") ? (
+              <form action={approveRmaForm.bind(null, rma.id)}>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+                >
+                  Approve
+                </button>
+              </form>
+            ) : null}
+            {next.includes("instructions_sent") ? (
+              <form action={sendInstructionsForm.bind(null, rma.id)}>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md border bg-background px-3 text-sm hover:bg-accent"
+                >
+                  Send return instructions
+                </button>
+              </form>
+            ) : null}
+          </div>
+          {next.includes("rejected") ? (
+            <form action={rejectRmaForm.bind(null, rma.id)} className="space-y-2">
+              <textarea
+                name="reason"
+                rows={2}
+                required
+                placeholder="Reason for rejection (shown to the customer)…"
+                className="w-full resize-none rounded-md border bg-background p-2 text-sm"
+              />
+              <button
+                type="submit"
+                className="h-9 rounded-md border border-destructive px-3 text-sm text-destructive hover:bg-destructive/10"
+              >
+                Reject return
+              </button>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* Status timeline — the customer-visible history of every transition. */}
       <section className="rounded-lg border p-4">
         <h2 className="text-sm font-medium">Status timeline</h2>
         {events.length === 0 ? (
