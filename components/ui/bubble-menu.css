@@ -259,9 +259,14 @@
     justify-content: flex-start;
     padding-top: 120px;
     overflow-y: auto;
-    overscroll-behavior: none;
+    overscroll-behavior: contain;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
+    /* Size to the dynamic viewport anchored at top: inset:0's bottom anchor
+       sits behind the iOS toolbar/home indicator, hiding the last pills. */
+    top: 0;
+    bottom: auto;
+    height: 100dvh;
     max-height: 100dvh;
     padding-bottom: calc(var(--mobile-bottom-clearance) + 1rem);
   }

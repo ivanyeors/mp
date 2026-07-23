@@ -77,7 +77,10 @@ export async function loadComposedSellable(
 
     const msrp = productPrice?.msrp != null ? Number(productPrice.msrp) : null;
     if (msrp == null) {
-      return { ok: false, error: "Composed sellable has no Costings MSRP" };
+      return {
+        ok: false,
+        error: `Composed sellable has no Costings MSRP for size ${key.size} tier ${key.tier}`,
+      };
     }
 
     return {

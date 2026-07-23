@@ -13,6 +13,8 @@ import { AnalyticsNoticeBar } from "@/components/analytics/analytics-notice-bar"
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
 import { BookAppointmentHost } from "@/components/slide-in-pages/book-appointment-sheet";
 import { GoogleAnalytics } from "@/components/seo/google-analytics";
+import { Haptics } from "@/components/haptics";
+import { RegisterSW } from "@/components/register-sw";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -38,9 +40,9 @@ export const metadata: Metadata = {
   applicationName: "Mpillow",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/mpillow_logo_2026.png" }],
-    apple: [{ url: "/mpillow_logo_2026.png" }],
-    shortcut: ["/mpillow_logo_2026.png"],
+    icon: [{ url: "/icon-192.png" }],
+    apple: [{ url: "/apple-touch-icon.png" }],
+    shortcut: ["/icon-192.png"],
   },
   appleWebApp: {
     capable: true,
@@ -98,6 +100,8 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Haptics />
+          <RegisterSW />
           <ApiRequestTracker />
           <JourneyTracker />
           <AnalyticsNoticeBar />

@@ -266,7 +266,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
       <SettingsBreadcrumbProvider>
         <div className="flex min-h-svh w-full min-w-0 flex-col overflow-x-hidden">
           {header}
-          <div className="min-w-0 max-w-full px-2 py-4 sm:px-3">{children}</div>
+          <div className="min-w-0 max-w-full px-2 py-3 sm:px-3">{children}</div>
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetContent
               side="bottom"
@@ -370,7 +370,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
           </Sidebar>
           <SidebarInset>
             {header}
-            <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
+            <div className="px-2 py-3 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
               {children}
             </div>
           </SidebarInset>
