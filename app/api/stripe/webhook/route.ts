@@ -6,6 +6,7 @@ import { deductInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
 import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync";
 import { updateCustomerStats } from "@/lib/ecommerce/customers";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
+import { applyRmaTransition } from "@/lib/rma/transition";
 import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
 import type Stripe from "stripe";
@@ -339,7 +340,20 @@ export async function POST(req: Request) {
               reason: r.reason ?? null,
             },
           });
-          if (recorded) newlyRecorded++;
+          if (recorded) {
+            newlyRecorded++;
+            // If this refund was issued for an RMA (slice 06), settle it now that
+            // the money has moved. Idempotent + best-effort: a redelivered event
+            // no-ops (canTransition false) and RMA settlement never breaks money.
+            const rmaId = r.metadata?.rma_request_id;
+            if (rmaId) {
+              try {
+                await applyRmaTransition(admin, { rmaId, to: "refunded", actorType: "system" });
+              } catch (err) {
+                console.error(`[stripe/webhook] RMA ${rmaId} settle failed:`, err);
+              }
+            }
+          }
         }
 
         if (newlyRecorded === 0) break;

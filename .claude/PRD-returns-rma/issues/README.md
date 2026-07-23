@@ -14,7 +14,7 @@ Tracer-bullet breakdown. Each slice is a thin, demoable path through all layers
 | 03 | Customer request flow (+ received email, RMA email ledger) | AFK | done (14 tests) | 02 |
 | 04 | Admin RMA queue + detail (role-gated) | AFK | done (3 tests) | 02 |
 | 05 | Admin approve / reject + instructions-sent (+ emails) | AFK | done (33 tests) | 03, 04 |
-| 06 | Resolution outcomes (refund / exchange / replacement + email) | AFK | needs-triage | 05 |
+| 06 | Resolution outcomes (refund / exchange / replacement + email) | AFK | done (36 tests) | 05 |
 | 07 | Staging E2E QA sign-off | HITL | needs-triage | 03, 05, 06 |
 
 Parallelizable after 02: slices 03 and 04 are independent of each other.

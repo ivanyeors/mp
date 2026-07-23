@@ -12,6 +12,9 @@ import {
   approveRmaForm,
   rejectRmaForm,
   sendInstructionsForm,
+  markReceivedForm,
+  completeReturnForm,
+  issueRmaRefundForm,
 } from "../actions";
 
 export const runtime = "nodejs";
@@ -101,10 +104,8 @@ export default async function RmaDetailPage({
   const events = (eventsData ?? []) as unknown as EventRow[];
   const photos = rma.photo_urls ?? [];
   const next = nextStatuses(rma.status as RmaStatus);
-  const hasActions =
-    next.includes("approved") ||
-    next.includes("rejected") ||
-    next.includes("instructions_sent");
+  const isRefund = rma.resolution === "refund";
+  const hasActions = next.length > 0;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
@@ -227,7 +228,50 @@ export default async function RmaDetailPage({
                 </button>
               </form>
             ) : null}
+            {next.includes("received") ? (
+              <form action={markReceivedForm.bind(null, rma.id)}>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md border bg-background px-3 text-sm hover:bg-accent"
+                >
+                  Mark received
+                </button>
+              </form>
+            ) : null}
+            {next.includes("refunded") && isRefund ? (
+              <form action={issueRmaRefundForm.bind(null, rma.id)}>
+                <button
+                  type="submit"
+                  className="h-9 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+                >
+                  Issue refund
+                </button>
+              </form>
+            ) : null}
           </div>
+
+          {next.includes("completed") && !isRefund ? (
+            <form action={completeReturnForm.bind(null, rma.id)} className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  name="tracking_number"
+                  placeholder="Tracking number (optional)"
+                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                />
+                <input
+                  name="tracking_url"
+                  placeholder="Tracking URL (optional)"
+                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                className="h-9 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+              >
+                Complete return
+              </button>
+            </form>
+          ) : null}
           {next.includes("rejected") ? (
             <form action={rejectRmaForm.bind(null, rma.id)} className="space-y-2">
               <textarea
