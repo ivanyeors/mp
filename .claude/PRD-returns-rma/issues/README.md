@@ -10,9 +10,9 @@ Tracer-bullet breakdown. Each slice is a thin, demoable path through all layers
 | # | Slice | Type | Status | Blocked by |
 |---|-------|------|--------|------------|
 | 01 | Glossary + RMA lifecycle/model ADR | HITL | done (ADR 0011) | — |
-| 02 | RMA schema + eligibility & transition core | AFK | needs-triage | 01 |
-| 03 | Customer request flow (+ received email, RMA email ledger) | AFK | needs-triage | 02 |
-| 04 | Admin RMA queue + detail (role-gated) | AFK | needs-triage | 02 |
+| 02 | RMA schema + eligibility & transition core | AFK | done (13 tests) | 01 |
+| 03 | Customer request flow (+ received email, RMA email ledger) | AFK | done (14 tests) | 02 |
+| 04 | Admin RMA queue + detail (role-gated) | AFK | done (3 tests) | 02 |
 | 05 | Admin approve / reject + instructions-sent (+ emails) | AFK | needs-triage | 03, 04 |
 | 06 | Resolution outcomes (refund / exchange / replacement + email) | AFK | needs-triage | 05 |
 | 07 | Staging E2E QA sign-off | HITL | needs-triage | 03, 05, 06 |
