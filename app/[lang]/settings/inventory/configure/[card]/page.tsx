@@ -1406,7 +1406,14 @@ function FillingConfigPanel({
     () =>
       items
         .filter((i) => i.category === "filling")
-        .map((i) => ({ id: i.id, label: getFillingDisplayLabel(i, templateKey) })),
+        .map((i) => ({
+          id: i.id,
+          label: getFillingDisplayLabel(i, templateKey),
+          // name/subtype/size feed the bolster picker's family grouping.
+          name: i.name,
+          subtype: i.subtype,
+          size: i.size,
+        })),
     [items, templateKey],
   );
   // Derived BOM: same flatten the server runs over placement rows (ADR 0008).

@@ -10,8 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { PillowCellGrid, type PillowGridItem } from "@/components/spatial/pillow-cell-grid";
-import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment-list";
+import { PillowCellGrid } from "@/components/spatial/pillow-cell-grid";
+import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
   bolsterPlacementsToRows,
   flattenToPackList,
@@ -173,7 +173,7 @@ export default function ResultDetailPage() {
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
   const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
-  const [fillingItems, setFillingItems] = useState<PillowGridItem[]>([]);
+  const [fillingItems, setFillingItems] = useState<BolsterListItem[]>([]);
   const [prepLoading, setPrepLoading] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -342,7 +342,7 @@ export default function ResultDetailPage() {
       const { supabaseClient } = await import("@/lib/supabase/client");
       const { data } = await supabaseClient
         .from("items")
-        .select("id,name,subtype")
+        .select("id,name,subtype,size")
         .eq("category", "filling")
         .eq("is_active", true)
         .order("name");
@@ -351,6 +351,10 @@ export default function ResultDetailPage() {
           (data ?? []).map((i) => ({
             id: Number(i.id),
             label: i.subtype ? `${i.name} (${i.subtype})` : i.name,
+            // name/subtype/size feed the bolster picker's family grouping.
+            name: i.name,
+            subtype: i.subtype ?? null,
+            size: i.size ?? null,
           })),
         );
       }
