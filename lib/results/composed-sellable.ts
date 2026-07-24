@@ -48,7 +48,10 @@ async function withCategories(
 export async function loadComposedSellable(
   admin: SupabaseClient,
   key: ComposedSellableKey,
-): Promise<{ ok: true; sellable: ComposedSellable } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; sellable: ComposedSellable }
+  | { ok: false; error: string; code?: "no_price" }
+> {
   if (key.productType === "pillow") {
     const { data: pillowProduct } = await admin
       .from("pillow_products")
@@ -79,6 +82,7 @@ export async function loadComposedSellable(
     if (msrp == null) {
       return {
         ok: false,
+        code: "no_price",
         error: `Composed sellable has no Costings MSRP for size ${key.size} tier ${key.tier}`,
       };
     }
@@ -109,6 +113,7 @@ export async function loadComposedSellable(
   if (msrp == null) {
     return {
       ok: false,
+      code: "no_price",
       error: `Composed sellable has no Costings MSRP for bolster length ${length}`,
     };
   }

@@ -61,6 +61,10 @@ export const dynamic = "force-dynamic";
 
 const MP_CONFIG_TELEGRAM_CHAT_ID = -1001279910218;
 
+/** Customer-facing message when a configuration's price isn't set up in Costings yet. */
+const PRICING_UNAVAILABLE_MESSAGE =
+  "This configuration isn’t available for purchase yet. Please contact us to complete your order.";
+
 const PreferenceLineSchema = z.object({
   item_id: z.number().int().positive(),
   quantity: z.number().positive().default(1),
@@ -322,6 +326,10 @@ export async function POST(req: Request) {
       : { productType: "bolster", length: input.suggestedLength! },
   );
   if (!composed.ok) {
+    if (composed.code === "no_price") {
+      console.error(`[results/hold] pricing not configured: ${composed.error}`);
+      return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
+    }
     return NextResponse.json({ error: composed.error }, { status: 400 });
   }
 
@@ -379,7 +387,8 @@ export async function POST(req: Request) {
 
   for (const l of input.addonLines) {
     if (msrpByItem.get(l.item_id) == null) {
-      return NextResponse.json({ error: "Add-on missing Costings MSRP" }, { status: 400 });
+      console.error(`[results/hold] pricing not configured: add-on item ${l.item_id} missing Costings MSRP`);
+      return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
     }
   }
 
