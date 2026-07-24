@@ -215,6 +215,28 @@ The recorded path (nodes and matched values) that produced a recommendation — 
 The consent surface on the completed preview when a **Flow route** fires: reason from the fired path, both prices, Upgrade / Keep. Accept carries shared answers over and collects only the missing target-flow steps; Decline keeps the same-flow fallback result. All routing resolves before the Stripe hold.
 _Avoid_: silent auto-redirect to another flow; holding an amount the shopper did not explicitly confirm
 
+## Returns / RMA (ADR 0011)
+
+**Return** (RMA):
+A customer-initiated, **item-level** request against a delivered **Order** to send goods back, resolved as a **refund**, **exchange**, or **replacement**. Its own aggregate (`rma_requests` + `rma_request_items` + `rma_status_events`), not an order column.
+_Avoid_: "refund request" (that is the separate order-level Result flow, migration 0048); "return" when you mean a code `return`
+
+**Resolution**:
+What the customer asks for on a **Return**: `refund` (money back via the existing `refundPayment` + money-ledger webhook), `exchange` (same item re-sent), or `replacement` (corrected/like item re-sent). Fixed at request time.
+_Avoid_: "outcome" (that is the terminal status the resolution drives)
+
+**RMA status**:
+The lifecycle state: `requested → approved | rejected | cancelled`; `approved → instructions_sent | cancelled`; `instructions_sent → received | cancelled`; `received → completed | refunded`. Terminal: `completed`, `refunded`, `rejected`, `cancelled`. Validated by the pure `canTransition`.
+_Avoid_: inventing intermediate states in UI without adding them to `canTransition`
+
+**Status event**:
+An append-only `rma_status_events` row (`from_status`, `to_status`, `actor`, `reason`) — the customer-visible **Return** timeline. Distinct from the staff-only `admin_audit_log` entry written alongside it.
+_Avoid_: mutating `rma_requests.status` without appending an event (status is a cache of the latest event)
+
+**Return window**:
+The eligibility period, `site_settings.rma_return_window_days` (default **30**), measured from `orders.delivered_at`. Only delivered orders within the window are returnable.
+_Avoid_: measuring the window from order/ship date
+
 ## Relationships
 
 - An **Item** may be a **Sellable item** when it has an MSRP

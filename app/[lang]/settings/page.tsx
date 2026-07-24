@@ -26,7 +26,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1>General</h1>
         <p className="text-muted-foreground mt-2">Basic preferences for your account.</p>
@@ -45,7 +45,7 @@ export default function SettingsPage() {
               onChange={() => setTheme("light")}
               className="peer sr-only"
             />
-            <div className="rounded-lg border p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
+            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
               <div className="flex items-center gap-3">
                 <Sun className="h-5 w-5" />
                 <div className="font-medium">Light</div>
@@ -64,7 +64,7 @@ export default function SettingsPage() {
               onChange={() => setTheme("dark")}
               className="peer sr-only"
             />
-            <div className="rounded-lg border p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
+            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
               <div className="flex items-center gap-3">
                 <Moon className="h-5 w-5" />
                 <div className="font-medium">Dark</div>
@@ -83,7 +83,7 @@ export default function SettingsPage() {
               onChange={() => setTheme("system")}
               className="peer sr-only"
             />
-            <div className="rounded-lg border p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
+            <div className="rounded-lg border p-3 sm:p-4 transition hover:shadow-sm peer-checked:border-primary peer-checked:ring-2 peer-checked:ring-primary">
               <div className="flex items-center gap-3">
                 <Monitor className="h-5 w-5" />
                 <div className="font-medium">System</div>

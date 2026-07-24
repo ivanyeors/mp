@@ -1,26 +1,33 @@
 "use client";
 
-import { X } from "lucide-react";
+import { useMemo } from "react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SunburstMenu } from "@/components/ui/sunburst-menu";
+import { fillingItemsToSunburst } from "@/lib/spatial-fillings/filling-groups";
 import { addBolsterPiece, removeBolsterPiece } from "@/lib/configurator/staff-assist";
 import type { BolsterPlacement } from "@/lib/spatial-fillings/core";
 
-/** Filling Items only — callers filter (category === "filling") and label before passing. */
-export type BolsterListItem = { id: number; label: string };
+/**
+ * Filling Items only — callers filter (category === "filling"). `name`/`subtype`/
+ * `size` drive the family grouping (3D / 6D / 6D+); `label` is the pre-formatted
+ * display name shown on the list rows.
+ */
+export type BolsterListItem = {
+  id: number;
+  label: string;
+  name: string;
+  subtype: string | null;
+  size: string | null;
+};
 
 /**
  * Mbolster single-compartment mix editor (ADR 0008 amendment): one ordered
  * list, add/remove, NO piece cap, never the pillow Section/sub-section grid.
  * Dumb + controlled: no data fetching; parent owns the placements value.
- * Shared by Configure's Filling Config tab, Admin Result assign, and the
- * /mbolster-config staff assist panel.
+ * Shared by Configure's Filling Config tab and Admin Result assign. The
+ * "Add piece" picker groups fillings by family via the shared SunburstMenu —
+ * the same tree the pillow x-ray add-picker uses.
  */
 export function BolsterCompartmentList({
   value,
@@ -34,6 +41,7 @@ export function BolsterCompartmentList({
   const pieces = [...value].sort((a, b) => a.slot - b.slot);
   const label = (itemId: number) =>
     items.find((i) => i.id === itemId)?.label ?? `Item #${itemId}`;
+  const tree = useMemo(() => fillingItemsToSunburst(items), [items]);
 
   return (
     <div className="space-y-1 rounded-lg border p-2">
@@ -56,23 +64,22 @@ export function BolsterCompartmentList({
           </Button>
         </div>
       ))}
-      <Select
-        value=""
-        onValueChange={(v) => {
-          if (v) onChange(addBolsterPiece(value, Number(v)));
-        }}
-      >
-        <SelectTrigger className="w-full" disabled={items.length === 0} aria-label="Add filling">
-          <SelectValue placeholder="Add piece…" />
-        </SelectTrigger>
-        <SelectContent>
-          {items.map((i) => (
-            <SelectItem key={i.id} value={String(i.id)}>
-              {i.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {items.length === 0 ? (
+        <p className="py-1 text-center text-xs text-muted-foreground">No fillings available</p>
+      ) : (
+        <div className="flex justify-center pt-1">
+          <SunburstMenu
+            root={tree}
+            display="text"
+            size={200}
+            ringWidth={40}
+            holeRadius={18}
+            centerIcon={Plus}
+            ariaLabel="Add piece"
+            onSelect={(leaf) => onChange(addBolsterPiece(value, Number(leaf.id)))}
+          />
+        </div>
+      )}
     </div>
   );
 }

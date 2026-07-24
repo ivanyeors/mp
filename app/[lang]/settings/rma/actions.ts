@@ -1,0 +1,226 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { supabaseAdmin } from "@/lib/supabase/server";
+import { assertAdmin } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
+import { refundPayment } from "@/lib/stripe/refunds";
+import { refundableAmount } from "@/lib/ecommerce/admin-refund";
+import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
+import { applyRmaTransition } from "@/lib/rma/transition";
+import { rmaRefundAmount } from "@/lib/rma/refund";
+import { getSiteSettings } from "@/lib/site-settings";
+
+/**
+ * Save the staff-only internal note on an RMA request (slice 04). Audit-logged
+ * proving mutation; deliberately does NOT append a status event.
+ */
+export async function saveAdminNote(rmaId: string, note: string) {
+  const actor = await assertAdmin("orders");
+  const admin = supabaseAdmin();
+
+  const { data: before } = await admin
+    .from("rma_requests")
+    .select("id, admin_note")
+    .eq("id", rmaId)
+    .maybeSingle();
+
+  const { data, error } = await admin
+    .from("rma_requests")
+    .update({ admin_note: note })
+    .eq("id", rmaId)
+    .select("id, admin_note")
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  await recordAdminAction({
+    actor,
+    action: "rma.note",
+    entityType: "rma_request",
+    entityId: rmaId,
+    before,
+    after: { admin_note: data.admin_note },
+  });
+
+  revalidatePath(`/settings/rma/${rmaId}`);
+  return { ok: true };
+}
+
+// ------------------------------------------------------------
+// Lifecycle transitions (slices 05–06)
+// ------------------------------------------------------------
+
+/** Staff-only wrapper: assert permission, apply the transition, re-throw on illegal. */
+async function staffTransition(opts: {
+  rmaId: string;
+  to: Parameters<typeof applyRmaTransition>[1]["to"];
+  reason?: string | null;
+  emailMessage?: string | null;
+  patch?: Record<string, unknown>;
+}) {
+  const actor = await assertAdmin("orders");
+  const admin = supabaseAdmin();
+  const res = await applyRmaTransition(admin, { ...opts, actorType: "staff", actor });
+  if (!res.ok) throw new Error(res.error ?? "Transition failed.");
+  revalidatePath(`/settings/rma/${opts.rmaId}`);
+  return res;
+}
+
+export async function approveRma(rmaId: string) {
+  return staffTransition({ rmaId, to: "approved" });
+}
+
+export async function rejectRma(rmaId: string, reason: string) {
+  const trimmed = reason.trim();
+  if (!trimmed) throw new Error("A rejection reason is required.");
+  return staffTransition({ rmaId, to: "rejected", reason: trimmed });
+}
+
+export async function sendInstructions(rmaId: string) {
+  const settings = await getSiteSettings(["rma_return_address"]);
+  const address = settings.rma_return_address?.trim();
+  const message = address
+    ? `Please ship the item(s) back to:\n\n${address}\n\nInclude your order number so we can match the return.`
+    : "Please reply to this email and our team will share the return address and next steps.";
+  return staffTransition({ rmaId, to: "instructions_sent", emailMessage: message });
+}
+
+/** instructions_sent → received. Staff acknowledge the goods arrived. No email. */
+export async function markReceived(rmaId: string) {
+  return staffTransition({ rmaId, to: "received" });
+}
+
+/**
+ * received → completed for exchange/replacement, capturing outbound tracking.
+ * Refund returns settle via {@link issueRmaRefund} instead (webhook-driven), so
+ * this refuses a refund resolution.
+ */
+export async function completeReturn(rmaId: string, trackingNumber: string, trackingUrl: string) {
+  const admin = supabaseAdmin();
+  const { data: r } = await admin
+    .from("rma_requests")
+    .select("resolution")
+    .eq("id", rmaId)
+    .maybeSingle();
+  if (r?.resolution === "refund") {
+    throw new Error("Refund returns settle via Issue refund, not tracking.");
+  }
+  return staffTransition({
+    rmaId,
+    to: "completed",
+    patch: {
+      tracking_number: trackingNumber.trim() || null,
+      tracking_url: trackingUrl.trim() || null,
+    },
+  });
+}
+
+/**
+ * received (refund resolution) → issue the refund through the EXISTING Stripe
+ * refund + money-ledger webhook. No new money path: `refundPayment` carries
+ * `rma_request_id` in metadata, and the `charge.refunded` webhook advances the
+ * RMA to `refunded` when the refund settles. The RMA stays `received` until then.
+ */
+export async function issueRmaRefund(rmaId: string) {
+  const actor = await assertAdmin("orders");
+  const admin = supabaseAdmin();
+
+  const { data, error } = await admin
+    .from("rma_requests")
+    .select(
+      "id, status, resolution, orders(id, payment_reference, total, amount_refunded, currency), rma_request_items(quantity, order_items(unit_price))",
+    )
+    .eq("id", rmaId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Return not found.");
+  const rma = data as unknown as {
+    status: string;
+    resolution: string;
+    orders: {
+      id: string;
+      payment_reference: string | null;
+      total: number;
+      amount_refunded: number | null;
+      currency: string;
+    } | null;
+    rma_request_items: Array<{ quantity: number; order_items: { unit_price: number | null } | null }>;
+  };
+
+  if (rma.resolution !== "refund") throw new Error("This return is not a refund.");
+  if (rma.status !== "received") throw new Error("Mark the return received before issuing the refund.");
+  const order = rma.orders;
+  if (!order?.payment_reference) throw new Error("Order has no payment to refund.");
+
+  const remaining = refundableAmount(order);
+  const requested = rmaRefundAmount(
+    rma.rma_request_items.map((i) => ({
+      unit_price: Number(i.order_items?.unit_price ?? 0),
+      quantity: i.quantity,
+    })),
+  );
+  const amount = Math.min(requested, remaining);
+  if (amount <= 0) throw new Error("Nothing left to refund on this order.");
+
+  const amountCents = Math.round(amount * 100);
+  const isFull = amountCents >= Math.round(remaining * 100);
+
+  const refund = await refundPayment({
+    paymentIntentId: order.payment_reference,
+    ...(isFull ? {} : { amount }),
+    idempotencyKey: `rma_refund_${rmaId}`, // one refund per RMA; re-clicks dedupe at Stripe
+    reason: "requested_by_customer",
+    metadata: { order_id: order.id, rma_request_id: rmaId },
+  });
+
+  await recordAdminAction({
+    actor,
+    action: "rma.refund_initiated",
+    entityType: "rma_request",
+    entityId: rmaId,
+    before: { status: rma.status },
+    after: { stripe_refund_id: refund.id, amount },
+  });
+
+  await addOrderTimelineEvent(
+    order.id,
+    "refund_initiated",
+    `Staff issued RMA refund (${amount} ${order.currency})`,
+    { stripe_refund_id: refund.id, rma_request_id: rmaId, amount },
+  );
+
+  revalidatePath(`/settings/rma/${rmaId}`);
+  return { ok: true, amount };
+}
+
+// Form adapters (bound with rmaId in the detail page). Trailing FormData is what
+// React passes to a <form action>; adapters without inputs ignore it.
+export async function approveRmaForm(rmaId: string, _formData: FormData) {
+  await approveRma(rmaId);
+}
+export async function rejectRmaForm(rmaId: string, formData: FormData) {
+  await rejectRma(rmaId, String(formData.get("reason") ?? ""));
+}
+export async function sendInstructionsForm(rmaId: string, _formData: FormData) {
+  await sendInstructions(rmaId);
+}
+export async function markReceivedForm(rmaId: string, _formData: FormData) {
+  await markReceived(rmaId);
+}
+export async function completeReturnForm(rmaId: string, formData: FormData) {
+  await completeReturn(
+    rmaId,
+    String(formData.get("tracking_number") ?? ""),
+    String(formData.get("tracking_url") ?? ""),
+  );
+}
+export async function issueRmaRefundForm(rmaId: string, _formData: FormData) {
+  await issueRmaRefund(rmaId);
+}
+
+/** Form adapter: unwraps the textarea value and delegates to {@link saveAdminNote}. */
+export async function saveAdminNoteForm(rmaId: string, formData: FormData) {
+  await saveAdminNote(rmaId, String(formData.get("note") ?? ""));
+}

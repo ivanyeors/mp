@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
-  ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2,
+  ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput, Shapes,
   GitBranch,
 } from "lucide-react";
@@ -104,6 +104,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle, perm: "customers" },
       { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList, perm: "results" },
       { href: "/settings/orders", label: "Orders", tooltip: "Order Management", Icon: ShoppingCart, perm: "orders" },
+      { href: "/settings/rma", label: "Returns / RMA", tooltip: "Return requests", Icon: RotateCcw, perm: "orders" },
       { href: "/settings/discounts", label: "Discounts", tooltip: "Discount Codes", Icon: Tag, perm: "discounts" },
       { href: "/settings/shipping", label: "Shipping", tooltip: "Shipping Methods", Icon: Truck, perm: "shipping" },
     ],
@@ -266,7 +267,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
       <SettingsBreadcrumbProvider>
         <div className="flex min-h-svh w-full min-w-0 flex-col overflow-x-hidden">
           {header}
-          <div className="min-w-0 max-w-full px-2 py-4 sm:px-3">{children}</div>
+          <div className="min-w-0 max-w-full px-2 py-3 sm:px-3">{children}</div>
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetContent
               side="bottom"
@@ -370,7 +371,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
           </Sidebar>
           <SidebarInset>
             {header}
-            <div className="px-2 py-4 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
+            <div className="px-2 py-3 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
               {children}
             </div>
           </SidebarInset>
