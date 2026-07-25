@@ -9,6 +9,10 @@ import { useCart } from "@/lib/shop/cart-context";
 import { useCurrency } from "@/lib/shop/currency-context";
 import { PriceDisplay, formatPrice } from "@/components/shop/price-display";
 import { Button } from "@/components/ui/button";
+import {
+  MobileStickyActionBar,
+  mobileStickyActionBarSpacerClassName,
+} from "@/components/ui/mobile-sticky-action-bar";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Collapsible,
@@ -492,8 +496,22 @@ export default function CheckoutPage() {
 
   if (items.length === 0) return null;
 
+  // Shared Pay CTA label so the inline (desktop) and sticky (mobile) buttons
+  // never drift.
+  const payLabel = submitting ? (
+    <>
+      <Loader2 className="size-4 animate-spin" />
+      Processing…
+    </>
+  ) : (
+    <>
+      <CreditCard className="size-4" />
+      Pay with Stripe
+    </>
+  );
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className={`max-w-5xl mx-auto px-4 py-8 ${mobileStickyActionBarSpacerClassName}`}>
       <h1 className="text-2xl font-bold mb-6">Checkout</h1>
 
       {/* Mobile: collapsible order summary at top */}
@@ -530,7 +548,7 @@ export default function CheckoutPage() {
       <div className="lg:grid lg:grid-cols-5 lg:gap-8">
         {/* Left: Form */}
         <div className="lg:col-span-3">
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
+          <form id="checkout-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-8">
             {/* Contact */}
             <section id="contact" data-section="contact">
               <h2 className="text-lg font-semibold mb-4">Contact</h2>
@@ -838,29 +856,33 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Submit / payment handoff */}
-            <div id="payment" data-section="payment">
+            {/* Submit / payment handoff (desktop inline) */}
+            <div id="payment" data-section="payment" className="max-md:hidden">
             <Button
               type="submit"
               size="lg"
               className="w-full"
               disabled={submitting}
             >
-              {submitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Processing…
-                </>
-              ) : (
-                <>
-                  <CreditCard className="size-4" />
-                  Pay with Stripe
-                </>
-              )}
+              {payLabel}
             </Button>
             </div>
           </form>
         </div>
+
+        {/* Mobile sticky Pay CTA — submits the same #checkout-form via the
+            button's form attribute, so no duplicated submit logic. */}
+        <MobileStickyActionBar>
+          <Button
+            type="submit"
+            form="checkout-form"
+            size="lg"
+            className="w-full"
+            disabled={submitting}
+          >
+            {payLabel}
+          </Button>
+        </MobileStickyActionBar>
 
         {/* Right: Desktop order summary */}
         <div className="hidden lg:block lg:col-span-2" id="order-summary" data-section="order-summary">
