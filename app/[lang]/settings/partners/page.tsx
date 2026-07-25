@@ -60,9 +60,15 @@ function emptyWorkWithUs(): WorkWithUsContent {
   };
 }
 
+// ponytail: "Partner" naming kept from the legacy `partners` table; these are Locations.
+type LocationType = "own" | "partner";
+
 type PartnerForm = {
   id?: string;
   name: string;
+  type: LocationType;
+  address: string;
+  postal_code: string;
   logo_url: string;
   media_asset_id: string | null;
   website_url: string;
@@ -72,6 +78,9 @@ type PartnerForm = {
 
 const emptyPartnerForm = (): PartnerForm => ({
   name: "",
+  type: "partner",
+  address: "",
+  postal_code: "",
   logo_url: "",
   media_asset_id: null,
   website_url: "",
@@ -188,6 +197,9 @@ export default function PartnersSettingsPage() {
       setPartnerForm({
         id: partner.id,
         name: partner.name,
+        type: (partner.type ?? "partner") as LocationType,
+        address: partner.address ?? "",
+        postal_code: partner.postal_code ?? "",
         logo_url: partner.logo_url ?? "",
         media_asset_id: partner.media_asset_id ?? null,
         website_url: partner.website_url ?? "",
@@ -202,19 +214,24 @@ export default function PartnersSettingsPage() {
 
   const handleSavePartner = async () => {
     if (!partnerForm.name.trim()) {
-      toast.error("Partner name is required");
+      toast.error("Location name is required");
       return;
     }
 
+    const isOwn = partnerForm.type === "own";
     setSavingPartner(true);
     try {
       const payload = {
         name: partnerForm.name.trim(),
-        logo_url: partnerForm.logo_url || null,
-        media_asset_id: partnerForm.media_asset_id,
-        website_url: partnerForm.website_url || null,
-        description: partnerForm.description || null,
-        visible: partnerForm.visible,
+        type: partnerForm.type,
+        address: partnerForm.address || null,
+        postal_code: partnerForm.postal_code || null,
+        // Own studios never show on /our-partners, so partner-only fields are cleared.
+        logo_url: isOwn ? null : partnerForm.logo_url || null,
+        media_asset_id: isOwn ? null : partnerForm.media_asset_id,
+        website_url: isOwn ? null : partnerForm.website_url || null,
+        description: isOwn ? null : partnerForm.description || null,
+        visible: isOwn ? false : partnerForm.visible,
       };
 
       const res = partnerForm.id
@@ -231,11 +248,11 @@ export default function PartnersSettingsPage() {
 
       const json = await res.json();
       if (!json.ok) {
-        toast.error(typeof json.error === "string" ? json.error : "Failed to save partner");
+        toast.error(typeof json.error === "string" ? json.error : "Failed to save location");
         return;
       }
 
-      toast.success(partnerForm.id ? "Partner updated" : "Partner added");
+      toast.success(partnerForm.id ? "Location updated" : "Location added");
       setPartnerDialogOpen(false);
       loadData();
     } finally {
@@ -244,14 +261,14 @@ export default function PartnersSettingsPage() {
   };
 
   const handleDeletePartner = async (id: string) => {
-    if (!confirm("Delete this partner?")) return;
+    if (!confirm("Delete this location?")) return;
     const res = await fetch(`/api/partners/${id}`, { method: "DELETE" });
     const json = await res.json();
     if (!json.ok) {
-      toast.error("Failed to delete partner");
+      toast.error("Failed to delete location");
       return;
     }
-    toast.success("Partner deleted");
+    toast.success("Location deleted");
     loadData();
   };
 
@@ -301,9 +318,9 @@ export default function PartnersSettingsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Partners Page</h1>
+          <h1 className="text-2xl font-semibold">Locations</h1>
           <p className="text-sm text-muted-foreground">
-            Edit the Work With Us section and partner logos shown on the public page.
+            Manage own studios and partner clinics, and edit the Work With Us page.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -314,10 +331,10 @@ export default function PartnersSettingsPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="work-with-us">
+      <Tabs defaultValue="locations">
         <TabsList>
+          <TabsTrigger value="locations">Locations</TabsTrigger>
           <TabsTrigger value="work-with-us">Work With Us</TabsTrigger>
-          <TabsTrigger value="logos">Partner Logos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="work-with-us" className="space-y-6 pt-4">
@@ -475,14 +492,14 @@ export default function PartnersSettingsPage() {
           </Button>
         </TabsContent>
 
-        <TabsContent value="logos" className="space-y-4 pt-4">
+        <TabsContent value="locations" className="space-y-4 pt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              {partners.length} partner{partners.length === 1 ? "" : "s"}
+              {partners.length} location{partners.length === 1 ? "" : "s"}
             </p>
             <Button size="sm" onClick={() => openPartnerDialog()}>
               <Plus className="mr-2 h-4 w-4" />
-              Add partner
+              Add location
             </Button>
           </div>
 
@@ -529,26 +546,35 @@ export default function PartnersSettingsPage() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium">{partner.name}</div>
-                  {partner.description ? (
-                    <div className="truncate text-sm text-muted-foreground">{partner.description}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{partner.name}</span>
+                    <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                      {partner.type === "own" ? "Own studio" : "Partner"}
+                    </span>
+                  </div>
+                  {partner.address || partner.description ? (
+                    <div className="truncate text-sm text-muted-foreground">
+                      {partner.address ?? partner.description}
+                    </div>
                   ) : null}
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleToggleVisibility(partner)}
-                    title={partner.visible ? "Hide" : "Show"}
-                  >
-                    {partner.visible ? (
-                      <Eye className="h-4 w-4" />
-                    ) : (
-                      <EyeOff className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Button>
+                  {partner.type === "own" ? null : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleToggleVisibility(partner)}
+                      title={partner.visible ? "Hide" : "Show"}
+                    >
+                      {partner.visible ? (
+                        <Eye className="h-4 w-4" />
+                      ) : (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -575,9 +601,28 @@ export default function PartnersSettingsPage() {
       <Dialog open={partnerDialogOpen} onOpenChange={setPartnerDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{partnerForm.id ? "Edit partner" : "Add partner"}</DialogTitle>
+            <DialogTitle>{partnerForm.id ? "Edit location" : "Add location"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <div className="flex items-center gap-1 rounded-lg border p-1 w-fit">
+                {(["own", "partner"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setPartnerForm((f) => ({ ...f, type: t }))}
+                    className={`min-h-11 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                      partnerForm.type === t
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {t === "own" ? "Own studio" : "Partner"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input
@@ -586,54 +631,75 @@ export default function PartnersSettingsPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Logo</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  value={partnerForm.logo_url}
-                  onChange={(e) =>
-                    setPartnerForm((f) => ({ ...f, logo_url: e.target.value, media_asset_id: null }))
-                  }
-                  placeholder="Image URL..."
-                  className="flex-1"
-                />
-                <ImagePicker
-                  onSelect={(s) =>
-                    setPartnerForm((f) => ({
-                      ...f,
-                      logo_url: s.url,
-                      media_asset_id: s.assetId,
-                    }))
-                  }
-                >
-                  <Button type="button" variant="outline" size="sm">
-                    Browse
-                  </Button>
-                </ImagePicker>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Website URL</Label>
-              <Input
-                value={partnerForm.website_url}
-                onChange={(e) => setPartnerForm((f) => ({ ...f, website_url: e.target.value }))}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Short description</Label>
+              <Label>Address</Label>
               <Textarea
-                value={partnerForm.description}
-                onChange={(e) => setPartnerForm((f) => ({ ...f, description: e.target.value }))}
+                value={partnerForm.address}
+                onChange={(e) => setPartnerForm((f) => ({ ...f, address: e.target.value }))}
                 rows={2}
+                placeholder="Street address"
               />
             </div>
-            <div className="flex items-center justify-between">
-              <Label>Visible on public page</Label>
-              <Switch
-                checked={partnerForm.visible}
-                onCheckedChange={(checked) => setPartnerForm((f) => ({ ...f, visible: checked }))}
+            <div className="space-y-1.5">
+              <Label>Postal code</Label>
+              <Input
+                value={partnerForm.postal_code}
+                onChange={(e) => setPartnerForm((f) => ({ ...f, postal_code: e.target.value }))}
               />
             </div>
+
+            {partnerForm.type === "partner" ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Logo</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={partnerForm.logo_url}
+                      onChange={(e) =>
+                        setPartnerForm((f) => ({ ...f, logo_url: e.target.value, media_asset_id: null }))
+                      }
+                      placeholder="Image URL..."
+                      className="flex-1"
+                    />
+                    <ImagePicker
+                      onSelect={(s) =>
+                        setPartnerForm((f) => ({
+                          ...f,
+                          logo_url: s.url,
+                          media_asset_id: s.assetId,
+                        }))
+                      }
+                    >
+                      <Button type="button" variant="outline" size="sm">
+                        Browse
+                      </Button>
+                    </ImagePicker>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Website URL</Label>
+                  <Input
+                    value={partnerForm.website_url}
+                    onChange={(e) => setPartnerForm((f) => ({ ...f, website_url: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Short description</Label>
+                  <Textarea
+                    value={partnerForm.description}
+                    onChange={(e) => setPartnerForm((f) => ({ ...f, description: e.target.value }))}
+                    rows={2}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label>Visible on public page</Label>
+                  <Switch
+                    checked={partnerForm.visible}
+                    onCheckedChange={(checked) => setPartnerForm((f) => ({ ...f, visible: checked }))}
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPartnerDialogOpen(false)}>

@@ -6,6 +6,8 @@ import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
+// ponytail: table/route still named `partners` (ADR 0012 — no rename); these rows
+// are Locations. `type` discriminates own studios from partner clinics.
 const CreateSchema = z.object({
   name: z.string().min(1).max(200),
   logo_url: z.string().nullable().optional(),
@@ -13,10 +15,14 @@ const CreateSchema = z.object({
   website_url: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   visible: z.boolean().optional().default(true),
+  type: z.enum(["own", "partner"]).optional().default("partner"),
+  address: z.string().nullable().optional(),
+  postal_code: z.string().nullable().optional(),
 });
 
 export async function GET() {
   const admin = supabaseAdmin();
+  // Returns all locations (own + partner); the /our-partners projection filters own out.
   const { data, error } = await admin
     .from("partners")
     .select("*")
@@ -56,6 +62,9 @@ export async function POST(req: Request) {
         website_url: parsed.website_url ?? null,
         description: parsed.description ?? null,
         visible: parsed.visible,
+        type: parsed.type,
+        address: parsed.address ?? null,
+        postal_code: parsed.postal_code ?? null,
         position: nextPosition,
       })
       .select("*")

@@ -6,6 +6,7 @@ import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
 
+// ponytail: `partners` table/route named as-is (ADR 0012); rows are Locations.
 const UpdateSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   logo_url: z.string().nullable().optional(),
@@ -14,6 +15,9 @@ const UpdateSchema = z.object({
   description: z.string().nullable().optional(),
   visible: z.boolean().optional(),
   position: z.number().int().min(0).optional(),
+  type: z.enum(["own", "partner"]).optional(),
+  address: z.string().nullable().optional(),
+  postal_code: z.string().nullable().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };

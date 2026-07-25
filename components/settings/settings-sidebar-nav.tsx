@@ -129,7 +129,7 @@ const NAV_GROUPS: NavGroup[] = [
           },
         ],
       },
-      { href: "/settings/partners", label: "Partners", tooltip: "Partners page content", Icon: Handshake, perm: "page-builder" },
+      { href: "/settings/partners", label: "Locations", tooltip: "Studios & partner clinics", Icon: Handshake, perm: "page-builder" },
       { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper, perm: "blogs" },
       { href: "/settings/faq", label: "FAQ", tooltip: "FAQ Management", Icon: HelpCircle, perm: "page-builder" },
       { href: "/settings/forms", label: "Forms", tooltip: "Discovery source and form option lists", Icon: FormInput, perm: "page-builder" },
