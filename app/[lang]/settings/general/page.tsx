@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { ReviewSlaSection } from "@/components/settings/review-sla-section";
 import {
   Dialog,
   DialogContent,
@@ -275,6 +276,9 @@ export default function GeneralSettingsPage() {
           </table>
         </div>
       )}
+
+      {/* Review SLA (relocated from the Results page — slice 06) */}
+      <ReviewSlaSection />
 
       {/* Edit / Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
