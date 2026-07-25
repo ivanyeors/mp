@@ -6,6 +6,7 @@ import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
 import { derivePackList } from "@/lib/spatial-fillings";
+import { listConfigUploads } from "@/lib/config-upload";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
 
 export const runtime = "nodejs";
@@ -273,5 +274,6 @@ export async function GET(
   delete (publicRow as { access_token?: string }).access_token;
   delete (publicRow as { customer_id?: string }).customer_id;
   delete (publicRow as { shipping_address?: unknown }).shipping_address;
-  return NextResponse.json({ result: { ...publicRow, build } });
+  const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
+  return NextResponse.json({ result: { ...publicRow, build, referenceImages } });
 }
