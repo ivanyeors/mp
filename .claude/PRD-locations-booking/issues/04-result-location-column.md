@@ -9,8 +9,8 @@
 Let operators record and edit where a **Result** originated, without touching the auto
 **Source** channel badge.
 
-- Migration: add `location_id` (nullable, FK → `locations`) to `mp_config_responses`,
-  mirroring the discovery-source migration pattern.
+- Migration: add `location_id` (nullable, FK → `partners(id)`) to `mp_config_responses`,
+  mirroring the discovery-source migration pattern. (Locations live in `partners` — ADR 0012.)
 - The Results responses GET returns `location_id`; the Results page loads the locations list
   once for labels + dropdown options.
 - Add an editable **Location** column after **Source** in the Results table: a `<Select>` of

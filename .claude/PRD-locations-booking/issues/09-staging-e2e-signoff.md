@@ -9,8 +9,8 @@
 Apply the migrations to staging and manually verify every flow end-to-end, including a real
 Google Calendar write and a real WhatsApp reminder. HITL sign-off gate before release.
 
-- Apply the `locations` rename + columns and `mp_config_responses.location_id` migrations to
-  staging.
+- Apply the additive `partners` columns (`type`/`address`/`postal_code`) and
+  `mp_config_responses.location_id` migrations (pushed to the linked prod project — no rename).
 - Manually verify: Locations CRUD (own + partner), `/our-partners` shows only visible
   partners, Result Location single + bulk set, bulk Send/Delete/Export, Review SLA on
   `/settings/general`, and a booking that creates a real Google Calendar event with the

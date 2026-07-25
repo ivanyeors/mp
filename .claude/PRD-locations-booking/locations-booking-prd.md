@@ -108,19 +108,20 @@ existing partner CMS and appointment/Google-Calendar machinery rather than rebui
 
 ## Implementation Decisions
 
-**Schema / migrations**
-- Rename `partners` → `locations`; add `type` (`own | partner`, default `partner`),
-  `address`, `postal_code`. Existing rows become `type='partner'`. `partners_page`
-  (the `/our-partners` CMS singleton) is untouched.
-- Add `location_id` (nullable, FK → `locations`) to `mp_config_responses` (the **Result**
-  store), mirroring the discovery-source migration pattern.
+**Schema / migrations** (additive; no rename — ADR 0012, prod-safe, no staging DB)
+- Extend the existing `partners` table: `ADD COLUMN type` (`own | partner`, default
+  `partner`), `address`, `postal_code`. Existing rows default to `type='partner'`.
+  `partners_page` (the `/our-partners` CMS singleton) is untouched. The physical table
+  keeps its legacy name; **Location** is the domain/UI term (`lib/locations`).
+- Add `location_id` (nullable, FK → `partners(id)`) to `mp_config_responses` (the
+  **Result** store), mirroring the discovery-source migration pattern.
 
 **Modules**
 - `lib/locations` — unified query/CRUD (`getLocations`, `getLocation`), plus a
   `ResolvedLocation` type. Consumed by the Results dropdown, the booking picker, and the
   Locations settings page.
 - `lib/partners` stays the **partner projection** — its reads add a `type='partner'`
-  filter over `locations`; the marquee/cards/`partners-page` consumers are unchanged.
+  filter over the `partners` table; the marquee/cards/`partners-page` consumers are unchanged.
 - `listDaySlots(busy, settings, day)` (in the appointments slots module) — a pure function
   returning **all** free starts for one SGT day, factored out of the existing `offerSlots`
   (which caps at the WhatsApp offer count). Honors hours, duration, bookable days, and

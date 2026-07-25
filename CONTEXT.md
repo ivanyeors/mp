@@ -46,6 +46,14 @@ A customisation submission with optional **Authorization hold** and operator ass
 The visitor’s answer to “How did you hear about us?” captured on configurator preview (mp-config, mp-basic, mbolster-config) and required for authorize / in-store save. Stored on the **Result** as a stable option id (plus free text when Other). Operators edit the bilingual option list under Landing Site → **Forms** — option-list editing only, not a customization-steps CMS.
 _Avoid_: referral, referral source, lead source (partner/voucher collision); **Customer preference**; **Add-on**; conflating with **Entry source**
 
+**Source**:
+The auto-set channel provenance of a **Result** — how the submission arrived: `manual` (in-store / operator-created), `online_customization` (configurator submission), or `online_purchase` (paid online). System-set, not operator-edited; shown as a badge on the Results table.
+_Avoid_: **Location** (the operator-editable place a Result originated); **Discovery source** (self-reported "how did you hear"); **Entry source** (machine **Visit** origin)
+
+**Location**:
+A physical place a **Result** can originate and an **Appointment** can be booked at. Stored in the `partners` table with `type: own | partner` — `own` = Mpillow studios; `partner` = an external clinic (**Local Ambassador**) shown on `/our-partners` when `visible`. Operators pick a Location per **Result** (distinct from the auto **Source** badge) and manage the list under Settings → **Locations**.
+_Avoid_: conflating with **Source** (auto channel provenance), **Discovery source**, or **Entry source**; calling an `own` studio a partner; a separate `locations` table (it is the `partners` table extended — ADR 0012)
+
 **Visitor**:
 A long-lived anonymous browser identity for journey analytics, distinct from **Customer** until a deterministic link (email or **Customer**) merges them.
 _Avoid_: Customer (shopper Sign-in identity); session id; device fingerprint as identity; Customer journey (Appointment collision)
@@ -116,8 +124,8 @@ Same money path: hold → **Result** → assign → Accept → capture → **Ord
 _Avoid_: conflating soft “low stock” badges with Pre-order; calling the held **Result** an **Order** before Accept + capture; “Purchase” as the hold CTA (payment is still an **Authorization hold**); UI-only Pre-order that vanishes after Stripe; bolster-only rules; CMS editing of waiting-time copy in v1; manual restock notice as the v1 path; inventing a per-SKU ETA field in v1
 
 **Appointment**:
-A scheduled in-store Customisation or Re-adjustment session booked via Google Appointment Scheduling (Calendar Events on `admin@mpillow.com`).
-_Avoid_: Order, Result, Customer journey (appointments are not linked to Orders in v1)
+A scheduled in-store Customisation or Re-adjustment session booked via Mpillow's own booking flow — a **Location** picker over one shared availability (appointment settings + central-calendar `freeBusy`) that writes the event to Google Calendar via API (Calendar Events on `admin@mpillow.com`). The picked **Location**'s address is stamped onto the event; a **Local Ambassador (clinical)** partner is a `type='partner'` **Location** (ADR 0013).
+_Avoid_: Order, Result, Customer journey (appointments are not linked to Orders in v1); the retired Google Appointment-Scheduling iframe (booking is now first-party)
 
 **Appointment reminder**:
 A WhatsApp utility message for an **Appointment** — day-before Confirm/Reschedule, optional morning-of nudge, or cancel + rebook link.
@@ -403,7 +411,7 @@ Lifestyle/social-proof ambassadors on the home ambassadors surface (e.g. Skyjin 
 _Avoid_: calling consumer ambassadors "Local Ambassadors"
 
 **Local Ambassador (clinical)**:
-Chiropractors, physiotherapists, and wellness coaches addressed on `/our-partners` and clinical proof surfaces (credibility, clinician review) — not the celebrity ambassadors section.
+Chiropractors, physiotherapists, and wellness coaches addressed on `/our-partners` and clinical proof surfaces (credibility, clinician review) — not the celebrity ambassadors section. Modeled as a `type='partner'` **Location** (the `partners` table); visible partners render on `/our-partners`.
 _Avoid_: renaming Skyjin/Piggie to Local Ambassadors; inventing referral-voucher programs in copy before they exist
 
 **Media Asset**:
@@ -575,3 +583,4 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Engine recommendation vs filling snapshot — resolved: engine output is a **Recommendation record** (advice + trace); the **Filling configuration** snapshot rules are unchanged (null for guests until assign; assist mix wins). The assign hint upgrades to the engine-recommended template.
 - Measurement unit default — resolved: display/authoring default is **inches** (onsite practice); canonical storage stays cm. All engine inputs are **required** (pain areas gains a "None" chip; photos stay optional); the old silent defaults (shoulder 40, neck 8/10/10) are removed.
 - Upsell/cross-sell between flows — resolved: **Flow route** terminals + **Upsell card** (consent, carry-over, gap-fill steps), always resolved before the Stripe hold; sold tier stays flow-scoped; every Flow route needs a same-flow **Fallback** sibling (publish-validated).
+- Partner vs studio vs booking place — resolved: one domain term **Location** (`type: own | partner`) stored as **additive columns on the `partners` table** (no rename; prod-safe). Auto **Source** channel badge is untouched; operators add an editable **Location** per **Result**. **Local Ambassador (clinical)** = `type='partner'` **Location** on `/our-partners`. Booking is first-party (**Location** picker + one shared availability + Google `events.insert` stamping the Location address); the Google iframe retires. ADRs: `docs/adr/0012-locations-unified-partner-model.md`, `docs/adr/0013-custom-multi-location-booking.md`.
