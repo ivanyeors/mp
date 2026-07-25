@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useMotionValue, useMotionValueEvent, animate } from "motion/react";
 import { Menu, X, ChevronLeft } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
+  arcCentroid,
   arcPath,
   buildArcs,
   outerArcPath,
@@ -93,10 +94,44 @@ export function SunburstMenu({
   const cy = size / 2;
   const buttonSize = holeRadius * 2 - 8; // closed footprint = just the center trigger
 
-  const arcs = React.useMemo(
+  const targetArcs = React.useMemo(
     () => buildArcs(root, expansionPath, { cx, cy, holeRadius, ringWidth }),
     [root, expansionPath, cx, cy, holeRadius, ringWidth],
   );
+
+  // Drilling reflows ring-1 spans (equal → weighted). Animate a single 0→1
+  // progress spring and lerp each persistent wedge's angles between its old and
+  // new layout, recomputing the path per frame — a naive `d` tween breaks when a
+  // wedge grows past 180° (SVG's large-arc-flag can't be interpolated).
+  const pathKey = expansionPath.join("/");
+  const prevTargetRef = React.useRef(targetArcs);
+  const fromRef = React.useRef(new Map<string, { a0: number; a1: number }>());
+  const progress = useMotionValue(1);
+  const [p, setP] = React.useState(1);
+  useMotionValueEvent(progress, "change", (v) => setP(v));
+  React.useEffect(() => {
+    const from = new Map<string, { a0: number; a1: number }>();
+    for (const a of prevTargetRef.current) from.set(a.path.join("/"), { a0: a.startAngle, a1: a.endAngle });
+    fromRef.current = from;
+    progress.set(0);
+    const controls = animate(progress, 1, { type: "spring", stiffness: 260, damping: 30 });
+    return () => controls.stop();
+  }, [pathKey, progress]);
+  React.useEffect(() => {
+    prevTargetRef.current = targetArcs;
+  });
+
+  // ponytail: per-frame re-render during the ~250ms reflow — fine at <10 wedges.
+  const arcs = React.useMemo(() => {
+    if (p >= 1) return targetArcs;
+    return targetArcs.map((a) => {
+      const from = fromRef.current.get(a.path.join("/"));
+      if (!from) return a; // freshly-fanned child: no morph, it springs in
+      const a0 = from.a0 + (a.startAngle - from.a0) * p;
+      const a1 = from.a1 + (a.endAngle - from.a1) * p;
+      return { ...a, startAngle: a0, endAngle: a1, centroid: arcCentroid(cx, cy, a.innerR, a.outerR, a0, a1) };
+    });
+  }, [targetArcs, p, cx, cy]);
 
   // Deepest rendered ring is the one you act on; keyboard focus lives there.
   const activeDepth = arcs.reduce((m, a) => Math.max(m, a.depth), 1);
@@ -220,7 +255,12 @@ export function SunburstMenu({
                     ? "hover"
                     : "default";
               const Icon = arc.node.icon;
-              const foW = ringWidth * 1.7;
+              // Label box hugs the wedge: a shrunk sibling gets a tight box (its
+              // text just fits), everyone else caps at the roomy default.
+              const foW = Math.min(
+                ringWidth * 1.7,
+                Math.max(24, ((arc.innerR + arc.outerR) / 2) * (arc.endAngle - arc.startAngle)),
+              );
               const foH = ringWidth * 0.95;
               return (
                 <motion.g

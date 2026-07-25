@@ -34,9 +34,34 @@ export type LayoutOpts = {
 const TAU = Math.PI * 2;
 const EPS = 1e-6;
 
+const CHAR_W = 6; // px per character at the 10px label font
+const LABEL_PAD = 6; // px breathing room each side of a label
+const MIN_CONTENT_W = 20; // px floor so an icon-only / 1-char wedge stays tappable
+const MAX_HUG = TAU / 4; // a hugged sibling never claims more than a quarter turn
+const MIN_EXPANDED_FRAC = 0.4; // the drilled branch always keeps >= 40% of its parent span
+
 /** Point on a circle using the top-is-zero, clockwise convention. */
 function polar(cx: number, cy: number, r: number, a: number): [number, number] {
   return [cx + r * Math.sin(a), cy - r * Math.cos(a)];
+}
+
+/** Angular width (radians) a collapsed sibling needs to just hug its label at radius `midR`. */
+function hugSpan(label: string, midR: number): number {
+  const w = Math.max(MIN_CONTENT_W, label.length * CHAR_W) + 2 * LABEL_PAD;
+  return Math.min(MAX_HUG, w / midR);
+}
+
+/** Label anchor: midpoint of the annulus sector. */
+export function arcCentroid(
+  cx: number,
+  cy: number,
+  innerR: number,
+  outerR: number,
+  a0: number,
+  a1: number,
+): { x: number; y: number } {
+  const [x, y] = polar(cx, cy, (innerR + outerR) / 2, (a0 + a1) / 2);
+  return { x, y };
 }
 
 /**
@@ -121,17 +146,37 @@ export function buildArcs(
   ) => {
     const n = nodes.length;
     if (n === 0) return;
-    const span = endAngle - startAngle;
+    const total = endAngle - startAngle;
     const outerR = innerR + opts.ringWidth;
+    const midR = (innerR + outerR) / 2;
     const expandedId = expansionPath[depth - 1];
+    const expandedIdx = nodes.findIndex((nd) => nd.id === expandedId);
 
+    // Equal wedges at rest; when a branch is drilled its siblings shrink to hug
+    // their labels and the drilled branch takes all the remaining span.
+    const spans = new Array<number>(n);
+    if (expandedIdx < 0) {
+      spans.fill(total / n);
+    } else {
+      let sumHug = 0;
+      nodes.forEach((nd, i) => {
+        if (i === expandedIdx) return;
+        spans[i] = hugSpan(nd.label, midR);
+        sumHug += spans[i]!;
+      });
+      const maxSiblings = total * (1 - MIN_EXPANDED_FRAC);
+      if (sumHug > maxSiblings) {
+        const scale = maxSiblings / sumHug;
+        for (let i = 0; i < n; i++) if (i !== expandedIdx) spans[i]! *= scale;
+        sumHug = maxSiblings;
+      }
+      spans[expandedIdx] = total - sumHug;
+    }
+
+    let a0 = startAngle;
     nodes.forEach((node, i) => {
-      const a0 = startAngle + (span * i) / n;
-      const a1 = startAngle + (span * (i + 1)) / n;
+      const a1 = a0 + spans[i]!;
       const path = [...parentPath, node.id];
-      const midA = (a0 + a1) / 2;
-      const midR = (innerR + outerR) / 2;
-      const [cxp, cyp] = polar(opts.cx, opts.cy, midR, midA);
       const hasChildren = !!node.children?.length;
       out.push({
         node,
@@ -141,12 +186,13 @@ export function buildArcs(
         outerR,
         startAngle: a0,
         endAngle: a1,
-        centroid: { x: cxp, y: cyp },
+        centroid: arcCentroid(opts.cx, opts.cy, innerR, outerR, a0, a1),
         hasChildren,
       });
       if (hasChildren && node.id === expandedId) {
         walk(node.children!, depth + 1, a0, a1, outerR, path);
       }
+      a0 = a1;
     });
   };
 

@@ -39,6 +39,33 @@ for (const kid of kids) {
 // Siblings off the drilled path keep their ring-1 wedge.
 assert.ok(drilled.some((a) => a.node.id === "c" && a.depth === 1));
 
+// Drilling widens the drilled branch and shrinks its siblings to hug their
+// labels, while the ring still covers the full circle with no gaps.
+const aWedge = drilled.find((a) => a.node.id === "a" && a.depth === 1)!;
+const cWedge = drilled.find((a) => a.node.id === "c" && a.depth === 1)!;
+const aSpan = aWedge.endAngle - aWedge.startAngle;
+const cSpan = cWedge.endAngle - cWedge.startAngle;
+assert.ok(aSpan > TAU / 3, "drilled branch grows past its equal share");
+assert.ok(cSpan < TAU / 3, "collapsed sibling shrinks below its equal share");
+assert.ok(aSpan > cSpan);
+const ring1Span = drilled
+  .filter((a) => a.depth === 1)
+  .reduce((s, a) => s + (a.endAngle - a.startAngle), 0);
+assert.ok(Math.abs(ring1Span - TAU) < 1e-9, "ring still covers the full circle");
+
+// A sibling with a longer label hugs a wider wedge than a shorter-labelled one.
+const hugTree: SunburstNode[] = [
+  { id: "d", label: "D", children: [{ id: "d1", label: "D1" }] },
+  { id: "s", label: "S" },
+  { id: "l", label: "Longer Label" },
+];
+const hugged = buildArcs(hugTree, ["d"], opts);
+const spanOf = (id: string) => {
+  const w = hugged.find((a) => a.node.id === id && a.depth === 1)!;
+  return w.endAngle - w.startAngle;
+};
+assert.ok(spanOf("l") > spanOf("s"), "longer label hugs a wider wedge");
+
 // arcPath produces a finite, well-formed sector path.
 const d = arcPath(100, 100, 20, 50, 0, TAU / 3);
 assert.ok(d.startsWith("M "));
