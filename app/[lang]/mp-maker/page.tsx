@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Particles } from "@/components/ui/particles";
 import { DotPattern } from "@/components/ui/shadcn-io/dot-pattern";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 import { BuilderProvider, useBuilder, type ProductType } from "./components/BuilderProvider";
 import { ProductVisual } from "./components/ProductVisual";
@@ -289,6 +290,7 @@ function MakerContent() {
   const router = useRouter();
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const builder = useBuilder();
+  const isMobile = useIsMobile();
 
   return (
     <div className="min-h-screen bg-background">
@@ -329,26 +331,31 @@ function MakerContent() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] min-h-[calc(100vh-56px)]">
         {/* ─── LEFT PANEL: Product Visual + Background Effects ─── */}
         <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] max-h-[40vh] lg:max-h-none overflow-hidden">
-          {/* Background layer 1: Particles */}
-          <Particles
-            className="absolute inset-0 z-[1]"
-            quantity={100}
-            ease={80}
-            staticity={50}
-            color="#ffffff"
-            size={0.8}
-          />
+          {/* Background effects: desktop only — mobile skips the WebGL/canvas work (#64). */}
+          {!isMobile && (
+            <>
+              {/* Background layer 1: Particles */}
+              <Particles
+                className="absolute inset-0 z-[1]"
+                quantity={100}
+                ease={80}
+                staticity={50}
+                color="#ffffff"
+                size={0.8}
+              />
 
-          {/* Background layer 3: DotPattern */}
-          <DotPattern
-            dotSize={3}
-            gap={32}
-            baseColor="#3992C3"
-            activeColor="#3992C3"
-            proximity={80}
-            shockRadius={250}
-            className="absolute inset-0 opacity-60 z-[2]"
-          />
+              {/* Background layer 3: DotPattern */}
+              <DotPattern
+                dotSize={3}
+                gap={32}
+                baseColor="#3992C3"
+                activeColor="#3992C3"
+                proximity={80}
+                shockRadius={250}
+                className="absolute inset-0 opacity-60 z-[2]"
+              />
+            </>
+          )}
 
           {/* Product visual on top */}
           <div className="relative z-10 flex items-center justify-center h-full">
