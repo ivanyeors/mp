@@ -49,7 +49,7 @@ export function QuantitySelector({
         onClick={decrement}
         disabled={isAtMin}
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-l-md transition-colors",
+          "flex h-9 w-9 max-md:min-h-11 max-md:min-w-11 items-center justify-center rounded-l-md transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
           "disabled:pointer-events-none disabled:opacity-40"
         )}
@@ -65,7 +65,7 @@ export function QuantitySelector({
         min={min}
         max={max}
         className={cn(
-          "h-9 w-12 bg-transparent text-center text-sm font-medium",
+          "h-9 w-12 bg-transparent text-center text-sm max-md:text-base font-medium",
           "focus:outline-none",
           // Hide browser spinners
           "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -78,7 +78,7 @@ export function QuantitySelector({
         onClick={increment}
         disabled={isAtMax}
         className={cn(
-          "flex h-9 w-9 items-center justify-center rounded-r-md transition-colors",
+          "flex h-9 w-9 max-md:min-h-11 max-md:min-w-11 items-center justify-center rounded-r-md transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
           "disabled:pointer-events-none disabled:opacity-40"
         )}
