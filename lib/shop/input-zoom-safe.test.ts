@@ -1,8 +1,25 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { globSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+
+// ponytail: recursive readdir instead of fs.globSync — globSync is a Node 22
+// runtime API but is absent from the project's @types/node, which breaks tsc.
+function walkTsx(dir: string): string[] {
+  const out: string[] = [];
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const e of entries) {
+    const full = join(dir, e.name);
+    if (e.isDirectory()) out.push(...walkTsx(full));
+    else if (e.name.endsWith(".tsx")) out.push(full);
+  }
+  return out;
+}
 
 /**
  * Issue #56 — iOS zoom-safe sweep (storefront).
@@ -20,7 +37,7 @@ import { describe, expect, it } from "vitest";
 // Resolve repo root from this file (lib/shop/ -> ../../).
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..", "..");
 
-const GLOBS = ["components/shop/**/*.tsx", "app/[lang]/shop/**/*.tsx"];
+const SCAN_DIRS = ["components/shop", "app/[lang]/shop"];
 
 // Sub-16px text tokens. text-[16px]+ and text-base/text-lg are fine.
 const SMALL_TEXT = /\btext-(sm|xs|\[1[0-5]px\])\b/;
@@ -35,10 +52,8 @@ const NON_TEXT_TYPE = /type=["'](radio|checkbox|range|color|file|button|submit|r
 
 function collectFiles(): string[] {
   const files: string[] = [];
-  for (const pattern of GLOBS) {
-    // node's globSync ignores literal [lang]; escape the bracket dir.
-    const safe = pattern.replace("[lang]", "[[]lang]");
-    for (const rel of globSync(safe, { cwd: ROOT })) files.push(rel);
+  for (const dir of SCAN_DIRS) {
+    for (const abs of walkTsx(join(ROOT, dir))) files.push(relative(ROOT, abs));
   }
   return files;
 }
