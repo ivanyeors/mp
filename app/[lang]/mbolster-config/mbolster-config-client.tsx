@@ -57,6 +57,7 @@ import {
   PreviewContactFields,
   previewContactFieldChecks,
 } from "@/components/configurator/preview-contact-fields";
+import { ConfigImageUpload } from "@/components/configurator/config-image-upload";
 import {
   AddonOptionButton,
   SelectedAddonPreviews,
@@ -147,6 +148,7 @@ type State = {
 };
 
 const STORAGE_KEY = "mbolster_config_v4";
+const CONFIG_SESSION_KEY = "mbolster_config_session_id";
 const FLOW_ROUTE_HANDOFF_KEY = "mp_flow_route_handoff";
 
 const FLOW_UI_LABEL: Record<RuleFlow, string> = {
@@ -272,6 +274,31 @@ export function MbolsterConfigClient({
   const [selectedShippingId, setSelectedShippingId] = React.useState("");
   const [holdSubmitting, setHoldSubmitting] = React.useState(false);
   const [routeBusy, setRouteBusy] = React.useState(false);
+  // Reference-photo session id (slice 04): bolster has no response record, so mint a UUID
+  // lazily, persist it (survives reload + Stripe cancel), reuse it as the hold's responseId
+  // so the resulting Result id equals the session id (gallery finds photos with no extra column).
+  const [configSessionId, setConfigSessionId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    try {
+      setConfigSessionId(window.localStorage.getItem(CONFIG_SESSION_KEY));
+    } catch {
+      // best-effort
+    }
+  }, []);
+  const ensureConfigSessionId = React.useCallback(() => {
+    if (configSessionId) return configSessionId;
+    if (typeof window === "undefined") return null;
+    const id = window.crypto?.randomUUID
+      ? window.crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`;
+    try {
+      window.localStorage.setItem(CONFIG_SESSION_KEY, id);
+    } catch {
+      // best-effort
+    }
+    setConfigSessionId(id);
+    return id;
+  }, [configSessionId]);
 
   const patchRecommendationRecord = React.useCallback((next: RecommendationRecord) => {
     setShopRecommendation((prev) =>
@@ -832,6 +859,8 @@ export function MbolsterConfigClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // Reuse the reference-photo session id as the Result id when staff uploaded photos.
+          ...(configSessionId ? { responseId: configSessionId } : {}),
           email: holdEmail.trim(),
           phone: holdPhone.trim(),
           discoverySource,
@@ -1206,6 +1235,13 @@ export function MbolsterConfigClient({
                   </div>
                 </div>
               )}
+
+              {staffAssist ? (
+                <ConfigImageUpload
+                  sessionId={configSessionId}
+                  ensureSessionId={ensureConfigSessionId}
+                />
+              ) : null}
 
               <PreviewContactFields
                   locale={locale}
