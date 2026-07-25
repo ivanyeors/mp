@@ -79,48 +79,108 @@ export function blockedRangesToBusy(
     .filter((r) => Number.isFinite(r.startMs) && Number.isFinite(r.endMs) && r.startMs < r.endMs);
 }
 
+/** SGT calendar day. */
+export type SgtDay = { y: number; m: number; d: number };
+
+/**
+ * All free start times for ONE SGT day, respecting open/close hours, duration,
+ * bookable weekdays, blocked ranges, and excluding past + busy-overlapping slots.
+ * Pure: pass `now` for the past-slot cutoff (defaults to real clock).
+ */
+export function listDaySlots(
+  busy: BusyInterval[],
+  settings: AppointmentSettings,
+  day: SgtDay,
+  now: Date = new Date(),
+): SlotOffer[] {
+  const dow = new Date(Date.UTC(day.y, day.m - 1, day.d)).getUTCDay();
+  if (!settings.bookableDays.includes(dow)) return [];
+
+  const durationMs = settings.durationMinutes * 60 * 1000;
+  const nowMs = now.getTime();
+  const allBusy = [...busy, ...blockedRangesToBusy(settings.blockedRanges)];
+  const out: SlotOffer[] = [];
+
+  for (let hour = settings.openHour; hour <= settings.closeHour; hour++) {
+    const startMs = sgtLocalToUtcMs(day.y, day.m, day.d, hour, 0);
+    const endMs = startMs + durationMs;
+    if (startMs <= nowMs) continue;
+    if (overlaps(startMs, endMs, allBusy)) continue;
+
+    const startIso = new Date(startMs).toISOString();
+    out.push({
+      startIso,
+      endIso: new Date(endMs).toISOString(),
+      id: `slot_${startIso}`,
+    });
+  }
+  return out;
+}
+
 /**
  * Carve up to `settings.slotOfferCount` free starts from freeBusy busy intervals.
  * Rules: bookable days, openHour–closeHour last start, durationMinutes, lookahead.
- * Starts searching from the next full hour after `now` (SGT).
+ * Walks SGT days from today and stops once enough slots are collected.
  */
 export function offerSlots(
   busy: BusyInterval[],
   settings: AppointmentSettings,
   now: Date = new Date(),
 ): SlotOffer[] {
-  const durationMs = settings.durationMinutes * 60 * 1000;
-  const nowMs = now.getTime();
-  const parts = sgtParts(nowMs);
+  const parts = sgtParts(now.getTime());
   const cursor = { y: parts.y, m: parts.m, d: parts.d };
-  const allBusy = [...busy, ...blockedRangesToBusy(settings.blockedRanges)];
-
-  // Start from today; skip past hours on the first day.
   const out: SlotOffer[] = [];
-  const bookable = new Set(settings.bookableDays);
 
   for (let day = 0; day <= settings.slotLookaheadDays && out.length < settings.slotOfferCount; day++) {
-    const { y, m, d } = day === 0 ? cursor : addSgtDays(cursor.y, cursor.m, cursor.d, day);
-    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-    if (!bookable.has(dow)) continue;
-
-    for (let hour = settings.openHour; hour <= settings.closeHour; hour++) {
-      const startMs = sgtLocalToUtcMs(y, m, d, hour, 0);
-      const endMs = startMs + durationMs;
-      if (startMs <= nowMs) continue;
-      if (overlaps(startMs, endMs, allBusy)) continue;
-
-      const startIso = new Date(startMs).toISOString();
-      out.push({
-        startIso,
-        endIso: new Date(endMs).toISOString(),
-        id: `slot_${startIso}`,
-      });
+    const sgtDay = day === 0 ? cursor : addSgtDays(cursor.y, cursor.m, cursor.d, day);
+    for (const slot of listDaySlots(busy, settings, sgtDay, now)) {
+      out.push(slot);
       if (out.length >= settings.slotOfferCount) return out;
     }
   }
-
   return out;
+}
+
+export type EventGuest = {
+  startIso: string;
+  endIso: string;
+  /** Appointment type summary, e.g. "Jane - Mpillow Customisation". */
+  summary: string;
+  /** Picked location's street address; stamped into the GCal `location` field. */
+  locationAddress: string;
+  guestName: string;
+  phone: string;
+  email?: string;
+};
+
+export type EventInsertBody = {
+  summary: string;
+  location: string;
+  description: string;
+  start: { dateTime: string; timeZone: "Asia/Singapore" };
+  end: { dateTime: string; timeZone: "Asia/Singapore" };
+  attendees?: Array<{ email: string; displayName?: string }>;
+};
+
+/**
+ * Pure builder for the Google `events.insert` payload. The picked location's
+ * address goes into the event `location` field; guest contact into description.
+ */
+export function buildEventInsertBody(guest: EventGuest): EventInsertBody {
+  const lines = [`Name: ${guest.guestName}`, `Phone: ${guest.phone}`];
+  if (guest.email) lines.push(`Email: ${guest.email}`);
+
+  const body: EventInsertBody = {
+    summary: guest.summary,
+    location: guest.locationAddress,
+    description: lines.join("\n"),
+    start: { dateTime: guest.startIso, timeZone: "Asia/Singapore" },
+    end: { dateTime: guest.endIso, timeZone: "Asia/Singapore" },
+  };
+  if (guest.email) {
+    body.attendees = [{ email: guest.email, displayName: guest.guestName }];
+  }
+  return body;
 }
 
 /** Human label for a slot in SGT, e.g. "Tue 14 Jul, 10:00". */

@@ -2,8 +2,8 @@ import { getGoogleAccessToken } from "./google-auth";
 import { normalizePhone } from "./phone";
 import { matchAppointmentType, resolveAppointmentType } from "./type";
 import type { AppointmentSettings, AppointmentType } from "./settings";
-import type { BusyInterval } from "./slots";
-import { addSgtDays, sgtLocalToUtcMs, sgtParts } from "./slots";
+import type { BusyInterval, EventGuest } from "./slots";
+import { addSgtDays, buildEventInsertBody, sgtLocalToUtcMs, sgtParts } from "./slots";
 
 const CAL_BASE = "https://www.googleapis.com/calendar/v3";
 
@@ -353,6 +353,21 @@ export async function patchEventTimes(
   if (!res.ok) {
     throw new Error(`events.patch failed (${res.status}): ${await res.text()}`);
   }
+}
+
+/** Insert a booking event (events.insert). Returns the new event id. */
+export async function createEvent(guest: EventGuest): Promise<string> {
+  const id = encodeURIComponent(calendarId());
+  const res = await calFetch(`/calendars/${id}/events`, {
+    method: "POST",
+    body: JSON.stringify(buildEventInsertBody(guest)),
+  });
+  if (!res.ok) {
+    throw new Error(`events.insert failed (${res.status}): ${await res.text()}`);
+  }
+  const json = (await res.json()) as { id?: string };
+  if (!json.id) throw new Error("events.insert returned no event id");
+  return json.id;
 }
 
 export async function deleteEvent(eventId: string): Promise<void> {
