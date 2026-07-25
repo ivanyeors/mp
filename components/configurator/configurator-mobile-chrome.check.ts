@@ -104,4 +104,17 @@ assert.match(chromeSrc, /ConfiguratorExitDialog[\s\S]*?DialogContent hideClose/)
 void dialogHtml;
 void barHtml;
 
+// Issue #64: mp-maker gates Particles/DotPattern behind !isMobile (match config pages).
+const maker = readFileSync(join(ROOT, "app/[lang]/mp-maker/page.tsx"), "utf8");
+assert.match(maker, /useIsMobile/);
+assert.match(maker, /!isMobile && \([\s\S]*?Particles[\s\S]*?DotPattern/);
+// Effects must not be rendered unconditionally: every Particles/DotPattern tag
+// sits after the `!isMobile && (` gate.
+const gateIdx = maker.indexOf("!isMobile && (");
+assert.ok(gateIdx > 0, "mp-maker must have an !isMobile effect gate");
+assert.ok(
+  maker.indexOf("<Particles") > gateIdx && maker.indexOf("<DotPattern") > gateIdx,
+  "mp-maker Particles/DotPattern must be gated, not unconditional",
+);
+
 console.log("configurator-mobile-chrome.check.ts: ok");
