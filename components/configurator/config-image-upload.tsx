@@ -7,7 +7,7 @@ import {
   type ConfigUpload,
   MAX_IMAGES_PER_SESSION,
   MAX_FILE_BYTES,
-} from "@/lib/config-upload";
+} from "@/lib/config-upload/limits";
 
 type ConfigImageUploadProps = {
   sessionId: string | null; // current session id if known — hydrate thumbnails on mount

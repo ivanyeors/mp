@@ -1,23 +1,11 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { optimizeImageForWeb, optimizedStorageName } from "@/lib/media-assets/optimize";
+import { MAX_IMAGES_PER_SESSION, MAX_FILE_BYTES, type ConfigUpload } from "./limits";
 
 const BUCKET = "media";
 
-/** Limits enforced at the API boundary (shared with the upload UI). */
-export const MAX_IMAGES_PER_SESSION = 10;
-export const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB, pre-compression
-
-export type ConfigUpload = {
-  id: string;
-  sessionId: string;
-  storagePath: string;
-  hostedUrl: string;
-  mimeType: string;
-  byteSize: number;
-  width: number | null;
-  height: number | null;
-  createdAt: string;
-};
+// Re-export the client-safe limits/type so server callers keep importing from the module root.
+export { MAX_IMAGES_PER_SESSION, MAX_FILE_BYTES, type ConfigUpload };
 
 /** A refusal the caller should surface to the user (maps to HTTP 422). */
 export class UploadRefusedError extends Error {
