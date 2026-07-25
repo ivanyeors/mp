@@ -137,6 +137,7 @@ import {
   SelectedAddonPreviews,
   type AddonOption,
 } from "@/components/configurator/addon-cards";
+import { ConfigImageUpload } from "@/components/configurator/config-image-upload";
 import {
   holdCtaLabel,
   isPreOrder,
@@ -1935,6 +1936,13 @@ export function MpConfigClient({
                     </div>
                   </div>
                 )}
+
+                {staffAssist ? (
+                  <ConfigImageUpload
+                    sessionId={responseId}
+                    ensureSessionId={ensureResponseId}
+                  />
+                ) : null}
 
                 <PreviewContactFields
                     locale={locale}
