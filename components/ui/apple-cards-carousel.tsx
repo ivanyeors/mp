@@ -141,7 +141,7 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
       {/* min-w-0: keep horizontal scroll local so the track cannot widen the document */}
       <div className="relative w-full min-w-0">
         <div
-          className="flex w-full min-w-0 overflow-x-auto overscroll-x-contain scroll-smooth py-6 [scrollbar-width:none] md:py-10"
+          className="flex w-full snap-x snap-mandatory min-w-0 overflow-x-auto overscroll-x-contain scroll-smooth py-6 [scrollbar-width:none] md:py-10"
           onScroll={checkScrollability}
           ref={carouselRef}
         >
@@ -168,7 +168,7 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
                     ease: "easeOut",
                   },
                 }}
-                className="rounded-3xl last:pr-[5%] md:last:pr-[33%]"
+                className="snap-start rounded-3xl last:pr-0 md:last:pr-[33%]"
                 initial={{
                   opacity: 0,
                   y: 20,
@@ -182,22 +182,22 @@ export const Carousel = ({ items, initialScroll = 0, itemsContainerClassName }: 
             ))}
           </div>
         </div>
-        <div className="mr-10 flex justify-end gap-2">
+        <div className="mr-10 flex justify-end gap-2 max-md:mr-0">
           <button
             type="button"
-            className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
+            className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-foreground disabled:opacity-50"
             disabled={!canScrollLeft}
             onClick={scrollLeft}
           >
-            <IconArrowNarrowLeft className="h-6 w-6 text-gray-500" />
+            <IconArrowNarrowLeft className="h-6 w-6" />
           </button>
           <button
             type="button"
-            className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 disabled:opacity-50"
+            className="relative z-40 flex h-10 w-10 items-center justify-center rounded-full border bg-background/80 text-foreground disabled:opacity-50"
             disabled={!canScrollRight}
             onClick={scrollRight}
           >
-            <IconArrowNarrowRight className="h-6 w-6 text-gray-500" />
+            <IconArrowNarrowRight className="h-6 w-6" />
           </button>
         </div>
       </div>
