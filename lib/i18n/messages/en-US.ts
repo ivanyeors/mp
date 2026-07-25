@@ -444,6 +444,7 @@ export const enUS: Messages = {
         locationLabel: "Location",
         locationPlaceholder: "Choose a location",
         dateLabel: "Date",
+        datePlaceholder: "Pick a date",
         slotLabel: "Available times",
         noSlots: "No times available on this day. Try another date.",
         loadingSlots: "Loading times…",

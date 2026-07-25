@@ -270,6 +270,7 @@ export type Messages = {
         locationLabel: string;
         locationPlaceholder: string;
         dateLabel: string;
+        datePlaceholder: string;
         slotLabel: string;
         noSlots: string;
         loadingSlots: string;

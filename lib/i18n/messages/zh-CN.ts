@@ -409,6 +409,7 @@ export const zhCN: Messages = {
         locationLabel: "地点",
         locationPlaceholder: "选择地点",
         dateLabel: "日期",
+        datePlaceholder: "选择日期",
         slotLabel: "可预约时间",
         noSlots: "当天没有可预约时间，请选择其他日期。",
         loadingSlots: "正在加载时间…",

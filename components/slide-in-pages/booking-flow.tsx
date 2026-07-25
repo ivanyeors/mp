@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Check, MapPin } from "lucide-react";
+import { CalendarIcon, Check, MapPin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { cn } from "@/lib/utils";
@@ -14,7 +16,7 @@ type ApptType = "customisation" | "readjustment";
 type Location = { id: string; name: string; type: string; address: string };
 type Slot = { id: string; startIso: string; endIso: string };
 
-/** Today's date in Asia/Singapore as YYYY-MM-DD (native date input min). */
+/** Today's date in Asia/Singapore as YYYY-MM-DD (earliest bookable day). */
 function sgtToday(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Singapore",
@@ -22,6 +24,30 @@ function sgtToday(): string {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+/** "YYYY-MM-DD" → local midnight Date (no UTC shift), for the Calendar. */
+function parseYmdLocal(ymd: string): Date {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Local Date → "YYYY-MM-DD" from local parts (the SGT day the user tapped). */
+function formatYmdLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Chosen date as a long label, e.g. "Fri, 25 Jul 2026". */
+function dateLabel(ymd: string): string {
+  return new Intl.DateTimeFormat("en-SG", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(parseYmdLocal(ymd));
 }
 
 /** Slot start time labelled in SGT, e.g. "2:30 PM". */
@@ -42,6 +68,7 @@ export function BookingFlow() {
   const [locations, setLocations] = React.useState<Location[]>([]);
   const [locationId, setLocationId] = React.useState<string>("");
   const [date, setDate] = React.useState<string>("");
+  const [dateOpen, setDateOpen] = React.useState(false);
   const [slots, setSlots] = React.useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = React.useState(false);
   const [slot, setSlot] = React.useState<Slot | null>(null);
@@ -212,13 +239,32 @@ export function BookingFlow() {
       {/* Date */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-date">{t.dateLabel}</Label>
-        <Input
-          id="booking-date"
-          type="date"
-          min={sgtToday()}
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              id="booking-date"
+              type="button"
+              variant="outline"
+              className={cn("w-full justify-start font-normal", !date && "text-muted-foreground")}
+            >
+              <CalendarIcon className="mr-2 size-4 shrink-0" />
+              {date ? dateLabel(date) : t.datePlaceholder}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              captionLayout="dropdown"
+              selected={date ? parseYmdLocal(date) : undefined}
+              defaultMonth={date ? parseYmdLocal(date) : parseYmdLocal(sgtToday())}
+              onSelect={(d) => {
+                if (d) setDate(formatYmdLocal(d));
+                setDateOpen(false);
+              }}
+              disabled={{ before: parseYmdLocal(sgtToday()) }}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Slot grid */}
