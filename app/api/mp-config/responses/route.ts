@@ -12,6 +12,7 @@ import {
   validateDiscoverySource,
 } from "@/lib/discovery-source";
 import { getLocations } from "@/lib/locations";
+import { listConfigUploads } from "@/lib/config-upload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,28 +95,47 @@ function toTelegramCaption(text: string): string {
   return `${trimmed}…`;
 }
 
+// ponytail: split into ≤10-item chunks (Telegram media-group cap). Named so the loop is testable.
+export function chunkItems<T>(items: T[], size = 10): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 async function sendTelegramMediaGroup(
   chatId: number,
   caption: string,
-  photos: { front?: string | null; side?: string | null },
+  photos: { front?: string | null; side?: string | null; referenceUrls?: string[] },
 ) {
   const token = getOptionalEnv("TELEGRAM_BOT_TOKEN");
   if (!token) return { ok: false as const, reason: "missing_token" as const };
 
-  const items: Array<{ key: "front" | "side"; dataUrl: string }> = [];
-  if (photos.front) items.push({ key: "front", dataUrl: photos.front });
-  if (photos.side) items.push({ key: "side", dataUrl: photos.side });
+  // Ordered item list: front, side (multipart attach:// data-url blobs), then reference URLs.
+  type Item =
+    | { kind: "file"; key: "front" | "side"; blob: Blob; ext: string }
+    | { kind: "url"; url: string };
+  const items: Item[] = [];
+  if (photos.front) {
+    const parsed = dataUrlToBlob(photos.front);
+    if (parsed) items.push({ kind: "file", key: "front", blob: parsed.blob, ext: parsed.ext });
+  }
+  if (photos.side) {
+    const parsed = dataUrlToBlob(photos.side);
+    if (parsed) items.push({ kind: "file", key: "side", blob: parsed.blob, ext: parsed.ext });
+  }
+  for (const url of photos.referenceUrls ?? []) {
+    if (url) items.push({ kind: "url", url });
+  }
   if (items.length === 0) return { ok: false as const, reason: "no_photos" as const };
 
-  // If we only have one photo, use sendPhoto so the caption is guaranteed on the message.
-  if (items.length === 1) {
-    const parsed = dataUrlToBlob(items[0].dataUrl);
-    if (!parsed) return { ok: false as const, reason: "bad_data_url" as const };
-
+  // Fast-path: exactly one front/side data-url item and no reference URLs → sendPhoto so the
+  // caption lands on the message (unchanged from the front/side-only behavior).
+  if (items.length === 1 && items[0].kind === "file") {
+    const item = items[0];
     const form = new FormData();
     form.append("chat_id", String(chatId));
     form.append("caption", toTelegramCaption(caption));
-    form.append("photo", parsed.blob, `${items[0].key}.${parsed.ext}`);
+    form.append("photo", item.blob, `${item.key}.${item.ext}`);
 
     const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
       method: "POST",
@@ -129,34 +149,39 @@ async function sendTelegramMediaGroup(
     return { ok: true as const };
   }
 
-  const parsedFront = items.find((i) => i.key === "front") ? dataUrlToBlob(items.find((i) => i.key === "front")!.dataUrl) : null;
-  const parsedSide = items.find((i) => i.key === "side") ? dataUrlToBlob(items.find((i) => i.key === "side")!.dataUrl) : null;
+  // Chunk into ≤10-item media groups. Caption only on the first item of the first chunk.
+  const chunks = chunkItems(items, 10);
+  let firstItem = true;
+  for (const chunk of chunks) {
+    const form = new FormData();
+    form.append("chat_id", String(chatId));
 
-  const form = new FormData();
-  form.append("chat_id", String(chatId));
+    const media = chunk.map((it) => {
+      const entry: { type: "photo"; media: string; caption?: string } =
+        it.kind === "file"
+          ? { type: "photo", media: `attach://${it.key}` }
+          : { type: "photo", media: it.url };
+      if (firstItem) {
+        entry.caption = toTelegramCaption(caption);
+        firstItem = false;
+      }
+      // Only file items need a multipart part; URL items are referenced directly.
+      if (it.kind === "file") form.append(it.key, it.blob, `${it.key}.${it.ext}`);
+      return entry;
+    });
 
-  const media: Array<{ type: "photo"; media: string; caption?: string }> = [];
-  if (parsedFront) {
-    media.push({ type: "photo", media: "attach://front", caption: toTelegramCaption(caption) });
-    form.append("front", parsedFront.blob, `front.${parsedFront.ext}`);
-  }
-  if (parsedSide) {
-    media.push({ type: "photo", media: "attach://side" });
-    form.append("side", parsedSide.blob, `side.${parsedSide.ext}`);
-  }
+    form.append("media", JSON.stringify(media));
 
-  if (media.length === 0) return { ok: false as const, reason: "bad_data_url" as const };
-  form.append("media", JSON.stringify(media));
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMediaGroup`, {
+      method: "POST",
+      body: form,
+      cache: "no-store",
+    });
 
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMediaGroup`, {
-    method: "POST",
-    body: form,
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    console.error("Failed to send Telegram media group", await res.text());
-    return { ok: false as const, reason: "api_error" as const };
+    if (!res.ok) {
+      console.error("Failed to send Telegram media group", await res.text());
+      return { ok: false as const, reason: "api_error" as const };
+    }
   }
   return { ok: true as const };
 }
@@ -430,9 +455,12 @@ export async function POST(req: Request) {
         const front = (photos ?? []).find((p) => p.view === "front")?.data_url ?? null;
         const side = (photos ?? []).find((p) => p.view === "side")?.data_url ?? null;
 
+        const refs = await listConfigUploads(id).catch(() => []);
+        const referenceUrls = refs.map((r) => r.hostedUrl);
+
         const sent =
-          front || side
-            ? await sendTelegramMediaGroup(chatId, text, { front, side })
+          front || side || referenceUrls.length
+            ? await sendTelegramMediaGroup(chatId, text, { front, side, referenceUrls })
             : await sendTelegramMessage(chatId, text);
         telegramStatus = sent.ok ? "sent" : "failed";
       } catch (e) {
