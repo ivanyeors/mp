@@ -34,6 +34,10 @@ export type PartnerRow = {
   description: string | null;
   position: number;
   visible: boolean;
+  // Location columns (ADR 0012 — additive on `partners`, no rename)
+  type: "own" | "partner";
+  address: string | null;
+  postal_code: string | null;
   created_at: string;
   updated_at: string;
 };

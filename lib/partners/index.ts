@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getLocationRows, selectPartnerRows } from "@/lib/locations";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import {
   DEFAULT_WORK_WITH_US,
@@ -78,44 +79,19 @@ export async function getPartnersPageRow(): Promise<PartnersPageRow | null> {
   return (data as PartnersPageRow) ?? null;
 }
 
+// Partner projection over the unified locations store (`partners` table): own
+// studios are filtered out here so /our-partners only ever shows partner clinics.
 export async function getPartners(opts?: {
   includeHidden?: boolean;
 }): Promise<ResolvedPartner[]> {
-  const admin = supabaseAdmin();
-  let query = admin.from("partners").select("*").order("position", { ascending: true });
-
-  if (!opts?.includeHidden) {
-    query = query.eq("visible", true);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("[getPartners]", error.message);
-    return [];
-  }
-
-  return ((data as PartnerRow[]) ?? []).map(toResolvedPartner);
+  const rows = selectPartnerRows(await getLocationRows(), opts?.includeHidden);
+  return rows.map(toResolvedPartner);
 }
 
 export async function getPartnerRows(opts?: {
   includeHidden?: boolean;
 }): Promise<PartnerRow[]> {
-  const admin = supabaseAdmin();
-  let query = admin.from("partners").select("*").order("position", { ascending: true });
-
-  if (!opts?.includeHidden) {
-    query = query.eq("visible", true);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("[getPartnerRows]", error.message);
-    return [];
-  }
-
-  return (data as PartnerRow[]) ?? [];
+  return selectPartnerRows(await getLocationRows(), opts?.includeHidden);
 }
 
 export type { WorkWithUsContent, PartnersPageRow, PartnerRow, ResolvedPartner, ResolvedPartnersPage };
