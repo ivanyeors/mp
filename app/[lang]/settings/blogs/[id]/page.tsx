@@ -12,11 +12,33 @@ import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-brea
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+    bold,
+    italic,
+    title,
+    link,
+    quote,
+    unorderedListCommand,
+    orderedListCommand,
+    type ICommand,
+} from "@uiw/react-md-editor/commands";
 
 const MDEditor = dynamic(
     () => import("@uiw/react-md-editor").then((mod) => mod.default),
     { ssr: false }
 );
+
+// ponytail: reduced toolbar so it fits a phone without horizontal overflow
+const MOBILE_MD_COMMANDS: ICommand[] = [
+    bold,
+    italic,
+    title,
+    link,
+    quote,
+    unorderedListCommand,
+    orderedListCommand,
+];
 
 type LocaleContent = {
     title: string;
@@ -41,6 +63,7 @@ export default function BlogEditorPage() {
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
     const { resolvedTheme } = useTheme();
+    const isMobile = useIsMobile();
 
     const isNew = params.id === "new";
     const postId = isNew ? null : (params.id as string);
@@ -208,7 +231,7 @@ export default function BlogEditorPage() {
                         value={slug}
                         onChange={(e) => setSlug(e.target.value)}
                         placeholder="my-blog-post-url"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     {activeContent.title && (
                         <button
@@ -229,7 +252,7 @@ export default function BlogEditorPage() {
                         value={activeContent.title}
                         onChange={(e) => updateActiveContent("title", e.target.value)}
                         placeholder="Blog post title"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                 </div>
 
@@ -241,7 +264,7 @@ export default function BlogEditorPage() {
                         value={activeContent.sub_header}
                         onChange={(e) => updateActiveContent("sub_header", e.target.value)}
                         placeholder="A subtitle or tagline"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                 </div>
 
@@ -253,7 +276,7 @@ export default function BlogEditorPage() {
                         onChange={(e) => updateActiveContent("description", e.target.value)}
                         placeholder="Meta description for search engines and AI answer engines"
                         rows={2}
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                     />
                 </div>
 
@@ -270,7 +293,7 @@ export default function BlogEditorPage() {
                             )
                         }
                         placeholder="keyword1, keyword2, keyword3"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <p className="text-xs text-muted-foreground">Comma-separated list</p>
                 </div>
@@ -281,8 +304,9 @@ export default function BlogEditorPage() {
                     <MDEditor
                         value={activeContent.body}
                         onChange={(val) => updateActiveContent("body", val || "")}
-                        height={500}
+                        height={isMobile ? "60dvh" : 500}
                         preview="edit"
+                        commands={isMobile ? MOBILE_MD_COMMANDS : undefined}
                         className="w-full rounded-lg border focus-within:ring-2 focus-within:ring-primary overflow-hidden"
                     />
                     <p className="text-xs text-muted-foreground">Supports Markdown formatting</p>
@@ -298,7 +322,7 @@ export default function BlogEditorPage() {
                             type="text"
                             value={author}
                             onChange={(e) => setAuthor(e.target.value)}
-                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -306,7 +330,7 @@ export default function BlogEditorPage() {
                         <select
                             value={status}
                             onChange={(e) => setStatus(e.target.value)}
-                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                             <option value="draft">Draft</option>
                             <option value="published">Published</option>
@@ -326,7 +350,7 @@ export default function BlogEditorPage() {
                                 setImageAssetId(null);
                             }}
                             placeholder="https://... or /images/blogs/..."
-                            className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                         <ImagePicker
                             onSelect={(s) => {
@@ -348,7 +372,7 @@ export default function BlogEditorPage() {
                             )
                         }
                         placeholder="sleep, posture, guide"
-                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full rounded-lg border bg-background px-3 py-2 text-sm max-md:text-base focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <p className="text-xs text-muted-foreground">Comma-separated list</p>
                 </div>
