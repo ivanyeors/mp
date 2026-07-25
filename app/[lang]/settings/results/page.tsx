@@ -62,6 +62,7 @@ type MpConfigResponseRow = {
   measured_by_type?: string | null;
   measured_by_staff_id?: string | null;
   source?: string | null;
+  location_id?: string | null;
   order_id?: string | null;
   order_number?: string | null;
   created_at: string;
@@ -76,6 +77,11 @@ type MpConfigResponseRow = {
 };
 
 type StaffRow = {
+  id: string;
+  name: string;
+};
+
+type LocationOption = {
   id: string;
   name: string;
 };
@@ -114,6 +120,7 @@ export default function ResultsPage() {
   const [deleteTarget, setDeleteTarget] = useState<MpConfigResponseRow | null>(null);
   const [staffRows, setStaffRows] = useState<StaffRow[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [pageLimit] = useState<number>(200);
   const [sla, setSla] = useState<SlaSettingsForm>(DEFAULT_SLA_FORM);
@@ -132,6 +139,7 @@ export default function ResultsPage() {
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to load results");
       const nextRows = (payload?.rows ?? []) as MpConfigResponseRow[];
+      setLocations((payload?.locations ?? []) as LocationOption[]);
       setTotalCount(typeof payload?.count === "number" ? (payload.count as number) : null);
 
       setRows((prev) => {
@@ -304,6 +312,31 @@ export default function ResultsPage() {
           ),
         );
         toast.error(e instanceof Error ? e.message : "Failed to update measured by");
+      }
+    },
+    [],
+  );
+
+  const updateLocation = useCallback(
+    async (row: MpConfigResponseRow, value: string) => {
+      const locationId = value === "none" ? null : value;
+      const prev = row.location_id ?? null;
+
+      // Optimistic UI update.
+      setRows((p) => p.map((r) => (r.id === row.id ? { ...r, location_id: locationId } : r)));
+
+      try {
+        const data = normalizeMeasurement(row.data ?? {});
+        const res = await fetch("/api/mp-config/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: row.id, data, locationId }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(payload?.error ?? "Failed to update location");
+      } catch (e) {
+        setRows((p) => p.map((r) => (r.id === row.id ? { ...r, location_id: prev } : r)));
+        toast.error(e instanceof Error ? e.message : "Failed to update location");
       }
     },
     [],
@@ -601,6 +634,7 @@ export default function ResultsPage() {
                 <TableHead className="w-[220px]">Name</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
                 <TableHead className="w-[80px]">Source</TableHead>
+                <TableHead className="w-[200px]">Location</TableHead>
                 <TableHead className="w-[140px]">Order</TableHead>
                 <TableHead className="hidden w-[120px] md:table-cell">Gender</TableHead>
                 <TableHead className="hidden w-[140px] md:table-cell">Age group</TableHead>
@@ -614,7 +648,7 @@ export default function ResultsPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={13} className="py-10 text-center text-sm text-muted-foreground">
                     {tab === "active" ? "No active results yet." : "No released results yet."}
                   </TableCell>
                 </TableRow>
@@ -672,6 +706,24 @@ export default function ResultsPage() {
                               ? "Online"
                               : "In-store"}
                         </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={row.location_id ?? "none"}
+                          onValueChange={(v) => void updateLocation(row, v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">—</SelectItem>
+                            {locations.map((loc) => (
+                              <SelectItem key={loc.id} value={loc.id}>
+                                {loc.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell
                         onClick={(e) => {

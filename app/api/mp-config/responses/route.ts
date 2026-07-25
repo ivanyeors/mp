@@ -11,6 +11,7 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
+import { getLocations } from "@/lib/locations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -197,6 +198,8 @@ const UpsertSchema = z.object({
   phone: z.string().min(1).optional(),
   discoverySource: z.string().min(1).optional(),
   discoverySourceOther: z.string().optional(),
+  /** Operator-editable origin Location (partners.id), null to clear. */
+  locationId: z.string().uuid().nullable().optional(),
   /** Explicit flag: require + write contact columns on this upsert. */
   persistContact: z.boolean().optional(),
 });
@@ -215,7 +218,7 @@ export async function GET(req: Request) {
   const admin = supabaseAdmin();
   const { data, error, count } = await admin
     .from("mp_config_responses")
-    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email", { count: "exact" })
+    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,location_id,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email", { count: "exact" })
     .order("updated_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -237,10 +240,14 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Location dropdown options + labels (own + partner). Client fetches once with the list.
+  const locations = await getLocations();
+
   return NextResponse.json(
     {
       ok: true,
       rows,
+      locations,
       count: typeof count === "number" ? count : null,
       limit,
       offset,
@@ -268,6 +275,7 @@ export async function POST(req: Request) {
     row.measured_by_type = parsed.data.measuredBy.type;
     row.measured_by_staff_id = parsed.data.measuredBy.type === "staff" ? parsed.data.measuredBy.staffId : null;
   }
+  if (parsed.data.locationId !== undefined) row.location_id = parsed.data.locationId;
 
   const persistContact = parsed.data.persistContact === true;
   if (persistContact) {
