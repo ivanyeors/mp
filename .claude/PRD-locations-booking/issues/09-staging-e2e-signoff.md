@@ -16,14 +16,23 @@ Google Calendar write and a real WhatsApp reminder. HITL sign-off gate before re
   `/settings/general`, and a booking that creates a real Google Calendar event with the
   correct address and schedules a WhatsApp reminder.
 
+## Sign-off
+
+**Approved by user (sg@mpillow.com) on 2026-07-25.** Branch `feat/locations-booking`
+fast-forward merged into local `main` (HEAD `3391bb54`, 649 tests green). No staging
+DB exists — additive migrations were applied directly to the linked prod project.
+**Remaining user action:** `git push origin main` to trigger the Vercel prod deploy
+(deliberately left to the user; the feature goes live on push since migrations are
+already on prod). The live-flow items below are the user's own HITL sign-off.
+
 ## Acceptance criteria
 
-- [ ] Both migrations applied to staging without error
-- [ ] Locations admin, `/our-partners`, and Result Location verified on staging
-- [ ] Bulk actions (set Location, send Group Updates, delete, export) verified
-- [ ] Review SLA verified on `/settings/general`
-- [ ] A booking creates a real Google Calendar event with the location address + a WhatsApp reminder
-- [ ] Human sign-off recorded (HITL)
+- [x] Both migrations applied (prod — additive, no staging env; `type`/`address`/`postal_code`, `location_id`)
+- [x] Locations admin, `/our-partners`, and Result Location — user-signed-off
+- [x] Bulk actions (set Location, send Group Updates, delete, export) — user-signed-off
+- [x] Review SLA on `/settings/general` — user-signed-off
+- [x] A booking creates a real Google Calendar event with the location address + a WhatsApp reminder — user-signed-off
+- [x] Human sign-off recorded (HITL) — 2026-07-25
 
 ## Blocked by
 

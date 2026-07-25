@@ -42,6 +42,18 @@ A **Storefront product** that is not inventory-linked (`is_auto_generated = fals
 **Result**:
 A customisation submission with optional **Authorization hold** and operator assignment. After assignment it links to a **Composed sellable** (size×tier or length) and a **Filling Template**. Accepted Results become an **Order** after successful payment capture (when a hold exists).
 
+**Customisation session**:
+The unit a **Reference photo** hangs off, keyed by a `session_id`. For **Mpillow** it is the configurator `responseId` (`mp_config_responses.id`); for **Mbolster** it is a UUID minted upfront in the hold draft and reused as the `responseId` at hold. Because the session id becomes the **Result** id, one id addresses both a session's reference photos and its Result across both products.
+_Avoid_: Stripe checkout `session_id`; **Visit** (analytics browsing session)
+
+**Reference photo**:
+Staff-uploaded imagery attached to a **Customisation session** (`config_upload` table) while assisting a build — e.g. the customer's current pillow, posture, or a sample build. Compressed server-side and stored in the `media` bucket, but **not** registered in the **Media Asset** library (DAM). Delivered to the build team via the **Mpillow** Telegram group and the **Result** detail gallery (both products). Visible only when **Staff assist mode** is on.
+_Avoid_: **Sizing photo** (the customer's own front/side photos — a separate, untouched feature)
+
+**Sizing photo**:
+The customer's own front/side body photos captured in the configurator to size a build (`mp_config_response_photos`, base64 data URLs, Telegram-only). A separate, pre-existing feature that this work does **not** change.
+_Avoid_: **Reference photo** (staff-uploaded build references in `config_upload`)
+
 **Discovery source**:
 The visitor’s answer to “How did you hear about us?” captured on configurator preview (mp-config, mp-basic, mbolster-config) and required for authorize / in-store save. Stored on the **Result** as a stable option id (plus free text when Other). Operators edit the bilingual option list under Landing Site → **Forms** — option-list editing only, not a customization-steps CMS.
 _Avoid_: referral, referral source, lead source (partner/voucher collision); **Customer preference**; **Add-on**; conflating with **Entry source**

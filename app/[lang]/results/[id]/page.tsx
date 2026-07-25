@@ -62,6 +62,7 @@ type ResultPublic = {
   customer_email: string | null;
   is_pre_order?: boolean | null;
   build: BuildSummary | null;
+  referenceImages?: { id: string; hostedUrl: string }[];
 };
 
 type ResultListRow = {
@@ -485,6 +486,24 @@ function ResultStatusPage() {
       {actionMessage && (
         <p className="text-sm text-emerald-700 dark:text-emerald-300">{actionMessage}</p>
       )}
+
+      {result.referenceImages?.length ? (
+        <div className="border-t pt-3">
+          <div className="text-muted-foreground">Reference photos</div>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {result.referenceImages.map((img) => (
+              // ponytail: native anchor opens full size, no lightbox lib
+              <a key={img.id} href={img.hostedUrl} target="_blank" rel="noreferrer">
+                <img
+                  src={img.hostedUrl}
+                  alt="Reference photo"
+                  className="aspect-square w-full rounded-md border object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   ) : null;
 
