@@ -34,8 +34,8 @@ export function CartItemRow({
   const isPage = variant === "page";
   const thumbnailSize = isPage ? "w-20 h-20" : "w-16 h-16";
   const removeButtonClass = isPage
-    ? "shrink-0 p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-    : "shrink-0 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors";
+    ? "shrink-0 p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center"
+    : "shrink-0 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center";
   const trashIconClass = isPage ? "size-5" : "size-4";
 
   const isSoldOut = maxQuantity != null && maxQuantity <= 0;
