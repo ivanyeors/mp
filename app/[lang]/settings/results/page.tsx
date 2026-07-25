@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { rowsToCsv } from "@/lib/results/rows-to-csv";
 
 type SlaSettingsForm = {
   workingDays: number;
@@ -118,6 +120,9 @@ export default function ResultsPage() {
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MpConfigResponseRow | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLocation, setBulkLocation] = useState<string>("none");
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [staffRows, setStaffRows] = useState<StaffRow[]>([]);
   const [staffLoading, setStaffLoading] = useState(true);
   const [locations, setLocations] = useState<LocationOption[]>([]);
@@ -446,6 +451,84 @@ export default function ResultsPage() {
     }
   }, []);
 
+  const selectedRows = useMemo(
+    () => filtered.filter((r) => selected.has(r.id)),
+    [filtered, selected],
+  );
+  const allSelected = filtered.length > 0 && selectedRows.length === filtered.length;
+
+  const toggleAll = useCallback(
+    (checked: boolean) => {
+      setSelected(checked ? new Set(filtered.map((r) => r.id)) : new Set());
+    },
+    [filtered],
+  );
+
+  const toggleOne = useCallback((id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  // Bulk actions reuse the per-row handlers in a loop (no bulk API).
+  const bulkSetLocation = useCallback(async () => {
+    setBulkBusy(true);
+    try {
+      for (const row of selectedRows) await updateLocation(row, bulkLocation);
+      toast.success(`Location set on ${selectedRows.length} result(s)`);
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [selectedRows, bulkLocation, updateLocation]);
+
+  const bulkSend = useCallback(async () => {
+    setBulkBusy(true);
+    try {
+      for (const row of selectedRows) if (!row.is_final) await sendToTelegram(row);
+    } finally {
+      setBulkBusy(false);
+    }
+  }, [selectedRows, sendToTelegram]);
+
+  const bulkDelete = useCallback(async () => {
+    setBulkBusy(true);
+    try {
+      for (const row of selectedRows) await deleteRow(row);
+      setSelected(new Set());
+    } finally {
+      setBulkBusy(false);
+      setDeleteDialogOpen(false);
+    }
+  }, [selectedRows, deleteRow]);
+
+  const exportCsv = useCallback(() => {
+    const csv = rowsToCsv(
+      selectedRows.map((r) => ({
+        id: r.id,
+        updated_at: r.updated_at,
+        name: safeString(r.data?.name) || null,
+        customer_email: r.customer_email,
+        status: r.status,
+        source: r.source,
+        location_id: r.location_id,
+        order_number: r.order_number,
+        suggested_size: r.suggested_size,
+        suggested_tier: r.suggested_tier,
+        assigned_size: r.assigned_size,
+        assigned_tier: r.assigned_tier,
+      })),
+    );
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `results-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [selectedRows]);
+
   return (
     <div className="space-y-6">
       <Dialog
@@ -457,11 +540,11 @@ export default function ResultsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete result?</DialogTitle>
+            <DialogTitle>{deleteTarget ? "Delete result?" : `Delete ${selectedRows.length} result(s)?`}</DialogTitle>
             <DialogDescription>
               {deleteTarget?.is_final
                 ? "This released result will be permanently deleted from the database. This action cannot be undone."
-                : "This result will be permanently deleted from the database. This action cannot be undone."}
+                : "This action will permanently delete the selected result(s) from the database. This action cannot be undone."}
             </DialogDescription>
           </DialogHeader>
 
@@ -470,7 +553,7 @@ export default function ResultsPage() {
               type="button"
               variant="secondary"
               onClick={() => setDeleteDialogOpen(false)}
-              disabled={deleteTarget ? Boolean(deleting[deleteTarget.id]) : false}
+              disabled={deleteTarget ? Boolean(deleting[deleteTarget.id]) : bulkBusy}
             >
               Cancel
             </Button>
@@ -478,12 +561,12 @@ export default function ResultsPage() {
               type="button"
               variant="destructive"
               onClick={() => {
-                if (!deleteTarget) return;
-                void deleteRow(deleteTarget);
+                if (deleteTarget) void deleteRow(deleteTarget);
+                else void bulkDelete();
               }}
-              disabled={deleteTarget ? Boolean(deleting[deleteTarget.id]) : true}
+              disabled={deleteTarget ? Boolean(deleting[deleteTarget.id]) : bulkBusy || selectedRows.length === 0}
             >
-              {deleteTarget && deleting[deleteTarget.id] ? "Deleting…" : "Delete"}
+              {(deleteTarget && deleting[deleteTarget.id]) || bulkBusy ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -627,9 +710,54 @@ export default function ResultsPage() {
         <div className="text-sm text-muted-foreground">Loading results…</div>
       ) : (
         <div className="space-y-3">
+          {selectedRows.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+              <span className="text-sm font-medium">{selectedRows.length} selected</span>
+              <Select value={bulkLocation} onValueChange={setBulkLocation}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Set location…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  {locations.map((loc) => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => void bulkSetLocation()}>
+                Set Location
+              </Button>
+              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => void bulkSend()}>
+                Send Group Updates
+              </Button>
+              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={exportCsv}>
+                Export CSV
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={bulkBusy}
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeleteDialogOpen(true);
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(v) => toggleAll(v === true)}
+                    aria-label="Select all rows"
+                  />
+                </TableHead>
                 <TableHead className="w-[120px]">Updated</TableHead>
                 <TableHead className="w-[220px]">Name</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
@@ -648,7 +776,7 @@ export default function ResultsPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={14} className="py-10 text-center text-sm text-muted-foreground">
                     {tab === "active" ? "No active results yet." : "No released results yet."}
                   </TableCell>
                 </TableRow>
@@ -679,6 +807,13 @@ export default function ResultsPage() {
                         }
                       }}
                     >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selected.has(row.id)}
+                          onCheckedChange={(v) => toggleOne(row.id, v === true)}
+                          aria-label="Select row"
+                        />
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{updated}</TableCell>
                       <TableCell className="font-medium">
                         {row.customer_email || name}
