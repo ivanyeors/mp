@@ -214,18 +214,19 @@ export function ProductDetailClient({
                 </div>
 
                 {/* Mobile: native horizontal swipe + snap over the full image
-                    set. Each slide gets touch-action: pinch-zoom so the main
-                    image can be pinch-zoomed even though the site viewport
-                    normally locks zoom.
-                    ponytail: viewport meta (user-scalable=false) caps how far
-                    the browser will zoom; upgrade to a transform-on-gesture
-                    handler if true unbounded zoom is required. */}
+                    set. Default touch-action so a single-finger drag pans the
+                    snap track (advances images).
+                    ponytail: no pinch-zoom — the site viewport meta
+                    (user-scalable=false) locks zoom globally, so a per-slide
+                    touch-action:pinch-zoom bought nothing and disabled the swipe
+                    pan. Upgrade to a transform-on-gesture handler if true
+                    unbounded zoom is ever required. */}
                 <div className="relative aspect-square rounded-lg overflow-hidden bg-muted md:hidden">
                   <div className="flex h-full snap-x snap-mandatory overflow-x-auto">
                     {images.map((img, idx) => (
                       <div
                         key={img.id}
-                        className="relative h-full w-full flex-shrink-0 snap-center [touch-action:pinch-zoom]"
+                        className="relative h-full w-full flex-shrink-0 snap-center"
                       >
                         <Image
                           src={img.url}

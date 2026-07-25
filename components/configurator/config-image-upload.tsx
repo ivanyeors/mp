@@ -185,7 +185,7 @@ export function ConfigImageUpload({
                 // Issue #59: hover-reveal is dead on touch. Visible on mobile
                 // (max-md:opacity-100) + keyboard focus, hover-reveal on desktop.
                 // ≥44px tap target on mobile via padding; tight on desktop.
-                className="absolute right-1 top-1 flex items-center justify-center rounded-full bg-background/90 p-2.5 shadow transition-opacity max-md:opacity-100 md:p-1 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+                className="absolute right-1 top-1 flex items-center justify-center rounded-full bg-background/90 p-2.5 shadow transition-opacity max-md:min-h-11 max-md:min-w-11 max-md:opacity-100 md:p-1 md:opacity-0 md:group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

@@ -85,7 +85,17 @@ export function SunburstMenu({
     setContainerW(el.clientWidth);
     return () => ro.disconnect();
   }, []);
-  const size = containerW && containerW > 0 ? Math.min(sizeProp, containerW) : sizeProp;
+  // ponytail: floor the diameter so a very narrow x-ray dive column can't shrink
+  // the closed center trigger (buttonSize below) down to an untappable few px.
+  // The open bloom may then overflow a sub-140px column slightly (it's a
+  // transient overlay, overflow-visible). HITL(#63/#69): the trigger tap-target
+  // is only ~28px even at full size — enlarging it independent of the bloom is a
+  // visual-design decision deferred to the sunburst sign-off.
+  const MIN_DIAMETER = Math.min(140, sizeProp);
+  const size =
+    containerW && containerW > 0
+      ? Math.max(MIN_DIAMETER, Math.min(sizeProp, containerW))
+      : sizeProp;
   const scale = size / sizeProp;
   const ringWidth = ringWidthProp * scale;
   const holeRadius = holeRadiusProp * scale;
