@@ -263,6 +263,29 @@ export type Messages = {
     bookAppointment: {
       trigger: string;
       title: string;
+      flow: {
+        typeLabel: string;
+        customisation: string;
+        readjustment: string;
+        locationLabel: string;
+        locationPlaceholder: string;
+        dateLabel: string;
+        slotLabel: string;
+        noSlots: string;
+        loadingSlots: string;
+        nameLabel: string;
+        phoneLabel: string;
+        emailLabel: string;
+        emailOptional: string;
+        submit: string;
+        submitting: string;
+        pickDateFirst: string;
+        confirmedTitle: string;
+        confirmedAt: string;
+        bookAnother: string;
+        errorSlotTaken: string;
+        errorGeneric: string;
+      };
     };
   };
   shop: {
