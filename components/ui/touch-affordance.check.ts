@@ -35,9 +35,7 @@ assert.doesNotMatch(
   "must not rely solely on bare opacity-0 group-hover",
 );
 
-// app-dock: a touch-visible label token + ≥44px tap target on mobile.
-assert.match(dock, /DockTouchLabel/, "dock needs a touch-visible label");
-assert.match(dock, /md:hidden/, "touch label must be mobile-only (md:hidden)");
+// app-dock: ≥44px tap target on mobile (text captions intentionally removed).
 assert.match(
   dock,
   /max-md:min-h-11 max-md:min-w-11/,

@@ -49,18 +49,10 @@ const dockItems = [
 
 const ROTATIONS = [-8, 8, 8, -8, 8, -8, 8, -8];
 
-// Issue #59: DockLabel + magnify are mouse-hover only (dead on touch). On mobile
-// render an always-visible caption under the icon and give the wrapper a ≥44px
-// tap target. Magnify stays a desktop-only enhancement (unchanged).
+// Issue #59: give each dock item a ≥44px tap target on mobile via the wrapper.
+// DockLabel + magnify stay desktop-only enhancements (mouse-hover, unchanged).
 const dockTouchWrapClassName =
   "flex flex-col items-center max-md:min-h-11 max-md:min-w-11 max-md:justify-center";
-function DockTouchLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="mt-0.5 text-[10px] leading-none text-gray-200 dark:text-neutral-300 md:hidden">
-      {children}
-    </span>
-  );
-}
 
 export function AppDock() {
   const pathname = usePathname() ?? "/";
@@ -203,7 +195,6 @@ export function AppDock() {
                     <Home className="h-full w-full text-gray-200 dark:text-neutral-300" />
                   </DockIcon>
                 </DockItem>
-                <DockTouchLabel>Home</DockTouchLabel>
               </Link>
               {isMobile && (
                 <button
@@ -218,7 +209,6 @@ export function AppDock() {
                       <Menu className="h-full w-full text-gray-200 dark:text-neutral-300" />
                     </DockIcon>
                   </DockItem>
-                  <DockTouchLabel>Menu</DockTouchLabel>
                 </button>
               )}
               <form action={signOutAction} method="post">
@@ -229,7 +219,6 @@ export function AppDock() {
                       <LogOut className="h-full w-full text-gray-200 dark:text-neutral-300" />
                     </DockIcon>
                   </DockItem>
-                  <DockTouchLabel>Logout</DockTouchLabel>
                 </button>
               </form>
             </>
@@ -249,7 +238,6 @@ export function AppDock() {
                         <IconComponent className={`h-full w-full ${isActive ? 'text-white' : 'text-gray-200 dark:text-neutral-300'}`} />
                       </DockIcon>
                     </DockItem>
-                    <DockTouchLabel>{item.title}</DockTouchLabel>
                   </Link>
                 );
               })}
@@ -270,7 +258,6 @@ export function AppDock() {
                     <Menu className={`h-full w-full ${isMenuActive || menuOpen ? "text-white" : "text-gray-200 dark:text-neutral-300"}`} />
                   </DockIcon>
                 </DockItem>
-                <DockTouchLabel>Menu</DockTouchLabel>
               </button>
             </>
           )}
