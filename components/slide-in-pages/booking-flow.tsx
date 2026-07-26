@@ -283,7 +283,7 @@ export function BookingFlow() {
                 key={s.id}
                 type="button"
                 variant={slot?.id === s.id ? "default" : "outline"}
-                className={cn("h-9", slot?.id === s.id && "ring-2 ring-ring")}
+                className={cn("h-9 max-md:min-h-11", slot?.id === s.id && "ring-2 ring-ring")}
                 onClick={() => setSlot(s)}
               >
                 {slotLabel(s.startIso)}

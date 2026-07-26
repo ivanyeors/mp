@@ -56,7 +56,7 @@ export function CartCouponField({
             if (e.key === "Enter") void handleApplyCoupon();
           }}
           disabled={couponValidating}
-          className="h-9 text-sm"
+          className="h-9 text-sm max-md:text-base"
         />
         <Button
           variant="outline"

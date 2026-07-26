@@ -140,6 +140,7 @@ export function VariantSelector({
                   title={isOutOfStock ? "Out of stock" : undefined}
                   className={cn(
                     "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                    "max-md:inline-flex max-md:min-h-11 max-md:min-w-11 max-md:items-center max-md:justify-center",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                     isSelected
                       ? "border-primary bg-primary/10 text-primary"

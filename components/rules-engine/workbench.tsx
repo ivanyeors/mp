@@ -20,7 +20,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./workbench.css";
-import { Loader2, PanelLeftClose } from "lucide-react";
+import { Loader2, PanelLeftClose, PanelRightClose, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
@@ -185,6 +185,8 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<RuleNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // max-md only: inspector is a collapsible drawer; desktop keeps it docked.
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const [paletteDocked, setPaletteDocked] = useState(false);
   const dropPosRef = useRef<XYPosition>({ x: 120, y: 120 });
 
@@ -650,6 +652,18 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
 
         <span className="text-xs text-muted-foreground">{saveLabel}</span>
         <div className="flex-1" />
+        {/* max-md: toggle the inspector drawer (hidden on desktop, always docked there) */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="hidden max-md:inline-flex"
+          aria-pressed={inspectorOpen}
+          onClick={() => setInspectorOpen((v) => !v)}
+        >
+          <SlidersHorizontal className="size-4" />
+          Inspector
+        </Button>
         {viewingVersion ? (
           <Button
             type="button"
@@ -671,10 +685,10 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-0 border-t bg-muted/30">
+      <div className="flex min-h-0 flex-1 gap-0 border-t bg-muted/30 max-md:flex-col">
         {/* Docked palette — off by default; toggle from Palette → Dock palette */}
         {paletteDocked ? (
-          <aside className="flex w-52 shrink-0 flex-col border-r bg-background">
+          <aside className="flex w-52 shrink-0 flex-col border-r bg-background max-md:w-full max-md:max-h-40 max-md:border-r-0 max-md:border-b">
             <div className="flex items-center justify-between gap-1 border-b px-2 py-1.5">
               <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 Palette
@@ -727,7 +741,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div
-              className="min-h-0 min-w-0 flex-1"
+              className="min-h-0 min-w-0 flex-1 max-md:min-h-[60dvh]"
               onContextMenu={(e) => captureDropPos(e.clientX, e.clientY)}
             >
               <ReactFlow
@@ -740,9 +754,11 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 onConnect={onConnect}
                 isValidConnection={isValidConnection}
                 nodeTypes={nodeTypes}
-                onSelectionChange={({ nodes: sel }) =>
-                  setSelectedId(sel[0]?.id ?? null)
-                }
+                onSelectionChange={({ nodes: sel }) => {
+                  const id = sel[0]?.id ?? null;
+                  setSelectedId(id);
+                  if (id) setInspectorOpen(true); // max-md: reveal drawer on select
+                }}
                 onNodeContextMenu={(_e, node) => setSelectedId(node.id)}
                 fitView
                 proOptions={{ hideAttribution: true }}
@@ -814,8 +830,25 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </ContextMenuContent>
         </ContextMenu>
 
-        {/* Editor + test */}
-        <aside className="flex w-72 shrink-0 flex-col overflow-hidden border-l text-sm">
+        {/* Editor + test — desktop: docked column; max-md: collapsible bottom drawer */}
+        <aside
+          className={`flex w-72 shrink-0 flex-col overflow-hidden border-l text-sm max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30 max-md:h-[70dvh] max-md:w-full max-md:border-l-0 max-md:border-t max-md:bg-background max-md:shadow-2xl ${inspectorOpen ? "" : "max-md:hidden"}`}
+        >
+          <div className="hidden shrink-0 items-center justify-between border-b px-3 py-2 max-md:flex">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Inspector
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Close inspector"
+              onClick={() => setInspectorOpen(false)}
+            >
+              <PanelRightClose className="size-4" />
+            </Button>
+          </div>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
             <div>
               <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">
@@ -859,7 +892,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                       />
                     ) : def.valueType === "string[]" ? (
                       <select
-                        className="h-8 w-full rounded-md border bg-card px-2 text-xs"
+                        className="h-8 w-full rounded-md border bg-card px-2 text-xs max-md:text-base"
                         value={String(
                           Array.isArray(testInputs[def.key])
                             ? (testInputs[def.key] as string[])[0]
@@ -880,7 +913,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                       </select>
                     ) : (
                       <select
-                        className="h-8 w-full rounded-md border bg-card px-2 text-xs"
+                        className="h-8 w-full rounded-md border bg-card px-2 text-xs max-md:text-base"
                         value={String(testInputs[def.key] ?? "")}
                         onChange={(e) => {
                           const v =
@@ -975,7 +1008,7 @@ function NodeEditor({
         <Label className="text-[10px]">Input key</Label>
         <select
           disabled={disabled}
-          className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+          className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
           value={rule.inputKey}
           onChange={(e) => onChange({ ...rule, inputKey: e.target.value })}
         >
@@ -1008,7 +1041,7 @@ function NodeEditor({
         <Label className="text-[10px]">Size / length</Label>
         <select
           disabled={disabled}
-          className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+          className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
           value={rule.size}
           onChange={(e) =>
             onChange({ ...rule, size: e.target.value as SizeOrLength })
@@ -1057,7 +1090,7 @@ function NodeEditor({
         <Label className="text-[10px]">Tier</Label>
         <select
           disabled={disabled}
-          className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+          className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
           value={rule.tier}
           onChange={(e) =>
             onChange({
@@ -1079,7 +1112,7 @@ function NodeEditor({
         <Label className="text-[10px]">Target flow</Label>
         <select
           disabled={disabled}
-          className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+          className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
           value={rule.targetFlow}
           onChange={(e) =>
             onChange({ ...rule, targetFlow: e.target.value as RuleFlow })
@@ -1254,7 +1287,7 @@ function TemplatePicker({
       <Label className="text-[10px]">Size scope</Label>
       <select
         disabled={disabled}
-        className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+        className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
         value={size}
         onChange={(e) => onSize(e.target.value as SizeOrLength)}
       >
@@ -1267,7 +1300,7 @@ function TemplatePicker({
       <Label className="text-[10px]">Filling Template</Label>
       <select
         disabled={disabled}
-        className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+        className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
         value={templateId}
         onChange={(e) => onTemplate(e.target.value)}
       >

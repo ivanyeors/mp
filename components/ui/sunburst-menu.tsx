@@ -62,14 +62,43 @@ export function SunburstMenu({
   onSelect,
   selectedId,
   display = "both",
-  size = 320,
-  ringWidth = size * 0.1625, // ~52 at 320; scales with size so one knob resizes all
-  holeRadius = size * 0.1375, // ~44 at 320; trigger size unless overridden
+  size: sizeProp = 320,
+  ringWidth: ringWidthProp = sizeProp * 0.1625, // ~52 at 320; scales with size so one knob resizes all
+  holeRadius: holeRadiusProp = sizeProp * 0.1375, // ~44 at 320; trigger size unless overridden
   centerIcon: CenterIcon = Menu,
   ariaLabel,
   onOpenChange,
   className,
 }: SunburstMenuProps) {
+  // Issue #63 (ADR 0009): the bloom is `size` wide and centered on the trigger,
+  // so it overflows a narrow x-ray dive column on phones. Measure the container
+  // and clamp the diameter to it (only shrink, never grow past the caller's
+  // `size`). ringWidth/holeRadius scale by the same factor so the rings keep
+  // their proportions inside the smaller viewBox — visuals unchanged, just smaller.
+  const measureRef = React.useRef<HTMLDivElement>(null);
+  const [containerW, setContainerW] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    const el = measureRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setContainerW(el.clientWidth));
+    ro.observe(el);
+    setContainerW(el.clientWidth);
+    return () => ro.disconnect();
+  }, []);
+  // ponytail: floor the diameter so a very narrow x-ray dive column can't shrink
+  // the closed center trigger (buttonSize below) down to an untappable few px.
+  // The open bloom may then overflow a sub-140px column slightly (it's a
+  // transient overlay, overflow-visible). HITL(#63/#69): the trigger tap-target
+  // is only ~28px even at full size — enlarging it independent of the bloom is a
+  // visual-design decision deferred to the sunburst sign-off.
+  const MIN_DIAMETER = Math.min(140, sizeProp);
+  const size =
+    containerW && containerW > 0
+      ? Math.max(MIN_DIAMETER, Math.min(sizeProp, containerW))
+      : sizeProp;
+  const scale = size / sizeProp;
+  const ringWidth = ringWidthProp * scale;
+  const holeRadius = holeRadiusProp * scale;
   const [open, setOpen] = React.useState(false);
   // Fire onOpenChange only when `open` flips — via a ref so a fresh inline
   // callback each parent render doesn't retrigger it (that would thrash the
@@ -214,6 +243,7 @@ export function SunburstMenu({
   const centerState = !open ? "closed" : expansionPath.length > 0 ? "back" : "close";
 
   return (
+    <div ref={measureRef} className="flex w-full justify-center">
     <div
       ref={rootRef}
       role="menu"
@@ -338,6 +368,7 @@ export function SunburstMenu({
           <X className="size-5" />
         )}
       </motion.button>
+    </div>
     </div>
   );
 }

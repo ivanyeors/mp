@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
+import { MobileStickyActionBar } from "@/components/ui/mobile-sticky-action-bar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -189,35 +190,73 @@ export function ProductDetailClient({
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl pb-[calc(var(--mobile-bottom-clearance)+7rem+env(safe-area-inset-bottom,0px))] md:pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* LEFT: Image Gallery */}
           <div className="flex flex-col gap-4" id="gallery" data-section="gallery">
-            <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-              {images.length > 0 ? (
-                <Image
-                  src={images[mainImageIndex]?.url ?? images[0].url}
-                  alt={images[mainImageIndex]?.alt_text ?? title}
-                  fill
-                  className="object-cover"
-                  priority
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                />
-              ) : (
+            {images.length > 0 ? (
+              <>
+                {/* Desktop: single main image driven by the thumbnails below. */}
+                <div className="relative aspect-square rounded-lg overflow-hidden bg-muted max-md:hidden">
+                  <Image
+                    src={images[mainImageIndex]?.url ?? images[0].url}
+                    alt={images[mainImageIndex]?.alt_text ?? title}
+                    fill
+                    className="object-cover"
+                    priority
+                    sizes="50vw"
+                  />
+                  {product.featured && (
+                    <div className="absolute top-3 left-3">
+                      <Badge>Featured</Badge>
+                    </div>
+                  )}
+                </div>
+
+                {/* Mobile: native horizontal swipe + snap over the full image
+                    set. Default touch-action so a single-finger drag pans the
+                    snap track (advances images).
+                    ponytail: no pinch-zoom — the site viewport meta
+                    (user-scalable=false) locks zoom globally, so a per-slide
+                    touch-action:pinch-zoom bought nothing and disabled the swipe
+                    pan. Upgrade to a transform-on-gesture handler if true
+                    unbounded zoom is ever required. */}
+                <div className="relative aspect-square rounded-lg overflow-hidden bg-muted md:hidden">
+                  <div className="flex h-full snap-x snap-mandatory overflow-x-auto">
+                    {images.map((img, idx) => (
+                      <div
+                        key={img.id}
+                        className="relative h-full w-full flex-shrink-0 snap-center"
+                      >
+                        <Image
+                          src={img.url}
+                          alt={img.alt_text ?? `${title} ${idx + 1}`}
+                          fill
+                          className="object-cover"
+                          priority={idx === 0}
+                          sizes="100vw"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {product.featured && (
+                    <div className="absolute top-3 left-3">
+                      <Badge>Featured</Badge>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
                 <div className="flex items-center justify-center w-full h-full text-muted-foreground">
                   <Package className="w-24 h-24 opacity-30" />
                 </div>
-              )}
-              {product.featured && (
-                <div className="absolute top-3 left-3">
-                  <Badge>Featured</Badge>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {images.slice(0, 5).map((img, idx) => (
+              <div className="flex gap-2 overflow-x-auto pb-1 max-md:hidden">
+                {images.map((img, idx) => (
                   <button
                     key={img.id}
                     onClick={() => setMainImageIndex(idx)}
@@ -518,13 +557,10 @@ export function ProductDetailClient({
         </div>
       </div>
 
-      {/* Sticky bottom bar */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t shadow-lg transition-transform duration-300 ${
-          stickyBarVisible ? "translate-y-0" : "translate-y-full"
-        }`}
-      >
-        <div className="container mx-auto px-4 py-3 pb-[max(0.75rem,calc(var(--safe-bottom)+var(--mobile-dock-offset)+var(--mobile-dock-height)))] sm:pb-3 max-w-7xl flex items-center justify-between gap-4">
+      {/* Mobile sticky Add-to-Cart bar (shared dock clearance). Only mounts
+          once the in-panel Add-to-Cart button scrolls out of view. */}
+      {stickyBarVisible && (
+        <MobileStickyActionBar className="flex items-center justify-between gap-4">
           <div className="flex flex-col min-w-0">
             <span className="font-semibold truncate text-sm">{title}</span>
             <PriceDisplay
@@ -567,8 +603,8 @@ export function ProductDetailClient({
               )}
             </AnimatePresence>
           </Button>
-        </div>
-      </div>
+        </MobileStickyActionBar>
+      )}
 
       <PillowCustomizer
         open={customizerOpen}
