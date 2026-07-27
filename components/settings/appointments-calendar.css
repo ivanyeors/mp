@@ -199,7 +199,8 @@
   background: #dc2626;
 }
 .mp-rsvp-tentative {
-  background: #d97706;
+  /* amber-700: ~5:1 on white text (WCAG AA); #d97706 was ~3.4:1 */
+  background: #b45309;
 }
 .mp-rsvp-needsAction {
   background: #64748b;

@@ -183,7 +183,7 @@ export function BookingFlow({ type }: { type: ApptType }) {
 
   if (confirmed) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Check className="size-6" />
         </div>
@@ -227,7 +227,7 @@ export function BookingFlow({ type }: { type: ApptType }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto px-6 py-4">
+    <form onSubmit={submit} className="flex flex-1 flex-col gap-5">
       {/* Location picker */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-location">{t.locationLabel}</Label>

@@ -14,6 +14,12 @@ export function GET(req: Request) {
   if (!start || !end) {
     return new Response("Missing start/end", { status: 400 });
   }
+  // Require an explicit offset/Z: a naive datetime is parsed as server-local
+  // (UTC on Vercel) → silently wrong DTSTART. Reject rather than corrupt.
+  const hasOffset = (s: string) => /(?:[Zz]|[+-]\d{2}:?\d{2})$/.test(s.trim());
+  if (!hasOffset(start) || !hasOffset(end)) {
+    return new Response("start/end must include a UTC offset or Z", { status: 400 });
+  }
 
   let ics: string;
   try {

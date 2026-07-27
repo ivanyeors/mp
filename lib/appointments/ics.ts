@@ -35,7 +35,9 @@ function esc(v: string): string {
 /** Build a single-event VCALENDAR string (CRLF line endings, per RFC 5545). */
 export function buildVEvent(input: VEventInput): string {
   const dtstamp = toIcsUtc(input.stampIso ?? input.startIso);
-  // ponytail: no line-folding — our values stay well under 75 octets. Add fold if UIDs/descriptions ever grow.
+  // ponytail: no line-folding. RFC 5545 SHOULDs fold at 75 octets and LOCATION/DESCRIPTION
+  // can exceed that, but iOS/Google/Outlook all parse unfolded lines. Add folding only if a
+  // strict validator ever enters the loop.
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
