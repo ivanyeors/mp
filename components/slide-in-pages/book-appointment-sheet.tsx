@@ -34,7 +34,8 @@ function AppointmentBody({ label, closeLabel }: { label: string; closeLabel: str
           <OverlayDismissButton label={closeLabel} className="hidden md:inline-flex" />
         </SheetClose>
       </SheetHeader>
-      <BookingFlow />
+      {/* ponytail: Sheet is retired in slice 05 — hardcode the default type to keep it compiling. */}
+      <BookingFlow type="customisation" />
       <div className={cn(sheetStickyBottomClassName, "flex shrink-0 items-center justify-end gap-1.5 px-3 py-2.5 md:hidden")}>
         <SheetClose asChild>
           <OverlayDismissButton label={closeLabel} variant="inline" />

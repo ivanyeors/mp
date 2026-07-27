@@ -451,7 +451,7 @@ export const enUS: Messages = {
         nameLabel: "Full name",
         phoneLabel: "Phone",
         emailLabel: "Email",
-        emailOptional: "optional",
+        saveToCalendar: "Save to calendar",
         submit: "Confirm booking",
         submitting: "Booking…",
         pickDateFirst: "Pick a date to see available times.",

@@ -416,7 +416,7 @@ export const zhCN: Messages = {
         nameLabel: "姓名",
         phoneLabel: "电话",
         emailLabel: "邮箱",
-        emailOptional: "选填",
+        saveToCalendar: "保存到日历",
         submit: "确认预约",
         submitting: "预约中…",
         pickDateFirst: "请选择日期以查看可预约时间。",
