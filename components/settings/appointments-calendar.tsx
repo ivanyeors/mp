@@ -5,6 +5,7 @@ import FullCalendar from "@fullcalendar/react";
 import type {
   DateSelectArg,
   EventClickArg,
+  EventContentArg,
   EventInput,
   EventSourceFunc,
   EventSourceInput,
@@ -81,6 +82,40 @@ function hoursEndLabel(closeHour: number, durationMinutes: number): string {
 /** Browser-local getDay() is wrong when admin isn't in SGT — use wall-clock SGT. */
 function sgtDow(date: Date): number {
   return sgtParts(date.getTime()).dow;
+}
+
+/** Google responseStatus → status-pill label (second visual channel, alongside type fill). */
+const RSVP_LABEL: Record<NonNullable<CalendarRangeEvent["rsvp"]>, string> = {
+  accepted: "Confirmed",
+  declined: "Declined",
+  tentative: "Tentative",
+  needsAction: "Invited",
+};
+
+/** Custom event body: time + title, plus type label + RSVP pill on appointments. */
+function renderEventContent(arg: EventContentArg) {
+  const props = arg.event.extendedProps as {
+    kind?: string;
+    event?: CalendarRangeEvent;
+  };
+  const ev = props.event;
+  const rsvp = ev?.rsvp ?? null;
+  return (
+    <div className="mp-event">
+      <div className="mp-event-head">
+        {arg.timeText ? <span className="mp-time">{arg.timeText}</span> : null}
+        <span className="mp-title">{arg.event.title}</span>
+      </div>
+      {props.kind === "appointment" ? (
+        <div className="mp-tags">
+          {ev?.typeLabel ? <span className="mp-type-chip">{ev.typeLabel}</span> : null}
+          {rsvp ? (
+            <span className={`mp-rsvp-pill mp-rsvp-${rsvp}`}>{RSVP_LABEL[rsvp]}</span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) {
@@ -163,10 +198,13 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                   ? "#6d28d9"
                   : "#1d4ed8",
               textColor: isBusy ? "#334155" : undefined,
-              classNames: isBusy ? ["fc-gcal-busy-event"] : ["fc-gcal-appointment"],
+              classNames: isBusy
+                ? ["fc-gcal-busy-event"]
+                : ["fc-gcal-appointment", `fc-rsvp-accent-${e.rsvp ?? "needsAction"}`],
               editable: false,
               extendedProps: {
                 kind: isBusy ? "gcal-busy" : "appointment",
+                rsvp: e.rsvp,
                 event: e,
               },
             };
@@ -382,10 +420,31 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
             <span className="inline-block size-2.5 rounded-sm bg-slate-400/50 ring-1 ring-slate-500/50" />
             Google busy / block
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-2.5 rounded-sm bg-blue-500" />
-            Appointment
+
+          <span className="hidden h-4 w-px bg-border sm:block" />
+
+          <span className="inline-flex items-center gap-2">
+            <span className="font-medium text-foreground">Type</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block size-2.5 rounded-sm bg-[#2563eb]" />
+              Customise
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block size-2.5 rounded-sm bg-[#7c3aed]" />
+              Readjust
+            </span>
           </span>
+
+          <span className="hidden h-4 w-px bg-border sm:block" />
+
+          <span className="inline-flex items-center gap-2">
+            <span className="font-medium text-foreground">Status</span>
+            <span className="mp-rsvp-pill mp-rsvp-accepted">Confirmed</span>
+            <span className="mp-rsvp-pill mp-rsvp-declined">Declined</span>
+            <span className="mp-rsvp-pill mp-rsvp-tentative">Tentative</span>
+            <span className="mp-rsvp-pill mp-rsvp-needsAction">Invited</span>
+          </span>
+
           <span className="sm:ml-auto">
             Drag to block or set hours · click day chips or headers to toggle
           </span>
@@ -424,6 +483,7 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
           businessHours={businessHours}
           height="100%"
           eventSources={eventSources}
+          eventContent={renderEventContent}
           select={handleSelect}
           eventClick={handleEventClick}
           dayHeaderClassNames={dayHeaderClassNames}
@@ -532,6 +592,18 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                 <div>
                   <dt className="text-muted-foreground">Type</dt>
                   <dd>{appointmentDetail.typeLabel}</dd>
+                </div>
+              ) : null}
+              {appointmentDetail.rsvp ? (
+                <div>
+                  <dt className="text-muted-foreground">Status</dt>
+                  <dd>
+                    <span
+                      className={`mp-rsvp-pill mp-rsvp-${appointmentDetail.rsvp}`}
+                    >
+                      {RSVP_LABEL[appointmentDetail.rsvp]}
+                    </span>
+                  </dd>
                 </div>
               ) : null}
               {appointmentDetail.location ? (

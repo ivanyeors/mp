@@ -38,6 +38,8 @@ export type CalendarRangeEvent = {
   phone: string | null;
   appointmentType: AppointmentType | null;
   typeLabel: string | null;
+  /** Guest's Google RSVP. null for busy/blocked (non-appointment) ranges. */
+  rsvp: "accepted" | "declined" | "tentative" | "needsAction" | null;
 };
 
 type GCalEvent = {
@@ -50,8 +52,21 @@ type GCalEvent = {
   transparency?: string;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
-  attendees?: Array<{ displayName?: string; email?: string; self?: boolean }>;
+  attendees?: Array<{
+    displayName?: string;
+    email?: string;
+    self?: boolean;
+    responseStatus?: string;
+  }>;
 };
+
+/** Guest's Google RSVP: first non-self attendee's responseStatus. Missing/unknown → needsAction. */
+function guestRsvp(
+  ev: GCalEvent,
+): "accepted" | "declined" | "tentative" | "needsAction" {
+  const s = (ev.attendees ?? []).find((a) => !a.self)?.responseStatus;
+  return s === "accepted" || s === "declined" || s === "tentative" ? s : "needsAction";
+}
 
 /** Strip simple HTML from GCal descriptions for UI labels. */
 export function plainDescription(html: string | null | undefined): string | null {
@@ -129,6 +144,8 @@ export function mapGCalItemToRangeEvent(
     phone,
     appointmentType: matched?.type ?? null,
     typeLabel: matched?.label ?? null,
+    // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → no pill.
+    rsvp: busy ? null : guestRsvp(ev),
   };
 }
 

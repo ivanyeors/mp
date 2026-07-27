@@ -126,3 +126,81 @@
 .appointments-calendar .fc-daygrid-day.fc-day-today {
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent);
 }
+
+/* RSVP as a second visual channel — left-border accent keeps the type fill/border intact. */
+.appointments-calendar .fc-rsvp-accent-accepted {
+  box-shadow: inset 3px 0 0 0 #16a34a;
+}
+.appointments-calendar .fc-rsvp-accent-declined {
+  box-shadow: inset 3px 0 0 0 #dc2626;
+}
+.appointments-calendar .fc-rsvp-accent-tentative {
+  box-shadow: inset 3px 0 0 0 #d97706;
+}
+.appointments-calendar .fc-rsvp-accent-needsAction {
+  box-shadow: inset 3px 0 0 0 #64748b;
+}
+
+/* Custom event body (eventContent) — inherits FullCalendar's per-event text color. */
+.appointments-calendar .mp-event {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  padding: 1px 2px 1px 5px;
+}
+.appointments-calendar .mp-event-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  line-height: 1.15;
+}
+.appointments-calendar .mp-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.7rem;
+  opacity: 0.9;
+}
+.appointments-calendar .mp-title {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+.appointments-calendar .mp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.appointments-calendar .mp-type-chip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit;
+}
+
+/* RSVP status pill — unscoped so it also renders inside the detail dialog portal + legend. */
+.mp-rsvp-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 0 6px;
+  border-radius: 9999px;
+  color: #fff;
+  white-space: nowrap;
+}
+.mp-rsvp-accepted {
+  background: #16a34a;
+}
+.mp-rsvp-declined {
+  background: #dc2626;
+}
+.mp-rsvp-tentative {
+  background: #d97706;
+}
+.mp-rsvp-needsAction {
+  background: #64748b;
+}

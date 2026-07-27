@@ -340,4 +340,50 @@ describe("calendar extract helpers", () => {
       ),
     ).toBeNull();
   });
+
+  it("derives guest RSVP from first non-self attendee (missing → needsAction, self ignored)", () => {
+    const rsvpOf = (
+      attendees: Array<{ self?: boolean; responseStatus?: string }> | undefined,
+    ) =>
+      mapGCalItemToRangeEvent(
+        {
+          id: "r1",
+          summary: "Alice - Mpillow Customisation",
+          start: { dateTime: "2026-07-10T02:00:00Z" },
+          end: { dateTime: "2026-07-10T03:00:00Z" },
+          attendees,
+        },
+        DEFAULT_APPOINTMENT_SETTINGS,
+      )?.rsvp;
+
+    // Guest's responseStatus is surfaced verbatim
+    expect(rsvpOf([{ responseStatus: "accepted" }])).toBe("accepted");
+    // self attendee (the organiser) is skipped — pick the guest
+    expect(
+      rsvpOf([
+        { self: true, responseStatus: "accepted" },
+        { responseStatus: "declined" },
+      ]),
+    ).toBe("declined");
+    expect(rsvpOf([{ responseStatus: "tentative" }])).toBe("tentative");
+    // No guest / no status → needsAction ("Invited")
+    expect(rsvpOf(undefined)).toBe("needsAction");
+    expect(rsvpOf([{ self: true, responseStatus: "accepted" }])).toBe("needsAction");
+    expect(rsvpOf([{ responseStatus: "bogus" }])).toBe("needsAction");
+
+    // Busy / OOO ranges carry no RSVP pill
+    const ooo = mapGCalItemToRangeEvent(
+      {
+        id: "r2",
+        summary: "Out of office",
+        eventType: "outOfOffice",
+        start: { date: "2026-07-11" },
+        end: { date: "2026-07-12" },
+        attendees: [{ responseStatus: "accepted" }],
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+    );
+    expect(ooo?.kind).toBe("busy");
+    expect(ooo?.rsvp).toBeNull();
+  });
 });
