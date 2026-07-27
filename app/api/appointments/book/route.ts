@@ -19,7 +19,7 @@ const BookSchema = z.object({
   end_iso: z.string().min(1),
   guest_name: z.string().min(1).max(200),
   phone: z.string().min(1),
-  email: z.string().email().optional(),
+  email: z.string().email(),
   appointment_type: z.enum(["customisation", "readjustment"]).default("customisation"),
 });
 
