@@ -60,3 +60,39 @@ fire exactly as today.
 - `listDaySlots` and `buildEventInsertBody` are pure and unit-tested (slot
   boundary rules; address-on-event contract + SGT times); the `createEvent` fetch
   wrapper stays thin.
+
+## Amendment (2026-07-27): Sheet → page route, pill-first type picker, guest calendar
+
+The slide-in **Sheet** shell is retired for booking. Booking now lives at a real
+page route **`/[lang]/appointments`** (reads `?type=customisation|readjustment`).
+Entry points open a **pill overlay** (Customise / Readjust, styled after the hero
+tier pills) → `router.push('/[lang]/appointments?type=…')`; a direct load with no
+`type` renders the same pills inline (deep-link/refresh safe). One `Pills`
+component serves overlay + inline.
+
+This removes the **stacked-drawer "dupe"**: the booking flow mounted twice — the
+global `BookAppointmentHost` (root layout) **and** an inline hero
+`BookAppointmentSheet` — and its "Book" buttons on the learn-more slide-ins opened
+the booking drawer **on top of** an already-open drawer, so users had to close
+two. All 7 entry points (header In-Person, hero, product panel, support, +
+basic/premium/mbolster learn-more) now **navigate** instead of calling
+`openBookAppointmentSheet()`. Removed: `BookAppointmentHost`, the inline
+`BookAppointmentSheet`, `openBookAppointmentSheet()`, the
+`mpillow:open-book-appointment` DOM event.
+
+Backend is unchanged (`events.insert` + Location-address stamp + one shared
+availability). Two calendar-side changes ride along:
+
+- **`sendUpdates: "all"`** on `events.insert` / reschedule / cancel — the customer
+  now receives the Google invite (an `.ics` any calendar app can add). Trade-off
+  accepted: customers get Google-branded emails on every booking change (they
+  already get WhatsApp reminders).
+- **Email is required** (client + server zod; drop `.optional()`) so the guest is
+  always an attendee — the precondition for reading their **Appointment RSVP
+  status** (`responseStatus`) and showing it in the Admin Panel calendar as a
+  status pill + type label. A **Save to calendar** button on the confirmation
+  screen serves a hand-built `.ics` for immediacy (native add-sheet on phones).
+
+> ponytail: `.ics` is a ~15-line VEVENT string builder + one `text/calendar`
+> route — no add-to-calendar dependency. RSVP rides the existing live GCal read
+> (add `responseStatus` to the attendee type); no new table.
