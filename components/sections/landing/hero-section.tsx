@@ -1,6 +1,6 @@
 import { CustomiseTierPicker } from "@/components/customise-tier-picker";
 import { Ripple } from "@/components/ui/shadcn-io/ripple";
-import { BookAppointmentSheet } from "@/components/slide-in-pages/book-appointment-sheet";
+import { BookAppointmentButton } from "@/components/book-appointment-button";
 import Image from "next/image";
 import type { Messages } from "@/lib/i18n/messages/types";
 import type { Locale } from "@/lib/i18n/locales";
@@ -78,11 +78,9 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
                   premiumLabel={m.home.pickYourMpillow.products.premium.title}
                   triggerLabel={ctaCustomise}
                 />
-                <BookAppointmentSheet
-                  triggerVariant="outline"
-                  triggerClassName="h-auto px-6 py-4 text-base"
-                  triggerLabel={ctaBook}
-                />
+                <BookAppointmentButton variant="outline" className="h-auto px-6 py-4 text-base">
+                  {ctaBook}
+                </BookAppointmentButton>
               </div>
             </div>
           </div>

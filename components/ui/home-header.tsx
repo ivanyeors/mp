@@ -10,7 +10,7 @@ import { ModeToggle } from "@/components/ui/mode-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
-import { openBookAppointmentSheet } from "@/lib/book-appointment";
+import { openBookAppointment } from "@/lib/book-appointment";
 import { stripLocale } from "@/lib/i18n/routing";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 
@@ -91,7 +91,7 @@ export function HomeHeader() {
               </Link>
             </Button>
             <Button asChild size="sm" variant="outline" className="h-8 rounded-full px-2.5 sm:px-3">
-              <button type="button" onClick={openBookAppointmentSheet}>
+              <button type="button" onClick={openBookAppointment}>
                 <MapPin className="h-4 w-4 sm:hidden" aria-hidden="true" />
                 <span className="hidden sm:inline">In-Person</span>
               </button>

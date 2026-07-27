@@ -14,7 +14,6 @@ const SLIDE_INS = [
   "cervical-neck-support.tsx",
   "ambassadors-slide-in.tsx",
   "size-matters-slide-in.tsx",
-  "book-appointment-sheet.tsx",
 ] as const
 
 const slideInDir = join(process.cwd(), "components/slide-in-pages")
@@ -51,13 +50,6 @@ describe("landing slide-in safe-area compliance", () => {
       expect(source).toContain("insetTopPadding={false}")
       expect(source).toContain('mobilePreset="full"')
     }
-  })
-
-  it("book-appointment flush sheet opts out of SheetContent top inset", () => {
-    const source = readSlideIn("book-appointment-sheet.tsx")
-    const insetFalseCount = (source.match(/insetTopPadding=\{false\}/g) ?? []).length
-    expect(insetFalseCount).toBeGreaterThanOrEqual(2)
-    expect(source).toContain("p-0 overflow-hidden")
   })
 
   it("sticky classes include mobile-only safe-area resets", () => {
