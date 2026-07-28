@@ -39,6 +39,9 @@ export type AssignedBuildOk = {
   lines: BuildLine[];
   cogs: number;
   pricing: PriceResultOutput;
+  /** Composed sellable MSRP for the assigned size×tier / length — the pillow/bolster
+   * BASE price (excludes preference + add-on MSRPs). Commission base (#77). */
+  basePrice: number;
   shortages: ReturnType<typeof findStockShortages>;
   nameByItem: Map<number, string>;
   /** Spatial Result snapshot rows (empty when the Result predates the spatial model).
@@ -233,6 +236,7 @@ export async function loadAssignedBuild(
     lines: assembled.lines,
     cogs: assembled.cogs,
     pricing,
+    basePrice: composedMsrp,
     shortages,
     nameByItem,
     fillingPlacements,

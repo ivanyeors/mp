@@ -11,6 +11,7 @@ import {
 import { authorizeResultAccess } from "@/lib/results/access";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
+import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -201,6 +202,10 @@ export async function POST(
       payment_method: "stripe",
       payment_reference: row.payment_intent_id,
       paid_at: now,
+      // In-store handover == delivered immediately: stamp delivered_at at capture so
+      // the RMA return window (and commission release, #77) is dated from delivery,
+      // never paid_at. The in-store path has no later "mark delivered" step.
+      delivered_at: now,
       amount_captured: holdCaptureAmount + topUpPaid,
       // Referral attribution carried from the Result (#74). One partner per order.
       partner_id: row.partner_id,
@@ -240,26 +245,54 @@ export async function POST(
     pricing: build.pricing,
   });
 
-  const { error: itemErr } = await admin.from("order_items").insert({
-    order_id: order.id,
-    variant_id: null,
-    sku,
-    product_title: title,
-    variant_title:
-      productType === "pillow"
-        ? `${row.assigned_size} · ${row.assigned_tier} tier`
-        : row.assigned_length,
-    quantity: 1,
-    unit_price: build.pricing.subtotal,
-    total_price: build.pricing.subtotal,
-    unit_cost: build.cogs,
-    total_cost: build.cogs,
-    customization_snapshot: snapshot,
-  });
+  const { data: orderItem, error: itemErr } = await admin
+    .from("order_items")
+    .insert({
+      order_id: order.id,
+      variant_id: null,
+      sku,
+      product_title: title,
+      variant_title:
+        productType === "pillow"
+          ? `${row.assigned_size} · ${row.assigned_tier} tier`
+          : row.assigned_length,
+      quantity: 1,
+      unit_price: build.pricing.subtotal,
+      total_price: build.pricing.subtotal,
+      unit_cost: build.cogs,
+      total_cost: build.cogs,
+      customization_snapshot: snapshot,
+    })
+    .select("id")
+    .single();
 
-  if (itemErr) {
+  if (itemErr || !orderItem) {
     await admin.from("orders").delete().eq("id", order.id);
-    return NextResponse.json({ error: itemErr.message }, { status: 500 });
+    return NextResponse.json({ error: itemErr?.message ?? "Failed to create order item" }, { status: 500 });
+  }
+
+  // Held commission for an attributed in-store order (#77). Base = pillow/bolster
+  // BASE price only (build.basePrice = composed MSRP; excludes preference/add-on
+  // MSRPs, shipping, tax). Best-effort: money is already captured and the order
+  // exists, so a commission-write failure is logged, never fatal.
+  if (row.partner_id) {
+    try {
+      await createHeldCommissionsForOrder(admin, {
+        orderId: order.id,
+        partnerId: row.partner_id,
+        deliveredAt: now,
+        lines: [
+          {
+            orderItemId: orderItem.id,
+            productType: productType as "pillow" | "bolster",
+            baseAmount: build.basePrice,
+            quantity: 1,
+          },
+        ],
+      });
+    } catch (e) {
+      console.error("Commission creation failed after capture", e);
+    }
   }
 
   // Deduct inventory only after successful capture (US37).
