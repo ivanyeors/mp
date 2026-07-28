@@ -1,5 +1,7 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requirePartnerPage } from "@/lib/auth/partner";
+import { needsReaccept } from "@/lib/partner-application";
+import { ReacceptForm } from "@/components/partner/reaccept-form";
 import {
   Card,
   CardContent,
@@ -30,12 +32,16 @@ export default async function PartnerHubPage({
     return (
       <PartnerStatusScreen
         title="Application not approved"
-        body="Your Partner application wasn't approved at this time. If you think this is a mistake, reply to your application email and we'll take another look."
+        body="Your Partner application wasn't approved at this time. If you think this is a mistake, reply to your application email or contact us at sg@mpillow.com and we'll take another look."
       />
     );
   }
 
-  // approved
+  // approved — but re-accept first if the agreement version has moved on.
+  if (needsReaccept(ctx.agreedVersion)) {
+    return <ReacceptForm lang={locale} />;
+  }
+
   const greeting = ctx.partnerName ?? ctx.email;
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-10">
