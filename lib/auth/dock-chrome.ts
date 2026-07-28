@@ -1,12 +1,14 @@
 /** Landing Menu last-pill + Admin Panel dock path rules (pure). */
 
-export type DockSessionRole = "guest" | "customer" | "staff";
+export type DockSessionRole = "guest" | "customer" | "staff" | "partner";
 
 export function resolveDockSessionRole(
   signedIn: boolean,
   isStaff: boolean,
+  isPartner = false,
 ): DockSessionRole {
   if (isStaff) return "staff";
+  if (isPartner) return "partner";
   if (signedIn) return "customer";
   return "guest";
 }
@@ -17,6 +19,7 @@ export function landingAuthPill(role: DockSessionRole): {
   href: string;
 } {
   if (role === "staff") return { label: "Admin Panel", href: "/settings" };
+  if (role === "partner") return { label: "Partner Hub", href: "/partner" };
   if (role === "customer") return { label: "Profile", href: "/account" };
   return { label: "Sign in", href: "/account/login" };
 }
