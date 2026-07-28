@@ -118,6 +118,12 @@ const HoldSchema = z
     discoverySourceOther: z.string().optional(),
     /** Optional typed "Partner / referral code". Invalid never blocks the hold. */
     referralCode: z.string().trim().optional(),
+    /**
+     * Partner-assisted run (#78): the launching partner's own referral code. The
+     * server RE-RESOLVES this to a partner id (never trust a client id) and gives
+     * it ASSIST priority, outranking a typed code / windowed link stamp.
+     */
+    partnerAssistCode: z.string().trim().optional(),
     measurements: z.record(z.string(), z.unknown()).optional(),
     productType: z.enum(["pillow", "bolster"]).default("pillow"),
     suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]).optional(),
@@ -512,9 +518,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: routeGate.reason }, { status: 409 });
   }
 
-  // Referral attribution (#74): typed code outranks a windowed link stamp on
-  // the Visitor. Assist attribution is a later slice (null here). Discovery
-  // source is left untouched and never attributes. STAMP only — no commission.
+  // Referral attribution (#74/#78): assist > typed > windowed link stamp.
+  // A partner-assisted run (#78) re-resolves the launch code server-side and
+  // wins over any typed code / link. Discovery source never attributes.
+  // STAMP only — no commission.
+  const assistPartner = input.partnerAssistCode
+    ? await getPartnerByReferralCode(input.partnerAssistCode)
+    : null;
   const typedPartner = input.referralCode
     ? await getPartnerByReferralCode(input.referralCode)
     : null;
@@ -539,16 +549,18 @@ export async function POST(req: Request) {
     }
   }
   const attribution = resolveAttribution({
-    assistPartnerId: null,
+    assistPartnerId: assistPartner?.id ?? null,
     typedPartnerId: typedPartner?.id ?? null,
     linkPartnerId,
   });
   const attributedRefCode =
-    attribution.source === "typed"
-      ? typedPartner?.referral_code ?? null
-      : attribution.source === "link"
-        ? linkRefCode
-        : null;
+    attribution.source === "assist"
+      ? assistPartner?.referral_code ?? null
+      : attribution.source === "typed"
+        ? typedPartner?.referral_code ?? null
+        : attribution.source === "link"
+          ? linkRefCode
+          : null;
 
   const row = {
     id: resultId,

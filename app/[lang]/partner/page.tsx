@@ -66,6 +66,31 @@ export default async function PartnerHubPage({
         <ReferralShareCard code={referralCode} siteOrigin={getSiteOrigin()} />
       ) : null}
 
+      {referralCode ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Customise for a customer</CardTitle>
+            <CardDescription>
+              Open the configurator in partner mode. Your customer answers the same
+              questions and enters their own card for the authorization hold — nothing
+              is charged to you, and the order is credited to you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+            <Button asChild>
+              <Link href={`${withLocale("/mp-config", locale)}?partner=${referralCode}`}>
+                Customise a Mpillow
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={`${withLocale("/mbolster-config", locale)}?partner=${referralCode}`}>
+                Customise a Mbolster
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Dashboard</CardTitle>
