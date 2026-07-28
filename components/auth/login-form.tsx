@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { authCallbackUrl } from "@/lib/site-url";
+import { safeNextPath } from "@/lib/auth/post-auth-redirect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +95,8 @@ export function LoginForm({
       setError(error.message);
       return;
     }
-    window.location.assign(nextPath); // keep spinner; navigating away
+    // Same-origin guard mirrors the callback route's safeNext; keep spinner.
+    window.location.assign(safeNextPath(nextPath, "/"));
   };
 
   if (sent) {
