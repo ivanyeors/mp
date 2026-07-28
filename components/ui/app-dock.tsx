@@ -115,10 +115,13 @@ export function AppDock() {
     const supabase = createSupabaseBrowserClient();
 
     const refresh = async () => {
-      const [{ data }, adminJson] = await Promise.all([
+      const [{ data }, adminJson, partnerJson] = await Promise.all([
         supabase.auth.getUser(),
         fetch("/api/admin/context")
           .then((r) => r.json() as Promise<{ signedIn?: boolean }>)
+          .catch(() => null),
+        fetch("/api/partner/context")
+          .then((r) => r.json() as Promise<{ isPartner?: boolean }>)
           .catch(() => null),
       ]);
       if (cancelled) return;
@@ -126,6 +129,7 @@ export function AppDock() {
         resolveDockSessionRole(
           Boolean(data.user),
           Boolean(adminJson?.signedIn),
+          Boolean(partnerJson?.isPartner),
         ),
       );
     };
