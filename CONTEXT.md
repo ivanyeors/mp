@@ -278,7 +278,7 @@ _Avoid_: measuring the window from order/ship date
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
 - A **Media Asset** is the library record; landing slots, blogs, products, slide configs, and **Product Builder** overlays are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
 - **Product Builder** (Landing Site) links cover/case **Items** to overlay **Media Assets** for the configurator silhouette; preview selection reflects that mapping (**C**: thumbnails on **Item**, overlay fit in Product Builder when needed).
-- The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), or **Admin Panel** (**Staff**). When the session is **Staff**, prefer **Admin Panel** over **Profile**.
+- The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), the partner portal (**Partner account**), or **Admin Panel** (**Staff**). Pill precedence when one session holds multiple roles: **Staff > Partner > Customer**. Access is additive — the pill routes to the highest surface, it does not ban the lower ones (a Partner who is also a Customer can still open `/account` directly; `/settings` still requires **Staff**; the partner portal requires an approved **Partner account**).
 - **Staff assist mode** appears on the customisation preview only when the session is **Staff**; the shopper operates that shared device. It does not replace **Result** assign in the **Admin Panel**.
 - **Staff assist mode** may load/edit a **Filling configuration** (from a **Filling Template** or scratch) for the live customisation; catalog create/**Promote** of **Filling Templates** stays in the **Admin Panel** only.
 - Every used **Filling configuration** is tracked for analytics; **Unpromoted configurations** are ranked by usage to guide **Promote**.
@@ -399,6 +399,24 @@ The filling-only catalog and editor inside the same product card page. Scoped to
 
 **Warehouse template**:
 A named non-filling BOM preset (`role: warehouse`) for Apply-to-active-BOM. Must not include filling lines — fillings live only in **Filling Templates**. See ADR `docs/adr/0003-fillings-only-in-filling-templates.md`.
+
+## Partner portal
+
+**Partner account**:
+The login identity of a partner business: a `partner_users` row (mirroring the `admin_users` pattern) linking an auth user to a `type='partner'` **Location** row in the `partners` table. Approved self-serve signup creates/claims that Location row (`visible=false` until Staff flips it). Portal profile edits (company name, logo, write-up, location) write to the **same row** that powers `/our-partners` and appointment booking — one aggregate, one CRUD path. Online-only referrers are rows with no address that never get booked.
+_Avoid_: a separate partner-profile table that can drift from the **Location** row; "partner" alone when you mean the login identity vs the business row
+
+**Partner application**:
+The self-serve signup submission: questionnaire answers (business email, ACRA/UEN, business website, contact person's mobile, …) plus recorded agreement to the partner terms. Status machine: `pending → approved | rejected`. "Become a Partner" (enabled only after agreeing to terms) submits the application; the applicant can sign in but sees only an "under review" screen while `pending`. **Approval gates the portal**: Staff approve → notification → full portal unlocks; reject → rejected state. No referral accrual, no commissions, no `/our-partners` publishing before approval.
+_Avoid_: granting portal features at agreement time; treating the agreement page as the approval
+
+**Partner sign-in**:
+Partners use the same unified **Sign in** at `/account/login` (menu → login) — no separate door, no password. Methods: Google OAuth, or passwordless email where the one shared email carries **both** a 6-digit code and the magic link (form gains a code-entry step via `verifyOtp`); this upgrade applies to all roles, not a partner fork. Partner sessions have a **7-day absolute cap** enforced app-side in the partner portal guard (`last_sign_in_at` check → force re-auth); Customer/Staff session behavior unchanged.
+_Avoid_: a partner-specific login page; capping the global Supabase session (it would hit Customers/Staff); idle-timeout semantics ("7 days max" is absolute)
+
+**Partner Hub**:
+The partner-facing portal at `/partner` — pill label and page title "Partner Hub". Requires an approved **Partner account** (pending applicants see the under-review screen; guests are sent to **Sign in**). Home = gamified earnings/milestone dashboard; also profile settings, backup email, and WhatsApp support CTA.
+_Avoid_: "Partners page" (collides with `/our-partners` and the `partners_page` CMS table); `/partners` as the route
 
 ## Marketing
 

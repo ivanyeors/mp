@@ -343,7 +343,7 @@ export function BookingFlow({ type }: { type: ApptType }) {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <Button type="submit" disabled={!canSubmit} className="mt-auto">
+      <Button type="submit" disabled={!canSubmit} className="mt-1 h-12 text-base">
         {submitting ? t.submitting : t.submit}
       </Button>
     </form>
