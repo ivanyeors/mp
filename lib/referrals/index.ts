@@ -32,6 +32,41 @@ export async function getPartnerByReferralCode(
   return data as ReferralPartner;
 }
 
+/** Co-brand + assist context for a partner-assisted configurator run (#78). */
+export type PartnerAssistContext = {
+  partnerId: string;
+  code: string;
+  name: string;
+  logoUrl: string | null;
+  description: string | null;
+};
+
+/**
+ * Active partner (co-brand fields) for a referral code, or null. Used by the
+ * partner-assisted configurator to render the co-brand finish panel and to
+ * re-resolve the assist partner server-side at hold (never trust a client id).
+ */
+export async function getPartnerByCode(
+  code: string,
+): Promise<PartnerAssistContext | null> {
+  const normalized = normalizeReferralCode(code);
+  if (!isValidReferralCodeFormat(normalized)) return null;
+  const { data, error } = await supabaseAdmin()
+    .from("partners")
+    .select("id, name, logo_url, description, referral_code")
+    .eq("type", "partner")
+    .ilike("referral_code", normalized)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    partnerId: data.id as string,
+    code: (data.referral_code as string | null) ?? normalized,
+    name: data.name as string,
+    logoUrl: (data.logo_url as string | null) ?? null,
+    description: (data.description as string | null) ?? null,
+  };
+}
+
 /**
  * Returns the partner's referral code, generating + persisting a unique one on
  * first use. Retries on the unique-index collision (case-insensitive).

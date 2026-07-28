@@ -5,6 +5,7 @@ import { getPageFaq } from "@/lib/page-faq";
 import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
+import { getPartnerByCode } from "@/lib/referrals";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MbolsterConfigClient } from "./mbolster-config-client";
 
@@ -23,17 +24,21 @@ const INTRO: Record<Locale, { h1: string; lede: string }> = {
 
 type Props = {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ partner?: string }>;
 };
 
-export default async function MbolsterConfigPage({ params }: Props) {
+export default async function MbolsterConfigPage({ params, searchParams }: Props) {
   const { lang } = await params;
+  const { partner: partnerCode } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
   // Staff assist gate: same Staff check as mp-config. Guests get null.
-  const [offer, faq, staffCtx] = await Promise.all([
+  // Partner-assist (#78) is INDEPENDENT of staff auth — from the ?partner code.
+  const [offer, faq, staffCtx, partner] = await Promise.all([
     getConfiguratorOfferRange("bolster"),
     getPageFaq("mbolster-config", locale),
     getAdminContext(),
+    partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
   ]);
 
   const jsonLd = buildConfiguratorProductJsonLd({
@@ -60,6 +65,16 @@ export default async function MbolsterConfigPage({ params }: Props) {
           faqItems: faq?.items ?? [],
         }}
         staffAssist={Boolean(staffCtx)}
+        partner={
+          partner
+            ? {
+                code: partner.code,
+                name: partner.name,
+                logoUrl: partner.logoUrl,
+                description: partner.description,
+              }
+            : null
+        }
       />
     </>
   );

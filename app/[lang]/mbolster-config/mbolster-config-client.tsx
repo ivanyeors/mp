@@ -63,6 +63,7 @@ import {
   SelectedAddonPreviews,
   type AddonOption,
 } from "@/components/configurator/addon-cards";
+import { CoBrandBanner } from "@/components/configurator/co-brand-banner";
 import {
   holdCtaLabel,
   isPreOrder,
@@ -214,11 +215,25 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
 export function MbolsterConfigClient({
   info,
   staffAssist = false,
+  partner = null,
 }: {
   info: MbolsterConfigInfo;
   /** Staff-only x-ray filling editor on the bolster preview (slice 13). */
   staffAssist?: boolean;
+  /**
+   * Partner-assisted co-brand context (#78). Non-null → assisted run: co-brand
+   * finish panel, no add-on / upsell / filling-template surfaces, assist-priority
+   * attribution. null → guest/staff flow renders PIXEL-IDENTICAL (AC5).
+   */
+  partner?: {
+    code: string;
+    name: string;
+    logoUrl: string | null;
+    description: string | null;
+  } | null;
 }) {
+  // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
+  const partnerAssisted = Boolean(partner);
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -368,7 +383,9 @@ export function MbolsterConfigClient({
     (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.size ?? null]),
   );
   // Legacy-flat templates (no placements) keep the text mix summary.
-  const guestXray = revealNow && previewMixMode(recommendedTemplate?.placements) === "xray";
+  // Assisted runs show LENGTH ONLY — no filling x-ray (AC3).
+  const guestXray =
+    !partnerAssisted && revealNow && previewMixMode(recommendedTemplate?.placements) === "xray";
   const xrayVisible = staffAssist || guestXray;
 
   const addonTotal = React.useMemo(() => {
@@ -755,20 +772,23 @@ export function MbolsterConfigClient({
   React.useEffect(() => {
     if (state.step !== "preview") return;
 
-    const length = shopRecommendation?.bolster_variant ?? "";
-    const qs = new URLSearchParams({ productType: "bolster" });
-    if (length) qs.set("length", length);
-    fetch(`/api/results/addons?${qs.toString()}`)
-      .then((r) => r.json())
-      .then((d: { addons?: typeof addons }) => {
-        const list = d.addons ?? [];
-        setAddons(list);
-        setSelectedAddons((prev) => {
-          const valid = new Set(list.map((a) => a.item_id));
-          return new Set([...prev].filter((id) => valid.has(id)));
-        });
-      })
-      .catch(() => setAddons([]));
+    // Assisted runs offer no add-ons (AC3) — skip the fetch entirely.
+    if (!partnerAssisted) {
+      const length = shopRecommendation?.bolster_variant ?? "";
+      const qs = new URLSearchParams({ productType: "bolster" });
+      if (length) qs.set("length", length);
+      fetch(`/api/results/addons?${qs.toString()}`)
+        .then((r) => r.json())
+        .then((d: { addons?: typeof addons }) => {
+          const list = d.addons ?? [];
+          setAddons(list);
+          setSelectedAddons((prev) => {
+            const valid = new Set(list.map((a) => a.item_id));
+            return new Set([...prev].filter((id) => valid.has(id)));
+          });
+        })
+        .catch(() => setAddons([]));
+    }
 
     const country = holdAddress.country || "SG";
     fetch(`/api/shop/shipping?country=${encodeURIComponent(country)}`)
@@ -869,6 +889,8 @@ export function MbolsterConfigClient({
           discoverySourceOther:
             discoverySource === "other" ? discoverySourceOther.trim() : undefined,
           referralCode: referralCode.trim() || undefined,
+          // Assist priority (#78): server re-resolves this code → partner id.
+          ...(partner ? { partnerAssistCode: partner.code } : {}),
           productType: "bolster",
           suggestedLength,
           measurements: {
@@ -924,6 +946,7 @@ export function MbolsterConfigClient({
     staffAssist,
     assistPlacements,
     sessionFillingTemplateId,
+    partner,
   ]);
 
   const flowRouteBlocksHold = (() => {
@@ -1114,7 +1137,7 @@ export function MbolsterConfigClient({
                     {showTierAdvice && previewRecord?.tierSuggestion ? (
                       <TierSuggestion tier={previewRecord.tierSuggestion} />
                     ) : null}
-                    {routePending && previewRecord?.flowRoute ? (
+                    {routePending && previewRecord?.flowRoute && !partnerAssisted ? (
                       <UpsellCard
                         reason={previewRecord.flowRoute.reason}
                         fromLabel="Mbolster"
@@ -1132,8 +1155,9 @@ export function MbolsterConfigClient({
                       reveal={revealNow}
                       sizeLabel={suggestedLength ? String(suggestedLength) : ""}
                       why={why}
-                      templateName={recommendedTemplate?.name ?? null}
-                      mixLines={mixLines}
+                      // Assisted: LENGTH ONLY — drop the Filling Template surface (AC3).
+                      templateName={partnerAssisted ? null : recommendedTemplate?.name ?? null}
+                      mixLines={partnerAssisted ? [] : mixLines}
                     />
                   </>
                 );
@@ -1165,6 +1189,7 @@ export function MbolsterConfigClient({
                 configuratorPreviewPadClassName,
               )}
             >
+              {partner ? <CoBrandBanner partner={partner} /> : null}
               <div className="space-y-1">
                 <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                 <p className="text-sm text-muted-foreground">
@@ -1215,7 +1240,7 @@ export function MbolsterConfigClient({
                 </div>
               )}
 
-              {addons.length > 0 && (
+              {addons.length > 0 && !partnerAssisted && (
                 <div className="space-y-3">
                   <Label className="text-base font-semibold">
                     Add-ons for your Mbolster (optional)
@@ -1721,7 +1746,7 @@ export function MbolsterConfigClient({
                     {showTierAdvice && record?.tierSuggestion ? (
                       <TierSuggestion tier={record.tierSuggestion} />
                     ) : null}
-                    {routePending && record?.flowRoute ? (
+                    {routePending && record?.flowRoute && !partnerAssisted ? (
                       <UpsellCard
                         reason={record.flowRoute.reason}
                         fromLabel="Mbolster"
