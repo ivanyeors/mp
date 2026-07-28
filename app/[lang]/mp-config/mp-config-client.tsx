@@ -336,6 +336,7 @@ export function MpConfigClient({
   const [holdPhone, setHoldPhone] = useState("");
   const [discoverySource, setDiscoverySource] = useState("");
   const [discoverySourceOther, setDiscoverySourceOther] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [holdNotes, setHoldNotes] = useState("");
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>({
     recipient: "",
@@ -602,6 +603,7 @@ export function MpConfigClient({
       discoverySource,
       discoverySourceOther,
       notes: holdNotes,
+      referralCode,
     }),
     {
       key: "recipient",
@@ -1467,6 +1469,7 @@ export function MpConfigClient({
           discoverySource,
           discoverySourceOther:
             discoverySource === "other" ? discoverySourceOther.trim() : undefined,
+          referralCode: referralCode.trim() || undefined,
           measurements: {
             ...measurementData,
             ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
@@ -1517,6 +1520,7 @@ export function MpConfigClient({
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    referralCode,
     holdNotes,
     holdAddress,
     selectedShippingId,
@@ -1953,6 +1957,7 @@ export function MpConfigClient({
                       discoverySource,
                       discoverySourceOther,
                       notes: holdNotes,
+                      referralCode,
                     }}
                     onChange={(patch) => {
                       if (patch.email !== undefined) setHoldEmail(patch.email);
@@ -1964,6 +1969,9 @@ export function MpConfigClient({
                         setDiscoverySourceOther(patch.discoverySourceOther);
                       }
                       if (patch.notes !== undefined) setHoldNotes(patch.notes);
+                      if (patch.referralCode !== undefined) {
+                        setReferralCode(patch.referralCode);
+                      }
                     }}
                   />
 
@@ -2090,6 +2098,7 @@ export function MpConfigClient({
                           discoverySource,
                           discoverySourceOther,
                           notes: holdNotes,
+                          referralCode,
                         }),
                       );
                       if (Object.keys(contactErrors).length > 0) {

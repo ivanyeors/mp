@@ -38,7 +38,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, payment_intent_id, customer_email, customer_id, access_token, order_id",
+      "id, status, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, payment_intent_id, customer_email, customer_id, access_token, order_id, partner_id, ref_code",
     )
     .eq("id", id)
     .maybeSingle();
@@ -202,6 +202,9 @@ export async function POST(
       payment_reference: row.payment_intent_id,
       paid_at: now,
       amount_captured: holdCaptureAmount + topUpPaid,
+      // Referral attribution carried from the Result (#74). One partner per order.
+      partner_id: row.partner_id,
+      ref_code: row.ref_code,
     })
     .select("id, order_number")
     .single();
