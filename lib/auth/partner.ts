@@ -13,6 +13,8 @@ export interface PartnerContext {
   partnerId: string | null;
   status: "pending" | "approved" | "rejected";
   partnerName: string | null;
+  /** Agreement version this partner last accepted (null = never / pre-migration). */
+  agreedVersion: string | null;
 }
 
 interface PartnerRow {
@@ -20,7 +22,10 @@ interface PartnerRow {
   auth_user_id: string | null;
   partner_id: string | null;
   application_status: PartnerContext["status"];
+  agreed_version: string | null;
 }
+
+const PARTNER_ROW_COLUMNS = "id, auth_user_id, partner_id, application_status, agreed_version";
 
 /**
  * Loads the `partner_users` row for a signed-in user, or null when they are not
@@ -30,12 +35,12 @@ interface PartnerRow {
  * The email lookup escapes LIKE wildcards (`escapeLikePattern`) so an address
  * containing `_`/`%` cannot adopt another partner's row.
  */
-async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
+export async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
   const admin = supabaseAdmin();
 
   const { data: byAuthId } = await admin
     .from("partner_users")
-    .select("id, auth_user_id, partner_id, application_status")
+    .select(PARTNER_ROW_COLUMNS)
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -46,7 +51,7 @@ async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
 
   const { data: byEmail } = await admin
     .from("partner_users")
-    .select("id, auth_user_id, partner_id, application_status")
+    .select(PARTNER_ROW_COLUMNS)
     .ilike("email", escapeLikePattern(email))
     .maybeSingle();
 
@@ -72,6 +77,7 @@ async function buildPartnerContext(user: User, row: PartnerRow): Promise<Partner
     partnerId: row.partner_id ?? null,
     status: row.application_status,
     partnerName,
+    agreedVersion: row.agreed_version ?? null,
   };
 }
 
@@ -95,7 +101,7 @@ export async function getPartnerContext(): Promise<PartnerContext | null> {
  * Server-component / page guard. Distinguishes three null cases so it never
  * loops through the login page (which bounces already-signed-in users):
  *  - not signed in            → Sign in (return to /partner)
- *  - signed in, not a partner → /account (storefront home)
+ *  - signed in, not a partner → /partner/apply (self-serve application)
  *  - signed in, stale (>7d)   → Sign in with `reauth=1` so the login page shows
  *    the form instead of bouncing; a fresh sign-in refreshes `last_sign_in_at`.
  * Returns the context on success.
@@ -107,7 +113,7 @@ export async function requirePartnerPage(locale: Locale = DEFAULT_LOCALE): Promi
   }
   const row = await loadPartnerRow(user);
   if (!row) {
-    redirect(withLocale("/account", locale));
+    redirect(withLocale("/partner/apply", locale));
   }
   if (!isPartnerSessionFresh(user.last_sign_in_at, new Date())) {
     redirect(withLocale("/account/login?next=/partner&reauth=1", locale));
