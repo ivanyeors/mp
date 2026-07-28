@@ -94,7 +94,7 @@ export function validateApplication(
   require("contactName", "Contact person name is required");
   require("introPlan", "Tell us how you'll introduce Mpillow to your clients");
 
-  const uen = fields.uen.trim().toUpperCase();
+  const uen = String(fields.uen ?? "").trim().toUpperCase();
   if (!uen) errors.uen = "ACRA UEN is required";
   else if (!/^[A-Z0-9]{9,10}$/.test(uen)) errors.uen = "Enter a valid ACRA UEN";
 
@@ -102,12 +102,13 @@ export function validateApplication(
     errors.category = "Select a business category";
   }
 
-  if (!fields.contactMobile.trim()) errors.contactMobile = "Contact mobile is required";
-  else if (!isValidPhone(fields.contactMobile)) {
+  const mobile = String(fields.contactMobile ?? "").trim();
+  if (!mobile) errors.contactMobile = "Contact mobile is required";
+  else if (!isValidPhone(mobile)) {
     errors.contactMobile = "Enter a valid mobile number";
   }
 
-  const email = fields.businessEmail.trim();
+  const email = String(fields.businessEmail ?? "").trim();
   if (!email) errors.businessEmail = "Business email is required";
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.businessEmail = "Enter a valid email";

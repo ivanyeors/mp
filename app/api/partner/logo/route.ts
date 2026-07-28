@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPartnerContext } from "@/lib/auth/partner";
+import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { assertLogoAllowed, savePartnerLogo, LogoRefusedError } from "@/lib/partner-upload";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
  */
 export async function POST(req: Request) {
   const ctx = await getPartnerContext();
-  if (!ctx || ctx.status !== "approved" || !ctx.partnerId) {
+  if (!isPartnerActive(ctx)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

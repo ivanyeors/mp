@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
-import { withLocale } from "@/lib/i18n/routing";
-import { getPartnerContext } from "@/lib/auth/partner";
+import { requireActivePartnerPage } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { PartnerSettingsClient } from "./settings-client";
 
@@ -18,10 +16,9 @@ export default async function PartnerSettingsPage({
   const { lang } = await params;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-  const ctx = await getPartnerContext();
-  if (!ctx || ctx.status !== "approved" || !ctx.partnerId) {
-    redirect(withLocale("/partner", locale)); // /partner handles pending/rejected/sign-in
-  }
+  // Guard: approved, linked, AND on the current agreement (re-accept bounces to
+  // /partner). Not-signed-in / non-partner / stale-session handled upstream.
+  const ctx = await requireActivePartnerPage(locale);
 
   const admin = supabaseAdmin();
   const [{ data: partner }, { data: pu }] = await Promise.all([

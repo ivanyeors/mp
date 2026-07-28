@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getPartnerContext } from "@/lib/auth/partner";
+import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
@@ -18,7 +18,7 @@ const bodySchema = z.object({ email: z.string().trim().toLowerCase().email().max
  */
 export async function POST(req: Request) {
   const ctx = await getPartnerContext();
-  if (!ctx || ctx.status !== "approved" || !ctx.partnerId) {
+  if (!isPartnerActive(ctx)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -34,16 +34,18 @@ export async function POST(req: Request) {
 
   // Reject an address that already resolves to a different partner — its primary
   // email, or a VERIFIED backup — so a verified backup can't shadow another account.
+  // Filter the caller's own row in JS (not `.neq`, which drops NULL auth_user_id
+  // rows — pre-provisioned partners — from the check).
   const pat = escapeLikePattern(email);
   const { data: others } = await admin
     .from("partner_users")
-    .select("email, backup_email, backup_email_verified")
-    .or(`email.ilike.${pat},backup_email.ilike.${pat}`)
-    .neq("auth_user_id", ctx.userId);
+    .select("auth_user_id, email, backup_email, backup_email_verified")
+    .or(`email.ilike.${pat},backup_email.ilike.${pat}`);
   const clash = (others ?? []).some(
     (r) =>
-      (r.email ?? "").toLowerCase() === email ||
-      ((r.backup_email ?? "").toLowerCase() === email && r.backup_email_verified),
+      r.auth_user_id !== ctx.userId &&
+      ((r.email ?? "").toLowerCase() === email ||
+        ((r.backup_email ?? "").toLowerCase() === email && r.backup_email_verified)),
   );
   if (clash) return NextResponse.json({ error: "That email is already in use." }, { status: 409 });
 
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
       backup_email_pending: email,
       backup_email_otp_hash: hashOtp(code),
       backup_email_otp_expires_at: otpExpiry(),
+      backup_email_otp_attempts: 0, // fresh code → fresh attempt budget
     })
     .eq("auth_user_id", ctx.userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

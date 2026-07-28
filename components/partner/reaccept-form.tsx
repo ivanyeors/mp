@@ -43,7 +43,7 @@ export function ReacceptForm({ lang }: { lang: string }) {
       <Button
         disabled={!agreed || pending}
         className="w-full"
-        onClick={() => startTransition(() => reacceptAgreement(lang))}
+        onClick={() => startTransition(() => reacceptAgreement(lang, agreed))}
       >
         {pending ? "Saving…" : "Accept and continue"}
       </Button>

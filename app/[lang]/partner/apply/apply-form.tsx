@@ -72,7 +72,7 @@ export function ApplyForm({ lang, initialEmail }: { lang: string; initialEmail: 
   function onSubmit() {
     setFormError(null);
     startTransition(async () => {
-      const res = await submitApplication(lang, values as ApplicationFields);
+      const res = await submitApplication(lang, values as ApplicationFields, agreed);
       // Reached only on failure (success redirects server-side).
       if (res?.fieldErrors) setTouched(new Set(Object.keys(res.fieldErrors)));
       if (res?.formError) setFormError(res.formError);

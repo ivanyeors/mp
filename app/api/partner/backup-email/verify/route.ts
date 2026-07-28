@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getPartnerContext } from "@/lib/auth/partner";
+import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { verifyOtpCode } from "@/lib/partner-backup-email";
 
 export const runtime = "nodejs";
+
+// A 6-digit code is 1e6 wide; cap wrong guesses so it can't be brute-forced
+// within the 10-minute window. On the Nth miss we burn the pending code.
+const MAX_OTP_ATTEMPTS = 5;
 
 const bodySchema = z.object({ code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code.") });
 
@@ -15,7 +19,7 @@ const bodySchema = z.object({ code: z.string().trim().regex(/^\d{6}$/, "Enter th
  */
 export async function POST(req: Request) {
   const ctx = await getPartnerContext();
-  if (!ctx || ctx.status !== "approved" || !ctx.partnerId) {
+  if (!isPartnerActive(ctx)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -25,7 +29,7 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const { data: row } = await admin
     .from("partner_users")
-    .select("backup_email_pending, backup_email_otp_hash, backup_email_otp_expires_at")
+    .select("backup_email_pending, backup_email_otp_hash, backup_email_otp_expires_at, backup_email_otp_attempts")
     .eq("auth_user_id", ctx.userId)
     .maybeSingle();
 
@@ -34,7 +38,28 @@ export async function POST(req: Request) {
   }
 
   const ok = verifyOtpCode(parsed.data.code, row.backup_email_otp_hash, row.backup_email_otp_expires_at, new Date());
-  if (!ok) return NextResponse.json({ error: "That code is wrong or expired." }, { status: 400 });
+  if (!ok) {
+    // ponytail: read-modify-write on the counter isn't atomic, but a racing
+    // brute-force still needs the right 6 digits; per-row rpc is the upgrade path.
+    const attempts = (row.backup_email_otp_attempts ?? 0) + 1;
+    if (attempts >= MAX_OTP_ATTEMPTS) {
+      await admin
+        .from("partner_users")
+        .update({
+          backup_email_pending: null,
+          backup_email_otp_hash: null,
+          backup_email_otp_expires_at: null,
+          backup_email_otp_attempts: 0,
+        })
+        .eq("auth_user_id", ctx.userId);
+      return NextResponse.json({ error: "Too many attempts. Request a new code." }, { status: 429 });
+    }
+    await admin
+      .from("partner_users")
+      .update({ backup_email_otp_attempts: attempts })
+      .eq("auth_user_id", ctx.userId);
+    return NextResponse.json({ error: "That code is wrong or expired." }, { status: 400 });
+  }
 
   const { error } = await admin
     .from("partner_users")
@@ -44,6 +69,7 @@ export async function POST(req: Request) {
       backup_email_pending: null,
       backup_email_otp_hash: null,
       backup_email_otp_expires_at: null,
+      backup_email_otp_attempts: 0,
     })
     .eq("auth_user_id", ctx.userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

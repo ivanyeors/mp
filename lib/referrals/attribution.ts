@@ -35,7 +35,8 @@ export function isWithinReferralWindow(
   if (!stampedAt) return false;
   const stamped = Date.parse(stampedAt);
   if (Number.isNaN(stamped)) return false;
-  return now.getTime() - stamped <= days * DAY_MS;
+  const age = now.getTime() - stamped;
+  return age >= 0 && age <= days * DAY_MS; // reject future stamps (clock skew / forged)
 }
 
 export function normalizeReferralCode(code: string): string {

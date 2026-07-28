@@ -6,6 +6,7 @@ import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { isPartnerSessionFresh } from "@/lib/auth/partner-session";
+import { needsReaccept } from "@/lib/partner-application";
 
 export interface PartnerContext {
   userId: string;
@@ -134,4 +135,37 @@ export async function requirePartnerPage(locale: Locale = DEFAULT_LOCALE): Promi
     redirect(withLocale("/account/login?next=/partner&reauth=1", locale));
   }
   return buildPartnerContext(user, row);
+}
+
+/** An approved, linked partner who is on the current agreement version. */
+export type ActivePartnerContext = PartnerContext & { partnerId: string; status: "approved" };
+
+/**
+ * True when the partner may use partner-only surfaces (settings, profile/logo/
+ * backup-email APIs): approved, linked to a `partners` row, and NOT owing
+ * re-acceptance after an agreement version bump. Narrows `partnerId` to non-null.
+ * The single gate every mutation surface shares so a version bump can't be
+ * bypassed by calling an API directly (page.tsx only gated the hub view).
+ */
+export function isPartnerActive(ctx: PartnerContext | null): ctx is ActivePartnerContext {
+  return Boolean(
+    ctx && ctx.status === "approved" && ctx.partnerId && !needsReaccept(ctx.agreedVersion),
+  );
+}
+
+/**
+ * Page guard for partner sub-pages that require an ACTIVE partner (e.g. Settings).
+ * Builds on {@link requirePartnerPage} (sign-in / apply / stale-session handling)
+ * then bounces to /partner when the partner isn't approved or still owes
+ * re-acceptance — /partner renders the pending/rejected/re-accept screen. Never
+ * call this from /partner itself (it would loop).
+ */
+export async function requireActivePartnerPage(
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<ActivePartnerContext> {
+  const ctx = await requirePartnerPage(locale);
+  if (!isPartnerActive(ctx)) {
+    redirect(withLocale("/partner", locale));
+  }
+  return ctx;
 }
