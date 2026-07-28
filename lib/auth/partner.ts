@@ -31,8 +31,10 @@ const PARTNER_ROW_COLUMNS = "id, auth_user_id, partner_id, application_status, a
  * Loads the `partner_users` row for a signed-in user, or null when they are not
  * a partner. Resolution order (mirrors {@link getAdminContext}):
  *  1. matched by auth user id.
- *  2. matched by email (links the auth id on first match).
- * The email lookup escapes LIKE wildcards (`escapeLikePattern`) so an address
+ *  2. matched by primary email (links the auth id on first match).
+ *  3. matched by a VERIFIED backup email (a second sign-in identity → same
+ *     partner row; never links auth_user_id, which belongs to the primary).
+ * Every email lookup escapes LIKE wildcards (`escapeLikePattern`) so an address
  * containing `_`/`%` cannot adopt another partner's row.
  */
 export async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
@@ -55,10 +57,23 @@ export async function loadPartnerRow(user: User): Promise<PartnerRow | null> {
     .ilike("email", escapeLikePattern(email))
     .maybeSingle();
 
-  if (byEmail && !byEmail.auth_user_id) {
-    await admin.from("partner_users").update({ auth_user_id: user.id }).eq("id", byEmail.id);
+  if (byEmail) {
+    if (!byEmail.auth_user_id) {
+      await admin.from("partner_users").update({ auth_user_id: user.id }).eq("id", byEmail.id);
+    }
+    return byEmail as PartnerRow;
   }
-  return (byEmail as PartnerRow) ?? null;
+
+  // Backup email = a second verified sign-in identity resolving to the same
+  // partner. Only a VERIFIED backup counts; never link auth_user_id here.
+  const { data: byBackup } = await admin
+    .from("partner_users")
+    .select(PARTNER_ROW_COLUMNS)
+    .ilike("backup_email", escapeLikePattern(email))
+    .eq("backup_email_verified", true)
+    .maybeSingle();
+
+  return (byBackup as PartnerRow) ?? null;
 }
 
 async function buildPartnerContext(user: User, row: PartnerRow): Promise<PartnerContext> {

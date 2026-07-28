@@ -1,7 +1,13 @@
+import Link from "next/link";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
+import { withLocale } from "@/lib/i18n/routing";
 import { requirePartnerPage } from "@/lib/auth/partner";
 import { needsReaccept } from "@/lib/partner-application";
+import { ensureReferralCode } from "@/lib/referrals";
+import { getSiteOrigin } from "@/lib/site-url";
 import { ReacceptForm } from "@/components/partner/reaccept-form";
+import { ReferralShareCard } from "@/components/partner/referral-share-card";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -43,12 +49,23 @@ export default async function PartnerHubPage({
   }
 
   const greeting = ctx.partnerName ?? ctx.email;
+  const referralCode = ctx.partnerId ? await ensureReferralCode(ctx.partnerId) : null;
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-10">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Partner Hub</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Welcome back, {greeting}.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Partner Hub</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Welcome back, {greeting}.</p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href={withLocale("/partner/settings", locale)}>Settings</Link>
+        </Button>
       </div>
+
+      {referralCode ? (
+        <ReferralShareCard code={referralCode} siteOrigin={getSiteOrigin()} />
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Dashboard</CardTitle>
@@ -56,7 +73,7 @@ export default async function PartnerHubPage({
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Bookings, referrals, and settings will appear here as we roll them out.
+            Commission, milestones, and payouts will appear here as we roll them out.
           </p>
         </CardContent>
       </Card>
