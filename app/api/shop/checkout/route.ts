@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
+import { getPartnerByReferralCode } from "@/lib/referrals";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
@@ -54,6 +55,8 @@ const CheckoutSchema = z.object({
   shipping_address: ShippingAddressSchema,
   shipping_method_id: z.string().uuid(),
   coupon_code: z.string().optional(),
+  /** Optional typed partner/referral code (attribution, #74). Never blocks. */
+  referral_code: z.string().optional(),
   items: z.array(CheckoutItemSchema).min(1),
 });
 
@@ -76,7 +79,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, phone, shipping_address, shipping_method_id, coupon_code, items } = parsed.data;
+  const { email, phone, shipping_address, shipping_method_id, coupon_code, referral_code, items } =
+    parsed.data;
 
   const admin = supabaseAdmin();
 
@@ -425,6 +429,12 @@ export async function POST(req: Request) {
   const taxAmount = tax.taxAmount;
   const total = computeOrderTotal(taxInput, tax);
 
+  // Referral attribution (#74): STAMP only — self-purchase discount is #82.
+  // Invalid code silently attributes nothing (never blocks checkout).
+  const referralPartner = referral_code
+    ? await getPartnerByReferralCode(referral_code)
+    : null;
+
   // 11. Find or create customer
   const customer = await findOrCreateCustomer(email, { phone: phone ?? undefined });
 
@@ -446,6 +456,8 @@ export async function POST(req: Request) {
       shipping_method_id,
       coupon_id: couponId,
       coupon_code: appliedCouponCode,
+      partner_id: referralPartner?.id ?? null,
+      ref_code: referralPartner?.referral_code ?? null,
       payment_method: "stripe",
       locale,
     })

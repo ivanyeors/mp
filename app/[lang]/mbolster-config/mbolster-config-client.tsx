@@ -247,6 +247,7 @@ export function MbolsterConfigClient({
   const [holdPhone, setHoldPhone] = React.useState("");
   const [discoverySource, setDiscoverySource] = React.useState("");
   const [discoverySourceOther, setDiscoverySourceOther] = React.useState("");
+  const [referralCode, setReferralCode] = React.useState("");
   const [holdNotes, setHoldNotes] = React.useState("");
   const [holdAddress, setHoldAddress] = React.useState<HoldShippingAddress>({
     recipient: "",
@@ -541,6 +542,7 @@ export function MbolsterConfigClient({
       discoverySource,
       discoverySourceOther,
       notes: holdNotes,
+      referralCode,
     }),
     {
       key: "recipient",
@@ -866,6 +868,7 @@ export function MbolsterConfigClient({
           discoverySource,
           discoverySourceOther:
             discoverySource === "other" ? discoverySourceOther.trim() : undefined,
+          referralCode: referralCode.trim() || undefined,
           productType: "bolster",
           suggestedLength,
           measurements: {
@@ -909,6 +912,7 @@ export function MbolsterConfigClient({
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    referralCode,
     holdNotes,
     holdAddress,
     selectedShippingId,
@@ -1252,6 +1256,7 @@ export function MbolsterConfigClient({
                     discoverySource,
                     discoverySourceOther,
                     notes: holdNotes,
+                    referralCode,
                   }}
                   onChange={(patch) => {
                     if (patch.email !== undefined) setHoldEmail(patch.email);
@@ -1263,6 +1268,9 @@ export function MbolsterConfigClient({
                       setDiscoverySourceOther(patch.discoverySourceOther);
                     }
                     if (patch.notes !== undefined) setHoldNotes(patch.notes);
+                    if (patch.referralCode !== undefined) {
+                      setReferralCode(patch.referralCode);
+                    }
                   }}
                 />
 

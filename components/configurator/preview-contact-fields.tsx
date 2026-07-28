@@ -30,6 +30,8 @@ export type PreviewContactValues = {
   discoverySource: string;
   discoverySourceOther: string;
   notes: string;
+  /** Optional typed partner/referral code (attribution, #74). Never blocks submit. */
+  referralCode: string;
 };
 
 type Option = { id: string; label: string };
@@ -83,6 +85,39 @@ export function PreviewContactFields({
 }: Props) {
   const [options, setOptions] = useState<Option[]>([]);
   const showOther = values.discoverySource === OTHER_DISCOVERY_SOURCE_ID;
+
+  // Inline, non-blocking referral-code validation (#74).
+  const [refStatus, setRefStatus] = useState<{
+    state: "idle" | "checking" | "valid" | "invalid";
+    partnerName?: string | null;
+  }>({ state: "idle" });
+
+  useEffect(() => {
+    const code = values.referralCode.trim();
+    if (!code) {
+      setRefStatus({ state: "idle" });
+      return;
+    }
+    setRefStatus({ state: "checking" });
+    const t = setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(
+            `/api/partner/referral/validate?code=${encodeURIComponent(code)}`,
+          );
+          const data = await res.json().catch(() => ({}));
+          setRefStatus(
+            data.valid
+              ? { state: "valid", partnerName: data.partnerName }
+              : { state: "invalid" },
+          );
+        } catch {
+          setRefStatus({ state: "idle" });
+        }
+      })();
+    }, 400);
+    return () => clearTimeout(t);
+  }, [values.referralCode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,6 +231,29 @@ export function PreviewContactFields({
             ) : null}
           </div>
         ) : null}
+        <div className="space-y-2">
+          <Label htmlFor="hold-referral">
+            Partner / referral code{" "}
+            <span className="font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Input
+            id="hold-referral"
+            value={values.referralCode}
+            onChange={(e) => onChange({ referralCode: e.target.value })}
+            placeholder="e.g. ABCD2345"
+            autoCapitalize="characters"
+            autoComplete="off"
+          />
+          {refStatus.state === "valid" ? (
+            <p className="text-sm text-emerald-600">
+              Referred by {refStatus.partnerName}
+            </p>
+          ) : refStatus.state === "invalid" ? (
+            <p className="text-sm text-muted-foreground">
+              Code not recognised — you can still continue.
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="space-y-2">

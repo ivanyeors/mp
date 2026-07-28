@@ -19,6 +19,7 @@ assert.deepEqual(
     entryMedium: "social",
     entryCampaign: "spring",
     referrerHost: "www.google.com",
+    ref: null,
   },
 );
 
@@ -30,6 +31,7 @@ assert.deepEqual(
     entryMedium: null,
     entryCampaign: null,
     referrerHost: "t.co",
+    ref: null,
   },
 );
 
@@ -53,6 +55,7 @@ assert.deepEqual(
     entryMedium: null,
     entryCampaign: null,
     referrerHost: "facebook.com",
+    ref: null,
   },
 );
 
@@ -64,6 +67,7 @@ assert.deepEqual(
     entryMedium: null,
     entryCampaign: null,
     referrerHost: "www.reddit.com",
+    ref: null,
   },
 );
 
@@ -73,16 +77,23 @@ assert.deepEqual(resolveEntrySource({}), {
   entryMedium: null,
   entryCampaign: null,
   referrerHost: null,
+  ref: null,
 });
 assert.deepEqual(resolveEntrySource({ search: null, referrer: "not a url" }), {
   entrySource: "Direct",
   entryMedium: null,
   entryCampaign: null,
   referrerHost: null,
+  ref: null,
 });
 
 assert.equal(referrerHost("https://shop.example:8443/path"), "shop.example");
 assert.equal(referrerHost(""), null);
+
+// ref param surfaces on the resolved type (partner referral, #74)
+assert.equal(resolveEntrySource({ search: "?ref=ABCD2345" }).ref, "ABCD2345");
+assert.equal(resolveEntrySource({ search: "?utm_source=ig&ref=xyz" }).ref, "xyz");
+assert.equal(resolveEntrySource({ search: "?utm_source=ig" }).ref, null);
 
 // Copy must not call Entry source "Discovery source"
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");

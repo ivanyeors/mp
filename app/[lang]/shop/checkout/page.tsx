@@ -179,6 +179,35 @@ export default function CheckoutPage() {
   const [checkoutFreeShipping, setCheckoutFreeShipping] = useState(couponFreeShipping);
   const [couponPreviewError, setCouponPreviewError] = useState<string | null>(null);
 
+  // Optional partner/referral code (#74) — inline, non-blocking attribution.
+  const [referralCode, setReferralCode] = useState("");
+  const [refStatus, setRefStatus] = useState<{
+    state: "idle" | "checking" | "valid" | "invalid";
+    partnerName?: string | null;
+  }>({ state: "idle" });
+
+  useEffect(() => {
+    const code = referralCode.trim();
+    if (!code) {
+      setRefStatus({ state: "idle" });
+      return;
+    }
+    setRefStatus({ state: "checking" });
+    const t = setTimeout(() => {
+      fetch(`/api/partner/referral/validate?code=${encodeURIComponent(code)}`)
+        .then((res) => res.json())
+        .then((json) =>
+          setRefStatus(
+            json.valid
+              ? { state: "valid", partnerName: json.partnerName }
+              : { state: "invalid" },
+          ),
+        )
+        .catch(() => setRefStatus({ state: "idle" }));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [referralCode]);
+
   useEffect(() => {
     if (!couponCode) {
       setCheckoutDiscount(0);
@@ -306,6 +335,7 @@ export default function CheckoutPage() {
         },
         shipping_method_id: selectedShipping,
         coupon_code: couponCode ?? undefined,
+        referral_code: referralCode.trim() || undefined,
         locale: lang,
         items: items.map((item) => ({
           variant_id: item.variantId,
@@ -585,6 +615,30 @@ export default function CheckoutPage() {
                     value={form.phone}
                     onChange={(e) => setField("phone", e.target.value)}
                   />
+                </div>
+
+                <div className="sm:col-span-2 flex flex-col gap-1.5">
+                  <Label htmlFor="referral_code">
+                    Partner / referral code{" "}
+                    <span className="text-muted-foreground text-xs">(optional)</span>
+                  </Label>
+                  <Input
+                    id="referral_code"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    placeholder="e.g. ABCD2345"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value)}
+                  />
+                  {refStatus.state === "valid" ? (
+                    <p className="text-xs text-emerald-600">
+                      Referred by {refStatus.partnerName}
+                    </p>
+                  ) : refStatus.state === "invalid" ? (
+                    <p className="text-xs text-muted-foreground">
+                      Code not recognised — you can still continue.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </section>

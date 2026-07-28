@@ -16,6 +16,8 @@ export type ResolvedEntrySource = {
   entryMedium: string | null;
   entryCampaign: string | null;
   referrerHost: string | null;
+  /** Partner referral code from `?ref=` — belongs on the Visitor, not the Visit. */
+  ref: string | null;
 };
 
 function trimOrNull(value: string | null | undefined): string | null {
@@ -55,6 +57,7 @@ export function resolveEntrySource(input: EntrySourceInput): ResolvedEntrySource
   const utmSource = trimOrNull(params.get("utm_source"));
   const utmMedium = trimOrNull(params.get("utm_medium"));
   const utmCampaign = trimOrNull(params.get("utm_campaign"));
+  const ref = trimOrNull(params.get("ref"));
   const host = referrerHost(input.referrer);
 
   if (utmSource) {
@@ -63,6 +66,7 @@ export function resolveEntrySource(input: EntrySourceInput): ResolvedEntrySource
       entryMedium: utmMedium,
       entryCampaign: utmCampaign,
       referrerHost: host,
+      ref,
     };
   }
   if (host) {
@@ -71,6 +75,7 @@ export function resolveEntrySource(input: EntrySourceInput): ResolvedEntrySource
       entryMedium: null,
       entryCampaign: null,
       referrerHost: host,
+      ref,
     };
   }
   return {
@@ -78,5 +83,6 @@ export function resolveEntrySource(input: EntrySourceInput): ResolvedEntrySource
     entryMedium: null,
     entryCampaign: null,
     referrerHost: null,
+    ref,
   };
 }

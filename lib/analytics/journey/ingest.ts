@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeCountryCode, UNKNOWN_COUNTRY } from "./country";
 import { resolveEntrySource, type EntrySourceInput } from "./entry-source";
+import { isValidReferralCodeFormat } from "@/lib/referrals/attribution";
+import { stampVisitorRef } from "@/lib/referrals";
 import { normalizeGaClientId } from "./ga-sync";
 import {
   resolveExplicitDropOff,
@@ -201,6 +203,17 @@ export async function persistJourneyIngest(
     { onConflict: "id", ignoreDuplicates: true },
   );
   if (vErr) return { ok: false, error: vErr.message };
+
+  // Referral link stamp — LAST-TOUCH on the Visitor (overwrite with newest).
+  // Lives on the Visitor so it persists across visits for the 30-day window,
+  // NOT on the frozen Visit entry_source. The client forwards it only on a new
+  // visit's first page_view (entry.search), so cross-visit last-touch works;
+  // ponytail: same-visit re-click of a different ref link is not re-captured.
+  // Best-effort: a stamp hiccup must not fail the whole analytics beacon.
+  const ref = resolveEntrySource(body.entry ?? {}).ref;
+  if (ref && isValidReferralCodeFormat(ref)) {
+    await stampVisitorRef(db, visitorId, ref);
+  }
 
   // Set-if-null only — never clobber an existing ga_client_id.
   if (body.gaClientId) {

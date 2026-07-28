@@ -25,6 +25,12 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
+import {
+  isWithinReferralWindow,
+  resolveAttribution,
+} from "@/lib/referrals/attribution";
+import { getPartnerByReferralCode } from "@/lib/referrals";
+import { VISITOR_COOKIE, parseVisitorId } from "@/lib/analytics/journey/identity";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
 import {
   loadPreOrderTriggerAtHold,
@@ -110,6 +116,8 @@ const HoldSchema = z
     phone: z.string().min(1),
     discoverySource: z.string().min(1),
     discoverySourceOther: z.string().optional(),
+    /** Optional typed "Partner / referral code". Invalid never blocks the hold. */
+    referralCode: z.string().trim().optional(),
     measurements: z.record(z.string(), z.unknown()).optional(),
     productType: z.enum(["pillow", "bolster"]).default("pillow"),
     suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]).optional(),
@@ -213,6 +221,13 @@ Authorized amount: <strong>${opts.currency} ${opts.amount.toFixed(2)}</strong> (
     console.error("Result held email failed", e);
     return "failed" as const;
   }
+}
+
+function readCookie(req: Request, name: string): string | null {
+  const header = req.headers.get("cookie");
+  if (!header) return null;
+  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export async function POST(req: Request) {
@@ -497,6 +512,44 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: routeGate.reason }, { status: 409 });
   }
 
+  // Referral attribution (#74): typed code outranks a windowed link stamp on
+  // the Visitor. Assist attribution is a later slice (null here). Discovery
+  // source is left untouched and never attributes. STAMP only — no commission.
+  const typedPartner = input.referralCode
+    ? await getPartnerByReferralCode(input.referralCode)
+    : null;
+  let linkPartnerId: string | null = null;
+  let linkRefCode: string | null = null;
+  const visitorId = parseVisitorId(readCookie(req, VISITOR_COOKIE));
+  if (visitorId) {
+    const { data: visitor } = await admin
+      .from("analytics_visitors")
+      .select("ref_code, ref_stamped_at")
+      .eq("id", visitorId)
+      .maybeSingle();
+    if (
+      visitor?.ref_code &&
+      isWithinReferralWindow(visitor.ref_stamped_at as string | null, new Date())
+    ) {
+      const linkPartner = await getPartnerByReferralCode(visitor.ref_code as string);
+      if (linkPartner) {
+        linkPartnerId = linkPartner.id;
+        linkRefCode = linkPartner.referral_code;
+      }
+    }
+  }
+  const attribution = resolveAttribution({
+    assistPartnerId: null,
+    typedPartnerId: typedPartner?.id ?? null,
+    linkPartnerId,
+  });
+  const attributedRefCode =
+    attribution.source === "typed"
+      ? typedPartner?.referral_code ?? null
+      : attribution.source === "link"
+        ? linkRefCode
+        : null;
+
   const row = {
     id: resultId,
     data: input.measurements ?? {},
@@ -518,6 +571,8 @@ export async function POST(req: Request) {
     customer_phone: phoneNormalized,
     discovery_source: input.discoverySource,
     discovery_source_other: discoverySourceOther,
+    partner_id: attribution.partnerId,
+    ref_code: attributedRefCode,
     customer_id: customerId,
     access_token: accessToken,
     source: "online_purchase",
