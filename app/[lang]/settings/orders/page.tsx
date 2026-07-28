@@ -59,6 +59,9 @@ type DashboardStats = {
 type OrderRow = Order & {
     items_count?: number;
     margin?: Pick<OrderMargin, "gross_margin" | "margin_pct"> | null;
+    /** Referral attribution (#74/#77): non-null on partner-sourced orders. */
+    partner_id?: string | null;
+    ref_code?: string | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -458,12 +461,23 @@ export default function SettingsOrdersPage() {
                                             {order.email}
                                         </TableCell>
                                         <TableCell className="px-4">
-                                            <Badge
-                                                variant={customClass ? "outline" : variant}
-                                                className={`capitalize ${customClass}`}
-                                            >
-                                                {order.status}
-                                            </Badge>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <Badge
+                                                    variant={customClass ? "outline" : variant}
+                                                    className={`capitalize ${customClass}`}
+                                                >
+                                                    {order.status}
+                                                </Badge>
+                                                {order.partner_id && (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-[10px] px-1.5 py-0"
+                                                        title={order.ref_code ? `Referral: ${order.ref_code}` : "Partner-referred"}
+                                                    >
+                                                        Partner
+                                                    </Badge>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="px-4 hidden lg:table-cell text-right text-sm text-muted-foreground">
                                             {itemCount}

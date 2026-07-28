@@ -8,6 +8,7 @@ import {
 } from "./transitions";
 import { emailTemplateForStatus } from "./lifecycle";
 import { dispatchRmaEmail, type RmaEmailData } from "@/lib/email/rma";
+import { voidCommissionsForRma } from "@/lib/commissions/ledger";
 
 /**
  * Apply one RMA lifecycle transition (ADR 0011). Shared by the admin server
@@ -83,6 +84,13 @@ export async function applyRmaTransition(
     .update({ status: opts.to, updated_at: new Date().toISOString(), ...(opts.patch ?? {}) })
     .eq("id", opts.rmaId);
   if (updErr) throw new Error(updErr.message);
+
+  // A refund resolution reverses the sale: void the commission for exactly this
+  // RMA's order_items (#77). Only `refunded` reaches here — exchange/replacement
+  // settle to `completed`, leaving their commissions held/released. Idempotent.
+  if (opts.to === "refunded") {
+    await voidCommissionsForRma(admin, opts.rmaId);
+  }
 
   await recordAdminAction({
     actor: opts.actor ?? null,

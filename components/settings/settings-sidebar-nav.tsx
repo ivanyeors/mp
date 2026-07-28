@@ -8,7 +8,7 @@ import {
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
   ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput, Shapes,
-  GitBranch, ClipboardCheck,
+  GitBranch, ClipboardCheck, Percent,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -131,6 +131,7 @@ const NAV_GROUPS: NavGroup[] = [
       },
       { href: "/settings/partners", label: "Locations", tooltip: "Studios & partner clinics", Icon: Handshake, perm: "page-builder" },
       { href: "/settings/partner-applications", label: "Partner applications", tooltip: "Review partner applications", Icon: ClipboardCheck, perm: "page-builder" },
+      { href: "/settings/partner-commissions", label: "Partner Commissions", tooltip: "Commission schemes", Icon: Percent, perm: "page-builder" },
       { href: "/settings/blogs", label: "Blogs", tooltip: "Blog Management", Icon: Newspaper, perm: "blogs" },
       { href: "/settings/faq", label: "FAQ", tooltip: "FAQ Management", Icon: HelpCircle, perm: "page-builder" },
       { href: "/settings/forms", label: "Forms", tooltip: "Discovery source and form option lists", Icon: FormInput, perm: "page-builder" },
