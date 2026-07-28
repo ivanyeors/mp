@@ -74,6 +74,62 @@ export interface ApplicationFields {
   introPlan: string;
 }
 
+/** Ordered questionnaire fields + labels for the Staff review queue (#76). */
+export const APPLICATION_FIELD_LABELS: Array<[keyof ApplicationFields, string]> = [
+  ["companyName", "Company name"],
+  ["uen", "ACRA UEN"],
+  ["website", "Business website or social link"],
+  ["category", "Business category"],
+  ["contactName", "Contact person name"],
+  ["contactMobile", "Contact mobile"],
+  ["businessEmail", "Business email"],
+  ["introPlan", "How they'll introduce Mpillow"],
+];
+
+export type ApplicationOutcome = "approved" | "rejected";
+
+/**
+ * PLAIN transactional copy for the approve/reject outcome emails (#76). Pure —
+ * no interpolation of applicant-supplied data (only the site URL + a constant
+ * support address), so no escaping is needed. The branded HTML base is #84's job.
+ */
+export function renderApplicationOutcomeEmail(
+  outcome: ApplicationOutcome,
+  opts: { partnerSignInUrl: string; supportEmail: string },
+): { subject: string; text: string; html: string } {
+  if (outcome === "approved") {
+    return {
+      subject: "You're approved — welcome to the Mpillow Partner programme",
+      text: `Good news — your Mpillow Partner application has been approved.
+
+Sign in to your Partner Hub to get started:
+${opts.partnerSignInUrl}
+
+Questions? Reply to this email or reach us at ${opts.supportEmail}.
+
+— The Mpillow team`,
+      html: `<p>Good news — your Mpillow Partner application has been approved.</p>
+<p><a href="${opts.partnerSignInUrl}">Sign in to your Partner Hub</a> to get started.</p>
+<p>Questions? Reply to this email or reach us at <a href="mailto:${opts.supportEmail}">${opts.supportEmail}</a>.</p>
+<p>— The Mpillow team</p>`,
+    };
+  }
+  return {
+    subject: "An update on your Mpillow Partner application",
+    text: `Thank you for your interest in the Mpillow Partner programme.
+
+After reviewing your application, we're not able to move forward at this time.
+
+If you think this was a mistake or your details have changed, reply to this email or contact us at ${opts.supportEmail}.
+
+— The Mpillow team`,
+    html: `<p>Thank you for your interest in the Mpillow Partner programme.</p>
+<p>After reviewing your application, we're not able to move forward at this time.</p>
+<p>If you think this was a mistake or your details have changed, reply to this email or contact us at <a href="mailto:${opts.supportEmail}">${opts.supportEmail}</a>.</p>
+<p>— The Mpillow team</p>`,
+  };
+}
+
 /**
  * Required checks + lenient format sanity (Staff eyeball verifies — no ACRA
  * API). Returns a field→message map; `{}` means valid.
