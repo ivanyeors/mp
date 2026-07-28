@@ -150,6 +150,10 @@ _Avoid_: mp-config **Result** (digital submission flow)
 **Re-adjustment appointment**:
 An **Appointment** for post-purchase fitting/adjustment; type inferred from calendar event summary match strings.
 
+**Appointment RSVP status**:
+The customer's Google Calendar invite response on an **Appointment** event — `accepted | declined | tentative | needsAction` (mirrors Google's `responseStatus`). Read live from the guest attendee on the central-calendar event (no local store) and shown in the **Admin Panel** calendar as a status **pill** + left-border accent (labels: `accepted`→**Confirmed** green, `declined`→**Declined** red, `tentative`→**Tentative** amber, `needsAction`→**Invited** gray), alongside the event **type** label (Customise / Readjust) — two visual channels: fill = type, pill/accent = RSVP. Same status echoed in the event click-detail dialog. Requires **email** to be required (so the guest is always an attendee) and `sendUpdates: "all"` on `events.insert`/reschedule (so Google actually sends the invite the customer responds to). Applies to the customer even when Staff books on their behalf — the invite still lands on the customer's email.
+_Avoid_: **Result** Accept/Decline (shopper accepting the *build* → capture → **Order**, `cursor/accept-decline-capture-order`); "pillow status" (it is a status **pill**); recoloring the whole event by RSVP (the **type** color — customisation/re-adjustment — must survive; RSVP is a second, additive channel).
+
 **Sign in**:
 The unified authentication entry at `/account/login`. Guests start here; role (**Staff** vs **Customer**) is decided after the session exists, not by picking a separate staff login URL.
 _Avoid_: “Staff sign in” as a separate customer-facing door; splitting shopper and staff onto different auth pages for v1
@@ -274,7 +278,7 @@ _Avoid_: measuring the window from order/ship date
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
 - A **Media Asset** is the library record; landing slots, blogs, products, slide configs, and **Product Builder** overlays are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
 - **Product Builder** (Landing Site) links cover/case **Items** to overlay **Media Assets** for the configurator silhouette; preview selection reflects that mapping (**C**: thumbnails on **Item**, overlay fit in Product Builder when needed).
-- The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), or **Admin Panel** (**Staff**). When the session is **Staff**, prefer **Admin Panel** over **Profile**.
+- The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), the partner portal (**Partner account**), or **Admin Panel** (**Staff**). Pill precedence when one session holds multiple roles: **Staff > Partner > Customer**. Access is additive — the pill routes to the highest surface, it does not ban the lower ones (a Partner who is also a Customer can still open `/account` directly; `/settings` still requires **Staff**; the partner portal requires an approved **Partner account**).
 - **Staff assist mode** appears on the customisation preview only when the session is **Staff**; the shopper operates that shared device. It does not replace **Result** assign in the **Admin Panel**.
 - **Staff assist mode** may load/edit a **Filling configuration** (from a **Filling Template** or scratch) for the live customisation; catalog create/**Promote** of **Filling Templates** stays in the **Admin Panel** only.
 - Every used **Filling configuration** is tracked for analytics; **Unpromoted configurations** are ranked by usage to guide **Promote**.
@@ -395,6 +399,24 @@ The filling-only catalog and editor inside the same product card page. Scoped to
 
 **Warehouse template**:
 A named non-filling BOM preset (`role: warehouse`) for Apply-to-active-BOM. Must not include filling lines — fillings live only in **Filling Templates**. See ADR `docs/adr/0003-fillings-only-in-filling-templates.md`.
+
+## Partner portal
+
+**Partner account**:
+The login identity of a partner business: a `partner_users` row (mirroring the `admin_users` pattern) linking an auth user to a `type='partner'` **Location** row in the `partners` table. Approved self-serve signup creates/claims that Location row (`visible=false` until Staff flips it). Portal profile edits (company name, logo, write-up, location) write to the **same row** that powers `/our-partners` and appointment booking — one aggregate, one CRUD path. Online-only referrers are rows with no address that never get booked.
+_Avoid_: a separate partner-profile table that can drift from the **Location** row; "partner" alone when you mean the login identity vs the business row
+
+**Partner application**:
+The self-serve signup submission: questionnaire answers (business email, ACRA/UEN, business website, contact person's mobile, …) plus recorded agreement to the partner terms. Status machine: `pending → approved | rejected`. "Become a Partner" (enabled only after agreeing to terms) submits the application; the applicant can sign in but sees only an "under review" screen while `pending`. **Approval gates the portal**: Staff approve → notification → full portal unlocks; reject → rejected state. No referral accrual, no commissions, no `/our-partners` publishing before approval.
+_Avoid_: granting portal features at agreement time; treating the agreement page as the approval
+
+**Partner sign-in**:
+Partners use the same unified **Sign in** at `/account/login` (menu → login) — no separate door, no password. Methods: Google OAuth, or passwordless email where the one shared email carries **both** a 6-digit code and the magic link (form gains a code-entry step via `verifyOtp`); this upgrade applies to all roles, not a partner fork. Partner sessions have a **7-day absolute cap** enforced app-side in the partner portal guard (`last_sign_in_at` check → force re-auth); Customer/Staff session behavior unchanged.
+_Avoid_: a partner-specific login page; capping the global Supabase session (it would hit Customers/Staff); idle-timeout semantics ("7 days max" is absolute)
+
+**Partner Hub**:
+The partner-facing portal at `/partner` — pill label and page title "Partner Hub". Requires an approved **Partner account** (pending applicants see the under-review screen; guests are sent to **Sign in**). Home = gamified earnings/milestone dashboard; also profile settings, backup email, and WhatsApp support CTA.
+_Avoid_: "Partners page" (collides with `/our-partners` and the `partners_page` CMS table); `/partners` as the route
 
 ## Marketing
 
@@ -596,3 +618,6 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Measurement unit default — resolved: display/authoring default is **inches** (onsite practice); canonical storage stays cm. All engine inputs are **required** (pain areas gains a "None" chip; photos stay optional); the old silent defaults (shoulder 40, neck 8/10/10) are removed.
 - Upsell/cross-sell between flows — resolved: **Flow route** terminals + **Upsell card** (consent, carry-over, gap-fill steps), always resolved before the Stripe hold; sold tier stays flow-scoped; every Flow route needs a same-flow **Fallback** sibling (publish-validated).
 - Partner vs studio vs booking place — resolved: one domain term **Location** (`type: own | partner`) stored as **additive columns on the `partners` table** (no rename; prod-safe). Auto **Source** channel badge is untouched; operators add an editable **Location** per **Result**. **Local Ambassador (clinical)** = `type='partner'` **Location** on `/our-partners`. Booking is first-party (**Location** picker + one shared availability + Google `events.insert` stamping the Location address); the Google iframe retires. ADRs: `docs/adr/0012-locations-unified-partner-model.md`, `docs/adr/0013-custom-multi-location-booking.md`.
+- Calendar "accept/decline" vs **Result** Accept/Decline — resolved: new term **Appointment RSVP status** (the guest's Google `responseStatus`, read live from the attendee; not the shopper *build* Accept → capture → **Order**). Shown as a status **pill** + type label in the **Admin Panel** calendar. Prereqs: **email required** (guest always an attendee) + `sendUpdates: "all"` on `events.insert`/reschedule (so Google actually sends the invite the customer responds to). See glossary. (Q1/Q2 Jul 2026.)
+- Guest "add to their own calendar" (item ②) — resolved: a **Save to calendar** button on the booking confirmation screen serving a hand-built `.ics` (`text/calendar`, no new dependency) — on phones this triggers the native add-sheet (iPhone) / intent chooser (Android), no per-provider dropdown. Complements the Google invite email, which already carries an addable `.ics` for any provider once `sendUpdates: "all"` is on.
+- Booking "dupe" — resolved: the reported dupe was **two stacked slide-in drawers** (booking Sheet opened on top of a learn-more slide-in; the flow also mounted twice — global `BookAppointmentHost` + an inline hero `BookAppointmentSheet`). Fix: booking converts from **Sheet** to a page route **`/[lang]/appointments`** (`?type=customisation|readjustment`), fronted by a **pill overlay** (Customise/Readjust, styled after the hero tier pills) before navigation; direct load with no `type` renders the same pills inline. All 7 entry points navigate instead of `openBookAppointmentSheet()`; host + inline sheet + `mpillow:open-book-appointment` event removed. Backend unchanged. ADR 0013 amendment (2026-07-27).

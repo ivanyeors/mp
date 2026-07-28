@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { openBookAppointmentSheet } from "@/lib/book-appointment";
+import { openBookAppointment } from "@/lib/book-appointment";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -117,7 +117,7 @@ function BasicMpillowLearnMoreSheetInner() {
               type="button"
               variant="outline"
               className="h-auto min-w-0 flex-1 px-2.5 py-2.5 text-sm md:h-9 md:flex-none md:px-4 md:py-2 md:text-base"
-              onClick={openBookAppointmentSheet}
+              onClick={openBookAppointment}
             >
               {m.slides.basicMpillow.bookAdjustment}
             </Button>

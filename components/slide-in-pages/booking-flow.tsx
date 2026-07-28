@@ -3,16 +3,16 @@
 import * as React from "react";
 import { CalendarIcon, Check, MapPin } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n/use-i18n";
+import { type ApptType } from "@/lib/appointments/appt-type";
 import { cn } from "@/lib/utils";
 
-type ApptType = "customisation" | "readjustment";
 type Location = { id: string; name: string; type: string; address: string };
 type Slot = { id: string; startIso: string; endIso: string };
 
@@ -60,11 +60,24 @@ function slotLabel(startIso: string): string {
   }).format(new Date(startIso));
 }
 
-export function BookingFlow() {
+/** Build the /api/appointments/ics query for the confirmed booking (values URL-encoded). */
+function icsHref(loc: Location, slot: Slot, summaryType: string, eventId: string | null): string {
+  const params = new URLSearchParams({
+    summary: `Mpillow ${summaryType}`,
+    start: slot.startIso,
+    end: slot.endIso,
+    location: [loc.name, loc.address].filter(Boolean).join(", "),
+    description: summaryType,
+    uid: eventId ?? `${slot.id}@mpillow`,
+  });
+  return `/api/appointments/ics?${params.toString()}`;
+}
+
+export function BookingFlow({ type }: { type: ApptType }) {
   const { m } = useI18n();
   const t = m.slides.bookAppointment.flow;
+  const typeLabel = type === "customisation" ? t.customisation : t.readjustment;
 
-  const [type, setType] = React.useState<ApptType>("customisation");
   const [locations, setLocations] = React.useState<Location[]>([]);
   const [locationId, setLocationId] = React.useState<string>("");
   const [date, setDate] = React.useState<string>("");
@@ -78,6 +91,7 @@ export function BookingFlow() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [confirmed, setConfirmed] = React.useState<Location | null>(null);
+  const [confirmedEventId, setConfirmedEventId] = React.useState<string | null>(null);
 
   // Load visible locations once.
   React.useEffect(() => {
@@ -116,8 +130,14 @@ export function BookingFlow() {
   }, [date]);
 
   const location = locations.find((l) => l.id === locationId) ?? null;
+  const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
   const canSubmit =
-    !!locationId && !!slot && name.trim().length > 0 && phone.trim().length > 0 && !submitting;
+    !!locationId &&
+    !!slot &&
+    name.trim().length > 0 &&
+    phone.trim().length > 0 &&
+    emailValid &&
+    !submitting;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -134,11 +154,13 @@ export function BookingFlow() {
           end_iso: slot.endIso,
           guest_name: name.trim(),
           phone: phone.trim(),
-          email: email.trim() || undefined,
+          email: email.trim(),
           appointment_type: type,
         }),
       });
       if (res.ok) {
+        const body = await res.json().catch(() => null);
+        setConfirmedEventId(body?.eventId ?? null);
         setConfirmed(location);
         return;
       }
@@ -161,7 +183,7 @@ export function BookingFlow() {
 
   if (confirmed) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
         <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Check className="size-6" />
         </div>
@@ -175,11 +197,20 @@ export function BookingFlow() {
             {confirmed.address}
           </p>
         ) : null}
+        {slot ? (
+          <a
+            href={icsHref(confirmed, slot, typeLabel, confirmedEventId)}
+            download="appointment.ics"
+            className={cn(buttonVariants({ variant: "default" }), "mt-2")}
+          >
+            {t.saveToCalendar}
+          </a>
+        ) : null}
         <Button
           variant="outline"
-          className="mt-2"
           onClick={() => {
             setConfirmed(null);
+            setConfirmedEventId(null);
             setSlot(null);
             setSlots([]);
             setDate("");
@@ -196,24 +227,7 @@ export function BookingFlow() {
   }
 
   return (
-    <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto px-6 py-4">
-      {/* Appointment type */}
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm font-medium">{t.typeLabel}</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {(["customisation", "readjustment"] as const).map((opt) => (
-            <Button
-              key={opt}
-              type="button"
-              variant={type === opt ? "default" : "outline"}
-              onClick={() => setType(opt)}
-            >
-              {opt === "customisation" ? t.customisation : t.readjustment}
-            </Button>
-          ))}
-        </div>
-      </fieldset>
-
+    <form onSubmit={submit} className="flex flex-1 flex-col gap-5">
       {/* Location picker */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="booking-location">{t.locationLabel}</Label>
@@ -316,21 +330,20 @@ export function BookingFlow() {
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label htmlFor="booking-email">
-          {t.emailLabel} <span className="text-muted-foreground">({t.emailOptional})</span>
-        </Label>
+        <Label htmlFor="booking-email">{t.emailLabel}</Label>
         <Input
           id="booking-email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
+          required
         />
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <Button type="submit" disabled={!canSubmit} className="mt-auto">
+      <Button type="submit" disabled={!canSubmit} className="mt-1 h-12 text-base">
         {submitting ? t.submitting : t.submit}
       </Button>
     </form>

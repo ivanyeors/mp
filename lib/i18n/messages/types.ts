@@ -277,7 +277,7 @@ export type Messages = {
         nameLabel: string;
         phoneLabel: string;
         emailLabel: string;
-        emailOptional: string;
+        saveToCalendar: string;
         submit: string;
         submitting: string;
         pickDateFirst: string;

@@ -70,6 +70,15 @@ export function AppDock() {
   const [premiumOpen, setPremiumOpen] = React.useState(false);
   const [mbolsterOpen, setMbolsterOpen] = React.useState(false);
 
+  // Dock persists across navigation (root layout). Close any learn-more sheet on
+  // route change so booking (pill overlay → /appointments) can't leave a drawer
+  // stacked over the destination page — the slice-05 dupe, relocated.
+  React.useEffect(() => {
+    setBasicOpen(false);
+    setPremiumOpen(false);
+    setMbolsterOpen(false);
+  }, [pathname]);
+
   React.useEffect(() => {
     let lastY = window.scrollY;
 

@@ -38,6 +38,8 @@ export type CalendarRangeEvent = {
   phone: string | null;
   appointmentType: AppointmentType | null;
   typeLabel: string | null;
+  /** Guest's Google RSVP. null for busy/blocked (non-appointment) ranges. */
+  rsvp: "accepted" | "declined" | "tentative" | "needsAction" | null;
 };
 
 type GCalEvent = {
@@ -50,8 +52,21 @@ type GCalEvent = {
   transparency?: string;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
-  attendees?: Array<{ displayName?: string; email?: string; self?: boolean }>;
+  attendees?: Array<{
+    displayName?: string;
+    email?: string;
+    self?: boolean;
+    responseStatus?: string;
+  }>;
 };
+
+/** Guest's Google RSVP: first non-self attendee's responseStatus. Missing/unknown → needsAction. */
+function guestRsvp(
+  ev: GCalEvent,
+): "accepted" | "declined" | "tentative" | "needsAction" {
+  const s = (ev.attendees ?? []).find((a) => !a.self)?.responseStatus;
+  return s === "accepted" || s === "declined" || s === "tentative" ? s : "needsAction";
+}
 
 /** Strip simple HTML from GCal descriptions for UI labels. */
 export function plainDescription(html: string | null | undefined): string | null {
@@ -129,6 +144,8 @@ export function mapGCalItemToRangeEvent(
     phone,
     appointmentType: matched?.type ?? null,
     typeLabel: matched?.label ?? null,
+    // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → no pill.
+    rsvp: busy ? null : guestRsvp(ev),
   };
 }
 
@@ -343,7 +360,7 @@ export async function patchEventTimes(
 ): Promise<void> {
   const id = encodeURIComponent(calendarId());
   const eid = encodeURIComponent(eventId);
-  const res = await calFetch(`/calendars/${id}/events/${eid}`, {
+  const res = await calFetch(`/calendars/${id}/events/${eid}?sendUpdates=all`, {
     method: "PATCH",
     body: JSON.stringify({
       start: { dateTime: startIso, timeZone: "Asia/Singapore" },
@@ -356,9 +373,13 @@ export async function patchEventTimes(
 }
 
 /** Insert a booking event (events.insert). Returns the new event id. */
+// ponytail: sendUpdates=all only mails the attendee because the token is a user-delegated
+// OAuth grant (admin@mpillow.com refresh token, per google-auth.ts). A bare service-account
+// JWT 403s forbiddenForServiceAccounts here — upgrade path is domain-wide delegation with an
+// impersonation subject.
 export async function createEvent(guest: EventGuest): Promise<string> {
   const id = encodeURIComponent(calendarId());
-  const res = await calFetch(`/calendars/${id}/events`, {
+  const res = await calFetch(`/calendars/${id}/events?sendUpdates=all`, {
     method: "POST",
     body: JSON.stringify(buildEventInsertBody(guest)),
   });
@@ -373,7 +394,9 @@ export async function createEvent(guest: EventGuest): Promise<string> {
 export async function deleteEvent(eventId: string): Promise<void> {
   const id = encodeURIComponent(calendarId());
   const eid = encodeURIComponent(eventId);
-  const res = await calFetch(`/calendars/${id}/events/${eid}`, { method: "DELETE" });
+  const res = await calFetch(`/calendars/${id}/events/${eid}?sendUpdates=all`, {
+    method: "DELETE",
+  });
   // 404/410 = already gone — treat as success (idempotent)
   if (!res.ok && res.status !== 404 && res.status !== 410) {
     throw new Error(`events.delete failed (${res.status}): ${await res.text()}`);

@@ -11,7 +11,7 @@ import { ApiRequestTracker } from "@/components/api-request-tracker";
 import { JourneyTracker } from "@/components/analytics/journey-tracker";
 import { AnalyticsNoticeBar } from "@/components/analytics/analytics-notice-bar";
 import { TopLoadingBar } from "@/components/ui/top-loading-bar";
-import { BookAppointmentHost } from "@/components/slide-in-pages/book-appointment-sheet";
+import { BookAppointmentOverlay } from "@/components/slide-in-pages/book-appointment-overlay";
 import { GoogleAnalytics } from "@/components/seo/google-analytics";
 import { Haptics } from "@/components/haptics";
 import { RegisterSW } from "@/components/register-sw";
@@ -109,7 +109,7 @@ export default async function RootLayout({
           <HomeHeader />
           <RouteScope>{children}</RouteScope>
           <MarketingFooter />
-          <BookAppointmentHost />
+          <BookAppointmentOverlay />
           <AppDock />
           <SonnerProvider />
         </ThemeProvider>

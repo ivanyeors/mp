@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { openBookAppointmentSheet } from "@/lib/book-appointment";
+import { openBookAppointment } from "@/lib/book-appointment";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
 
 export function BookAppointmentButton({ children, variant = "secondary", className }: Props) {
   return (
-    <Button type="button" variant={variant} className={cn(className)} onClick={openBookAppointmentSheet}>
+    <Button type="button" variant={variant} className={cn(className)} onClick={openBookAppointment}>
       {children}
     </Button>
   );
