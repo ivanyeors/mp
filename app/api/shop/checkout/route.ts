@@ -499,6 +499,9 @@ export async function POST(req: Request) {
       coupon_code: appliedCouponCode,
       partner_id: referralPartner?.id ?? null,
       ref_code: referralPartner?.referral_code ?? null,
+      // Shop has only the typed-code attribution path today (no assist/link),
+      // so a referral here is always 'typed'; self-purchase (#82) stays null (#80).
+      attribution_source: referralPartner ? "typed" : null,
       // #82: self-purchase marker + consumed-unit count. NOT partner_id, so this
       // never triggers commission/milestone — it only tracks the allowance.
       self_purchase_partner_id: selfPurchasePartnerId,

@@ -91,3 +91,40 @@ export function effectiveCommissionStatus(
   if (ra && now.getTime() >= ra.getTime()) return "released";
   return "held";
 }
+
+/**
+ * Hub money totals (#80) — PURE, so #83 can test the reconciliation math. Groups
+ * a partner's commission rows by their PERSISTED status (call `settleDueCommissions`
+ * first so matured held rows already read as `released`). Summed in cents so many
+ * rows never accrete float dust — reconciles with #81's `releasedBalance` (AC1).
+ *   - held     = held (not yet released)
+ *   - released = released & unpaid (payout_id null) — the payable balance
+ *   - paid     = paid out
+ *   - allTime  = everything ever earned except void (held + released + paid)
+ */
+export interface CommissionTotalsRow {
+  status: CommissionStatus;
+  commission_amount: number | string;
+  payout_id?: string | null;
+}
+export interface CommissionTotals {
+  held: number;
+  released: number;
+  paid: number;
+  allTime: number;
+}
+export function summarizeCommissionTotals(rows: CommissionTotalsRow[]): CommissionTotals {
+  let heldC = 0;
+  let releasedC = 0;
+  let paidC = 0;
+  let allC = 0;
+  for (const r of rows) {
+    if (r.status === "void") continue;
+    const cents = Math.round(Number(r.commission_amount) * 100);
+    allC += cents;
+    if (r.status === "held") heldC += cents;
+    else if (r.status === "paid") paidC += cents;
+    else if (r.status === "released" && r.payout_id == null) releasedC += cents;
+  }
+  return { held: heldC / 100, released: releasedC / 100, paid: paidC / 100, allTime: allC / 100 };
+}

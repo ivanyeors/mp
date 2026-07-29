@@ -6,6 +6,7 @@ import { upsertCommissionScheme } from "./actions";
 import { MilestoneRungsEditor } from "@/components/partner/milestone-rungs-editor";
 import { PartnerSelfPurchaseEditor } from "@/components/settings/partner-self-purchase-editor";
 import { PartnerPayouts } from "./partner-payouts";
+import { AdminReferralRows } from "./admin-referral-rows";
 
 export const runtime = "nodejs";
 
@@ -165,6 +166,8 @@ export default async function PartnerCommissionsPage({
         <MilestoneRungsEditor />
         <PartnerSelfPurchaseEditor />
         <PartnerPayouts />
+        {/* Same referral rows as the hub, unmasked (#80, AC5). */}
+        <AdminReferralRows />
       </div>
     </div>
   );
