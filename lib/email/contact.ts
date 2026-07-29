@@ -1,4 +1,5 @@
 import { getEmailTransport } from "./index";
+import { escapeHtml, renderEmailShell } from "./base";
 import { getDefaultFromAddress } from "./transport";
 import type { RenderedEmail, SendOutcome } from "./types";
 
@@ -15,15 +16,6 @@ export interface ContactMessage {
   email: string;
   subject?: string | null;
   message: string;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 /**
@@ -48,20 +40,15 @@ ${msg.subject ? `Subject: ${msg.subject}\n` : ""}
 Message:
 ${msg.message}`;
 
-  const html = `<!doctype html>
-<html>
-<body style="margin:0;background:#f6f6f6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;">
-  <div style="max-width:560px;margin:0 auto;padding:24px;">
-    <div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:28px;">
-      <h1 style="font-size:20px;margin:0 0 12px;">New support message</h1>
-      <p style="margin:0 0 4px;color:#444;"><strong>From:</strong> ${escapeHtml(msg.name)} &lt;${escapeHtml(msg.email)}&gt;</p>
+  const bodyHtml = `<p style="margin:0 0 4px;color:#444;"><strong>From:</strong> ${escapeHtml(msg.name)} &lt;${escapeHtml(msg.email)}&gt;</p>
       ${msg.subject ? `<p style="margin:0 0 12px;color:#444;"><strong>Subject:</strong> ${escapeHtml(msg.subject)}</p>` : ""}
-      <p style="white-space:pre-wrap;color:#111;line-height:1.5;margin-top:16px;">${escapeHtml(msg.message)}</p>
-    </div>
-    <p style="color:#999;font-size:12px;text-align:center;margin-top:16px;">mpillow support</p>
-  </div>
-</body>
-</html>`;
+      <p style="white-space:pre-wrap;color:#111;line-height:1.5;margin-top:16px;">${escapeHtml(msg.message)}</p>`;
+
+  const html = renderEmailShell({
+    title: "New support message",
+    bodyHtml,
+    footer: "mpillow support",
+  });
 
   return { subject: subjectLine, html, text };
 }

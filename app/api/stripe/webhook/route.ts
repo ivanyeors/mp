@@ -12,6 +12,7 @@ import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { round2 } from "@/lib/commissions";
 import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
+import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -218,6 +219,18 @@ export async function POST(req: Request) {
             await applyMilestoneProgress(admin, order.partner_id as string);
           } catch (err) {
             console.error(`[stripe/webhook] Milestone progress failed for ${orderId}:`, err);
+          }
+          // Referral-earned email (#84): once per attributed order (entity_id = order
+          // id). delivered_at is null for a fresh shop order, so the copy states the
+          // release is 30 days after delivery. Best-effort — never break the webhook.
+          try {
+            await sendReferralEarnedEmail(admin, {
+              partnerId: order.partner_id as string,
+              orderId: order.id,
+              currency: order.currency ?? "SGD",
+            });
+          } catch (err) {
+            console.error(`[stripe/webhook] Referral-earned email failed for ${orderId}:`, err);
           }
         }
 

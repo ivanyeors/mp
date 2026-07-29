@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { getAuthUser } from "@/lib/auth/user";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { sendReacceptEmail } from "@/lib/email/partner";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import {
@@ -76,11 +77,32 @@ export async function reacceptAgreement(lang: string, agreed: boolean): Promise<
   if (!user?.email) redirect(withLocale("/account/login?next=/partner", resolveLocale(lang)));
   if (!agreed) redirect(withLocale("/partner", resolveLocale(lang)));
 
-  await supabaseAdmin()
+  const admin = supabaseAdmin();
+  await admin
     .from("partner_users")
     .update({ agreed_version: AGREEMENT_VERSION, agreed_at: new Date().toISOString() })
     .eq("auth_user_id", user.id)
     .eq("application_status", "approved"); // never advances pending/rejected
+
+  // Re-accept confirmation email (#84), best-effort, once per (partner, version).
+  // Runs before the redirect() (which throws NEXT_REDIRECT) so it isn't skipped.
+  try {
+    const { data: row } = await admin
+      .from("partner_users")
+      .select("partner_id, email")
+      .eq("auth_user_id", user.id)
+      .eq("application_status", "approved")
+      .maybeSingle();
+    if (row?.partner_id) {
+      await sendReacceptEmail(admin, {
+        partnerId: row.partner_id,
+        agreementVersion: AGREEMENT_VERSION,
+        to: row.email,
+      });
+    }
+  } catch (err) {
+    console.error("[partner-reaccept] email failed:", err);
+  }
 
   redirect(withLocale("/partner", resolveLocale(lang)));
 }

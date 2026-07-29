@@ -23,6 +23,16 @@ const BUCKET = "partner-private";
 /** Signed-URL lifetime for private reads — short-lived per ADR 0015. */
 export const SIGNED_URL_TTL_SECONDS = 900; // 15 min
 
+/**
+ * Longer lifetime for a proof-of-payment URL embedded in a payout EMAIL (#84).
+ * The default 15 min is too short — a partner may open the mail hours/days later.
+ * 7 days comfortably outlives that while the object stays private (still needs a
+ * fresh service-role signature; the URL simply carries a longer-lived one).
+ * Chosen over attaching image bytes, which would mean threading an attachments
+ * field through all three transports + the Gmail MIME builder for one email.
+ */
+export const EMAIL_PROOF_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
 export { PAYOUT_IMAGE_MAX_BYTES, PAYOUT_IMAGE_ALLOWED_MIME, checkPayoutImage };
 
 /** A refusal the caller should surface to the user (maps to HTTP 422). */

@@ -8,8 +8,11 @@ import { recordPayout } from "@/lib/commissions/ledger";
 import {
   assertPayoutImageAllowed,
   savePrivateImage,
+  signedImageUrl,
+  EMAIL_PROOF_TTL_SECONDS,
   PayoutUploadRefusedError,
 } from "@/lib/payout-upload";
+import { sendPayoutMadeEmail } from "@/lib/email/partner";
 
 /**
  * Record a partner payout (#81). Staff-only (assertAdmin). Uploads the
@@ -74,6 +77,24 @@ export async function recordPayoutAction(formData: FormData): Promise<void> {
       commissions_paid: result.commissionsPaid,
     },
   });
+
+  // Payout-made email (#84): only for an actual payout (positive amount — a
+  // correction is a negative row). Links the proof via a longer-lived signed URL
+  // (AC5). Idempotent on entity_id = payoutId; best-effort — never break payout.
+  if (amount > 0) {
+    try {
+      const proofUrl = await signedImageUrl(proofPath, EMAIL_PROOF_TTL_SECONDS);
+      await sendPayoutMadeEmail(admin, {
+        partnerId,
+        payoutId: result.payoutId,
+        amount,
+        paidOn,
+        proofUrl,
+      });
+    } catch (err) {
+      console.error(`[partner-payout] email failed for payout ${result.payoutId}:`, err);
+    }
+  }
 
   revalidatePath("/settings/partner-commissions");
 }
