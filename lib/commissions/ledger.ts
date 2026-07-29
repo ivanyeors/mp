@@ -105,6 +105,25 @@ export async function voidCommissionsForRma(
 }
 
 /**
+ * Void EVERY commission on an order (a full refund reverses the whole sale).
+ * Complements {@link voidCommissionsForRma}: the RMA path voids per-item on a
+ * refund resolution; this covers a full refund issued OUTSIDE an RMA (e.g. a
+ * staff Stripe-dashboard refund), which otherwise leaves commission held/released
+ * on a fully-refunded order. Idempotent — already-void rows are untouched.
+ */
+export async function voidCommissionsForOrder(
+  admin: SupabaseClient,
+  orderId: string,
+): Promise<void> {
+  const { error } = await admin
+    .from("commissions")
+    .update({ status: "void", voided_at: new Date().toISOString() })
+    .eq("order_id", orderId)
+    .neq("status", "void");
+  if (error) throw new Error(error.message);
+}
+
+/**
  * Idempotent settle: flips held → released for every commission whose window has
  * closed, dated from the ORDER's live delivered_at (never paid_at). Not scheduled
  * here — the payout slice (#81) calls it. Returns the count released.

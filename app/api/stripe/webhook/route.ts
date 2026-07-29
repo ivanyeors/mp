@@ -7,7 +7,7 @@ import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync"
 import { updateCustomerStats } from "@/lib/ecommerce/customers";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyRmaTransition } from "@/lib/rma/transition";
-import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
+import { createHeldCommissionsForOrder, voidCommissionsForOrder } from "@/lib/commissions/ledger";
 import { round2 } from "@/lib/commissions";
 import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
@@ -356,7 +356,7 @@ export async function POST(req: Request) {
         const { data: order } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, coupon_id, customer_id, shipping_address, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
           )
           .eq("payment_reference", paymentIntentId)
           .single();
@@ -425,6 +425,17 @@ export async function POST(req: Request) {
         // recompute customer lifetime stats so reporting and coupon limits stay
         // accurate. Partial refunds leave both untouched.
         if (nowFullyRefunded && !wasFullyRefunded) {
+          // Void the partner's commission on the whole reversed sale (#77). The
+          // RMA path voids per-item; this covers a full refund with NO RMA link
+          // (e.g. a staff Stripe-dashboard refund), which would otherwise pay
+          // commission on a fully-refunded order. Idempotent + best-effort.
+          if (order.partner_id) {
+            try {
+              await voidCommissionsForOrder(admin, order.id);
+            } catch (err) {
+              console.error(`[stripe/webhook] Commission void failed for ${order.id}:`, err);
+            }
+          }
           if (order.coupon_id) {
             const { data: coupon } = await admin
               .from("coupons")
