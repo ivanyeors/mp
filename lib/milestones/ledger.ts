@@ -39,17 +39,29 @@ export async function loadRungs(admin: SupabaseClient): Promise<MilestoneRung[]>
   );
 }
 
-/** Count of a partner's NON-VOID commission rows (each = one accepted pillow/bolster). */
+/** Read the per-unit quantity off a commission's embedded order_item (to-one; array or object). */
+function lineQuantity(oi: unknown): number {
+  const rel = Array.isArray(oi) ? oi[0] : oi;
+  const q = (rel as { quantity?: number | string } | null)?.quantity;
+  return Math.max(1, Number(q ?? 1));
+}
+
+/**
+ * Sum of a partner's NON-VOID commissioned UNITS. A commission is one row per
+ * order_item, but a shop line can be quantity>1 (3 pillows = 1 row), so we sum
+ * order_items.quantity — not a row count — else multi-unit orders undercount the
+ * bar. Result orders are quantity 1, so they're unaffected.
+ */
 async function countNonVoidCommissions(
   admin: SupabaseClient,
   partnerId: string,
 ): Promise<number> {
-  const { count } = await admin
+  const { data } = await admin
     .from("commissions")
-    .select("id", { count: "exact", head: true })
+    .select("order_items(quantity)")
     .eq("partner_id", partnerId)
     .neq("status", "void");
-  return count ?? 0;
+  return (data ?? []).reduce((sum, r) => sum + lineQuantity(r.order_items), 0);
 }
 
 /** Read (creating if absent) the partner's ratchet row: {max_tier, endowed_units}. */
@@ -187,7 +199,7 @@ export async function loadMilestoneDashboard(
 
   // This partner's units + the distribution across all real partners for the chip.
   const [{ data: allCommissionRows }, { data: partnerRows }, { data: bonus }] = await Promise.all([
-    admin.from("commissions").select("partner_id").neq("status", "void"),
+    admin.from("commissions").select("partner_id, order_items(quantity)").neq("status", "void"),
     admin.from("partners").select("id").eq("type", "partner").not("referral_code", "is", null),
     admin
       .from("milestone_bonuses")
@@ -201,7 +213,7 @@ export async function loadMilestoneDashboard(
   const countByPartner = new Map<string, number>();
   for (const r of allCommissionRows ?? []) {
     if (!r.partner_id) continue;
-    countByPartner.set(r.partner_id, (countByPartner.get(r.partner_id) ?? 0) + 1);
+    countByPartner.set(r.partner_id, (countByPartner.get(r.partner_id) ?? 0) + lineQuantity(r.order_items));
   }
   const units = endowed_units + (countByPartner.get(partnerId) ?? 0);
   const allUnitCounts = (partnerRows ?? []).map(

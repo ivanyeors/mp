@@ -3,6 +3,9 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { COMMISSION_RELEASE_WINDOW_DAYS } from "@/lib/commissions";
 import { upsertCommissionScheme } from "./actions";
+import { MilestoneRungsEditor } from "@/components/partner/milestone-rungs-editor";
+import { PartnerSelfPurchaseEditor } from "@/components/settings/partner-self-purchase-editor";
+import { PartnerPayouts } from "./partner-payouts";
 
 export const runtime = "nodejs";
 
@@ -57,7 +60,8 @@ export default async function PartnerCommissionsPage({
         <p className="text-sm text-muted-foreground">
           Commission schemes for partner-referred pillow &amp; bolster units. Held on capture,
           released {COMMISSION_RELEASE_WINDOW_DAYS} days after delivery, voided on refund. Staff
-          only — never shown in the Partner Hub. Payouts are a later slice.
+          only — never shown in the Partner Hub. Milestone rungs, self-purchase rates, and payouts
+          are managed below.
         </p>
       </div>
 
@@ -155,6 +159,13 @@ export default async function PartnerCommissionsPage({
           </button>
         </div>
       </form>
+
+      {/* Wave-3 admin surfaces (self-contained; each guards with assertAdmin). */}
+      <div className="mt-10 space-y-10">
+        <MilestoneRungsEditor />
+        <PartnerSelfPurchaseEditor />
+        <PartnerPayouts />
+      </div>
     </div>
   );
 }

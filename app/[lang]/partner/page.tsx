@@ -7,6 +7,9 @@ import { ensureReferralCode } from "@/lib/referrals";
 import { getSiteOrigin } from "@/lib/site-url";
 import { ReacceptForm } from "@/components/partner/reaccept-form";
 import { ReferralShareCard } from "@/components/partner/referral-share-card";
+import { MilestoneTrack } from "@/components/partner/milestone-track";
+import { PayoutSummary } from "@/components/partner/payout-summary";
+import { SelfPurchaseAllowanceCard } from "@/components/partner/self-purchase-allowance-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -91,17 +94,16 @@ export default async function PartnerHubPage({
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Dashboard</CardTitle>
-          <CardDescription>Your partner dashboard is coming soon.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Commission, milestones, and payouts will appear here as we roll them out.
-          </p>
-        </CardContent>
-      </Card>
+      {ctx.partnerId ? (
+        <>
+          {/* Milestone track = the gamified spine the partner sees first (#79). */}
+          <MilestoneTrack partnerId={ctx.partnerId} />
+          {/* Commission balance + payout history with proof (#81). */}
+          <PayoutSummary partnerId={ctx.partnerId} />
+          {/* Remaining self-purchase allowance — renders null when the feature is off (#82). */}
+          <SelfPurchaseAllowanceCard partnerId={ctx.partnerId} />
+        </>
+      ) : null}
     </div>
   );
 }
