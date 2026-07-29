@@ -585,6 +585,8 @@ export async function POST(req: Request) {
     discovery_source_other: discoverySourceOther,
     partner_id: attribution.partnerId,
     ref_code: attributedRefCode,
+    // How it attributed (assist>typed>link) — #80 reads this for PDPA masking.
+    attribution_source: attribution.source,
     customer_id: customerId,
     access_token: accessToken,
     source: "online_purchase",

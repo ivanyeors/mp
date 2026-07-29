@@ -8,6 +8,7 @@ import { getSiteOrigin } from "@/lib/site-url";
 import { ReacceptForm } from "@/components/partner/reaccept-form";
 import { ReferralShareCard } from "@/components/partner/referral-share-card";
 import { MilestoneTrack } from "@/components/partner/milestone-track";
+import { MoneyReferralsPanel } from "@/components/partner/money-referrals-panel";
 import { PayoutSummary } from "@/components/partner/payout-summary";
 import { SelfPurchaseAllowanceCard } from "@/components/partner/self-purchase-allowance-card";
 import { Button } from "@/components/ui/button";
@@ -98,6 +99,8 @@ export default async function PartnerHubPage({
         <>
           {/* Milestone track = the gamified spine the partner sees first (#79). */}
           <MilestoneTrack partnerId={ctx.partnerId} />
+          {/* Money totals + referral pipeline + masked per-referral rows (#80). */}
+          <MoneyReferralsPanel partnerId={ctx.partnerId} />
           {/* Commission balance + payout history with proof (#81). */}
           <PayoutSummary partnerId={ctx.partnerId} />
           {/* Remaining self-purchase allowance — renders null when the feature is off (#82). */}
