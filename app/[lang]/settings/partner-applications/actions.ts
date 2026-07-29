@@ -1,11 +1,12 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { getEmailTransport } from "@/lib/email";
-import { getDefaultFromAddress } from "@/lib/email/transport";
+import { renderEmailShell } from "@/lib/email/base";
+import { dispatchPartnerEmail } from "@/lib/email/partner";
 import { getSiteOrigin } from "@/lib/site-url";
 import {
   canTransitionApplication,
@@ -22,17 +23,37 @@ const PERM = "page-builder";
 const QUEUE_PATH = "/settings/partner-applications";
 const SUPPORT_EMAIL = "sg@mpillow.com";
 
-/** Send the outcome email. Never throws — a failed send must not abort the DB transition. */
-async function sendOutcomeEmail(outcome: ApplicationOutcome, to: string): Promise<void> {
+/**
+ * Send the outcome email through the idempotent partner ledger, wrapped in the
+ * branded base (copy unchanged). Best-effort — a failed send must not abort the DB
+ * transition. entity_id = the partner_users id. A rejected application has no
+ * partner row, so partnerId is null there (idempotency rests on the guarded
+ * reject action, which fires once).
+ */
+async function sendOutcomeEmail(params: {
+  admin: SupabaseClient;
+  outcome: ApplicationOutcome;
+  to: string;
+  partnerUserId: string;
+  partnerId: string | null;
+}): Promise<void> {
   try {
-    const rendered = renderApplicationOutcomeEmail(outcome, {
+    const rendered = renderApplicationOutcomeEmail(params.outcome, {
       partnerSignInUrl: `${getSiteOrigin()}/partner`,
       supportEmail: SUPPORT_EMAIL,
     });
-    await getEmailTransport().send({ ...rendered, to, from: getDefaultFromAddress() });
+    await dispatchPartnerEmail(params.admin, {
+      partnerId: params.partnerId,
+      template: `application_${params.outcome}`,
+      entityId: params.partnerUserId,
+      to: params.to,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: renderEmailShell({ bodyHtml: rendered.html }),
+    });
   } catch (err) {
     console.error(
-      `[partner-application] failed to send ${outcome} email to ${to}:`,
+      `[partner-application] failed to send ${params.outcome} email to ${params.to}:`,
       err instanceof Error ? err.message : err,
     );
   }
@@ -112,7 +133,13 @@ export async function approveApplication(id: string): Promise<{ ok: true }> {
     after: { application_status: "approved", partner_id: partnerId },
   });
 
-  await sendOutcomeEmail("approved", row.email);
+  await sendOutcomeEmail({
+    admin,
+    outcome: "approved",
+    to: row.email,
+    partnerUserId: id,
+    partnerId,
+  });
   revalidatePath(QUEUE_PATH);
   return { ok: true };
 }
@@ -151,7 +178,13 @@ export async function rejectApplication(id: string): Promise<{ ok: true }> {
     after: { application_status: "rejected" },
   });
 
-  await sendOutcomeEmail("rejected", row.email);
+  await sendOutcomeEmail({
+    admin,
+    outcome: "rejected",
+    to: row.email,
+    partnerUserId: id,
+    partnerId: null, // a rejected application never creates a partners row
+  });
   revalidatePath(QUEUE_PATH);
   return { ok: true };
 }

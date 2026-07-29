@@ -9,6 +9,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { sendMilestoneReachedEmail } from "@/lib/email/partner";
 import {
   ENDOWED_UNITS,
   currentTierFor,
@@ -161,6 +162,19 @@ export async function applyMilestoneProgress(
       });
     // 23505 = unique violation → bonus already granted; any other error is unexpected.
     if (error && error.code !== "23505") throw new Error(error.message);
+
+    // Milestone-reached email (#84): idempotent on entity_id = `${partnerId}:tier${tier}`.
+    // Best-effort — an email failure must not abort the rate bump / ratchet below.
+    try {
+      await sendMilestoneReachedEmail(admin, {
+        partnerId,
+        tier: rung.tier,
+        cashBonus: rung.cash_bonus,
+        perkLabel: rung.perk_label,
+      });
+    } catch (e) {
+      console.error(`[milestone] email failed for partner ${partnerId} tier ${rung.tier}`, e);
+    }
   }
 
   // Ratchet max_tier up (guarded so concurrent runs can't lower it).

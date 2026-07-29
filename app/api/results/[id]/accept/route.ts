@@ -13,6 +13,7 @@ import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
+import { sendReferralEarnedEmail } from "@/lib/email/partner";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -303,6 +304,18 @@ export async function POST(
       await applyMilestoneProgress(admin, row.partner_id);
     } catch (e) {
       console.error("Milestone progress failed after capture", e);
+    }
+    // Referral-earned email (#84): fires once per attributed order (entity_id =
+    // order id). delivered_at is stamped at in-store handover, so release is dated.
+    // Best-effort — never break capture.
+    try {
+      await sendReferralEarnedEmail(admin, {
+        partnerId: row.partner_id,
+        orderId: order.id,
+        currency: row.currency ?? "SGD",
+      });
+    } catch (e) {
+      console.error("Referral-earned email failed after capture", e);
     }
   }
 
