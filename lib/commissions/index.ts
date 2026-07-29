@@ -14,7 +14,7 @@ import { DEFAULT_RETURN_WINDOW_DAYS } from "@/lib/rma/eligibility";
 
 export type CommissionProductType = "pillow" | "bolster";
 export type SchemeKind = "flat" | "percent";
-export type CommissionStatus = "held" | "released" | "void";
+export type CommissionStatus = "held" | "released" | "void" | "paid";
 
 export interface CommissionScheme {
   /** null = the DEFAULT scheme; a uuid = a per-partner override. */
@@ -74,9 +74,10 @@ export function releaseAt(
 }
 
 /**
- * Derive-on-read status. `void`/`released` stick; a `held` row is effectively
- * released once now >= delivered_at + window. `delivered_at` is the ORDER's
- * delivery date, so release is always dated from delivery — never paid_at.
+ * Derive-on-read status. `void`/`paid`/`released` stick (paid is terminal, like
+ * void); a `held` row is effectively released once now >= delivered_at + window.
+ * `delivered_at` is the ORDER's delivery date, so release is always dated from
+ * delivery — never paid_at.
  */
 export function effectiveCommissionStatus(
   row: { status: CommissionStatus; delivered_at: string | null },
@@ -84,6 +85,7 @@ export function effectiveCommissionStatus(
   windowDays: number = COMMISSION_RELEASE_WINDOW_DAYS,
 ): CommissionStatus {
   if (row.status === "void") return "void";
+  if (row.status === "paid") return "paid";
   if (row.status === "released") return "released";
   const ra = releaseAt(row.delivered_at, windowDays);
   if (ra && now.getTime() >= ra.getTime()) return "released";

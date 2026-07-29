@@ -165,3 +165,104 @@ export async function settleDueCommissions(
   }
   return released;
 }
+
+/**
+ * A partner's releasable balance (#81): sum of `released`, not-yet-paid
+ * commission_amount. Settles due (held→released) FIRST so newly-matured
+ * commissions count — keeps the hub + admin surfaces consistent. `void`/`paid`
+ * are excluded (settled rows carry status `released`; paying flips them to `paid`).
+ * Summed in cents so many rows never accrete float dust. No minimum (AC5): a
+ * 1-cent balance is returned as-is.
+ */
+export async function releasedBalance(
+  admin: SupabaseClient,
+  partnerId: string,
+): Promise<number> {
+  await settleDueCommissions(admin);
+  const { data } = await admin
+    .from("commissions")
+    .select("commission_amount")
+    .eq("partner_id", partnerId)
+    .eq("status", "released")
+    .is("payout_id", null);
+  const cents = (data ?? []).reduce(
+    (sum, r) => sum + Math.round(Number(r.commission_amount) * 100),
+    0,
+  );
+  return cents / 100;
+}
+
+export interface RecordPayoutInput {
+  partnerId: string;
+  amount: number;
+  /** yyyy-mm-dd */
+  paidOn: string;
+  method?: string | null;
+  reference?: string | null;
+  /** Private-bucket key of the proof-of-payment image. */
+  proofPath?: string | null;
+  createdBy?: string | null;
+}
+
+/**
+ * Record an IMMUTABLE payout row and mark the covered released commissions `paid`
+ * (#81, AC3/AC6). Settles due first. For a positive amount, released+unpaid
+ * commissions are claimed oldest-first until their cumulative total reaches
+ * `amount` (whole commissions — a single commission is never split); those flip to
+ * `paid` and link to the payout. A zero/negative amount (a correction, AC6)
+ * records the row only and touches no commissions. Returns the new payout id and
+ * how many commissions it marked paid.
+ *
+ * ponytail: no row lock — single-operator payout surface. Add SELECT … FOR UPDATE
+ * or an advisory lock keyed on partnerId if two admins may pay one partner at once.
+ */
+export async function recordPayout(
+  admin: SupabaseClient,
+  input: RecordPayoutInput,
+): Promise<{ payoutId: string; commissionsPaid: number }> {
+  await settleDueCommissions(admin);
+
+  const { data: payout, error: insErr } = await admin
+    .from("partner_payouts")
+    .insert({
+      partner_id: input.partnerId,
+      amount: input.amount,
+      paid_on: input.paidOn,
+      method: input.method ?? null,
+      reference: input.reference ?? null,
+      proof_path: input.proofPath ?? null,
+      created_by: input.createdBy ?? null,
+    })
+    .select("id")
+    .single();
+  if (insErr || !payout) throw new Error(insErr?.message ?? "Failed to record payout");
+
+  if (input.amount <= 0) return { payoutId: payout.id, commissionsPaid: 0 };
+
+  const { data: rows } = await admin
+    .from("commissions")
+    .select("id, commission_amount")
+    .eq("partner_id", input.partnerId)
+    .eq("status", "released")
+    .is("payout_id", null)
+    .order("created_at", { ascending: true });
+
+  const targetCents = Math.round(input.amount * 100);
+  let accCents = 0;
+  const ids: string[] = [];
+  for (const r of rows ?? []) {
+    if (accCents >= targetCents) break;
+    accCents += Math.round(Number(r.commission_amount) * 100);
+    ids.push(r.id as string);
+  }
+  if (ids.length === 0) return { payoutId: payout.id, commissionsPaid: 0 };
+
+  const { error: updErr } = await admin
+    .from("commissions")
+    .update({ status: "paid", payout_id: payout.id })
+    .in("id", ids)
+    .eq("status", "released"); // guard: only flip still-released rows
+  if (updErr) throw new Error(updErr.message);
+
+  return { payoutId: payout.id, commissionsPaid: ids.length };
+}
