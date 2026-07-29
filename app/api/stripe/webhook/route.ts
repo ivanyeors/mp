@@ -8,6 +8,7 @@ import { updateCustomerStats } from "@/lib/ecommerce/customers";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyRmaTransition } from "@/lib/rma/transition";
 import { createHeldCommissionsForOrder, voidCommissionsForOrder } from "@/lib/commissions/ledger";
+import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { round2 } from "@/lib/commissions";
 import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
@@ -211,6 +212,12 @@ export async function POST(req: Request) {
             });
           } catch (err) {
             console.error(`[stripe/webhook] Commission creation failed for ${orderId}:`, err);
+          }
+          // Milestone rung-crossing (#79): best-effort, never break the webhook.
+          try {
+            await applyMilestoneProgress(admin, order.partner_id as string);
+          } catch (err) {
+            console.error(`[stripe/webhook] Milestone progress failed for ${orderId}:`, err);
           }
         }
 

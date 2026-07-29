@@ -12,6 +12,7 @@ import { authorizeResultAccess } from "@/lib/results/access";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
+import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -292,6 +293,14 @@ export async function POST(
       });
     } catch (e) {
       console.error("Commission creation failed after capture", e);
+    }
+    // Milestone rung-crossing (#79): detect newly-crossed rungs and apply the
+    // one-time bonus + permanent rate bump + ratchet. Best-effort — the money is
+    // already captured, so a milestone failure is logged, never fatal.
+    try {
+      await applyMilestoneProgress(admin, row.partner_id);
+    } catch (e) {
+      console.error("Milestone progress failed after capture", e);
     }
   }
 
