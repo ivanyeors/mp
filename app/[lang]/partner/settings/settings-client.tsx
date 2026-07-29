@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LOGO_GUIDELINES, checkLogoFile } from "@/lib/partner-upload/limits";
+import { checkPayoutImage } from "@/lib/payout-upload/limits";
 
 type Profile = {
   name: string;
@@ -25,14 +26,23 @@ type Profile = {
   logo_url: string | null;
 };
 
+type PaymentDetails = {
+  qrUrl: string | null;
+  bank_name: string;
+  bank_account_name: string;
+  bank_account_number: string;
+};
+
 export function PartnerSettingsClient({
   whatsappNumber,
   initialProfile,
   backupEmail,
+  paymentDetails,
 }: {
   whatsappNumber: string;
   initialProfile: Profile;
   backupEmail: { email: string | null; verified: boolean; pending: string | null };
+  paymentDetails: PaymentDetails;
 }) {
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -179,6 +189,9 @@ export function PartnerSettingsClient({
         </CardContent>
       </Card>
 
+      {/* Payout details */}
+      <PayoutDetailsCard initial={paymentDetails} />
+
       {/* Backup email */}
       <BackupEmailCard initial={backupEmail} />
 
@@ -198,6 +211,147 @@ export function PartnerSettingsClient({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function PayoutDetailsCard({ initial }: { initial: PaymentDetails }) {
+  const [qrUrl, setQrUrl] = useState<string | null>(initial.qrUrl);
+  const [bank, setBank] = useState({
+    bank_name: initial.bank_name,
+    bank_account_name: initial.bank_account_name,
+    bank_account_number: initial.bank_account_number,
+  });
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const qrRef = useRef<HTMLInputElement>(null);
+
+  async function onPickQr(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (qrRef.current) qrRef.current.value = "";
+    if (!file) return;
+    const err = checkPayoutImage(file);
+    if (err) return toast.error(err);
+
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/partner/payment-details", { method: "POST", body: form });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.ok) {
+        setQrUrl(json.qrUrl as string);
+        toast.success("PayNow QR saved.");
+      } else {
+        toast.error(json?.error ?? "Upload failed");
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function saveBank() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/partner/payment-details", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bank),
+      });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.ok) toast.success("Bank details saved.");
+      else toast.error(json?.error ?? "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Payout details</CardTitle>
+        <CardDescription>
+          How we pay your released commission. Only the Mpillow team can see these —
+          never other partners or the public.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label>PayNow QR</Label>
+          <div className="flex items-center gap-4">
+            {qrUrl ? (
+              <Image
+                src={qrUrl}
+                alt="PayNow QR"
+                width={96}
+                height={96}
+                className="h-24 w-24 rounded-md border object-contain"
+                unoptimized
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-md border text-xs text-muted-foreground">
+                None
+              </div>
+            )}
+            <div>
+              <input
+                ref={qrRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={onPickQr}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploading}
+                onClick={() => qrRef.current?.click()}
+              >
+                {uploading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" />
+                )}
+                {qrUrl ? "Replace QR" : "Upload QR"}
+              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, or WebP, up to 10 MB.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="bank_name">Bank name</Label>
+            <Input
+              id="bank_name"
+              value={bank.bank_name}
+              onChange={(e) => setBank((b) => ({ ...b, bank_name: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bank_account_name">Account holder name</Label>
+            <Input
+              id="bank_account_name"
+              value={bank.bank_account_name}
+              onChange={(e) => setBank((b) => ({ ...b, bank_account_name: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="bank_account_number">Account number</Label>
+            <Input
+              id="bank_account_number"
+              value={bank.bank_account_number}
+              onChange={(e) => setBank((b) => ({ ...b, bank_account_number: e.target.value }))}
+            />
+          </div>
+        </div>
+
+        <Button onClick={saveBank} disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save bank details
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
