@@ -25,7 +25,7 @@ export default async function PartnerSettingsPage({
   const [{ data: partner }, { data: pu }, { data: pay }] = await Promise.all([
     admin
       .from("partners")
-      .select("name, description, address, postal_code, logo_url")
+      .select("name, description, address, postal_code, logo_url, notify_whatsapp")
       .eq("id", ctx.partnerId)
       .maybeSingle(),
     admin
@@ -59,6 +59,7 @@ export default async function PartnerSettingsPage({
         verified: Boolean(pu?.backup_email_verified),
         pending: pu?.backup_email_pending ?? null,
       }}
+      notifyWhatsapp={Boolean(partner?.notify_whatsapp)}
       paymentDetails={{
         qrUrl,
         bank_name: pay?.bank_name ?? "",

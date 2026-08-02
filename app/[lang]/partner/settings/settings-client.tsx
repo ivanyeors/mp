@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -38,11 +39,13 @@ export function PartnerSettingsClient({
   initialProfile,
   backupEmail,
   paymentDetails,
+  notifyWhatsapp,
 }: {
   whatsappNumber: string;
   initialProfile: Profile;
   backupEmail: { email: string | null; verified: boolean; pending: string | null };
   paymentDetails: PaymentDetails;
+  notifyWhatsapp: boolean;
 }) {
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -195,6 +198,9 @@ export function PartnerSettingsClient({
       {/* Backup email */}
       <BackupEmailCard initial={backupEmail} />
 
+      {/* Notifications */}
+      <NotificationsCard initialOptIn={notifyWhatsapp} />
+
       {/* Support */}
       <Card>
         <CardHeader>
@@ -211,6 +217,70 @@ export function PartnerSettingsClient({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function NotificationsCard({ initialOptIn }: { initialOptIn: boolean }) {
+  const [optIn, setOptIn] = useState(initialOptIn);
+  const [busy, setBusy] = useState(false);
+
+  async function toggle(next: boolean) {
+    setOptIn(next); // optimistic
+    setBusy(true);
+    try {
+      const res = await fetch("/api/partner/notify", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notify_whatsapp: next }),
+      });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.ok) {
+        toast.success(next ? "WhatsApp updates on." : "WhatsApp updates off.");
+      } else {
+        setOptIn(!next); // revert
+        toast.error(json?.error ?? "Could not update preference");
+      }
+    } catch {
+      setOptIn(!next);
+      toast.error("Could not update preference");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>
+          Choose how we reach you about referrals, milestones, and payouts.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="notify-email">Email</Label>
+            <p className="text-sm text-muted-foreground">Always on — sent to your account email.</p>
+          </div>
+          <Switch id="notify-email" checked disabled aria-label="Email notifications (always on)" />
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="notify-whatsapp">WhatsApp</Label>
+            <p className="text-sm text-muted-foreground">
+              Also get these updates on WhatsApp, at your application mobile number.
+            </p>
+          </div>
+          <Switch
+            id="notify-whatsapp"
+            checked={optIn}
+            disabled={busy}
+            onCheckedChange={toggle}
+            aria-label="WhatsApp notifications"
+          />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

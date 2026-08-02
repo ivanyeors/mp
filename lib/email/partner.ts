@@ -11,6 +11,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { notifyPartnerWhatsApp } from "@/lib/whatsapp/partner-notify";
 import { getEmailTransport } from ".";
 import { escapeHtml, renderEmailShell } from "./base";
 import { formatMoney } from "./templates";
@@ -238,16 +239,21 @@ export async function sendReferralEarnedEmail(
   if (amount <= 0) return;
   const releaseAtIso = rows.find((r) => r.release_at)?.release_at ?? null;
 
-  const rendered = renderReferralEarnedEmail({
-    money: formatMoney(amount, input.currency),
-    releaseAtIso,
-  });
+  const money = formatMoney(amount, input.currency);
+  const rendered = renderReferralEarnedEmail({ money, releaseAtIso });
   await dispatchPartnerEmail(admin, {
     partnerId: input.partnerId,
     template: "referral_earned",
     entityId: input.orderId,
     to,
     ...rendered,
+  });
+  // Additive WhatsApp channel (#86) — best-effort, opt-in, silent on failure.
+  await notifyPartnerWhatsApp(admin, {
+    partnerId: input.partnerId,
+    template: "referral_earned",
+    entityId: input.orderId,
+    bodyParams: [money],
   });
 }
 
@@ -263,12 +269,19 @@ export async function sendMilestoneReachedEmail(
     bonus: input.cashBonus > 0 ? formatMoney(input.cashBonus, "SGD") : null,
     perk: input.perkLabel.trim() || null,
   });
+  const entityId = `${input.partnerId}:tier${input.tier}`;
   await dispatchPartnerEmail(admin, {
     partnerId: input.partnerId,
     template: "milestone_reached",
-    entityId: `${input.partnerId}:tier${input.tier}`,
+    entityId,
     to,
     ...rendered,
+  });
+  await notifyPartnerWhatsApp(admin, {
+    partnerId: input.partnerId,
+    template: "milestone_reached",
+    entityId,
+    bodyParams: [String(input.tier)],
   });
 }
 
@@ -291,6 +304,12 @@ export async function sendPayoutMadeEmail(
     to,
     ...rendered,
   });
+  await notifyPartnerWhatsApp(admin, {
+    partnerId: input.partnerId,
+    template: "payout_made",
+    entityId: input.payoutId,
+    bodyParams: [formatMoney(input.amount, "SGD"), input.paidOn],
+  });
 }
 
 /** Re-accept-terms email. Idempotent on entity_id = `${partnerId}:${agreementVersion}`. */
@@ -300,11 +319,18 @@ export async function sendReacceptEmail(
 ): Promise<void> {
   if (!input.to) return;
   const rendered = renderReacceptEmail({ agreementVersion: input.agreementVersion });
+  const entityId = `${input.partnerId}:${input.agreementVersion}`;
   await dispatchPartnerEmail(admin, {
     partnerId: input.partnerId,
     template: "reaccept_terms",
-    entityId: `${input.partnerId}:${input.agreementVersion}`,
+    entityId,
     to: input.to,
     ...rendered,
+  });
+  await notifyPartnerWhatsApp(admin, {
+    partnerId: input.partnerId,
+    template: "reaccept_terms",
+    entityId,
+    bodyParams: [input.agreementVersion],
   });
 }

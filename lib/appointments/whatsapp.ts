@@ -42,6 +42,36 @@ function toWa(e164: string): string {
   return e164.replace(/^\+/, "");
 }
 
+/**
+ * Send an approved WhatsApp template by name with ordered body-text params.
+ * Business-initiated notifications (e.g. partner alerts, #86) must use an
+ * approved template — free text is only allowed inside a 24h service window.
+ * Returns the provider message id, or throws on API failure (callers decide
+ * whether that is fatal; partner notifications treat it as best-effort).
+ */
+export async function sendTemplateMessage(
+  e164: string,
+  templateName: string,
+  bodyParams: string[],
+): Promise<string | null> {
+  // Meta approves each template under an exact language code. Default "en", but
+  // let ops override (e.g. "en_US") to match how the templates were approved —
+  // a mismatch is a silent 132001 "template does not exist in this language".
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG?.trim() || "en";
+  return sendPayload({
+    messaging_product: "whatsapp",
+    to: toWa(e164),
+    type: "template",
+    template: {
+      name: templateName,
+      language: { code: lang },
+      components: bodyParams.length
+        ? [{ type: "body", parameters: bodyParams.map((text) => ({ type: "text", text })) }]
+        : [],
+    },
+  });
+}
+
 export type DayBeforeParams = {
   guestName: string;
   dateLabel: string;
