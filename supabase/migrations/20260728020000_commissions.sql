@@ -67,10 +67,11 @@ drop policy if exists "Service role full access commissions" on commissions;
 create policy "Service role full access commissions" on commissions
   for all using (true) with check (true);
 
--- Seed DEFAULT schemes (10% of base) so an attributed order always resolves a
--- scheme even before staff edit anything. Editable in the Admin Panel.
+-- Seed DEFAULT schemes ($50 flat per UNIT sold) so an attributed order always
+-- resolves a scheme even before staff edit anything. `flat` → amount × quantity
+-- (see computeCommission) = $50 per pillow/bolster sold. Editable in the Admin Panel.
 insert into commission_schemes (partner_id, product_type, kind, amount)
-values (null, 'pillow', 'percent', 10), (null, 'bolster', 'percent', 10)
+values (null, 'pillow', 'flat', 50), (null, 'bolster', 'flat', 50)
 on conflict do nothing;
 
 comment on table commissions is

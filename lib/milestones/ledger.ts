@@ -101,13 +101,16 @@ async function bumpPartnerSchemes(
 ): Promise<void> {
   if (rateBump <= 0) return;
   for (const productType of PRODUCT_TYPES) {
-    // Base = the DEFAULT (null-partner) percent amount for this product type.
+    // Base = the DEFAULT (null-partner) scheme for this product type. A rate bump is
+    // percentage-points, so it only makes sense on a percent default; with a flat
+    // $/unit default, writing a percent override would be a blowout — skip it.
     const { data: def } = await admin
       .from("commission_schemes")
-      .select("amount")
+      .select("kind, amount")
       .is("partner_id", null)
       .eq("product_type", productType)
       .maybeSingle();
+    if (def?.kind !== "percent") continue;
     const desired = Number(def?.amount ?? 0) + rateBump;
 
     const { data: existing } = await admin

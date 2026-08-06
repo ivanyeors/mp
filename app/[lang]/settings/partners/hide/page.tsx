@@ -64,7 +64,7 @@ export default async function HidePartnerListingPage({
       <h1 className="text-2xl font-semibold tracking-tight">Hide partner listing?</h1>
       <p className="text-sm text-muted-foreground">
         This hides <strong>{partner.name}</strong> from the public partners page. You can make it
-        visible again anytime in Locations.
+        visible again anytime in Partners.
       </p>
       <form action={hide}>
         <Button type="submit" variant="destructive" className="w-full">

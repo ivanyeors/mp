@@ -12,7 +12,7 @@ import { reacceptAgreement } from "@/app/[lang]/partner/apply/actions";
  * stale (see `needsReaccept`). Accepting records the current version and reloads
  * the hub, which then renders the dashboard.
  */
-export function ReacceptForm({ lang }: { lang: string }) {
+export function ReacceptForm({ lang, agreementMd }: { lang: string; agreementMd: string }) {
   const [agreed, setAgreed] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -27,7 +27,7 @@ export function ReacceptForm({ lang }: { lang: string }) {
       </div>
 
       <div className="max-h-96 overflow-y-auto rounded-md border bg-muted/30 p-4">
-        <AgreementContent />
+        <AgreementContent content={agreementMd} />
       </div>
 
       <label className="flex items-start gap-3 text-sm">

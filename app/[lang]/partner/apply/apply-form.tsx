@@ -46,7 +46,15 @@ function Field({
   );
 }
 
-export function ApplyForm({ lang, initialEmail }: { lang: string; initialEmail: string }) {
+export function ApplyForm({
+  lang,
+  initialEmail,
+  agreementMd,
+}: {
+  lang: string;
+  initialEmail: string;
+  agreementMd: string;
+}) {
   const [values, setValues] = useState<FormValues>({
     companyName: "",
     uen: "",
@@ -201,7 +209,7 @@ export function ApplyForm({ lang, initialEmail }: { lang: string; initialEmail: 
         <div className="space-y-4 rounded-lg border p-4">
           <h2 className="text-base font-semibold">Partner Agreement</h2>
           <div className="max-h-72 overflow-y-auto rounded-md border bg-muted/30 p-4">
-            <AgreementContent />
+            <AgreementContent content={agreementMd} />
           </div>
           <label className="flex items-start gap-3 text-sm">
             <Checkbox

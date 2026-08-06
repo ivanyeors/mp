@@ -4,6 +4,7 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { getAuthUser } from "@/lib/auth/user";
 import { loadPartnerRow } from "@/lib/auth/partner";
+import { getAgreementMarkdown } from "@/lib/partners";
 import { ApplyForm } from "./apply-form";
 
 export default async function PartnerApplyPage({
@@ -25,5 +26,12 @@ export default async function PartnerApplyPage({
     redirect(withLocale("/partner", locale));
   }
 
-  return <ApplyForm lang={locale} initialEmail={user.email.toLowerCase().trim()} />;
+  const agreementMd = await getAgreementMarkdown();
+  return (
+    <ApplyForm
+      lang={locale}
+      initialEmail={user.email.toLowerCase().trim()}
+      agreementMd={agreementMd}
+    />
+  );
 }

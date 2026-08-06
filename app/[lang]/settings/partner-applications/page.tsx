@@ -66,7 +66,7 @@ export default async function PartnerApplicationsPage({
         <p className="mt-1 text-sm text-muted-foreground">
           Review pending applications. Verify ACRA / website yourself, then approve or
           reject. Approving creates a hidden partner location — flip visibility later in
-          Locations.
+          Partners.
         </p>
       </div>
 

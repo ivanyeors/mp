@@ -40,7 +40,7 @@ function escapeHtml(v: string): string {
 async function notifyStaff(partnerId: string, name: string): Promise<void> {
   const hideUrl = `${getSiteOrigin()}${withLocale("/settings/partners/hide", DEFAULT_LOCALE)}?partner=${encodeURIComponent(partnerId)}`;
   const subject = `Partner listing updated: ${name}`;
-  const text = `${name} updated their public partner listing (/our-partners).\n\nReview it in Locations, or open the hide-confirmation page:\n${hideUrl}`;
+  const text = `${name} updated their public partner listing (/our-partners).\n\nReview it in Partners, or open the hide-confirmation page:\n${hideUrl}`;
   const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111;">
   <p><strong>${escapeHtml(name)}</strong> updated their public partner listing (<code>/our-partners</code>).</p>
   <p><a href="${hideUrl}" style="display:inline-block;padding:10px 16px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Review &amp; hide this listing</a></p>

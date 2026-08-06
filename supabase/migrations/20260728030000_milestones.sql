@@ -6,11 +6,11 @@
 -- one-time-bonus record. Additive/prod-safe per ADR 0012 (create-if-not-exists,
 -- service-role RLS, set_updated_at trigger). Mirrors 20260728020000_commissions.sql.
 --
--- rate_bump is PERCENTAGE POINTS (matches the seeded DEFAULT scheme kind 'percent'):
--- on a rung crossing the partner's commission_schemes OVERRIDE amount is set to
--- default_percent + cumulative_rate_bump, so #77's resolveScheme picks up the higher
--- rate for SUBSEQUENT orders. (If an admin flips a scheme to 'flat', the override is
--- still written as 'percent' for that partner — documented assumption, kept simple.)
+-- rate_bump is PERCENTAGE POINTS. The DEFAULT commission scheme is now flat $/unit,
+-- so milestones ship PERK-ONLY: every seeded rung has rate_bump 0 (one-time cash
+-- bonus + perk label only). bumpPartnerSchemes only writes a percent override when
+-- the default scheme kind is 'percent', so a stray rate_bump on a flat default can
+-- never create a percent blowout — see lib/milestones/ledger.ts.
 
 -- Tunable rung ladder. Geometric thresholds ~5/15/40/100. Edited only in the Admin
 -- Panel (Partner Commissions page), never shown in the Partner Hub.
@@ -77,15 +77,17 @@ drop policy if exists "Service role full access milestone_bonuses" on milestone_
 create policy "Service role full access milestone_bonuses" on milestone_bonuses
   for all using (true) with check (true);
 
--- Seed the default ladder (geometric ~5/15/40/100). Cumulative rate_bump at the top
--- tier is 1+2+3+5 = 11 points over the 10% default → a 21% override. Admin-tunable.
+-- Seed the default 5-rung ladder. PERK-ONLY: rate_bump 0 for every tier (the default
+-- scheme is flat $/unit, so a percent bump would be incoherent). Each rung grants a
+-- one-time cash_bonus + perk_label. Units / cash / perks are all admin-tunable.
 insert into milestone_rungs (tier, units_threshold, cash_bonus, rate_bump, perk_label)
 values
-  (1, 5,   25,  1, 'Welcome kit'),
-  (2, 15,  75,  2, 'Priority support'),
-  (3, 40,  200, 3, 'Featured partner listing'),
-  (4, 100, 500, 5, 'Annual partner summit invite')
+  (1, 5,    25,   0, 'Welcome kit'),
+  (2, 15,   75,   0, 'Priority support'),
+  (3, 40,   200,  0, 'Featured partner listing'),
+  (4, 100,  500,  0, 'Annual partner summit invite'),
+  (5, 1000, 5000, 0, 'Elite partner status')
 on conflict (tier) do nothing;
 
 comment on table milestone_rungs is
-  'Tunable partner milestone ladder (#79, ADR 0015). rate_bump is percentage points added to the commission scheme on crossing. Unit count is derived from the non-void commissions ledger + endowed start — no events table.';
+  'Tunable partner milestone ladder (#79, ADR 0015). Ships perk-only (rate_bump 0) since the default commission scheme is flat $/unit. Unit count is derived from the non-void commissions ledger + endowed start — no events table.';

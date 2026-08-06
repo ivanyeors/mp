@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { withLocale } from "@/lib/i18n/routing";
 import { requirePartnerPage } from "@/lib/auth/partner";
 import { needsReaccept } from "@/lib/partner-application";
+import { getAgreementMarkdown } from "@/lib/partners";
 import { ensureReferralCode } from "@/lib/referrals";
 import { getSiteOrigin } from "@/lib/site-url";
 import { ReacceptForm } from "@/components/partner/reaccept-form";
@@ -49,7 +50,8 @@ export default async function PartnerHubPage({
 
   // approved — but re-accept first if the agreement version has moved on.
   if (needsReaccept(ctx.agreedVersion)) {
-    return <ReacceptForm lang={locale} />;
+    const agreementMd = await getAgreementMarkdown();
+    return <ReacceptForm lang={locale} agreementMd={agreementMd} />;
   }
 
   const greeting = ctx.partnerName ?? ctx.email;
