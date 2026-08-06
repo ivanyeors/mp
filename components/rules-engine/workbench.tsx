@@ -20,7 +20,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./workbench.css";
-import { Loader2, PanelLeftClose, PanelRightClose, SlidersHorizontal } from "lucide-react";
+import { Loader2, PanelLeftClose, PanelRightClose, SlidersHorizontal, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
@@ -210,6 +210,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const [viewingVersion, setViewingVersion] = useState<RuleGraphRow | null>(null);
   const [versions, setVersions] = useState<RuleGraphRow[]>([]);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [publishErrors, setPublishErrors] = useState<ValidationError[]>([]);
   const [loading, setLoading] = useState(true);
   const [testInputs, setTestInputs] = useState<EngineInputs>({});
@@ -282,16 +283,22 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ graph }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.ok) {
+          const msg = getApiErrorMessage(data.error, `Autosave failed (HTTP ${res.status})`);
           setSaveState("error");
-          toast.error(getApiErrorMessage(data.error, "Autosave failed"));
+          setSaveError(msg);
+          toast.error(msg);
           return;
         }
         draftGraphRef.current = graph;
+        setSaveError(null);
         setSaveState("saved");
-      } catch {
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Network error — draft not saved";
         setSaveState("error");
+        setSaveError(msg);
+        toast.error(`Autosave failed: ${msg}`);
       }
     }, 700);
     return () => clearTimeout(t);
@@ -523,6 +530,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
         : saveState === "error"
           ? "Save error"
           : "Draft";
+  const saveTitle = saveState === "error" ? saveError ?? "Save failed — see the notification for details" : undefined;
 
   return (
     <div className="rules-engine-workbench -mx-2 -my-4 flex h-[calc(100svh-3.5rem)] flex-col sm:-mx-3 md:-mx-6 md:-my-8 lg:-mx-8 lg:-my-10">
@@ -650,7 +658,12 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </MenubarMenu>
         </Menubar>
 
-        <span className="text-xs text-muted-foreground">{saveLabel}</span>
+        <span
+          className={`text-xs ${saveState === "error" ? "text-destructive" : "text-muted-foreground"}`}
+          title={saveTitle}
+        >
+          {saveLabel}
+        </span>
         <div className="flex-1" />
         {/* max-md: toggle the inspector drawer (hidden on desktop, always docked there) */}
         <Button
@@ -1005,7 +1018,9 @@ function NodeEditor({
       .map((d) => d.key);
     return (
       <div className="space-y-2">
-        <Label className="text-[10px]">Input key</Label>
+        <Label className="text-[10px]">
+          {rule.type === "range" ? "Measurement" : "Input key"}
+        </Label>
         <select
           disabled={disabled}
           className="h-8 w-full rounded-md border bg-background px-2 text-xs max-md:text-base"
@@ -1014,13 +1029,14 @@ function NodeEditor({
         >
           {keys.map((k) => (
             <option key={k} value={k}>
-              {k}
+              {prettyKey(k)}
             </option>
           ))}
         </select>
         {rule.type === "range" ? (
           <BandsEditor
             bands={rule.bands}
+            measurementLabel={prettyKey(rule.inputKey)}
             disabled={disabled}
             onChange={(bands) => onChange({ ...rule, bands })}
           />
@@ -1149,10 +1165,12 @@ function NodeEditor({
 
 function BandsEditor({
   bands,
+  measurementLabel,
   disabled,
   onChange,
 }: {
   bands: RangeBand[];
+  measurementLabel: string;
   disabled: boolean;
   onChange: (bands: RangeBand[]) => void;
 }) {
@@ -1161,10 +1179,24 @@ function BandsEditor({
     onChange(next);
   };
   return (
-    <div className="space-y-2">
-      <div className="text-[10px] font-medium">Bands (inches)</div>
+    <div className="space-y-1.5">
+      <div className="text-[10px] font-medium">Size bands · inches</div>
+      <p className="text-[10px] text-muted-foreground">
+        Each band maps a {measurementLabel} range to a size.
+      </p>
+      {bands.length ? (
+        <div className="grid grid-cols-[1fr_1fr_1.4fr_auto] gap-1 px-0.5 text-[9px] uppercase tracking-wide text-muted-foreground">
+          <span>Min</span>
+          <span>Max</span>
+          <span>Label</span>
+          {!disabled ? <span className="w-7" /> : null}
+        </div>
+      ) : null}
       {bands.map((b, i) => (
-        <div key={b.id} className="grid grid-cols-3 gap-1">
+        <div
+          key={b.id}
+          className="grid grid-cols-[1fr_1fr_1.4fr_auto] items-center gap-1"
+        >
           <Input
             disabled={disabled}
             className="h-7 text-[11px]"
@@ -1200,6 +1232,16 @@ function BandsEditor({
             value={b.label}
             onChange={(e) => setBand(i, { label: e.target.value })}
           />
+          {!disabled ? (
+            <button
+              type="button"
+              aria-label={`Remove ${b.label || "band"}`}
+              onClick={() => onChange(bands.filter((_, idx) => idx !== i))}
+              className="text-muted-foreground hover:text-destructive inline-flex h-7 w-7 items-center justify-center rounded-md"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
         </div>
       ))}
       {!disabled ? (
@@ -1220,7 +1262,7 @@ function BandsEditor({
             ])
           }
         >
-          Add band
+          + Add band
         </Button>
       ) : null}
     </div>
@@ -1229,6 +1271,13 @@ function BandsEditor({
 
 function roundIn(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+// Humanize catalog keys for display: shoulder_length_cm -> "Shoulder length".
+// Check: prettyKey("shoulder_length_cm") === "Shoulder length".
+function prettyKey(key: string): string {
+  const s = key.replace(/_cm$/, "").replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function TemplatePicker({
