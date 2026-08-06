@@ -14,6 +14,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AgreementContent } from "@/components/partner/agreement-content";
 import {
   BUSINESS_CATEGORIES,
@@ -67,22 +75,31 @@ export function ApplyForm({
   });
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const [agreed, setAgreed] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const errors = validateApplication(values as ApplicationFields);
-  const canSubmit = agreed && Object.keys(errors).length === 0 && !pending;
 
   const set = (patch: Partial<FormValues>) => setValues((v) => ({ ...v, ...patch }));
   const blur = (key: keyof FormValues) => setTouched((t) => new Set(t).add(key));
   const errorFor = (key: keyof FormValues) => (touched.has(key) ? errors[key] : undefined);
+
+  // The agreement modal opens only once the fields validate; otherwise reveal inline errors.
+  function openAgreement() {
+    setTouched(new Set(Object.keys(values)));
+    if (Object.keys(errors).length === 0) setAgreementOpen(true);
+  }
 
   function onSubmit() {
     setFormError(null);
     startTransition(async () => {
       const res = await submitApplication(lang, values as ApplicationFields, agreed);
       // Reached only on failure (success redirects server-side).
-      if (res?.fieldErrors) setTouched(new Set(Object.keys(res.fieldErrors)));
+      if (res?.fieldErrors) {
+        setTouched(new Set(Object.keys(res.fieldErrors)));
+        setAgreementOpen(false); // close so inline field errors are visible
+      }
       if (res?.formError) setFormError(res.formError);
     });
   }
@@ -101,7 +118,7 @@ export function ApplyForm({
         className="space-y-6"
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSubmit) onSubmit();
+          openAgreement();
         }}
       >
         <Field id="companyName" label="Company name" error={errorFor("companyName")}>
@@ -206,11 +223,25 @@ export function ApplyForm({
           />
         </Field>
 
-        <div className="space-y-4 rounded-lg border p-4">
-          <h2 className="text-base font-semibold">Partner Agreement</h2>
-          <div className="max-h-72 overflow-y-auto rounded-md border bg-muted/30 p-4">
+        <Button type="submit" className="w-full">
+          Become a Partner
+        </Button>
+      </form>
+
+      {/* Agreement pops up only after the fields validate — larger modal for comfortable reading. */}
+      <Dialog open={agreementOpen} onOpenChange={setAgreementOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Partner Agreement</DialogTitle>
+            <DialogDescription>
+              Please read the agreement below, then confirm to submit your application.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-y-auto rounded-md border bg-muted/30 p-4">
             <AgreementContent content={agreementMd} />
           </div>
+
           <label className="flex items-start gap-3 text-sm">
             <Checkbox
               checked={agreed}
@@ -220,14 +251,21 @@ export function ApplyForm({
             />
             <span>I have read and agree to the Partner Agreement above.</span>
           </label>
-        </div>
 
-        {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
-        <Button type="submit" disabled={!canSubmit} className="w-full">
-          {pending ? "Submitting…" : "Become a Partner"}
-        </Button>
-      </form>
+          <DialogFooter>
+            <Button
+              type="button"
+              disabled={!agreed || pending}
+              onClick={onSubmit}
+              className="w-full sm:w-auto"
+            >
+              {pending ? "Submitting…" : "Agree & submit application"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
