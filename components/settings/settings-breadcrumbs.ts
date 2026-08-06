@@ -49,6 +49,19 @@ function allNavEntries(groups: BreadcrumbNavGroup[]): BreadcrumbNavItem[] {
   return out;
 }
 
+/** Nav parent that lists `href` as a direct child (for nesting that isn't URL-nested). */
+function findStructuralParent(
+  groups: BreadcrumbNavGroup[],
+  href: string,
+): BreadcrumbNavItem | null {
+  for (const group of groups) {
+    for (const item of group.items) {
+      if ((item.items ?? []).some((sub) => sub.href === href)) return item;
+    }
+  }
+  return null;
+}
+
 /** UUID or long opaque token — not a human-readable slug. */
 export function isOpaqueId(segment: string): boolean {
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment)) {
@@ -87,14 +100,21 @@ export function buildSettingsBreadcrumbs(
   const entries = allNavEntries(groups);
   const activeHref = findActiveHref(path, groups);
 
-  const ancestors = entries
-    .filter(
-      (e) =>
-        e.href !== "/settings" &&
-        activeHref != null &&
-        (activeHref === e.href || activeHref.startsWith(`${e.href}/`)),
-    )
-    .sort((a, b) => a.href.length - b.href.length);
+  const matched = entries.filter(
+    (e) =>
+      e.href !== "/settings" &&
+      activeHref != null &&
+      (activeHref === e.href || activeHref.startsWith(`${e.href}/`)),
+  );
+
+  // Include a nav parent that lists the active entry as a child but whose URL
+  // isn't a prefix of it (e.g. Partners → /settings/partner-commissions).
+  const structuralParent = activeHref ? findStructuralParent(groups, activeHref) : null;
+  if (structuralParent && !matched.some((e) => e.href === structuralParent.href)) {
+    matched.push(structuralParent);
+  }
+
+  const ancestors = matched.sort((a, b) => a.href.length - b.href.length);
 
   const crumbs: SettingsCrumb[] = [{ label: "Admin Panel", href: "/settings" }];
 

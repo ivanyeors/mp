@@ -1,0 +1,49 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildSettingsBreadcrumbs,
+  type BreadcrumbNavGroup,
+} from "@/components/settings/settings-breadcrumbs";
+
+const GROUPS: BreadcrumbNavGroup[] = [
+  {
+    label: "Landing Site",
+    items: [
+      // URL-nested child (like Product Builder → Rules Engine).
+      {
+        href: "/settings/product-builder",
+        label: "Product Builder",
+        items: [{ href: "/settings/product-builder/rules-engine", label: "Rules Engine" }],
+      },
+      // Structurally-nested but sibling-URL child (Partners → Partner Commissions).
+      {
+        href: "/settings/partners",
+        label: "Partners",
+        items: [
+          { href: "/settings/partner-applications", label: "Partner applications" },
+          { href: "/settings/partner-commissions", label: "Partner Commissions" },
+        ],
+      },
+    ],
+  },
+];
+
+const labels = (path: string) =>
+  buildSettingsBreadcrumbs(path, GROUPS).map((c) => c.label);
+
+describe("buildSettingsBreadcrumbs", () => {
+  it("nests a sibling-URL child under its nav parent", () => {
+    expect(labels("/settings/partner-commissions")).toEqual([
+      "Admin Panel",
+      "Partners",
+      "Partner Commissions",
+    ]);
+  });
+
+  it("still nests a URL-nested child without duplicating the parent", () => {
+    expect(labels("/settings/product-builder/rules-engine")).toEqual([
+      "Admin Panel",
+      "Product Builder",
+      "Rules Engine",
+    ]);
+  });
+});
