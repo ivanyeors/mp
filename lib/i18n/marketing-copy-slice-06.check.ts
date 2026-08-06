@@ -58,7 +58,7 @@ assert.match(partners.subtitle ?? "", /physiotherapists/i);
 assert.match(partners.subtitle ?? "", /wellness/i);
 assert.match(partners.subtitle ?? "", /cervical/i);
 assert.equal(partners.ctaButtonLabel, "Request a demo");
-assert.equal(partners.ctaButtonUrl, "/support");
+assert.equal(partners.ctaButtonUrl, "/partner/apply");
 assert.doesNotMatch(
   `${partners.title} ${partners.subtitle} ${partners.ctaSubtitle}`,
   FORBIDDEN_OFFER

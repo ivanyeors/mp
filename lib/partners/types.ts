@@ -102,7 +102,7 @@ export const DEFAULT_WORK_WITH_US: Record<Locale, WorkWithUsContent> = {
     ctaTitle: "Ready to partner?",
     ctaSubtitle: "Reach out for a product demo and see how Mpillow can support your practice.",
     ctaButtonLabel: "Request a demo",
-    ctaButtonUrl: "/support",
+    ctaButtonUrl: "/partner/apply",
     showMarquee: true,
   },
   "zh-CN": {
@@ -117,7 +117,7 @@ export const DEFAULT_WORK_WITH_US: Record<Locale, WorkWithUsContent> = {
     ctaTitle: "准备好合作了吗？",
     ctaSubtitle: "联系我们预约产品演示，了解 Mpillow 如何支持您的业务。",
     ctaButtonLabel: "预约演示",
-    ctaButtonUrl: "/support",
+    ctaButtonUrl: "/partner/apply",
     showMarquee: true,
   },
 };

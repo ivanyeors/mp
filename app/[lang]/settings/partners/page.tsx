@@ -61,7 +61,7 @@ function emptyWorkWithUs(): WorkWithUsContent {
     ctaTitle: "",
     ctaSubtitle: "",
     ctaButtonLabel: "",
-    ctaButtonUrl: "/support",
+    ctaButtonUrl: "/partner/apply",
     showMarquee: true,
   };
 }
