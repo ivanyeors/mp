@@ -4,6 +4,10 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
+import { getPartnerByReferralCode } from "@/lib/referrals";
+import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
+import { computeSelfPurchaseDiscount } from "@/lib/partner-self-purchase";
+import { loadSelfPurchaseAllowance } from "@/lib/partner-self-purchase/allowance";
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
@@ -54,6 +58,8 @@ const CheckoutSchema = z.object({
   shipping_address: ShippingAddressSchema,
   shipping_method_id: z.string().uuid(),
   coupon_code: z.string().optional(),
+  /** Optional typed partner/referral code (attribution, #74). Never blocks. */
+  referral_code: z.string().optional(),
   items: z.array(CheckoutItemSchema).min(1),
 });
 
@@ -76,7 +82,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { email, phone, shipping_address, shipping_method_id, coupon_code, items } = parsed.data;
+  const { email, phone, shipping_address, shipping_method_id, coupon_code, referral_code, items } =
+    parsed.data;
 
   const admin = supabaseAdmin();
 
@@ -413,6 +420,50 @@ export async function POST(req: Request) {
   const shippingAmount = isFreeShipping ? 0 : calculateShippingRate(shippingMethod, subtotal);
   const shippingLabel = resolveShippingContent(shippingMethod).name;
 
+  // Referral attribution (#74): resolved BEFORE tax so a self-purchase discount
+  // (#82) reduces the taxable base. Invalid code silently attributes nothing.
+  const referralPartner = referral_code
+    ? await getPartnerByReferralCode(referral_code)
+    : null;
+
+  // Partner self-purchase (#82): a signed-in APPROVED partner buying pillows/
+  // bolsters in their OWN account, and NOT via a referral attribution. It is
+  // UNATTRIBUTED by design — orders.partner_id stays null (set only from
+  // referralPartner below), so commission (#77 fires on order.partner_id) and
+  // milestone (#79, counts attributed commissions) NEVER fire. The discount is
+  // folded into discountAmount + applied as a Stripe coupon (mirroring the coupon
+  // path) so the partner is actually charged the better price. Over-cap units keep
+  // MSRP. self_purchase_partner_id (NOT partner_id) tracks the allowance for AC5.
+  let discountLabel: string | null = appliedCouponCode;
+  let selfPurchasePartnerId: string | null = null;
+  let selfPurchaseUnits = 0;
+  if (!referralPartner) {
+    const partnerCtx = await getPartnerContext();
+    if (isPartnerActive(partnerCtx)) {
+      const allowance = await loadSelfPurchaseAllowance(partnerCtx.partnerId);
+      const commissionableLines = cart.items
+        .filter(
+          (item) =>
+            item.product?.product_type === "pillow" || item.product?.product_type === "bolster",
+        )
+        .map((item) => ({
+          unitPrice:
+            (item.variant?.price ?? 0) +
+            (item.customization_id
+              ? customizationMap.get(item.customization_id)?.total_addon_price ?? 0
+              : 0),
+          quantity: item.quantity,
+        }));
+      const sp = computeSelfPurchaseDiscount(allowance, commissionableLines);
+      if (sp.discountAmount > 0) {
+        discountAmount = Math.round((discountAmount + sp.discountAmount) * 100) / 100;
+        discountLabel = appliedCouponCode ? `${appliedCouponCode} + Partner pricing` : "Partner pricing";
+        selfPurchasePartnerId = partnerCtx.partnerId;
+        selfPurchaseUnits = sp.discountedUnits;
+      }
+    }
+  }
+
   // 10. Compute tax from the configurable region/rate table (keyed on the
   // shipping country) and the grand total. When Stripe Tax is enabled this is
   // only a pre-checkout ESTIMATE: the webhook overwrites tax_amount/total from
@@ -446,6 +497,15 @@ export async function POST(req: Request) {
       shipping_method_id,
       coupon_id: couponId,
       coupon_code: appliedCouponCode,
+      partner_id: referralPartner?.id ?? null,
+      ref_code: referralPartner?.referral_code ?? null,
+      // Shop has only the typed-code attribution path today (no assist/link),
+      // so a referral here is always 'typed'; self-purchase (#82) stays null (#80).
+      attribution_source: referralPartner ? "typed" : null,
+      // #82: self-purchase marker + consumed-unit count. NOT partner_id, so this
+      // never triggers commission/milestone — it only tracks the allowance.
+      self_purchase_partner_id: selfPurchasePartnerId,
+      self_purchase_units: selfPurchaseUnits,
       payment_method: "stripe",
       locale,
     })
@@ -536,7 +596,7 @@ export async function POST(req: Request) {
       // The discount is applied as a Stripe coupon so the customer is charged
       // the discounted amount (closes the discount leak).
       discountAmount,
-      discountLabel: appliedCouponCode ?? undefined,
+      discountLabel: discountLabel ?? undefined,
       // Stripe Tax (gated): compute tax on the post-discount amount and supply
       // the address. Otherwise add manual exclusive tax as a line item.
       automaticTax: useStripeTax,

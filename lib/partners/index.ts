@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getLocationRows, selectPartnerRows } from "@/lib/locations";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import {
+  DEFAULT_AGREEMENT_MD,
   DEFAULT_WORK_WITH_US,
   type PartnerRow,
   type PartnersPageRow,
@@ -77,6 +78,12 @@ export async function getPartnersPageRow(): Promise<PartnersPageRow | null> {
   }
 
   return (data as PartnersPageRow) ?? null;
+}
+
+/** Owner-editable Partner Agreement markdown; falls back to the placeholder (#87). */
+export async function getAgreementMarkdown(): Promise<string> {
+  const row = await getPartnersPageRow();
+  return row?.agreement_md?.trim() ? row.agreement_md : DEFAULT_AGREEMENT_MD;
 }
 
 // Partner projection over the unified locations store (`partners` table): own

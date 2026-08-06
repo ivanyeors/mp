@@ -32,7 +32,13 @@ import {
 } from "@/components/ui/dialog";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { Switch } from "@/components/ui/switch";
-import { DEFAULT_WORK_WITH_US, type PartnerRow, type WorkWithUsContent } from "@/lib/partners/types";
+import {
+  DEFAULT_AGREEMENT_MD,
+  DEFAULT_WORK_WITH_US,
+  type PartnerRow,
+  type WorkWithUsContent,
+} from "@/lib/partners/types";
+import { AGREEMENT_VERSION } from "@/lib/partner-application";
 import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { usePathname } from "next/navigation";
@@ -106,6 +112,9 @@ export default function PartnersSettingsPage() {
   const [partnerForm, setPartnerForm] = useState<PartnerForm>(emptyPartnerForm);
   const [savingPartner, setSavingPartner] = useState(false);
 
+  const [agreementMd, setAgreementMd] = useState("");
+  const [savingAgreement, setSavingAgreement] = useState(false);
+
   const activeContent = content[activeLocale] ?? emptyWorkWithUs();
 
   const loadData = useCallback(async () => {
@@ -127,6 +136,7 @@ export default function PartnersSettingsPage() {
         };
       }
       setContent(merged);
+      setAgreementMd(pageJson.row?.agreement_md ?? DEFAULT_AGREEMENT_MD);
 
       const enHero = pageJson.row?.content?.["en-US"]?.heroImage ?? "";
       setHeroImage(enHero);
@@ -189,6 +199,26 @@ export default function PartnersSettingsPage() {
       loadData();
     } finally {
       setSavingPage(false);
+    }
+  };
+
+  const handleSaveAgreement = async () => {
+    setSavingAgreement(true);
+    try {
+      const res = await fetch("/api/partners-page", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agreement_md: agreementMd }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        toast.error(typeof json.error === "string" ? json.error : "Failed to save agreement");
+        return;
+      }
+      toast.success("Partner Agreement saved");
+      loadData();
+    } finally {
+      setSavingAgreement(false);
     }
   };
 
@@ -318,9 +348,10 @@ export default function PartnersSettingsPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Locations</h1>
+          <h1 className="text-2xl font-semibold">Partners</h1>
           <p className="text-sm text-muted-foreground">
-            Manage own studios and partner clinics, and edit the Work With Us page.
+            Manage own studios and partner clinics, edit the Work With Us page, and the
+            Partner Agreement.
           </p>
         </div>
         <Button asChild variant="outline" size="sm">
@@ -333,8 +364,9 @@ export default function PartnersSettingsPage() {
 
       <Tabs defaultValue="locations">
         <TabsList>
-          <TabsTrigger value="locations">Locations</TabsTrigger>
+          <TabsTrigger value="locations">Partners</TabsTrigger>
           <TabsTrigger value="work-with-us">Work With Us</TabsTrigger>
+          <TabsTrigger value="agreement">Agreement</TabsTrigger>
         </TabsList>
 
         <TabsContent value="work-with-us" className="space-y-6 pt-4">
@@ -595,6 +627,36 @@ export default function PartnersSettingsPage() {
               </div>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="agreement" className="space-y-4 pt-4">
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+            Current version{" "}
+            <span className="font-medium text-foreground">{AGREEMENT_VERSION}</span>. Editing
+            the copy here does not change the version — bump{" "}
+            <code className="text-xs">AGREEMENT_VERSION</code> in code to force partners to
+            re-accept.
+          </div>
+          <div
+            className="space-y-1.5"
+            data-color-mode={resolvedTheme === "dark" ? "dark" : "light"}
+          >
+            <Label>Agreement — markdown (live preview)</Label>
+            <MDEditor
+              value={agreementMd}
+              onChange={(v) => setAgreementMd(v ?? "")}
+              height={460}
+              preview="live"
+            />
+          </div>
+          <Button onClick={handleSaveAgreement} disabled={savingAgreement}>
+            {savingAgreement ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Save Agreement
+          </Button>
         </TabsContent>
       </Tabs>
 

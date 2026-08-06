@@ -11,10 +11,10 @@ export default async function AccountLoginPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ email?: string; next?: string }>;
+  searchParams: Promise<{ email?: string; next?: string; reauth?: string }>;
 }) {
   const { lang } = await params;
-  const { email, next } = await searchParams;
+  const { email, next, reauth } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const accountHref = withLocale("/account", locale);
   const adminHref = withLocale("/settings", locale);
@@ -22,7 +22,9 @@ export default async function AccountLoginPage({
   const nextPath = safeNextPath(next, accountHref);
 
   const user = await getAuthUser();
-  if (user) {
+  // `reauth=1` (partner 7-day cap) forces the form even when a session exists —
+  // signing in again refreshes `last_sign_in_at`. Without it we bounce as usual.
+  if (user && !reauth) {
     redirect(
       resolvePostAuthRedirect({
         next: nextPath,
@@ -40,7 +42,9 @@ export default async function AccountLoginPage({
       <div className="space-y-2 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">Sign In</h1>
         <p className="text-sm text-muted-foreground">
-          Use Google or a magic link to continue.
+          {reauth
+            ? "Your Partner Hub session has expired. Please sign in again to continue."
+            : "Use Google or a magic link to continue."}
         </p>
       </div>
       <div className="mt-8">

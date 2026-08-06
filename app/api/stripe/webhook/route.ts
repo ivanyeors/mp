@@ -7,8 +7,12 @@ import { createMpConfigFromCustomization } from "@/lib/ecommerce/mp-config-sync"
 import { updateCustomerStats } from "@/lib/ecommerce/customers";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyRmaTransition } from "@/lib/rma/transition";
+import { createHeldCommissionsForOrder, voidCommissionsForOrder } from "@/lib/commissions/ledger";
+import { applyMilestoneProgress } from "@/lib/milestones/ledger";
+import { round2 } from "@/lib/commissions";
 import { reconcileOrderTotal, sessionTotals } from "@/lib/stripe/reconcile";
 import { sendOrderConfirmedEmails, sendRefundEmail } from "@/lib/email";
+import { sendReferralEarnedEmail } from "@/lib/email/partner";
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -100,7 +104,7 @@ export async function POST(req: Request) {
         const { data: order } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, paid_at, coupon_id, customer_id, shipping_address, tracking_number, tracking_url, partner_id, delivered_at, order_items(*)"
           )
           .eq("id", orderId)
           .single();
@@ -168,6 +172,66 @@ export async function POST(req: Request) {
             metadata: { stripe_session_id: session.id },
           });
           await rollupOrderMoney(admin, orderId);
+        }
+
+        // Step 1c: Held commissions for an attributed order (#77). Only pillow/bolster
+        // lines earn; the BASE is separated from add-ons (add-on price is folded into
+        // unit_price via the customization snapshot), and shipping/tax are excluded.
+        // Idempotent on order_item_id. delivered_at is null at paid-time for shop
+        // orders, so release stays undated until the order is delivered (never paid_at).
+        if (order.partner_id) {
+          try {
+            const commissionLines = (
+              (order.order_items ?? []) as Array<{
+                id: string;
+                unit_price: number | string;
+                quantity: number;
+                customization_snapshot?: {
+                  product_type?: string;
+                  total_addon_price?: number;
+                } | null;
+              }>
+            ).flatMap((it) => {
+              const pt = it.customization_snapshot?.product_type;
+              if (pt !== "pillow" && pt !== "bolster") return [];
+              const addonPerUnit = Number(it.customization_snapshot?.total_addon_price ?? 0);
+              const basePerUnit = Math.max(0, Number(it.unit_price) - addonPerUnit);
+              return [
+                {
+                  orderItemId: it.id,
+                  productType: pt as "pillow" | "bolster",
+                  baseAmount: round2(basePerUnit * it.quantity),
+                  quantity: it.quantity,
+                },
+              ];
+            });
+            await createHeldCommissionsForOrder(admin, {
+              orderId: order.id,
+              partnerId: order.partner_id as string,
+              deliveredAt: (order.delivered_at as string | null) ?? null,
+              lines: commissionLines,
+            });
+          } catch (err) {
+            console.error(`[stripe/webhook] Commission creation failed for ${orderId}:`, err);
+          }
+          // Milestone rung-crossing (#79): best-effort, never break the webhook.
+          try {
+            await applyMilestoneProgress(admin, order.partner_id as string);
+          } catch (err) {
+            console.error(`[stripe/webhook] Milestone progress failed for ${orderId}:`, err);
+          }
+          // Referral-earned email (#84): once per attributed order (entity_id = order
+          // id). delivered_at is null for a fresh shop order, so the copy states the
+          // release is 30 days after delivery. Best-effort — never break the webhook.
+          try {
+            await sendReferralEarnedEmail(admin, {
+              partnerId: order.partner_id as string,
+              orderId: order.id,
+              currency: order.currency ?? "SGD",
+            });
+          } catch (err) {
+            console.error(`[stripe/webhook] Referral-earned email failed for ${orderId}:`, err);
+          }
         }
 
         const items = (order.order_items ?? []) as Array<{
@@ -312,7 +376,7 @@ export async function POST(req: Request) {
         const { data: order } = await admin
           .from("orders")
           .select(
-            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, coupon_id, customer_id, shipping_address, order_items(*)"
+            "id, order_number, email, currency, subtotal, shipping_amount, tax_amount, discount_amount, total, status, coupon_id, customer_id, shipping_address, partner_id, order_items(*)"
           )
           .eq("payment_reference", paymentIntentId)
           .single();
@@ -381,6 +445,17 @@ export async function POST(req: Request) {
         // recompute customer lifetime stats so reporting and coupon limits stay
         // accurate. Partial refunds leave both untouched.
         if (nowFullyRefunded && !wasFullyRefunded) {
+          // Void the partner's commission on the whole reversed sale (#77). The
+          // RMA path voids per-item; this covers a full refund with NO RMA link
+          // (e.g. a staff Stripe-dashboard refund), which would otherwise pay
+          // commission on a fully-refunded order. Idempotent + best-effort.
+          if (order.partner_id) {
+            try {
+              await voidCommissionsForOrder(admin, order.id);
+            } catch (err) {
+              console.error(`[stripe/webhook] Commission void failed for ${order.id}:`, err);
+            }
+          }
           if (order.coupon_id) {
             const { data: coupon } = await admin
               .from("coupons")

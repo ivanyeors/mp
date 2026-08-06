@@ -134,7 +134,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
     delete (textProps as { inputMode?: unknown }).inputMode;
 
     return (
-      <div className="group relative w-full">
+      <div className="group relative w-full @container">
         <input
           ref={setRefs}
           type="text"
@@ -142,14 +142,14 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           data-slot="input"
           className={cn(
             baseClassName,
-            "pr-18"
+            "@[10rem]:pr-18"
           )}
           onKeyDown={handleKeyDown}
           {...textProps}
         />
 
         {showControls && (
-          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <div className="absolute right-1 top-1/2 hidden -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto @[10rem]:flex">
             <button
               type="button"
               aria-label="Decrease value"

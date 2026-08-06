@@ -79,6 +79,15 @@ describe("validateForPublish", () => {
     ).toBe(true);
   });
 
+  it("rejects a Range edge with no band handle (silent-fallback guard)", () => {
+    const g = base();
+    const rangeIds = new Set(g.nodes.filter((n) => n.type === "range").map((n) => n.id));
+    const e = g.edges.find((edge) => rangeIds.has(edge.source));
+    if (!e) throw new Error("expected a range out-edge");
+    delete (e as { handle?: string }).handle;
+    expect(codes(g)).toContain("range-edge-no-band");
+  });
+
   it("rejects unreachable Fallback when stranded behind a disconnected edge", () => {
     const g = base();
     g.nodes.push({ id: "orphan", type: "input", inputKey: "shoulder_length_cm" });

@@ -22,6 +22,8 @@ export type WorkWithUsContent = {
 export type PartnersPageRow = {
   id: string;
   content: Record<string, WorkWithUsContent>;
+  /** Owner-editable Partner Agreement markdown; null ⇒ DEFAULT_AGREEMENT_MD (#87). */
+  agreement_md?: string | null;
   updated_at: string;
 };
 
@@ -53,6 +55,28 @@ export type ResolvedPartner = {
   websiteUrl: string | null;
   description: string | null;
 };
+
+/**
+ * Placeholder Partner Agreement copy (#87). Used when partners_page.agreement_md is
+ * unset. PLACEHOLDER wording — owner/lawyer edits it in Admin → Partners → Agreement.
+ * Section 3 is the MANDATORY AHPC §5.7/§5.7.1 patient-disclosure clause (ADR 0015);
+ * it must be retained in any final copy.
+ */
+export const DEFAULT_AGREEMENT_MD = `## 1. The Partner Programme
+
+[PLACEHOLDER] This agreement governs your participation in the Mpillow Partner programme operated by Mellow Life Pte Ltd, including referral attribution, commissions, and use of Mpillow materials.
+
+## 2. Commissions and Payment
+
+[PLACEHOLDER] Commission rates, qualifying orders, void conditions, and manual payout terms to be confirmed by counsel.
+
+## 3. Patient-Facing Disclosure (AHPC §5.7 / §5.7.1)
+
+[PLACEHOLDER — counsel to finalise, clause is MANDATORY] Where you are a registered allied health professional, you must disclose to each client, before any recommendation or referral, that you have a financial interest in Mpillow products. Your product recommendations must be based on the client's clinical needs and must not be influenced by any reward, commission, or incentive under this programme, consistent with the AHPC Code of Professional Conduct §5.7 and §5.7.1.
+
+## 4. Term and Changes
+
+[PLACEHOLDER] We may update this agreement. When the terms change, the version changes and you will be asked to accept the updated agreement before continuing to use the Partner Hub.`;
 
 export const DEFAULT_WORK_WITH_US: Record<Locale, WorkWithUsContent> = {
   "en-US": {

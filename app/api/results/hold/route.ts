@@ -25,6 +25,12 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
+import {
+  isWithinReferralWindow,
+  resolveAttribution,
+} from "@/lib/referrals/attribution";
+import { getPartnerByReferralCode } from "@/lib/referrals";
+import { VISITOR_COOKIE, parseVisitorId } from "@/lib/analytics/journey/identity";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
 import {
   loadPreOrderTriggerAtHold,
@@ -110,6 +116,14 @@ const HoldSchema = z
     phone: z.string().min(1),
     discoverySource: z.string().min(1),
     discoverySourceOther: z.string().optional(),
+    /** Optional typed "Partner / referral code". Invalid never blocks the hold. */
+    referralCode: z.string().trim().optional(),
+    /**
+     * Partner-assisted run (#78): the launching partner's own referral code. The
+     * server RE-RESOLVES this to a partner id (never trust a client id) and gives
+     * it ASSIST priority, outranking a typed code / windowed link stamp.
+     */
+    partnerAssistCode: z.string().trim().optional(),
     measurements: z.record(z.string(), z.unknown()).optional(),
     productType: z.enum(["pillow", "bolster"]).default("pillow"),
     suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]).optional(),
@@ -213,6 +227,13 @@ Authorized amount: <strong>${opts.currency} ${opts.amount.toFixed(2)}</strong> (
     console.error("Result held email failed", e);
     return "failed" as const;
   }
+}
+
+function readCookie(req: Request, name: string): string | null {
+  const header = req.headers.get("cookie");
+  if (!header) return null;
+  const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export async function POST(req: Request) {
@@ -497,6 +518,50 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: routeGate.reason }, { status: 409 });
   }
 
+  // Referral attribution (#74/#78): assist > typed > windowed link stamp.
+  // A partner-assisted run (#78) re-resolves the launch code server-side and
+  // wins over any typed code / link. Discovery source never attributes.
+  // STAMP only — no commission.
+  const assistPartner = input.partnerAssistCode
+    ? await getPartnerByReferralCode(input.partnerAssistCode)
+    : null;
+  const typedPartner = input.referralCode
+    ? await getPartnerByReferralCode(input.referralCode)
+    : null;
+  let linkPartnerId: string | null = null;
+  let linkRefCode: string | null = null;
+  const visitorId = parseVisitorId(readCookie(req, VISITOR_COOKIE));
+  if (visitorId) {
+    const { data: visitor } = await admin
+      .from("analytics_visitors")
+      .select("ref_code, ref_stamped_at")
+      .eq("id", visitorId)
+      .maybeSingle();
+    if (
+      visitor?.ref_code &&
+      isWithinReferralWindow(visitor.ref_stamped_at as string | null, new Date())
+    ) {
+      const linkPartner = await getPartnerByReferralCode(visitor.ref_code as string);
+      if (linkPartner) {
+        linkPartnerId = linkPartner.id;
+        linkRefCode = linkPartner.referral_code;
+      }
+    }
+  }
+  const attribution = resolveAttribution({
+    assistPartnerId: assistPartner?.id ?? null,
+    typedPartnerId: typedPartner?.id ?? null,
+    linkPartnerId,
+  });
+  const attributedRefCode =
+    attribution.source === "assist"
+      ? assistPartner?.referral_code ?? null
+      : attribution.source === "typed"
+        ? typedPartner?.referral_code ?? null
+        : attribution.source === "link"
+          ? linkRefCode
+          : null;
+
   const row = {
     id: resultId,
     data: input.measurements ?? {},
@@ -518,6 +583,10 @@ export async function POST(req: Request) {
     customer_phone: phoneNormalized,
     discovery_source: input.discoverySource,
     discovery_source_other: discoverySourceOther,
+    partner_id: attribution.partnerId,
+    ref_code: attributedRefCode,
+    // How it attributed (assist>typed>link) — #80 reads this for PDPA masking.
+    attribution_source: attribution.source,
     customer_id: customerId,
     access_token: accessToken,
     source: "online_purchase",

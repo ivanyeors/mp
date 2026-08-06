@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/i18n/currencies";
+import { escapeHtml, renderEmailShell } from "./base";
 import type {
   EmailTemplateName,
   OrderEmailAddress,
@@ -13,7 +14,7 @@ import type {
 // Pure functions: (OrderEmailData) -> RenderedEmail. No I/O, no provider
 // concerns — trivially unit-testable.
 
-function formatMoney(amount: number, currency: string): string {
+export function formatMoney(amount: number, currency: string): string {
   try {
     return formatCurrency(amount, currency);
   } catch {
@@ -57,15 +58,6 @@ function itemsHtml(data: OrderEmailData): string {
     .join("\n");
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function totalsText(data: OrderEmailData): string {
   const lines = [`Subtotal: ${formatMoney(data.subtotal, data.currency)}`];
   if (data.shippingAmount > 0)
@@ -102,19 +94,9 @@ function totalsHtml(data: OrderEmailData): string {
   }
 }
 
+/** Order templates carry the heading as copy — delegate to the shared branded base. */
 function shell(title: string, bodyHtml: string): string {
-  return `<!doctype html>
-<html>
-<body style="margin:0;background:#f6f6f6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;">
-  <div style="max-width:560px;margin:0 auto;padding:24px;">
-    <div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:28px;">
-      <h1 style="font-size:20px;margin:0 0 12px;">${escapeHtml(title)}</h1>
-      ${bodyHtml}
-    </div>
-    <p style="color:#999;font-size:12px;text-align:center;margin-top:16px;">mpillow</p>
-  </div>
-</body>
-</html>`;
+  return renderEmailShell({ title, bodyHtml });
 }
 
 function addressBlockHtml(data: OrderEmailData): string {

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEmailTransport } from ".";
+import { escapeHtml, renderEmailShell } from "./base";
 import { getDefaultFromAddress } from "./transport";
 import type { RenderedEmail, SendOutcome } from "./types";
 import type { RmaResolution } from "@/lib/rma/transitions";
@@ -37,15 +38,6 @@ export interface RmaEmailData {
 // Rendering (pure)
 // ------------------------------------------------------------
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function itemsText(data: RmaEmailData): string {
   return data.items.map((i) => `- ${i.title} x${i.quantity}`).join("\n");
 }
@@ -56,19 +48,9 @@ function itemsHtml(data: RmaEmailData): string {
     .join("\n");
 }
 
+/** RMA templates carry the heading as copy — delegate to the shared branded base. */
 function shell(title: string, bodyHtml: string): string {
-  return `<!doctype html>
-<html>
-<body style="margin:0;background:#f6f6f6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;">
-  <div style="max-width:560px;margin:0 auto;padding:24px;">
-    <div style="background:#fff;border:1px solid #eee;border-radius:12px;padding:28px;">
-      <h1 style="font-size:20px;margin:0 0 12px;">${escapeHtml(title)}</h1>
-      ${bodyHtml}
-    </div>
-    <p style="color:#999;font-size:12px;text-align:center;margin-top:16px;">mpillow</p>
-  </div>
-</body>
-</html>`;
+  return renderEmailShell({ title, bodyHtml });
 }
 
 const RESOLUTION_LABEL: Record<RmaResolution, string> = {

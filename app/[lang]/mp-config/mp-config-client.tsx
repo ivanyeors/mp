@@ -137,6 +137,7 @@ import {
   SelectedAddonPreviews,
   type AddonOption,
 } from "@/components/configurator/addon-cards";
+import { CoBrandBanner } from "@/components/configurator/co-brand-banner";
 import { ConfigImageUpload } from "@/components/configurator/config-image-upload";
 import {
   holdCtaLabel,
@@ -239,11 +240,25 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
 export function MpConfigClient({
   info,
   staffAssist = false,
+  partner = null,
 }: {
   info: MpConfigInfo;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
   staffAssist?: boolean;
+  /**
+   * Partner-assisted co-brand context (#78). Non-null → assisted run: co-brand
+   * finish panel, no filling-template / add-on / upsell surfaces, assist-priority
+   * attribution. null → guest/staff flow renders PIXEL-IDENTICAL (AC5).
+   */
+  partner?: {
+    code: string;
+    name: string;
+    logoUrl: string | null;
+    description: string | null;
+  } | null;
 }) {
+  // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
+  const partnerAssisted = Boolean(partner);
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -336,6 +351,7 @@ export function MpConfigClient({
   const [holdPhone, setHoldPhone] = useState("");
   const [discoverySource, setDiscoverySource] = useState("");
   const [discoverySourceOther, setDiscoverySourceOther] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [holdNotes, setHoldNotes] = useState("");
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>({
     recipient: "",
@@ -602,6 +618,7 @@ export function MpConfigClient({
       discoverySource,
       discoverySourceOther,
       notes: holdNotes,
+      referralCode,
     }),
     {
       key: "recipient",
@@ -1281,19 +1298,22 @@ export function MpConfigClient({
       suggestion?.recommended?.size ??
       suggestion?.product?.size ??
       "";
-    const qs = new URLSearchParams({ productType: "pillow" });
-    if (size) qs.set("size", size);
-    fetch(`/api/results/addons?${qs.toString()}`)
-      .then((r) => r.json())
-      .then((d: { addons?: AddonOption[] }) => {
-        const list = d.addons ?? [];
-        setAddons(list);
-        setSelectedAddons((prev) => {
-          const valid = new Set(list.map((a) => a.item_id));
-          return new Set([...prev].filter((id) => valid.has(id)));
-        });
-      })
-      .catch(() => setAddons([]));
+    // Assisted runs offer no add-ons (AC3) — skip the fetch entirely.
+    if (!partnerAssisted) {
+      const qs = new URLSearchParams({ productType: "pillow" });
+      if (size) qs.set("size", size);
+      fetch(`/api/results/addons?${qs.toString()}`)
+        .then((r) => r.json())
+        .then((d: { addons?: AddonOption[] }) => {
+          const list = d.addons ?? [];
+          setAddons(list);
+          setSelectedAddons((prev) => {
+            const valid = new Set(list.map((a) => a.item_id));
+            return new Set([...prev].filter((id) => valid.has(id)));
+          });
+        })
+        .catch(() => setAddons([]));
+    }
 
     const country = holdAddress.country || "SG";
     fetch(`/api/shop/shipping?country=${encodeURIComponent(country)}`)
@@ -1467,6 +1487,9 @@ export function MpConfigClient({
           discoverySource,
           discoverySourceOther:
             discoverySource === "other" ? discoverySourceOther.trim() : undefined,
+          referralCode: referralCode.trim() || undefined,
+          // Assist priority (#78): server re-resolves this code → partner id.
+          ...(partner ? { partnerAssistCode: partner.code } : {}),
           measurements: {
             ...measurementData,
             ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
@@ -1517,6 +1540,7 @@ export function MpConfigClient({
     holdPhone,
     discoverySource,
     discoverySourceOther,
+    referralCode,
     holdNotes,
     holdAddress,
     selectedShippingId,
@@ -1531,6 +1555,7 @@ export function MpConfigClient({
     staffAssist,
     assistPlacements,
     sessionFillingTemplateId,
+    partner,
   ]);
 
   const saveLabel:
@@ -1616,7 +1641,8 @@ export function MpConfigClient({
     );
     const guestPlacements = rowsToPillowPlacements(tpl?.placements ?? []);
     // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
-    const guestXray = revealNow && previewMixMode(guestPlacements) === "xray";
+    // Assisted runs show SIZE ONLY — no filling x-ray (AC3).
+    const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
     const xrayVisible = staffAssist || guestXray;
     const guestFillings = shopRecommendation?.available_fillings ?? [];
     const guestItemSubtypes = new Map(
@@ -1818,7 +1844,7 @@ export function MpConfigClient({
                       {showTierAdvice && record?.tierSuggestion ? (
                         <TierSuggestion tier={record.tierSuggestion} />
                       ) : null}
-                      {routePending && record?.flowRoute ? (
+                      {routePending && record?.flowRoute && !partnerAssisted ? (
                         <UpsellCard
                           reason={record.flowRoute.reason}
                           fromLabel={FLOW_UI_LABEL[record.flow]}
@@ -1835,8 +1861,9 @@ export function MpConfigClient({
                         reveal={revealNow}
                         sizeLabel={size ? `Size ${size}` : ""}
                         why={why}
-                        templateName={tpl?.name ?? null}
-                        mixLines={mixLines}
+                        // Assisted: SIZE ONLY — drop the Filling Template surface (AC3).
+                        templateName={partnerAssisted ? null : tpl?.name ?? null}
+                        mixLines={partnerAssisted ? [] : mixLines}
                       />
                     </>
                   );
@@ -1867,6 +1894,7 @@ export function MpConfigClient({
             {/* Right: customization panel */}
             <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
               <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
+                {partner ? <CoBrandBanner partner={partner} /> : null}
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                   <p className="text-sm text-muted-foreground">
@@ -1912,7 +1940,7 @@ export function MpConfigClient({
                   </div>
                 )}
 
-                {addons.length > 0 && (
+                {addons.length > 0 && !partnerAssisted && (
                   <div className="space-y-3">
                     <Label className="text-base font-semibold">
                       Add-ons for your Mpillow (optional)
@@ -1953,6 +1981,7 @@ export function MpConfigClient({
                       discoverySource,
                       discoverySourceOther,
                       notes: holdNotes,
+                      referralCode,
                     }}
                     onChange={(patch) => {
                       if (patch.email !== undefined) setHoldEmail(patch.email);
@@ -1964,6 +1993,9 @@ export function MpConfigClient({
                         setDiscoverySourceOther(patch.discoverySourceOther);
                       }
                       if (patch.notes !== undefined) setHoldNotes(patch.notes);
+                      if (patch.referralCode !== undefined) {
+                        setReferralCode(patch.referralCode);
+                      }
                     }}
                   />
 
@@ -2090,6 +2122,7 @@ export function MpConfigClient({
                           discoverySource,
                           discoverySourceOther,
                           notes: holdNotes,
+                          referralCode,
                         }),
                       );
                       if (Object.keys(contactErrors).length > 0) {

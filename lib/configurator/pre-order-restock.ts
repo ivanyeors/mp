@@ -4,6 +4,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEmailTransport } from "@/lib/email";
+import { renderEmailShell } from "@/lib/email/base";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { isPreOrder, type PreOrderTriggerInput } from "./pre-order-trigger";
 import { loadPreOrderTriggerAtHold } from "./pre-order-persist";
@@ -74,10 +75,12 @@ export function restockEmailCopy(opts: {
     "",
     `Status page: ${statusUrl}`,
   ].join("\n");
-  const html = `<p>Good news — the inventory for your customisation has been <strong>restocked</strong>.</p>
-<p>Sign in in a few days to track your customisation (<strong>Result</strong>) status:</p>
-<p><a href="${loginUrl}">Sign in</a></p>
-<p><a href="${statusUrl}">Open status page</a></p>`;
+  const html = renderEmailShell({
+    bodyHtml: `<p style="color:#444;">Good news — the inventory for your customisation has been <strong>restocked</strong>.</p>
+<p style="color:#444;">Sign in in a few days to track your customisation (<strong>Result</strong>) status:</p>
+<p><a href="${loginUrl}" style="color:#2563eb;">Sign in</a></p>
+<p><a href="${statusUrl}" style="color:#2563eb;">Open status page</a></p>`,
+  });
   return { subject, text, html };
 }
 

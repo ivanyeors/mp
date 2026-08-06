@@ -26,9 +26,14 @@ const WorkWithUsContentSchema = z.object({
   showMarquee: z.boolean().optional(),
 });
 
-const PatchSchema = z.object({
-  content: z.record(z.string(), WorkWithUsContentSchema),
-});
+const PatchSchema = z
+  .object({
+    content: z.record(z.string(), WorkWithUsContentSchema).optional(),
+    agreement_md: z.string().optional(),
+  })
+  .refine((v) => v.content !== undefined || v.agreement_md !== undefined, {
+    message: "Nothing to update",
+  });
 
 export async function GET() {
   const row = await getPartnersPageRow();
@@ -46,11 +51,17 @@ export async function PATCH(req: Request) {
 
     const existing = await getPartnersPageRow();
 
+    // Patch only the fields provided — the Work With Us tab sends `content`, the
+    // Agreement tab sends `agreement_md`; neither must clobber the other.
+    const fields: Record<string, unknown> = {};
+    if (parsed.content !== undefined) fields.content = parsed.content;
+    if (parsed.agreement_md !== undefined) fields.agreement_md = parsed.agreement_md;
+
     let data;
     if (existing) {
       const result = await admin
         .from("partners_page")
-        .update({ content: parsed.content })
+        .update(fields)
         .eq("id", existing.id)
         .select("*")
         .single();
@@ -62,7 +73,7 @@ export async function PATCH(req: Request) {
     } else {
       const result = await admin
         .from("partners_page")
-        .insert({ content: parsed.content })
+        .insert({ content: parsed.content ?? {}, agreement_md: parsed.agreement_md ?? null })
         .select("*")
         .single();
 
@@ -74,7 +85,7 @@ export async function PATCH(req: Request) {
 
     const urls: string[] = [];
     const assetIds: string[] = [];
-    for (const loc of Object.values(parsed.content)) {
+    for (const loc of Object.values(parsed.content ?? {})) {
       if (typeof loc.heroImage === "string" && loc.heroImage.startsWith("http")) {
         urls.push(loc.heroImage);
       }

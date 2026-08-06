@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { Loader2, Mail } from "lucide-react";
 import { authCallbackUrl } from "@/lib/site-url";
+import { safeNextPath } from "@/lib/auth/post-auth-redirect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +24,10 @@ export function LoginForm({
   submitLabel?: string;
 }) {
   const emailFieldId = useId();
+  const codeFieldId = useId();
   const [email, setEmail] = useState(initialEmail);
-  const [loading, setLoading] = useState<"google" | "email" | null>(null);
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState<"google" | "email" | "verify" | null>(null);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,8 +54,9 @@ export function LoginForm({
     }
   };
 
-  const signInWithEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // One request yields BOTH a magic link (emailRedirectTo) and a 6-digit token
+  // usable by verifyOtp. Used for the initial send and for "Resend code".
+  const requestOtp = async () => {
     setError(null);
     setLoading("email");
     const supabase = createSupabaseBrowserClient();
@@ -68,14 +72,83 @@ export function LoginForm({
     setSent(true);
   };
 
+  const signInWithEmail = (e: React.FormEvent) => {
+    e.preventDefault();
+    void requestOtp();
+  };
+
+  // Cross-device alternative to clicking the link: verify the emailed code.
+  // On success the browser client persists the session to cookies; a full-page
+  // nav lets SSR read them and run existing per-destination role resolution.
+  const verifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading("verify");
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: "email",
+    });
+    if (error) {
+      setLoading(null);
+      setError(error.message);
+      return;
+    }
+    // Same-origin guard mirrors the callback route's safeNext; keep spinner.
+    window.location.assign(safeNextPath(nextPath, "/"));
+  };
+
   if (sent) {
     return (
-      <div className="rounded-lg border p-6 text-center">
-        <Mail className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-        <p className="font-medium">Check your inbox</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          We sent a sign-in link to <span className="font-medium">{email}</span>.
-        </p>
+      <div className="space-y-4">
+        <div className="rounded-lg border p-6 text-center">
+          <Mail className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <p className="font-medium">Check your inbox</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            We sent a sign-in link and a 6-digit code to{" "}
+            <span className="font-medium">{email}</span>. Click the link, or
+            enter the code below.
+          </p>
+        </div>
+
+        <form onSubmit={verifyCode} className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={codeFieldId}>
+              Enter the 6-digit code from your email
+            </Label>
+            <Input
+              id={codeFieldId}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              disabled={loading !== null}
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading !== null || !code.trim()}
+          >
+            {loading === "verify" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            Verify code
+          </Button>
+        </form>
+
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+        <button
+          type="button"
+          onClick={() => void requestOtp()}
+          disabled={loading !== null}
+          className="w-full text-sm text-muted-foreground underline underline-offset-4 disabled:opacity-50"
+        >
+          Resend code
+        </button>
       </div>
     );
   }

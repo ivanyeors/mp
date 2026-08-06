@@ -192,6 +192,29 @@ export function validateForPublish(
     }
   }
 
+  // Range/Match out-edges must carry a branch handle (band id / match value).
+  // Without it, evaluate can't select a branch, the path silently dies, and the
+  // graph drops to Fallback at runtime — the #1 cause of "always falls back".
+  const bandIds = new Map<string, Set<string>>();
+  for (const n of graph.nodes) {
+    if (n.type === "range") {
+      bandIds.set(n.id, new Set((n as RangeNode).bands.map((b) => b.id)));
+    }
+  }
+  for (const e of graph.edges) {
+    const src = nodes.get(e.source);
+    if (src?.type === "range") {
+      if (!e.handle) {
+        errors.push(err(e.source, "range-edge-no-band", `Range edge ${e.id} must connect from a band handle`));
+      } else if (!bandIds.get(e.source)?.has(e.handle)) {
+        errors.push(err(e.source, "range-edge-bad-band", `Range edge ${e.id} uses band "${e.handle}" that is not on this Range`));
+      }
+    }
+    if (src?.type === "match" && !e.handle) {
+      errors.push(err(e.source, "match-edge-no-value", `Match edge ${e.id} must connect from a value handle`));
+    }
+  }
+
   const fallbacks = graph.nodes.filter((n) => n.type === "fallback");
   if (fallbacks.length === 0) {
     errors.push(err(null, "no-fallback", "Graph must include a Fallback terminal"));
