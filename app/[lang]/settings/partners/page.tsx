@@ -494,9 +494,9 @@ export default function PartnersSettingsPage() {
             <div className="space-y-1.5">
               <Label>CTA button URL</Label>
               <Input
-                value={activeContent.ctaButtonUrl ?? "/support"}
+                value={activeContent.ctaButtonUrl ?? "/partner/apply"}
                 onChange={(e) => updateActiveContent({ ctaButtonUrl: e.target.value })}
-                placeholder="/support"
+                placeholder="/partner/apply"
               />
             </div>
 
