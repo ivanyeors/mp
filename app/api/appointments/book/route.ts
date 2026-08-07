@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { createEvent, freeBusy } from "@/lib/appointments/calendar";
 import { syncGuestContact, type ContactSyncResult } from "@/lib/appointments/contacts";
-import { normalizePhone } from "@/lib/appointments/phone";
+import { formatDateSgt, formatTimeSgt } from "@/lib/appointments/format";
+import { isPhoneAllowed, normalizePhone } from "@/lib/appointments/phone";
 import { upsertPendingReminder } from "@/lib/appointments/reminders-db";
+import { sendTemplateMessage } from "@/lib/appointments/whatsapp";
 import {
   APPOINTMENT_SETTING_KEYS,
   parseAppointmentSettings,
@@ -101,6 +103,29 @@ export async function POST(req: Request) {
       appointmentType: parsed.appointment_type,
       startsAt: new Date(startMs).toISOString(),
     });
+
+    // Best-effort immediate WhatsApp confirmation. A web booking has no open 24h
+    // service window, so this must be an approved template — dormant until
+    // WHATSAPP_TEMPLATE_CONFIRM names one (e.g. appointment_confirmation). Without
+    // it, short-notice bookers get no message at all (the daily reminder cron only
+    // fires the day-before/morning-of and skips same-day/pending rows). Never let a
+    // send failure fail the booking. Params match the 4-slot day_before shape.
+    const confirmTemplate = process.env.WHATSAPP_TEMPLATE_CONFIRM?.trim();
+    if (confirmTemplate && isPhoneAllowed(phone)) {
+      try {
+        await sendTemplateMessage(phone, confirmTemplate, [
+          parsed.guest_name,
+          formatDateSgt(parsed.start_iso),
+          formatTimeSgt(parsed.start_iso),
+          typeLabel,
+        ]);
+      } catch (e) {
+        console.error(
+          "[appointments/book] confirmation send",
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
 
     // Google Contacts (admin@mpillow.com): create / update / skip the guest so the
     // WhatsApp Business inbox shows their name. Best-effort — never fails the booking.

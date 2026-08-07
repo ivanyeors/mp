@@ -547,3 +547,19 @@ describe("calendar extract helpers", () => {
     expect(ooo?.rsvp).toBeNull();
   });
 });
+
+describe("gcal reschedule drift detection", () => {
+  // Guards the cron reconciliation (appointment-reminders): GCal sends +08:00
+  // offsets, the reminder row stores UTC Z. A naive string compare would flag the
+  // SAME instant as a move; parsed-ms compare must not. A real move must drift.
+  const drift = (gcal: string, row: string) =>
+    Math.abs(Date.parse(gcal) - Date.parse(row)) > 60_000;
+
+  it("same instant across +08:00 and UTC Z is not drift", () => {
+    expect(drift("2026-08-20T15:00:00+08:00", "2026-08-20T07:00:00.000Z")).toBe(false);
+  });
+
+  it("a moved appointment drifts", () => {
+    expect(drift("2026-08-20T18:00:00+08:00", "2026-08-20T07:00:00.000Z")).toBe(true);
+  });
+});
