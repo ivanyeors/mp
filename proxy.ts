@@ -52,7 +52,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/auth") ||
-    pathname.startsWith("/dev") ||
+    // Exact segment, not a prefix — a future /developers page must still get
+    // normal locale handling.
+    pathname === "/dev" ||
+    pathname.startsWith("/dev/") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname.includes(".")
@@ -123,7 +126,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next|auth|dev|favicon.ico|manifest.webmanifest|stripe-test).*)",
+    "/((?!api|_next|auth|dev/|favicon.ico|manifest.webmanifest|stripe-test).*)",
   ],
 };
 

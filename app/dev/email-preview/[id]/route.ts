@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assertEmailPreviewAllowed } from "@/lib/email/preview-guard";
+import { isEmailPreviewAllowed } from "@/lib/email/preview-guard";
 import { getEmailCase, type EmailFixture } from "@/lib/email/registry";
 
 // Renders one registered template as a real document, so the preview iframe
@@ -14,7 +14,11 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  assertEmailPreviewAllowed();
+  // Return a plain 404 rather than notFound(): route handlers have no
+  // not-found boundary to render, so an explicit response is unambiguous.
+  if (!isEmailPreviewAllowed()) {
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   const { id } = await ctx.params;
   const entry = getEmailCase(id);

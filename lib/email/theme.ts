@@ -134,6 +134,26 @@ export const SOCIAL_LINKS = [
   { label: "LinkedIn", href: "https://www.linkedin.com/company/mellowlife/" },
 ] as const;
 
+export type PillTone = "neutral" | "success" | "warning" | "danger";
+
+/**
+ * Status pill palette. The brand itself is achromatic, so the only semantic
+ * colour available comes from the site's own chart/destructive tokens:
+ *   success → --chart-2  oklch(0.6 0.118 184.704) = #009689 (light) / #00bc7d (dark)
+ *   warning → --chart-4  oklch(0.828 0.189 84.429) = #ffb900 (light) / #fe9a00 (dark)
+ *   danger  → --destructive                        = #e7000b (light) / #ff6467 (dark)
+ *
+ * Tints are those hues at low alpha over the surface, flattened to hex because
+ * Outlook mishandles rgba backgrounds. Foregrounds are darkened for contrast:
+ * every pair below clears 4.5:1 on its own background.
+ */
+export const PILL: Record<PillTone, { bg: string; fg: string; darkBg: string; darkFg: string }> = {
+  neutral: { bg: "#f5f5f5", fg: "#171717", darkBg: "#262626", darkFg: "#fafafa" },
+  success: { bg: "#e0f2ef", fg: "#005f56", darkBg: "#0d2f2a", darkFg: "#5fd6bd" },
+  warning: { bg: "#fdf2dc", fg: "#7a4b00", darkBg: "#33260a", darkFg: "#f5c164" },
+  danger: { bg: "#fdeaea", fg: "#a1060d", darkBg: "#361113", darkFg: "#ff9d9d" },
+};
+
 export type Declarations = Record<string, string | number | null | undefined>;
 
 /**

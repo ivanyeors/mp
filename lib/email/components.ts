@@ -18,6 +18,7 @@
 import { escapeHtml, safeUrl } from "./html";
 import {
   LIGHT,
+  PILL,
   RADIUS,
   TYPE,
   LAYOUT,
@@ -27,6 +28,7 @@ import {
   typeStyle,
   TABLE_RESET,
   TABLE_RESET_STYLE,
+  type PillTone,
 } from "./theme";
 
 /** Wrap content in a full-width layout table row. */
@@ -144,9 +146,17 @@ export function button(opts: ButtonOptions): string {
   const bg = secondary ? LIGHT.card : LIGHT.primary;
   const fg = secondary ? LIGHT.fg : LIGHT.primaryFg;
   const arcsize = `${Math.round((RADIUS.button / height) * 100)}%`;
+  // VML needs an explicit width. Approximate the rendered label (~7.6px per
+  // character at 14px) plus the 24px side padding, then clamp — a fixed width
+  // would make "Sign in" a 260px slab in Outlook and snug everywhere else.
+  // Measure the RAW label — `label` is escaped, so "&" would count as 5 chars.
+  const vmlWidth = Math.min(
+    360,
+    Math.max(160, Math.round(opts.label.length * 7.6) + 48),
+  );
 
   const vml = `<!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${href}" style="height:${height}px;v-text-anchor:middle;width:260px;" arcsize="${arcsize}" ${
+<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${href}" style="height:${height}px;v-text-anchor:middle;width:${vmlWidth}px;" arcsize="${arcsize}" ${
     secondary ? `strokecolor="${LIGHT.border}"` : 'stroke="f"'
   } fillcolor="${bg}">
 <w:anchorlock/>
@@ -370,18 +380,15 @@ export function codeBlock(code: string, opts: { caption?: string } = {}): string
   });
 }
 
-export type PillTone = "neutral" | "success" | "warning" | "danger";
-
-/** Status pill — mirrors components/ui/badge.tsx (rounded-full, xs, medium). */
+/**
+ * Status pill — mirrors components/ui/badge.tsx (rounded-full, xs, medium).
+ *
+ * The per-tone class hook matters: a single `.mp-pill` dark override would
+ * repaint every pill the same colour and destroy the success/danger coding.
+ */
 export function statusPill(text: string, tone: PillTone = "neutral"): string {
-  const palette: Record<PillTone, { bg: string; fg: string }> = {
-    neutral: { bg: LIGHT.primary, fg: LIGHT.primaryFg },
-    success: { bg: "#e6f4f1", fg: "#00584f" },
-    warning: { bg: "#fdf1dc", fg: "#7a4b00" },
-    danger: { bg: "#fdecec", fg: "#8a0208" },
-  };
-  const { bg, fg } = palette[tone];
-  return `<span class="mp-pill" style="${css({
+  const { bg, fg } = PILL[tone];
+  return `<span class="mp-pill mp-pill-${tone}" style="${css({
     background: bg,
     color: fg,
     "border-radius": "9999px",
@@ -505,3 +512,4 @@ export function footer(opts: {
 }
 
 export { TYPE, LIGHT, RADIUS, LAYOUT };
+export type { PillTone };

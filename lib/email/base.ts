@@ -29,11 +29,13 @@ import {
   LAYOUT,
   LIGHT,
   PARTNER_FOOTER_LINKS,
+  PILL,
   RADIUS,
   SOCIAL_LINKS,
   TABLE_RESET,
   TABLE_RESET_STYLE,
   css,
+  type PillTone,
 } from "./theme";
 import type { RenderedEmail } from "./types";
 
@@ -62,6 +64,19 @@ export interface EmailShellOptions {
   lang?: string;
 }
 
+/**
+ * Per-tone dark overrides for status pills. A single blanket `.mp-pill` rule
+ * would repaint success/warning/danger the same colour and destroy the coding.
+ */
+function pillDarkRules(indent: string): string {
+  return (Object.keys(PILL) as PillTone[])
+    .map(
+      (tone) =>
+        `${indent}.mp-pill-${tone} { background: ${PILL[tone].darkBg} !important; color: ${PILL[tone].darkFg} !important; }`,
+    )
+    .join("\n");
+}
+
 /** Dark-mode + responsive enhancement. Never load-bearing — inline styles win. */
 function styleBlock(): string {
   return `<style type="text/css">
@@ -82,7 +97,7 @@ function styleBlock(): string {
       .mp-muted, .mp-muted a { color: ${DARK.mutedFg} !important; }
       .mp-border { border-color: ${DARK.border} !important; }
       .mp-btn { background: ${DARK.primary} !important; color: ${DARK.primaryFg} !important; }
-      .mp-pill { background: ${DARK.mutedBg} !important; color: ${DARK.fg} !important; }
+${pillDarkRules("      ")}
       td, th { border-color: ${DARK.border} !important; }
       .mp-logo-light { display: none !important; }
       .mp-logo-dark { display: block !important; }

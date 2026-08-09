@@ -1,4 +1,5 @@
-import { assertEmailPreviewAllowed } from "@/lib/email/preview-guard";
+import { notFound } from "next/navigation";
+import { isEmailPreviewAllowed } from "@/lib/email/preview-guard";
 import {
   EMAIL_GROUP_LABELS,
   EMAIL_REGISTRY,
@@ -27,7 +28,7 @@ export default async function EmailPreviewPage({
 }: {
   searchParams: Promise<{ id?: string; fixture?: string }>;
 }) {
-  assertEmailPreviewAllowed();
+  if (!isEmailPreviewAllowed()) notFound();
 
   const { id, fixture } = await searchParams;
   const selectedId = (id && getEmailCase(id)?.id) || EMAIL_REGISTRY[0].id;
