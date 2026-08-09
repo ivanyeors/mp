@@ -7,7 +7,7 @@ import {
   infoList,
   paragraph,
 } from "./components";
-import { money, moneyHtml } from "./format";
+import { money } from "./format";
 import type {
   EmailTemplateName,
   OrderEmailAddress,
@@ -244,5 +244,3 @@ export function renderOrderEmail(
 ): RenderedEmail {
   return ORDER_EMAIL_TEMPLATES[template](data);
 }
-
-export { moneyHtml };

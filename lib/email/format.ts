@@ -3,7 +3,6 @@
 // ============================================================
 
 import { formatCurrency } from "@/lib/i18n/currencies";
-import { escapeHtml } from "./html";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -22,11 +21,6 @@ export function money(amount: number, currency: string): string {
   } catch {
     return `${currency} ${amount.toFixed(2)}`;
   }
-}
-
-/** Format money for an HTML body — same output as {@link money}, escaped. */
-export function moneyHtml(amount: number, currency: string): string {
-  return escapeHtml(money(amount, currency));
 }
 
 /** Human date in Singapore time (the business is SG), from a timestamptz ISO string. */
