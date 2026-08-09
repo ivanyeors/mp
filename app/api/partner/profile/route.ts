@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEmailTransport } from "@/lib/email";
+import { renderPartnerListingUpdatedEmail } from "@/lib/email/ops";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { getSupportInbox } from "@/lib/email/contact";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -31,29 +32,14 @@ function isOwnLogoUrl(url: string, partnerId: string): boolean {
   }
 }
 
-function escapeHtml(v: string): string {
-  return v
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
 /** Notify Staff that a partner edited their public listing, with a 1-click hide. */
 async function notifyStaff(partnerId: string, name: string): Promise<void> {
   const hideUrl = `${getSiteOrigin()}${withLocale("/settings/partners/hide", DEFAULT_LOCALE)}?partner=${encodeURIComponent(partnerId)}`;
-  const subject = `Partner listing updated: ${name}`;
-  const text = `${name} updated their public partner listing (/our-partners).\n\nReview it in Partners, or open the hide-confirmation page:\n${hideUrl}`;
-  const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111;">
-  <p><strong>${escapeHtml(name)}</strong> updated their public partner listing (<code>/our-partners</code>).</p>
-  <p><a href="${hideUrl}" style="display:inline-block;padding:10px 16px;background:#111;color:#fff;border-radius:8px;text-decoration:none;">Review &amp; hide this listing</a></p>
-  <p style="color:#666;font-size:12px;">Opens a confirmation page; you must be signed in as Staff to hide it.</p>
-  </body></html>`;
   try {
     await getEmailTransport().send({
       to: getSupportInbox(),
       from: getDefaultFromAddress(),
-      subject,
-      text,
-      html,
+      ...renderPartnerListingUpdatedEmail({ partnerName: name, hideUrl }),
     });
   } catch (e) {
     // ponytail: notification is best-effort — never fail the partner's save on it.

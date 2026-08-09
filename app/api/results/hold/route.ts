@@ -9,6 +9,7 @@ import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
+import { renderResultHeldEmail } from "@/lib/email/results";
 import {
   isCaseInventoryCategory,
   isProtectorInventoryCategory,
@@ -184,6 +185,7 @@ async function sendTelegram(text: string) {
   }
 }
 
+/** Best-effort "under review" notice. Rendering lives in lib/email/results.ts. */
 async function sendHeldEmail(opts: {
   to: string;
   resultId: string;
@@ -194,33 +196,11 @@ async function sendHeldEmail(opts: {
   amount: number;
   currency: string;
 }) {
-  const statusUrl = `${opts.origin}/results/${opts.resultId}?token=${opts.accessToken}`;
-  const productName = opts.productType === "bolster" ? "Mbolster" : "Mpillow";
-  const subject = `Your ${productName} is under review`;
-  const text = [
-    `Thanks for submitting your custom ${productName}.`,
-    "",
-    opts.label,
-    `Authorized amount: ${opts.currency} ${opts.amount.toFixed(2)} (not charged yet)`,
-    "",
-    "Track your review status:",
-    statusUrl,
-    "",
-    "You will be able to accept or decline once an operator finishes review.",
-  ].join("\n");
-  const html = `<p>Thanks for submitting your custom ${productName}.</p>
-<p>${opts.label}<br/>
-Authorized amount: <strong>${opts.currency} ${opts.amount.toFixed(2)}</strong> (not charged yet)</p>
-<p><a href="${statusUrl}">Track your review status</a></p>
-<p>You will be able to accept or decline once an operator finishes review.</p>`;
-
   try {
     await getEmailTransport().send({
       to: opts.to,
       from: getDefaultFromAddress(),
-      subject,
-      text,
-      html,
+      ...renderResultHeldEmail(opts),
     });
     return "sent" as const;
   } catch (e) {

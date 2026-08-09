@@ -22,6 +22,10 @@ import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import {
+  renderResultAssignedEmail,
+  type ResultPricing,
+} from "@/lib/email/results";
+import {
   BOLSTER_LENGTHS,
   isBolsterLength,
   loadComposedSellable,
@@ -59,6 +63,7 @@ function itemLabel(name: string, subtype: string | null | undefined): string {
   return subtype ? `${name} (${subtype})` : name;
 }
 
+/** Best-effort "final build ready" notice. Rendering lives in lib/email/results.ts. */
 async function sendAssignedEmail(opts: {
   to: string;
   resultId: string;
@@ -71,69 +76,13 @@ async function sendAssignedEmail(opts: {
   fillingSummary: string[];
   preferences: string[];
   addons: string[];
-  pricing: {
-    subtotal: number;
-    shipping: number;
-    tax: number;
-    total: number;
-    currency: string;
-    authorized: number | null;
-  } | null;
+  pricing: ResultPricing | null;
 }) {
-  const statusUrl = `${opts.origin}/results/${opts.resultId}?token=${opts.accessToken}`;
-  const sizeLine =
-    opts.productType === "bolster"
-      ? `Length: ${opts.length ?? "—"}`
-      : `Size: ${opts.size ?? "—"} · Tier: ${opts.tier ?? "—"}`;
-  const priceLines = opts.pricing
-    ? [
-        `Subtotal: ${opts.pricing.currency} ${opts.pricing.subtotal.toFixed(2)}`,
-        `Shipping: ${opts.pricing.currency} ${opts.pricing.shipping.toFixed(2)}`,
-        `Tax: ${opts.pricing.currency} ${opts.pricing.tax.toFixed(2)}`,
-        `Total: ${opts.pricing.currency} ${opts.pricing.total.toFixed(2)}`,
-        opts.pricing.authorized != null
-          ? `Authorized hold: ${opts.pricing.currency} ${opts.pricing.authorized.toFixed(2)}`
-          : null,
-      ].filter(Boolean)
-    : [];
-
-  const productName = opts.productType === "bolster" ? "Mbolster" : "Mpillow";
-  const text = [
-    `Your final ${productName} build is ready for review.`,
-    "",
-    sizeLine,
-    `Fillings: ${opts.fillingSummary.join(", ") || "—"}`,
-    `Preferences: ${opts.preferences.join(", ") || "—"}`,
-    `Add-ons: ${opts.addons.join(", ") || "—"}`,
-    ...priceLines,
-    "",
-    "Review and accept or decline:",
-    statusUrl,
-  ].join("\n");
-
-  const html = `<p>Your final ${productName} build is ready for review.</p>
-<p>${sizeLine}<br/>
-Fillings: <strong>${opts.fillingSummary.join(", ") || "—"}</strong><br/>
-Preferences: <strong>${opts.preferences.join(", ") || "—"}</strong><br/>
-Add-ons: <strong>${opts.addons.join(", ") || "—"}</strong></p>
-${
-  opts.pricing
-    ? `<p>Subtotal: ${opts.pricing.currency} ${opts.pricing.subtotal.toFixed(2)}<br/>
-Shipping: ${opts.pricing.currency} ${opts.pricing.shipping.toFixed(2)}<br/>
-Tax: ${opts.pricing.currency} ${opts.pricing.tax.toFixed(2)}<br/>
-<strong>Total: ${opts.pricing.currency} ${opts.pricing.total.toFixed(2)}</strong></p>`
-    : ""
-}
-<p><a href="${statusUrl}">Review your final build</a></p>
-<p>Accept or decline on the status page. Accept captures payment; Decline releases your hold.</p>`;
-
   try {
     await getEmailTransport().send({
       to: opts.to,
       from: getDefaultFromAddress(),
-      subject: "Your final build is ready",
-      text,
-      html,
+      ...renderResultAssignedEmail(opts),
     });
     return "sent" as const;
   } catch (e) {
