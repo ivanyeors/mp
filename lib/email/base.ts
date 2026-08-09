@@ -65,20 +65,59 @@ export interface EmailShellOptions {
 }
 
 /**
- * Per-tone dark overrides for status pills. A single blanket `.mp-pill` rule
- * would repaint success/warning/danger the same colour and destroy the coding.
+ * The dark-mode rules, as (selector, declarations) pairs.
+ *
+ * Emitted TWICE — once under `@media (prefers-color-scheme: dark)` and once
+ * prefixed with `[data-ogsc]` for Outlook.com, which rewrites inline styles and
+ * ignores the media query. Generating both from one list is the point: when the
+ * two were maintained by hand the `[data-ogsc]` copy was missing the logo swap,
+ * so Outlook.com dark mode flipped the card to near-black while leaving the
+ * dark-ink logo on top of it.
  */
-function pillDarkRules(indent: string): string {
-  return (Object.keys(PILL) as PillTone[])
-    .map(
-      (tone) =>
-        `${indent}.mp-pill-${tone} { background: ${PILL[tone].darkBg} !important; color: ${PILL[tone].darkFg} !important; }`,
-    )
-    .join("\n");
+function darkRules(): Array<[selector: string, declarations: string]> {
+  const rules: Array<[string, string]> = [
+    [".mp-page", `background: ${DARK.page} !important;`],
+    [".mp-card", `background: ${DARK.card} !important; border-color: ${DARK.border} !important;`],
+    [".mp-panel", `background: ${DARK.mutedBg} !important; border-color: ${DARK.border} !important;`],
+    [".mp-fg, .mp-fg a", `color: ${DARK.fg} !important;`],
+    [".mp-muted, .mp-muted a", `color: ${DARK.mutedFg} !important;`],
+    [".mp-border", `border-color: ${DARK.border} !important;`],
+    [".mp-btn", `background: ${DARK.primary} !important; color: ${DARK.primaryFg} !important;`],
+    // The secondary button is an outline treatment; without this it inherits
+    // the filled primary colours above and the two variants look identical.
+    [
+      ".mp-btn-secondary",
+      `background: ${DARK.card} !important; color: ${DARK.fg} !important; border-color: ${DARK.border} !important;`,
+    ],
+    ["td, th", `border-color: ${DARK.border} !important;`],
+    [".mp-logo-light", "display: none !important;"],
+    [".mp-logo-dark", "display: block !important;"],
+  ];
+  for (const tone of Object.keys(PILL) as PillTone[]) {
+    rules.push([
+      `.mp-pill-${tone}`,
+      `background: ${PILL[tone].darkBg} !important; color: ${PILL[tone].darkFg} !important;`,
+    ]);
+  }
+  return rules;
 }
 
 /** Dark-mode + responsive enhancement. Never load-bearing — inline styles win. */
 function styleBlock(): string {
+  const rules = darkRules();
+  const media = rules
+    .map(([sel, decl]) => `      ${sel} { ${decl} }`)
+    .join("\n");
+  const ogsc = rules
+    .map(
+      ([sel, decl]) =>
+        `    ${sel
+          .split(", ")
+          .map((s) => `[data-ogsc] ${s}`)
+          .join(", ")} { ${decl} }`,
+    )
+    .join("\n");
+
   return `<style type="text/css">
     :root { color-scheme: light dark; supported-color-schemes: light dark; }
     .mp-logo-dark { display: none; }
@@ -90,41 +129,34 @@ function styleBlock(): string {
       .mp-btn { display: block !important; }
     }
     @media (prefers-color-scheme: dark) {
-      .mp-page { background: ${DARK.page} !important; }
-      .mp-card { background: ${DARK.card} !important; border-color: ${DARK.border} !important; }
-      .mp-panel { background: ${DARK.mutedBg} !important; border-color: ${DARK.border} !important; }
-      .mp-fg, .mp-fg a { color: ${DARK.fg} !important; }
-      .mp-muted, .mp-muted a { color: ${DARK.mutedFg} !important; }
-      .mp-border { border-color: ${DARK.border} !important; }
-      .mp-btn { background: ${DARK.primary} !important; color: ${DARK.primaryFg} !important; }
-${pillDarkRules("      ")}
-      td, th { border-color: ${DARK.border} !important; }
-      .mp-logo-light { display: none !important; }
-      .mp-logo-dark { display: block !important; }
+${media}
     }
-    [data-ogsc] .mp-page { background: ${DARK.page} !important; }
-    [data-ogsc] .mp-card { background: ${DARK.card} !important; border-color: ${DARK.border} !important; }
-    [data-ogsc] .mp-panel { background: ${DARK.mutedBg} !important; border-color: ${DARK.border} !important; }
-    [data-ogsc] .mp-fg, [data-ogsc] .mp-fg a { color: ${DARK.fg} !important; }
-    [data-ogsc] .mp-muted, [data-ogsc] .mp-muted a { color: ${DARK.mutedFg} !important; }
-    [data-ogsc] .mp-btn { background: ${DARK.primary} !important; color: ${DARK.primaryFg} !important; }
+${ogsc}
   </style>`;
 }
 
+/**
+ * The logo pair. Both `width` and `height` attributes are set as well as the
+ * inline sizes — Outlook sizes from the attributes and ignores the CSS. The
+ * source art is square, so w === h.
+ *
+ * The dark variant carries `display:none` INLINE, so a client that strips
+ * <style> (Gmail, for some account types) simply shows the light logo rather
+ * than both.
+ */
 function logoHtml(origin: string): string {
+  const size = LAYOUT.logoSize;
   const common = css({
     display: "block",
     border: 0,
     outline: "none",
     "text-decoration": "none",
-    height: "auto",
+    width: size,
+    height: size,
   });
-  return `<img class="mp-logo-light" src="${origin}${BRAND.logoPath}" width="48" alt="${escapeHtml(
-    BRAND.name,
-  )}" style="${common};width:48px;" />
-<img class="mp-logo-dark" src="${origin}${BRAND.logoInvertedPath}" width="48" alt="${escapeHtml(
-    BRAND.name,
-  )}" style="${common};width:48px;display:none;" />`;
+  const alt = escapeHtml(BRAND.name);
+  return `<img class="mp-logo-light" src="${origin}${BRAND.logoPath}" width="${size}" height="${size}" alt="${alt}" style="${common}" />
+<img class="mp-logo-dark" src="${origin}${BRAND.logoInvertedPath}" width="${size}" height="${size}" alt="${alt}" style="${common};display:none;" />`;
 }
 
 function defaultFooterLinks(audience: EmailAudience) {

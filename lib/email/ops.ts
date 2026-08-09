@@ -24,7 +24,7 @@ ${p.hideUrl}`;
     title: "Partner listing updated",
     preheader: `${p.partnerName} updated their public listing.`,
     audience: "staff",
-    bodyHtml: `${statusPill("Internal", "warning")}
+    bodyHtml: `${statusPill("Internal", "neutral")}
 ${paragraph(
       `${p.partnerName} updated their public partner listing (/our-partners).`,
       { top: 16 },
@@ -61,7 +61,7 @@ export function renderHeldResultReminderEmail(p: {
     title: "Held Result still needs review",
     preheader: `Result ${p.resultId} is still waiting for operator review.`,
     audience: "staff",
-    bodyHtml: `${statusPill("Internal", "warning")}
+    bodyHtml: `${statusPill("Internal", "neutral")}
 ${paragraph("A held Result is still waiting for operator review.", { top: 16 })}
 ${codeBlock(p.resultId, { caption: "Result id" })}
 ${infoList([

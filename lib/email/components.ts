@@ -17,12 +17,13 @@
 
 import { escapeHtml, safeUrl } from "./html";
 import {
+  BRAND,
   LIGHT,
   PILL,
+  SPACE,
   RADIUS,
   TYPE,
   LAYOUT,
-  FONT_SANS,
   FONT_MONO,
   css,
   typeStyle,
@@ -36,6 +37,18 @@ function block(innerHtml: string, style?: string): string {
   return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
   <tr><td${style ? ` style="${style}"` : ""}>${innerHtml}</td></tr>
 </table>`;
+}
+
+/**
+ * Add the vertical gutter below a block.
+ *
+ * Word (Outlook desktop) ignores `margin` on a <table>, so spacing a block with
+ * `margin:0 0 16px` collapses the entire vertical rhythm there while looking
+ * fine everywhere else. Padding on a <td> is honoured, so every block gets its
+ * gutter from a wrapper cell instead.
+ */
+function withGutter(innerHtml: string, bottom: number = LAYOUT.gutter): string {
+  return block(innerHtml, css({ "padding-bottom": bottom }));
 }
 
 /**
@@ -87,8 +100,8 @@ export function paragraph(text: string, opts: ParagraphOptions = {}): string {
 }
 
 /** Paragraph whose content is already HTML (links, <strong>, …). */
-export function paragraphHtml(html: string, opts: ParagraphOptions = {}): string {
-  return `<p class="${opts.muted ? "mp-muted" : "mp-fg"}" style="${paragraphStyle(opts)}">${html}</p>`;
+export function paragraphHtml(bodyHtml: string, opts: ParagraphOptions = {}): string {
+  return `<p class="${opts.muted ? "mp-muted" : "mp-fg"}" style="${paragraphStyle(opts)}">${bodyHtml}</p>`;
 }
 
 export function mutedText(text: string): string {
@@ -160,23 +173,21 @@ export function button(opts: ButtonOptions): string {
     secondary ? `strokecolor="${LIGHT.border}"` : 'stroke="f"'
   } fillcolor="${bg}">
 <w:anchorlock/>
-<center style="color:${fg};font-family:${FONT_SANS};font-size:14px;font-weight:500;">${label}</center>
+<center style="color:${fg};font-family:${TYPE.button.family};font-size:${TYPE.button.size}px;font-weight:${TYPE.button.weight};">${label}</center>
 </v:roundrect>
 <![endif]-->`;
 
-  const anchor = `<!--[if !mso]><!-- --><a class="mp-btn" href="${href}" style="${css({
+  const anchor = `<!--[if !mso]><!-- --><a class="mp-btn${
+    secondary ? " mp-btn-secondary" : ""
+  }" href="${href}" style="${typeStyle("button", {
     background: bg,
     "border-radius": `${RADIUS.button}px`,
     border: secondary ? `1px solid ${LIGHT.border}` : "none",
     color: fg,
     display: "inline-block",
-    "font-family": FONT_SANS,
-    "font-size": "14px",
-    "font-weight": 500,
-    "line-height": `${height}px`,
     "text-align": "center",
     "text-decoration": "none",
-    padding: "0 24px",
+    padding: `0 ${SPACE["3xl"]}px`,
     "mso-padding-alt": "0",
   })}">${label}</a><!--<![endif]-->`;
 
@@ -194,29 +205,35 @@ export function card(opts: {
 }): string {
   const tone = opts.tone ?? "muted";
   const bg = tone === "outline" ? LIGHT.card : LIGHT.mutedBg;
-  return `<table ${TABLE_RESET} width="100%" class="mp-panel" style="${TABLE_RESET_STYLE};${css({
-    width: "100%",
-    background: bg,
-    border: `1px solid ${LIGHT.border}`,
-    "border-radius": `${RADIUS.surface}px`,
-    margin: `0 0 ${LAYOUT.gutter}px`,
-  })}">
-  <tr><td style="${css({ padding: `${opts.padding ?? 20}px` })}">${opts.bodyHtml}</td></tr>
-</table>`;
+  // Inner radius is one rung below the shell's surface radius — concentric
+  // corners with identical radii read as slightly wrong.
+  return withGutter(`<table ${TABLE_RESET} width="100%" class="mp-panel" style="${TABLE_RESET_STYLE};${css(
+    {
+      width: "100%",
+      background: bg,
+      border: `1px solid ${LIGHT.border}`,
+      "border-radius": `${RADIUS.xl}px`,
+    },
+  )}">
+  <tr><td style="${css({ padding: opts.padding ?? SPACE["2xl"] })}">${opts.bodyHtml}</td></tr>
+</table>`);
 }
 
+/** Hairline rule. Spacing comes from the wrapper cell — margin on a td is ignored. */
 export function divider(opts: { spacing?: number } = {}): string {
-  const s = opts.spacing ?? 24;
-  return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
+  const s = opts.spacing ?? SPACE["3xl"];
+  return block(
+    `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
   <tr><td class="mp-border" style="${css({
     "border-top": `1px solid ${LIGHT.border}`,
     "font-size": "0",
     "line-height": "0",
     height: "1px",
     padding: 0,
-    margin: `${s}px 0`,
   })}">&nbsp;</td></tr>
-</table>`;
+</table>`,
+    css({ "padding-top": s, "padding-bottom": s }),
+  );
 }
 
 export function spacer(height: number): string {
@@ -240,7 +257,7 @@ export function infoRow(label: string, value: string, opts: { strong?: boolean }
     color: LIGHT.fg,
     padding: "6px 0",
     "vertical-align": "top",
-    "font-weight": opts.strong ? 700 : 400,
+    "font-weight": opts.strong ? 600 : 400,
     "text-align": "right",
   })}">${escapeHtml(value)}</td>
 </tr>`;
@@ -251,9 +268,9 @@ export function infoList(
 ): string {
   if (rows.length === 0) return "";
   const body = rows.map((r) => infoRow(r.label, r.value, { strong: r.strong })).join("\n");
-  return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;margin:0 0 ${LAYOUT.gutter}px;">
+  return withGutter(`<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
 ${body}
-</table>`;
+</table>`);
 }
 
 export interface DataTableColumn {
@@ -304,36 +321,51 @@ export function dataTable(opts: {
     )
     .join("\n");
 
+  // A foot row is a label cell spanning all but the last column, plus a value
+  // cell. With a single column there is no room for both — emitting two cells
+  // under a one-column head would push the table wider than its own header — so
+  // the label and value share one cell there.
+  const labelSpan = opts.columns.length - 1;
+  const footCell = (
+    content: string,
+    o: { strong?: boolean; first: boolean; colspan?: number; align?: "right" },
+  ): string =>
+    `<td${o.colspan ? ` colspan="${o.colspan}"` : ""} class="${
+      o.strong ? "mp-fg" : "mp-muted"
+    }" style="${typeStyle(o.strong ? "body" : "small", {
+      color: o.strong ? LIGHT.fg : LIGHT.mutedFg,
+      padding: o.first ? "12px 0 2px" : "2px 0",
+      "font-weight": o.strong ? 600 : 400,
+      "text-align": o.align ?? null,
+    })}">${content}</td>`;
+
   const foot = (opts.footRows ?? [])
-    .map(
-      (f, i) =>
-        `<tr>
-  <td colspan="${Math.max(1, opts.columns.length - 1)}" class="${f.strong ? "mp-fg" : "mp-muted"}" style="${typeStyle(
-          f.strong ? "body" : "small",
-          {
-            color: f.strong ? LIGHT.fg : LIGHT.mutedFg,
-            padding: i === 0 ? "12px 0 2px" : "2px 0",
-            "font-weight": f.strong ? 700 : 400,
-          },
-        )}">${escapeHtml(f.label)}</td>
-  <td class="${f.strong ? "mp-fg" : "mp-muted"}" style="${typeStyle(f.strong ? "body" : "small", {
-          color: f.strong ? LIGHT.fg : LIGHT.mutedFg,
-          "text-align": "right",
-          padding: i === 0 ? "12px 0 2px" : "2px 0",
-          "font-weight": f.strong ? 700 : 400,
-        })}">${escapeHtml(f.value)}</td>
-</tr>`,
-    )
+    .map((f, i) => {
+      const first = i === 0;
+      if (labelSpan < 1) {
+        const merged = `${escapeHtml(f.label)}: ${escapeHtml(f.value)}`;
+        return `<tr>${footCell(merged, { strong: f.strong, first })}</tr>`;
+      }
+      return `<tr>${footCell(escapeHtml(f.label), {
+        strong: f.strong,
+        first,
+        colspan: labelSpan,
+      })}${footCell(escapeHtml(f.value), {
+        strong: f.strong,
+        first,
+        align: "right",
+      })}</tr>`;
+    })
     .join("\n");
 
-  return `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="${TABLE_RESET_STYLE};width:100%;margin:0 0 ${LAYOUT.gutter}px;">
+  return withGutter(`<table cellpadding="0" cellspacing="0" border="0" width="100%" style="${TABLE_RESET_STYLE};width:100%;">
 ${opts.caption ? `<caption style="${typeStyle("small", { color: LIGHT.mutedFg, "text-align": "left", padding: "0 0 8px" })}">${escapeHtml(opts.caption)}</caption>` : ""}
 <thead><tr>${head}</tr></thead>
 <tbody>
 ${body}
 </tbody>
 ${foot ? `<tfoot>\n${foot}\n</tfoot>` : ""}
-</table>`;
+</table>`);
 }
 
 /** Prominent money callout — commission earned, payout sent, total charged. */
@@ -348,7 +380,7 @@ export function amountPanel(opts: {
       color: LIGHT.mutedFg,
       margin: "0 0 6px",
     })}">${escapeHtml(opts.label)}</p>
-<p class="mp-fg" style="${typeStyle("h1", { color: LIGHT.fg, margin: 0 })}">${escapeHtml(opts.amount)}</p>${
+<p class="mp-fg" style="${typeStyle("figure", { color: LIGHT.fg, margin: 0 })}">${escapeHtml(opts.amount)}</p>${
       opts.caption
         ? `\n<p class="mp-muted" style="${typeStyle("small", {
             color: LIGHT.mutedFg,
@@ -388,16 +420,13 @@ export function codeBlock(code: string, opts: { caption?: string } = {}): string
  */
 export function statusPill(text: string, tone: PillTone = "neutral"): string {
   const { bg, fg } = PILL[tone];
-  return `<span class="mp-pill mp-pill-${tone}" style="${css({
+  return `<span class="mp-pill mp-pill-${tone}" style="${typeStyle("small", {
     background: bg,
     color: fg,
     "border-radius": "9999px",
     display: "inline-block",
-    "font-family": FONT_MONO,
-    "font-size": "12px",
-    "line-height": "18px",
     "font-weight": 500,
-    padding: "2px 10px",
+    padding: `2px ${SPACE.lg}px`,
   })}">${escapeHtml(text)}</span>`;
 }
 
@@ -424,9 +453,9 @@ export function bulletList(items: string[]): string {
         })}">&bull;&nbsp;&nbsp;${escapeHtml(item)}</td></tr>`,
     )
     .join("\n");
-  return `<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;margin:0 0 ${LAYOUT.gutter}px;">
+  return withGutter(`<table ${TABLE_RESET} width="100%" style="${TABLE_RESET_STYLE};width:100%;">
 ${rows}
-</table>`;
+</table>`);
 }
 
 export interface FooterLink {
@@ -460,7 +489,11 @@ export function footer(opts: {
   if (opts.links && opts.links.length > 0) {
     const rendered = opts.links
       .map((l) => {
-        const href = safeUrl(l.href.startsWith("http") ? l.href : `${opts.origin}${l.href}`);
+        // Full scheme test, not `startsWith("http")` — "httpfoo" would other-
+        // wise be treated as absolute and then silently dropped by safeUrl.
+        const href = safeUrl(
+          /^https?:\/\//.test(l.href) ? l.href : `${opts.origin}${l.href}`,
+        );
         if (!href) return "";
         return `<a class="mp-muted" href="${href}" style="${css({
           color: LIGHT.mutedFg,
@@ -505,7 +538,7 @@ export function footer(opts: {
       color: LIGHT.mutedFg,
       margin: 0,
       "text-align": "center",
-    })}">&copy; ${year} ${escapeHtml("Mellow Life Pte Ltd")}. All rights reserved.</p>`,
+    })}">&copy; ${year} ${escapeHtml(BRAND.legalName)}. All rights reserved.</p>`,
   );
 
   return parts.join("\n");

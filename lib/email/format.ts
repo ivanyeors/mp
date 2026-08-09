@@ -10,10 +10,8 @@ const MONTHS = [
 ];
 
 /**
- * Format money for a PLAIN-TEXT body.
- *
- * The fallback branch interpolates `currency` verbatim, which is a DB-sourced
- * string — safe in text, never safe in HTML. Use {@link moneyHtml} for HTML.
+ * Localised money, e.g. `$389.00`. What the order/RMA templates have always
+ * used (via `formatCurrency`), so their copy is unchanged.
  */
 export function money(amount: number, currency: string): string {
   try {
@@ -21,6 +19,22 @@ export function money(amount: number, currency: string): string {
   } catch {
     return `${currency} ${amount.toFixed(2)}`;
   }
+}
+
+/**
+ * Money with an explicit currency code, e.g. `SGD 389.00`.
+ *
+ * The configurator emails quote an amount we are about to place a card
+ * authorization for, and the shop sells in SGD/MYR/USD/CNY. `Intl` renders SGD
+ * in en-SG as a bare `$`, which a reader cannot tell from USD — so these
+ * templates keep the code, exactly as the route handlers emitted it before the
+ * rendering moved into lib/email.
+ *
+ * (The order templates arguably want this too, but changing them would rewrite
+ * customer-facing copy, which is out of scope for a design pass.)
+ */
+export function moneyWithCode(amount: number, currency: string): string {
+  return `${currency} ${amount.toFixed(2)}`;
 }
 
 /** Human date in Singapore time (the business is SG), from a timestamptz ISO string. */

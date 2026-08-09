@@ -28,48 +28,57 @@ export const FONT_SANS =
 export const FONT_MONO =
   "'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace";
 
-/** Light palette — `:root` in globals.css. */
+/**
+ * Light palette — `:root` in globals.css.
+ *
+ * `page` is the ONE deliberate departure: the site's `--background` is pure
+ * `#ffffff`, but an email needs the page behind the card to differ from the card
+ * itself or the layout has no edges. neutral-50 is the next rung down.
+ */
 export const LIGHT = {
-  page: "#fafafa",
-  card: "#ffffff",
-  fg: "#0a0a0a",
-  mutedBg: "#f5f5f5",
-  mutedFg: "#737373",
-  border: "#e5e5e5",
-  primary: "#171717",
-  primaryFg: "#fafafa",
-  destructive: "#e7000b",
-  success: "#009689",
+  page: "#fafafa", // departure: --background is #ffffff (see above)
+  card: "#ffffff", // --card / --background
+  fg: "#0a0a0a", // --foreground        oklch(0.145 0 0)
+  mutedBg: "#f5f5f5", // --muted          oklch(0.97 0 0)
+  mutedFg: "#737373", // --muted-foreground oklch(0.556 0 0)
+  border: "#e5e5e5", // --border          oklch(0.922 0 0)
+  primary: "#171717", // --primary        oklch(0.205 0 0)
+  primaryFg: "#fafafa", // --primary-foreground oklch(0.985 0 0)
+  destructive: "#e7000b", // --destructive
 } as const;
 
 /**
  * Dark palette — `.dark` in globals.css.
  *
- * `--border` is `rgba(255,255,255,0.10)` on the site; Outlook mishandles rgba in
- * table borders, so it is flattened here to its composite over the dark page.
+ * `border` is the departure here: the site uses `rgba(255,255,255,0.10)`, which
+ * Outlook mishandles on table borders. It is flattened to that alpha composited
+ * over the CARD (`#171717`), because that is where borders actually sit.
  */
 export const DARK = {
-  page: "#0a0a0a",
-  card: "#171717",
-  fg: "#fafafa",
-  mutedBg: "#262626",
-  mutedFg: "#a1a1a1",
-  border: "#2a2a2a",
-  primary: "#fafafa",
-  primaryFg: "#171717",
-  destructive: "#ff6467",
-  success: "#00bc7d",
+  page: "#0a0a0a", // --background       oklch(0.145 0 0)
+  card: "#171717", // --card            oklch(0.205 0 0)
+  fg: "#fafafa", // --foreground        oklch(0.985 0 0)
+  mutedBg: "#262626", // --muted         oklch(0.269 0 0)
+  mutedFg: "#a1a1a1", // --muted-foreground oklch(0.708 0 0)
+  border: "#2e2e2e", // departure: rgba(255,255,255,.10) over #171717
+  primary: "#e5e5e5", // --primary       oklch(0.922 0 0)
+  primaryFg: "#171717", // --primary-foreground oklch(0.205 0 0)
+  destructive: "#ff6467", // --destructive
 } as const;
 
-/** `--radius: 0.625rem` and the derived scale, in px. */
+/**
+ * Radius scale. `--radius: 0.625rem` (10px) with the shadcn-derived rungs, plus
+ * the two fixed Tailwind values the site actually uses on these elements:
+ * buttons are `--radius-button` (16px) and landing surfaces are `rounded-2xl`
+ * (16px), while shadcn Card is `rounded-xl` = `--radius + 4` (14px).
+ */
 export const RADIUS = {
-  sm: 6,
-  md: 8,
-  lg: 10,
-  xl: 14,
-  card: 12,
-  button: 16,
-  surface: 16,
+  sm: 6, // --radius-sm  calc(--radius - 4px)
+  md: 8, // --radius-md  calc(--radius - 2px)
+  lg: 10, // --radius-lg  --radius
+  xl: 14, // --radius-xl  calc(--radius + 4px) — shadcn Card
+  button: 16, // --radius-button calc(--radius-md * 2)
+  surface: 16, // rounded-2xl — the landing section surface
 } as const;
 
 /**
@@ -77,12 +86,18 @@ export const RADIUS = {
  * bodies read at 14-16px rather than the site's responsive 16/18px.
  */
 export const TYPE = {
-  h1: { size: 24, lh: 30, weight: 600, family: FONT_SANS, tracking: "-0.02em" },
-  h2: { size: 18, lh: 26, weight: 500, family: FONT_SANS, tracking: "-0.01em" },
-  h3: { size: 15, lh: 22, weight: 500, family: FONT_SANS, tracking: "0" },
+  // tracking matches Tailwind `tracking-tight` (-0.025em), used across the
+  // landing sections; weight 600 matches their `font-semibold`.
+  h1: { size: 24, lh: 30, weight: 600, family: FONT_SANS, tracking: "-0.025em" },
+  h2: { size: 18, lh: 26, weight: 600, family: FONT_SANS, tracking: "-0.025em" },
+  h3: { size: 14, lh: 20, weight: 600, family: FONT_SANS, tracking: "0" },
   body: { size: 14, lh: 22, weight: 400, family: FONT_MONO, tracking: "0" },
   small: { size: 12, lh: 18, weight: 400, family: FONT_MONO, tracking: "0" },
+  /** Large display figure — money callouts. Mono, like every other figure. */
+  figure: { size: 24, lh: 30, weight: 600, family: FONT_MONO, tracking: "0" },
   code: { size: 28, lh: 36, weight: 700, family: FONT_MONO, tracking: "0.2em" },
+  /** Button label. Sans, matching components/ui/button.tsx (text-sm/medium). */
+  button: { size: 14, lh: 44, weight: 500, family: FONT_SANS, tracking: "0" },
 } as const;
 
 export const LAYOUT = {
@@ -91,6 +106,19 @@ export const LAYOUT = {
   outerPadding: 24,
   cardPadding: 28,
   gutter: 16,
+  /** Fixed pixel size the logo renders at (square source, so w === h). */
+  logoSize: 48,
+} as const;
+
+/** Spacing scale, in px. Mirrors Tailwind's 1/1.5/2/2.5/3/5/6/7 rungs. */
+export const SPACE = {
+  xs: 4,
+  sm: 6,
+  md: 8,
+  lg: 10,
+  xl: 12,
+  "2xl": 20,
+  "3xl": 24,
 } as const;
 
 export const BRAND = {

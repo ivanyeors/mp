@@ -54,26 +54,26 @@ describe("no inline email HTML in app/", () => {
 });
 
 describe("email colours come from the theme", () => {
-  const templateFiles = readdirSync(EMAIL_DIR)
+  // theme.ts is the ONLY file allowed to hold colour literals — including
+  // components.ts and base.ts, which is where the status-pill palette first
+  // drifted in behind the earlier version of this exemption.
+  const scanned = readdirSync(EMAIL_DIR)
     .filter((f) => f.endsWith(".ts"))
-    .filter((f) => !["theme.ts", "components.ts", "base.ts"].includes(f))
+    .filter((f) => f !== "theme.ts")
     .map((f) => join(EMAIL_DIR, f));
 
-  it("has template modules to scan", () => {
-    expect(templateFiles.length).toBeGreaterThan(4);
+  it("has modules to scan", () => {
+    expect(scanned.length).toBeGreaterThan(8);
   });
 
-  it("never hardcodes a hex colour in a template module", () => {
-    // Colours live in theme.ts and are applied by components.ts. A hex literal
-    // in a template is the exact drift this system replaced.
-    const offenders: string[] = [];
-    for (const file of templateFiles) {
-      const src = readFileSync(file, "utf8");
-      const hits = src.match(/#[0-9a-fA-F]{3,8}\b/g) ?? [];
-      if (hits.length > 0) {
-        offenders.push(`${file.replace(process.cwd() + "/", "")}: ${hits.join(", ")}`);
-      }
-    }
-    expect(offenders).toEqual([]);
-  });
+  it.each(scanned.map((f) => [f.replace(process.cwd() + "/", ""), f] as const))(
+    "%s hardcodes no hex colour",
+    (_name, file) => {
+      const src = readFileSync(file, "utf8")
+        // Comments may cite a hex for provenance (e.g. "= #009689").
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\/\/.*$/gm, "");
+      expect(src.match(/#[0-9a-fA-F]{3,8}\b/g) ?? []).toEqual([]);
+    },
+  );
 });

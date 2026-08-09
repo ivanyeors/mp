@@ -29,6 +29,7 @@ import { RMA_EMAIL_TEMPLATES } from "./rma";
 import { ORDER_EMAIL_TEMPLATES } from "./templates";
 import {
   sampleApplication,
+  HOSTILE,
   sampleContact,
   sampleHeldReminder,
   sampleHoldExpired,
@@ -125,14 +126,14 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Hold expired",
     group: "results",
     audience: "customer",
-    render: () => renderHoldExpiredEmail(sampleHoldExpired()),
+    render: (f) => renderHoldExpiredEmail(sampleHoldExpired(f)),
   },
   {
     id: "results.restocked",
     label: "Pre-order restocked",
     group: "results",
     audience: "customer",
-    render: () => renderRestockEmail(sampleRestock()),
+    render: (f) => renderRestockEmail(sampleRestock(f)),
   },
 
   // --- Partner programme ---
@@ -141,9 +142,9 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Commission earned",
     group: "partner",
     audience: "partner",
-    render: () =>
+    render: (f) =>
       renderReferralEarnedEmail({
-        money: "S$48.00",
+        money: f === "hostile" ? HOSTILE : "S$48.00",
         releaseAtIso: "2026-09-04T02:00:00.000Z",
       }),
   },
@@ -164,11 +165,15 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Payout sent",
     group: "partner",
     audience: "partner",
-    render: () =>
+    render: (f) =>
       renderPayoutEmail({
-        money: "S$240.00",
-        paidOn: "1 August 2026",
-        proofUrl: "https://storage.mpillow.com/proofs/payout-9912.png?sig=abc",
+        money: f === "hostile" ? HOSTILE : "S$240.00",
+        paidOn: f === "hostile" ? HOSTILE : "1 August 2026",
+        // Externally-sourced signed URL landing in an href.
+        proofUrl:
+          f === "hostile"
+            ? "javascript:alert(1)"
+            : "https://storage.mpillow.com/proofs/payout-9912.png?sig=abc",
       }),
   },
   {
@@ -188,14 +193,14 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Application approved",
     group: "application",
     audience: "partner",
-    render: () => renderApplicationOutcomeEmail("approved", sampleApplication()),
+    render: (f) => renderApplicationOutcomeEmail("approved", sampleApplication(f)),
   },
   {
     id: "application.rejected",
     label: "Application rejected",
     group: "application",
     audience: "partner",
-    render: () => renderApplicationOutcomeEmail("rejected", sampleApplication()),
+    render: (f) => renderApplicationOutcomeEmail("rejected", sampleApplication(f)),
   },
 
   // --- Identity ---
@@ -204,7 +209,7 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     label: "Backup email verification code",
     group: "auth",
     audience: "partner",
-    render: () => renderBackupEmailOtpEmail({ code: "418320" }),
+    render: (f) => renderBackupEmailOtpEmail({ code: f === "hostile" ? HOSTILE : "418320" }),
   },
 
   // --- Support / staff ---

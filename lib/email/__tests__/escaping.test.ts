@@ -34,14 +34,32 @@ describe("email escaping", () => {
     });
   });
 
-  it("escapes rather than silently dropping the probe", () => {
-    // At least one template must actually interpolate the probe — otherwise the
-    // assertions above would pass vacuously on a template that ignores its input.
-    const withProbe = EMAIL_REGISTRY.map((c) => c.render("hostile")).filter((r) =>
-      r.html.includes("&lt;img src=x onerror=alert(1)&gt;"),
-    );
-    expect(withProbe.length).toBeGreaterThan(0);
-  });
+  // PER-ENTRY vacuity guard. A registry entry whose render() drops the fixture
+  // argument produces identical output for both fixtures, so the assertions
+  // above pass without ever exercising an escape path. Asserting "at least one
+  // template contains the probe" was not enough — it let 7 of 24 entries through.
+  describe.each(EMAIL_REGISTRY.map((c) => [c.id, c] as const))(
+    "%s actually consumes the fixture",
+    (_id, entry) => {
+      it("renders differently under the hostile fixture", () => {
+        expect(entry.render("hostile").html).not.toBe(entry.render("happy").html);
+      });
+
+      it("neutralises the probe rather than dropping it", () => {
+        const html = entry.render("hostile").html;
+        const neutralised =
+          // HTML-escaped in text/attribute context …
+          html.includes("&lt;img src=x onerror=alert(1)&gt;") ||
+          html.includes("&lt;script&gt;alert(1)&lt;/script&gt;") ||
+          // … or percent-encoded, when the probe lands inside a URL path/query.
+          html.includes("%3Cimg%20src%3Dx") ||
+          // … or the URL was rejected outright, degrading the CTA to plain text
+          // (partner.payout_made probes proofUrl with a javascript: scheme).
+          !html.includes("<v:roundrect");
+        expect(neutralised).toBe(true);
+      });
+    },
+  );
 
   it("keeps the probe intact in the plain-text body", () => {
     // Text bodies are not HTML, so the raw probe there is correct — asserting it

@@ -87,8 +87,18 @@ ${paragraph("We'll review it and email you the next steps shortly.", { muted: tr
   return { subject, html, text };
 }
 
-/** Lifecycle-update body shared by the not-yet-specialised templates. */
-function statusUpdate(title: string, tone: "neutral" | "success" | "danger" = "neutral") {
+/**
+ * Lifecycle-update body shared by the not-yet-specialised templates.
+ *
+ * `status` is the short badge word and `title` the sentence — passing the same
+ * string to both would print a 33-character sentence inside a pill, which in
+ * Outlook (no border-radius) renders as a highlighted strip rather than a badge.
+ */
+function statusUpdate(
+  title: string,
+  status: string,
+  tone: "neutral" | "success" | "danger" = "neutral",
+) {
   return (data: RmaEmailData): RenderedEmail => {
     const subject = `Update on your return for order ${data.orderNumber}`;
     const detail = data.message ? `\n\n${data.message}` : "";
@@ -101,7 +111,7 @@ Track your return: ${orderUrl(data.orderNumber)}`;
     const html = renderEmailShell({
       title,
       preheader: `${title} for order ${data.orderNumber}.`,
-      bodyHtml: `${statusPill(title, tone)}
+      bodyHtml: `${statusPill(status, tone)}
 ${paragraph(
         `Hi ${data.customerName}, ${title.toLowerCase()} for your return on order ${data.orderNumber}.`,
         { top: 16 },
@@ -118,11 +128,11 @@ export const RMA_EMAIL_TEMPLATES: Record<
   (data: RmaEmailData) => RenderedEmail
 > = {
   rma_requested: requested,
-  rma_approved: statusUpdate("Your return was approved", "success"),
-  rma_rejected: statusUpdate("Your return could not be approved", "danger"),
-  rma_instructions: statusUpdate("Return instructions"),
-  rma_completed: statusUpdate("Your return is complete", "success"),
-  rma_refunded: statusUpdate("Your refund has been issued", "success"),
+  rma_approved: statusUpdate("Your return was approved", "Approved", "success"),
+  rma_rejected: statusUpdate("Your return could not be approved", "Rejected", "danger"),
+  rma_instructions: statusUpdate("Return instructions", "Next steps"),
+  rma_completed: statusUpdate("Your return is complete", "Complete", "success"),
+  rma_refunded: statusUpdate("Your refund has been issued", "Refunded", "success"),
 };
 
 export function renderRmaEmail(

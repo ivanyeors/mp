@@ -119,20 +119,20 @@ export function sampleResultAssigned(fixture: EmailFixture = "happy") {
   };
 }
 
-export function sampleHoldExpired() {
+export function sampleHoldExpired(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,
-    resultId: "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001",
-    accessToken: "tok_preview_9f2b",
+    resultId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
+    accessToken: pick(fixture, "tok_preview_9f2b"),
     productType: "pillow",
   };
 }
 
-export function sampleRestock() {
+export function sampleRestock(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,
-    resultId: "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001",
-    accessToken: "tok_preview_9f2b",
+    resultId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
+    accessToken: pick(fixture, "tok_preview_9f2b"),
   };
 }
 
@@ -164,9 +164,10 @@ export function sampleHeldReminder(fixture: EmailFixture = "happy") {
   };
 }
 
-export function sampleApplication() {
+export function sampleApplication(fixture: EmailFixture = "happy") {
   return {
     partnerSignInUrl: `${ORIGIN}/partner`,
-    supportEmail: "sg@mpillow.com",
+    // The support address lands in a mailto: href and in link text.
+    supportEmail: pick(fixture, "sg@mpillow.com"),
   };
 }

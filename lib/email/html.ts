@@ -48,12 +48,22 @@ const URL_NOISE = /[\u0000-\u0020]/g;
  */
 export function safeUrl(url: string | null | undefined, fallback = ""): string {
   if (!url) return fallback;
-  const cleaned = url.replace(URL_NOISE, "");
+
+  // Strip noise from the SCHEME only. Stripping it from the whole URL would
+  // silently rewrite the target — "https://x.com/a b" would become
+  // "https://x.com/ab" instead of percent-encoding the space, which `new URL`
+  // does correctly on its own.
+  const colon = url.indexOf(":");
+  const cleaned =
+    colon === -1
+      ? url.trim()
+      : url.slice(0, colon).replace(URL_NOISE, "") + url.slice(colon);
   if (!cleaned) return fallback;
-  if (cleaned.startsWith("//")) return fallback;
+  if (cleaned.trimStart().startsWith("//")) return fallback;
+
   let parsed: URL;
   try {
-    parsed = new URL(cleaned);
+    parsed = new URL(cleaned.trim());
   } catch {
     // Relative URL. Emails have no page origin to resolve against, so a
     // relative href is always a bug — never emit one.
