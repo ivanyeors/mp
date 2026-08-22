@@ -1,0 +1,10 @@
+# Binary/media assets — add nodes, no structural signal for a code graph
+public/**/*.jpg
+public/**/*.jpeg
+public/**/*.png
+public/**/*.webp
+public/**/*.gif
+public/**/*.svg
+
+# Scratch / throwaway
+temp-blog.html

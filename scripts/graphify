@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Portable graphify launcher.
+#
+# Resolution order:
+#   1. `graphify` already on PATH (installed via `uv tool install "graphifyy[sql]"`)
+#   2. uvx / uv tool run — resolves from cache, no install step needed
+#   3. silent no-op — a machine without graphify must never have its
+#      Claude Code session broken by a failing PreToolUse hook
+#
+# The [sql] extra matters: without it the 103 files in supabase/migrations
+# are skipped and the graph loses the entire database schema.
+set -uo pipefail
+
+if command -v graphify >/dev/null 2>&1; then
+  exec graphify "$@"
+fi
+
+for uv_bin in uvx "$HOME/.local/bin/uvx"; do
+  if command -v "$uv_bin" >/dev/null 2>&1; then
+    exec "$uv_bin" --from "graphifyy[sql]" graphify "$@"
+  fi
+done
+
+exit 0
