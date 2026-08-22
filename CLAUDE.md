@@ -50,9 +50,10 @@ After changing code, refresh the graph:
 ./scripts/graphify update .
 ```
 
-This is AST-only — no API key, no token cost. ~2 min for a cold rebuild, ~30s
-incrementally once `graphify-out/cache/` is warm. It is byte-stable: running it
-with no code changes produces no diff, so it is safe in a pre-commit routine.
+This is AST-only — no API key, no token cost, ~25s for a full rebuild of all
+1,600 files (plus a one-time dependency download on a machine that has never
+run it). It is deterministic: the same code always produces a byte-identical
+graph, so running it with no code changes produces no diff.
 The `[sql]` extra is required for `supabase/migrations` to be parsed; the
 wrapper requests it automatically.
 
