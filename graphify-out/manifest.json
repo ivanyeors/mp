@@ -9610,5 +9610,23 @@
     "seen": 1787386553.4569263,
     "ast_hash": "7b31721350514bba273c64d27881df85",
     "semantic_hash": ""
+  },
+  ".claude/settings.json": {
+    "mtime": 1787387181.7580626,
+    "seen": 1787387421.145805,
+    "ast_hash": "5d9b1ad1a64a965bf214787494056ec7",
+    "semantic_hash": ""
+  },
+  "scripts/graphify": {
+    "mtime": 1787387141.8780634,
+    "seen": 1787387421.1471446,
+    "ast_hash": "5916b0a18a73ae607026719bd15d9d61",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1787387297.2037094,
+    "seen": 1787387421.1476274,
+    "ast_hash": "54dcbd340f0233f6ac3534815c4336d8",
+    "semantic_hash": ""
   }
 }
