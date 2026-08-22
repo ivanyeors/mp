@@ -9618,15 +9618,27 @@
     "semantic_hash": ""
   },
   "scripts/graphify": {
-    "mtime": 1787387141.8780634,
-    "seen": 1787387421.1471446,
-    "ast_hash": "5916b0a18a73ae607026719bd15d9d61",
+    "mtime": 1787389278.8625028,
+    "seen": 1787389342.2088776,
+    "ast_hash": "2ad6779eafea5ee29c5a896bcd438a01",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1787387515.303152,
-    "seen": 1787388335.995008,
-    "ast_hash": "d6467279ab96b6aac4bf97d1cb6ef579",
+    "mtime": 1787389440.6874864,
+    "seen": 1787389468.61083,
+    "ast_hash": "a02d00b83f9018d081e7007410ee2459",
+    "semantic_hash": ""
+  },
+  "scripts/graphify-digest.py": {
+    "mtime": 1787389163.2836397,
+    "seen": 1787389342.2088802,
+    "ast_hash": "f974d1223d14451456878b9c7a87dbcf",
+    "semantic_hash": ""
+  },
+  ".github/workflows/graphify-freshness.yml": {
+    "mtime": 1787389305.6159782,
+    "seen": 1787389342.2094371,
+    "ast_hash": "5021796a12a64994403e602bdf565b93",
     "semantic_hash": ""
   }
 }

@@ -66,6 +66,23 @@ After a refactor that adds or removes whole subsystems, re-run:
 
 `.graphifyignore` excludes `public/` binary assets and scratch files from the index.
 
+CI enforces this. `.github/workflows/graphify-freshness.yml` rebuilds the graph
+on every pull request and fails if the committed one does not match the source,
+so a refresh belongs in the same commit as the code change. To check locally
+before pushing:
+
+```bash
+./scripts/graphify-digest.py graphify-out/graph.json   # before
+./scripts/graphify update .
+./scripts/graphify-digest.py graphify-out/graph.json   # must be unchanged
+```
+
+The digest covers nodes and edges only. Community assignment is reseeded by
+whatever graph the rebuild started from and is not reproducible, so it is
+excluded deliberately — a digest mismatch always means the source really
+changed. `scripts/graphify` pins the extractor version for the same reason;
+running an unpinned graphify locally can produce a graph CI disagrees with.
+
 A stale graph is worse than none: `GRAPH_REPORT.md` records the commit it was
 built from. If that does not match `git rev-parse HEAD`, treat node locations as
 hints and confirm against the file before relying on them.
