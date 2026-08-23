@@ -1,4 +1,5 @@
 import type { Messages } from "./types";
+import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
 
 export const enUS: Messages = {
   common: {
@@ -316,7 +317,7 @@ export const enUS: Messages = {
       commitmentWarrantyDescription:
         "All products are backed by a 10-year warranty on stuffing. To avail, schedule an appointment and bring your pillow to our service center for re-adjustment and stuffing replacement (readjustment fees apply).",
       helpTitle: "Need help?",
-      helpDescription: "Feel free to contact customer support at +65 8780 5311.",
+      helpDescription: `Feel free to contact customer support at ${SUPPORT_WHATSAPP_DISPLAY}.`,
       bottomBookBespoke: "Book bespoke",
     },
     cervicalNeckSupport: {

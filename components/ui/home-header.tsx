@@ -11,6 +11,7 @@ import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
 import { openBookAppointment } from "@/lib/book-appointment";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import { stripLocale } from "@/lib/i18n/routing";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 
@@ -103,7 +104,7 @@ export function HomeHeader() {
               </button>
             </Button>
             <a
-              href="http://wa.me/6587805311"
+              href={SUPPORT_WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-1 text-foreground/90 hover:text-foreground max-md:h-11 max-md:w-11 max-md:p-2.5"

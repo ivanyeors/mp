@@ -19,6 +19,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const PutSchema = z.object({
+  whatsappEnabled: z.boolean().optional(),
   venue: z.string().min(1).max(500).optional(),
   durationMinutes: z.number().int().min(15).max(240).optional(),
   openHour: z.number().int().min(0).max(23).optional(),
@@ -92,6 +93,7 @@ export async function PUT(req: Request) {
     ...current,
     ...Object.fromEntries(
       Object.entries({
+        whatsappEnabled: input.whatsappEnabled,
         venue: input.venue,
         durationMinutes: input.durationMinutes,
         openHour: input.openHour,

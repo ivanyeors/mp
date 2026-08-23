@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
+import {
+  SUPPORT_WHATSAPP_DISPLAY,
+  SUPPORT_WHATSAPP_URL,
+} from "@/lib/contact";
 
 const EFFECTIVE_DATE = "5 July 2026";
 
@@ -167,7 +171,7 @@ const SECTIONS: PolicySection[] = [
     ],
     list: [
       "Support form: use the Contact Us page on this website",
-      "WhatsApp: +65 8780 5311",
+      `WhatsApp: ${SUPPORT_WHATSAPP_DISPLAY}`,
     ],
     outro: ["Mellow Life Pte Ltd · Mpillow"],
   },
@@ -232,11 +236,11 @@ export default async function PrivacyPolicyPage({ params }: { params: Promise<{ 
           or WhatsApp{" "}
           <a
             className="underline underline-offset-4"
-            href="http://wa.me/6587805311"
+            href={SUPPORT_WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
           >
-            +65 8780 5311
+            {SUPPORT_WHATSAPP_DISPLAY}
           </a>
           .
         </p>

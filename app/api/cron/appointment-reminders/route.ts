@@ -41,6 +41,21 @@ export async function GET(req: Request) {
 
   const stored = await getSiteSettings([...APPOINTMENT_SETTING_KEYS]);
   const settings = parseAppointmentSettings(stored);
+
+  // Admin kill switch (Settings → Appointments). Bail before touching Calendar
+  // or Meta so a disabled run is cheap and leaves no reminder rows behind.
+  if (!settings.whatsappEnabled) {
+    return NextResponse.json({
+      ok: true,
+      disabled: true,
+      scanned: 0,
+      reminded: 0,
+      morning: 0,
+      skipped: 0,
+      errors: [],
+    });
+  }
+
   const now = new Date();
 
   const summary = {

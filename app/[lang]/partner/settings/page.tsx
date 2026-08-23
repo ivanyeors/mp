@@ -2,12 +2,11 @@ import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/local
 import { requireActivePartnerPage } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { signedImageUrl } from "@/lib/payout-upload";
+import { SUPPORT_WHATSAPP_DIGITS } from "@/lib/contact";
 import { PartnerSettingsClient } from "./settings-client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const SUPPORT_WHATSAPP = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.trim() || "6587805311";
 
 export default async function PartnerSettingsPage({
   params,
@@ -46,7 +45,7 @@ export default async function PartnerSettingsPage({
 
   return (
     <PartnerSettingsClient
-      whatsappNumber={SUPPORT_WHATSAPP}
+      whatsappNumber={SUPPORT_WHATSAPP_DIGITS}
       initialProfile={{
         name: partner?.name ?? ctx.partnerName ?? "",
         description: partner?.description ?? "",

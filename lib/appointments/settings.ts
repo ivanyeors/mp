@@ -12,6 +12,12 @@ export type WeeklyAvailability = AvailabilityWindow[][];
 export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 export type AppointmentSettings = {
+  /**
+   * Master switch for outbound appointment WhatsApp. When false the daily cron
+   * sends nothing and the inbound webhook acks without acting — the only kill
+   * switch that does not need an env change or a redeploy.
+   */
+  whatsappEnabled: boolean;
   /** Default venue when calendar event has no location. */
   venue: string;
   /** Appointment length in minutes. */
@@ -54,6 +60,7 @@ export const DEFAULT_AVAILABILITY_WINDOW: AvailabilityWindow = { start: "10:00",
 const DEFAULT_WINDOW = DEFAULT_AVAILABILITY_WINDOW;
 
 export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
+  whatsappEnabled: true,
   venue: "512 Chai Chee Lane Singapore 469028 #02-10",
   durationMinutes: 60,
   // Sun, Tue–Sat 10:00–19:00 (last 60-min start 18:00); Monday closed.
@@ -78,6 +85,7 @@ export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
 };
 
 export const APPOINTMENT_SETTING_KEYS = [
+  "appointments_whatsapp_enabled",
   "appointments_venue",
   "appointments_duration_minutes",
   "appointments_open_hour",
@@ -310,6 +318,10 @@ export function parseAppointmentSettings(
       d.blockedRanges,
     ),
     showCancelled: parseBool(stored.appointments_show_cancelled, d.showCancelled),
+    whatsappEnabled: parseBool(
+      stored.appointments_whatsapp_enabled,
+      d.whatsappEnabled,
+    ),
   };
 }
 
@@ -317,6 +329,7 @@ export function appointmentSettingsToStored(
   s: AppointmentSettings,
 ): Record<string, string> {
   return {
+    appointments_whatsapp_enabled: String(s.whatsappEnabled),
     appointments_venue: s.venue,
     appointments_duration_minutes: String(s.durationMinutes),
     appointments_open_hour: String(s.openHour),

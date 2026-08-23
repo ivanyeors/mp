@@ -237,6 +237,7 @@ export function AppointmentsSettingsSheet({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          whatsappEnabled: draft.whatsappEnabled,
           venue: draft.venue,
           durationMinutes: draft.durationMinutes,
           customisationBookingUrl: draft.customisationBookingUrl,
@@ -470,6 +471,29 @@ export function AppointmentsSettingsSheet({
             </TabsContent>
 
             <TabsContent value="whatsapp" className="space-y-4">
+              <SectionHeading
+                title="Notifications"
+                hint="The master switch for every automated WhatsApp message."
+              />
+              <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+                <div className="space-y-1">
+                  <Label htmlFor="wa-enabled">WhatsApp notifications</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Booking confirmations, day-before reminders, morning-of nudges,
+                    and replies to Confirm or Reschedule. Off pauses all of them —
+                    bookings, calendar events, and email invites are unaffected.
+                  </p>
+                </div>
+                <Switch
+                  id="wa-enabled"
+                  checked={draft.whatsappEnabled}
+                  onCheckedChange={(next) =>
+                    setDraft((p) => ({ ...p, whatsappEnabled: next }))
+                  }
+                  aria-label="WhatsApp appointment notifications"
+                />
+              </div>
+
               <SectionHeading
                 title="WhatsApp slot offers"
                 hint="How reschedule offers are built. Saved with the button below."
