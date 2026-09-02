@@ -1617,6 +1617,29 @@ export function MpConfigClient({
     </Dialog>
   );
 
+  // Guest x-ray inputs derive only from the recommendation response; memoised
+  // so the spatial geometry memo downstream keeps stable inputs across
+  // unrelated re-renders (hover, dive, form edits).
+  const guestPreview = useMemo(() => {
+    const record = parseRecommendationRecord(
+      shopRecommendation?.recommendation_record ?? null,
+    );
+    const tpl = shopRecommendation?.templates?.find(
+      (t) => String(t.id) === String(record?.templateId),
+    );
+    const guestFillings = shopRecommendation?.available_fillings ?? [];
+    return {
+      tpl,
+      guestPlacements: rowsToPillowPlacements(tpl?.placements ?? []),
+      guestItemSubtypes: new Map(
+        guestFillings.map((f) => [f.item_id, f.subtype || null] as const),
+      ),
+      guestItemSizes: new Map(
+        guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
+      ),
+    };
+  }, [shopRecommendation]);
+
   // Hold preview uses mp-maker split layout (cover/case card pickers, no fillings/protector).
   if (currentStep === "preview") {
     const size =
@@ -1636,21 +1659,11 @@ export function MpConfigClient({
       requiredInputsComplete: Boolean(shopRecommendation && size),
       flowRouteUnresolved: routePending,
     });
-    const tpl = shopRecommendation?.templates?.find(
-      (t) => String(t.id) === String(record?.templateId),
-    );
-    const guestPlacements = rowsToPillowPlacements(tpl?.placements ?? []);
+    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes } = guestPreview;
     // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
     // Assisted runs show SIZE ONLY — no filling x-ray (AC3).
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
     const xrayVisible = staffAssist || guestXray;
-    const guestFillings = shopRecommendation?.available_fillings ?? [];
-    const guestItemSubtypes = new Map(
-      guestFillings.map((f) => [f.item_id, f.subtype || null] as const),
-    );
-    const guestItemSizes = new Map(
-      guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
-    );
     const currency = shopRecommendation?.variant?.currency ?? "SGD";
     const basePrice = shopRecommendation?.variant?.price ?? 0;
     const addonTotal = addons

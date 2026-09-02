@@ -15,6 +15,7 @@ import { BookAppointmentOverlay } from "@/components/slide-in-pages/book-appoint
 import { GoogleAnalytics } from "@/components/seo/google-analytics";
 import { Haptics } from "@/components/haptics";
 import { RegisterSW } from "@/components/register-sw";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { cookies } from "next/headers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -113,6 +114,7 @@ export default async function RootLayout({
           <AppDock />
           <SonnerProvider />
         </ThemeProvider>
+        {isProd ? <SpeedInsights /> : null}
       </body>
     </html>
   );

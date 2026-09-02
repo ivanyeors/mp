@@ -2,7 +2,7 @@ import { cache } from "react";
 import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { getAuthUser } from "@/lib/auth/user";
+import { getAuthIdentity } from "@/lib/auth/user";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import {
@@ -48,7 +48,7 @@ function bootstrapEmails(): string[] {
  * round trip and one admin_users lookup.
  */
 export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
-  const user = await getAuthUser();
+  const user = await getAuthIdentity();
   if (!user?.email) return null;
 
   const email = user.email.toLowerCase().trim();
@@ -101,6 +101,19 @@ export async function requireAdmin(permission: Permission): Promise<NextResponse
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!roleHasPermission(ctx.role, permission)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  return null;
+}
+
+/**
+ * Route-handler guard accepting any one of several permissions. Returns a
+ * denial `NextResponse` (401/403) when the caller holds none of them.
+ */
+export async function requireAnyAdmin(permissions: Permission[]): Promise<NextResponse | null> {
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!permissions.some((permission) => roleHasPermission(ctx.role, permission))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   return null;

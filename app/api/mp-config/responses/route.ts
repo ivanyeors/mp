@@ -11,7 +11,7 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireAdmin, requireAnyAdmin } from "@/lib/auth/admin";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
 
@@ -226,7 +226,9 @@ const UpsertSchema = z.object({
 });
 
 export async function GET(req: Request) {
-  const denied = await requireAdmin("results");
+  // Results staff list responses here; the Orders page also searches unlinked
+  // results from the order detail dialog, so either permission is enough.
+  const denied = await requireAnyAdmin(["results", "orders"]);
   if (denied) return denied;
 
   const url = new URL(req.url);
