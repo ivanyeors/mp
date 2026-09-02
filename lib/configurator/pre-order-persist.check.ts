@@ -51,7 +51,7 @@ assert.match(persist, /product_buildable|bolster_buildable/);
 const publicApi = read("app/api/results/[id]/route.ts");
 assert.match(publicApi, /is_pre_order/);
 
-const adminApi = read("app/api/mp-config/responses/[id]/route.ts");
+const adminApi = read("lib/results/admin/response-detail.ts");
 assert.match(adminApi, /is_pre_order/);
 
 // --- Surfaces show Pre-order when flag set ---
@@ -59,7 +59,7 @@ const customer = read("app/[lang]/results/[id]/page.tsx");
 assert.match(customer, /is_pre_order/);
 assert.match(customer, /Pre-order/);
 
-const adminPage = read("app/[lang]/settings/results/[id]/page.tsx");
+const adminPage = read("app/[lang]/settings/results/[id]/result-detail-client.tsx");
 assert.match(adminPage, /is_pre_order/);
 assert.match(adminPage, /Pre-order/);
 

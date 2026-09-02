@@ -109,7 +109,13 @@ export function buildSettingsBreadcrumbs(
 
   // Include a nav parent that lists the active entry as a child but whose URL
   // isn't a prefix of it (e.g. Partners → /settings/partner-commissions).
-  const structuralParent = activeHref ? findStructuralParent(groups, activeHref) : null;
+  // The Admin Panel root is already the first crumb, so a parent whose href is
+  // "/settings" (the General group) would only duplicate it.
+  const structuralParentCandidate = activeHref ? findStructuralParent(groups, activeHref) : null;
+  const structuralParent =
+    structuralParentCandidate && structuralParentCandidate.href !== "/settings"
+      ? structuralParentCandidate
+      : null;
   if (structuralParent && !matched.some((e) => e.href === structuralParent.href)) {
     matched.push(structuralParent);
   }

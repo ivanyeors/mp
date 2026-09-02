@@ -33,7 +33,7 @@ for (const rel of ["components/spatial/xray-pillow.tsx", "components/spatial/xra
 const mp = read("app/[lang]/mp-config/mp-config-client.tsx");
 assert.equal(mp.match(/<XrayPillow/g)?.length, 1, "one renderer, two consumers (shared mount)");
 assert.match(mp, /previewMixMode\(guestPlacements\) === "xray"/, "fallback selection via previewMixMode");
-assert.match(mp, /const guestXray = revealNow &&/, "slice-05 reveal gate applies unchanged");
+assert.match(mp, /const guestXray =\s*(?:!partnerAssisted && )?revealNow &&/, "slice-05 reveal gate applies unchanged");
 assert.match(mp, /\{xrayVisible && \(\s*<XrayPillow/, "x-ray mounts only when staff edit or guest reveal");
 assert.match(mp, /placements=\{staffAssist \? assistPlacements : guestPlacements\}/, "identical prop path for staff and guest mixes");
 assert.match(mp, /items=\{staffAssist \? assistItems : undefined\}/, "guests get no picker");
@@ -45,7 +45,7 @@ assert.match(mp, /const mixLines = guestXray/, "text mix suppressed only while t
 const mb = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 assert.equal(mb.match(/<XrayBolster/g)?.length, 1, "one bolster renderer, two consumers");
 assert.match(mb, /previewMixMode\(recommendedTemplate\?\.placements\) === "xray"/, "bolster fallback selection via previewMixMode");
-assert.match(mb, /const guestXray = revealNow &&/, "bolster reveal gate applies unchanged");
+assert.match(mb, /const guestXray =\s*(?:!partnerAssisted && )?revealNow &&/, "bolster reveal gate applies unchanged");
 assert.match(mb, /\{xrayVisible && \(\s*<XrayBolster/, "bolster x-ray gated the same way");
 assert.match(mb, /items=\{staffAssist \? assistItems : undefined\}/, "bolster guests get no picker");
 assert.match(mb, /onPlacementsChange=\{staffAssist \? setAssistPlacements : undefined\}/, "bolster guests get no edits");

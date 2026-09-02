@@ -85,7 +85,8 @@ assert.match(mp, /plainLanguageWhy/);
 const bolster = read("app/[lang]/mbolster-config/mbolster-config-client.tsx");
 assert.match(bolster, /RecommendationReveal/);
 
-const assignPage = read("app/[lang]/settings/results/[id]/page.tsx");
+// The results detail page is an RSC shell; the assign flow lives in the client component.
+const assignPage = read("app/[lang]/settings/results/[id]/result-detail-client.tsx");
 assert.match(assignPage, /resolveAssignHintTemplateId/);
 assert.match(assignPage, /Engine recommendation|plainLanguageWhy/);
 assert.match(assignPage, /Staff assist mix/);

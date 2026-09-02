@@ -1,13 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { ProductVariant } from "@/lib/types/ecommerce";
+import type Stripe from "stripe";
 
 // Capture the params passed to Stripe without hitting the network.
-const createSession = vi.fn(async () => ({
+const createSession = vi.fn<
+  (
+    params: Stripe.Checkout.SessionCreateParams,
+    options?: Stripe.RequestOptions,
+  ) => Promise<{ id: string; url: string }>
+>(async () => ({
   id: "cs_test_123",
   url: "https://stripe.test/cs_test_123",
 }));
-const createCoupon = vi.fn(async () => ({ id: "coupon_test" }));
-const createCustomer = vi.fn(async () => ({ id: "cus_test" }));
+const createCoupon = vi.fn<
+  (params: Stripe.CouponCreateParams, options?: Stripe.RequestOptions) => Promise<{ id: string }>
+>(async () => ({ id: "coupon_test" }));
+const createCustomer = vi.fn<
+  (params: Stripe.CustomerCreateParams, options?: Stripe.RequestOptions) => Promise<{ id: string }>
+>(async () => ({ id: "cus_test" }));
 vi.mock("../client", () => ({
   getStripe: () => ({
     checkout: { sessions: { create: createSession } },

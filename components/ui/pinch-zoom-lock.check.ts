@@ -13,7 +13,7 @@ const layout = readFileSync(join(ROOT, "app/layout.tsx"), "utf8");
 assert.match(layout, /maximumScale:\s*1/);
 assert.match(layout, /userScalable:\s*false/);
 
-const overflow = spawnSync("npx", ["tsx", "components/ui/mobile-overflow.check.ts"], {
+const overflow = spawnSync(process.execPath, ["components/ui/mobile-overflow.check.ts"], {
   cwd: ROOT,
   encoding: "utf8",
   env: process.env,

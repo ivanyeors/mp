@@ -298,126 +298,128 @@ export function SettingsSidebarNav({
 
   const header = (
     <header className="flex h-14 min-w-0 items-center gap-2 border-b px-2 sm:px-3 md:px-6 lg:px-8">
-      {!isMobile && <SidebarTrigger />}
+      {/* Trigger is desktop chrome; hide with CSS so the server render matches every viewport. */}
+      <div className="hidden md:contents">
+        <SidebarTrigger />
+      </div>
       <div className="min-w-0 flex-1">
         <SettingsBreadcrumbTrail basePathname={basePathname} to={to} />
       </div>
     </header>
   );
 
-  if (isMobile) {
-    return (
-      <SettingsBreadcrumbProvider>
-        <div className="flex min-h-svh w-full min-w-0 flex-col overflow-x-hidden">
-          {header}
-          <div className="min-w-0 max-w-full px-2 py-3 sm:px-3">{children}</div>
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetContent
-              side="bottom"
-              mobilePreset="quick"
-              className="max-h-[85svh] gap-0 px-0"
-            >
-              <SheetHeader className="px-4 pb-2 pt-1">
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="overflow-y-auto px-3 pb-[calc(4rem+var(--safe-bottom))]">
-                {groups.map((group) => {
-                  const tiles = flattenNavItems(group.items, permissions);
-                  if (!tiles.length) return null;
-                  return (
-                    <div key={group.label} className="mb-4">
-                      <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        {group.label}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {tiles.map(({ href, label, tooltip, Icon }) => {
-                          const isActive = activeHref === href;
-                          return (
-                            <Link
-                              key={href}
-                              href={to(href)}
-                              title={tooltip}
-                              onClick={() => setMenuOpen(false)}
-                              className={cn(
-                                "flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-sm font-medium transition-colors",
-                                isActive
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : "border-border bg-background text-foreground hover:bg-accent"
-                              )}
-                            >
-                              <Icon className="size-6 shrink-0" />
-                              <span className="line-clamp-2 leading-tight">{label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+  // Mobile nav is a bottom sheet of tiles, opened from the dock menu.
+  const mobileMenu = (
+    <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+      <SheetContent
+        side="bottom"
+        mobilePreset="quick"
+        className="max-h-[85svh] gap-0 px-0"
+      >
+        <SheetHeader className="px-4 pb-2 pt-1">
+          <SheetTitle>Menu</SheetTitle>
+        </SheetHeader>
+        <div className="overflow-y-auto px-3 pb-[calc(4rem+var(--safe-bottom))]">
+          {groups.map((group) => {
+            const tiles = flattenNavItems(group.items, permissions);
+            if (!tiles.length) return null;
+            return (
+              <div key={group.label} className="mb-4">
+                <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {tiles.map(({ href, label, tooltip, Icon }) => {
+                    const isActive = activeHref === href;
+                    return (
+                      <Link
+                        key={href}
+                        href={to(href)}
+                        title={tooltip}
+                        onClick={() => setMenuOpen(false)}
+                        className={cn(
+                          "flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-center text-sm font-medium transition-colors",
+                          isActive
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-foreground hover:bg-accent"
+                        )}
+                      >
+                        <Icon className="size-6 shrink-0" />
+                        <span className="line-clamp-2 leading-tight">{label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               </div>
-            </SheetContent>
-          </Sheet>
+            );
+          })}
         </div>
-      </SettingsBreadcrumbProvider>
-    );
-  }
+      </SheetContent>
+    </Sheet>
+  );
 
+  // One tree for every viewport. The desktop sidebar is hidden below `md` with
+  // CSS rather than by branching on `useIsMobile()`, which is false during the
+  // server render and made phones paint the desktop shell before swapping.
   return (
     <SettingsBreadcrumbProvider>
-      <div className="flex min-h-svh w-full">
+      <div className="flex min-h-svh w-full min-w-0 overflow-x-hidden md:overflow-x-visible">
         <SidebarProvider>
+          {/* shadcn's Sidebar root is `hidden md:block`, so it already stays out of the
+              mobile paint; keep it a direct sibling of SidebarInset for the peer styles. */}
           <Sidebar collapsible="icon">
-            <SidebarContent>
-              {groups.map((group) => (
-                <SidebarGroup key={group.label}>
-                  <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                  <SidebarMenu>
-                    {group.items.map(({ href, label, tooltip, Icon, items }) => {
-                      const isActive = activeHref === href ||
-                        (items?.some((sub) => sub.href === activeHref) ?? false);
-                      const visibleSubs = (items ?? []).filter((sub) => canSee(sub, permissions));
+              <SidebarContent>
+                {groups.map((group) => (
+                  <SidebarGroup key={group.label}>
+                    <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                    <SidebarMenu>
+                      {group.items.map(({ href, label, tooltip, Icon, items }) => {
+                        const isActive = activeHref === href ||
+                          (items?.some((sub) => sub.href === activeHref) ?? false);
+                        const visibleSubs = (items ?? []).filter((sub) => canSee(sub, permissions));
 
-                      return (
-                        <SidebarMenuItem key={href}>
-                          <SidebarMenuButton asChild tooltip={tooltip} isActive={isActive}>
-                            <Link href={to(href)}>
-                              <Icon />
-                              <span>{label}</span>
-                            </Link>
-                          </SidebarMenuButton>
+                        return (
+                          <SidebarMenuItem key={href}>
+                            <SidebarMenuButton asChild tooltip={tooltip} isActive={isActive}>
+                              <Link href={to(href)}>
+                                <Icon />
+                                <span>{label}</span>
+                              </Link>
+                            </SidebarMenuButton>
 
-                          {visibleSubs.length ? (
-                            <SidebarMenuSub>
-                              {visibleSubs.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
-                                <SidebarMenuSubItem key={subHref}>
-                                  <SidebarMenuSubButton
-                                    asChild
-                                    isActive={activeHref === subHref}
-                                  >
-                                    <Link href={to(subHref)} title={subTooltip}>
-                                      <SubIcon />
-                                      <span>{subLabel}</span>
-                                    </Link>
-                                  </SidebarMenuSubButton>
-                                </SidebarMenuSubItem>
-                              ))}
-                            </SidebarMenuSub>
-                          ) : null}
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroup>
-              ))}
-            </SidebarContent>
-            <SidebarRail />
+                            {visibleSubs.length ? (
+                              <SidebarMenuSub>
+                                {visibleSubs.map(({ href: subHref, label: subLabel, Icon: SubIcon, tooltip: subTooltip }) => (
+                                  <SidebarMenuSubItem key={subHref}>
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      isActive={activeHref === subHref}
+                                    >
+                                      <Link href={to(subHref)} title={subTooltip}>
+                                        <SubIcon />
+                                        <span>{subLabel}</span>
+                                      </Link>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                ))}
+                              </SidebarMenuSub>
+                            ) : null}
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroup>
+                ))}
+              </SidebarContent>
+              <SidebarRail />
           </Sidebar>
-          <SidebarInset>
+          <SidebarInset className="min-w-0">
             {header}
-            <div className="px-2 py-3 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
+            <div className="min-w-0 max-w-full px-2 py-3 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
               {children}
             </div>
           </SidebarInset>
+          {mobileMenu}
         </SidebarProvider>
       </div>
     </SettingsBreadcrumbProvider>
