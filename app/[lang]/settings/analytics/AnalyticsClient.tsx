@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,11 +13,10 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import dynamic from "next/dynamic";
-import { ProductConfigurationCard } from "./ProductConfigurationCard";
-import { ProspectJourneyCard } from "./ProspectJourneyCard";
 import type { CategoryStackDatum, ItemStackDatum } from "./MarginByCategoryVisx";
 import type { AnalyticsChannel } from "@/lib/analytics/channel-sales";
 import {
+  getAnalyticsDashboard,
   getInventoryMovementWaterfall,
   getMpConfigMetricsBreakdown,
   getRealizedMarginSummary,
@@ -28,6 +27,8 @@ import {
   type RealizedMarginSummary,
 } from "./actions";
 
+const ProductConfigurationCard = dynamic(() => import("./ProductConfigurationCard").then((m) => m.ProductConfigurationCard), { ssr: false });
+const ProspectJourneyCard = dynamic(() => import("./ProspectJourneyCard").then((m) => m.ProspectJourneyCard), { ssr: false });
 const MarginByCategoryVisx = dynamic(() => import("./MarginByCategoryVisx").then((m) => m.MarginByCategoryVisx), { ssr: false });
 const MarginByProductVisx = dynamic(() => import("./MarginByProductVisx").then((m) => m.MarginByProductVisx), { ssr: false });
 const ProductTimelineVisx = dynamic(() => import("./ProductTimelineVisx").then((m) => m.ProductTimelineVisx), { ssr: false });
@@ -136,6 +137,32 @@ const describeItem = (item: ItemMetrics): string => {
   }
   return base;
 };
+
+/**
+ * One slice of the combined `getAnalyticsDashboard` payload. Structurally
+ * identical to the server's `AnalyticsDashboardSlice`, declared here so the
+ * client does not import a type across the "use server" boundary.
+ */
+type DashboardSlice<T> = { ok: true; value: T } | { ok: false; error: string };
+
+/**
+ * Unpack one dashboard slice into its card. A slice that failed on the server
+ * reports through `onError` alone, so one broken card cannot blank the others
+ * — matching the behaviour of the four separate actions this replaced.
+ */
+function applySlice<T>(
+  slice: DashboardSlice<T>,
+  apply: (value: T) => void,
+  fallback: string,
+  onError: (message: string) => void
+): void {
+  try {
+    if (!slice.ok) throw new Error(slice.error);
+    apply(slice.value);
+  } catch (err) {
+    onError(err instanceof Error ? err.message : fallback);
+  }
+}
 
 export default function AnalyticsClient() {
   const [items, setItems] = useState<ItemMetrics[]>([]);
@@ -307,51 +334,79 @@ export default function AnalyticsClient() {
     return m;
   }, [soldPartUnitsByItemId]);
 
+  // Result shapes of the individual loaders. The combined dashboard action
+  // returns exactly these payloads, so the fan-out below is written once and
+  // reused by both the per-card refresh buttons and the combined load.
+  type TimelineResult = Awaited<ReturnType<typeof getShopifySalesTimeline>>;
+  type MpMetricsResult = Awaited<ReturnType<typeof getMpConfigMetricsBreakdown>>;
+  type RealizedMarginResult = Awaited<ReturnType<typeof getRealizedMarginSummary>>;
+  type InventoryMovementResult = Awaited<ReturnType<typeof getInventoryMovementWaterfall>>;
+
+  const applyTimeline = useCallback((res: TimelineResult) => {
+    if (!res.ok) throw new Error("Failed to load sales timeline");
+
+    const labelForCategory = (category: string) => CATEGORY_LABELS[category] ?? normalizeNameOrFallback(category, category);
+
+    const mapSeries = (series: typeof res.parts) =>
+      series.map((s) => ({
+        id: s.id,
+        name: labelForCategory(s.name),
+        category: s.category,
+        data: s.data.map((pt) => ({
+          date: new Date(pt.date),
+          units: Number(pt.units ?? 0),
+          revenue: Number(pt.revenue ?? 0),
+        })),
+      }));
+
+    setPartsTimeline(mapSeries(res.parts));
+    setProductsTimeline(
+      res.products.map((s) => ({
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        data: s.data.map((pt) => ({
+          date: new Date(pt.date),
+          units: Number(pt.units ?? 0),
+          revenue: Number(pt.revenue ?? 0),
+        })),
+      }))
+    );
+    setTimelineCurrency(res.currency ?? null);
+    setSoldPartUnitsByItemId(res.totals?.partUnitsByItemId ?? {});
+    setSoldPillowUnitsByKindSize(res.totals?.pillowUnitsByKindSize ?? {});
+    setSoldPillowUnitsByTemplateId(res.totals?.pillowUnitsByTemplateId ?? {});
+  }, []);
+
+  const applyMpMetrics = useCallback((res: MpMetricsResult) => {
+    if (!res.ok) throw new Error("Failed to load mp-config metrics");
+    setMpMetrics(res.metrics ?? []);
+  }, []);
+
+  const applyRealizedMargin = useCallback((res: RealizedMarginResult) => {
+    if (!res.ok) throw new Error("Failed to load realized margin");
+    setRealizedMargin(res.summary);
+  }, []);
+
+  const applyInventoryMovement = useCallback((res: InventoryMovementResult) => {
+    if (!res.ok) throw new Error("Failed to load inventory movements");
+    setInventoryRows(res.rows);
+  }, []);
+
+  // Kept for the per-card refresh button on the timeline card.
   const loadTimeline = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (mode === "initial") setTimelineLoading(true);
       else setTimelineRefreshing(true);
       setTimelineError(null);
       try {
-        const res = await getShopifySalesTimeline({
-          from: timelineDateRange.from.toISOString(),
-          to: timelineDateRange.to.toISOString(),
-          channel,
-        });
-
-        if (!res.ok) throw new Error("Failed to load sales timeline");
-
-        const labelForCategory = (category: string) => CATEGORY_LABELS[category] ?? normalizeNameOrFallback(category, category);
-
-        const mapSeries = (series: typeof res.parts) =>
-          series.map((s) => ({
-            id: s.id,
-            name: labelForCategory(s.name),
-            category: s.category,
-            data: s.data.map((pt) => ({
-              date: new Date(pt.date),
-              units: Number(pt.units ?? 0),
-              revenue: Number(pt.revenue ?? 0),
-            })),
-          }));
-
-        setPartsTimeline(mapSeries(res.parts));
-        setProductsTimeline(
-          res.products.map((s) => ({
-            id: s.id,
-            name: s.name,
-            category: s.category,
-            data: s.data.map((pt) => ({
-              date: new Date(pt.date),
-              units: Number(pt.units ?? 0),
-              revenue: Number(pt.revenue ?? 0),
-            })),
-          }))
+        applyTimeline(
+          await getShopifySalesTimeline({
+            from: timelineDateRange.from.toISOString(),
+            to: timelineDateRange.to.toISOString(),
+            channel,
+          })
         );
-        setTimelineCurrency(res.currency ?? null);
-        setSoldPartUnitsByItemId(res.totals?.partUnitsByItemId ?? {});
-        setSoldPillowUnitsByKindSize(res.totals?.pillowUnitsByKindSize ?? {});
-        setSoldPillowUnitsByTemplateId(res.totals?.pillowUnitsByTemplateId ?? {});
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load sales timeline";
         setTimelineError(message);
@@ -360,25 +415,22 @@ export default function AnalyticsClient() {
         else setTimelineRefreshing(false);
       }
     },
-    [timelineDateRange.from, timelineDateRange.to, channel]
+    [timelineDateRange.from, timelineDateRange.to, channel, applyTimeline]
   );
 
-  useEffect(() => {
-    loadTimeline("initial");
-  }, [loadTimeline]);
-
+  // Kept for the per-card refresh button on the mp-config metrics card.
   const loadMpMetrics = useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (mode === "initial") setMpMetricsLoading(true);
       else setMpMetricsRefreshing(true);
       setMpMetricsError(null);
       try {
-        const res = await getMpConfigMetricsBreakdown({
-          from: timelineDateRange.from.toISOString(),
-          to: timelineDateRange.to.toISOString(),
-        });
-        if (!res.ok) throw new Error("Failed to load mp-config metrics");
-        setMpMetrics(res.metrics ?? []);
+        applyMpMetrics(
+          await getMpConfigMetricsBreakdown({
+            from: timelineDateRange.from.toISOString(),
+            to: timelineDateRange.to.toISOString(),
+          })
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load mp-config metrics";
         setMpMetricsError(message);
@@ -388,61 +440,159 @@ export default function AnalyticsClient() {
         else setMpMetricsRefreshing(false);
       }
     },
-    [timelineDateRange.from, timelineDateRange.to]
+    [timelineDateRange.from, timelineDateRange.to, applyMpMetrics]
   );
 
-  useEffect(() => {
-    loadMpMetrics("initial");
-  }, [loadMpMetrics]);
-
-  const loadRealizedMargin = useCallback(async () => {
-    setRealizedMarginLoading(true);
-    setRealizedMarginError(null);
-    try {
-      const res = await getRealizedMarginSummary({
-        from: timelineDateRange.from.toISOString(),
-        to: timelineDateRange.to.toISOString(),
-        channel,
-      });
-      if (!res.ok) throw new Error("Failed to load realized margin");
-      setRealizedMargin(res.summary);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load realized margin";
-      setRealizedMarginError(message);
-      setRealizedMargin(null);
-    } finally {
-      setRealizedMarginLoading(false);
-    }
-  }, [timelineDateRange.from, timelineDateRange.to, channel]);
-
-  useEffect(() => {
-    loadRealizedMargin();
-  }, [loadRealizedMargin]);
-
+  // The waterfall is the one card with inputs that change independently of the
+  // date range, so it keeps a standalone loader for grouping changes.
   const loadInventoryMovement = useCallback(async () => {
     setInventoryLoading(true);
     setInventoryError(null);
     try {
-      const res = await getInventoryMovementWaterfall({
-        from: timelineDateRange.from.toISOString(),
-        to: timelineDateRange.to.toISOString(),
-        group: inventoryGroup,
-        category: inventoryCategory,
-        size: inventorySize,
-      });
-      if (!res.ok) throw new Error("Failed to load inventory movements");
-      setInventoryRows(res.rows);
+      applyInventoryMovement(
+        await getInventoryMovementWaterfall({
+          from: timelineDateRange.from.toISOString(),
+          to: timelineDateRange.to.toISOString(),
+          group: inventoryGroup,
+          category: inventoryCategory,
+          size: inventorySize,
+        })
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load inventory movements";
       setInventoryError(message);
     } finally {
       setInventoryLoading(false);
     }
-  }, [timelineDateRange.from, timelineDateRange.to, inventoryGroup, inventoryCategory, inventorySize]);
+  }, [
+    timelineDateRange.from,
+    timelineDateRange.to,
+    inventoryGroup,
+    inventoryCategory,
+    inventorySize,
+    applyInventoryMovement,
+  ]);
+
+  // Latest inventory grouping, read without making it a dependency of
+  // `loadDashboard` — otherwise a grouping change would re-fetch all four
+  // cards instead of just the waterfall. Synced in an effect declared ahead of
+  // the loading effects below, so it is current by the time they run.
+  const inventoryParamsRef = useRef({
+    group: inventoryGroup,
+    category: inventoryCategory,
+    size: inventorySize,
+  });
+  useEffect(() => {
+    inventoryParamsRef.current = {
+      group: inventoryGroup,
+      category: inventoryCategory,
+      size: inventorySize,
+    };
+  }, [inventoryGroup, inventoryCategory, inventorySize]);
+
+  /**
+   * Single round trip for the whole retrospective. Next.js runs server actions
+   * from one client sequentially, so issuing these four separately cost four
+   * consecutive round trips on first paint; `getAnalyticsDashboard` runs them
+   * concurrently on the server behind one admin check. Every loading and error
+   * state below is the same one the four separate loaders set.
+   */
+  const loadDashboard = useCallback(
+    async (mode: "initial" | "refresh" = "initial") => {
+      if (mode === "initial") {
+        setTimelineLoading(true);
+        setMpMetricsLoading(true);
+      } else {
+        setTimelineRefreshing(true);
+        setMpMetricsRefreshing(true);
+      }
+      // Margin and waterfall have no separate "refreshing" indicator; they show
+      // their loading state on refresh too, exactly as they did before.
+      setRealizedMarginLoading(true);
+      setInventoryLoading(true);
+      setTimelineError(null);
+      setMpMetricsError(null);
+      setRealizedMarginError(null);
+      setInventoryError(null);
+
+      const { group, category, size } = inventoryParamsRef.current;
+
+      try {
+        const res = await getAnalyticsDashboard({
+          from: timelineDateRange.from.toISOString(),
+          to: timelineDateRange.to.toISOString(),
+          channel,
+          group,
+          category,
+          size,
+        });
+
+        applySlice(res.timeline, applyTimeline, "Failed to load sales timeline", setTimelineError);
+        applySlice(res.metrics, applyMpMetrics, "Failed to load mp-config metrics", (message) => {
+          setMpMetricsError(message);
+          setMpMetrics([]);
+        });
+        applySlice(res.margin, applyRealizedMargin, "Failed to load realized margin", (message) => {
+          setRealizedMarginError(message);
+          setRealizedMargin(null);
+        });
+        applySlice(
+          res.waterfall,
+          applyInventoryMovement,
+          "Failed to load inventory movements",
+          setInventoryError
+        );
+      } catch (err) {
+        // The round trip itself failed: every card reports it, as before.
+        const message = err instanceof Error ? err.message : "Failed to load analytics";
+        setTimelineError(message);
+        setMpMetricsError(message);
+        setMpMetrics([]);
+        setRealizedMarginError(message);
+        setRealizedMargin(null);
+        setInventoryError(message);
+      } finally {
+        if (mode === "initial") {
+          setTimelineLoading(false);
+          setMpMetricsLoading(false);
+        } else {
+          setTimelineRefreshing(false);
+          setMpMetricsRefreshing(false);
+        }
+        setRealizedMarginLoading(false);
+        setInventoryLoading(false);
+      }
+    },
+    [
+      timelineDateRange.from,
+      timelineDateRange.to,
+      channel,
+      applyTimeline,
+      applyMpMetrics,
+      applyRealizedMargin,
+      applyInventoryMovement,
+    ]
+  );
+
+  // Identifies the waterfall inputs whose data has already been requested.
+  const inventoryKey = `${inventoryGroup}|${inventoryCategory ?? ""}|${inventorySize ?? ""}`;
+  const requestedInventoryKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    loadInventoryMovement();
-  }, [loadInventoryMovement]);
+    // Claim the current grouping before the effect below runs, so the combined
+    // call is not immediately duplicated by a standalone waterfall fetch.
+    requestedInventoryKeyRef.current = inventoryKey;
+    void loadDashboard("initial");
+    // `inventoryKey` is deliberately not a dependency: a grouping change is
+    // served by the narrower effect below, not by a full dashboard reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    if (requestedInventoryKeyRef.current === inventoryKey) return;
+    requestedInventoryKeyRef.current = inventoryKey;
+    void loadInventoryMovement();
+  }, [inventoryKey, loadInventoryMovement]);
 
   const categorySummary = useMemo<CategorySummary[]>(() => {
     const map = new Map<string, CategorySummary>();
@@ -658,10 +808,10 @@ export default function AnalyticsClient() {
 
   const refreshRetrospective = () => {
     void load("refresh");
-    void loadTimeline("refresh");
-    void loadMpMetrics("refresh");
-    void loadRealizedMargin();
-    void loadInventoryMovement();
+    // One round trip covers the timeline, mp-config metrics, realized margin
+    // and inventory waterfall; `load` is a direct Supabase query so it runs in
+    // parallel with it rather than queueing behind the server action.
+    void loadDashboard("refresh");
   };
 
   return (

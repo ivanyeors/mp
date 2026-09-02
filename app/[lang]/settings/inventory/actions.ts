@@ -1063,7 +1063,27 @@ export async function syncShopifyPricesOnly() {
   return { ok: true, prices }
 }
 
-export async function listShopifyAdminState() {
+/**
+ * Shape of the Shopify Admin API active-products payload, as far as the admin
+ * panel needs it.
+ */
+type ShopifyActiveProduct = {
+  title?: string
+  variants?: Array<{ id: number; title?: string; sku?: string | null }>
+}
+
+/**
+ * Builds the Shopify admin table from the database, optionally enriched with
+ * the live Shopify active-products list.
+ *
+ * `activeProducts` is a parameter rather than a fetch so the Admin API call can
+ * be kept off the page's first paint: {@link listShopifyAdminState} builds the
+ * DB-only view for immediate render, and {@link listShopifyRemoteProducts}
+ * rebuilds it once the remote list is in hand. Passing an empty list yields
+ * exactly the mappings-only fallback this function already produced whenever
+ * the Shopify env vars were missing.
+ */
+async function buildShopifyAdminState(activeProducts: ShopifyActiveProduct[]) {
   const admin = supabaseAdmin()
   const [
     { data: mappings, error: mErr },
@@ -1072,7 +1092,6 @@ export async function listShopifyAdminState() {
     { data: productPrices, error: ppErr },
     { data: itemPrices, error: ipErr },
     { data: pillowProducts, error: pillowErr },
-    activeProducts,
   ] =
     await Promise.all([
       admin
@@ -1086,9 +1105,6 @@ export async function listShopifyAdminState() {
       admin.from('product_prices').select('key,msrp,currency'),
       admin.from('item_prices').select('item_id,msrp,currency'),
       admin.from('pillow_products').select('id,kind,size'),
-      // Used to filter to "active SKUs only" in UI.
-      // If env vars are missing in a local shell, we fall back to showing all mappings.
-      shopifyListActiveProductsWithVariants({ limit: 250 }).catch(() => []),
     ])
 
   if (mErr) throw new Error(mErr.message)
@@ -1147,7 +1163,7 @@ export async function listShopifyAdminState() {
   const activeVariantIds = new Set<string>()
   const variantNameById = new Map<number, string>()
   const shopifyVariantTitleById = new Map<number, string>()
-  for (const p of (activeProducts ?? []) as Array<{ title?: string; variants?: Array<{ id: number; title?: string }> }>) {
+  for (const p of activeProducts) {
     const productTitle = String(p.title ?? '').trim()
     for (const v of p.variants ?? []) {
       const id = Number(v.id)
@@ -1273,19 +1289,23 @@ export async function listShopifyAdminState() {
   return { ok: true, rows }
 }
 
-export async function listShopifyUnmappedVariants() {
+/**
+ * Unmapped-variant list built from an already-fetched active-products payload.
+ * Split out for the same reason as {@link buildShopifyAdminState}: it lets the
+ * single Admin API fetch in {@link listShopifyRemoteProducts} serve both halves
+ * of the panel instead of each action fetching the list for itself.
+ */
+async function buildShopifyUnmappedVariants(activeProducts: ShopifyActiveProduct[]) {
   const admin = supabaseAdmin()
-  const [{ data: mappings, error: mErr }, activeProducts] = await Promise.all([
-    admin.from('shopify_variant_mappings').select('shopify_variant_id'),
-    // If env vars are missing, gracefully return an empty list (can't discover Shopify variants).
-    shopifyListActiveProductsWithVariants({ limit: 250 }).catch(() => []),
-  ])
+  const { data: mappings, error: mErr } = await admin
+    .from('shopify_variant_mappings')
+    .select('shopify_variant_id')
   if (mErr) throw new Error(mErr.message)
 
   const mapped = new Set<string>((mappings ?? []).map((m: { shopify_variant_id: number | string }) => String(m.shopify_variant_id)))
   const variants: Array<{ id: number; label: string; sku: string | null }> = []
 
-  for (const p of (activeProducts ?? []) as Array<{ title?: string; variants?: Array<{ id: number; title?: string; sku?: string | null }> }>) {
+  for (const p of activeProducts) {
     const productTitle = String(p.title ?? '').trim()
     for (const v of p.variants ?? []) {
       const id = Number(v.id)
@@ -1303,6 +1323,46 @@ export async function listShopifyUnmappedVariants() {
 
   variants.sort((a, b) => a.label.localeCompare(b.label))
   return { ok: true, variants }
+}
+
+/**
+ * Database-only Shopify admin state. Deliberately does NOT call the Shopify
+ * Admin API: that request dominated this action's latency and the panel's first
+ * paint waited on it. Callers render this immediately, then upgrade to the full
+ * view with {@link listShopifyRemoteProducts}.
+ */
+export async function listShopifyAdminState() {
+  return buildShopifyAdminState([])
+}
+
+/**
+ * The Shopify Admin API half of the panel: fetches the active products once and
+ * uses that single payload to rebuild both the admin table and the unmapped
+ * variant list. Its `rows` are what {@link listShopifyAdminState} used to
+ * return, so the rendered result once this lands is identical to before.
+ */
+export async function listShopifyRemoteProducts() {
+  // If env vars are missing in a local shell, fall back to the DB-only view.
+  const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
+    () => [],
+  )) as ShopifyActiveProduct[]
+
+  const [state, unmapped] = await Promise.all([
+    buildShopifyAdminState(activeProducts),
+    buildShopifyUnmappedVariants(activeProducts),
+  ])
+
+  return { ok: true as const, rows: state.rows, variants: unmapped.variants }
+}
+
+/**
+ * Standalone unmapped-variant list, kept for callers that need only this half.
+ */
+export async function listShopifyUnmappedVariants() {
+  const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
+    () => [],
+  )) as ShopifyActiveProduct[]
+  return buildShopifyUnmappedVariants(activeProducts)
 }
 
 export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertShopifyOverrideSchema>) {

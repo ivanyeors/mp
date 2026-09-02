@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { getInventoryItemDisplayLabel } from "./item-label";
 import {
   listShopifyAdminState,
-  listShopifyUnmappedVariants,
+  listShopifyRemoteProducts,
   listTemplates,
   upsertShopifyVariantOverride,
   deleteShopifyVariantOverride,
@@ -49,6 +49,10 @@ const ALL_BOLSTER_VARIANTS = ["short", "medium", "long"] as const;
 
 export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
   const [loading, setLoading] = useState(false);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  // The panel is only fully loaded once the remote pass lands; the existing
+  // controls stay in their loading state until then, exactly as before.
+  const busy = loading || remoteLoading;
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [filter, setFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -71,25 +75,52 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
   const [draftByVariantId, setDraftByVariantId] = useState<Record<number, { sku: string }>>({});
 
+  const applyRows = useCallback((next: AdminRow[]) => {
+    setRows(next);
+    setDraftByVariantId(() => {
+      const out: Record<number, { sku: string }> = {};
+      next.forEach((r) => {
+        out[r.shopifyVariantId] = {
+          sku: r.override?.sku ?? "",
+        };
+      });
+      return out;
+    });
+  }, []);
+
+  /**
+   * First pass: database-only state. The Shopify Admin API request that used to
+   * sit inside this action is no longer on the critical path, so the table
+   * paints as soon as the DB answers. Until `refreshRemote` lands, the table
+   * shows the mappings-only view and the unmapped-variant picker shows its
+   * existing empty state.
+   */
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [res, unmapped] = await Promise.all([listShopifyAdminState(), listShopifyUnmappedVariants()]);
+      const res = await listShopifyAdminState();
       if (!res?.ok) throw new Error("Failed to load Shopify admin state");
-      if (!unmapped?.ok) throw new Error("Failed to load unmapped Shopify variants");
-      const next = (res.rows ?? []) as AdminRow[];
-      setRows(next);
-      setDraftByVariantId(() => {
-        const out: Record<number, { sku: string }> = {};
-        next.forEach((r) => {
-          out[r.shopifyVariantId] = {
-            sku: r.override?.sku ?? "",
-          };
-        });
-        return out;
-      });
+      applyRows((res.rows ?? []) as AdminRow[]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load Shopify admin state");
+    } finally {
+      setLoading(false);
+    }
+  }, [applyRows]);
+
+  /**
+   * Second pass: everything that needs the Shopify Admin API. One call now
+   * serves both the table and the unmapped-variant picker, where previously two
+   * server actions each fetched the active-product list in turn.
+   */
+  const refreshRemote = useCallback(async () => {
+    setRemoteLoading(true);
+    try {
+      const res = await listShopifyRemoteProducts();
+      if (!res?.ok) throw new Error("Failed to load Shopify admin state");
+      applyRows((res.rows ?? []) as AdminRow[]);
       setUnmappedVariants(
-        ((unmapped.variants ?? []) as Array<{ id: number; label: string; sku: string | null }>).map((v) => ({
+        ((res.variants ?? []) as Array<{ id: number; label: string; sku: string | null }>).map((v) => ({
           id: Number(v.id),
           label: String(v.label),
           sku: v.sku ?? null,
@@ -98,13 +129,18 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load Shopify admin state");
     } finally {
-      setLoading(false);
+      setRemoteLoading(false);
     }
-  }, []);
+  }, [applyRows]);
+
+  const reload = useCallback(async () => {
+    await refresh();
+    await refreshRemote();
+  }, [refresh, refreshRemote]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    void reload();
+  }, [reload]);
 
   useEffect(() => {
     // Keep selection valid when switching mapping types.
@@ -229,8 +265,8 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={refresh} disabled={loading}>
-            {loading ? "Loading…" : "Refresh"}
+          <Button variant="secondary" onClick={reload} disabled={busy}>
+            {busy ? "Loading…" : "Refresh"}
           </Button>
         </div>
       </div>
@@ -363,7 +399,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
               value={unmappedVariants.some((v) => String(v.id) === linkVariantId) ? linkVariantId : ""}
               onValueChange={(v) => setLinkVariantId(v)}
             >
-              <SelectTrigger className="w-full" disabled={loading}>
+              <SelectTrigger className="w-full" disabled={busy}>
                 <SelectValue placeholder="Pick an unmapped Shopify variant…" />
               </SelectTrigger>
               <SelectContent className="max-h-[320px]">
@@ -446,7 +482,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                   setLinkVariantId("");
                   setUnmappedFilter("");
                   setLinkTemplateId("");
-                  await refresh();
+                  await reload();
                 } catch (e) {
                   toast.error(e instanceof Error ? e.message : "Failed to link");
                 } finally {
@@ -573,7 +609,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                               sku: d.sku.trim() ? d.sku.trim() : null,
                             });
                             toast.success("Saved");
-                            await refresh();
+                            await reload();
                           } catch (e) {
                             toast.error(e instanceof Error ? e.message : "Failed to save");
                           }
@@ -589,7 +625,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                             await deleteShopifyVariantOverride(r.shopifyVariantId);
                             toast.success("Override cleared");
                             setDraftByVariantId((prev) => ({ ...prev, [r.shopifyVariantId]: { sku: "" } }));
-                            await refresh();
+                            await reload();
                           } catch (e) {
                             toast.error(e instanceof Error ? e.message : "Failed to clear override");
                           }
@@ -605,7 +641,7 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
                             try {
                               await deleteShopifyMapping(r.shopifyVariantId);
                               toast.success("Mapping deleted");
-                              await refresh();
+                              await reload();
                             } catch (e) {
                               toast.error(e instanceof Error ? e.message : "Failed to delete mapping");
                             }
