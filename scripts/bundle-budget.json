@@ -1,0 +1,10 @@
+{
+  "/[lang]/mbolster-config": 685,
+  "/[lang]/mp-config": 675,
+  "/[lang]/mp-basic": 675,
+  "/[lang]/settings": 425,
+  "/[lang]": 525,
+  "/[lang]/settings/**": 475,
+  "/[lang]/**": 475,
+  "**": 410
+}

@@ -329,7 +329,7 @@ export async function loadPageTransitionsFromDb(
     }));
 
   // Prospect cohort excludes paid Visits (slice 10).
-  let rangeVisits = rangeRaw
+  const rangeVisits = rangeRaw
     .filter((v) => isProspectVisit(v.converted_order_id))
     .map(rowToVisitMeta);
 

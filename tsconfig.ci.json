@@ -1,0 +1,22 @@
+{
+  // CI typecheck config.
+  //
+  // Identical to tsconfig.json except that test files are excluded. The suites
+  // under lib/**/__tests__/ carry 16 pre-existing tsc errors (tuple-narrowing
+  // on `vi.mock` call arrays, and a `dotenv` import with no installed types).
+  // They are real, but they are test-harness typing debt, not product-code
+  // debt, and fixing them is a separate piece of work — so the CI gate covers
+  // application code today rather than being switched off entirely.
+  //
+  // `exclude` is replaced, not merged, by `extends`, so the base excludes are
+  // repeated here.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "**/*.check.ts",
+    "scripts/**",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}

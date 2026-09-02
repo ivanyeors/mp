@@ -139,12 +139,13 @@ export function CustomerDetailClient({
     const params = useParams<{ id: string }>();
     const customerId = params.id;
 
-    // `fetchCustomer` assigns the whole response body — including the
-    // `{ ok, row }` envelope — so the server-rendered value is applied the same
-    // way, keeping this screen byte-for-byte what it renders today.
-    const [customer, setCustomer] = useState<Customer | null>(
-        (initialData?.customer as unknown as Customer | undefined) ?? null,
-    );
+    // The route answers `{ ok: true, row }` (or `{ error }` on a miss); unwrap
+    // the row so the header, dates and editable fields read real values.
+    const initialRow: Customer | null =
+        initialData?.customer && "ok" in initialData.customer && initialData.customer.ok
+            ? (initialData.customer.row as Customer)
+            : null;
+    const [customer, setCustomer] = useState<Customer | null>(initialRow);
     const [loading, setLoading] = useState(!initialData);
 
     // The RSC page already read the customer — skip that mount fetch once. The
@@ -160,11 +161,11 @@ export function CustomerDetailClient({
     const [addressesLoading, setAddressesLoading] = useState(true);
 
     // Editable fields
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [phone, setPhone] = useState("");
-    const [notes, setNotes] = useState("");
-    const [tags, setTags] = useState<string[]>([]);
+    const [firstName, setFirstName] = useState(initialRow?.first_name ?? "");
+    const [lastName, setLastName] = useState(initialRow?.last_name ?? "");
+    const [phone, setPhone] = useState(initialRow?.phone ?? "");
+    const [notes, setNotes] = useState(initialRow?.notes ?? "");
+    const [tags, setTags] = useState<string[]>(initialRow?.tags ?? []);
     const [tagInput, setTagInput] = useState("");
 
     useSettingsBreadcrumbDetail(
@@ -184,12 +185,17 @@ export function CustomerDetailClient({
         try {
             const res = await fetch(`/api/shop/customers/${customerId}`);
             const json = await res.json();
-            setCustomer(json);
-            setFirstName(json.first_name ?? "");
-            setLastName(json.last_name ?? "");
-            setPhone(json.phone ?? "");
-            setNotes(json.notes ?? "");
-            setTags(json.tags ?? []);
+            if (!res.ok || !json?.ok || !json.row) {
+                setCustomer(null);
+                return;
+            }
+            const row = json.row as Customer;
+            setCustomer(row);
+            setFirstName(row.first_name ?? "");
+            setLastName(row.last_name ?? "");
+            setPhone(row.phone ?? "");
+            setNotes(row.notes ?? "");
+            setTags(row.tags ?? []);
         } catch {
             setCustomer(null);
         } finally {

@@ -175,7 +175,10 @@ export function resolveUsages(
           inline = true;
           break;
         }
-        if (body.includes(asset.id)) {
+        // Guard the empty-id shape (`listImageUsages(url)`): `"".includes("")`
+        // is true, which used to mark every blog post as an inline usage and
+        // made the delete precheck 409 whenever any post existed.
+        if (asset.id && body.includes(asset.id)) {
           inline = true;
           break;
         }

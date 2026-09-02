@@ -18,6 +18,18 @@ const eslintConfig = defineConfig([
       "react-hooks/static-components": "warn",
     },
   },
+  // One-off operational scripts (WhatsApp Graph API probes, seeds, Stripe sync)
+  // parse untyped third-party JSON responses. tsconfig.json already excludes
+  // scripts/** from typechecking for the same reason; mirror that for this one
+  // rule so `pnpm lint` can be a hard CI gate on application code instead of
+  // failing every run on five pre-existing `any` annotations. Every other rule
+  // still applies to scripts/.
+  {
+    files: ["scripts/**/*.ts", "scripts/**/*.mts", "scripts/**/*.mjs"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
   globalIgnores([
     "node_modules/**",
     ".next/**",
