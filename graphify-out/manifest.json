@@ -168,9 +168,9 @@
     "semantic_hash": "89c0fb4139bdc8ebbd326a7162330898"
   },
   "lib/auth/user.ts": {
-    "mtime": 1788330692.5282612,
-    "seen": 1788330933.1110597,
-    "ast_hash": "1665de2c8442819838e61ca5698c4f74",
+    "mtime": 1788338577.0992634,
+    "seen": 1788338625.5051417,
+    "ast_hash": "4fb909381a1f9d6c4795543c3e6d968e",
     "semantic_hash": ""
   },
   "lib/authorization-hold/__tests__/authorization-hold.test.ts": {
