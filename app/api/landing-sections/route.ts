@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/auth/admin";
+import { listLandingSections } from "@/lib/landing-sections";
 
 export const runtime = "nodejs";
 
@@ -10,17 +11,14 @@ export const runtime = "nodejs";
  * Returns all sections ordered by position.
  */
 export async function GET() {
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("landing_sections")
-    .select("*")
-    .order("position", { ascending: true });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    return NextResponse.json({ ok: true, sections: await listLandingSections() });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
   }
-
-  return NextResponse.json({ ok: true, sections: data ?? [] });
 }
 
 const CreateSchema = z.object({

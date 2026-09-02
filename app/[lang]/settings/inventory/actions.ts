@@ -296,6 +296,7 @@ async function sellFromReplaceLinesForShopifyCommit(
 }
 
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
+  await assertAdmin('inventory')
   const parsed = SellPillowSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -323,6 +324,7 @@ export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
 }
 
 export async function sellPart(input: z.infer<typeof ItemQtySchema>) {
+  await assertAdmin('inventory')
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
   const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
@@ -337,6 +339,7 @@ export async function sellPart(input: z.infer<typeof ItemQtySchema>) {
 }
 
 export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
+  await assertAdmin('inventory')
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
   const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
@@ -352,6 +355,7 @@ export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
 }
 
 export async function setThreshold(itemId: number, minLevel: number) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { error } = await admin.from('item_thresholds').upsert({ item_id: itemId, min_level: minLevel })
   if (error) throw new Error(error.message)
@@ -359,6 +363,7 @@ export async function setThreshold(itemId: number, minLevel: number) {
 }
 
 export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
+  await assertAdmin('inventory')
   const parsed = SellBolsterSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -398,6 +403,7 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
 }
 
 export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSchema>) {
+  await assertAdmin('inventory')
   const parsed = SellFromTemplateSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -469,6 +475,7 @@ export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSch
 }
 
 export async function listShopifySalesQueue() {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
@@ -481,6 +488,7 @@ export async function listShopifySalesQueue() {
 }
 
 export async function listShopifySalesQueueArchived() {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
@@ -493,6 +501,7 @@ export async function listShopifySalesQueueArchived() {
 }
 
 export async function archiveShopifySaleQueueRow(queueId: number) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { error } = await admin
     .from('shopify_sales_queue')
@@ -510,6 +519,7 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
   daysBack?: number
   limit?: number
 }) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
 
   const limit = Math.max(1, Math.min(250, Math.floor(input?.limit ?? 250)))
@@ -630,6 +640,7 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
 }
 
 export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pillowKind?: 'basic' | 'premium', pillowVariant?: 'linen' | 'fibrecool') {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const effectivePillowKind = kind === 'pillow' ? (pillowKind ?? 'basic') : null
   const effectivePillowVariant = kind === 'pillow' && effectivePillowKind === 'premium' ? (pillowVariant ?? null) : null
@@ -658,6 +669,7 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
 }
 
 export async function listFillingTemplates(kind: 'pillow' | 'bolster', key: string) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('bom_templates')
@@ -672,6 +684,7 @@ export async function listFillingTemplates(kind: 'pillow' | 'bolster', key: stri
 }
 
 export async function commitShopifySales(input: z.infer<typeof CommitShopifySalesSchema>) {
+  await assertAdmin('inventory')
   const parsed = CommitShopifySalesSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -846,6 +859,7 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
 }
 
 export async function deleteInventoryItem(input: z.infer<typeof DeleteItemSchema>) {
+  await assertAdmin('inventory')
   const parsed = DeleteItemSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -866,6 +880,7 @@ export async function deleteInventoryItem(input: z.infer<typeof DeleteItemSchema
 }
 
 export async function renameInventoryItem(input: z.infer<typeof RenameItemSchema>) {
+  await assertAdmin('inventory')
   const parsed = RenameItemSchema.parse(input)
   const admin = supabaseAdmin()
   const normalizedName = parsed.name.trim()
@@ -899,6 +914,7 @@ const ItemImageSchema = z.object({
 
 /** Slice 12: link an Item to its primary Media Asset (add-on card imagery). */
 export async function setItemPrimaryImage(input: z.infer<typeof ItemImageSchema>) {
+  await assertAdmin('inventory')
   const parsed = ItemImageSchema.parse(input)
   const admin = supabaseAdmin()
   const { data, error } = await admin
@@ -914,6 +930,7 @@ export async function setItemPrimaryImage(input: z.infer<typeof ItemImageSchema>
 }
 
 export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
+  await assertAdmin('inventory')
   const parsed = AddItemSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -1051,6 +1068,7 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
 }
 
 export async function fullShopifySync() {
+  await assertAdmin('inventory')
   const [inventory, prices] = await Promise.all([
     syncShopifyInventoryFromBuildable(),
     syncShopifyPricingFromSupabase(),
@@ -1059,11 +1077,32 @@ export async function fullShopifySync() {
 }
 
 export async function syncShopifyPricesOnly() {
+  await assertAdmin('inventory')
   const prices = await syncShopifyPricingFromSupabase()
   return { ok: true, prices }
 }
 
-export async function listShopifyAdminState() {
+/**
+ * Shape of the Shopify Admin API active-products payload, as far as the admin
+ * panel needs it.
+ */
+type ShopifyActiveProduct = {
+  title?: string
+  variants?: Array<{ id: number; title?: string; sku?: string | null }>
+}
+
+/**
+ * Builds the Shopify admin table from the database, optionally enriched with
+ * the live Shopify active-products list.
+ *
+ * `activeProducts` is a parameter rather than a fetch so the Admin API call can
+ * be kept off the page's first paint: {@link listShopifyAdminState} builds the
+ * DB-only view for immediate render, and {@link listShopifyRemoteProducts}
+ * rebuilds it once the remote list is in hand. Passing an empty list yields
+ * exactly the mappings-only fallback this function already produced whenever
+ * the Shopify env vars were missing.
+ */
+async function buildShopifyAdminState(activeProducts: ShopifyActiveProduct[]) {
   const admin = supabaseAdmin()
   const [
     { data: mappings, error: mErr },
@@ -1072,7 +1111,6 @@ export async function listShopifyAdminState() {
     { data: productPrices, error: ppErr },
     { data: itemPrices, error: ipErr },
     { data: pillowProducts, error: pillowErr },
-    activeProducts,
   ] =
     await Promise.all([
       admin
@@ -1086,9 +1124,6 @@ export async function listShopifyAdminState() {
       admin.from('product_prices').select('key,msrp,currency'),
       admin.from('item_prices').select('item_id,msrp,currency'),
       admin.from('pillow_products').select('id,kind,size'),
-      // Used to filter to "active SKUs only" in UI.
-      // If env vars are missing in a local shell, we fall back to showing all mappings.
-      shopifyListActiveProductsWithVariants({ limit: 250 }).catch(() => []),
     ])
 
   if (mErr) throw new Error(mErr.message)
@@ -1147,7 +1182,7 @@ export async function listShopifyAdminState() {
   const activeVariantIds = new Set<string>()
   const variantNameById = new Map<number, string>()
   const shopifyVariantTitleById = new Map<number, string>()
-  for (const p of (activeProducts ?? []) as Array<{ title?: string; variants?: Array<{ id: number; title?: string }> }>) {
+  for (const p of activeProducts) {
     const productTitle = String(p.title ?? '').trim()
     for (const v of p.variants ?? []) {
       const id = Number(v.id)
@@ -1273,19 +1308,23 @@ export async function listShopifyAdminState() {
   return { ok: true, rows }
 }
 
-export async function listShopifyUnmappedVariants() {
+/**
+ * Unmapped-variant list built from an already-fetched active-products payload.
+ * Split out for the same reason as {@link buildShopifyAdminState}: it lets the
+ * single Admin API fetch in {@link listShopifyRemoteProducts} serve both halves
+ * of the panel instead of each action fetching the list for itself.
+ */
+async function buildShopifyUnmappedVariants(activeProducts: ShopifyActiveProduct[]) {
   const admin = supabaseAdmin()
-  const [{ data: mappings, error: mErr }, activeProducts] = await Promise.all([
-    admin.from('shopify_variant_mappings').select('shopify_variant_id'),
-    // If env vars are missing, gracefully return an empty list (can't discover Shopify variants).
-    shopifyListActiveProductsWithVariants({ limit: 250 }).catch(() => []),
-  ])
+  const { data: mappings, error: mErr } = await admin
+    .from('shopify_variant_mappings')
+    .select('shopify_variant_id')
   if (mErr) throw new Error(mErr.message)
 
   const mapped = new Set<string>((mappings ?? []).map((m: { shopify_variant_id: number | string }) => String(m.shopify_variant_id)))
   const variants: Array<{ id: number; label: string; sku: string | null }> = []
 
-  for (const p of (activeProducts ?? []) as Array<{ title?: string; variants?: Array<{ id: number; title?: string; sku?: string | null }> }>) {
+  for (const p of activeProducts) {
     const productTitle = String(p.title ?? '').trim()
     for (const v of p.variants ?? []) {
       const id = Number(v.id)
@@ -1305,7 +1344,51 @@ export async function listShopifyUnmappedVariants() {
   return { ok: true, variants }
 }
 
+/**
+ * Database-only Shopify admin state. Deliberately does NOT call the Shopify
+ * Admin API: that request dominated this action's latency and the panel's first
+ * paint waited on it. Callers render this immediately, then upgrade to the full
+ * view with {@link listShopifyRemoteProducts}.
+ */
+export async function listShopifyAdminState() {
+  await assertAdmin('inventory')
+  return buildShopifyAdminState([])
+}
+
+/**
+ * The Shopify Admin API half of the panel: fetches the active products once and
+ * uses that single payload to rebuild both the admin table and the unmapped
+ * variant list. Its `rows` are what {@link listShopifyAdminState} used to
+ * return, so the rendered result once this lands is identical to before.
+ */
+export async function listShopifyRemoteProducts() {
+  await assertAdmin('inventory')
+  // If env vars are missing in a local shell, fall back to the DB-only view.
+  const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
+    () => [],
+  )) as ShopifyActiveProduct[]
+
+  const [state, unmapped] = await Promise.all([
+    buildShopifyAdminState(activeProducts),
+    buildShopifyUnmappedVariants(activeProducts),
+  ])
+
+  return { ok: true as const, rows: state.rows, variants: unmapped.variants }
+}
+
+/**
+ * Standalone unmapped-variant list, kept for callers that need only this half.
+ */
+export async function listShopifyUnmappedVariants() {
+  await assertAdmin('inventory')
+  const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
+    () => [],
+  )) as ShopifyActiveProduct[]
+  return buildShopifyUnmappedVariants(activeProducts)
+}
+
 export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertShopifyOverrideSchema>) {
+  await assertAdmin('inventory')
   const parsed = UpsertShopifyOverrideSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -1329,6 +1412,7 @@ export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertS
 }
 
 export async function deleteShopifyVariantOverride(shopifyVariantId: number) {
+  await assertAdmin('inventory')
   const id = ShopifyVariantIdSchema.parse(shopifyVariantId)
   const admin = supabaseAdmin()
   const { error } = await admin.from('shopify_variant_overrides').delete().eq('shopify_variant_id', id)

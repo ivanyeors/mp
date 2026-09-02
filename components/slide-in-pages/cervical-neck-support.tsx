@@ -14,8 +14,18 @@ import { cervicalNeckSupportSlideSections } from "@/lib/product-slide-sections/c
 
 const OPEN_CERVICAL_NECK_SUPPORT_EVENT = "mpillow:open-cervical-neck-support";
 
+// The sheet is code-split (next/dynamic, ssr:false) from the dock, so a CTA
+// click can land before its listener exists. Remember the request and let the
+// sheet honour it on mount instead of dropping it.
+let sheetListeners = 0;
+let pendingOpen = false;
+
 export function openCervicalNeckSupportSheet() {
   if (typeof window === "undefined") return;
+  if (sheetListeners === 0) {
+    pendingOpen = true;
+    return;
+  }
   window.dispatchEvent(new Event(OPEN_CERVICAL_NECK_SUPPORT_EVENT));
 }
 
@@ -116,7 +126,15 @@ export function CervicalNeckSupportSheet() {
   React.useEffect(() => {
     const onOpen = () => setOpen(true);
     window.addEventListener(OPEN_CERVICAL_NECK_SUPPORT_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_CERVICAL_NECK_SUPPORT_EVENT, onOpen);
+    sheetListeners += 1;
+    if (pendingOpen) {
+      pendingOpen = false;
+      onOpen();
+    }
+    return () => {
+      sheetListeners -= 1;
+      window.removeEventListener(OPEN_CERVICAL_NECK_SUPPORT_EVENT, onOpen);
+    };
   }, []);
 
   return (

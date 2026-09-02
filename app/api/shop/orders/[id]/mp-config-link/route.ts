@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { loadAdminOrderMpConfigLinks } from "@/lib/ecommerce/admin/order-detail";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -13,16 +14,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const parsed = ParamsSchema.safeParse({ id });
   if (!parsed.success) return NextResponse.json({ error: "Invalid order id" }, { status: 400 });
 
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("mp_config_responses")
-    .select("id, data, is_final, source, order_item_id, created_at")
-    .eq("order_id", parsed.data.id)
-    .order("created_at", { ascending: true });
+  const result = await loadAdminOrderMpConfigLinks(parsed.data.id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, responses: data ?? [] });
+  return NextResponse.json(result.body, { status: result.status });
 }
 
 const PostBodySchema = z.union([

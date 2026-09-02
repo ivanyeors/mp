@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
@@ -52,5 +53,6 @@ export async function upsertSelfPurchaseRate(formData: FormData): Promise<void> 
     after: { self_purchase_kind: kind, self_purchase_amount: amount, self_purchase_unit_cap: unitCap },
   });
 
+  invalidateTag("locations");
   revalidatePath("/settings/partner-commissions");
 }

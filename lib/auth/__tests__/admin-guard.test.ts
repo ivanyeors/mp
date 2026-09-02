@@ -16,6 +16,7 @@ const maybeSingleMock = vi.fn();
 
 vi.mock("@/lib/auth/user", () => ({
   getAuthUser: () => getAuthUserMock(),
+  getAuthIdentity: () => getAuthUserMock(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({

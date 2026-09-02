@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { assertAdmin, requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { withLocale } from "@/lib/i18n/routing";
@@ -56,6 +57,7 @@ export default async function HidePartnerListingPage({
     await assertAdmin("page-builder");
     if (!partnerId || !UUID_RE.test(partnerId)) return;
     await supabaseAdmin().from("partners").update({ visible: false }).eq("id", partnerId);
+    invalidateTag("locations");
     redirect(withLocale("/settings/partners", locale));
   }
 

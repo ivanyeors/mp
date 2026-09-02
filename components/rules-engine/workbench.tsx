@@ -274,8 +274,10 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       skipAutosave.current = false;
       return;
     }
-    const graph = currentGraph();
     const t = setTimeout(async () => {
+      // Serialise inside the timer so a burst of node/edge changes costs one
+      // rfToGraph() per debounce window rather than one per change.
+      const graph = currentGraph();
       setSaveState("saving");
       try {
         const res = await fetch(apiBase(flow), {
@@ -303,6 +305,20 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     }, 700);
     return () => clearTimeout(t);
   }, [nodes, edges, readOnly, loading, flow, currentGraph]);
+
+  const handleSelectionChange = useCallback(
+    ({ nodes: sel }: { nodes: Node<RuleNodeData>[] }) => {
+      const id = sel[0]?.id ?? null;
+      setSelectedId(id);
+      if (id) setInspectorOpen(true); // max-md: reveal drawer on select
+    },
+    [],
+  );
+
+  const handleNodeContextMenu = useCallback(
+    (_e: React.MouseEvent, node: Node<RuleNodeData>) => setSelectedId(node.id),
+    [],
+  );
 
   const patchRule = useCallback(
     (id: string, next: RuleNode) => {
@@ -767,12 +783,8 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 onConnect={onConnect}
                 isValidConnection={isValidConnection}
                 nodeTypes={nodeTypes}
-                onSelectionChange={({ nodes: sel }) => {
-                  const id = sel[0]?.id ?? null;
-                  setSelectedId(id);
-                  if (id) setInspectorOpen(true); // max-md: reveal drawer on select
-                }}
-                onNodeContextMenu={(_e, node) => setSelectedId(node.id)}
+                onSelectionChange={handleSelectionChange}
+                onNodeContextMenu={handleNodeContextMenu}
                 fitView
                 proOptions={{ hideAttribution: true }}
                 nodesDraggable={!readOnly}

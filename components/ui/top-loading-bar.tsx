@@ -52,6 +52,10 @@ export function TopLoadingBar() {
   const hideTimerRef = React.useRef<number | null>(null);
   const shownAtRef = React.useRef<number | null>(null);
   const latestCountRef = React.useRef(0);
+  // Mirrors `shouldRender` so the request subscription can read it without being
+  // a dependency (it used to re-subscribe on every toggle of the bar).
+  const shouldRenderRef = React.useRef(false);
+  const offsetsFrameRef = React.useRef<number | null>(null);
 
   const clearTimers = React.useCallback(() => {
     if (showTimerRef.current != null) {
@@ -64,20 +68,53 @@ export function TopLoadingBar() {
     }
   }, []);
 
-  const refreshOffsets = React.useCallback(() => {
+  /** Measure now — used on the show transition, where position must land in the same commit. */
+  const refreshOffsetsNow = React.useCallback(() => {
+    if (offsetsFrameRef.current != null && typeof window !== "undefined") {
+      window.cancelAnimationFrame(offsetsFrameRef.current);
+      offsetsFrameRef.current = null;
+    }
     setOffsets(computeOffsets());
   }, []);
 
+  /**
+   * computeOffsets does two querySelector lookups plus getBoundingClientRect /
+   * getComputedStyle reads, and its triggers arrive in bursts — mount, pathname,
+   * resize and two ResizeObservers can all fire in the same frame. Coalesce them
+   * onto one animation frame so the burst measures once.
+   */
+  const scheduleRefreshOffsets = React.useCallback(() => {
+    if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+      setOffsets(computeOffsets());
+      return;
+    }
+    if (offsetsFrameRef.current != null) return;
+    offsetsFrameRef.current = window.requestAnimationFrame(() => {
+      offsetsFrameRef.current = null;
+      setOffsets(computeOffsets());
+    });
+  }, []);
+
   React.useEffect(() => {
-    refreshOffsets();
-  }, [pathname, refreshOffsets]);
+    scheduleRefreshOffsets();
+  }, [pathname, scheduleRefreshOffsets]);
+
+  React.useEffect(
+    () => () => {
+      if (offsetsFrameRef.current != null && typeof window !== "undefined") {
+        window.cancelAnimationFrame(offsetsFrameRef.current);
+        offsetsFrameRef.current = null;
+      }
+    },
+    [],
+  );
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
 
-    refreshOffsets();
+    scheduleRefreshOffsets();
 
-    const onResize = () => refreshOffsets();
+    const onResize = () => scheduleRefreshOffsets();
     window.addEventListener("resize", onResize, { passive: true });
 
     const observers: Array<ResizeObserver> = [];
@@ -86,13 +123,13 @@ export function TopLoadingBar() {
       const insetHeaderEl = document.querySelector('[data-slot="sidebar-inset"] > header') as HTMLElement | null;
 
       if (gapEl) {
-        const ro = new ResizeObserver(() => refreshOffsets());
+        const ro = new ResizeObserver(() => scheduleRefreshOffsets());
         ro.observe(gapEl);
         observers.push(ro);
       }
 
       if (insetHeaderEl) {
-        const ro = new ResizeObserver(() => refreshOffsets());
+        const ro = new ResizeObserver(() => scheduleRefreshOffsets());
         ro.observe(insetHeaderEl);
         observers.push(ro);
       }
@@ -102,9 +139,11 @@ export function TopLoadingBar() {
       window.removeEventListener("resize", onResize);
       for (const ro of observers) ro.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [pathname, scheduleRefreshOffsets]);
 
+  // Subscribe ONCE for the component's life. `shouldRender` lives in a ref here,
+  // so toggling the bar no longer tears down and re-creates the subscription
+  // (which also re-emitted the current count on every toggle).
   React.useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -118,7 +157,7 @@ export function TopLoadingBar() {
           hideTimerRef.current = null;
         }
 
-        if (shouldRender) return;
+        if (shouldRenderRef.current) return;
         if (showTimerRef.current != null) return;
 
         showTimerRef.current = window.setTimeout(() => {
@@ -126,8 +165,9 @@ export function TopLoadingBar() {
           if (latestCountRef.current <= 0) return;
 
           shownAtRef.current = Date.now();
+          shouldRenderRef.current = true;
           setShouldRender(true);
-          refreshOffsets();
+          refreshOffsetsNow();
         }, showDelayMs);
 
         return;
@@ -139,7 +179,7 @@ export function TopLoadingBar() {
         showTimerRef.current = null;
       }
 
-      if (!shouldRender) return;
+      if (!shouldRenderRef.current) return;
 
       const shownAt = shownAtRef.current ?? Date.now();
       const elapsed = Date.now() - shownAt;
@@ -149,6 +189,7 @@ export function TopLoadingBar() {
       hideTimerRef.current = window.setTimeout(() => {
         hideTimerRef.current = null;
         shownAtRef.current = null;
+        shouldRenderRef.current = false;
         setShouldRender(false);
       }, remaining);
     });
@@ -157,7 +198,7 @@ export function TopLoadingBar() {
       unsubscribe();
       clearTimers();
     };
-  }, [clearTimers, refreshOffsets, shouldRender]);
+  }, [clearTimers, refreshOffsetsNow]);
 
   if (!shouldRender) return null;
 

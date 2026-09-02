@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import {
-  getDiscoverySourceCatalog,
-  saveDiscoverySourceCatalog,
-} from "@/lib/discovery-source";
+import { saveDiscoverySourceCatalog } from "@/lib/discovery-source";
+import { readDiscoverySourceCatalog } from "@/lib/discovery-source/cached";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +31,7 @@ export async function GET() {
   const denied = await requireAdmin("page-builder");
   if (denied) return denied;
 
-  const catalog = await getDiscoverySourceCatalog();
+  const catalog = await readDiscoverySourceCatalog();
   return NextResponse.json({ ok: true, catalog });
 }
 
@@ -52,5 +51,6 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
+  invalidateTag("site-settings");
   return NextResponse.json({ ok: true, catalog: result.catalog });
 }

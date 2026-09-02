@@ -68,11 +68,17 @@ describe("Slice 10 acceptance criteria", () => {
   });
 
   it("AC5: shipping API filters inactive methods by default", () => {
+    // The cached service-role read moved to lib so the settings page can render
+    // it on the server; the route still decides who may include inactive rows.
+    const readerSource = readFileSync(
+      join(repoRoot, "lib/shop/shipping-methods.ts"),
+      "utf8"
+    );
     const routeSource = readFileSync(
       join(repoRoot, "app/api/shop/shipping/route.ts"),
       "utf8"
     );
-    expect(routeSource).toContain('.eq("is_active", true)');
+    expect(readerSource).toContain('.eq("is_active", true)');
     expect(routeSource).toContain("include_inactive");
   });
 
@@ -94,8 +100,9 @@ describe("Slice 10 acceptance criteria", () => {
   });
 
   it("AC7: orders dashboard exposes revenue and avg_order_value keys", () => {
+    // The route delegates to this module so the RSC orders page can reuse it.
     const dashboardSource = readFileSync(
-      join(repoRoot, "app/api/shop/orders/dashboard/route.ts"),
+      join(repoRoot, "lib/ecommerce/admin/orders-dashboard.ts"),
       "utf8"
     );
     expect(dashboardSource).toContain("revenue:");
@@ -104,7 +111,7 @@ describe("Slice 10 acceptance criteria", () => {
 
   it("AC7: order detail normalizes items in API response", () => {
     const detailSource = readFileSync(
-      join(repoRoot, "app/api/shop/orders/[id]/route.ts"),
+      join(repoRoot, "lib/ecommerce/admin/order-detail.ts"),
       "utf8"
     );
     expect(detailSource).toContain("items: orderItems");
@@ -121,7 +128,7 @@ describe("Slice 10 acceptance criteria", () => {
 
   it("AC7: timeline API returns events alias", () => {
     const timelineSource = readFileSync(
-      join(repoRoot, "app/api/shop/orders/[id]/timeline/route.ts"),
+      join(repoRoot, "lib/ecommerce/admin/order-detail.ts"),
       "utf8"
     );
     expect(timelineSource).toContain("events:");

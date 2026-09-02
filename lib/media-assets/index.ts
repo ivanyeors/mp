@@ -71,6 +71,11 @@ function admin() {
   return supabaseAdmin();
 }
 
+/** Default ceiling applied when a caller of {@link listMediaAssets} passes no limit. */
+// The media gallery has no paging yet, so this is a safety ceiling rather
+// than a page size; raise it before the library approaches it.
+const DEFAULT_MEDIA_ASSET_LIST_LIMIT = 5000;
+
 export async function listMediaAssets(opts?: {
   search?: string;
   kind?: string;
@@ -89,7 +94,8 @@ export async function listMediaAssets(opts?: {
   if (opts?.unfiled) q = q.is("folder_id", null);
   else if (opts?.folder_id) q = q.eq("folder_id", opts.folder_id);
   if (opts?.tag?.trim()) q = q.contains("tags", [opts.tag.trim().toLowerCase()]);
-  if (opts?.limit) q = q.limit(opts.limit);
+  // Ceiling for callers that pass no limit, so the library is never unbounded.
+  q = q.limit(opts?.limit && opts.limit > 0 ? opts.limit : DEFAULT_MEDIA_ASSET_LIST_LIMIT);
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);

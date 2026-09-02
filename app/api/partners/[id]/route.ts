@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -55,6 +56,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       }).catch(() => {});
     }
 
+    invalidateTag("locations");
     return NextResponse.json({ ok: true, partner: data });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -80,5 +82,6 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  invalidateTag("locations");
   return NextResponse.json({ ok: true });
 }

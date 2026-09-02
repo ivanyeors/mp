@@ -190,7 +190,23 @@ function flattenNavItems(items: NavItem[], permissions: Permission[]): NavItem[]
 
 type AdminStatus = "checking" | "authed" | "unauth";
 
-export function SettingsSidebarNav({ children }: { children: React.ReactNode }) {
+/**
+ * Staff session resolved by the server layout. When present the shell renders
+ * the page immediately; the client-side `/api/admin/context` fetch is only a
+ * fallback for callers that mount the nav without it.
+ */
+export type SettingsInitialAuth = {
+  signedIn: boolean;
+  permissions: Permission[];
+};
+
+export function SettingsSidebarNav({
+  children,
+  initialAuth,
+}: {
+  children: React.ReactNode;
+  initialAuth?: SettingsInitialAuth;
+}) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -200,9 +216,26 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
 
   const isLoginRoute = basePathname === "/settings/login";
 
-  const [status, setStatus] = useState<AdminStatus>("checking");
-  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [status, setStatus] = useState<AdminStatus>(() => {
+    if (!initialAuth) return "checking";
+    return initialAuth.signedIn ? "authed" : "unauth";
+  });
+  const [permissions, setPermissions] = useState<Permission[]>(
+    () => initialAuth?.permissions ?? [],
+  );
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Keep in sync if the server re-renders the layout with a new session
+  // (e.g. after sign-in redirects back into the Admin Panel).
+  const initialSignedIn = initialAuth?.signedIn;
+  const initialPermissionKey = initialAuth?.permissions.join(",");
+  useEffect(() => {
+    if (!initialAuth) return;
+    setStatus(initialAuth.signedIn ? "authed" : "unauth");
+    setPermissions(initialAuth.permissions);
+    // Compare by value: the layout passes a fresh object on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSignedIn, initialPermissionKey]);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -210,7 +243,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
   }, [isMobile]);
 
   useEffect(() => {
-    if (isLoginRoute) return;
+    if (isLoginRoute || initialAuth) return;
     let cancelled = false;
     fetch("/api/admin/context")
       .then((res) => res.json())
@@ -229,7 +262,7 @@ export function SettingsSidebarNav({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-  }, [isLoginRoute]);
+  }, [isLoginRoute, initialAuth]);
 
   // Redirect unauthorized visitors to unified Sign in (preserve deep link).
   useEffect(() => {

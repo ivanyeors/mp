@@ -1,0 +1,110 @@
+name: ci
+
+# Lint, typecheck, test, and build every pull request and every push to main.
+#
+# The three jobs run in parallel: they are independent gates and each installs
+# its own dependencies, so a failing lint does not hide a failing build. Vercel
+# builds the deployment; the build job here exists to catch a broken build on
+# the PR rather than after merge, and to measure per-route first-load JS.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push makes an in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  lint-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # corepack pins pnpm from package.json's `packageManager` field, so the
+      # version here can never drift from the one the lockfile was written with.
+      # It must be enabled before setup-node, which resolves `pnpm` for its cache.
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      # `pnpm typecheck` runs `next typegen` first: next-env.d.ts and
+      # .next/types/** are gitignored build artefacts that tsconfig.json
+      # includes, so a fresh checkout has no route types without it.
+      - name: Typecheck
+        run: pnpm typecheck
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm test
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # Placeholder values, not secrets. `next build` reads these at module scope
+    # while prerendering, so it needs them to be present and well-formed URLs —
+    # it never calls out to them, because no page fetches real data at build
+    # time. Keeping them inline means the build job needs no repository secrets
+    # and so runs unchanged on forked pull requests.
+    env:
+      NEXT_PUBLIC_SITE_URL: https://custom.mpillow.com
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      # Reads .next/ from the step above. Fails the job if any route's
+      # first-load JS exceeds scripts/bundle-budget.json.
+      - name: Bundle budget
+        run: pnpm bundle:check

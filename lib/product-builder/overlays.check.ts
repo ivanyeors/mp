@@ -29,7 +29,7 @@ assert.ok(OverlayFitSchema.safeParse({ scale: 1.2, x: 30, y: -15 }).success);
 assert.ok(!OverlayFitSchema.safeParse({ scale: 9 }).success, "scale out of bounds rejected");
 
 // --- Product Builder page under Landing Site nav ---
-readFileSync("app/[lang]/settings/product-builder/page.tsx", "utf8");
+readFileSync("app/[lang]/settings/product-builder/product-builder-client.tsx", "utf8");
 const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
 const landingGroup = nav.slice(nav.indexOf('"Landing Site"'), nav.indexOf('"Insights"'));
 assert.match(landingGroup, /\/settings\/product-builder/, "Product Builder in Landing Site group");

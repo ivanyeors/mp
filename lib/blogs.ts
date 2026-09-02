@@ -110,3 +110,40 @@ export async function getAllBlogPostsRaw(): Promise<BlogPostRow[]> {
     return (data ?? []) as BlogPostRow[];
 }
 
+
+// ---------- Admin (settings) fetchers ----------
+
+/** The columns the admin blogs list renders. */
+export type AdminBlogListRow = Pick<
+    BlogPostRow,
+    'id' | 'slug' | 'status' | 'content' | 'image_url' | 'author' | 'published_at' | 'created_at'
+>;
+
+/**
+ * Rows for the admin blogs list, newest first. Only the columns the list
+ * renders (content carries the localized title); capped so it can never grow
+ * unbounded. Throws on a Supabase error so callers can map it to a status.
+ */
+export async function listAdminBlogPosts(status?: string | null): Promise<AdminBlogListRow[]> {
+    const admin = supabaseAdmin();
+    let query = admin
+        .from('blog_posts')
+        .select('id, slug, status, content, image_url, author, published_at, created_at')
+        .order('created_at', { ascending: false })
+        .limit(500);
+    if (status) query = query.eq('status', status);
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data ?? []) as AdminBlogListRow[];
+}
+
+/** One blog post by id for the admin editor; `error` mirrors the Supabase message. */
+export async function getAdminBlogPostById(
+    id: string,
+): Promise<{ row: BlogPostRow | null; error: string | null }> {
+    const admin = supabaseAdmin();
+    const { data, error } = await admin.from('blog_posts').select('*').eq('id', id).single();
+    if (error) return { row: null, error: error.message };
+    return { row: data as BlogPostRow, error: null };
+}

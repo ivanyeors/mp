@@ -61,3 +61,19 @@ export async function getAllLandingSections(): Promise<LandingSection[]> {
     return DEFAULT_SECTIONS;
   }
 }
+
+/**
+ * Every landing section ordered by position, exactly as stored — no default
+ * fallback, so the page builder shows the real table. Throws on a Supabase
+ * error so callers can map it to a status code.
+ */
+export async function listLandingSections(): Promise<LandingSection[]> {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("landing_sections")
+    .select("*")
+    .order("position", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as LandingSection[];
+}

@@ -11,7 +11,8 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
-import { getLocations } from "@/lib/locations";
+import { requireAdmin, requireAnyAdmin } from "@/lib/auth/admin";
+import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
 
 export const runtime = "nodejs";
@@ -186,11 +187,6 @@ async function sendTelegramMediaGroup(
   return { ok: true as const };
 }
 
-const ListQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(1000).default(50),
-  offset: z.coerce.number().int().min(0).default(0),
-});
-
 const YesNoEmptySchema = z.union([z.literal("yes"), z.literal("no"), z.literal("")]);
 
 const MeasurementSchema = z.object({
@@ -230,60 +226,24 @@ const UpsertSchema = z.object({
 });
 
 export async function GET(req: Request) {
+  // Results staff list responses here; the Orders page also searches unlinked
+  // results from the order detail dialog, so either permission is enough.
+  const denied = await requireAnyAdmin(["results", "orders"]);
+  if (denied) return denied;
+
   const url = new URL(req.url);
-  const parsedQuery = ListQuerySchema.safeParse({
-    limit: url.searchParams.get("limit") ?? "50",
-    offset: url.searchParams.get("offset") ?? "0",
+  const result = await listMpConfigResponses({
+    limit: url.searchParams.get("limit"),
+    offset: url.searchParams.get("offset"),
   });
-  if (!parsedQuery.success) {
-    return NextResponse.json({ error: parsedQuery.error.flatten() }, { status: 400 });
-  }
 
-  const { limit, offset } = parsedQuery.data;
-  const admin = supabaseAdmin();
-  const { data, error, count } = await admin
-    .from("mp_config_responses")
-    .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,location_id,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email", { count: "exact" })
-    .order("updated_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  // Fetch order numbers for linked responses
-  const orderIds = (data ?? []).map((r) => r.order_id).filter(Boolean) as string[];
-  let orderNumberMap = new Map<string, string>();
-  if (orderIds.length > 0) {
-    const { data: orders } = await admin
-      .from("orders")
-      .select("id, order_number")
-      .in("id", orderIds);
-    orderNumberMap = new Map((orders ?? []).map((o) => [o.id, o.order_number]));
-  }
-
-  const rows = (data ?? []).map((r) => ({
-    ...r,
-    order_number: r.order_id ? orderNumberMap.get(r.order_id) ?? null : null,
-  }));
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // Location dropdown options + labels (own + partner). Client fetches once with the list.
-  const locations = await getLocations();
-
-  return NextResponse.json(
-    {
-      ok: true,
-      rows,
-      locations,
-      count: typeof count === "number" ? count : null,
-      limit,
-      offset,
+  return NextResponse.json(result.body, {
+    status: result.status,
+    headers: {
+      // Ensure the results list is never cached (helps avoid “stuck at N rows” issues).
+      "Cache-Control": "no-store",
     },
-    {
-      headers: {
-        // Ensure the results list is never cached (helps avoid “stuck at N rows” issues).
-        "Cache-Control": "no-store",
-      },
-    },
-  );
+  });
 }
 
 export async function POST(req: Request) {

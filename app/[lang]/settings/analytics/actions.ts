@@ -431,6 +431,64 @@ export async function getRealizedMarginSummary(input: {
   };
 }
 
+/**
+ * One slice of {@link getAnalyticsDashboard}. Each loader is settled
+ * independently so a single failing card surfaces its own error instead of
+ * blanking the whole dashboard (which is what the four separate actions did).
+ */
+export type AnalyticsDashboardSlice<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string };
+
+/**
+ * Combined retrospective dashboard loader.
+ *
+ * Next.js serialises server actions issued from a single client, so the four
+ * loaders below used to run one after another (four sequential round trips on
+ * first paint). This runs them concurrently behind a single `assertAdmin`
+ * check and hands the client every slice in one round trip. The individual
+ * actions stay exported for callers that need just one of them.
+ */
+export async function getAnalyticsDashboard(input: {
+  from: string;
+  to: string;
+  channel?: AnalyticsChannel;
+  group: InventoryMovementGroup;
+  category?: string | null;
+  size?: string | null;
+}) {
+  await assertAdmin("analytics");
+
+  const settle = async <T>(run: () => Promise<T>): Promise<AnalyticsDashboardSlice<T>> => {
+    try {
+      return { ok: true, value: await run() };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "Request failed" };
+    }
+  };
+
+  const [timeline, metrics, margin, waterfall] = await Promise.all([
+    settle(() =>
+      getShopifySalesTimeline({ from: input.from, to: input.to, channel: input.channel })
+    ),
+    settle(() => getMpConfigMetricsBreakdown({ from: input.from, to: input.to })),
+    settle(() =>
+      getRealizedMarginSummary({ from: input.from, to: input.to, channel: input.channel })
+    ),
+    settle(() =>
+      getInventoryMovementWaterfall({
+        from: input.from,
+        to: input.to,
+        group: input.group,
+        category: input.category,
+        size: input.size,
+      })
+    ),
+  ]);
+
+  return { timeline, metrics, margin, waterfall };
+}
+
 export type JourneyTransitionNode = {
   path: string;
   views: number;

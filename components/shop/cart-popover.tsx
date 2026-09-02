@@ -7,7 +7,7 @@ import { useCart } from "@/lib/shop/cart-context";
 import { buildCartMessages } from "@/lib/shop/cart-messages";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
-import { getMessages } from "@/lib/i18n/messages";
+import { useMessages } from "@/lib/i18n/messages/client";
 import { CartContent } from "@/components/shop/cart/cart-content";
 import { Button } from "@/components/ui/button";
 import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
@@ -20,7 +20,8 @@ interface CartPopoverProps {
 export function CartPopover({ trigger }: CartPopoverProps) {
   const pathname = usePathname() ?? "/";
   const locale = (getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE) as Locale;
-  const messages = buildCartMessages(getMessages(locale).shop.cart);
+  const m = useMessages(locale);
+  const messages = buildCartMessages(m.shop.cart);
 
   const {
     items,

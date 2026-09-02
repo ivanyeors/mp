@@ -55,8 +55,18 @@ assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "silhouet
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\(key\)\}\)`\}/, "nested cell clip inside silhouette");
 assert.match(
   renderer,
-  /conformPouchPath\(p, \[SIL_REGION, CELL_REGIONS\[key\]\]\)/,
+  /const regions = \[SIL_REGION, CELL_REGIONS\[key\]\];/,
   "pouch geometry deforms to the silhouette and cell (rounded, no cut corners)",
+);
+assert.match(
+  renderer,
+  /paths\.set\(p\.key, conformPouchPath\(p, regions\)\)/,
+  "conform runs once per piece per geometry change, not once per render",
+);
+assert.match(
+  renderer,
+  /const conformedPaths = useMemo\(/,
+  "conformed pouch outlines are memoised (pure geometry, keyed on the piece list)",
 );
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");

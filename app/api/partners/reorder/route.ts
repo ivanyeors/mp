@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -31,6 +32,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: failed.error.message }, { status: 500 });
     }
 
+    invalidateTag("locations");
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof z.ZodError) {

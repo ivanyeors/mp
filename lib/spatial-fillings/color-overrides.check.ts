@@ -25,7 +25,7 @@ assert.deepEqual(
 assert.deepEqual(xrayColorVarStyle([]), {}, "cleared → variable absent, var() falls back");
 
 // --- Product Builder: shape thumbnail read-only, color editable ---------------
-const page = readFileSync("app/[lang]/settings/product-builder/page.tsx", "utf8");
+const page = readFileSync("app/[lang]/settings/product-builder/product-builder-client.tsx", "utf8");
 assert.match(page, /FILLING_SHAPE_PATHS\[row\.shape\]/, "thumbnail uses the one asset pipeline");
 assert.match(page, /Read-only fluid-shape thumbnail/, "shape rendered as read-only thumbnail");
 assert.match(page, /type="color"/, "native color input edits the override");

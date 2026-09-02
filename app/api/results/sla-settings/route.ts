@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -20,21 +22,40 @@ const PutSchema = z.object({
   authExpiryBufferHours: z.number().int().min(1).max(72).optional(),
 });
 
+/**
+ * Cached service-role read of the SLA keys; shares the `site-settings` tag that
+ * every `site_settings` writer invalidates. Auth stays outside the cache.
+ */
+const readStoredSlaSettings = unstable_cache(
+  async (): Promise<Record<string, string>> => {
+    const admin = supabaseAdmin();
+    const { data, error } = await admin
+      .from("site_settings")
+      .select("key, value")
+      .in("key", [...SLA_SETTING_KEYS]);
+    if (error) throw new Error(error.message);
+
+    const stored: Record<string, string> = {};
+    for (const row of data ?? []) stored[row.key] = row.value;
+    return stored;
+  },
+  ["sla-settings"],
+  { tags: ["site-settings"], revalidate: 300 },
+);
+
 export async function GET() {
   const denied = await requireAdmin("results");
   if (denied) return denied;
 
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("site_settings")
-    .select("key, value")
-    .in("key", [...SLA_SETTING_KEYS]);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const stored: Record<string, string> = {};
-  for (const row of data ?? []) stored[row.key] = row.value;
-  return NextResponse.json({ ok: true, settings: parseSlaSettings(stored) });
+  try {
+    const stored = await readStoredSlaSettings();
+    return NextResponse.json({ ok: true, settings: parseSlaSettings(stored) });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PUT(req: Request) {
@@ -85,5 +106,6 @@ export async function PUT(req: Request) {
   const { error } = await admin.from("site_settings").upsert(rows, { onConflict: "key" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  invalidateTag("site-settings");
   return NextResponse.json({ ok: true, settings: next });
 }

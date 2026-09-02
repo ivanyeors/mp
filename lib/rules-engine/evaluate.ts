@@ -89,13 +89,26 @@ export function evaluate(
     inboundCount.set(e.target, (inboundCount.get(e.target) ?? 0) + 1);
   }
 
+  // One pass over the nodes seeds the inputs, the Range band lookups and the
+  // Fallback node — each of which used to be an O(n) scan at its use site.
   const queue: string[] = [];
+  /** Range node id → band id → band (first wins, matching `bands.find`). */
+  const bandsById = new Map<string, Map<string, RangeBand>>();
+  let fallbackNode: FallbackNode | null = null;
   for (const n of graph.nodes) {
     if (n.type === "input") {
       active.add(n.id);
       queue.push(n.id);
       trace.push({ nodeId: n.id, type: "input", detail: n.inputKey });
+      continue;
     }
+    if (n.type === "range") {
+      const byId = new Map<string, RangeBand>();
+      for (const b of (n as RangeNode).bands) if (!byId.has(b.id)) byId.set(b.id, b);
+      bandsById.set(n.id, byId);
+      continue;
+    }
+    if (n.type === "fallback" && !fallbackNode) fallbackNode = n;
   }
 
   function activate(id: string, detail?: string) {
@@ -153,8 +166,10 @@ export function evaluate(
 
   const visitedEdges = new Set<string>();
 
-  while (queue.length > 0) {
-    const id = queue.shift()!;
+  // Head index instead of `queue.shift()`: shift is O(n) per pop on large graphs.
+  let head = 0;
+  while (head < queue.length) {
+    const id = queue[head++]!;
     const n = nodes.get(id);
     if (!n) continue;
 
@@ -176,7 +191,7 @@ export function evaluate(
       if (n.type === "range") {
         const num = asNumber(inputs[(n as RangeNode).inputKey]);
         if (num == null) continue;
-        const band = (n as RangeNode).bands.find((b) => b.id === out.handle);
+        const band = out.handle == null ? undefined : bandsById.get(id)?.get(out.handle);
         if (!band || !bandMatches(band, num)) continue;
         visitedEdges.add(out.edgeId);
         tryActivateTarget(out.target, `band:${band.label}`);
@@ -216,12 +231,9 @@ export function evaluate(
   }
 
   // If nothing terminal fired, walk Fallback if present and no path activated it.
-  if (firedTerminals.length === 0) {
-    const fb = graph.nodes.find((x): x is FallbackNode => x.type === "fallback");
-    if (fb) {
-      activate(fb.id, "unreachable-path-fallback");
-      fireTerminal(fb);
-    }
+  if (firedTerminals.length === 0 && fallbackNode) {
+    activate(fallbackNode.id, "unreachable-path-fallback");
+    fireTerminal(fallbackNode);
   }
 
   // Suppress unused locals for type-only imports kept for clarity

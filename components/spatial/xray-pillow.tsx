@@ -255,8 +255,34 @@ export function XrayPillow({
     };
   }, [dived]);
 
-  const pieces = layoutPlacements(placements, itemSizes ? itemScaleMap(itemSizes) : undefined);
-  const cellsInUse = [...new Set(pieces.map((p) => `${p.section}/${p.subSection}` as CellKey))];
+  // layoutPlacements + conformPouchPath are pure and deterministic, so the whole
+  // geometry chain memoises on (placements, itemSizes): a hover/dive re-render
+  // no longer re-runs the pouch conform (polygon scans) for every piece.
+  const pieces = useMemo(
+    () => layoutPlacements(placements, itemSizes ? itemScaleMap(itemSizes) : undefined),
+    [placements, itemSizes],
+  );
+  /** cell key → its pieces, in layout order (one grouping pass, not a filter per cell). */
+  const piecesByCell = useMemo(() => {
+    const byCell = new Map<CellKey, typeof pieces>();
+    for (const p of pieces) {
+      const key = `${p.section}/${p.subSection}` as CellKey;
+      const list = byCell.get(key);
+      if (list) list.push(p);
+      else byCell.set(key, [p]);
+    }
+    return byCell;
+  }, [pieces]);
+  const cellsInUse = useMemo(() => [...piecesByCell.keys()], [piecesByCell]);
+  /** piece key → conformed pouch outline, computed once per geometry change. */
+  const conformedPaths = useMemo(() => {
+    const paths = new Map<string, string>();
+    for (const [key, cellPieceList] of piecesByCell) {
+      const regions = [SIL_REGION, CELL_REGIONS[key]];
+      for (const p of cellPieceList) paths.set(p.key, conformPouchPath(p, regions));
+    }
+    return paths;
+  }, [piecesByCell]);
   const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
   // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
@@ -474,20 +500,18 @@ export function XrayPillow({
                 darker) so the overlap reads as a front-to-back stack. */}
             {cellsInUse.map((key) => (
               <g key={key} clipPath={`url(#${clipId(key)})`}>
-                {pieces
-                  .filter((p) => `${p.section}/${p.subSection}` === key)
-                  .map((p) => {
-                    const subtype = itemSubtypes.get(p.itemId) ?? null;
-                    const d = conformPouchPath(p, [SIL_REGION, CELL_REGIONS[key]]);
-                    return (
-                      <g key={p.key}>
-                        <MorphPiece subtype={subtype} visual={fillingVisual(subtype)} d={d} />
-                        {p.depth > 0 && (
-                          <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
-                        )}
-                      </g>
-                    );
-                  })}
+                {(piecesByCell.get(key) ?? []).map((p) => {
+                  const subtype = itemSubtypes.get(p.itemId) ?? null;
+                  const d = conformedPaths.get(p.key)!;
+                  return (
+                    <g key={p.key}>
+                      <MorphPiece subtype={subtype} visual={fillingVisual(subtype)} d={d} />
+                      {p.depth > 0 && (
+                        <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
+                      )}
+                    </g>
+                  );
+                })}
               </g>
             ))}
 

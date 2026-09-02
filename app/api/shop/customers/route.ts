@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { listAdminCustomers } from "@/lib/ecommerce/admin/customers";
 import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
@@ -20,49 +21,11 @@ export async function GET(req: Request) {
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
-  const search = searchParams.get("search");
-  const tags = searchParams.get("tags");
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
-  const sort = searchParams.get("sort") ?? "newest";
 
-  const admin = supabaseAdmin();
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
+  const result = await listAdminCustomers(searchParams);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 500 });
 
-  let query = admin.from("customers").select("*", { count: "exact" });
-
-  if (search) {
-    query = query.or(`email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
-  }
-
-  if (tags) {
-    const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
-    if (tagList.length > 0) {
-      query = query.overlaps("tags", tagList);
-    }
-  }
-
-  switch (sort) {
-    case "name-asc":
-      query = query.order("first_name", { ascending: true }).order("last_name", { ascending: true });
-      break;
-    case "name-desc":
-      query = query.order("first_name", { ascending: false }).order("last_name", { ascending: false });
-      break;
-    case "oldest":
-      query = query.order("created_at", { ascending: true });
-      break;
-    default:
-      query = query.order("created_at", { ascending: false });
-  }
-
-  query = query.range(from, to);
-
-  const { data, error, count } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, rows: data ?? [], total: count ?? 0, page, limit });
+  return NextResponse.json(result);
 }
 
 export async function POST(req: Request) {

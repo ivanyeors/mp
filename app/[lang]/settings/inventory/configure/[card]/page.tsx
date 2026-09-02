@@ -313,8 +313,15 @@ export default function ConfigureCardPage() {
     setDefaultFillingByBolster(nextBolsterDefaults);
     const next: BomByKind = makeEmptyBomByKind();
     type BomRow = { product_id: number; item_id: number; quantity: number | string };
+    // Index products once, and track each (kind,size) list's item positions, so
+    // the per-row product lookup and de-dupe are hash lookups rather than scans.
+    const productById = new Map<number, Product>();
+    for (const p of prods) {
+      if (!productById.has(p.id)) productById.set(p.id, p);
+    }
+    const lineIndexByKindSize = new Map<string, Map<number, number>>();
     (bomData ?? []).forEach((row: BomRow) => {
-      const product = prods.find((p) => p.id === row.product_id);
+      const product = productById.get(row.product_id);
       if (!product) return;
       const kind = product.kind as PillowKind;
       const size = product.size as Product["size"];
@@ -322,9 +329,20 @@ export default function ConfigureCardPage() {
       // Defensive de-dupe: never allow the same item_id twice for one (kind,size).
       const itemId = Number(row.item_id);
       const quantity = Number(row.quantity);
-      const existingIdx = next[kind][size].findIndex((l) => l.item_id === itemId);
-      if (existingIdx === -1) next[kind][size].push({ item_id: itemId, quantity });
-      else next[kind][size][existingIdx] = { item_id: itemId, quantity };
+      const listKey = `${kind}:${size}`;
+      let indexByItemId = lineIndexByKindSize.get(listKey);
+      if (!indexByItemId) {
+        indexByItemId = new Map<number, number>();
+        lineIndexByKindSize.set(listKey, indexByItemId);
+      }
+      const lines = next[kind][size];
+      const existingIdx = indexByItemId.get(itemId);
+      if (existingIdx === undefined) {
+        indexByItemId.set(itemId, lines.length);
+        lines.push({ item_id: itemId, quantity });
+      } else {
+        lines[existingIdx] = { item_id: itemId, quantity };
+      }
     });
     setBomByKind(next);
     setLoading(false);

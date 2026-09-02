@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
@@ -62,6 +62,6 @@ export async function POST(req: Request) {
     assetIds: parsed.data.media_asset_id ? [parsed.data.media_asset_id] : [],
   }).catch(() => {});
 
-  revalidateTag("categories", "max");
+  invalidateTag("categories");
   return NextResponse.json({ ok: true, row: data });
 }

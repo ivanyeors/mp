@@ -1,0 +1,172 @@
+import {
+  getDiscoverySourceCatalog,
+  resolveDiscoverySourceLabel,
+} from "@/lib/discovery-source";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import {
+  inputsFromMpConfigData,
+  recommendWithEngine,
+  toPersistedRecommendationRecord,
+} from "@/lib/rules-engine";
+import { supabaseAdmin } from "@/lib/supabase/server";
+
+type BomLineRow = {
+  quantity: string | number;
+  item: {
+    id: number;
+    category: string;
+    name: string;
+    size: string | null;
+    subtype: string | null;
+  } | null;
+};
+
+export interface MpConfigResponseDetailPayload {
+  ok: true;
+  response: Record<string, unknown> & {
+    id: string;
+    discovery_source_label: string | null;
+    recommendation_record: unknown;
+  };
+  order_number: string | null;
+  suggestion: {
+    recommended: { size: string; tier: string };
+    product: { id: number; size: string; tier: "basic" | "premium" } | null;
+    bom: BomLineRow[];
+    reasons: string[];
+    graph_version_id: unknown;
+    recommendation_record: unknown;
+  };
+}
+
+export type MpConfigResponseDetailResult =
+  | { status: 200; body: MpConfigResponseDetailPayload }
+  | { status: 404 | 500; body: { error: string } }
+  | { status: 422; body: { error: string; missing: unknown } };
+
+/**
+ * Assembles the `/api/mp-config/responses/[id]` GET payload: the response row,
+ * its linked order number and the rules-engine suggestion (product + BOM).
+ * Shared by the route handler and the RSC result detail page.
+ */
+export async function loadMpConfigResponseDetail(
+  id: string,
+): Promise<MpConfigResponseDetailResult> {
+  const admin = supabaseAdmin();
+  const { data: responseRow, error: rErr } = await admin
+    .from("mp_config_responses")
+    .select(
+      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,customer_email,customer_phone,discovery_source,discovery_source_other,is_pre_order,recommendation_record,filling_fingerprint",
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (rErr) return { status: 500, body: { error: rErr.message } };
+  if (!responseRow) return { status: 404, body: { error: "Not found" } };
+
+  const catalog = await getDiscoverySourceCatalog();
+  const discovery_source_label = resolveDiscoverySourceLabel(
+    catalog,
+    responseRow.discovery_source,
+    DEFAULT_LOCALE,
+  );
+
+  let orderNumber: string | null = null;
+  if (responseRow.order_id) {
+    const { data: orderRow } = await admin
+      .from("orders")
+      .select("order_number")
+      .eq("id", responseRow.order_id)
+      .maybeSingle();
+    orderNumber = orderRow?.order_number ?? null;
+  }
+
+  const data = (responseRow.data ?? {}) as Record<string, unknown>;
+  const engineResult = await recommendWithEngine("premium-mpillow", inputsFromMpConfigData(data));
+
+  if ("error" in engineResult) {
+    return {
+      status: 422,
+      body: { error: engineResult.error, missing: engineResult.missing },
+    };
+  }
+
+  const size = String(engineResult.size ?? "M");
+  const tier = engineResult.soldTier ?? "premium";
+  const reasons: string[] = [
+    `Rules Engine ${engineResult.usedLegacyBootstrap ? "(legacy bootstrap)" : `graph ${engineResult.graphVersionId}`}`,
+    `Shoulder → size ${size}`,
+    `Premium flow → tier ${tier}`,
+  ];
+  if (engineResult.tierSuggestion && engineResult.tierSuggestion !== tier) {
+    reasons.push(`Advisory tier suggestion: ${engineResult.tierSuggestion}`);
+  }
+
+  // Persist recommendation record on the response (preview / suggestion).
+  if (!responseRow.recommendation_record) {
+    await admin
+      .from("mp_config_responses")
+      .update({ recommendation_record: toPersistedRecommendationRecord(engineResult) })
+      .eq("id", id);
+  }
+
+  const tryFindProduct = async (productTier: "basic" | "premium") => {
+    return await admin
+      .from("pillow_products")
+      .select("id,size,kind,is_active")
+      .eq("size", size)
+      .eq("kind", productTier)
+      .eq("is_active", true)
+      .maybeSingle();
+  };
+
+  const { data: productPreferred, error: pErr1 } = await tryFindProduct(tier);
+  if (pErr1) return { status: 500, body: { error: pErr1.message } };
+
+  let product = productPreferred as { id: number; size: string; kind: "basic" | "premium" } | null;
+  if (!product && tier === "premium") {
+    const { data: fallback, error: pErr2 } = await tryFindProduct("basic");
+    if (pErr2) return { status: 500, body: { error: pErr2.message } };
+    if (fallback) {
+      product = fallback as { id: number; size: string; kind: "basic" | "premium" };
+      reasons.push("Preferred premium product not available; fell back to basic for this size");
+    }
+  }
+
+  let bomLines: BomLineRow[] = [];
+  if (product?.id) {
+    const { data: lines, error: bErr } = await admin
+      .from("bom_lines")
+      .select("quantity,item:items(id,category,name,size,subtype)")
+      .eq("product_id", product.id);
+    if (bErr) return { status: 500, body: { error: bErr.message } };
+    bomLines = (lines ?? []) as unknown as BomLineRow[];
+  }
+
+  return {
+    status: 200,
+    body: {
+      ok: true,
+      response: {
+        ...responseRow,
+        discovery_source_label,
+        recommendation_record:
+          responseRow.recommendation_record ?? toPersistedRecommendationRecord(engineResult),
+      },
+      order_number: orderNumber,
+      suggestion: {
+        recommended: {
+          size,
+          tier,
+        },
+        product: product
+          ? { id: product.id, size: product.size, tier: product.kind }
+          : null,
+        bom: bomLines,
+        reasons,
+        graph_version_id: engineResult.graphVersionId,
+        recommendation_record: toPersistedRecommendationRecord(engineResult),
+      },
+    },
+  };
+}
