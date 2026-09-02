@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -42,7 +42,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: firstError.error.message }, { status: 500 });
   }
 
-  revalidateTag("categories", "max");
+  invalidateTag("categories");
   return NextResponse.json({
     ok: true,
     rows: updates.map((r) => r.data),

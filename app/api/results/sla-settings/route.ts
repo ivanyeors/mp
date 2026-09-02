@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -105,6 +106,6 @@ export async function PUT(req: Request) {
   const { error } = await admin.from("site_settings").upsert(rows, { onConflict: "key" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  revalidateTag("site-settings", "max");
+  invalidateTag("site-settings");
   return NextResponse.json({ ok: true, settings: next });
 }

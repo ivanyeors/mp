@@ -227,11 +227,15 @@ export function SettingsSidebarNav({
 
   // Keep in sync if the server re-renders the layout with a new session
   // (e.g. after sign-in redirects back into the Admin Panel).
+  const initialSignedIn = initialAuth?.signedIn;
+  const initialPermissionKey = initialAuth?.permissions.join(",");
   useEffect(() => {
     if (!initialAuth) return;
     setStatus(initialAuth.signedIn ? "authed" : "unauth");
     setPermissions(initialAuth.permissions);
-  }, [initialAuth]);
+    // Compare by value: the layout passes a fresh object on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSignedIn, initialPermissionKey]);
 
   useEffect(() => {
     if (!isMobile) return;

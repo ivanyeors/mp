@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -44,7 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       { status: isDup ? 409 : 500 }
     );
   }
-  revalidateTag("shipping-methods", "max");
+  invalidateTag("shipping-methods");
   return NextResponse.json({ ok: true, row: data });
 }
 
@@ -56,6 +56,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const admin = supabaseAdmin();
   const { error } = await admin.from("shipping_methods").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  revalidateTag("shipping-methods", "max");
+  invalidateTag("shipping-methods");
   return NextResponse.json({ ok: true });
 }

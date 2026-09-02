@@ -24,6 +24,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { formatAdminDateTime } from "@/lib/format/admin-date";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import {
@@ -275,8 +276,8 @@ export default function ResultDetailPage({
   const headerMeta = useMemo(() => {
     if (!row) return null;
     return {
-      createdAt: row.created_at ? new Date(row.created_at).toLocaleString() : "—",
-      updatedAt: row.updated_at ? new Date(row.updated_at).toLocaleString() : "—",
+      createdAt: row.created_at ? formatAdminDateTime(row.created_at) : "—",
+      updatedAt: row.updated_at ? formatAdminDateTime(row.updated_at) : "—",
     };
   }, [row]);
 

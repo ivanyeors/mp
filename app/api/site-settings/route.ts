@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
@@ -35,11 +36,17 @@ const readSiteSettings = unstable_cache(
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const keysParam = searchParams.get("keys");
+  // Normalise before the cached read: the key list is part of the cache key,
+  // so dedupe + sort so equivalent requests share an entry, and cap it so a
+  // caller cannot mint unbounded entries.
   const keys = keysParam
-    ? keysParam.split(",").map((k) => k.trim()).filter(Boolean)
+    ? Array.from(new Set(keysParam.split(",").map((k) => k.trim()).filter(Boolean))).sort()
     : null;
 
   try {
+    if (keys && keys.length > 50) {
+      return NextResponse.json({ error: "Too many keys (max 50)" }, { status: 400 });
+    }
     const settings = await readSiteSettings(keys && keys.length > 0 ? keys : null);
     return NextResponse.json({ ok: true, settings });
   } catch (err) {
@@ -112,7 +119,7 @@ export async function PUT(req: Request) {
       }).catch(() => {});
     }
 
-    revalidateTag("site-settings", "max");
+    invalidateTag("site-settings");
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(
@@ -150,6 +157,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidateTag("site-settings", "max");
+  invalidateTag("site-settings");
   return NextResponse.json({ ok: true });
 }

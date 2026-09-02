@@ -69,7 +69,7 @@ export async function listAdminOrders(
 
   let query = admin
     .from("orders")
-    .select("*, order_items(quantity)", { count: "estimated" });
+    .select("*, order_items(quantity)", { count: "exact" });
 
   if (status) query = query.eq("status", status);
   if (email) query = query.ilike("email", `%${email}%`);

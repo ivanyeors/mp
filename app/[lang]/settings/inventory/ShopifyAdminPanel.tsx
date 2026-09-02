@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 
 import { getInventoryItemDisplayLabel } from "./item-label";
 import {
-  listShopifyAdminState,
   listShopifyRemoteProducts,
   listTemplates,
   upsertShopifyVariantOverride,
@@ -48,11 +47,10 @@ const ALL_PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 const ALL_BOLSTER_VARIANTS = ["short", "medium", "long"] as const;
 
 export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
-  const [loading, setLoading] = useState(false);
   const [remoteLoading, setRemoteLoading] = useState(false);
   // The panel is only fully loaded once the remote pass lands; the existing
   // controls stay in their loading state until then, exactly as before.
-  const busy = loading || remoteLoading;
+  const busy = remoteLoading;
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [filter, setFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -77,36 +75,18 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
 
   const applyRows = useCallback((next: AdminRow[]) => {
     setRows(next);
-    setDraftByVariantId(() => {
+    setDraftByVariantId((prev) => {
       const out: Record<number, { sku: string }> = {};
       next.forEach((r) => {
-        out[r.shopifyVariantId] = {
-          sku: r.override?.sku ?? "",
-        };
+        const saved = r.override?.sku ?? "";
+        const draft = prev[r.shopifyVariantId];
+        // Keep an in-progress edit across a background refresh; adopt the
+        // saved value when there is no edit or the edit already matches.
+        out[r.shopifyVariantId] = draft && draft.sku !== saved && draft.sku !== "" ? draft : { sku: saved };
       });
       return out;
     });
   }, []);
-
-  /**
-   * First pass: database-only state. The Shopify Admin API request that used to
-   * sit inside this action is no longer on the critical path, so the table
-   * paints as soon as the DB answers. Until `refreshRemote` lands, the table
-   * shows the mappings-only view and the unmapped-variant picker shows its
-   * existing empty state.
-   */
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await listShopifyAdminState();
-      if (!res?.ok) throw new Error("Failed to load Shopify admin state");
-      applyRows((res.rows ?? []) as AdminRow[]);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load Shopify admin state");
-    } finally {
-      setLoading(false);
-    }
-  }, [applyRows]);
 
   /**
    * Second pass: everything that needs the Shopify Admin API. One call now
@@ -133,10 +113,17 @@ export default function ShopifyAdminPanel({ items }: { items: Item[] }) {
     }
   }, [applyRows]);
 
+  /**
+   * One pass. The DB-only `refresh` is kept for callers that want it, but the
+   * panel itself loads through the remote pass alone: painting the mappings-
+   * only rows first and then filtering them to active SKUs made rows disappear
+   * mid-read and reset an SKU the admin had started typing. The remote pass is
+   * still a single Shopify Admin API call (previously two), and the Inventory
+   * page load no longer waits on it.
+   */
   const reload = useCallback(async () => {
-    await refresh();
     await refreshRemote();
-  }, [refresh, refreshRemote]);
+  }, [refreshRemote]);
 
   useEffect(() => {
     void reload();

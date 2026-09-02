@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       assetIds: parsed.media_asset_id ? [parsed.media_asset_id] : [],
     }).catch(() => {});
 
-    revalidateTag("locations", "max");
+    invalidateTag("locations");
     return NextResponse.json({ ok: true, partner: data }, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {

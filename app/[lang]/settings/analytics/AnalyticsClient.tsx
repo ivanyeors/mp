@@ -27,8 +27,9 @@ import {
   type RealizedMarginSummary,
 } from "./actions";
 
-const ProductConfigurationCard = dynamic(() => import("./ProductConfigurationCard").then((m) => m.ProductConfigurationCard), { ssr: false });
-const ProspectJourneyCard = dynamic(() => import("./ProspectJourneyCard").then((m) => m.ProspectJourneyCard), { ssr: false });
+const CardSkeleton = () => <div className="min-h-[360px] w-full animate-pulse rounded-xl bg-muted" />;
+const ProductConfigurationCard = dynamic(() => import("./ProductConfigurationCard").then((m) => m.ProductConfigurationCard), { ssr: false, loading: CardSkeleton });
+const ProspectJourneyCard = dynamic(() => import("./ProspectJourneyCard").then((m) => m.ProspectJourneyCard), { ssr: false, loading: CardSkeleton });
 const MarginByCategoryVisx = dynamic(() => import("./MarginByCategoryVisx").then((m) => m.MarginByCategoryVisx), { ssr: false });
 const MarginByProductVisx = dynamic(() => import("./MarginByProductVisx").then((m) => m.MarginByProductVisx), { ssr: false });
 const ProductTimelineVisx = dynamic(() => import("./ProductTimelineVisx").then((m) => m.ProductTimelineVisx), { ssr: false });

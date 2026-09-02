@@ -19,6 +19,8 @@ export default async function ShippingSettingsRoute({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   await requireAdminPage("shipping", locale);
 
-  const rows = await readShippingMethods(true, null).catch(() => []);
-  return <SettingsShippingPage initialData={{ ok: true, rows }} />;
+  // A failed read must not look like "no shipping methods": leave `initialData`
+  // undefined so the client runs its own mount fetch and surfaces the error.
+  const rows = await readShippingMethods(true, null).catch(() => null);
+  return <SettingsShippingPage initialData={rows ? { ok: true, rows } : undefined} />;
 }

@@ -42,6 +42,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShopifySalesSection } from "@/components/settings/shopify-sales-section";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { formatCurrency } from "@/lib/i18n/currencies";
+import { formatAdminDateTimeMY } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Order, OrderMargin, OrderStatus } from "@/lib/types/ecommerce";
 
@@ -114,13 +115,7 @@ function formatSGD(amount: number): string {
 }
 
 function formatDate(dateStr: string): string {
-    return new Intl.DateTimeFormat("en-MY", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(new Date(dateStr));
+    return formatAdminDateTimeMY(dateStr);
 }
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";

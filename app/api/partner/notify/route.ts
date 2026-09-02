@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -37,6 +37,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Partner not found" }, { status: 404 });
   }
 
-  revalidateTag("locations", "max");
+  invalidateTag("locations");
   return NextResponse.json({ ok: true, notify_whatsapp: parsed.data.notify_whatsapp });
 }

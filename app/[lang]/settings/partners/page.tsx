@@ -21,15 +21,22 @@ export default async function PartnersSettingsRoute({
 
   const [row, partners] = await Promise.all([
     getPartnersPageRow(),
-    listAdminLocationRows().catch(() => []),
+    listAdminLocationRows().catch(() => null),
   ]);
 
+  // A failed locations read must not look like "no partners". The client takes
+  // `initialData` as one unit, so on failure it is left undefined and both of
+  // the client's mount fetches run as they did before.
   return (
     <PartnersSettingsPage
-      initialData={{
-        page: { ok: true, row },
-        partners: { ok: true, partners },
-      }}
+      initialData={
+        partners
+          ? {
+              page: { ok: true, row },
+              partners: { ok: true, partners },
+            }
+          : undefined
+      }
     />
   );
 }

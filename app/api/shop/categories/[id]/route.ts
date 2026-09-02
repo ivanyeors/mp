@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -86,7 +86,7 @@ export async function PATCH(
     }).catch(() => {});
   }
 
-  revalidateTag("categories", "max");
+  invalidateTag("categories");
   return NextResponse.json({ ok: true, row: data });
 }
 
@@ -108,6 +108,6 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidateTag("categories", "max");
+  invalidateTag("categories");
   return NextResponse.json({ ok: true });
 }

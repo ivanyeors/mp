@@ -19,6 +19,8 @@ export default async function GeneralSettingsRoute({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   await requireAdminPage("api-configs", locale);
 
-  const configs = await readApiConfigs().catch(() => []);
-  return <GeneralSettingsPage initialData={configs} />;
+  // A failed read must not look like "no API configs": leave `initialData`
+  // undefined so the client runs its own mount fetch and surfaces the error.
+  const configs = await readApiConfigs().catch(() => null);
+  return <GeneralSettingsPage initialData={configs ?? undefined} />;
 }

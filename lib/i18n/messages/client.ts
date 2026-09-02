@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { enUS } from "@/lib/i18n/messages/en-US";
+import { useProvidedMessages } from "@/lib/i18n/messages/provider";
 import type { Messages } from "@/lib/i18n/messages/types";
 
 const CACHE: Partial<Record<Locale, Messages>> = {
@@ -38,6 +39,13 @@ async function loadLocale(locale: Locale): Promise<Messages | null> {
  */
 export function useMessages(locale: Locale): Messages {
   const [, setVersion] = useState(0);
+  const provided = useProvidedMessages();
+  // A dictionary handed down by the server layout is authoritative for its
+  // locale and is also seeded into the cache so sibling mounts read it
+  // synchronously.
+  if (provided && provided.locale === locale && !CACHE[locale]) {
+    CACHE[locale] = provided.messages;
+  }
 
   useEffect(() => {
     if (CACHE[locale]) return;
@@ -52,5 +60,6 @@ export function useMessages(locale: Locale): Messages {
     };
   }, [locale]);
 
+  if (provided && provided.locale === locale) return provided.messages;
   return getLoadedMessages(locale);
 }

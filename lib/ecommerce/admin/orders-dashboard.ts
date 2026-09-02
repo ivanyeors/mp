@@ -123,18 +123,26 @@ export async function loadOrdersDashboard(
     ),
   );
 
-  let ledgerOrderIds = new Set<string>();
+  // `.in()` is serialised into the request URL, so look the ledger up in
+  // bounded chunks rather than one list that grows with the order book.
+  const LEDGER_CHUNK = 200;
+  const ledgerOrderIds = new Set<string>();
   if (unpaidOrderIds.length > 0) {
-    const ledgerResult = await admin
-      .from("order_payments")
-      .select("order_id")
-      .in("order_id", unpaidOrderIds);
-    if (ledgerResult.error) {
-      return { status: 500, body: { error: ledgerResult.error.message } };
+    const chunks: string[][] = [];
+    for (let i = 0; i < unpaidOrderIds.length; i += LEDGER_CHUNK) {
+      chunks.push(unpaidOrderIds.slice(i, i + LEDGER_CHUNK));
     }
-    ledgerOrderIds = new Set(
-      (ledgerResult.data ?? []).map((row: { order_id: string }) => row.order_id),
+    const ledgerResults = await Promise.all(
+      chunks.map((ids) => admin.from("order_payments").select("order_id").in("order_id", ids)),
     );
+    for (const ledgerResult of ledgerResults) {
+      if (ledgerResult.error) {
+        return { status: 500, body: { error: ledgerResult.error.message } };
+      }
+      for (const row of (ledgerResult.data ?? []) as Array<{ order_id: string }>) {
+        ledgerOrderIds.add(row.order_id);
+      }
+    }
   }
 
   const qualifyingMargins = marginRows.filter(

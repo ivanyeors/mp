@@ -17,6 +17,7 @@ import {
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
+import { formatAdminDateMY } from "@/lib/format/admin-date";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,12 +85,7 @@ function getStatus(coupon: Coupon): {
 }
 
 function formatDateRange(starts_at: string | null, expires_at: string | null): string {
-    const fmt = (d: string) =>
-        new Date(d).toLocaleDateString("en-MY", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-        });
+    const fmt = (d: string) => formatAdminDateMY(d);
     if (starts_at && expires_at) return `${fmt(starts_at)} – ${fmt(expires_at)}`;
     if (starts_at) return `From ${fmt(starts_at)}`;
     if (expires_at) return `Until ${fmt(expires_at)}`;

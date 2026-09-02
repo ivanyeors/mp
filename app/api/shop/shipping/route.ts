@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
@@ -21,7 +21,9 @@ const CreateShippingMethodSchema = z.object({
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const country = searchParams.get("country");
+  // `country` is part of the cache key: only a two-letter ISO code is accepted.
+  const rawCountry = searchParams.get("country")?.trim().toUpperCase() ?? "";
+  const country = /^[A-Z]{2}$/.test(rawCountry) ? rawCountry : null;
   const includeInactive = searchParams.get("include_inactive") === "1";
   const adminCtx = includeInactive ? await getAdminContext() : null;
   const canIncludeInactive =
@@ -58,6 +60,6 @@ export async function POST(req: Request) {
       { status: isDup ? 409 : 500 }
     );
   }
-  revalidateTag("shipping-methods", "max");
+  invalidateTag("shipping-methods");
   return NextResponse.json({ ok: true, row: data });
 }

@@ -41,6 +41,7 @@ import {
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Customer, CustomerAddress, Order, OrderStatus } from "@/lib/types/ecommerce";
+import { formatAdminDateMY } from "@/lib/format/admin-date";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -53,11 +54,7 @@ function formatSGD(amount: number): string {
 }
 
 function formatDate(dateStr: string): string {
-    return new Intl.DateTimeFormat("en-MY", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-    }).format(new Date(dateStr));
+    return formatAdminDateMY(dateStr);
 }
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";

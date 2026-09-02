@@ -32,7 +32,7 @@ export async function listAdminCoupons(
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = admin.from("coupons").select("*", { count: "estimated" });
+  let query = admin.from("coupons").select("*", { count: "exact" });
 
   if (active === "true") query = query.eq("is_active", true);
   if (active === "false") query = query.eq("is_active", false);

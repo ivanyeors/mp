@@ -19,6 +19,7 @@ import {
     Film,
 } from "lucide-react";
 import { getApiErrorMessage } from "@/lib/utils";
+import { formatAdminDate, formatAdminRelative } from "@/lib/format/admin-date";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,20 +100,6 @@ type FilterMode = "all" | "in_use" | "unused";
 /** all = no folder filter; unfiled = folder_id null; else folder uuid */
 type FolderFilter = "all" | "unfiled" | string;
 type KindFilter = "all" | "image" | "video" | "pdf";
-
-function relativeUsed(iso: string | null | undefined): string | null {
-    if (!iso) return null;
-    const ms = Date.now() - new Date(iso).getTime();
-    if (Number.isNaN(ms) || ms < 0) return null;
-    const mins = Math.floor(ms / 60_000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return new Date(iso).toLocaleDateString();
-}
 
 /* ------------------------------------------------------------------ */
 /* Landing page image slot definitions                                 */
@@ -209,6 +196,19 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
     const [usageByAssetId, setUsageByAssetId] = useState<UsageMap>({});
     const [usageLoading, setUsageLoading] = useState(true);
     const [detailUsages, setDetailUsages] = useState<UsageEntry[] | null>(null);
+
+    /**
+     * "Now" is sampled once per mount instead of on every render, so the
+     * relative "used" labels are stable while the page is open. The server
+     * samples its own instant, so the elements that print one are marked
+     * `suppressHydrationWarning` — a relative time genuinely cannot agree
+     * across the two passes.
+     */
+    const [nowMs] = useState(() => Date.now());
+    const relativeUsed = useCallback(
+        (iso: string | null | undefined) => formatAdminRelative(iso, nowMs),
+        [nowMs],
+    );
 
     /* Image detail sheet */
     const [detailFile, setDetailFile] = useState<MediaFile | null>(null);
@@ -1273,7 +1273,9 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                         <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                             <span className="uppercase tracking-wide">{file.kind ?? "image"}</span>
                                             <span>·</span>
-                                            <span>{usedLabel ? `Used ${usedLabel}` : new Date(file.created_at).toLocaleDateString()}</span>
+                                            <span suppressHydrationWarning>
+                                                {usedLabel ? `Used ${usedLabel}` : formatAdminDate(file.created_at)}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -1300,7 +1302,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 <SheetTitle className="truncate pr-8">{detailFile.name}</SheetTitle>
                                 <SheetDescription>
                                     {(detailFile.kind ?? "image").toUpperCase()} ·{" "}
-                                    {new Date(detailFile.created_at).toLocaleDateString()}
+                                    {formatAdminDate(detailFile.created_at)}
                                 </SheetDescription>
                             </SheetHeader>
 
@@ -1532,7 +1534,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                         </div>
                                     )}
                                     {relativeUsed(detailFile.last_used_at) && (
-                                        <p className="text-[10px] text-muted-foreground">
+                                        <p className="text-[10px] text-muted-foreground" suppressHydrationWarning>
                                             Last used {relativeUsed(detailFile.last_used_at)}
                                         </p>
                                     )}

@@ -296,6 +296,7 @@ async function sellFromReplaceLinesForShopifyCommit(
 }
 
 export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
+  await assertAdmin('inventory')
   const parsed = SellPillowSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -323,6 +324,7 @@ export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
 }
 
 export async function sellPart(input: z.infer<typeof ItemQtySchema>) {
+  await assertAdmin('inventory')
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
   const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
@@ -337,6 +339,7 @@ export async function sellPart(input: z.infer<typeof ItemQtySchema>) {
 }
 
 export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
+  await assertAdmin('inventory')
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
   const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
@@ -352,6 +355,7 @@ export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
 }
 
 export async function setThreshold(itemId: number, minLevel: number) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { error } = await admin.from('item_thresholds').upsert({ item_id: itemId, min_level: minLevel })
   if (error) throw new Error(error.message)
@@ -359,6 +363,7 @@ export async function setThreshold(itemId: number, minLevel: number) {
 }
 
 export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
+  await assertAdmin('inventory')
   const parsed = SellBolsterSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -398,6 +403,7 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
 }
 
 export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSchema>) {
+  await assertAdmin('inventory')
   const parsed = SellFromTemplateSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -469,6 +475,7 @@ export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSch
 }
 
 export async function listShopifySalesQueue() {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
@@ -481,6 +488,7 @@ export async function listShopifySalesQueue() {
 }
 
 export async function listShopifySalesQueueArchived() {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('shopify_sales_queue')
@@ -493,6 +501,7 @@ export async function listShopifySalesQueueArchived() {
 }
 
 export async function archiveShopifySaleQueueRow(queueId: number) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { error } = await admin
     .from('shopify_sales_queue')
@@ -510,6 +519,7 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
   daysBack?: number
   limit?: number
 }) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
 
   const limit = Math.max(1, Math.min(250, Math.floor(input?.limit ?? 250)))
@@ -630,6 +640,7 @@ export async function refreshShopifySalesQueueFromShopify(input?: {
 }
 
 export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pillowKind?: 'basic' | 'premium', pillowVariant?: 'linen' | 'fibrecool') {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const effectivePillowKind = kind === 'pillow' ? (pillowKind ?? 'basic') : null
   const effectivePillowVariant = kind === 'pillow' && effectivePillowKind === 'premium' ? (pillowVariant ?? null) : null
@@ -658,6 +669,7 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
 }
 
 export async function listFillingTemplates(kind: 'pillow' | 'bolster', key: string) {
+  await assertAdmin('inventory')
   const admin = supabaseAdmin()
   const { data, error } = await admin
     .from('bom_templates')
@@ -672,6 +684,7 @@ export async function listFillingTemplates(kind: 'pillow' | 'bolster', key: stri
 }
 
 export async function commitShopifySales(input: z.infer<typeof CommitShopifySalesSchema>) {
+  await assertAdmin('inventory')
   const parsed = CommitShopifySalesSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -846,6 +859,7 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
 }
 
 export async function deleteInventoryItem(input: z.infer<typeof DeleteItemSchema>) {
+  await assertAdmin('inventory')
   const parsed = DeleteItemSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -866,6 +880,7 @@ export async function deleteInventoryItem(input: z.infer<typeof DeleteItemSchema
 }
 
 export async function renameInventoryItem(input: z.infer<typeof RenameItemSchema>) {
+  await assertAdmin('inventory')
   const parsed = RenameItemSchema.parse(input)
   const admin = supabaseAdmin()
   const normalizedName = parsed.name.trim()
@@ -899,6 +914,7 @@ const ItemImageSchema = z.object({
 
 /** Slice 12: link an Item to its primary Media Asset (add-on card imagery). */
 export async function setItemPrimaryImage(input: z.infer<typeof ItemImageSchema>) {
+  await assertAdmin('inventory')
   const parsed = ItemImageSchema.parse(input)
   const admin = supabaseAdmin()
   const { data, error } = await admin
@@ -914,6 +930,7 @@ export async function setItemPrimaryImage(input: z.infer<typeof ItemImageSchema>
 }
 
 export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
+  await assertAdmin('inventory')
   const parsed = AddItemSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -1051,6 +1068,7 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
 }
 
 export async function fullShopifySync() {
+  await assertAdmin('inventory')
   const [inventory, prices] = await Promise.all([
     syncShopifyInventoryFromBuildable(),
     syncShopifyPricingFromSupabase(),
@@ -1059,6 +1077,7 @@ export async function fullShopifySync() {
 }
 
 export async function syncShopifyPricesOnly() {
+  await assertAdmin('inventory')
   const prices = await syncShopifyPricingFromSupabase()
   return { ok: true, prices }
 }
@@ -1332,6 +1351,7 @@ async function buildShopifyUnmappedVariants(activeProducts: ShopifyActiveProduct
  * view with {@link listShopifyRemoteProducts}.
  */
 export async function listShopifyAdminState() {
+  await assertAdmin('inventory')
   return buildShopifyAdminState([])
 }
 
@@ -1342,6 +1362,7 @@ export async function listShopifyAdminState() {
  * return, so the rendered result once this lands is identical to before.
  */
 export async function listShopifyRemoteProducts() {
+  await assertAdmin('inventory')
   // If env vars are missing in a local shell, fall back to the DB-only view.
   const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
     () => [],
@@ -1359,6 +1380,7 @@ export async function listShopifyRemoteProducts() {
  * Standalone unmapped-variant list, kept for callers that need only this half.
  */
 export async function listShopifyUnmappedVariants() {
+  await assertAdmin('inventory')
   const activeProducts = (await shopifyListActiveProductsWithVariants({ limit: 250 }).catch(
     () => [],
   )) as ShopifyActiveProduct[]
@@ -1366,6 +1388,7 @@ export async function listShopifyUnmappedVariants() {
 }
 
 export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertShopifyOverrideSchema>) {
+  await assertAdmin('inventory')
   const parsed = UpsertShopifyOverrideSchema.parse(input)
   const admin = supabaseAdmin()
 
@@ -1389,6 +1412,7 @@ export async function upsertShopifyVariantOverride(input: z.infer<typeof UpsertS
 }
 
 export async function deleteShopifyVariantOverride(shopifyVariantId: number) {
+  await assertAdmin('inventory')
   const id = ShopifyVariantIdSchema.parse(shopifyVariantId)
   const admin = supabaseAdmin()
   const { error } = await admin.from('shopify_variant_overrides').delete().eq('shopify_variant_id', id)

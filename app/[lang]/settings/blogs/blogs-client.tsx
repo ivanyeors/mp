@@ -7,6 +7,7 @@ import { Plus, Trash2, Pencil, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { formatAdminDate } from "@/lib/format/admin-date";
 
 export type BlogRow = {
     id: string;
@@ -126,7 +127,7 @@ export default function SettingsBlogsPage({ initialData }: { initialData?: Blogs
                                     <td className="px-4 py-3 hidden sm:table-cell">{statusBadge(post.status)}</td>
                                     <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">{post.author}</td>
                                     <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">
-                                        {post.published_at ? new Date(post.published_at).toLocaleDateString() : "—"}
+                                        {post.published_at ? formatAdminDate(post.published_at) : "—"}
                                     </td>
                                     <td className="px-4 py-3 text-right space-x-1">
                                         <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11">

@@ -72,7 +72,9 @@ function admin() {
 }
 
 /** Default ceiling applied when a caller of {@link listMediaAssets} passes no limit. */
-const DEFAULT_MEDIA_ASSET_LIST_LIMIT = 500;
+// The media gallery has no paging yet, so this is a safety ceiling rather
+// than a page size; raise it before the library approaches it.
+const DEFAULT_MEDIA_ASSET_LIST_LIMIT = 5000;
 
 export async function listMediaAssets(opts?: {
   search?: string;

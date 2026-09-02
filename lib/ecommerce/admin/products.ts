@@ -42,7 +42,7 @@ export async function listAdminProducts(
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = admin.from("products").select("*, product_variants(*), product_images(*)", { count: "estimated" });
+  let query = admin.from("products").select("*, product_variants(*), product_images(*)", { count: "exact" });
 
   if (status) query = query.eq("status", status);
   if (category_id) query = query.eq("category_id", category_id);

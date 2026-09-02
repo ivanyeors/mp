@@ -19,6 +19,10 @@ export default async function PageBuilderRoute({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   await requireAdminPage("page-builder", locale);
 
-  const sections = await listLandingSections().catch(() => []);
-  return <PageBuilderPage initialData={{ ok: true, sections }} />;
+  // A failed read must not look like "no sections": leave `initialData`
+  // undefined so the client runs its own mount fetch and surfaces the error.
+  const sections = await listLandingSections().catch(() => null);
+  return (
+    <PageBuilderPage initialData={sections ? { ok: true, sections } : undefined} />
+  );
 }

@@ -34,7 +34,7 @@ export async function listAdminCustomers(
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = admin.from("customers").select("*", { count: "estimated" });
+  let query = admin.from("customers").select("*", { count: "exact" });
 
   if (search) {
     query = query.or(`email.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);

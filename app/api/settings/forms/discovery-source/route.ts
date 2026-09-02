@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { saveDiscoverySourceCatalog } from "@/lib/discovery-source";
@@ -51,6 +51,6 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  revalidateTag("site-settings", "max");
+  invalidateTag("site-settings");
   return NextResponse.json({ ok: true, catalog: result.catalog });
 }

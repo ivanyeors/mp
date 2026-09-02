@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
+import { invalidateTag } from "@/lib/cache/invalidate";
 import { requireAdmin } from "@/lib/auth/admin";
 import { runReplaceEverywhere, type ReplaceInput } from "@/lib/media/replace";
 
@@ -45,8 +45,8 @@ export async function POST(req: Request) {
 
     const summary = await runReplaceEverywhere(input);
     // Swaps touch landing site_settings rows and partner logos.
-    revalidateTag("site-settings", "max");
-    revalidateTag("locations", "max");
+    invalidateTag("site-settings");
+    invalidateTag("locations");
     return NextResponse.json({ ok: true, summary });
   } catch (err) {
     return NextResponse.json(

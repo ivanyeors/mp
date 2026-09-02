@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatAdminDateTime } from "@/lib/format/admin-date";
 
 export type StaffRow = {
   id: string;
@@ -136,7 +137,7 @@ export default function StaffManagementPage({
                   <TableRow key={r.id}>
                     <TableCell className="max-w-[40vw] truncate font-medium sm:max-w-none">{r.name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {r.updated_at ? new Date(r.updated_at).toLocaleString() : "—"}
+                      {r.updated_at ? formatAdminDateTime(r.updated_at) : "—"}
                     </TableCell>
                     <TableCell className="hidden font-mono text-xs text-muted-foreground sm:table-cell">{r.id}</TableCell>
                   </TableRow>

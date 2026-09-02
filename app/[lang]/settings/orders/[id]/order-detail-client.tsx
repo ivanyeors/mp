@@ -59,6 +59,7 @@ import {
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import { formatCurrency } from "@/lib/i18n/currencies";
+import { formatAdminDateTimeMY } from "@/lib/format/admin-date";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import type { Order, OrderItem, OrderMargin, OrderTimelineEvent, OrderStatus } from "@/lib/types/ecommerce";
 import {
@@ -89,13 +90,7 @@ function formatSGD(amount: number): string {
 }
 
 function formatDate(dateStr: string): string {
-    return new Intl.DateTimeFormat("en-MY", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(new Date(dateStr));
+    return formatAdminDateTimeMY(dateStr);
 }
 
 function orderHasRestockableLines(order: Order): boolean {

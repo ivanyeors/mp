@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { rowsToCsv } from "@/lib/results/rows-to-csv";
+import { formatAdminDateTime } from "@/lib/format/admin-date";
 
 type YesNoEmpty = "yes" | "no" | "";
 
@@ -649,7 +650,7 @@ export default function ResultsPage({
                   const gender = safeString(d.gender) || "—";
                   const ageGroup = safeString(d.ageGroup) || "—";
                   const shoulder = safeString(d.shoulderLength) || "—";
-                  const updated = row.updated_at ? new Date(row.updated_at).toLocaleString() : "—";
+                  const updated = row.updated_at ? formatAdminDateTime(row.updated_at) : "—";
                   const busy = Boolean(sending[row.id]);
                   const isDeleting = Boolean(deleting[row.id]);
                   const measuredByText = measuredByLabel(row);

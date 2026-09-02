@@ -1,6 +1,5 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
-import { DEFAULT_APPOINTMENT_SETTINGS } from "@/lib/appointments/settings";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 import AppointmentSettingsPage from "./appointments-client";
 
@@ -20,8 +19,10 @@ export default async function AppointmentSettingsRoute({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   await requireAdminPage("results", locale);
 
-  const settings = await getAppointmentSettings().catch(
-    () => DEFAULT_APPOINTMENT_SETTINGS,
-  );
-  return <AppointmentSettingsPage initialData={settings} />;
+  // Same class of bug as the sibling pages: falling back to the defaults here
+  // presents them as the *saved* settings and skips the client's mount fetch,
+  // so an admin could save the defaults over real values. Leave `initialData`
+  // undefined instead and let the client fetch and report the failure.
+  const settings = await getAppointmentSettings().catch(() => null);
+  return <AppointmentSettingsPage initialData={settings ?? undefined} />;
 }

@@ -451,6 +451,8 @@ export default function InventoryPage() {
     const channel = supabaseClient
       .channel('inventory-items')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => {
+        // Intentional: background refreshes from other staff's edits should
+        // not flash the table's loading state (previously they did).
         scheduleSilentReload();
       })
       .subscribe();

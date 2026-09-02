@@ -19,6 +19,8 @@ export default async function ProductBuilderRoute({
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   await requireAdminPage("page-builder", locale);
 
-  const items = await listOverlayMappingItems().catch(() => []);
-  return <ProductBuilderPage initialData={{ ok: true, items }} />;
+  // A failed read must not look like "no mappings": leave `initialData`
+  // undefined so the client runs its own mount fetch and surfaces the error.
+  const items = await listOverlayMappingItems().catch(() => null);
+  return <ProductBuilderPage initialData={items ? { ok: true, items } : undefined} />;
 }
