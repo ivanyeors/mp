@@ -76,6 +76,7 @@ import {
   type RuleFlow,
   type RuleGraphJson,
   type RuleGraphRow,
+  type RuleGraphSummary,
   type RuleNode,
   type SizeOrLength,
   type ValidationError,
@@ -208,7 +209,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   };
   const [readOnly, setReadOnly] = useState(false);
   const [viewingVersion, setViewingVersion] = useState<RuleGraphRow | null>(null);
-  const [versions, setVersions] = useState<RuleGraphRow[]>([]);
+  const [versions, setVersions] = useState<RuleGraphSummary[]>([]);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [publishErrors, setPublishErrors] = useState<ValidationError[]>([]);
@@ -470,7 +471,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     await loadDraft();
   };
 
-  const viewVersion = (v: RuleGraphRow | null) => {
+  const viewVersion = async (v: RuleGraphSummary | null) => {
     if (!v) {
       const rf = graphToRf(draftGraphRef.current, publishErrors);
       setNodes(rf.nodes);
@@ -479,10 +480,18 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       setReadOnly(false);
       return;
     }
-    const rf = graphToRf(v.graph);
+    // The version list carries metadata only; fetch this version's graph.
+    const res = await fetch(`${apiBase(flow)}/versions/${v.id}`);
+    const data = await res.json();
+    if (!res.ok || !data.ok || !data.version) {
+      toast.error(getApiErrorMessage(data.error, "Could not load version"));
+      return;
+    }
+    const full = data.version as RuleGraphRow;
+    const rf = graphToRf(full.graph);
     setNodes(rf.nodes);
     setEdges(rf.edges);
-    setViewingVersion(v);
+    setViewingVersion(full);
     setReadOnly(true);
     setTestResult(null);
   };
@@ -614,8 +623,8 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
               <MenubarRadioGroup
                 value={viewingVersion?.id ?? "draft"}
                 onValueChange={(id) => {
-                  if (id === "draft") viewVersion(null);
-                  else viewVersion(versions.find((x) => x.id === id) ?? null);
+                  if (id === "draft") void viewVersion(null);
+                  else void viewVersion(versions.find((x) => x.id === id) ?? null);
                 }}
               >
                 <MenubarRadioItem value="draft">Draft</MenubarRadioItem>

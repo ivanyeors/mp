@@ -130,3 +130,6 @@ export type RuleGraphRow = {
   updated_at: string;
   published_at: string | null;
 };
+
+/** A published version without its graph; the graph is fetched on demand. */
+export type RuleGraphSummary = Omit<RuleGraphRow, "graph">;

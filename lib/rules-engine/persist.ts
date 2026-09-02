@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertPublishable } from "./validate";
-import type { RuleFlow, RuleGraphJson, RuleGraphRow } from "./types";
+import type { RuleFlow, RuleGraphJson, RuleGraphRow, RuleGraphSummary } from "./types";
 import { RULE_FLOWS } from "./types";
 
 export function isRuleFlow(v: string): v is RuleFlow {
@@ -65,16 +65,25 @@ export async function saveDraft(
   return row(data);
 }
 
-export async function listVersions(flow: RuleFlow): Promise<RuleGraphRow[]> {
+/**
+ * Published versions, newest first, WITHOUT the graph JSONB: the version
+ * picker only needs metadata, and every graph was previously shipped to the
+ * browser on each workbench load. Use {@link getPublishedVersion} for one.
+ */
+export async function listVersions(flow: RuleFlow): Promise<RuleGraphSummary[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("rule_graphs")
-    .select("*")
+    .select("id, flow, version, status, author_id, created_at, updated_at, published_at")
     .eq("flow", flow)
     .eq("status", "published")
     .order("version", { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []).map(row);
+  return (data ?? []).map((d) => {
+    const { graph: _graph, ...summary } = row({ ...(d as Record<string, unknown>), graph: null });
+    void _graph;
+    return summary;
+  });
 }
 
 export async function getPublishedVersion(
