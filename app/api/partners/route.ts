@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { listAdminLocationRows } from "@/lib/partners";
 import { touchLastUsed } from "@/lib/media-assets";
 
 export const runtime = "nodejs";
@@ -21,18 +23,15 @@ const CreateSchema = z.object({
 });
 
 export async function GET() {
-  const admin = supabaseAdmin();
   // Returns all locations (own + partner); the /our-partners projection filters own out.
-  const { data, error } = await admin
-    .from("partners")
-    .select("*")
-    .order("position", { ascending: true });
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    return NextResponse.json({ ok: true, partners: await listAdminLocationRows() });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
   }
-
-  return NextResponse.json({ ok: true, partners: data ?? [] });
 }
 
 export async function POST(req: Request) {
@@ -82,6 +81,7 @@ export async function POST(req: Request) {
       assetIds: parsed.media_asset_id ? [parsed.media_asset_id] : [],
     }).catch(() => {});
 
+    revalidateTag("locations", "max");
     return NextResponse.json({ ok: true, partner: data }, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {

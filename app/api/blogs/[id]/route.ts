@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
+import { getAdminBlogPostById } from "@/lib/blogs";
 
 export const runtime = "nodejs";
 
@@ -27,10 +28,9 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: RouteParams) {
     const { id } = await params;
-    const admin = supabaseAdmin();
-    const { data, error } = await admin.from("blog_posts").select("*").eq("id", id).single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 404 });
-    return NextResponse.json({ ok: true, row: data });
+    const { row, error } = await getAdminBlogPostById(id);
+    if (error) return NextResponse.json({ error }, { status: 404 });
+    return NextResponse.json({ ok: true, row });
 }
 
 export async function PATCH(req: Request, { params }: RouteParams) {

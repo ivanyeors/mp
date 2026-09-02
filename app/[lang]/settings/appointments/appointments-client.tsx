@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Settings } from "lucide-react";
 import { toast } from "sonner";
-import { AppointmentsCalendar } from "@/components/settings/appointments-calendar";
 import { AppointmentsSettingsSheet } from "@/components/settings/appointments-settings-sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,19 +11,45 @@ import {
   type AppointmentSettings,
 } from "@/lib/appointments/settings";
 
-export default function AppointmentSettingsPage() {
+const AppointmentsCalendar = dynamic(
+  () =>
+    import("@/components/settings/appointments-calendar").then(
+      (m) => m.AppointmentsCalendar,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-[60vh] w-full animate-pulse rounded-lg bg-muted" />
+    ),
+  },
+);
+
+/** The `/api/settings/appointments` settings the page mounts with. */
+export type AppointmentsInitialData = AppointmentSettings;
+
+export default function AppointmentSettingsPage({
+  initialData,
+}: {
+  initialData?: AppointmentsInitialData;
+}) {
   const [settings, setSettings] = useState<AppointmentSettings>(
-    DEFAULT_APPOINTMENT_SETTINGS,
+    initialData ?? DEFAULT_APPOINTMENT_SETTINGS,
   );
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialData);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [savingAvailability, setSavingAvailability] = useState(false);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   // Serialize availability writes so rapid toggles don't clobber each other
   const saveChain = useRef(Promise.resolve());
+  // The server already loaded the settings; the sheet still saves and reloads.
+  const skipFirstFetch = useRef(initialData != null);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {

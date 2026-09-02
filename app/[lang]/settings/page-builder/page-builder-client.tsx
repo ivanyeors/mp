@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { Button } from "@/components/ui/button";
@@ -265,10 +265,19 @@ function AddSectionDialog({
 
 // --- Main Page Builder ---
 
-export default function PageBuilderPage() {
-  const [sections, setSections] = useState<LandingSection[]>([]);
-  const [loading, setLoading] = useState(true);
+/** The `/api/landing-sections` payload the builder mounts with. */
+export type PageBuilderInitialData = { ok: true; sections: LandingSection[] };
+
+export default function PageBuilderPage({
+  initialData,
+}: {
+  initialData?: PageBuilderInitialData;
+}) {
+  const [sections, setSections] = useState<LandingSection[]>(initialData?.sections ?? []);
+  const [loading, setLoading] = useState(!initialData);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // The server already loaded the sections; every later change still refetches.
+  const skipFirstFetch = useRef(initialData != null);
 
   const loadSections = useCallback(async () => {
     try {
@@ -284,6 +293,10 @@ export default function PageBuilderPage() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     loadSections();
   }, [loadSections]);
 

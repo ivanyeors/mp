@@ -5,7 +5,7 @@
  * (+ optional fit) so the configurator silhouette shows the real product.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GitBranch, ImageIcon, Loader2, Trash2 } from "lucide-react";
@@ -40,7 +40,7 @@ function roleLabel(category: string): string {
   return category === "cover" ? "cover" : "case";
 }
 
-type OverlayItem = {
+export type OverlayItem = {
   id: number;
   name: string;
   category: string;
@@ -52,7 +52,14 @@ type OverlayItem = {
   } | null;
 };
 
-export default function ProductBuilderPage() {
+/** The mappings payload the page mounts with. */
+export type ProductBuilderInitialData = { ok: true; items: OverlayItem[] };
+
+export default function ProductBuilderPage({
+  initialData,
+}: {
+  initialData?: ProductBuilderInitialData;
+}) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const settingsPath = useCallback(
@@ -60,8 +67,10 @@ export default function ProductBuilderPage() {
     [locale],
   );
 
-  const [items, setItems] = useState<OverlayItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<OverlayItem[]>(initialData?.items ?? []);
+  const [loading, setLoading] = useState(!initialData);
+  // The server already loaded the mappings; every save and removal reloads.
+  const skipFirstFetch = useRef(initialData != null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +90,10 @@ export default function ProductBuilderPage() {
   }, [settingsPath]);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     void load();
   }, [load]);
 

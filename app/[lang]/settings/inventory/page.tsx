@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +58,8 @@ const CATEGORY_TITLES: Record<ItemCategory, string> = {
   accessories: 'Accessories',
   other: 'Other',
 };
+const REALTIME_RELOAD_DEBOUNCE_MS = 400;
+
 const SIZED_CATEGORIES: ItemCategory[] = ['cover','pillow_case','pillow_protector','bolster_case','bolster_protector'];
 const SIZE_OPTIONS = ['-','XS','S','M','L','XL','BOLSTER'] as const;
 
@@ -278,9 +281,15 @@ export default function InventoryPage() {
     }
   }, []);
 
+  // Background refreshes are coalesced: a burst of realtime/broadcast events
+  // results in one silent reload rather than one `load()` per event.
+  const scheduleSilentReload = useDebouncedCallback(() => {
+    load({ silent: true });
+  }, REALTIME_RELOAD_DEBOUNCE_MS);
+
   // Listen for inventory changes broadcast from other pages (e.g. Configure).
   useEffect(() => {
-    const onChanged = () => { load({ silent: true }); };
+    const onChanged = () => { scheduleSilentReload(); };
     if (typeof window !== 'undefined') {
       window.addEventListener('inventory:changed', onChanged);
       let bc: BroadcastChannel | null = null;
@@ -296,7 +305,7 @@ export default function InventoryPage() {
       };
     }
     return;
-  }, [load]);
+  }, [scheduleSilentReload]);
 
   const [sellDrawerOpen, setSellDrawerOpen] = useState(false);
   const [sellDrawerKind, setSellDrawerKind] = useState<"pillow" | "bolster">("pillow");
@@ -442,13 +451,13 @@ export default function InventoryPage() {
     const channel = supabaseClient
       .channel('inventory-items')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => {
-        load();
+        scheduleSilentReload();
       })
       .subscribe();
     return () => {
       supabaseClient.removeChannel(channel);
     };
-  }, [load]);
+  }, [scheduleSilentReload]);
 
   useEffect(() => {
     const loadCustomPillowLines = async () => {
@@ -593,6 +602,12 @@ export default function InventoryPage() {
     }
     try {
       // Process pillows
+      // Index products once instead of scanning the list for every cart line.
+      const productByKind = new Map<string, Product>();
+      for (const p of products) {
+        const productKey = `${p.size}:${p.kind}`;
+        if (!productByKind.has(productKey)) productByKind.set(productKey, p);
+      }
       for (const line of pillowLines) {
         if (line.quantity <= 0) continue;
         if (line.templateId) {
@@ -613,7 +628,7 @@ export default function InventoryPage() {
         }
         const size = String(line.pillowSize ?? line.label);
         const kind: PillowKind = line.pillowKind === 'premium' ? 'premium' : 'basic';
-        const product = products.find(p => p.size === size && p.kind === kind);
+        const product = productByKind.get(`${size}:${kind}`);
         if (product) await sellPillow({ productId: product.id, quantity: line.quantity });
       }
       // Process parts
@@ -992,7 +1007,7 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
               )}
               <div className="space-y-2">
                 {Object.entries(cart.parts).map(([itemIdStr, qty]) => {
-                  const it = items.find(i => i.id === Number(itemIdStr));
+                  const it = itemsById.get(Number(itemIdStr));
                   return (
                     <div key={itemIdStr} className="flex items-center justify-between rounded border p-2">
                       <div>
@@ -2650,7 +2665,14 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
     setLines((prev: Array<{ item_id: number; quantity: number }>) => prev.filter(l => l.item_id!==item_id));
   };
 
-  const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
+  // One pass over `lines` per render instead of a linear scan inside every
+  // rendered <Input value=...>.
+  const qtyByItemId = useMemo(() => {
+    const map = new Map<number, number>();
+    lines.forEach((l) => { if (!map.has(l.item_id)) map.set(l.item_id, l.quantity); });
+    return map;
+  }, [lines]);
+  const getQty = (item_id: number) => qtyByItemId.get(item_id) ?? 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -2844,7 +2866,14 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
     setLines((prev: Array<{ item_id: number; quantity: number }>) => prev.filter(l => l.item_id!==item_id));
   };
 
-  const getQty = (item_id: number) => lines.find(l=>l.item_id===item_id)?.quantity ?? 0;
+  // One pass over `lines` per render instead of a linear scan inside every
+  // rendered <Input value=...>.
+  const qtyByItemId = useMemo(() => {
+    const map = new Map<number, number>();
+    lines.forEach((l) => { if (!map.has(l.item_id)) map.set(l.item_id, l.quantity); });
+    return map;
+  }, [lines]);
+  const getQty = (item_id: number) => qtyByItemId.get(item_id) ?? 0;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

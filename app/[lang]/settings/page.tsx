@@ -17,13 +17,12 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // The theme is only known in the browser, so the three radios stay unchecked
+  // for the first paint and flip once mounted — the rest of the page renders
+  // straight from the server.
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  if (!mounted) {
-    return null;
-  }
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -41,7 +40,8 @@ export default function SettingsPage() {
               name="theme"
               type="radio"
               value="light"
-              checked={theme === "light"}
+              checked={mounted && theme === "light"}
+              suppressHydrationWarning
               onChange={() => setTheme("light")}
               className="peer sr-only"
             />
@@ -60,7 +60,8 @@ export default function SettingsPage() {
               name="theme"
               type="radio"
               value="dark"
-              checked={theme === "dark"}
+              checked={mounted && theme === "dark"}
+              suppressHydrationWarning
               onChange={() => setTheme("dark")}
               className="peer sr-only"
             />
@@ -79,7 +80,8 @@ export default function SettingsPage() {
               name="theme"
               type="radio"
               value="system"
-              checked={theme === "system"}
+              checked={mounted && theme === "system"}
+              suppressHydrationWarning
               onChange={() => setTheme("system")}
               className="peer sr-only"
             />

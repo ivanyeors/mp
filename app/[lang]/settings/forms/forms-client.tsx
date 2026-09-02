@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
   ArchiveRestore,
@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   OTHER_DISCOVERY_SOURCE_ID,
+  type DiscoverySourceCatalog,
   type DiscoverySourceOption,
 } from "@/lib/discovery-source";
 import { getApiErrorMessage } from "@/lib/utils";
@@ -49,9 +50,20 @@ function emptyLabels() {
   return { "en-US": "", "zh-CN": "" };
 }
 
-export default function FormsSettingsPage() {
-  const [options, setOptions] = useState<DiscoverySourceOption[]>([]);
-  const [loading, setLoading] = useState(true);
+/** The `/api/settings/forms/discovery-source` payload the page mounts with. */
+export type FormsInitialData = { ok: true; catalog: DiscoverySourceCatalog };
+
+export default function FormsSettingsPage({
+  initialData,
+}: {
+  initialData?: FormsInitialData;
+}) {
+  const [options, setOptions] = useState<DiscoverySourceOption[]>(
+    initialData?.catalog?.options ?? [],
+  );
+  const [loading, setLoading] = useState(!initialData);
+  // The server already loaded the catalog; saves and rollbacks still refetch.
+  const skipFirstFetch = useRef(initialData != null);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -73,6 +85,10 @@ export default function FormsSettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     void load();
   }, [load]);
 

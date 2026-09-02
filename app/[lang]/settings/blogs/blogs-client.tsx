@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus, Trash2, Pencil, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
-type BlogRow = {
+export type BlogRow = {
     id: string;
     slug: string;
     status: string;
@@ -19,13 +19,18 @@ type BlogRow = {
     created_at: string;
 };
 
-export default function SettingsBlogsPage() {
+/** The `/api/blogs` payload the list mounts with. */
+export type BlogsInitialData = { ok: true; rows: BlogRow[] };
+
+export default function SettingsBlogsPage({ initialData }: { initialData?: BlogsInitialData }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
 
-    const [posts, setPosts] = useState<BlogRow[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [posts, setPosts] = useState<BlogRow[]>(initialData?.rows ?? []);
+    const [loading, setLoading] = useState(!initialData);
+    // The server already loaded the first page of rows; later calls still fetch.
+    const skipFirstFetch = useRef(initialData != null);
 
 
     const fetchPosts = useCallback(async () => {
@@ -36,7 +41,13 @@ export default function SettingsBlogsPage() {
         setLoading(false);
     }, []);
 
-    useEffect(() => { fetchPosts(); }, [fetchPosts]);
+    useEffect(() => {
+        if (skipFirstFetch.current) {
+            skipFirstFetch.current = false;
+            return;
+        }
+        fetchPosts();
+    }, [fetchPosts]);
 
     const toggleStatus = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === "published" ? "unpublished" : "published";

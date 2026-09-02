@@ -64,7 +64,7 @@ assert.match(nav, /\/settings\/forms/);
 assert.match(nav, /label: "Forms"/);
 assert.match(nav, /perm: "page-builder"/);
 
-const formsPage = read("app/[lang]/settings/forms/page.tsx");
+const formsPage = read("app/[lang]/settings/forms/forms-client.tsx");
 assert.match(formsPage, /data-settings-forms/);
 assert.match(formsPage, /\/api\/settings\/forms\/discovery-source/);
 assert.match(formsPage, /en-US/);

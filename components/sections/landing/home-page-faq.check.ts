@@ -29,7 +29,7 @@ const typesSrc = read("lib/types/landing-sections.ts");
 assert.match(typesSrc, /\| "faq"/);
 assert.match(typesSrc, /FaqContent/);
 
-const picker = read("app/[lang]/settings/page-builder/page.tsx");
+const picker = read("app/[lang]/settings/page-builder/page-builder-client.tsx");
 assert.match(picker, /faq:\s*"Page FAQs"/);
 assert.match(picker, /CUSTOM_SECTION_TEMPLATES/);
 

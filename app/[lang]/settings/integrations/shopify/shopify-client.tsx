@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseClient } from "@/lib/supabase/client";
 import ShopifyAdminPanel from "../../inventory/ShopifyAdminPanel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { fullShopifySync } from "../../inventory/actions";
 
-type Item = {
+export type Item = {
   id: number;
   category: string;
   subtype: string | null;
@@ -16,10 +16,19 @@ type Item = {
   alteration_of_item_id: number | null;
 };
 
-export default function ShopifyAdminPage() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
+/** The active Items the panel mounts with (same rows the browser query loads). */
+export type ShopifyInitialData = Item[];
+
+export default function ShopifyAdminPage({
+  initialData,
+}: {
+  initialData?: ShopifyInitialData;
+}) {
+  const [items, setItems] = useState<Item[]>(initialData ?? []);
+  const [loading, setLoading] = useState(!initialData);
   const [syncingShopify, setSyncingShopify] = useState(false);
+  // The server already loaded the items; the browser query stays for refreshes.
+  const skipFirstFetch = useRef(initialData != null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -32,6 +41,10 @@ export default function ShopifyAdminPage() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     load();
   }, [load]);
 

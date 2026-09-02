@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Save, ArrowLeft, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,36 @@ const emptyContent = (): LocaleContent => ({
     seo_keywords: [],
 });
 
-export default function BlogEditorPage() {
+/** Merge a stored `content` map onto empty defaults for every locale. */
+const mergeContent = (
+    raw?: Record<string, Partial<LocaleContent>> | null,
+): Record<string, LocaleContent> => {
+    const merged: Record<string, LocaleContent> = {};
+    for (const loc of SUPPORTED_LOCALES) {
+        merged[loc] = { ...emptyContent(), ...(raw?.[loc] ?? {}) };
+    }
+    return merged;
+};
+
+/** The `blog_posts` row `/api/blogs/[id]` returns. */
+export type BlogEditorRow = {
+    slug: string;
+    status: string;
+    author: string;
+    image_url: string | null;
+    media_asset_id?: string | null;
+    labels?: string[] | null;
+    content?: Record<string, Partial<LocaleContent>> | null;
+};
+
+/** The `/api/blogs/[id]` payload the editor mounts with (absent for a new post). */
+export type BlogEditorInitialData = { ok: true; row: BlogEditorRow };
+
+export default function BlogEditorPage({
+    initialData,
+}: {
+    initialData?: BlogEditorInitialData;
+}) {
     const params = useParams();
     const router = useRouter();
     const pathname = usePathname() ?? "/";
@@ -68,20 +97,25 @@ export default function BlogEditorPage() {
     const isNew = params.id === "new";
     const postId = isNew ? null : (params.id as string);
 
-    const [loading, setLoading] = useState(!isNew);
+    const initialRow = initialData?.row ?? null;
+
+    const [loading, setLoading] = useState(!isNew && !initialData);
     const [saving, setSaving] = useState(false);
+    // The server already loaded the post; only later saves refetch it.
+    const skipFirstFetch = useRef(initialData != null);
 
     // Form state
-    const [slug, setSlug] = useState("");
-    const [status, setStatus] = useState<string>("draft");
-    const [author, setAuthor] = useState("Mpillow");
-    const [imageUrl, setImageUrl] = useState("");
-    const [imageAssetId, setImageAssetId] = useState<string | null>(null);
-    const [labels, setLabels] = useState<string[]>([]);
-    const [content, setContent] = useState<Record<string, LocaleContent>>({
-        "en-US": emptyContent(),
-        "zh-CN": emptyContent(),
-    });
+    const [slug, setSlug] = useState(initialRow?.slug ?? "");
+    const [status, setStatus] = useState<string>(initialRow?.status ?? "draft");
+    const [author, setAuthor] = useState(initialRow?.author ?? "Mpillow");
+    const [imageUrl, setImageUrl] = useState(initialRow?.image_url ?? "");
+    const [imageAssetId, setImageAssetId] = useState<string | null>(
+        initialRow?.media_asset_id ?? null,
+    );
+    const [labels, setLabels] = useState<string[]>(initialRow?.labels ?? []);
+    const [content, setContent] = useState<Record<string, LocaleContent>>(() =>
+        mergeContent(initialRow?.content),
+    );
 
     // Language toggle
     const [activeLocale, setActiveLocale] = useState<Locale>("en-US");
@@ -122,16 +156,18 @@ export default function BlogEditorPage() {
             setImageAssetId(row.media_asset_id ?? null);
             setLabels(row.labels ?? []);
             // Merge existing content with empty defaults
-            const merged: Record<string, LocaleContent> = {};
-            for (const loc of SUPPORTED_LOCALES) {
-                merged[loc] = { ...emptyContent(), ...(row.content?.[loc] ?? {}) };
-            }
-            setContent(merged);
+            setContent(mergeContent(row.content));
         }
         setLoading(false);
     }, [postId]);
 
-    useEffect(() => { loadPost(); }, [loadPost]);
+    useEffect(() => {
+        if (skipFirstFetch.current) {
+            skipFirstFetch.current = false;
+            return;
+        }
+        loadPost();
+    }, [loadPost]);
 
     const handleSave = async (publishOverride?: string) => {
         setSaving(true);

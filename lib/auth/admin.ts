@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -41,8 +42,12 @@ function bootstrapEmails(): string[] {
  *  1. `admin_users` row matched by auth user id.
  *  2. `admin_users` row matched by email (links the auth id on first match).
  *  3. First-admin bootstrap: an allowlisted email auto-provisions an owner row.
+ *
+ * Memoised per request with React `cache()` so the settings layout gate, an
+ * RSC page guard and any server action in the same render share one auth
+ * round trip and one admin_users lookup.
  */
-export async function getAdminContext(): Promise<AdminContext | null> {
+export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
   const user = await getAuthUser();
   if (!user?.email) return null;
 
@@ -51,7 +56,7 @@ export async function getAdminContext(): Promise<AdminContext | null> {
 
   const { data: byAuthId } = await admin
     .from("admin_users")
-    .select("*")
+    .select("id, role, is_active, auth_user_id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -60,7 +65,7 @@ export async function getAdminContext(): Promise<AdminContext | null> {
   if (!row) {
     const { data: byEmail } = await admin
       .from("admin_users")
-      .select("*")
+      .select("id, role, is_active, auth_user_id")
       .ilike("email", email)
       .maybeSingle();
     row = byEmail;
@@ -83,7 +88,7 @@ export async function getAdminContext(): Promise<AdminContext | null> {
   }
 
   return null;
-}
+});
 
 /**
  * Route-handler guard. Returns a denial `NextResponse` (401/403) when the

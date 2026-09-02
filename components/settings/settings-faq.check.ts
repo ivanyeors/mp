@@ -48,7 +48,7 @@ assert.match(emptyHtml, /No questions on this surface/);
 assert.match(emptyHtml, /home/);
 
 // --- Settings page has Global | Page FAQs tabs; Global chrome preserved ---
-const settingsFaqPage = read("app/[lang]/settings/faq/page.tsx");
+const settingsFaqPage = read("app/[lang]/settings/faq/faq-client.tsx");
 assert.match(settingsFaqPage, /Global FAQ/);
 assert.match(settingsFaqPage, /Page FAQs/);
 assert.match(settingsFaqPage, /data-settings-faq-tabs/);

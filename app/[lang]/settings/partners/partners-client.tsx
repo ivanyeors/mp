@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTheme } from "next-themes";
@@ -36,6 +36,7 @@ import {
   DEFAULT_AGREEMENT_MD,
   DEFAULT_WORK_WITH_US,
   type PartnerRow,
+  type PartnersPageRow,
   type WorkWithUsContent,
 } from "@/lib/partners/types";
 import { AGREEMENT_VERSION } from "@/lib/partner-application";
@@ -94,26 +95,65 @@ const emptyPartnerForm = (): PartnerForm => ({
   visible: true,
 });
 
-export default function PartnersSettingsPage() {
+/** Merge a stored partners_page row onto the per-locale defaults. */
+function mergeWorkWithUs(
+  row: PartnersPageRow | null,
+): Record<string, WorkWithUsContent> {
+  const merged: Record<string, WorkWithUsContent> = {};
+  for (const loc of SUPPORTED_LOCALES) {
+    merged[loc] = {
+      ...emptyWorkWithUs(),
+      ...DEFAULT_WORK_WITH_US[loc],
+      ...(row?.content?.[loc] ?? {}),
+    };
+  }
+  return merged;
+}
+
+/** The `/api/partners-page` + `/api/partners` payloads the page mounts with. */
+export type PartnersInitialData = {
+  page: { ok: true; row: PartnersPageRow | null };
+  partners: { ok: true; partners: PartnerRow[] };
+};
+
+export default function PartnersSettingsPage({
+  initialData,
+}: {
+  initialData?: PartnersInitialData;
+}) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? "en-US";
   const to = (href: string) => withLocale(href, locale as Locale);
   const { resolvedTheme } = useTheme();
 
-  const [loading, setLoading] = useState(true);
+  const initialPageRow = initialData?.page.row ?? null;
+
+  const [loading, setLoading] = useState(!initialData);
   const [savingPage, setSavingPage] = useState(false);
   const [activeLocale, setActiveLocale] = useState<Locale>("en-US");
-  const [content, setContent] = useState<Record<string, WorkWithUsContent>>({});
-  const [heroImage, setHeroImage] = useState("");
-  const [heroAssetId, setHeroAssetId] = useState<string | null>(null);
+  const [content, setContent] = useState<Record<string, WorkWithUsContent>>(() =>
+    initialData ? mergeWorkWithUs(initialPageRow) : {},
+  );
+  const [heroImage, setHeroImage] = useState(
+    initialPageRow?.content?.["en-US"]?.heroImage ?? "",
+  );
+  const [heroAssetId, setHeroAssetId] = useState<string | null>(
+    initialPageRow?.content?.["en-US"]?.media_asset_id ?? null,
+  );
 
-  const [partners, setPartners] = useState<PartnerRow[]>([]);
+  const [partners, setPartners] = useState<PartnerRow[]>(
+    initialData?.partners.partners ?? [],
+  );
   const [partnerDialogOpen, setPartnerDialogOpen] = useState(false);
   const [partnerForm, setPartnerForm] = useState<PartnerForm>(emptyPartnerForm);
   const [savingPartner, setSavingPartner] = useState(false);
 
-  const [agreementMd, setAgreementMd] = useState("");
+  const [agreementMd, setAgreementMd] = useState(
+    initialData ? (initialPageRow?.agreement_md ?? DEFAULT_AGREEMENT_MD) : "",
+  );
   const [savingAgreement, setSavingAgreement] = useState(false);
+  // The server already loaded the page row and the locations; edits still reload.
+  const skipFirstFetch = useRef(initialData != null);
 
   const activeContent = content[activeLocale] ?? emptyWorkWithUs();
 
@@ -127,15 +167,7 @@ export default function PartnersSettingsPage() {
       const pageJson = await pageRes.json();
       const partnersJson = await partnersRes.json();
 
-      const merged: Record<string, WorkWithUsContent> = {};
-      for (const loc of SUPPORTED_LOCALES) {
-        merged[loc] = {
-          ...emptyWorkWithUs(),
-          ...DEFAULT_WORK_WITH_US[loc],
-          ...(pageJson.row?.content?.[loc] ?? {}),
-        };
-      }
-      setContent(merged);
+      setContent(mergeWorkWithUs(pageJson.row ?? null));
       setAgreementMd(pageJson.row?.agreement_md ?? DEFAULT_AGREEMENT_MD);
 
       const enHero = pageJson.row?.content?.["en-US"]?.heroImage ?? "";
@@ -151,6 +183,10 @@ export default function PartnersSettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     loadData();
   }, [loadData]);
 

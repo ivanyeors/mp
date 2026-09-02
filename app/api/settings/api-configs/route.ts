@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { readApiConfigs } from "@/lib/settings/api-configs";
 
 export const runtime = "nodejs";
 
@@ -29,14 +31,14 @@ export async function GET() {
   const denied = await requireAdmin("api-configs");
   if (denied) return denied;
 
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("api_configs")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  try {
+    return NextResponse.json(await readApiConfigs());
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -60,6 +62,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateTag("api-configs", "max");
   return NextResponse.json(data, { status: 201 });
 }
 
@@ -86,6 +89,7 @@ export async function PATCH(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateTag("api-configs", "max");
   return NextResponse.json(data);
 }
 
@@ -109,5 +113,6 @@ export async function DELETE(req: Request) {
     .eq("id", parsed.data.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  revalidateTag("api-configs", "max");
   return NextResponse.json({ ok: true });
 }

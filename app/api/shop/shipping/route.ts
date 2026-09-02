@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { roleHasPermission } from "@/lib/auth/permissions";
+import { readShippingMethods } from "@/lib/shop/shipping-methods";
 
 export const runtime = "nodejs";
 
@@ -25,22 +27,15 @@ export async function GET(req: Request) {
   const canIncludeInactive =
     adminCtx != null && roleHasPermission(adminCtx.role, "shipping");
 
-  const admin = supabaseAdmin();
-
-  let query = admin.from("shipping_methods").select("*").order("position", { ascending: true });
-
-  if (!canIncludeInactive) {
-    query = query.eq("is_active", true);
+  try {
+    const rows = await readShippingMethods(canIncludeInactive, country);
+    return NextResponse.json({ ok: true, rows });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
   }
-
-  if (country) {
-    query = query.contains("countries", [country]);
-  }
-
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, rows: data ?? [] });
 }
 
 export async function POST(req: Request) {
@@ -63,5 +58,6 @@ export async function POST(req: Request) {
       { status: isDup ? 409 : 500 }
     );
   }
+  revalidateTag("shipping-methods", "max");
   return NextResponse.json({ ok: true, row: data });
 }

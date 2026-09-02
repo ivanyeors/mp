@@ -1,22 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-type StaffRow = {
+export type StaffRow = {
   id: string;
   name: string;
   created_at: string;
   updated_at: string;
 };
 
-export default function StaffManagementPage() {
-  const [rows, setRows] = useState<StaffRow[]>([]);
-  const [loading, setLoading] = useState(true);
+/** The `/api/staff` payload the page mounts with. */
+export type StaffInitialData = { ok: true; rows: StaffRow[] };
+
+export default function StaffManagementPage({
+  initialData,
+}: {
+  initialData?: StaffInitialData;
+}) {
+  const [rows, setRows] = useState<StaffRow[]>(initialData?.rows ?? []);
+  const [loading, setLoading] = useState(!initialData);
+  // The server already loaded the staff; Refresh and saves still refetch.
+  const skipFirstFetch = useRef(initialData != null);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
 
@@ -35,6 +44,10 @@ export default function StaffManagementPage() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     void load();
   }, [load]);
 

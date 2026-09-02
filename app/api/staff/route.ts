@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
+import { listStaffRows } from "@/lib/staff/admin";
 
 export const runtime = "nodejs";
 
@@ -17,14 +18,14 @@ export async function GET() {
   const denied = await requireAdmin("results");
   if (denied) return denied;
 
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("mp_staff")
-    .select("id,name,created_at,updated_at")
-    .order("name", { ascending: true });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, rows: data ?? [] });
+  try {
+    return NextResponse.json({ ok: true, rows: await listStaffRows() });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: Request) {

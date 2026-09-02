@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Pencil, Loader2, Eye, EyeOff, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import { toast } from "sonner";
 /* Types                                                               */
 /* ------------------------------------------------------------------ */
 
-interface ApiConfig {
+export interface ApiConfig {
   id: string;
   name: string;
   slug: string;
@@ -63,9 +63,18 @@ function slugify(value: string) {
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-export default function GeneralSettingsPage() {
-  const [configs, setConfigs] = useState<ApiConfig[]>([]);
-  const [loading, setLoading] = useState(true);
+/** The `/api/settings/api-configs` payload the page mounts with. */
+export type GeneralInitialData = ApiConfig[];
+
+export default function GeneralSettingsPage({
+  initialData,
+}: {
+  initialData?: GeneralInitialData;
+}) {
+  const [configs, setConfigs] = useState<ApiConfig[]>(initialData ?? []);
+  const [loading, setLoading] = useState(!initialData);
+  // The server already loaded the configs; every save still refetches them.
+  const skipFirstFetch = useRef(initialData != null);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -88,6 +97,10 @@ export default function GeneralSettingsPage() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     fetchConfigs();
   }, [fetchConfigs]);
 

@@ -13,12 +13,12 @@ const settingsNav = read("components/settings/settings-sidebar-nav.tsx");
 const auditLog = read("app/[lang]/settings/audit-log/page.tsx");
 const costings = read("app/[lang]/settings/costings/page.tsx");
 const admins = read("app/[lang]/settings/admins/admins-client.tsx");
-const staff = read("app/[lang]/settings/staff-management/page.tsx");
-const appointments = read("app/[lang]/settings/appointments/page.tsx");
+const staff = read("app/[lang]/settings/staff-management/staff-management-client.tsx");
+const appointments = read("app/[lang]/settings/appointments/appointments-client.tsx");
 const analytics = read("app/[lang]/settings/analytics/AnalyticsClient.tsx");
 const journey = read("app/[lang]/settings/analytics/ProspectJourneyCard.tsx");
-const general = read("app/[lang]/settings/general/page.tsx");
-const shipping = read("app/[lang]/settings/shipping/page.tsx");
+const general = read("app/[lang]/settings/general/general-client.tsx");
+const shipping = read("app/[lang]/settings/shipping/shipping-client.tsx");
 const customers = read("app/[lang]/settings/customers/page.tsx");
 const customerDetail = read("app/[lang]/settings/customers/[id]/page.tsx");
 

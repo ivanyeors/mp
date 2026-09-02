@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, Truck, Loader2, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ type LocaleContent = {
     estimated_days?: string;
 };
 
-type ShippingMethod = {
+export type ShippingMethod = {
     id: string;
     slug: string;
     content: Record<string, LocaleContent>;
@@ -163,9 +163,18 @@ function CountryBadges({ countries }: { countries: string[] }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function SettingsShippingPage() {
-    const [methods, setMethods] = useState<ShippingMethod[]>([]);
-    const [loading, setLoading] = useState(true);
+/** The `/api/shop/shipping?include_inactive=1` payload the page mounts with. */
+export type ShippingInitialData = { ok: true; rows: ShippingMethod[] };
+
+export default function SettingsShippingPage({
+    initialData,
+}: {
+    initialData?: ShippingInitialData;
+}) {
+    const [methods, setMethods] = useState<ShippingMethod[]>(initialData?.rows ?? []);
+    const [loading, setLoading] = useState(!initialData);
+    // The server already loaded the methods; every write still refetches them.
+    const skipFirstFetch = useRef(initialData != null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -193,6 +202,10 @@ export default function SettingsShippingPage() {
     }, []);
 
     useEffect(() => {
+        if (skipFirstFetch.current) {
+            skipFirstFetch.current = false;
+            return;
+        }
         fetchMethods();
     }, [fetchMethods]);
 

@@ -102,3 +102,19 @@ export async function getPartnerRows(opts?: {
 }
 
 export type { WorkWithUsContent, PartnersPageRow, PartnerRow, ResolvedPartner, ResolvedPartnersPage };
+
+/**
+ * Every location row (own + partner) ordered by position, for the admin
+ * Locations table. Throws on a Supabase error so callers can map it to a
+ * status code.
+ */
+export async function listAdminLocationRows(): Promise<PartnerRow[]> {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("partners")
+    .select("*")
+    .order("position", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PartnerRow[];
+}

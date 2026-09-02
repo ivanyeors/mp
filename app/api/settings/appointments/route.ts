@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -7,6 +8,7 @@ import {
   appointmentSettingsToStored,
   parseAppointmentSettings,
 } from "@/lib/appointments/settings";
+import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,17 +45,14 @@ export async function GET() {
   const denied = await requireAdmin("results");
   if (denied) return denied;
 
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("site_settings")
-    .select("key, value")
-    .in("key", [...APPOINTMENT_SETTING_KEYS]);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const stored: Record<string, string> = {};
-  for (const row of data ?? []) stored[row.key] = row.value;
-  return NextResponse.json({ ok: true, settings: parseAppointmentSettings(stored) });
+  try {
+    return NextResponse.json({ ok: true, settings: await getAppointmentSettings() });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PUT(req: Request) {
@@ -112,5 +111,6 @@ export async function PUT(req: Request) {
   const { error } = await admin.from("site_settings").upsert(rows, { onConflict: "key" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  revalidateTag("site-settings", "max");
   return NextResponse.json({ ok: true, settings: next });
 }

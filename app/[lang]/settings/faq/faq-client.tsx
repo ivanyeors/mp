@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DragDropProvider } from "@dnd-kit/react";
@@ -40,7 +40,7 @@ import type { FaqItemContent, FaqLocalizedText } from "@/lib/faq/types";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 
-type CategoryRow = {
+export type CategoryRow = {
   id: string;
   key: string;
   labels: FaqLocalizedText;
@@ -48,7 +48,7 @@ type CategoryRow = {
   visible: boolean;
 };
 
-type ItemRow = {
+export type ItemRow = {
   id: string;
   category_id: string;
   slug: string;
@@ -272,15 +272,25 @@ function ItemEditor({
   );
 }
 
-export default function SettingsFaqPage() {
+/** The `/api/faq/categories` + `/api/faq/items` payloads the page mounts with. */
+export type FaqInitialData = {
+  categories: { ok: true; rows: CategoryRow[] };
+  items: { ok: true; rows: ItemRow[] };
+};
+
+export default function SettingsFaqPage({ initialData }: { initialData?: FaqInitialData }) {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const faqPreviewHref = withLocale("/faq", locale);
 
-  const [categories, setCategories] = useState<CategoryRow[]>([]);
-  const [items, setItems] = useState<ItemRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryRow[]>(
+    initialData?.categories.rows ?? [],
+  );
+  const [items, setItems] = useState<ItemRow[]>(initialData?.items.rows ?? []);
+  const [loading, setLoading] = useState(!initialData);
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
+  // The server already loaded categories and items; every edit still reloads.
+  const skipFirstFetch = useRef(initialData != null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -301,6 +311,10 @@ export default function SettingsFaqPage() {
   }, []);
 
   useEffect(() => {
+    if (skipFirstFetch.current) {
+      skipFirstFetch.current = false;
+      return;
+    }
     load();
   }, [load]);
 
