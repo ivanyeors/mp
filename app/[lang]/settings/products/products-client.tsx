@@ -65,7 +65,7 @@ type ProductImage = {
     position: number;
 };
 
-type ProductRow = {
+export type ProductRow = {
     id: string;
     slug: string;
     status: "draft" | "active" | "archived";
@@ -95,10 +95,30 @@ function isLegacyProduct(product: ProductRow): boolean {
     );
 }
 
-type Category = {
+export type Category = {
     id: string;
     slug: string;
     content: Record<string, { name: string }>;
+};
+
+/** Exactly the JSON `GET /api/shop/products?...` returns. */
+export type ProductsListResponse = {
+    ok: true;
+    rows: ProductRow[];
+    total: number;
+    page: number;
+    limit: number;
+};
+
+/** Exactly the JSON `GET /api/shop/categories` returns. */
+export type CategoriesListResponse = {
+    ok: true;
+    rows: Category[];
+};
+
+export type ProductsInitialData = {
+    products: ProductsListResponse;
+    categories: CategoriesListResponse;
 };
 
 const LIMIT = 20;
@@ -168,7 +188,7 @@ function statusBadgeVariant(status: string): StatusVariant {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function SettingsProductsPage() {
+export function ProductsClient({ initialData }: { initialData?: ProductsInitialData }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
@@ -185,10 +205,16 @@ export default function SettingsProductsPage() {
     const [page, setPage] = useState(1);
 
     // Data state
-    const [products, setProducts] = useState<ProductRow[]>([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [categories, setCategories] = useState<Category[]>([]);
+    const [products, setProducts] = useState<ProductRow[]>(initialData?.products.rows ?? []);
+    const [total, setTotal] = useState(initialData?.products.total ?? 0);
+    const [loading, setLoading] = useState(!initialData);
+    const [categories, setCategories] = useState<Category[]>(
+        initialData?.categories.rows ?? [],
+    );
+
+    // The RSC page already fetched the first page and the category list — skip
+    // the mount fetches once, then behave exactly as before.
+    const hydratedFromServer = useRef(Boolean(initialData));
 
     // Selection state
     const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -230,11 +256,12 @@ export default function SettingsProductsPage() {
 
     // Fetch categories once
     useEffect(() => {
+        if (initialData) return;
         fetch("/api/shop/categories")
             .then((r) => r.json())
             .then((json) => setCategories(json.rows ?? []))
             .catch(() => {});
-    }, []);
+    }, [initialData]);
 
     // Fetch products
     const fetchProducts = useCallback(async () => {
@@ -267,7 +294,13 @@ export default function SettingsProductsPage() {
         }
     }, [debouncedSearch, statusFilter, categoryFilter, page, typeFilter]);
 
-    useEffect(() => { fetchProducts(); }, [fetchProducts]);
+    useEffect(() => {
+        if (hydratedFromServer.current) {
+            hydratedFromServer.current = false;
+            return;
+        }
+        fetchProducts();
+    }, [fetchProducts]);
 
     // Clear selection when products change
     useEffect(() => { setSelected(new Set()); }, [products]);

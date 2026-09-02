@@ -30,6 +30,21 @@ import type { Customer } from "@/lib/types/ecommerce";
 
 const LIMIT = 20;
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+/** Exactly the JSON `GET /api/shop/customers?page=1&limit=20` returns. */
+export type CustomersListResponse = {
+    ok: true;
+    rows: Customer[];
+    total: number;
+    page: number;
+    limit: number;
+};
+
+export type CustomersInitialData = {
+    customers: CustomersListResponse;
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatSGD(amount: number): string {
@@ -54,7 +69,7 @@ function getCustomerName(customer: Customer): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function SettingsCustomersPage() {
+export function CustomersClient({ initialData }: { initialData?: CustomersInitialData }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
@@ -66,9 +81,12 @@ export default function SettingsCustomersPage() {
     const [page, setPage] = useState(1);
 
     // Data state
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [customers, setCustomers] = useState<Customer[]>(initialData?.customers.rows ?? []);
+    const [total, setTotal] = useState(initialData?.customers.total ?? 0);
+    const [loading, setLoading] = useState(!initialData);
+
+    // The RSC page already fetched page 1 — skip the mount fetch once.
+    const hydratedFromServer = useRef(Boolean(initialData));
 
     // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,6 +123,10 @@ export default function SettingsCustomersPage() {
     }, [debouncedSearch, page]);
 
     useEffect(() => {
+        if (hydratedFromServer.current) {
+            hydratedFromServer.current = false;
+            return;
+        }
         fetchCustomers();
     }, [fetchCustomers]);
 
@@ -224,7 +246,11 @@ export default function SettingsCustomersPage() {
                                                 )}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="px-4 hidden xl:table-cell text-sm text-muted-foreground">
+                                        {/* Formatted in the viewer's timezone, which the server render cannot know. */}
+                                        <TableCell
+                                            className="px-4 hidden xl:table-cell text-sm text-muted-foreground"
+                                            suppressHydrationWarning
+                                        >
                                             {formatDate(customer.created_at)}
                                         </TableCell>
                                     </TableRow>

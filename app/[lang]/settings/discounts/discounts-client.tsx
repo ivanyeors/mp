@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { Plus, Tag, Loader2 } from "lucide-react";
@@ -20,7 +20,7 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Coupon = {
+export type Coupon = {
     id: string;
     code: string;
     discount_type: "percentage" | "fixed_amount" | "free_shipping";
@@ -32,6 +32,19 @@ type Coupon = {
     starts_at: string | null;
     expires_at: string | null;
     created_at: string;
+};
+
+/** Exactly the JSON `GET /api/shop/coupons?limit=100` returns. */
+export type CouponsListResponse = {
+    ok: true;
+    rows: Coupon[];
+    total: number;
+    page: number;
+    limit: number;
+};
+
+export type DiscountsInitialData = {
+    coupons: CouponsListResponse;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,15 +98,18 @@ function formatDateRange(starts_at: string | null, expires_at: string | null): s
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function SettingsDiscountsPage() {
+export function DiscountsClient({ initialData }: { initialData?: DiscountsInitialData }) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    const [coupons, setCoupons] = useState<Coupon[]>([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [coupons, setCoupons] = useState<Coupon[]>(initialData?.coupons.rows ?? []);
+    const [total, setTotal] = useState(initialData?.coupons.total ?? 0);
+    const [loading, setLoading] = useState(!initialData);
+
+    // The RSC page already fetched this list — skip the mount fetch once.
+    const hydratedFromServer = useRef(Boolean(initialData));
 
     const fetchCoupons = useCallback(async () => {
         setLoading(true);
@@ -111,6 +127,10 @@ export default function SettingsDiscountsPage() {
     }, []);
 
     useEffect(() => {
+        if (hydratedFromServer.current) {
+            hydratedFromServer.current = false;
+            return;
+        }
         fetchCoupons();
     }, [fetchCoupons]);
 
@@ -210,8 +230,11 @@ export default function SettingsDiscountsPage() {
                                             <Badge variant={status.variant}>{status.label}</Badge>
                                         </TableCell>
 
-                                        {/* Valid dates */}
-                                        <TableCell className="px-4 hidden lg:table-cell text-sm text-muted-foreground">
+                                        {/* Valid dates — formatted in the viewer's timezone, which the server render cannot know. */}
+                                        <TableCell
+                                            className="px-4 hidden lg:table-cell text-sm text-muted-foreground"
+                                            suppressHydrationWarning
+                                        >
                                             {formatDateRange(coupon.starts_at, coupon.expires_at)}
                                         </TableCell>
                                     </TableRow>

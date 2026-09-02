@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getAdminCustomer } from "@/lib/ecommerce/admin/customers";
 import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
@@ -20,16 +21,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (denied) return denied;
 
   const { id } = await params;
-  const admin = supabaseAdmin();
 
-  const { data, error } = await admin
-    .from("customers")
-    .select("*, customer_addresses(*)")
-    .eq("id", id)
-    .single();
-
-  if (error) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
-  return NextResponse.json({ ok: true, row: data });
+  const result = await getAdminCustomer(id);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 404 });
+  return NextResponse.json({ ok: true, row: result.row });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

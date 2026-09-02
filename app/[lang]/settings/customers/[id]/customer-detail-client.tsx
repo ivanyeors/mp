@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -104,6 +104,16 @@ type AddressFormState = {
     phone: string;
 };
 
+/**
+ * Exactly the JSON `GET /api/shop/customers/[id]` returns: the `{ ok, row }`
+ * envelope on success, `{ error }` with a 404 when the row is missing.
+ */
+export type CustomerDetailResponse = { ok: true; row: Customer } | { error: string };
+
+export type CustomerDetailInitialData = {
+    customer: CustomerDetailResponse;
+};
+
 const emptyAddress: AddressFormState = {
     label: "",
     recipient: "",
@@ -118,15 +128,28 @@ const emptyAddress: AddressFormState = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function CustomerDetailPage() {
+export function CustomerDetailClient({
+    initialData,
+}: {
+    initialData?: CustomerDetailInitialData;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
     const params = useParams<{ id: string }>();
     const customerId = params.id;
 
-    const [customer, setCustomer] = useState<Customer | null>(null);
-    const [loading, setLoading] = useState(true);
+    // `fetchCustomer` assigns the whole response body — including the
+    // `{ ok, row }` envelope — so the server-rendered value is applied the same
+    // way, keeping this screen byte-for-byte what it renders today.
+    const [customer, setCustomer] = useState<Customer | null>(
+        (initialData?.customer as unknown as Customer | undefined) ?? null,
+    );
+    const [loading, setLoading] = useState(!initialData);
+
+    // The RSC page already read the customer — skip that mount fetch once. The
+    // orders and addresses fetches still run on mount as before.
+    const hydratedFromServer = useRef(Boolean(initialData));
 
     // Orders
     const [orders, setOrders] = useState<Order[]>([]);
@@ -203,7 +226,11 @@ export default function CustomerDetailPage() {
     }, [customerId]);
 
     useEffect(() => {
-        fetchCustomer();
+        if (hydratedFromServer.current) {
+            hydratedFromServer.current = false;
+        } else {
+            fetchCustomer();
+        }
         fetchOrders();
         fetchAddresses();
     }, [fetchCustomer, fetchOrders, fetchAddresses]);

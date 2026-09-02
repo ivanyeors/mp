@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { listAdminCoupons } from "@/lib/ecommerce/admin/coupons";
 import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
@@ -25,25 +26,11 @@ export async function GET(req: Request) {
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
-  const active = searchParams.get("active");
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
 
-  const admin = supabaseAdmin();
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
+  const result = await listAdminCoupons(searchParams);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: 500 });
 
-  let query = admin.from("coupons").select("*", { count: "exact" });
-
-  if (active === "true") query = query.eq("is_active", true);
-  if (active === "false") query = query.eq("is_active", false);
-
-  query = query.order("created_at", { ascending: false }).range(from, to);
-
-  const { data, error, count } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, rows: data ?? [], total: count ?? 0, page, limit });
+  return NextResponse.json(result);
 }
 
 export async function POST(req: Request) {

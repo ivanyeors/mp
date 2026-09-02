@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import {
     RefreshCw,
@@ -43,13 +43,13 @@ type DiscountType = "percentage" | "fixed_amount" | "free_shipping";
 
 type AppliesTo = { product_ids?: string[]; category_ids?: string[] } | null;
 
-type CatalogProduct = {
+export type CatalogProduct = {
     id: string;
     slug: string;
     content: Record<string, { title: string }>;
 };
 
-type CatalogCategory = {
+export type CatalogCategory = {
     id: string;
     slug: string;
     content: Record<string, { name: string }>;
@@ -75,7 +75,7 @@ type CouponForm = {
     is_active: boolean;
 };
 
-type Coupon = {
+export type Coupon = {
     id: string;
     code: string;
     discount_type: DiscountType;
@@ -90,6 +90,34 @@ type Coupon = {
     expires_at: string | null;
     applies_to: AppliesTo;
     is_active: boolean;
+};
+
+/** Exactly the JSON `GET /api/shop/coupons/[id]` returns. */
+export type CouponDetailResponse = {
+    ok: true;
+    row: Coupon;
+};
+
+/** Exactly the JSON `GET /api/shop/products?limit=100` returns. */
+export type CatalogProductsResponse = {
+    ok: true;
+    rows: CatalogProduct[];
+    total: number;
+    page: number;
+    limit: number;
+};
+
+/** Exactly the JSON `GET /api/shop/categories` returns. */
+export type CatalogCategoriesResponse = {
+    ok: true;
+    rows: CatalogCategory[];
+};
+
+export type DiscountEditorInitialData = {
+    /** null on the "new" route, where the client loads no coupon. */
+    coupon: CouponDetailResponse | null;
+    products: CatalogProductsResponse;
+    categories: CatalogCategoriesResponse;
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -227,7 +255,11 @@ function couponToForm(c: Coupon): CouponForm {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function DiscountEditorPage() {
+export function DiscountEditorClient({
+    initialData,
+}: {
+    initialData?: DiscountEditorInitialData;
+}) {
     const params = useParams();
     const rawId = Array.isArray(params.id) ? params.id[0] : (params.id as string);
     const isNew = rawId === "new";
@@ -237,21 +269,53 @@ export default function DiscountEditorPage() {
     const to = (href: string) => withLocale(href, locale);
     const router = useRouter();
 
-    const [form, setForm] = useState<CouponForm>(DEFAULT_FORM);
-    const [appliesTo, setAppliesTo] = useState<AppliesToSelection>({
-        product_ids: [],
-        category_ids: [],
-    });
-    const [original, setOriginal] = useState<Coupon | null>(null);
-    const [loading, setLoading] = useState(!isNew);
+    // Server-rendered coupon, when the RSC page loaded it.
+    const initialCoupon = initialData?.coupon?.row ?? null;
+
+    // `toLocalDatetimeInput` formats in the viewer's timezone, which the server
+    // does not know, so the two datetime fields stay empty through the server
+    // render and are filled in on mount (below) — server and client markup stay
+    // identical, and the inputs still show local time as they always have.
+    const [form, setForm] = useState<CouponForm>(() =>
+        initialCoupon
+            ? { ...couponToForm(initialCoupon), starts_at: "", expires_at: "" }
+            : DEFAULT_FORM,
+    );
+    const [appliesTo, setAppliesTo] = useState<AppliesToSelection>(() =>
+        initialCoupon
+            ? appliesToFromCoupon(initialCoupon)
+            : {
+                  product_ids: [],
+                  category_ids: [],
+              },
+    );
+    const [original, setOriginal] = useState<Coupon | null>(initialCoupon);
+    const [loading, setLoading] = useState(!isNew && !initialData);
+
+    // The RSC page already read the coupon and the catalog — skip those mount
+    // fetches once, then behave exactly as before.
+    const hydratedFromServer = useRef(Boolean(initialData));
+
+    useEffect(() => {
+        if (!initialCoupon) return;
+        setForm((prev) => ({
+            ...prev,
+            starts_at: toLocalDatetimeInput(initialCoupon.starts_at),
+            expires_at: toLocalDatetimeInput(initialCoupon.expires_at),
+        }));
+    }, [initialCoupon]);
 
     useSettingsBreadcrumbDetail(isNew ? "New Discount" : (form.code.trim() || null));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
-    const [products, setProducts] = useState<CatalogProduct[]>([]);
-    const [categories, setCategories] = useState<CatalogCategory[]>([]);
-    const [catalogLoading, setCatalogLoading] = useState(true);
+    const [products, setProducts] = useState<CatalogProduct[]>(
+        initialData?.products.rows ?? [],
+    );
+    const [categories, setCategories] = useState<CatalogCategory[]>(
+        initialData?.categories.rows ?? [],
+    );
+    const [catalogLoading, setCatalogLoading] = useState(!initialData);
     const [productSearch, setProductSearch] = useState("");
     const [categorySearch, setCategorySearch] = useState("");
 
@@ -274,10 +338,15 @@ export default function DiscountEditorPage() {
     }, [isNew, rawId]);
 
     useEffect(() => {
+        if (hydratedFromServer.current) {
+            hydratedFromServer.current = false;
+            return;
+        }
         fetchCoupon();
     }, [fetchCoupon]);
 
     useEffect(() => {
+        if (initialData) return;
         let cancelled = false;
         setCatalogLoading(true);
         Promise.all([
@@ -301,7 +370,7 @@ export default function DiscountEditorPage() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [initialData]);
 
     // ── Field helpers ──
     const set = (field: keyof CouponForm, value: string | boolean) =>
