@@ -64,6 +64,35 @@ type OrderRow = Order & {
     ref_code?: string | null;
 };
 
+/**
+ * Server-rendered first paint. Exactly the JSON `/api/shop/orders/dashboard`
+ * and `/api/shop/orders?page=1&limit=20` return, pre-fetched by the RSC page
+ * wrapper. Either half is null when its server load failed, in which case the
+ * client falls back to fetching it on mount.
+ */
+export type OrdersInitialData = {
+    dashboard: {
+        ok: true;
+        stats: {
+            total_orders: number;
+            revenue: number;
+            avg_order_value: number;
+            total_revenue: number;
+            average_order_value: number;
+            pending_orders: number;
+            total_gross_margin: number;
+            avg_margin_pct: number | null;
+        };
+    } | null;
+    list: {
+        ok: true;
+        rows: OrderRow[];
+        total: number;
+        page: number;
+        limit: number;
+    } | null;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const LIMIT = 20;
@@ -130,6 +159,27 @@ function formatMarginPct(pct: number | null | undefined): string {
 }
 
 
+/** Same normalisation the dashboard fetch applies, shared with the server seed. */
+function toDashboardStats(s: {
+    total_orders?: number;
+    revenue?: number;
+    total_revenue?: number;
+    avg_order_value?: number;
+    average_order_value?: number;
+    pending_orders?: number;
+    total_gross_margin?: number | null;
+    avg_margin_pct?: number | null;
+}): DashboardStats {
+    return {
+        total_orders: s.total_orders ?? 0,
+        revenue: s.total_revenue ?? s.revenue ?? 0,
+        avg_order_value: s.average_order_value ?? s.avg_order_value ?? 0,
+        pending_orders: s.pending_orders ?? 0,
+        total_gross_margin: s.total_gross_margin ?? null,
+        avg_margin_pct: s.avg_margin_pct ?? null,
+    };
+}
+
 function SummaryCard({
     icon: Icon,
     label,
@@ -164,7 +214,11 @@ function SummaryCard({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function SettingsOrdersPage() {
+export default function SettingsOrdersPage({
+    initialData,
+}: {
+    initialData?: OrdersInitialData;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
@@ -183,14 +237,21 @@ export default function SettingsOrdersPage() {
             ? "From date must be on or before To date."
             : null;
 
-    // Data state
-    const [orders, setOrders] = useState<OrderRow[]>([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(true);
+    // Data state — seeded from the server render when available.
+    const [orders, setOrders] = useState<OrderRow[]>(initialData?.list?.rows ?? []);
+    const [total, setTotal] = useState(initialData?.list?.total ?? 0);
+    const [loading, setLoading] = useState(!initialData?.list);
 
     // Dashboard stats
-    const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [statsLoading, setStatsLoading] = useState(true);
+    const [stats, setStats] = useState<DashboardStats | null>(
+        initialData?.dashboard ? toDashboardStats(initialData.dashboard.stats) : null,
+    );
+    const [statsLoading, setStatsLoading] = useState(!initialData?.dashboard);
+
+    // The server already delivered the first page of each; skip the duplicate
+    // mount fetch, but leave every later fetch (filters, paging) untouched.
+    const skipStatsFetch = useRef(Boolean(initialData?.dashboard));
+    const skipOrdersFetch = useRef(Boolean(initialData?.list));
     const summaryStats = dateRangeError ? null : stats;
     const summaryStatsLoading = dateRangeError ? false : statsLoading;
 
@@ -214,6 +275,10 @@ export default function SettingsOrdersPage() {
 
     // Fetch dashboard stats for the selected sales window
     useEffect(() => {
+        if (skipStatsFetch.current) {
+            skipStatsFetch.current = false;
+            return;
+        }
         if (dateRangeError) return;
 
         const params = new URLSearchParams();
@@ -224,15 +289,7 @@ export default function SettingsOrdersPage() {
             .then((r) => r.json())
             .then((json) => {
                 if (cancelled) return;
-                const s = json.stats ?? json;
-                setStats({
-                    total_orders: s.total_orders ?? 0,
-                    revenue: s.total_revenue ?? s.revenue ?? 0,
-                    avg_order_value: s.average_order_value ?? s.avg_order_value ?? 0,
-                    pending_orders: s.pending_orders ?? 0,
-                    total_gross_margin: s.total_gross_margin ?? null,
-                    avg_margin_pct: s.avg_margin_pct ?? null,
-                });
+                setStats(toDashboardStats(json.stats ?? json));
             })
             .catch(() => {})
             .finally(() => {
@@ -275,6 +332,10 @@ export default function SettingsOrdersPage() {
     }, [debouncedSearch, statusFilter, dateFrom, dateTo, dateRangeError, page]);
 
     useEffect(() => {
+        if (skipOrdersFetch.current) {
+            skipOrdersFetch.current = false;
+            return;
+        }
         fetchOrders();
     }, [fetchOrders]);
 

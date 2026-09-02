@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { sumOrderItemQuantities } from "@/lib/ecommerce/orders";
-import {
-  applyOrdersPaidAtRange,
-  parseOrdersPaidAtRange,
-} from "@/lib/ecommerce/orders-paid-at-range";
+import { listAdminOrders } from "@/lib/ecommerce/admin/orders-list";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -70,76 +66,19 @@ export async function GET(req: Request) {
   if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get("status");
-  const email = searchParams.get("email");
-  const customer_id = searchParams.get("customer_id");
-  const search = searchParams.get("search");
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "20", 10), 100);
-  const sort = searchParams.get("sort") ?? "created_at.desc";
-  const paidAtRange = parseOrdersPaidAtRange(
-    searchParams.get("date_from"),
-    searchParams.get("date_to")
-  );
-  if (!paidAtRange.ok) {
-    return NextResponse.json({ error: paidAtRange.error }, { status: 400 });
-  }
+  const result = await listAdminOrders({
+    status: searchParams.get("status"),
+    email: searchParams.get("email"),
+    customer_id: searchParams.get("customer_id"),
+    search: searchParams.get("search"),
+    page: searchParams.get("page"),
+    limit: searchParams.get("limit"),
+    sort: searchParams.get("sort"),
+    date_from: searchParams.get("date_from"),
+    date_to: searchParams.get("date_to"),
+  });
 
-  const admin = supabaseAdmin();
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-
-  let query = admin
-    .from("orders")
-    .select("*, order_items(quantity)", { count: "exact" });
-
-  if (status) query = query.eq("status", status);
-  if (email) query = query.ilike("email", `%${email}%`);
-  if (customer_id) query = query.eq("customer_id", customer_id);
-  if (search) {
-    query = query.or(`order_number.ilike.%${search}%,email.ilike.%${search}%`);
-  }
-  query = applyOrdersPaidAtRange(query, paidAtRange.range);
-
-  const [sortColumn, sortDir] = sort.split(".");
-  const ascending = sortDir === "asc";
-  query = query.order(sortColumn ?? "created_at", { ascending });
-
-  query = query.range(from, to);
-
-  const { data, error, count } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const orderIds = (data ?? []).map((row: { id: string }) => row.id);
-  const marginByOrder = new Map<string, { gross_margin: number; margin_pct: number | null }>();
-  if (orderIds.length > 0) {
-    const { data: margins, error: marginError } = await admin
-      .from("order_margins")
-      .select("order_id, gross_margin, margin_pct")
-      .in("order_id", orderIds);
-    if (marginError) return NextResponse.json({ error: marginError.message }, { status: 500 });
-    for (const m of margins ?? []) {
-      marginByOrder.set(m.order_id, {
-        gross_margin: m.gross_margin,
-        margin_pct: m.margin_pct,
-      });
-    }
-  }
-
-  const rows = (data ?? []).map(
-    (row: Record<string, unknown> & { order_items?: unknown; id: string }) => {
-      const items = Array.isArray(row.order_items) ? row.order_items : [];
-      const rest = { ...row };
-      delete (rest as { order_items?: unknown }).order_items;
-      return {
-        ...rest,
-        items_count: sumOrderItemQuantities(items),
-        margin: marginByOrder.get(row.id) ?? null,
-      };
-    }
-  );
-
-  return NextResponse.json({ ok: true, rows, total: count ?? 0, page, limit });
+  return NextResponse.json(result.body, { status: result.status });
 }
 
 export async function POST(req: Request) {

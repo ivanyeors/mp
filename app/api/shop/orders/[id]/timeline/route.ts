@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { loadAdminOrderTimeline } from "@/lib/ecommerce/admin/order-detail";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -16,17 +17,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (denied) return denied;
 
   const { id } = await params;
-  const admin = supabaseAdmin();
+  const result = await loadAdminOrderTimeline(id);
 
-  const { data, error } = await admin
-    .from("order_timeline")
-    .select("*")
-    .eq("order_id", id)
-    .order("created_at", { ascending: false });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true, rows: data ?? [], events: data ?? [] });
+  return NextResponse.json(result.body, { status: result.status });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

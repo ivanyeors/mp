@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { loadAdminOrderDetail } from "@/lib/ecommerce/admin/order-detail";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 
@@ -32,35 +33,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (denied) return denied;
 
   const { id } = await params;
-  const admin = supabaseAdmin();
+  const result = await loadAdminOrderDetail(id);
 
-  const [{ data, error }, { data: margin }] = await Promise.all([
-    admin
-      .from("orders")
-      .select("*, order_items(*), order_timeline(*)")
-      .eq("id", id)
-      .single(),
-    admin.from("order_margins").select("*").eq("order_id", id).maybeSingle(),
-  ]);
-
-  if (error) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
-  const orderItems = Array.isArray(data.order_items) ? data.order_items : [];
-  const timeline = Array.isArray(data.order_timeline)
-    ? [...data.order_timeline].sort(
-        (a: { created_at: string }, b: { created_at: string }) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-    : [];
-  const orderFields = { ...data };
-  delete (orderFields as { order_items?: unknown }).order_items;
-  delete (orderFields as { order_timeline?: unknown }).order_timeline;
-
-  return NextResponse.json({
-    ok: true,
-    row: { ...orderFields, items: orderItems, timeline },
-    margin: margin ?? null,
-  });
+  return NextResponse.json(result.body, { status: result.status });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

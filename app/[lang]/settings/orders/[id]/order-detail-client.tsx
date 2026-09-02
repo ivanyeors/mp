@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -149,27 +149,79 @@ function formatMarginPct(pct: number | null | undefined): string {
 }
 
 
-export default function OrderDetailPage() {
+/**
+ * Server-rendered first paint. Exactly the JSON `/api/shop/orders/[id]`,
+ * `/api/shop/orders/[id]/timeline` and `/api/shop/orders/[id]/mp-config-link`
+ * return, pre-fetched by the RSC page wrapper. A null member means that server
+ * load failed, and the client fetches it on mount as before.
+ */
+export type OrderDetailInitialData = {
+    order: {
+        ok: true;
+        row: Record<string, unknown>;
+        margin: OrderMargin | null;
+    } | null;
+    timeline: { ok: true; rows: OrderTimelineEvent[]; events: OrderTimelineEvent[] } | null;
+    mpConfigLinks: {
+        ok: true;
+        responses: Array<{
+            id: string;
+            data: Record<string, unknown> | null;
+            is_final: boolean;
+            source: string;
+            order_item_id: string | null;
+            created_at: string;
+        }>;
+    } | null;
+};
+
+/** Same normalisation `fetchOrder` applies, shared with the server seed. */
+function normalizeOrderRow(row: Record<string, unknown>): Order {
+    return {
+        ...row,
+        items: row.order_items ?? row.items ?? [],
+    } as unknown as Order;
+}
+
+export default function OrderDetailPage({
+    initialData,
+}: {
+    initialData?: OrderDetailInitialData;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = useCallback((href: string) => withLocale(href, locale), [locale]);
     const params = useParams<{ id: string }>();
     const orderId = params.id;
 
-    const [order, setOrder] = useState<Order | null>(null);
-    const [margin, setMargin] = useState<OrderMargin | null>(null);
-    const [timeline, setTimeline] = useState<OrderTimelineEvent[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [timelineLoading, setTimelineLoading] = useState(true);
+    const initialOrder = initialData?.order
+        ? normalizeOrderRow(initialData.order.row)
+        : null;
+
+    const [order, setOrder] = useState<Order | null>(initialOrder);
+    const [margin, setMargin] = useState<OrderMargin | null>(initialData?.order?.margin ?? null);
+    const [timeline, setTimeline] = useState<OrderTimelineEvent[]>(
+        initialData?.timeline?.events ?? initialData?.timeline?.rows ?? [],
+    );
+    const [loading, setLoading] = useState(!initialData?.order);
+    const [timelineLoading, setTimelineLoading] = useState(!initialData?.timeline);
+
+    // The server already delivered these three; skip the duplicate mount
+    // fetches. Every re-fetch after a mutation is untouched.
+    const skipOrderFetch = useRef(Boolean(initialData?.order));
+    const skipTimelineFetch = useRef(Boolean(initialData?.timeline));
+    const skipMpConfigFetch = useRef(Boolean(initialData?.mpConfigLinks));
 
     useSettingsBreadcrumbDetail(order ? `#${order.order_number}` : null);
 
     // Status update
-    const [newStatus, setNewStatus] = useState<OrderStatus | "">("");
+    const [newStatus, setNewStatus] = useState<OrderStatus | "">(
+        (initialOrder?.status as OrderStatus | undefined) ?? "",
+    );
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
     // Notes
-    const [internalNotes, setInternalNotes] = useState("");
+    const [internalNotes, setInternalNotes] = useState(initialOrder?.internal_notes ?? "");
     const [savingNotes, setSavingNotes] = useState(false);
 
     // Timeline note
@@ -184,8 +236,10 @@ export default function OrderDetailPage() {
 
     // Mp-config link
     type MpConfigLinked = { id: string; data: Record<string, unknown> | null; is_final: boolean; source: string; created_at: string };
-    const [mpConfigResponses, setMpConfigResponses] = useState<MpConfigLinked[]>([]);
-    const [mpConfigLoading, setMpConfigLoading] = useState(true);
+    const [mpConfigResponses, setMpConfigResponses] = useState<MpConfigLinked[]>(
+        initialData?.mpConfigLinks?.responses ?? [],
+    );
+    const [mpConfigLoading, setMpConfigLoading] = useState(!initialData?.mpConfigLinks);
     const [linkDialogOpen, setLinkDialogOpen] = useState(false);
     const [linkSearch, setLinkSearch] = useState("");
     const [linkCandidates, setLinkCandidates] = useState<MpConfigLinked[]>([]);
@@ -215,10 +269,7 @@ export default function OrderDetailPage() {
             const res = await fetch(`/api/shop/orders/${orderId}`);
             const json = await res.json();
             const row = json.row ?? json;
-            const normalized = {
-                ...row,
-                items: row.order_items ?? row.items ?? [],
-            };
+            const normalized = normalizeOrderRow(row);
             setOrder(normalized);
             setMargin(json.margin ?? null);
             setInternalNotes(normalized.internal_notes ?? "");
@@ -247,8 +298,16 @@ export default function OrderDetailPage() {
     }, [orderId]);
 
     useEffect(() => {
-        fetchOrder();
-        fetchTimeline();
+        if (skipOrderFetch.current) {
+            skipOrderFetch.current = false;
+        } else {
+            fetchOrder();
+        }
+        if (skipTimelineFetch.current) {
+            skipTimelineFetch.current = false;
+        } else {
+            fetchTimeline();
+        }
     }, [fetchOrder, fetchTimeline]);
 
     // Derive inventory deduction status from timeline
@@ -336,6 +395,10 @@ export default function OrderDetailPage() {
     }, [orderId]);
 
     useEffect(() => {
+        if (skipMpConfigFetch.current) {
+            skipMpConfigFetch.current = false;
+            return;
+        }
         fetchMpConfigLinks();
     }, [fetchMpConfigLinks]);
 

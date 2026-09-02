@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
@@ -90,10 +90,34 @@ const normalizeMeasurement = (data: Partial<MeasurementData> | null | undefined)
   neckLength: safeString(data?.neckLength),
 });
 
-export default function ResultsPage() {
+/**
+ * Server-rendered first paint. Exactly the JSON
+ * `/api/mp-config/responses?limit=200&offset=0` and `/api/staff` return,
+ * pre-fetched by the RSC page wrapper. A null member means that server load
+ * failed, and the client fetches it on mount as before.
+ */
+export type ResultsInitialData = {
+  responses: {
+    ok: true;
+    rows: MpConfigResponseRow[];
+    locations: LocationOption[];
+    count: number | null;
+    limit: number;
+    offset: number;
+  } | null;
+  staff: { ok: true; rows: StaffRow[] } | null;
+};
+
+export default function ResultsPage({
+  initialData,
+}: {
+  initialData?: ResultsInitialData;
+}) {
   const router = useRouter();
-  const [rows, setRows] = useState<MpConfigResponseRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<MpConfigResponseRow[]>(
+    initialData?.responses?.rows ?? [],
+  );
+  const [loading, setLoading] = useState(!initialData?.responses);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<ResultsTab>("active");
   const [sending, setSending] = useState<Record<string, boolean>>({});
@@ -103,11 +127,20 @@ export default function ResultsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLocation, setBulkLocation] = useState<string>("none");
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [staffRows, setStaffRows] = useState<StaffRow[]>([]);
-  const [staffLoading, setStaffLoading] = useState(true);
-  const [locations, setLocations] = useState<LocationOption[]>([]);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [staffRows, setStaffRows] = useState<StaffRow[]>(initialData?.staff?.rows ?? []);
+  const [staffLoading, setStaffLoading] = useState(!initialData?.staff);
+  const [locations, setLocations] = useState<LocationOption[]>(
+    initialData?.responses?.locations ?? [],
+  );
+  const [totalCount, setTotalCount] = useState<number | null>(
+    typeof initialData?.responses?.count === "number" ? initialData.responses.count : null,
+  );
   const [pageLimit] = useState<number>(200);
+
+  // The server already delivered both; skip the duplicate mount fetches. Every
+  // later load (append/paging, post-mutation refresh) is untouched.
+  const skipResponsesFetch = useRef(Boolean(initialData?.responses));
+  const skipStaffFetch = useRef(Boolean(initialData?.staff));
 
   const load = useCallback(async (opts?: { mode?: "replace" | "append"; offset?: number }) => {
     const mode = opts?.mode ?? "replace";
@@ -136,6 +169,10 @@ export default function ResultsPage() {
   }, [pageLimit]);
 
   useEffect(() => {
+    if (skipResponsesFetch.current) {
+      skipResponsesFetch.current = false;
+      return;
+    }
     load();
   }, [load]);
 
@@ -155,6 +192,10 @@ export default function ResultsPage() {
   }, []);
 
   useEffect(() => {
+    if (skipStaffFetch.current) {
+      skipStaffFetch.current = false;
+      return;
+    }
     void loadStaff();
   }, [loadStaff]);
 
