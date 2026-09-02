@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -170,6 +171,9 @@ const sortProductRows = (items: ProductRow[]): ProductRow[] =>
     return left.label.localeCompare(right.label);
   });
 
+const REALTIME_RELOAD_DEBOUNCE_MS = 400;
+const DRAFT_COMMIT_DEBOUNCE_MS = 250;
+
 const itemKey = (id: number) => `item:${id}`;
 const pillowKey = (productId: number) => `product:pillow:${productId}`;
 const premiumPillowKey = (productId: number, variant: PremiumVariant) => `product:pillow:${productId}:${variant}`;
@@ -266,6 +270,84 @@ const computeProductComponentsCostCents = (
   return Math.round(total);
 };
 
+const EMPTY_DRAFT_ROW: DraftRow = { costPrice: "", msrp: "", compareAt: "" };
+
+type PartRowProps = {
+  item: ItemRow;
+  costPrice: string;
+  msrp: string;
+  compareAt: string;
+  onChange: (rowKey: string, field: keyof DraftRow, raw: string) => void;
+  onBlur: (rowKey: string, field: keyof DraftRow) => void;
+};
+
+/**
+ * One row of the parts table. Memoised on primitive props with stable
+ * callbacks, so typing in one row leaves every other row untouched.
+ */
+const PartRow = memo(function PartRow({ item, costPrice, msrp, compareAt, onChange, onBlur }: PartRowProps) {
+  const rowKey = itemKey(item.id);
+  const itemLabel = getInventoryItemDisplayLabel(item);
+  return (
+    <TableRow>
+      <TableCell className="align-middle">
+        <InventoryItemLabel item={item} />
+      </TableCell>
+      <TableCell>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            $
+          </span>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={costPrice}
+            placeholder="0.00"
+            onChange={(event) => onChange(rowKey, "costPrice", event.target.value)}
+            onBlur={() => onBlur(rowKey, "costPrice")}
+            className="pl-6"
+            aria-label={`Cost price for ${itemLabel}`}
+          />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            $
+          </span>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={msrp}
+            placeholder="0.00"
+            onChange={(event) => onChange(rowKey, "msrp", event.target.value)}
+            onBlur={() => onBlur(rowKey, "msrp")}
+            className="pl-6"
+            aria-label={`MSRP for ${itemLabel}`}
+          />
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            $
+          </span>
+          <Input
+            type="text"
+            inputMode="decimal"
+            value={compareAt}
+            placeholder="(optional)"
+            onChange={(event) => onChange(rowKey, "compareAt", event.target.value)}
+            onBlur={() => onBlur(rowKey, "compareAt")}
+            className="pl-6"
+            aria-label={`Compare-at price for ${itemLabel}`}
+          />
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+});
+
 export default function CostingsPage() {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
@@ -274,6 +356,10 @@ export default function CostingsPage() {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [draft, setDraft] = useState<DraftState>({});
+  // `draft` drives the inputs so typing is instant; `committedDraft` trails it by
+  // a short debounce and is what the expensive derived memos key off, so a
+  // keystroke no longer recomputes every product cost.
+  const [committedDraft, setCommittedDraft] = useState<DraftState>({});
   const [baseline, setBaseline] = useState<BaselineState>({});
   const [partFilters, setPartFilters] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -293,6 +379,38 @@ export default function CostingsPage() {
       PRODUCT_GROUP_DEFINITIONS.map((group) => [group.key, Boolean(group.defaultOpen)]),
     ) as Record<ProductGroupKey, boolean>,
   );
+
+  // Live mirrors so callbacks can read the newest values synchronously without
+  // being re-created (and re-rendering memoised rows) on every keystroke.
+  const draftRef = useRef<DraftState>({});
+  const baselineRef = useRef<BaselineState>({});
+  // True as soon as a keystroke makes a field differ from its baseline, so the
+  // Save button enables immediately instead of waiting for the debounce.
+  const [hasPendingEdit, setHasPendingEdit] = useState(false);
+
+  const applyDraft = useCallback((updater: (prev: DraftState) => DraftState) => {
+    const next = updater(draftRef.current);
+    draftRef.current = next;
+    setDraft(next);
+  }, []);
+
+  const applyBaseline = useCallback((next: BaselineState) => {
+    baselineRef.current = next;
+    setBaseline(next);
+  }, []);
+
+  const commitDraft = useCallback(() => {
+    setCommittedDraft(draftRef.current);
+    setHasPendingEdit(false);
+  }, []);
+
+  const commitDraftDebounced = useDebouncedCallback(commitDraft, DRAFT_COMMIT_DEBOUNCE_MS);
+
+  /** Land any pending keystrokes into `committedDraft` right now. */
+  const flushDraft = useCallback(() => {
+    commitDraftDebounced.cancel();
+    commitDraft();
+  }, [commitDraft, commitDraftDebounced]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -581,53 +699,64 @@ export default function CostingsPage() {
 
       setItems(nextItems);
       setProducts(productRows);
-      setDraft({ ...nextDraft, ...productDraft });
-      setBaseline({ ...nextBaseline, ...productBaseline });
+      const loadedDraft = { ...nextDraft, ...productDraft };
+      commitDraftDebounced.cancel();
+      draftRef.current = loadedDraft;
+      setDraft(loadedDraft);
+      setCommittedDraft(loadedDraft);
+      setHasPendingEdit(false);
+      applyBaseline({ ...nextBaseline, ...productBaseline });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load costings";
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyBaseline, commitDraftDebounced]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  // Realtime bursts (a BOM edit touches several tables at once) are coalesced
+  // into a single trailing reload instead of one `load()` per change event.
+  const scheduleReload = useDebouncedCallback(() => {
+    load();
+  }, REALTIME_RELOAD_DEBOUNCE_MS);
+
   useEffect(() => {
     const channel = supabaseClient
       .channel("costings-items")
       .on("postgres_changes", { event: "*", schema: "public", table: "items" }, () => {
-        load();
+        scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "pillow_products" }, () => {
-        load();
+        scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "bom_lines" }, () => {
-        load();
+        scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "bolster_bom_lines" }, () => {
-        load();
+        scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "bom_templates" }, () => {
-        load();
+        scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "bom_template_lines" }, () => {
-        load();
+        scheduleReload();
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "product_prices" }, () => {
-        load();
+        scheduleReload();
       })
       .subscribe();
     return () => {
       supabaseClient.removeChannel(channel);
     };
-  }, [load]);
+  }, [scheduleReload]);
 
   useEffect(() => {
     const handleInventoryChange = () => {
-      load();
+      scheduleReload();
     };
     if (typeof window !== "undefined") {
       window.addEventListener("inventory:changed", handleInventoryChange);
@@ -648,7 +777,7 @@ export default function CostingsPage() {
       };
     }
     return undefined;
-  }, [load]);
+  }, [scheduleReload]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, ItemRow[]>();
@@ -786,12 +915,12 @@ export default function CostingsPage() {
     const map = new Map<number, number | null>();
     items.forEach((item) => {
       const key = itemKey(item.id);
-      const entry = draft[key];
+      const entry = committedDraft[key];
       const cents = parseToCents(entry?.costPrice ?? "");
       map.set(item.id, cents);
     });
     return map;
-  }, [items, draft]);
+  }, [items, committedDraft]);
 
   const productCostDisplay = useMemo(() => {
     const map = new Map<string, string>();
@@ -993,33 +1122,53 @@ export default function CostingsPage() {
     [closeProductSheet, productSheetKey],
   );
 
-  const handleInputChange = (rowKey: string, field: keyof DraftRow, raw: string) => {
-    const sanitized = sanitizeCurrencyInput(raw);
-    setDraft((prev) => {
-      const current = prev[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
-      return {
-        ...prev,
-        [rowKey]: { ...current, [field]: sanitized },
-      };
-    });
-  };
-
-  const handleBlur = (rowKey: string, field: keyof DraftRow) => {
-    setDraft((prev) => {
-      const current = prev[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
-      const cents = parseToCents(current[field]);
-      if (cents === null) {
+  const handleInputChange = useCallback(
+    (rowKey: string, field: keyof DraftRow, raw: string) => {
+      const sanitized = sanitizeCurrencyInput(raw);
+      applyDraft((prev) => {
+        const current = prev[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
         return {
           ...prev,
-          [rowKey]: { ...current, [field]: "" },
+          [rowKey]: { ...current, [field]: sanitized },
         };
+      });
+      // Cheap dirty check for just the field that changed — the full comparison
+      // still runs against `committedDraft` once the debounce lands.
+      const baselineRow = baselineRef.current[rowKey];
+      const baselineCents =
+        field === "costPrice"
+          ? (baselineRow?.cost ?? null)
+          : field === "msrp"
+          ? (baselineRow?.msrp ?? null)
+          : (baselineRow?.compareAt ?? null);
+      if (parseToCents(sanitized) !== baselineCents) {
+        setHasPendingEdit(true);
       }
-      return {
-        ...prev,
-        [rowKey]: { ...current, [field]: (cents / 100).toFixed(2) },
-      };
-    });
-  };
+      commitDraftDebounced();
+    },
+    [applyDraft, commitDraftDebounced],
+  );
+
+  const handleBlur = useCallback(
+    (rowKey: string, field: keyof DraftRow) => {
+      applyDraft((prev) => {
+        const current = prev[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
+        const cents = parseToCents(current[field]);
+        if (cents === null) {
+          return {
+            ...prev,
+            [rowKey]: { ...current, [field]: "" },
+          };
+        }
+        return {
+          ...prev,
+          [rowKey]: { ...current, [field]: (cents / 100).toFixed(2) },
+        };
+      });
+      flushDraft();
+    },
+    [applyDraft, flushDraft],
+  );
 
   const handleAddFilter = useCallback((category: string) => {
     if (!category) return;
@@ -1034,10 +1183,10 @@ export default function CostingsPage() {
     setPartFilters([]);
   }, []);
 
-  const isDirty = useMemo(() => {
+  const committedIsDirty = useMemo(() => {
     const itemChanged = items.some((item) => {
       const key = itemKey(item.id);
-      const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+      const current = committedDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
       const baselineRow = baseline[key] ?? { cost: null, msrp: null, compareAt: null };
       const costCents = parseToCents(current.costPrice);
       const msrpCents = parseToCents(current.msrp);
@@ -1050,26 +1199,34 @@ export default function CostingsPage() {
       if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
         return PREMIUM_VARIANTS.some((variant) => {
           const variantKey = premiumPillowKey(product.productId!, variant);
-          const current = draft[variantKey] ?? { costPrice: "", msrp: "", compareAt: "" };
+          const current = committedDraft[variantKey] ?? { costPrice: "", msrp: "", compareAt: "" };
           const baselineRow = baseline[variantKey] ?? { cost: product.costCents ?? null, msrp: null, compareAt: null };
           const msrpCents = parseToCents(current.msrp);
           const compareAtCents = parseToCents(current.compareAt);
           return msrpCents !== baselineRow.msrp || compareAtCents !== baselineRow.compareAt;
         });
       }
-      const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+      const current = committedDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
       const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
       const msrpCents = parseToCents(current.msrp);
       const compareAtCents = parseToCents(current.compareAt);
       return msrpCents !== baselineRow.msrp || compareAtCents !== baselineRow.compareAt;
     });
-  }, [items, products, draft, baseline]);
+  }, [items, products, committedDraft, baseline]);
+
+  // `hasPendingEdit` covers the debounce window so the Save button reacts to the
+  // very first keystroke, exactly as it did when `isDirty` read `draft`.
+  const isDirty = hasPendingEdit || committedIsDirty;
 
   const save = async () => {
+    // Land any keystroke still inside the debounce window, then build the
+    // payload from the live draft so nothing typed can be lost.
+    flushDraft();
+    const liveDraft = draftRef.current;
     const rows = items
       .map((item) => {
         const key = itemKey(item.id);
-        const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+        const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
         const baselineRow = baseline[key] ?? { cost: null, msrp: null, compareAt: null };
         const costCents = parseToCents(current.costPrice);
         const msrpCents = parseToCents(current.msrp);
@@ -1091,7 +1248,7 @@ export default function CostingsPage() {
         if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
           return PREMIUM_VARIANTS.map((variant) => {
             const key = premiumPillowKey(product.productId!, variant);
-            const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+            const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
             const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: null, compareAt: null };
             const msrpCents = parseToCents(current.msrp);
             const compareAtCents = parseToCents(current.compareAt);
@@ -1107,7 +1264,7 @@ export default function CostingsPage() {
           }).filter((row): row is ProductSaveRow => row !== null);
         }
         const key = product.key;
-        const current = draft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
+        const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
         const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
         const msrpCents = parseToCents(current.msrp);
         const compareAtCents = parseToCents(current.compareAt);
@@ -1465,66 +1622,17 @@ export default function CostingsPage() {
                     </TableHeader>
                     <TableBody>
                       {group.items.map((item) => {
-                        const rowKey = itemKey(item.id);
-                        const current = draft[rowKey] ?? { costPrice: "", msrp: "", compareAt: "" };
-                        const itemLabel = getInventoryItemDisplayLabel(item);
+                        const current = draft[itemKey(item.id)] ?? EMPTY_DRAFT_ROW;
                         return (
-                          <TableRow key={item.id}>
-                            <TableCell className="align-middle">
-                              <InventoryItemLabel item={item} />
-                            </TableCell>
-                            <TableCell>
-                              <div className="relative">
-                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                  $
-                                </span>
-                                <Input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={current.costPrice}
-                                  placeholder="0.00"
-                                  onChange={(event) => handleInputChange(rowKey, "costPrice", event.target.value)}
-                                  onBlur={() => handleBlur(rowKey, "costPrice")}
-                                  className="pl-6"
-                                  aria-label={`Cost price for ${itemLabel}`}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="relative">
-                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                  $
-                                </span>
-                                <Input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={current.msrp}
-                                  placeholder="0.00"
-                                  onChange={(event) => handleInputChange(rowKey, "msrp", event.target.value)}
-                                  onBlur={() => handleBlur(rowKey, "msrp")}
-                                  className="pl-6"
-                                  aria-label={`MSRP for ${itemLabel}`}
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="relative">
-                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                  $
-                                </span>
-                                <Input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={current.compareAt}
-                                  placeholder="(optional)"
-                                  onChange={(event) => handleInputChange(rowKey, "compareAt", event.target.value)}
-                                  onBlur={() => handleBlur(rowKey, "compareAt")}
-                                  className="pl-6"
-                                  aria-label={`Compare-at price for ${itemLabel}`}
-                                />
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                          <PartRow
+                            key={item.id}
+                            item={item}
+                            costPrice={current.costPrice}
+                            msrp={current.msrp}
+                            compareAt={current.compareAt}
+                            onChange={handleInputChange}
+                            onBlur={handleBlur}
+                          />
                         );
                       })}
                     </TableBody>

@@ -1,7 +1,7 @@
 "use server";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
@@ -116,6 +116,7 @@ export async function approveApplication(id: string): Promise<{ ok: true }> {
       .single();
     if (partnerError) throw new Error(partnerError.message);
     partnerId = partner.id as string;
+    revalidateTag("locations", "max");
   }
 
   const { error: updateError } = await admin

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod/v4";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -31,6 +32,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: failed.error.message }, { status: 500 });
     }
 
+    revalidateTag("locations", "max");
     return NextResponse.json({ ok: true });
   } catch (err) {
     if (err instanceof z.ZodError) {

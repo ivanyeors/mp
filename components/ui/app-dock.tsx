@@ -11,11 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BubbleMenu, type BubbleMenuItem } from "@/components/ui/bubble-menu";
-import { BasicMpillowLearnMoreSheet } from "@/components/slide-in-pages/basic-mpillow-learn-more-slide-in";
-import { PremiumLearnMoreSheet } from "@/components/slide-in-pages/premium-learn-more-dialog";
-import { MbolsterLearnMoreSheet } from "@/components/slide-in-pages/mbolster-learn-more-slide-in";
-import { CervicalNeckSupportSheet } from "@/components/slide-in-pages/cervical-neck-support";
+import dynamic from "next/dynamic";
+import type { BubbleMenuItem } from "@/components/ui/bubble-menu";
 import { openAdminPanelMenu } from "@/lib/auth/admin-panel-menu";
 import {
   isAdminPanelDockPath,
@@ -28,6 +25,39 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
 import { isNearDocumentBottom } from "@/components/ui/app-dock-visibility";
+
+const BubbleMenu = dynamic(
+  () => import("@/components/ui/bubble-menu").then((m) => m.BubbleMenu),
+  { ssr: false },
+);
+const BasicMpillowLearnMoreSheet = dynamic(
+  () =>
+    import("@/components/slide-in-pages/basic-mpillow-learn-more-slide-in").then(
+      (m) => m.BasicMpillowLearnMoreSheet,
+    ),
+  { ssr: false },
+);
+const PremiumLearnMoreSheet = dynamic(
+  () =>
+    import("@/components/slide-in-pages/premium-learn-more-dialog").then(
+      (m) => m.PremiumLearnMoreSheet,
+    ),
+  { ssr: false },
+);
+const MbolsterLearnMoreSheet = dynamic(
+  () =>
+    import("@/components/slide-in-pages/mbolster-learn-more-slide-in").then(
+      (m) => m.MbolsterLearnMoreSheet,
+    ),
+  { ssr: false },
+);
+const CervicalNeckSupportSheet = dynamic(
+  () =>
+    import("@/components/slide-in-pages/cervical-neck-support").then(
+      (m) => m.CervicalNeckSupportSheet,
+    ),
+  { ssr: false },
+);
 
 const dockItems = [
   {

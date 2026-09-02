@@ -58,13 +58,27 @@ export async function GET(req: Request) {
     return NextResponse.json({ addons: [], productType, sizeKey });
   }
 
-  const { data: prices } = await admin
-    .from("item_prices")
-    .select("item_id, msrp, currency")
-    .in("item_id", ids);
+  // Add-on card imagery from the Item's primary Media Asset (slice 12).
+  const mediaRefs = (items ?? []).map((i) => ({
+    id: i.id as number,
+    primary_media_asset_id: (i.primary_media_asset_id as string | null) ?? null,
+  }));
+  const assetIds = [
+    ...new Set(
+      mediaRefs.map((r) => r.primary_media_asset_id).filter((v): v is string => Boolean(v)),
+    ),
+  ];
+
+  // Prices and asset imagery both depend only on the items query, so fetch both at once.
+  const [pricesResult, assetsResult] = await Promise.all([
+    admin.from("item_prices").select("item_id, msrp, currency").in("item_id", ids),
+    assetIds.length > 0
+      ? admin.from("media_assets").select("id, kind, hosted_url").in("id", assetIds)
+      : Promise.resolve({ data: [] as AddonMediaAsset[] }),
+  ]);
 
   const msrpByItem = new Map<number, { msrp: number; currency: string }>();
-  for (const p of prices ?? []) {
+  for (const p of pricesResult.data ?? []) {
     if (p.msrp == null) continue;
     msrpByItem.set(p.item_id as number, {
       msrp: Number(p.msrp),
@@ -74,26 +88,10 @@ export async function GET(req: Request) {
 
   const suggested = suggestAddons(rows, msrpByItem, { productType, sizeKey });
 
-  // Add-on card imagery from the Item's primary Media Asset (slice 12).
-  const mediaRefs = (items ?? []).map((i) => ({
-    id: i.id as number,
-    primary_media_asset_id: (i.primary_media_asset_id as string | null) ?? null,
-  }));
-  const assetIds = [
-    ...new Set(
-      suggested
-        .map((a) => mediaRefs.find((r) => r.id === a.item_id)?.primary_media_asset_id)
-        .filter((v): v is string => Boolean(v)),
-    ),
-  ];
-  let imageByItem = new Map<number, string>();
-  if (assetIds.length > 0) {
-    const { data: assets } = await admin
-      .from("media_assets")
-      .select("id, kind, hosted_url")
-      .in("id", assetIds);
-    imageByItem = resolveAddonImageUrls(mediaRefs, (assets ?? []) as AddonMediaAsset[]);
-  }
+  const imageByItem = resolveAddonImageUrls(
+    mediaRefs,
+    (assetsResult.data ?? []) as AddonMediaAsset[],
+  );
 
   const addons = suggested.map((a) => ({
     ...a,

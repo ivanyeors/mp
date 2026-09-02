@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { PartnerRow } from "@/lib/partners/types";
 
@@ -37,8 +38,7 @@ export function selectPartnerRows(rows: LocationRow[], includeHidden = false): L
   );
 }
 
-/** Single fetch of every location row (own + partner), ordered by position. */
-export async function getLocationRows(): Promise<LocationRow[]> {
+async function _getLocationRows(): Promise<LocationRow[]> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("partners")
@@ -52,6 +52,17 @@ export async function getLocationRows(): Promise<LocationRow[]> {
 
   return (data as LocationRow[]) ?? [];
 }
+
+/**
+ * Single fetch of every location row (own + partner), ordered by position.
+ * Locations change rarely and are read on the booking picker, the results list
+ * and /our-partners, so the service-role read is cached behind the `locations`
+ * tag; every writer of the `partners` table revalidates it.
+ */
+export const getLocationRows = unstable_cache(_getLocationRows, ["location-rows"], {
+  tags: ["locations"],
+  revalidate: 300,
+});
 
 /** All locations (own + partner), or one type when `opts.type` is given. */
 export async function getLocations(opts?: { type?: LocationType }): Promise<ResolvedLocation[]> {

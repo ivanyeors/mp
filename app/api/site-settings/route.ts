@@ -1,10 +1,32 @@
 import { NextResponse } from "next/server";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
 import { landingAssetIdKey } from "@/lib/media/replace";
 
 export const runtime = "nodejs";
+
+type SiteSettingRow = { key: string; value: string; updated_at: string | null };
+
+/**
+ * Site settings change rarely and are read on nearly every admin screen, so the
+ * DB read is cached and invalidated by every writer via the `site-settings` tag.
+ * Uses the service-role client only — no cookies/headers inside the cached fn.
+ */
+const readSiteSettings = unstable_cache(
+  async (keys: string[] | null): Promise<SiteSettingRow[]> => {
+    const admin = supabaseAdmin();
+    let query = admin.from("site_settings").select("key, value, updated_at");
+    if (keys && keys.length > 0) query = query.in("key", keys);
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data ?? []) as SiteSettingRow[];
+  },
+  ["site-settings-list"],
+  { tags: ["site-settings"], revalidate: 300 },
+);
 
 /**
  * GET /api/site-settings
@@ -13,24 +35,19 @@ export const runtime = "nodejs";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const keysParam = searchParams.get("keys");
+  const keys = keysParam
+    ? keysParam.split(",").map((k) => k.trim()).filter(Boolean)
+    : null;
 
-  const admin = supabaseAdmin();
-  let query = admin.from("site_settings").select("key, value, updated_at");
-
-  if (keysParam) {
-    const keys = keysParam.split(",").map((k) => k.trim()).filter(Boolean);
-    if (keys.length > 0) {
-      query = query.in("key", keys);
-    }
+  try {
+    const settings = await readSiteSettings(keys && keys.length > 0 ? keys : null);
+    return NextResponse.json({ ok: true, settings });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 },
+    );
   }
-
-  const { data, error } = await query;
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ ok: true, settings: data ?? [] });
 }
 
 /**
@@ -95,6 +112,7 @@ export async function PUT(req: Request) {
       }).catch(() => {});
     }
 
+    revalidateTag("site-settings", "max");
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(
@@ -132,5 +150,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  revalidateTag("site-settings", "max");
   return NextResponse.json({ ok: true });
 }

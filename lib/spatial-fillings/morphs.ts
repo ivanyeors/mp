@@ -1,9 +1,10 @@
 /**
  * Prepared flubber morphs (ADR 0009 guardrail 4): interpolators between every
- * pair of filling shapes are computed ONCE at module load — never ad hoc per
- * animation. A pair that degenerates (invalid frames, self-intersections)
- * falls back to a crossfade so the renderer never shows flicker artifacts.
- * Pure + browser-safe.
+ * pair of filling shapes are computed ONCE and reused — never ad hoc per
+ * animation. Preparation is lazy (first access, via `getShapeMorphs()`) so the
+ * flubber work stays off the hydration path on pages that never morph. A pair
+ * that degenerates (invalid frames, self-intersections) falls back to a
+ * crossfade so the renderer never shows flicker artifacts. Pure + browser-safe.
  */
 
 import { interpolate } from "flubber";
@@ -81,8 +82,17 @@ export function prepareMorph(fromD: string, toD: string): PreparedMorph {
   }
 }
 
-/** Every ordered pair of distinct shapes, prepared once at load (reverse reuses forward via 1−t). */
-export const SHAPE_MORPHS: ReadonlyMap<MorphKey, PreparedMorph> = (() => {
+let shapeMorphs: ReadonlyMap<MorphKey, PreparedMorph> | null = null;
+
+/**
+ * Every ordered pair of distinct shapes, prepared ONCE — but on first use, not
+ * at module load. Preparation is still "prepared, never ad hoc" (guardrail 4);
+ * it just no longer runs flubber interpolation during hydration on pages that
+ * never animate a shape swap. The table is immutable once built, so the first
+ * caller and every later one see byte-identical interpolators.
+ */
+export function getShapeMorphs(): ReadonlyMap<MorphKey, PreparedMorph> {
+  if (shapeMorphs) return shapeMorphs;
   const map = new Map<MorphKey, PreparedMorph>();
   const ids = Object.keys(FILLING_SHAPE_PATHS) as ShapeId[];
   for (let i = 0; i < ids.length; i++) {
@@ -95,11 +105,29 @@ export const SHAPE_MORPHS: ReadonlyMap<MorphKey, PreparedMorph> = (() => {
       );
     }
   }
+  shapeMorphs = map;
   return map;
-})();
+}
+
+/**
+ * Back-compat view of the table: reading ANY property (`size`, `get`, iteration)
+ * builds it on demand. Keeps the historic `SHAPE_MORPHS` import working without
+ * reintroducing the module-load cost.
+ */
+export const SHAPE_MORPHS: ReadonlyMap<MorphKey, PreparedMorph> = new Proxy(
+  new Map<MorphKey, PreparedMorph>(),
+  {
+    get(_target, prop) {
+      const real = getShapeMorphs();
+      const value = Reflect.get(real, prop, real);
+      return typeof value === "function" ? value.bind(real) : value;
+    },
+    has: (_target, prop) => Reflect.has(getShapeMorphs(), prop),
+  },
+);
 
 /** Morph for a shape swap; null when the shape is unchanged (nothing to animate). */
 export function getShapeMorph(from: ShapeId, to: ShapeId): PreparedMorph | null {
   if (from === to) return null;
-  return SHAPE_MORPHS.get(`${from}->${to}`) ?? { interpolator: null, crossfade: true };
+  return getShapeMorphs().get(`${from}->${to}`) ?? { interpolator: null, crossfade: true };
 }

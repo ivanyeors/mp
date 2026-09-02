@@ -31,26 +31,9 @@ export function layoutRuleGraph(
     ins.get(e.target)!.push(e.source);
   }
 
-  // Longest-path rank from roots (indegree 0).
-  const rank = new Map<string, number>();
-  const roots = nodeIds.filter((id) => (ins.get(id)?.length ?? 0) === 0);
-  const queue = roots.length ? [...roots] : [...nodeIds];
-  for (const id of queue) rank.set(id, 0);
-
-  let guard = nodeIds.length * nodeIds.length + 1;
-  let changed = true;
-  while (changed && guard-- > 0) {
-    changed = false;
-    for (const e of edges) {
-      if (!idSet.has(e.source) || !idSet.has(e.target)) continue;
-      const sr = rank.get(e.source) ?? 0;
-      const tr = rank.get(e.target) ?? 0;
-      if (tr < sr + 1) {
-        rank.set(e.target, sr + 1);
-        changed = true;
-      }
-    }
-  }
+  // Longest-path rank from roots (indegree 0), in one Kahn pass. Cycles can't
+  // be ranked this way, so they fall back to the bounded relaxation below.
+  const rank = kahnRanks(idSet, ins, outs) ?? relaxRanks(nodeIds, edges, idSet);
   for (const id of nodeIds) if (!rank.has(id)) rank.set(id, 0);
 
   const maxRank = Math.max(0, ...[...rank.values()]);
@@ -90,6 +73,78 @@ export function layoutRuleGraph(
   }
 
   return pos;
+}
+
+/**
+ * Longest-path rank in one topological (Kahn) sweep: sources sit at 0, every
+ * other node at 1 + max(predecessor ranks). Linear in nodes + edges, versus the
+ * n²-bounded relaxation it replaces.
+ *
+ * Returns null when the (filtered) graph has a cycle — a cycle has no
+ * topological order, and the relaxation it replaces never converges there
+ * either, so `relaxRanks` reproduces that bounded-guard result exactly.
+ */
+function kahnRanks(
+  idSet: Set<string>,
+  ins: Map<string, string[]>,
+  outs: Map<string, string[]>,
+): Map<string, number> | null {
+  const rank = new Map<string, number>();
+  const indegree = new Map<string, number>();
+  const queue: string[] = [];
+  for (const id of idSet) {
+    const deg = ins.get(id)!.length;
+    indegree.set(id, deg);
+    if (deg === 0) {
+      rank.set(id, 0);
+      queue.push(id);
+    }
+  }
+
+  let head = 0;
+  let settled = 0;
+  while (head < queue.length) {
+    const id = queue[head++]!;
+    settled++;
+    const r = rank.get(id) ?? 0;
+    for (const target of outs.get(id)!) {
+      if ((rank.get(target) ?? 0) < r + 1) rank.set(target, r + 1);
+      const left = indegree.get(target)! - 1;
+      indegree.set(target, left);
+      if (left === 0) queue.push(target);
+    }
+  }
+
+  return settled === idSet.size ? rank : null;
+}
+
+/**
+ * Cycle fallback: the original bounded Bellman-Ford relaxation, kept verbatim so
+ * cyclic graphs (which the canvas can author) keep byte-identical positions.
+ */
+function relaxRanks(
+  nodeIds: string[],
+  edges: LayoutEdge[],
+  idSet: Set<string>,
+): Map<string, number> {
+  const rank = new Map<string, number>();
+  for (const id of nodeIds) rank.set(id, 0);
+
+  let guard = nodeIds.length * nodeIds.length + 1;
+  let changed = true;
+  while (changed && guard-- > 0) {
+    changed = false;
+    for (const e of edges) {
+      if (!idSet.has(e.source) || !idSet.has(e.target)) continue;
+      const sr = rank.get(e.source) ?? 0;
+      const tr = rank.get(e.target) ?? 0;
+      if (tr < sr + 1) {
+        rank.set(e.target, sr + 1);
+        changed = true;
+      }
+    }
+  }
+  return rank;
 }
 
 function bary(parents: string[], indexOf: Map<string, number>): number {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -92,6 +93,7 @@ export async function PATCH(req: Request) {
     .eq("id", ctx.partnerId); // guard: never another partner's row
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  revalidateTag("locations", "max");
   await notifyStaff(ctx.partnerId, b.name);
   return NextResponse.json({ ok: true });
 }

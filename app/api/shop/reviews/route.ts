@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = admin.from("reviews").select("*", { count: "exact" });
+  let query = admin.from("reviews").select("*", { count: "estimated" });
 
   if (product_id) query = query.eq("product_id", product_id);
   if (status) query = query.eq("status", status);
