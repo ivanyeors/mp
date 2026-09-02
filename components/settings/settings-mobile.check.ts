@@ -19,8 +19,8 @@ const analytics = read("app/[lang]/settings/analytics/AnalyticsClient.tsx");
 const journey = read("app/[lang]/settings/analytics/ProspectJourneyCard.tsx");
 const general = read("app/[lang]/settings/general/general-client.tsx");
 const shipping = read("app/[lang]/settings/shipping/shipping-client.tsx");
-const customers = read("app/[lang]/settings/customers/page.tsx");
-const customerDetail = read("app/[lang]/settings/customers/[id]/page.tsx");
+const customers = read("app/[lang]/settings/customers/customers-client.tsx");
+const customerDetail = read("app/[lang]/settings/customers/[id]/customer-detail-client.tsx");
 
 // Admin Menu sheet: scroll body clears safe-area + close control
 assert.match(settingsNav, /mobilePreset="quick"/);
@@ -63,9 +63,9 @@ assert.doesNotMatch(customerDetail, /group-hover:opacity-100/);
 assert.match(customers, /overflow-x-auto/);
 
 // Cross-partition: results delete always visible; orders date stacks; media mobile overlay
-const results = read("app/[lang]/settings/results/page.tsx");
-const orders = read("app/[lang]/settings/orders/page.tsx");
-const media = read("app/[lang]/settings/media/page.tsx");
+const results = read("app/[lang]/settings/results/results-client.tsx");
+const orders = read("app/[lang]/settings/orders/orders-client.tsx");
+const media = read("app/[lang]/settings/media/media-client.tsx");
 assert.doesNotMatch(results, /opacity-0 group-hover:opacity-100/);
 assert.match(results, /min-h-11 min-w-11/);
 assert.match(orders, /flex w-full flex-col gap-2 sm:w-auto sm:flex-row/);

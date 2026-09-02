@@ -8,7 +8,7 @@ import { join } from "node:path";
 
 const ROOT = process.cwd();
 const src = readFileSync(
-  join(ROOT, "app/[lang]/settings/blogs/[id]/page.tsx"),
+  join(ROOT, "app/[lang]/settings/blogs/[id]/blog-editor-client.tsx"),
   "utf8",
 );
 

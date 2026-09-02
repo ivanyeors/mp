@@ -105,13 +105,13 @@ assert.match(upsert, /customer_phone/);
 assert.match(upsert, /discovery_source/);
 
 // --- Results detail (slice 05) ---
-const detailApi = read("app/api/mp-config/responses/[id]/route.ts");
+const detailApi = read("lib/results/admin/response-detail.ts");
 assert.match(detailApi, /customer_phone/);
 assert.match(detailApi, /discovery_source/);
 assert.match(detailApi, /resolveDiscoverySourceLabel/);
 assert.match(detailApi, /discovery_source_label/);
 
-const detailPage = read("app/[lang]/settings/results/[id]/page.tsx");
+const detailPage = read("app/[lang]/settings/results/[id]/result-detail-client.tsx");
 assert.match(detailPage, /customer_phone/);
 assert.match(detailPage, /Discovery source/);
 assert.match(detailPage, /discovery_source_label/);

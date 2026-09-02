@@ -1,18 +1,41 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type Stripe from "stripe";
 
-const createPi = vi.fn(async () => ({
+const createPi = vi.fn<
+  (params: Stripe.PaymentIntentCreateParams, options?: Stripe.RequestOptions) => Promise<{
+    id: string;
+    client_secret: string;
+  }>
+>(async () => ({
   id: "pi_test",
   client_secret: "pi_test_secret",
 }));
-const createSession = vi.fn(async () => ({
+const createSession = vi.fn<
+  (
+    params: Stripe.Checkout.SessionCreateParams,
+    options?: Stripe.RequestOptions,
+  ) => Promise<{ id: string; url: string }>
+>(async () => ({
   id: "cs_test",
   url: "https://stripe.test/cs",
 }));
-const capturePi = vi.fn(async (id: string) => ({
+const capturePi = vi.fn<
+  (
+    id: string,
+    params?: Stripe.PaymentIntentCaptureParams,
+    options?: Stripe.RequestOptions,
+  ) => Promise<{ id: string; status: string }>
+>(async (id: string) => ({
   id,
   status: "succeeded",
 }));
-const cancelPi = vi.fn(async (id: string) => ({ id, status: "canceled" }));
+const cancelPi = vi.fn<
+  (
+    id: string,
+    params?: Stripe.PaymentIntentCancelParams,
+    options?: Stripe.RequestOptions,
+  ) => Promise<{ id: string; status: string }>
+>(async (id: string) => ({ id, status: "canceled" }));
 
 vi.mock("@/lib/stripe/client", () => ({
   getStripe: () => ({
@@ -52,7 +75,7 @@ describe("authorization-hold", () => {
       metadata: { result_id: "r1" },
     });
     expect(result).toEqual({ paymentIntentId: "pi_test", clientSecret: "pi_test_secret" });
-    const arg = createPi.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    const arg = createPi.mock.calls.at(-1)![0];
     expect(arg.amount).toBe(15050);
     expect(arg.capture_method).toBe("manual");
     expect(arg.currency).toBe("sgd");
@@ -68,12 +91,9 @@ describe("authorization-hold", () => {
       cancelUrl: "https://x/cancel",
     });
     expect(result.url).toContain("stripe.test");
-    const arg = createSession.mock.calls.at(-1)?.[0] as {
-      payment_intent_data: { capture_method: string };
-      metadata: { result_id: string };
-    };
-    expect(arg.payment_intent_data.capture_method).toBe("manual");
-    expect(arg.metadata.result_id).toBe("r1");
+    const arg = createSession.mock.calls.at(-1)![0];
+    expect(arg.payment_intent_data!.capture_method).toBe("manual");
+    expect(arg.metadata!.result_id).toBe("r1");
   });
 
   it("captures and releases by PaymentIntent id", async () => {
@@ -102,14 +122,10 @@ describe("authorization-hold", () => {
       cancelUrl: "https://x/cancel",
     });
     expect(result.url).toContain("stripe.test");
-    const arg = createSession.mock.calls.at(-1)?.[0] as {
-      mode: string;
-      metadata: { purpose: string; result_id: string };
-      payment_intent_data?: unknown;
-    };
+    const arg = createSession.mock.calls.at(-1)![0];
     expect(arg.mode).toBe("payment");
-    expect(arg.metadata.purpose).toBe("result_topup");
-    expect(arg.metadata.result_id).toBe("r1");
+    expect(arg.metadata!.purpose).toBe("result_topup");
+    expect(arg.metadata!.result_id).toBe("r1");
     expect(arg.payment_intent_data).toBeUndefined();
   });
 });

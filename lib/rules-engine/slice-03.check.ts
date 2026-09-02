@@ -22,7 +22,8 @@ assert.match(src(mig), /recommendation_record/);
 
 assert.match(src("app/api/shop/customize/route.ts"), /getSizeBallparkFromMeasurements/);
 assert.match(src("app/api/mp-basic/recommend/route.ts"), /recommendWithEngine/);
-assert.match(src("app/api/mp-config/responses/[id]/route.ts"), /recommendWithEngine/);
+// The response detail route delegates to lib/results/admin/response-detail.ts.
+assert.match(src("lib/results/admin/response-detail.ts"), /recommendWithEngine/);
 assert.match(src("app/api/results/hold/route.ts"), /recommendation_record/);
 assert.match(src("lib/rules-engine/recommend.ts"), /ponytail: bootstrap guard/);
 assert.match(src("scripts/seed-rule-graphs.ts"), /premiumSeedGraph/);

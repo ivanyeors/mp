@@ -15,7 +15,7 @@ const actions = readFileSync(join(dir, "actions.ts"), "utf8");
 
 assert.match(page, /requireAdminPage\("analytics"/);
 assert.match(actions, /assertAdmin\("analytics"\)/);
-assert.equal((actions.match(/assertAdmin\("analytics"\)/g) ?? []).length, 6);
+assert.equal((actions.match(/assertAdmin\("analytics"\)/g) ?? []).length, 7);
 assert.match(actions, /getProspectJourneyTransitions/);
 assert.match(actions, /getProspectJourneyNodeDetail/);
 assert.match(actions, /expandPath/);

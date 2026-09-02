@@ -42,8 +42,8 @@ for (const src of [mp, bolster]) {
 }
 
 // Sample /settings page + Admin mobile shell
-assert.match(settingsNav, /min-h-svh w-full min-w-0 flex-col overflow-x-hidden/);
-assert.match(settingsNav, /min-w-0 max-w-full px-2 py-4/);
+assert.match(settingsNav, /min-h-svh w-full min-w-0 overflow-x-hidden md:overflow-x-visible/);
+assert.match(settingsNav, /min-w-0 max-w-full px-2 py-3/);
 assert.match(settingsGeneral, /min-w-0 max-w-full overflow-x-auto/);
 assert.match(settingsGeneral, /flex-col gap-3 sm:flex-row/);
 

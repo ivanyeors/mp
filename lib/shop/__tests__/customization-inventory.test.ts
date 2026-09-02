@@ -1,4 +1,4 @@
-import { config as loadEnv } from "dotenv";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "path";
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import type { ConfigLine, FillingLine } from "@/lib/types/customization";
@@ -8,7 +8,30 @@ import {
   type CustomizeApplyRecommendation,
 } from "@/lib/shop/customize-apply-payload";
 
-loadEnv({ path: resolve(process.cwd(), ".env.local") });
+/**
+ * Minimal `.env.local` loader — avoids a `dotenv` dependency for this one
+ * integration test file. Only fills vars that aren't already set.
+ */
+function loadDotEnvLocal(path: string) {
+  if (!existsSync(path)) return;
+  for (const rawLine of readFileSync(path, "utf8").split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] ??= value;
+  }
+}
+
+loadDotEnvLocal(resolve(process.cwd(), ".env.local"));
 
 const hasSupabaseEnv = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
