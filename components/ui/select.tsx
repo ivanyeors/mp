@@ -155,7 +155,9 @@ const SelectContent = React.forwardRef<
       <SheetContent
         side="bottom"
         mobilePreset="quick"
-        className={cn("w-full max-w-none px-0 pt-0", className)}
+        // Caller classes target the desktop popover; the drawer's own width,
+        // padding and position come last so a `w-[280px]` can't shrink it.
+        className={cn(className, "inset-x-0 w-full min-w-0 max-w-none px-0 pt-0")}
         {...sheetProps}
       >
         <div className="max-h-[70svh] overflow-auto px-2 pb-4 pt-2">

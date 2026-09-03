@@ -27,6 +27,14 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  MobileStickyActionBar,
+  mobileStickyActionBarSpacerClassName,
+} from "@/components/ui/mobile-sticky-action-bar";
+import {
+  stickyFirstColumnCellClassName as STICKY_PART_CELL,
+  stickyFirstColumnHeadClassName as STICKY_PART_HEAD,
+} from "@/components/ui/table-sticky";
+import {
   computeOnHandValueKpis,
   type OnHandValueKpis,
 } from "@/lib/costings/on-hand-value-kpis";
@@ -189,6 +197,10 @@ const CATEGORY_ORDER = ["cover", "case", "protector", "filling", "packaging", "a
 
 const FILTER_TAG_COLLAPSED_ROW_LIMIT = 3;
 
+/** Money columns: wide enough for "$ 123.45" on a phone, fluid on desktop. */
+const MONEY_HEAD = "min-w-[7.5rem] whitespace-nowrap sm:w-1/5 sm:min-w-0";
+const MONEY_CELL = "min-w-[7.5rem] sm:min-w-0";
+
 const toCents = (value: unknown): number | null => {
   if (value === null || value === undefined) return null;
   const numeric = typeof value === "number" ? value : Number.parseFloat(String(value));
@@ -290,10 +302,10 @@ const PartRow = memo(function PartRow({ item, costPrice, msrp, compareAt, onChan
   const itemLabel = getInventoryItemDisplayLabel(item);
   return (
     <TableRow>
-      <TableCell className="align-middle">
+      <TableCell className={STICKY_PART_CELL}>
         <InventoryItemLabel item={item} />
       </TableCell>
-      <TableCell>
+      <TableCell className={MONEY_CELL}>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
             $
@@ -310,7 +322,7 @@ const PartRow = memo(function PartRow({ item, costPrice, msrp, compareAt, onChan
           />
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className={MONEY_CELL}>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
             $
@@ -327,7 +339,7 @@ const PartRow = memo(function PartRow({ item, costPrice, msrp, compareAt, onChan
           />
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className={MONEY_CELL}>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
             $
@@ -973,7 +985,7 @@ export default function CostingsPage() {
         key={product.key}
         role="button"
         tabIndex={0}
-        className="space-y-3 rounded-lg border p-4 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none"
+        className="space-y-2 rounded-lg border p-3 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer select-none sm:space-y-3 sm:p-4"
         onClick={() => openProductSheet(product.key)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -984,10 +996,10 @@ export default function CostingsPage() {
       >
         <div>
           <div className="text-xs text-muted-foreground">{secondaryLabel}</div>
-          <div className="text-2xl font-semibold">{primaryLabel}</div>
+          <div className="text-xl font-semibold sm:text-2xl">{primaryLabel}</div>
         </div>
         <div className="text-xs text-muted-foreground">{partsCount} parts configured</div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <div>
             <div className="text-xs text-muted-foreground">Cost</div>
             <div className="font-medium">{formatDraftCurrencyLabel(costDisplay)}</div>
@@ -1012,7 +1024,7 @@ export default function CostingsPage() {
             )}
           </div>
         </div>
-        <div>
+        <div className="hidden sm:block">
           <Button size="sm" variant="secondary">
             View details
           </Button>
@@ -1366,7 +1378,7 @@ export default function CostingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={isDirty ? `space-y-6 ${mobileStickyActionBarSpacerClassName}` : "space-y-6"}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1>Costings</h1>
@@ -1375,33 +1387,35 @@ export default function CostingsPage() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <Button
-            variant="secondary"
-            className="w-full sm:w-auto"
-            onClick={async () => {
-              setSyncingShopifyPrices(true);
-              try {
-                const res = await syncShopifyPricesOnly();
-                const stats = res?.prices ?? null;
-                toast.success(
-                  stats
-                    ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
-                    : "Shopify prices synced",
-                );
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
-              } finally {
-                setSyncingShopifyPrices(false);
-              }
-            }}
-            disabled={saving || syncingShopifyPrices}
-          >
-            {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
-          </Button>
-          <Button variant="secondary" className="w-full sm:w-auto" onClick={load} disabled={saving}>
-            Refresh
-          </Button>
-          <Button className="w-full sm:w-auto" onClick={save} disabled={saving || !isDirty}>
+          <div className="grid grid-cols-2 gap-2 sm:contents">
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={async () => {
+                setSyncingShopifyPrices(true);
+                try {
+                  const res = await syncShopifyPricesOnly();
+                  const stats = res?.prices ?? null;
+                  toast.success(
+                    stats
+                      ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
+                      : "Shopify prices synced",
+                  );
+                } catch (e) {
+                  toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
+                } finally {
+                  setSyncingShopifyPrices(false);
+                }
+              }}
+              disabled={saving || syncingShopifyPrices}
+            >
+              {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
+            </Button>
+            <Button variant="secondary" className="w-full sm:w-auto" onClick={load} disabled={saving}>
+              Refresh
+            </Button>
+          </div>
+          <Button className="hidden w-full sm:inline-flex sm:w-auto" onClick={save} disabled={saving || !isDirty}>
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -1415,40 +1429,40 @@ export default function CostingsPage() {
               As of now — current warehouse stock × Costings prices (not a sales date range).
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="space-y-1">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+            <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
+              <CardHeader className="space-y-1 px-4 sm:px-6">
                 <CardDescription>Inventory at cost</CardDescription>
-                <CardTitle className="text-2xl">{currencyFormatter.format(onHandKpis.costValue)}</CardTitle>
+                <CardTitle className="text-lg tabular-nums sm:text-2xl">{currencyFormatter.format(onHandKpis.costValue)}</CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
+              <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
                 Across {onHandKpis.totalItems} active items; reflects on-hand cost exposure.
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="space-y-1">
+            <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
+              <CardHeader className="space-y-1 px-4 sm:px-6">
                 <CardDescription>Potential revenue (MSRP)</CardDescription>
-                <CardTitle className="text-2xl">{currencyFormatter.format(onHandKpis.msrpValue)}</CardTitle>
+                <CardTitle className="text-lg tabular-nums sm:text-2xl">{currencyFormatter.format(onHandKpis.msrpValue)}</CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
+              <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
                 Assumes every stocked unit sells at full list price.
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="space-y-1">
+            <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
+              <CardHeader className="space-y-1 px-4 sm:px-6">
                 <CardDescription>Unrealized gross margin</CardDescription>
-                <CardTitle className="text-2xl">{currencyFormatter.format(onHandKpis.marginValue)}</CardTitle>
+                <CardTitle className="text-lg tabular-nums sm:text-2xl">{currencyFormatter.format(onHandKpis.marginValue)}</CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
+              <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
                 Difference between current MSRP value and cost basis.
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="space-y-1">
+            <Card className="gap-3 py-4 sm:gap-6 sm:py-6">
+              <CardHeader className="space-y-1 px-4 sm:px-6">
                 <CardDescription>Weighted gross margin %</CardDescription>
-                <CardTitle className="text-2xl">{formatPercent(onHandKpis.weightedMarginPct)}</CardTitle>
+                <CardTitle className="text-lg tabular-nums sm:text-2xl">{formatPercent(onHandKpis.weightedMarginPct)}</CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
+              <CardContent className="px-4 text-xs text-muted-foreground sm:px-6">
                 Weighted by MSRP across all stocked SKUs with pricing coverage.
               </CardContent>
             </Card>
@@ -1507,7 +1521,7 @@ export default function CostingsPage() {
                         }
                       />
                     </SelectTrigger>
-                    <SelectContent align="start" className="w-[280px]">
+                    <SelectContent align="start">
                       <ScrollArea className="h-60">
                         <div className="p-1">
                           {availableFilterCategories.map((category) => (
@@ -1610,14 +1624,14 @@ export default function CostingsPage() {
               <p className="text-sm text-muted-foreground">No parts match the current filters.</p>
             ) : (
               filteredGroups.map((group) => (
-                <Section key={group.category} title={group.title}>
+                <Section key={group.category} title={group.title} sticky>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-2/5">Part</TableHead>
-                        <TableHead className="w-1/5">Cost Price</TableHead>
-                        <TableHead className="w-1/5">MSRP</TableHead>
-                        <TableHead className="w-1/5">Compare-at</TableHead>
+                        <TableHead className={STICKY_PART_HEAD}>Part</TableHead>
+                        <TableHead className={MONEY_HEAD}>Cost Price</TableHead>
+                        <TableHead className={MONEY_HEAD}>MSRP</TableHead>
+                        <TableHead className={MONEY_HEAD}>Compare-at</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1645,12 +1659,12 @@ export default function CostingsPage() {
       </div>
 
       <Sheet open={productSheetOpen && Boolean(activeProduct)} onOpenChange={handleSheetOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-xl">
+        <SheetContent side="right" className="flex w-full flex-col max-md:max-h-[92svh] sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>{activeProduct?.label ?? "Product details"}</SheetTitle>
             <SheetDescription>Review configured parts and adjust pricing.</SheetDescription>
           </SheetHeader>
-          <div className="mt-4 space-y-6 px-4">
+          <div className="mt-4 min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-4">
             {activeProduct ? (
               <>
                 <div className="space-y-4">
@@ -1827,21 +1841,21 @@ export default function CostingsPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="w-2/5">Part</TableHead>
-                              <TableHead className="w-[70px]">Qty</TableHead>
-                              <TableHead className="w-1/5">Cost Each</TableHead>
-                              <TableHead className="w-1/5">Total Cost</TableHead>
+                              <TableHead className={STICKY_PART_HEAD}>Part</TableHead>
+                              <TableHead className="min-w-[3.5rem] sm:w-[70px]">Qty</TableHead>
+                              <TableHead className="min-w-[6rem] whitespace-nowrap sm:w-1/5 sm:min-w-0">Cost Each</TableHead>
+                              <TableHead className="min-w-[6rem] whitespace-nowrap sm:w-1/5 sm:min-w-0">Total Cost</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {group.rows.map((detail) => (
                               <TableRow key={detail.item.id}>
-                                <TableCell className="align-middle">
+                                <TableCell className={STICKY_PART_CELL}>
                                   <InventoryItemLabel item={detail.item} />
                                 </TableCell>
-                                <TableCell>{detail.quantity}</TableCell>
-                                <TableCell>{formatCentsLabel(detail.costEach)}</TableCell>
-                                <TableCell>{formatCentsLabel(detail.totalCost)}</TableCell>
+                                <TableCell className="tabular-nums">{detail.quantity}</TableCell>
+                                <TableCell className="whitespace-nowrap tabular-nums">{formatCentsLabel(detail.costEach)}</TableCell>
+                                <TableCell className="whitespace-nowrap tabular-nums">{formatCentsLabel(detail.totalCost)}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1864,6 +1878,23 @@ export default function CostingsPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Phones: Save stays in reach however far down the parts list you are. */}
+      {isDirty ? (
+        <MobileStickyActionBar>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">Unsaved changes</div>
+              <div className="truncate text-xs text-muted-foreground">
+                Edits stay in the form until you save.
+              </div>
+            </div>
+            <Button size="lg" className="shrink-0" onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </MobileStickyActionBar>
+      ) : null}
     </div>
   );
 }
@@ -1890,28 +1921,28 @@ function ProductGroupSection({
         <CollapsibleTrigger asChild>
           <button
             type="button"
-            className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left"
+            className="flex min-h-14 w-full items-center justify-between gap-3 px-3 py-3 text-left sm:px-4"
             aria-expanded={isOpen}
           >
-            <div>
+            <div className="min-w-0">
               <div className="text-sm font-medium">{group.title}</div>
               <p className="text-xs text-muted-foreground">{group.description}</p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{summaryLabel}</span>
+            <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+              <span className="hidden sm:inline">{summaryLabel}</span>
               <ChevronDown
                 className={`size-4 transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}
               />
             </div>
           </button>
         </CollapsibleTrigger>
-        <CollapsibleContent className="border-t px-4 pb-4 pt-2">
+        <CollapsibleContent className="border-t px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
           {products.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {group.emptyState ?? `No ${group.title} products configured yet.`}
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
               {products.map((product) => renderProductCard(product))}
             </div>
           )}
@@ -1921,10 +1952,27 @@ function ProductGroupSection({
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  children,
+  sticky = false,
+}: {
+  title: string;
+  children: ReactNode;
+  /** Pin the title to the top of the viewport on phones while the list scrolls. */
+  sticky?: boolean;
+}) {
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium text-muted-foreground">{title}</div>
+      <div
+        className={
+          sticky
+            ? "sticky top-0 z-20 -mx-2 bg-background/95 px-2 py-2 text-sm font-medium text-muted-foreground backdrop-blur md:static md:mx-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+            : "text-sm font-medium text-muted-foreground"
+        }
+      >
+        {title}
+      </div>
       <div className="space-y-2">{children}</div>
     </div>
   );

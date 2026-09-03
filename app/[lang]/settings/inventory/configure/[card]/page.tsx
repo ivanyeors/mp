@@ -18,6 +18,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  stickyFirstColumnCellClassName,
+  stickyFirstColumnHeadClassName,
+} from "@/components/ui/table-sticky";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -1778,13 +1782,29 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function ConfigureTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+function ConfigureTable({
+  headers,
+  children,
+  pinFirstColumn = false,
+}: {
+  headers: string[];
+  children: React.ReactNode;
+  /** Phones: keep the first column in view while the rest scrolls sideways. */
+  pinFirstColumn?: boolean;
+}) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          {headers.map((h) => (
-            <TableHead key={h}>{h}</TableHead>
+          {headers.map((h, i) => (
+            <TableHead
+              key={h}
+              className={
+                pinFirstColumn && i === 0 ? stickyFirstColumnHeadClassName : "whitespace-nowrap"
+              }
+            >
+              {h}
+            </TableHead>
           ))}
         </TableRow>
       </TableHeader>
@@ -1849,14 +1869,16 @@ function DynamicPartSection({
 
   return (
     <Section title={title}>
-      <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]}>
+      <ConfigureTable headers={["Part", "Variant", "Qty", "Actions"]} pinFirstColumn>
         {lines.map((l) => {
           const item = getItem(l.item_id);
           return (
             <TableRow key={l.item_id}>
-              <TableCell className="font-medium">{item ? getItemBaseName(item) : `Item #${l.item_id}`}</TableCell>
-              <TableCell>{renderVariant(item)}</TableCell>
-              <TableCell className="w-[140px]">
+              <TableCell className={`${stickyFirstColumnCellClassName} font-medium`}>
+                {item ? getItemBaseName(item) : `Item #${l.item_id}`}
+              </TableCell>
+              <TableCell className="min-w-[7rem] sm:min-w-0">{renderVariant(item)}</TableCell>
+              <TableCell className="w-[6.5rem] min-w-[6.5rem] sm:w-[140px]">
                 <Input
                   type="number"
                   min={0}
@@ -1866,7 +1888,7 @@ function DynamicPartSection({
                   onChange={(e) => handleQtyChange(l.item_id, e.target.value)}
                 />
               </TableCell>
-              <TableCell className="w-[140px]">
+              <TableCell className="min-w-[6rem] sm:w-[140px]">
                 <Button size="sm" variant="secondary" onClick={() => remove(l.item_id)}>
                   Remove
                 </Button>
@@ -1882,7 +1904,7 @@ function DynamicPartSection({
           </TableRow>
         )}
         <TableRow>
-          <TableCell colSpan={2}>
+          <TableCell colSpan={2} className="min-w-[14rem] sm:min-w-0">
               <div className="flex items-center gap-2">
                 <Select
                   value={selectedId === "" ? "" : String(selectedId)}
@@ -1904,7 +1926,7 @@ function DynamicPartSection({
                 </Select>
               </div>
           </TableCell>
-          <TableCell className="w-[140px]">
+          <TableCell className="w-[6.5rem] min-w-[6.5rem] sm:w-[140px]">
             <Input
               type="number"
               min={0}
@@ -1917,7 +1939,7 @@ function DynamicPartSection({
               }}
             />
           </TableCell>
-          <TableCell className="w-[140px]">
+          <TableCell className="min-w-[6rem] sm:w-[140px]">
             <Button
               size="sm"
               onClick={handleAdd}
