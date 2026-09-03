@@ -363,7 +363,7 @@ export function SettingsSidebarNav({
   // server render and made phones paint the desktop shell before swapping.
   return (
     <SettingsBreadcrumbProvider>
-      <div className="flex min-h-svh w-full min-w-0 overflow-x-hidden md:overflow-x-visible">
+      <div className="flex min-h-svh w-full min-w-0 overflow-x-clip md:overflow-x-visible">
         <SidebarProvider>
           {/* shadcn's Sidebar root is `hidden md:block`, so it already stays out of the
               mobile paint; keep it a direct sibling of SidebarInset for the peer styles. */}
@@ -415,7 +415,7 @@ export function SettingsSidebarNav({
           </Sidebar>
           <SidebarInset className="min-w-0">
             {header}
-            <div className="min-w-0 max-w-full px-2 py-3 sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
+            <div className="min-w-0 max-w-full px-2 pt-3 pb-[calc(0.75rem+var(--app-dock-clearance))] sm:px-3 md:px-6 md:py-8 lg:px-8 lg:py-10">
               {children}
             </div>
           </SidebarInset>

@@ -47,8 +47,37 @@ assert.match(admins, /Card className="min-w-0"/);
 assert.match(staff, /sm:w-\[260px\]/);
 assert.match(staff, /hidden sm:table-cell/);
 
-// appointments header stacks
-assert.match(appointments, /flex-col gap-2 sm:flex-row/);
+// appointments: title + settings gear share one row; phone blurb is short
+assert.match(appointments, /flex shrink-0 items-start justify-between gap-3/);
+assert.match(appointments, /text-muted-foreground md:hidden/);
+
+// appointments calendar: own toolbar (no FullCalendar header), 3-day phone view,
+// tap-to-select, selection bar clears the dock, detail is a Sheet
+const calendar = read("components/settings/appointments-calendar.tsx");
+assert.match(calendar, /headerToolbar=\{false\}/);
+assert.match(calendar, /MOBILE_DEFAULT_VIEW: ViewId = "timeGridThreeDay"/);
+assert.match(calendar, /selectLongPressDelay=\{350\}/);
+assert.match(calendar, /dateClick=\{handleDateClick\}/);
+assert.match(calendar, /max-md:fixed max-md:inset-x-3 max-md:bottom-\[calc\(var\(--app-dock-clearance\)\+0\.25rem\)\]/);
+assert.doesNotMatch(calendar, /window\.confirm/);
+
+// costings: pinned Part column (shared helper) + full-width money inputs; Save
+// pinned above the dock. The BOM configure editor reuses the same helper.
+const tableSticky = read("components/ui/table-sticky.ts");
+const configureCard = read("app/[lang]/settings/inventory/configure/[card]/page.tsx");
+assert.match(tableSticky, /sticky left-0 z-10 w-\[9\.5rem\] min-w-\[9\.5rem\]/);
+assert.match(costings, /stickyFirstColumnHeadClassName as STICKY_PART_HEAD/);
+assert.match(costings, /min-w-\[7\.5rem\]/);
+assert.match(configureCard, /pinFirstColumn\b/);
+assert.match(costings, /MobileStickyActionBar/);
+assert.doesNotMatch(costings, /SelectContent align="start" className="w-\[280px\]"/);
+
+// shared: phone Select drawer ignores desktop width classes; shell clips (not
+// scrolls) x-overflow so sticky works, and clears the dock
+const select = read("components/ui/select.tsx");
+assert.match(select, /cn\(className, "inset-x-0 w-full min-w-0 max-w-none px-0 pt-0"\)/);
+assert.match(settingsNav, /overflow-x-clip md:overflow-x-visible/);
+assert.match(settingsNav, /pb-\[calc\(0\.75rem\+var\(--app-dock-clearance\)\)\]/);
 
 // analytics date chips ≥44px; journey filters fluid + min-h-11
 assert.match(analytics, /inline-flex min-h-11 items-center/);
