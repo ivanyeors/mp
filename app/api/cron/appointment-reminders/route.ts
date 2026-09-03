@@ -6,7 +6,8 @@ import {
 } from "@/lib/appointments/settings";
 import { isPhoneAllowed, normalizePhone } from "@/lib/appointments/phone";
 import { listDayEvents, venueForEvent } from "@/lib/appointments/calendar";
-import { upsertContactByPhone } from "@/lib/appointments/contacts";
+import { syncGuestContact } from "@/lib/appointments/contacts";
+import { sweepUpcomingContacts } from "@/lib/appointments/contacts-sweep";
 import {
   sendDayBeforeTemplate,
   sendMorningOfTemplate,
@@ -136,7 +137,7 @@ export async function GET(req: Request) {
       }
 
       try {
-        await upsertContactByPhone(ev.guestName, phone);
+        await syncGuestContact({ name: ev.guestName, phone, email: ev.email });
       } catch (ce) {
         summary.errors.push(
           `${ev.id}: contacts ${ce instanceof Error ? ce.message : "failed"}`,
@@ -204,7 +205,19 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json(summary);
+  // Chain: Google Contacts sweep for every upcoming appointment (next 30 days) so
+  // events staff add directly in Google Calendar get a contact too — Hobby stays at
+  // 2 vercel.json crons. Manual ops / backfill: GET /api/cron/contacts-sync?days=N.
+  let contacts:
+    | Awaited<ReturnType<typeof sweepUpcomingContacts>>
+    | { ok: false; error: string };
+  try {
+    contacts = await sweepUpcomingContacts(settings, { now });
+  } catch (e) {
+    contacts = { ok: false, error: e instanceof Error ? e.message : "contacts sweep failed" };
+  }
+
+  return NextResponse.json({ ...summary, contacts });
 }
 
 export async function POST(req: Request) {

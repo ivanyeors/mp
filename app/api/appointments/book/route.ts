@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod/v4";
 import { createEvent, freeBusy } from "@/lib/appointments/calendar";
+import { syncGuestContact, type ContactSyncResult } from "@/lib/appointments/contacts";
 import { normalizePhone } from "@/lib/appointments/phone";
 import { upsertPendingReminder } from "@/lib/appointments/reminders-db";
 import {
@@ -93,7 +94,23 @@ export async function POST(req: Request) {
       startsAt: new Date(startMs).toISOString(),
     });
 
-    return NextResponse.json({ ok: true, eventId });
+    // Google Contacts (admin@mpillow.com): create / update / skip the guest so the
+    // WhatsApp Business inbox shows their name. Best-effort — never fails the booking.
+    let contact: ContactSyncResult | "failed" = "failed";
+    try {
+      contact = await syncGuestContact({
+        name: parsed.guest_name,
+        phone,
+        email: parsed.email,
+      });
+    } catch (ce) {
+      console.error(
+        `[appointments/book] contact sync failed for ${eventId}:`,
+        ce instanceof Error ? ce.message : ce,
+      );
+    }
+
+    return NextResponse.json({ ok: true, eventId, contact });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Booking failed" },

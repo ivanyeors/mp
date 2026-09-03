@@ -47,6 +47,19 @@ Body parameter order must match `lib/appointments/whatsapp.ts` (positional).
 
 Smoke: `events.list` on primary for tomorrow; People `searchContacts` by a test phone.
 
+### Google Contacts sync (admin@mpillow.com)
+
+Guests are synced into that account's Google Contacts (search by phone, then email →
+create if new, update if name/phone/email differ, skip if identical) at two points:
+
+- **On booking** — `/api/appointments/book` syncs right after `events.insert`; the
+  response carries `contact: created | updated | skipped | failed`. Failure never
+  blocks the booking (logged server-side).
+- **Daily sweep** — `/api/cron/appointment-reminders` chains a sweep of every
+  appointment in the next 30 days, so events staff add straight into Google Calendar
+  (name + phone in the description, guest as attendee) get a contact too. Manual run
+  / backfill: `GET /api/cron/contacts-sync?days=90` with `Authorization: Bearer $CRON_SECRET`.
+
 ### Re-issue when Calendar returns `invalid_rapt`
 
 Symptom: Settings appointments / cron fail with `invalid_grant` + `error_subtype: invalid_rapt` (https://support.google.com/a/answer/9368756).
