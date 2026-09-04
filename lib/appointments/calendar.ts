@@ -15,6 +15,8 @@ export type CalendarGuestEvent = {
   location: string | null;
   guestName: string;
   phone: string; // E.164
+  /** Guest attendee email (booking flow adds one), null for staff-typed events. */
+  email: string | null;
   appointmentType: AppointmentType;
   bookingUrl: string;
   typeLabel: string;
@@ -241,6 +243,15 @@ export function extractGuestName(ev: GCalEvent): string | null {
   return null;
 }
 
+/** Guest email: first non-self attendee's address, else an "Email: x" line in the description. */
+export function extractGuestEmail(ev: GCalEvent): string | null {
+  const attendee = (ev.attendees ?? []).find((a) => !a.self && a.email?.trim());
+  if (attendee?.email) return attendee.email.trim().toLowerCase();
+  const text = plainDescription(ev.description) ?? "";
+  const m = text.match(/email\s*:\s*([^\s<>]+@[^\s<>]+)/i);
+  return m?.[1]?.trim().toLowerCase() ?? null;
+}
+
 function sgtDayBounds(now: Date, dayOffset: number): { timeMin: string; timeMax: string } {
   const p = sgtParts(now.getTime());
   const day = addSgtDays(p.y, p.m, p.d, dayOffset);
@@ -259,13 +270,55 @@ export async function listDayEvents(
   now: Date = new Date(),
 ): Promise<CalendarGuestEvent[]> {
   const { timeMin, timeMax } = sgtDayBounds(now, dayOffset);
+  return listGuestEvents(timeMin, timeMax, settings);
+}
+
+/** Map one GCal item to a guest event (needs a parsed phone + name), else null. */
+export function mapGCalItemToGuestEvent(
+  ev: GCalEvent,
+  settings: AppointmentSettings,
+): CalendarGuestEvent | null {
+  if (!ev.id) return null;
+  if (ev.status === "cancelled") return null;
+  if (ev.start?.date && !ev.start.dateTime) return null; // all-day
+  if (!ev.start?.dateTime || !ev.end?.dateTime) return null;
+
+  const phone = extractPhoneFromEvent(ev);
+  const guestName = extractGuestName(ev);
+  if (!phone || !guestName) return null;
+
+  const resolved = resolveAppointmentType(ev.summary, settings);
+  return {
+    id: ev.id,
+    summary: ev.summary ?? "",
+    startsAt: ev.start.dateTime,
+    endsAt: ev.end.dateTime,
+    location: ev.location?.trim() || null,
+    guestName,
+    phone,
+    email: extractGuestEmail(ev),
+    appointmentType: resolved.type,
+    bookingUrl: resolved.bookingUrl,
+    typeLabel: resolved.label,
+  };
+}
+
+/**
+ * Timed events with a parsable guest (name + phone) between two instants.
+ * Used by the reminder cron (one day) and the contacts sweep (next N days).
+ */
+export async function listGuestEvents(
+  timeMinIso: string,
+  timeMaxIso: string,
+  settings: AppointmentSettings,
+): Promise<CalendarGuestEvent[]> {
   const id = encodeURIComponent(calendarId());
   const qs = new URLSearchParams({
-    timeMin,
-    timeMax,
+    timeMin: toGCalRfc3339(timeMinIso),
+    timeMax: toGCalRfc3339(timeMaxIso),
     singleEvents: "true",
     orderBy: "startTime",
-    maxResults: "100",
+    maxResults: "250",
   });
   const res = await calFetch(`/calendars/${id}/events?${qs}`);
   if (!res.ok) {
@@ -273,30 +326,9 @@ export async function listDayEvents(
   }
   const json = (await res.json()) as { items?: GCalEvent[] };
   const out: CalendarGuestEvent[] = [];
-
   for (const ev of json.items ?? []) {
-    if (!ev.id) continue;
-    if (ev.status === "cancelled") continue;
-    if (ev.start?.date && !ev.start.dateTime) continue; // all-day
-    if (!ev.start?.dateTime || !ev.end?.dateTime) continue;
-
-    const phone = extractPhoneFromEvent(ev);
-    const guestName = extractGuestName(ev);
-    if (!phone || !guestName) continue;
-
-    const resolved = resolveAppointmentType(ev.summary, settings);
-    out.push({
-      id: ev.id,
-      summary: ev.summary ?? "",
-      startsAt: ev.start.dateTime,
-      endsAt: ev.end.dateTime,
-      location: ev.location?.trim() || null,
-      guestName,
-      phone,
-      appointmentType: resolved.type,
-      bookingUrl: resolved.bookingUrl,
-      typeLabel: resolved.label,
-    });
+    const mapped = mapGCalItemToGuestEvent(ev, settings);
+    if (mapped) out.push(mapped);
   }
   return out;
 }
