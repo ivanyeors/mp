@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getAdminContext } from "@/lib/auth/admin";
+import { roleHasPermission } from "@/lib/auth/permissions";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   APPOINTMENT_SETTING_KEYS,
@@ -22,13 +24,21 @@ function authorizeCron(req: Request): boolean {
   return header === `Bearer ${secret}`;
 }
 
+/** Cron secret (Vercel / curl) or a signed-in staff session (browser backfill). */
+async function authorize(req: Request): Promise<boolean> {
+  if (authorizeCron(req)) return true;
+  const ctx = await getAdminContext();
+  return ctx != null && roleHasPermission(ctx.role, "results");
+}
+
 /**
  * Google Contacts sweep for upcoming appointments (default next 30 days, `?days=N`
  * up to 100 for a backfill). Chained daily from /api/cron/appointment-reminders —
- * Hobby stays at 2 vercel.json crons; this route is for manual ops / backfills.
+ * Hobby stays at 2 vercel.json crons; this route is for manual ops / backfills —
+ * open it in the browser as staff, or curl it with CRON_SECRET.
  */
 export async function GET(req: Request) {
-  if (!authorizeCron(req)) {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
