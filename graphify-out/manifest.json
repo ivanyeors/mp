@@ -10014,9 +10014,9 @@
     "semantic_hash": ""
   },
   "app/api/cron/contacts-sync/route.ts": {
-    "mtime": 1788476653.6128964,
-    "seen": 1788703669.3512356,
-    "ast_hash": "6c016b2e28a0f02b9ef9548db9b2a0b7",
+    "mtime": 1788735649.4937673,
+    "seen": 1788735874.9564507,
+    "ast_hash": "88c24ff5d3636801a3e50b2c1260f0cf",
     "semantic_hash": ""
   },
   "lib/appointments/__tests__/contacts.test.ts": {
