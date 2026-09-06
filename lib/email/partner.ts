@@ -13,7 +13,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { notifyPartnerWhatsApp } from "@/lib/whatsapp/partner-notify";
 import { getEmailTransport } from ".";
-import { escapeHtml, renderEmailShell } from "./base";
+import { renderEmailShell } from "./base";
+import { amountPanel, infoList, paragraph, statusPill } from "./components";
+import { formatSgDate } from "./format";
 import { formatMoney } from "./templates";
 import { getDefaultFromAddress } from "./transport";
 import { getSiteOrigin } from "@/lib/site-url";
@@ -110,16 +112,8 @@ export async function partnerRecipientEmail(
 // Templates (pure — importable by #85 tests / the self-check)
 // ------------------------------------------------------------
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-/** Human date in Singapore time (business is SG), from a timestamptz ISO string. */
-export function formatSgDate(iso: string): string {
-  const d = new Date(new Date(iso).getTime() + 8 * 60 * 60 * 1000); // shift to SGT, then read UTC parts
-  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-}
+/** Re-exported: this was the original home of the SG date formatter. */
+export { formatSgDate };
 
 /** The DATED release line — never an undated amount (AC). Both branches state timing. */
 function releaseLine(releaseAtIso: string | null): string {
@@ -141,10 +135,12 @@ Track it in your Partner Hub: ${HUB_URL()}
 — The Mpillow team`;
   const html = renderEmailShell({
     title: "You earned a commission",
-    bodyHtml: `<p style="color:#444;">Good news — you've earned <strong>${escapeHtml(p.money)}</strong> in commission from a referred order.</p>
-    <p style="color:#444;">${escapeHtml(line)}</p>
-    <p><a href="${HUB_URL()}" style="color:#2563eb;">Track it in your Partner Hub</a></p>
-    <p style="color:#444;margin-top:16px;">— The Mpillow team</p>`,
+    preheader: `${p.money} in commission from a referred order.`,
+    audience: "partner",
+    bodyHtml: `${paragraph("Good news — you've earned commission from a referred order.")}
+${amountPanel({ label: "Commission earned", amount: p.money, caption: line })}
+${paragraph("— The Mpillow team", { muted: true })}`,
+    cta: { href: HUB_URL(), label: "Track it in your Partner Hub" },
   });
   return { subject, text, html };
 }
@@ -165,9 +161,17 @@ Open your Partner Hub: ${HUB_URL()}
 — The Mpillow team`;
   const html = renderEmailShell({
     title: "New milestone reached",
-    bodyHtml: `${parts.map((s) => `<p style="color:#444;">${escapeHtml(s)}</p>`).join("\n    ")}
-    <p><a href="${HUB_URL()}" style="color:#2563eb;">Open your Partner Hub</a></p>
-    <p style="color:#444;margin-top:16px;">— The Mpillow team</p>`,
+    preheader: `You've reached tier ${p.tier} in the Mpillow Partner programme.`,
+    audience: "partner",
+    bodyHtml: `${statusPill(`Tier ${p.tier}`, "success")}
+${paragraph(
+      `Congratulations — you've reached tier ${p.tier} in the Mpillow Partner programme.`,
+      { top: 16 },
+    )}
+${p.bonus ? amountPanel({ label: "One-time bonus", amount: p.bonus }) : ""}
+${p.perk ? infoList([{ label: "New perk", value: p.perk, strong: true }]) : ""}
+${paragraph("— The Mpillow team", { muted: true })}`,
+    cta: { href: HUB_URL(), label: "Open your Partner Hub" },
   });
   return { subject, text, html };
 }
@@ -183,14 +187,18 @@ export function renderPayoutEmail(p: {
   const text = `We've sent your partner payout of ${p.money} on ${p.paidOn}.${proofText}
 
 — The Mpillow team`;
-  const proofHtml = p.proofUrl
-    ? `<p><a href="${escapeHtml(p.proofUrl)}" style="color:#2563eb;">View your proof of payment</a></p>`
-    : "";
   const html = renderEmailShell({
     title: "Payout sent",
-    bodyHtml: `<p style="color:#444;">We've sent your partner payout of <strong>${escapeHtml(p.money)}</strong> on ${escapeHtml(p.paidOn)}.</p>
-    ${proofHtml}
-    <p style="color:#444;margin-top:16px;">— The Mpillow team</p>`,
+    preheader: `Your partner payout of ${p.money} is on its way.`,
+    audience: "partner",
+    bodyHtml: `${paragraph("We've sent your partner payout.")}
+${amountPanel({ label: "Payout sent", amount: p.money, caption: `Paid on ${p.paidOn}` })}
+${paragraph("— The Mpillow team", { muted: true })}`,
+    // `proofUrl` is a signed storage URL; safeUrl() inside button() validates it,
+    // and a rejected URL degrades to plain text rather than a dead button.
+    cta: p.proofUrl
+      ? { href: p.proofUrl, label: "View your proof of payment", variant: "secondary" }
+      : { href: HUB_URL(), label: "Open your Partner Hub" },
   });
   return { subject, text, html };
 }
@@ -202,8 +210,14 @@ export function renderReacceptEmail(p: { agreementVersion: string }): RenderedEm
 — The Mpillow team`;
   const html = renderEmailShell({
     title: "Agreement re-accepted",
-    bodyHtml: `<p style="color:#444;">Thanks — we've recorded your acceptance of the updated Mpillow Partner Agreement (version <strong>${escapeHtml(p.agreementVersion)}</strong>).</p>
-    <p style="color:#444;margin-top:16px;">— The Mpillow team</p>`,
+    preheader: "We've recorded your acceptance of the updated Partner Agreement.",
+    audience: "partner",
+    bodyHtml: `${paragraph(
+      "Thanks — we've recorded your acceptance of the updated Mpillow Partner Agreement.",
+    )}
+${infoList([{ label: "Agreement version", value: p.agreementVersion, strong: true }])}
+${paragraph("— The Mpillow team", { muted: true })}`,
+    cta: { href: HUB_URL(), label: "Open your Partner Hub" },
   });
   return { subject, text, html };
 }

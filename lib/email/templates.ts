@@ -1,5 +1,13 @@
-import { formatCurrency } from "@/lib/i18n/currencies";
-import { escapeHtml, renderEmailShell } from "./base";
+import { getSiteOrigin } from "@/lib/site-url";
+import { renderEmailShell } from "./base";
+import {
+  addressBlock,
+  amountPanel,
+  dataTable,
+  infoList,
+  paragraph,
+} from "./components";
+import { money } from "./format";
 import type {
   EmailTemplateName,
   OrderEmailAddress,
@@ -8,18 +16,23 @@ import type {
 } from "./types";
 
 // ============================================================
-// Template rendering
+// Order lifecycle templates
 // ============================================================
 //
 // Pure functions: (OrderEmailData) -> RenderedEmail. No I/O, no provider
 // concerns — trivially unit-testable.
+//
+// All copy is escaped by the components (see the escaping contract in
+// components.ts), so nothing here calls escapeHtml directly.
 
-export function formatMoney(amount: number, currency: string): string {
-  try {
-    return formatCurrency(amount, currency);
-  } catch {
-    return `${currency} ${amount.toFixed(2)}`;
-  }
+/**
+ * Re-exported for lib/email/partner.ts, which has imported it from here since
+ * before the formatter moved into format.ts.
+ */
+export const formatMoney = money;
+
+function orderUrl(orderNumber: string): string {
+  return `${getSiteOrigin()}/account/orders/${encodeURIComponent(orderNumber)}`;
 }
 
 function formatAddressLines(address: OrderEmailAddress): string[] {
@@ -36,7 +49,7 @@ function itemsText(data: OrderEmailData): string {
   return data.items
     .map((item) => {
       const variant = item.variantTitle ? ` (${item.variantTitle})` : "";
-      return `- ${item.title}${variant} x${item.quantity} — ${formatMoney(
+      return `- ${item.title}${variant} x${item.quantity} — ${money(
         item.totalPrice,
         data.currency
       )}`;
@@ -44,68 +57,48 @@ function itemsText(data: OrderEmailData): string {
     .join("\n");
 }
 
-function itemsHtml(data: OrderEmailData): string {
-  return data.items
-    .map((item) => {
-      const variant = item.variantTitle
-        ? `<span style="color:#666"> (${escapeHtml(item.variantTitle)})</span>`
-        : "";
-      return `<tr>
-  <td style="padding:6px 0;">${escapeHtml(item.title)}${variant} &times;${item.quantity}</td>
-  <td style="padding:6px 0;text-align:right;">${formatMoney(item.totalPrice, data.currency)}</td>
-</tr>`;
-    })
-    .join("\n");
+/** Totals rows shared by the HTML table foot and the plain-text body. */
+function totalsRows(
+  data: OrderEmailData
+): Array<{ label: string; value: string; strong?: boolean }> {
+  const rows: Array<{ label: string; value: string; strong?: boolean }> = [
+    { label: "Subtotal", value: money(data.subtotal, data.currency) },
+  ];
+  if (data.shippingAmount > 0)
+    rows.push({ label: "Shipping", value: money(data.shippingAmount, data.currency) });
+  if (data.discountAmount > 0)
+    rows.push({ label: "Discount", value: `-${money(data.discountAmount, data.currency)}` });
+  if (data.taxAmount > 0)
+    rows.push({ label: "Tax", value: money(data.taxAmount, data.currency) });
+  rows.push({ label: "Total", value: money(data.total, data.currency), strong: true });
+  return rows;
 }
 
 function totalsText(data: OrderEmailData): string {
-  const lines = [`Subtotal: ${formatMoney(data.subtotal, data.currency)}`];
-  if (data.shippingAmount > 0)
-    lines.push(`Shipping: ${formatMoney(data.shippingAmount, data.currency)}`);
-  if (data.discountAmount > 0)
-    lines.push(`Discount: -${formatMoney(data.discountAmount, data.currency)}`);
-  if (data.taxAmount > 0)
-    lines.push(`Tax: ${formatMoney(data.taxAmount, data.currency)}`);
-  lines.push(`Total: ${formatMoney(data.total, data.currency)}`);
-  return lines.join("\n");
+  return totalsRows(data)
+    .map((r) => `${r.label}: ${r.value}`)
+    .join("\n");
 }
 
-function totalsHtml(data: OrderEmailData): string {
-  const rows: string[] = [
-    row("Subtotal", formatMoney(data.subtotal, data.currency)),
-  ];
-  if (data.shippingAmount > 0)
-    rows.push(row("Shipping", formatMoney(data.shippingAmount, data.currency)));
-  if (data.discountAmount > 0)
-    rows.push(row("Discount", `-${formatMoney(data.discountAmount, data.currency)}`));
-  if (data.taxAmount > 0)
-    rows.push(row("Tax", formatMoney(data.taxAmount, data.currency)));
-  rows.push(
-    `<tr><td style="padding:8px 0;border-top:1px solid #eee;font-weight:600;">Total</td>` +
-      `<td style="padding:8px 0;border-top:1px solid #eee;text-align:right;font-weight:600;">${formatMoney(
-        data.total,
-        data.currency
-      )}</td></tr>`
-  );
-  return rows.join("\n");
-
-  function row(label: string, value: string): string {
-    return `<tr><td style="padding:2px 0;color:#666;">${label}</td><td style="padding:2px 0;text-align:right;">${value}</td></tr>`;
-  }
-}
-
-/** Order templates carry the heading as copy — delegate to the shared branded base. */
-function shell(title: string, bodyHtml: string): string {
-  return renderEmailShell({ title, bodyHtml });
+function itemsTableHtml(data: OrderEmailData): string {
+  return dataTable({
+    columns: [
+      { key: "item", label: "Item" },
+      { key: "qty", label: "Qty", align: "right", width: "48" },
+      { key: "amount", label: "Amount", align: "right", width: "110" },
+    ],
+    rows: data.items.map((item) => ({
+      item: item.variantTitle ? `${item.title} (${item.variantTitle})` : item.title,
+      qty: String(item.quantity),
+      amount: money(item.totalPrice, data.currency),
+    })),
+    footRows: totalsRows(data),
+  });
 }
 
 function addressBlockHtml(data: OrderEmailData): string {
   if (!data.shippingAddress) return "";
-  const lines = formatAddressLines(data.shippingAddress).map(escapeHtml).join("<br/>");
-  return `<div style="margin-top:16px;">
-  <p style="font-weight:600;margin:0 0 4px;">Shipping to</p>
-  <p style="margin:0;color:#444;line-height:1.5;">${lines}</p>
-</div>`;
+  return addressBlock("Shipping to", formatAddressLines(data.shippingAddress));
 }
 
 function addressBlockText(data: OrderEmailData): string {
@@ -115,6 +108,7 @@ function addressBlockText(data: OrderEmailData): string {
 
 function orderConfirmation(data: OrderEmailData): RenderedEmail {
   const subject = `Order ${data.orderNumber} confirmed`;
+  const url = orderUrl(data.orderNumber);
   const text = `Hi ${data.customerName},
 
 Thanks for your order! We've received order ${data.orderNumber} and it's now confirmed.
@@ -125,41 +119,48 @@ ${itemsText(data)}
 ${totalsText(data)}
 ${addressBlockText(data)}
 
+View your order: ${url}
+
 We'll email you again when it ships.`;
 
-  const html = shell(
-    "Thanks for your order!",
-    `<p style="color:#444;">Hi ${escapeHtml(data.customerName)}, we've received order
-      <strong>${escapeHtml(data.orderNumber)}</strong> and it's now confirmed.</p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;">${itemsHtml(data)}</table>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;">${totalsHtml(data)}</table>
-    ${addressBlockHtml(data)}
-    <p style="color:#444;margin-top:16px;">We'll email you again when it ships.</p>`
-  );
+  const html = renderEmailShell({
+    title: "Thanks for your order!",
+    preheader: `Order ${data.orderNumber} is confirmed.`,
+    bodyHtml: `${paragraph(
+      `Hi ${data.customerName}, we've received order ${data.orderNumber} and it's now confirmed.`
+    )}
+${itemsTableHtml(data)}
+${addressBlockHtml(data)}
+${paragraph("We'll email you again when it ships.", { muted: true })}`,
+    cta: { href: url, label: "View your order" },
+  });
 
   return { subject, html, text };
 }
 
 function paymentReceipt(data: OrderEmailData): RenderedEmail {
   const subject = `Receipt for order ${data.orderNumber}`;
+  const url = orderUrl(data.orderNumber);
   const text = `Hi ${data.customerName},
 
 This is your payment receipt for order ${data.orderNumber}.
 
 ${totalsText(data)}
 
-Total charged: ${formatMoney(data.total, data.currency)}`;
+Total charged: ${money(data.total, data.currency)}
 
-  const html = shell(
-    "Payment receipt",
-    `<p style="color:#444;">Hi ${escapeHtml(data.customerName)}, this is your payment receipt for order
-      <strong>${escapeHtml(data.orderNumber)}</strong>.</p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;">${totalsHtml(data)}</table>
-    <p style="color:#444;margin-top:16px;">Total charged: <strong>${formatMoney(
-      data.total,
-      data.currency
-    )}</strong></p>`
-  );
+View your order: ${url}`;
+
+  const html = renderEmailShell({
+    title: "Payment receipt",
+    preheader: `Receipt for order ${data.orderNumber}.`,
+    bodyHtml: `${paragraph(
+      `Hi ${data.customerName}, this is your payment receipt for order ${data.orderNumber}.`
+    )}
+${infoList(totalsRows(data))}
+${amountPanel({ label: "Total charged", amount: money(data.total, data.currency) })}`,
+    cta: { href: url, label: "View your order" },
+  });
 
   return { subject, html, text };
 }
@@ -171,27 +172,29 @@ function shipping(data: OrderEmailData): RenderedEmail {
         data.trackingUrl ? `\nTrack it: ${data.trackingUrl}` : ""
       }`
     : "";
+  const url = data.trackingUrl || orderUrl(data.orderNumber);
   const text = `Hi ${data.customerName},
 
-Good news — order ${data.orderNumber} is on its way!${trackingText}`;
+Good news — order ${data.orderNumber} is on its way!${trackingText}
 
-  const trackingHtml = data.trackingNumber
-    ? `<p style="margin-top:12px;">Tracking number: <strong>${escapeHtml(
-        data.trackingNumber
-      )}</strong></p>${
-        data.trackingUrl
-          ? `<p><a href="${escapeHtml(
-              data.trackingUrl
-            )}" style="color:#2563eb;">Track your package</a></p>`
-          : ""
-      }`
-    : "";
+${data.trackingUrl ? "" : `View your order: ${url}`}`.trimEnd();
 
-  const html = shell(
-    "Your order is on its way",
-    `<p style="color:#444;">Hi ${escapeHtml(data.customerName)}, good news — order
-      <strong>${escapeHtml(data.orderNumber)}</strong> has shipped!</p>${trackingHtml}`
-  );
+  const html = renderEmailShell({
+    title: "Your order is on its way",
+    preheader: `Order ${data.orderNumber} has shipped.`,
+    bodyHtml: `${paragraph(
+      `Hi ${data.customerName}, good news — order ${data.orderNumber} has shipped!`
+    )}
+${
+  data.trackingNumber
+    ? infoList([{ label: "Tracking number", value: data.trackingNumber, strong: true }])
+    : ""
+}`,
+    cta: {
+      href: url,
+      label: data.trackingUrl ? "Track your package" : "View your order",
+    },
+  });
 
   return { subject, html, text };
 }
@@ -199,19 +202,28 @@ Good news — order ${data.orderNumber} is on its way!${trackingText}`;
 function refund(data: OrderEmailData): RenderedEmail {
   const refundAmount = data.refundAmount ?? data.total;
   const subject = `Refund issued for order ${data.orderNumber}`;
+  const url = orderUrl(data.orderNumber);
   const text = `Hi ${data.customerName},
 
-We've issued a refund of ${formatMoney(refundAmount, data.currency)} for order ${
+We've issued a refund of ${money(refundAmount, data.currency)} for order ${
     data.orderNumber
-  }. It may take a few business days to appear on your statement.`;
+  }. It may take a few business days to appear on your statement.
 
-  const html = shell(
-    "Refund issued",
-    `<p style="color:#444;">Hi ${escapeHtml(data.customerName)}, we've issued a refund of
-      <strong>${formatMoney(refundAmount, data.currency)}</strong> for order
-      <strong>${escapeHtml(data.orderNumber)}</strong>.</p>
-    <p style="color:#444;">It may take a few business days to appear on your statement.</p>`
-  );
+View your order: ${url}`;
+
+  const html = renderEmailShell({
+    title: "Refund issued",
+    preheader: `A refund for order ${data.orderNumber} is on its way back to you.`,
+    bodyHtml: `${paragraph(
+      `Hi ${data.customerName}, we've issued a refund for order ${data.orderNumber}.`
+    )}
+${amountPanel({
+      label: "Refund issued",
+      amount: money(refundAmount, data.currency),
+      caption: "It may take a few business days to appear on your statement.",
+    })}`,
+    cta: { href: url, label: "View your order" },
+  });
 
   return { subject, html, text };
 }

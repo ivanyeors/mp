@@ -4,7 +4,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEmailTransport } from "@/lib/email";
-import { renderEmailShell } from "@/lib/email/base";
+import { renderRestockEmail } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { isPreOrder, type PreOrderTriggerInput } from "./pre-order-trigger";
 import { loadPreOrderTriggerAtHold } from "./pre-order-persist";
@@ -57,31 +57,17 @@ export function stockRecoveredForResult(input: PreOrderTriggerInput): boolean {
   return !isPreOrder(input).isPreOrder;
 }
 
+/**
+ * Restock notice copy. Rendering lives in lib/email/results.ts alongside the
+ * other Result lifecycle emails; this wrapper keeps the existing call sites and
+ * the pre-order-restock self-check pointed at a stable name.
+ */
 export function restockEmailCopy(opts: {
   origin: string;
   resultId: string;
   accessToken: string | null;
 }): { subject: string; text: string; html: string } {
-  const loginUrl = `${opts.origin}/account/login`;
-  const statusUrl = opts.accessToken
-    ? `${opts.origin}/results/${opts.resultId}?token=${opts.accessToken}`
-    : `${opts.origin}/results/${opts.resultId}`;
-  const subject = "Your customisation has been restocked";
-  const text = [
-    "Good news — the inventory for your customisation has been restocked.",
-    "",
-    "Sign in in a few days to track your customisation (Result) status:",
-    loginUrl,
-    "",
-    `Status page: ${statusUrl}`,
-  ].join("\n");
-  const html = renderEmailShell({
-    bodyHtml: `<p style="color:#444;">Good news — the inventory for your customisation has been <strong>restocked</strong>.</p>
-<p style="color:#444;">Sign in in a few days to track your customisation (<strong>Result</strong>) status:</p>
-<p><a href="${loginUrl}" style="color:#2563eb;">Sign in</a></p>
-<p><a href="${statusUrl}" style="color:#2563eb;">Open status page</a></p>`,
-  });
-  return { subject, text, html };
+  return renderRestockEmail(opts);
 }
 
 type PrefLine = { item_id: number };

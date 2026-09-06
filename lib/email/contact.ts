@@ -1,5 +1,6 @@
 import { getEmailTransport } from "./index";
-import { escapeHtml, renderEmailShell } from "./base";
+import { renderEmailShell } from "./base";
+import { card, infoList, preformatted } from "./components";
 import { getDefaultFromAddress } from "./transport";
 import type { RenderedEmail, SendOutcome } from "./types";
 
@@ -40,14 +41,19 @@ ${msg.subject ? `Subject: ${msg.subject}\n` : ""}
 Message:
 ${msg.message}`;
 
-  const bodyHtml = `<p style="margin:0 0 4px;color:#444;"><strong>From:</strong> ${escapeHtml(msg.name)} &lt;${escapeHtml(msg.email)}&gt;</p>
-      ${msg.subject ? `<p style="margin:0 0 12px;color:#444;"><strong>Subject:</strong> ${escapeHtml(msg.subject)}</p>` : ""}
-      <p style="white-space:pre-wrap;color:#111;line-height:1.5;margin-top:16px;">${escapeHtml(msg.message)}</p>`;
+  const bodyHtml = `${infoList([
+    { label: "From", value: msg.name },
+    { label: "Email", value: msg.email },
+    ...(msg.subject?.trim() ? [{ label: "Subject", value: msg.subject.trim() }] : []),
+  ])}
+${card({ bodyHtml: preformatted(msg.message) })}`;
 
   const html = renderEmailShell({
     title: "New support message",
+    preheader: `${msg.name} sent a message through the support form.`,
     bodyHtml,
     footer: "mpillow support",
+    audience: "staff",
   });
 
   return { subject: subjectLine, html, text };

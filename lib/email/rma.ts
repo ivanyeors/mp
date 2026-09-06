@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getSiteOrigin } from "@/lib/site-url";
 import { getEmailTransport } from ".";
-import { escapeHtml, renderEmailShell } from "./base";
+import { renderEmailShell } from "./base";
+import { bulletList, card, paragraph, statusPill } from "./components";
 import { getDefaultFromAddress } from "./transport";
 import type { RenderedEmail, SendOutcome } from "./types";
 import type { RmaResolution } from "@/lib/rma/transitions";
@@ -42,15 +44,12 @@ function itemsText(data: RmaEmailData): string {
   return data.items.map((i) => `- ${i.title} x${i.quantity}`).join("\n");
 }
 
-function itemsHtml(data: RmaEmailData): string {
-  return data.items
-    .map((i) => `<li>${escapeHtml(i.title)} &times;${i.quantity}</li>`)
-    .join("\n");
+function itemLabels(data: RmaEmailData): string[] {
+  return data.items.map((i) => `${i.title} ×${i.quantity}`);
 }
 
-/** RMA templates carry the heading as copy — delegate to the shared branded base. */
-function shell(title: string, bodyHtml: string): string {
-  return renderEmailShell({ title, bodyHtml });
+function orderUrl(orderNumber: string): string {
+  return `${getSiteOrigin()}/account/orders/${encodeURIComponent(orderNumber)}`;
 }
 
 const RESOLUTION_LABEL: Record<RmaResolution, string> = {
@@ -60,9 +59,8 @@ const RESOLUTION_LABEL: Record<RmaResolution, string> = {
 };
 
 // Each template is a pure (RmaEmailData) -> RenderedEmail. `rma_requested` is the
-// only one slice 03 actually sends; the rest are simple stubs later slices flesh
-// out. `// ponytail:` stubs share one body — split when a template needs its own
-// copy.
+// only one slice 03 actually sends; the rest share one lifecycle-update body that
+// later slices can split when a template needs its own copy.
 function requested(data: RmaEmailData): RenderedEmail {
   const subject = `We've received your return request for order ${data.orderNumber}`;
   const text = `Hi ${data.customerName},
@@ -71,36 +69,56 @@ We've received your request to return the following item(s) from order ${data.or
 
 ${itemsText(data)}
 
-We'll review it and email you the next steps shortly.`;
+We'll review it and email you the next steps shortly.
 
-  const html = shell(
-    "Return request received",
-    `<p style="color:#444;">Hi ${escapeHtml(data.customerName)}, we've received your request to return
-      the following item(s) from order <strong>${escapeHtml(data.orderNumber)}</strong> for
-      ${escapeHtml(RESOLUTION_LABEL[data.resolution])}:</p>
-    <ul style="color:#444;">${itemsHtml(data)}</ul>
-    <p style="color:#444;">We'll review it and email you the next steps shortly.</p>`,
-  );
+Track your return: ${orderUrl(data.orderNumber)}`;
+
+  const html = renderEmailShell({
+    title: "Return request received",
+    preheader: `Your return request for order ${data.orderNumber} is with us.`,
+    bodyHtml: `${paragraph(
+      `Hi ${data.customerName}, we've received your request to return the following item(s) from order ${data.orderNumber} for ${RESOLUTION_LABEL[data.resolution]}:`,
+    )}
+${bulletList(itemLabels(data))}
+${paragraph("We'll review it and email you the next steps shortly.", { muted: true })}`,
+    cta: { href: orderUrl(data.orderNumber), label: "Track your return" },
+  });
 
   return { subject, html, text };
 }
 
-/** Generic lifecycle-update stub reused by the not-yet-specialised templates. */
-function statusUpdate(title: string) {
+/**
+ * Lifecycle-update body shared by the not-yet-specialised templates.
+ *
+ * `status` is the short badge word and `title` the sentence — passing the same
+ * string to both would print a 33-character sentence inside a pill, which in
+ * Outlook (no border-radius) renders as a highlighted strip rather than a badge.
+ */
+function statusUpdate(
+  title: string,
+  status: string,
+  tone: "neutral" | "success" | "danger" = "neutral",
+) {
   return (data: RmaEmailData): RenderedEmail => {
     const subject = `Update on your return for order ${data.orderNumber}`;
     const detail = data.message ? `\n\n${data.message}` : "";
     const text = `Hi ${data.customerName},
 
-${title} for your return on order ${data.orderNumber}.${detail}`;
-    const html = shell(
+${title} for your return on order ${data.orderNumber}.${detail}
+
+Track your return: ${orderUrl(data.orderNumber)}`;
+
+    const html = renderEmailShell({
       title,
-      `<p style="color:#444;">Hi ${escapeHtml(data.customerName)}, ${escapeHtml(
-        title.toLowerCase(),
-      )} for your return on order <strong>${escapeHtml(data.orderNumber)}</strong>.</p>${
-        data.message ? `<p style="color:#444;">${escapeHtml(data.message)}</p>` : ""
-      }`,
-    );
+      preheader: `${title} for order ${data.orderNumber}.`,
+      bodyHtml: `${statusPill(status, tone)}
+${paragraph(
+        `Hi ${data.customerName}, ${title.toLowerCase()} for your return on order ${data.orderNumber}.`,
+        { top: 16 },
+      )}
+${data.message ? card({ bodyHtml: paragraph(data.message, { bottom: 0 }) }) : ""}`,
+      cta: { href: orderUrl(data.orderNumber), label: "Track your return" },
+    });
     return { subject, html, text };
   };
 }
@@ -110,11 +128,11 @@ export const RMA_EMAIL_TEMPLATES: Record<
   (data: RmaEmailData) => RenderedEmail
 > = {
   rma_requested: requested,
-  rma_approved: statusUpdate("Your return was approved"),
-  rma_rejected: statusUpdate("Your return could not be approved"),
-  rma_instructions: statusUpdate("Return instructions"),
-  rma_completed: statusUpdate("Your return is complete"),
-  rma_refunded: statusUpdate("Your refund has been issued"),
+  rma_approved: statusUpdate("Your return was approved", "Approved", "success"),
+  rma_rejected: statusUpdate("Your return could not be approved", "Rejected", "danger"),
+  rma_instructions: statusUpdate("Return instructions", "Next steps"),
+  rma_completed: statusUpdate("Your return is complete", "Complete", "success"),
+  rma_refunded: statusUpdate("Your refund has been issued", "Refunded", "success"),
 };
 
 export function renderRmaEmail(

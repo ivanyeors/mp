@@ -4,6 +4,8 @@ import { transitionResult } from "@/lib/result-lifecycle";
 import { releaseHold } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
+import { renderHeldResultReminderEmail } from "@/lib/email/ops";
+import { renderHoldExpiredEmail } from "@/lib/email/results";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   SLA_SETTING_KEYS,
@@ -45,6 +47,7 @@ async function sendTelegram(text: string): Promise<"sent" | "skipped" | "failed"
   }
 }
 
+/** Best-effort ops reminder. Rendering lives in lib/email/ops.ts. */
 async function sendOpsReminderEmail(opts: {
   to: string;
   resultId: string;
@@ -52,29 +55,14 @@ async function sendOpsReminderEmail(opts: {
   customerEmail: string | null;
   heldAt: string;
 }) {
-  const text = [
-    "Reminder: a held Result is still waiting for operator review.",
-    "",
-    `Result: ${opts.resultId}`,
-    `Customer: ${opts.customerEmail ?? "—"}`,
-    `Held since: ${opts.heldAt}`,
-    "",
-    `Platform: ${opts.platformUrl}`,
-  ].join("\n");
-
   await getEmailTransport().send({
     to: opts.to,
     from: getDefaultFromAddress(),
-    subject: "Held Result still needs review",
-    text,
-    html: `<p>A held Result is still waiting for operator review.</p>
-<p>Result: <code>${opts.resultId}</code><br/>
-Customer: ${opts.customerEmail ?? "—"}<br/>
-Held since: ${opts.heldAt}</p>
-<p><a href="${opts.platformUrl}">Open on platform</a></p>`,
+    ...renderHeldResultReminderEmail(opts),
   });
 }
 
+/** Best-effort customer notice that the authorization hold was released. */
 async function sendCustomerExpiredEmail(opts: {
   to: string;
   resultId: string;
@@ -82,29 +70,10 @@ async function sendCustomerExpiredEmail(opts: {
   origin: string;
   productType: string | null;
 }) {
-  const restartPath =
-    opts.productType === "bolster" ? "/mbolster-config" : "/mp-config";
-  const restartUrl = `${opts.origin}${restartPath}`;
-  const statusUrl = opts.accessToken
-    ? `${opts.origin}/results/${opts.resultId}?token=${opts.accessToken}`
-    : restartUrl;
-
-  const text = [
-    "Your customisation review window has expired and your card authorization hold has been released.",
-    "",
-    "To continue, start customisation again:",
-    restartUrl,
-    "",
-    `Status page: ${statusUrl}`,
-  ].join("\n");
-
   await getEmailTransport().send({
     to: opts.to,
     from: getDefaultFromAddress(),
-    subject: "Your customisation hold has expired",
-    text,
-    html: `<p>Your customisation review window has expired and your card authorization hold has been released.</p>
-<p><a href="${restartUrl}">Start customisation again</a></p>`,
+    ...renderHoldExpiredEmail(opts),
   });
 }
 

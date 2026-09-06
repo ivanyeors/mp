@@ -47,11 +47,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(dest, 301);
   }
 
-  // Skip Next internals, API, auth callback, and direct file requests.
+  // Skip Next internals, API, auth callback, dev tooling, and direct file requests.
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/auth") ||
+    // Exact segment, not a prefix — a future /developers page must still get
+    // normal locale handling.
+    pathname === "/dev" ||
+    pathname.startsWith("/dev/") ||
     pathname === "/favicon.ico" ||
     pathname === "/manifest.webmanifest" ||
     pathname.includes(".")
@@ -121,6 +125,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next|auth|favicon.ico|manifest.webmanifest|stripe-test).*)"],
+  matcher: [
+    "/((?!api|_next|auth|dev/|favicon.ico|manifest.webmanifest|stripe-test).*)",
+  ],
 };
 

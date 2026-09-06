@@ -1,5 +1,11 @@
 # OTP + magic-link auth email (HITL dashboard step)
 
+> **Superseded by [`supabase/templates/`](../../supabase/templates/README.md).**
+> The branded HTML for every auth template is now generated into that directory
+> by `npx tsx scripts/build-auth-email-templates.ts`. Paste those files rather
+> than the minimal snippet below. The rest of this page still explains *why*
+> every template (not just Magic Link) needs the code.
+
 The shared Sign in (`components/auth/login-form.tsx`) now supports entering a
 6-digit code as an alternative to clicking the magic link. `verifyOtp` works
 today because Supabase always generates the token — **but the code is only

@@ -6,12 +6,11 @@ import { invalidateTag } from "@/lib/cache/invalidate";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { renderEmailShell } from "@/lib/email/base";
+import { renderApplicationOutcomeEmail } from "@/lib/email/application";
 import { dispatchPartnerEmail } from "@/lib/email/partner";
 import { getSiteOrigin } from "@/lib/site-url";
 import {
   canTransitionApplication,
-  renderApplicationOutcomeEmail,
   type ApplicationFields,
   type ApplicationOutcome,
   type ApplicationStatus,
@@ -25,11 +24,11 @@ const QUEUE_PATH = "/settings/partner-applications";
 const SUPPORT_EMAIL = "sg@mpillow.com";
 
 /**
- * Send the outcome email through the idempotent partner ledger, wrapped in the
- * branded base (copy unchanged). Best-effort — a failed send must not abort the DB
- * transition. entity_id = the partner_users id. A rejected application has no
- * partner row, so partnerId is null there (idempotency rests on the guarded
- * reject action, which fires once).
+ * Send the outcome email through the idempotent partner ledger. The renderer
+ * returns a fully shelled email, so nothing is wrapped here. Best-effort — a
+ * failed send must not abort the DB transition. entity_id = the partner_users id.
+ * A rejected application has no partner row, so partnerId is null there
+ * (idempotency rests on the guarded reject action, which fires once).
  */
 async function sendOutcomeEmail(params: {
   admin: SupabaseClient;
@@ -50,7 +49,7 @@ async function sendOutcomeEmail(params: {
       to: params.to,
       subject: rendered.subject,
       text: rendered.text,
-      html: renderEmailShell({ bodyHtml: rendered.html }),
+      html: rendered.html,
     });
   } catch (err) {
     console.error(

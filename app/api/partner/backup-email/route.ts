@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getEmailTransport } from "@/lib/email";
+import { renderBackupEmailOtpEmail } from "@/lib/email/auth";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import { generateOtpCode, hashOtp, otpExpiry } from "@/lib/partner-backup-email";
@@ -61,14 +62,12 @@ export async function POST(req: Request) {
     .eq("auth_user_id", ctx.userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const text = `Your Mpillow Partner backup-email verification code is ${code}. It expires in 10 minutes.`;
-  const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111;">
-    <p>Your Mpillow Partner backup-email verification code is:</p>
-    <p style="font-size:28px;font-weight:700;letter-spacing:4px;">${code}</p>
-    <p style="color:#666;font-size:13px;">It expires in 10 minutes. If you didn't request this, ignore this email.</p>
-  </body></html>`;
   try {
-    await getEmailTransport().send({ to: email, from: getDefaultFromAddress(), subject: "Verify your backup email", text, html });
+    await getEmailTransport().send({
+      to: email,
+      from: getDefaultFromAddress(),
+      ...renderBackupEmailOtpEmail({ code }),
+    });
   } catch (e) {
     return NextResponse.json({ error: `Could not send code: ${(e as Error).message}` }, { status: 502 });
   }
