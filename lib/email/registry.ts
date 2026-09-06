@@ -25,6 +25,7 @@ import {
   renderResultAssignedEmail,
   renderResultHeldEmail,
 } from "./results";
+import { money } from "./format";
 import { RMA_EMAIL_TEMPLATES } from "./rma";
 import { ORDER_EMAIL_TEMPLATES } from "./templates";
 import {
@@ -144,7 +145,7 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     audience: "partner",
     render: (f) =>
       renderReferralEarnedEmail({
-        money: f === "hostile" ? HOSTILE : "S$48.00",
+        money: f === "hostile" ? HOSTILE : money(48, "SGD"),
         releaseAtIso: "2026-09-04T02:00:00.000Z",
       }),
   },
@@ -156,7 +157,7 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) =>
       renderMilestoneEmail({
         tier: 2,
-        bonus: "S$75.00",
+        bonus: money(75, "SGD"),
         perk: f === "hostile" ? `<img src=x onerror=alert(1)>` : "Priority support",
       }),
   },
@@ -167,7 +168,7 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     audience: "partner",
     render: (f) =>
       renderPayoutEmail({
-        money: f === "hostile" ? HOSTILE : "S$240.00",
+        money: f === "hostile" ? HOSTILE : money(240, "SGD"),
         paidOn: f === "hostile" ? HOSTILE : "1 August 2026",
         // Externally-sourced signed URL landing in an href.
         proofUrl:

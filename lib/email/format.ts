@@ -10,31 +10,23 @@ const MONTHS = [
 ];
 
 /**
- * Localised money, e.g. `$389.00`. What the order/RMA templates have always
- * used (via `formatCurrency`), so their copy is unchanged.
+ * Money for every outbound email, e.g. `SGD 1,234.50`.
+ *
+ * ONE formatter for all templates. Emails quote amounts that are read out of
+ * context — an authorization hold days before it is captured, a receipt filed
+ * and reopened later — and the shop sells in SGD/MYR/USD/CNY. Intl renders SGD
+ * in en-SG as a bare `$`, indistinguishable from USD, so email always carries
+ * the explicit ISO code. On-site surfaces keep the symbol.
+ *
+ * The catch is for a malformed currency code out of the DB, which is the only
+ * input that makes Intl throw.
  */
 export function money(amount: number, currency: string): string {
   try {
-    return formatCurrency(amount, currency);
+    return formatCurrency(amount, currency, { display: "code" });
   } catch {
     return `${currency} ${amount.toFixed(2)}`;
   }
-}
-
-/**
- * Money with an explicit currency code, e.g. `SGD 389.00`.
- *
- * The configurator emails quote an amount we are about to place a card
- * authorization for, and the shop sells in SGD/MYR/USD/CNY. `Intl` renders SGD
- * in en-SG as a bare `$`, which a reader cannot tell from USD — so these
- * templates keep the code, exactly as the route handlers emitted it before the
- * rendering moved into lib/email.
- *
- * (The order templates arguably want this too, but changing them would rewrite
- * customer-facing copy, which is out of scope for a design pass.)
- */
-export function moneyWithCode(amount: number, currency: string): string {
-  return `${currency} ${amount.toFixed(2)}`;
 }
 
 /** Human date in Singapore time (the business is SG), from a timestamptz ISO string. */

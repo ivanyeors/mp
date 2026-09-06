@@ -21,7 +21,7 @@ import {
   paragraphHtml,
   statusPill,
 } from "./components";
-import { moneyWithCode } from "./format";
+import { money } from "./format";
 import type { RenderedEmail } from "./types";
 
 /** Human product name from the stored product type. */
@@ -49,7 +49,7 @@ export function renderResultHeldEmail(p: {
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
-  const amount = moneyWithCode(p.amount, p.currency);
+  const amount = money(p.amount, p.currency);
   const subject = `Your ${name} is under review`;
 
   const text = [
@@ -120,12 +120,12 @@ export function renderResultAssignedEmail(p: {
 
   const priceLines = p.pricing
     ? [
-        `Subtotal: ${moneyWithCode(p.pricing.subtotal, p.pricing.currency)}`,
-        `Shipping: ${moneyWithCode(p.pricing.shipping, p.pricing.currency)}`,
-        `Tax: ${moneyWithCode(p.pricing.tax, p.pricing.currency)}`,
-        `Total: ${moneyWithCode(p.pricing.total, p.pricing.currency)}`,
+        `Subtotal: ${money(p.pricing.subtotal, p.pricing.currency)}`,
+        `Shipping: ${money(p.pricing.shipping, p.pricing.currency)}`,
+        `Tax: ${money(p.pricing.tax, p.pricing.currency)}`,
+        `Total: ${money(p.pricing.total, p.pricing.currency)}`,
         p.pricing.authorized != null
-          ? `Authorized hold: ${moneyWithCode(p.pricing.authorized, p.pricing.currency)}`
+          ? `Authorized hold: ${money(p.pricing.authorized, p.pricing.currency)}`
           : null,
       ].filter((line): line is string => Boolean(line))
     : [];
@@ -157,15 +157,15 @@ export function renderResultAssignedEmail(p: {
 
   const pricingRows = p.pricing
     ? [
-        { label: "Subtotal", value: moneyWithCode(p.pricing.subtotal, p.pricing.currency) },
-        { label: "Shipping", value: moneyWithCode(p.pricing.shipping, p.pricing.currency) },
-        { label: "Tax", value: moneyWithCode(p.pricing.tax, p.pricing.currency) },
-        { label: "Total", value: moneyWithCode(p.pricing.total, p.pricing.currency), strong: true },
+        { label: "Subtotal", value: money(p.pricing.subtotal, p.pricing.currency) },
+        { label: "Shipping", value: money(p.pricing.shipping, p.pricing.currency) },
+        { label: "Tax", value: money(p.pricing.tax, p.pricing.currency) },
+        { label: "Total", value: money(p.pricing.total, p.pricing.currency), strong: true },
         ...(p.pricing.authorized != null
           ? [
               {
                 label: "Authorized hold",
-                value: moneyWithCode(p.pricing.authorized, p.pricing.currency),
+                value: money(p.pricing.authorized, p.pricing.currency),
               },
             ]
           : []),

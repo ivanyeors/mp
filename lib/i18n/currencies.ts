@@ -22,15 +22,23 @@ export function isSupportedCurrency(code: string): code is SupportedCurrency {
  * Single money-formatting interface for the whole app. Defaults to the base
  * currency (SGD) so callers can omit the code for the common case. Unknown
  * codes still format via Intl, falling back to en-SG / 2 decimals.
+ *
+ * `display` picks between the localised symbol (`$1,234.50`) and the explicit
+ * ISO code (`SGD 1,234.50`). Symbol is the default and is what every on-site
+ * surface uses. Transactional email opts into `"code"`: an email is read out of
+ * context, often days later, and Intl renders SGD in en-SG as a bare `$` that a
+ * reader cannot tell from USD.
  */
 export function formatCurrency(
   amount: number,
-  currency: SupportedCurrency | string = BASE_CURRENCY
+  currency: SupportedCurrency | string = BASE_CURRENCY,
+  opts?: { display?: "symbol" | "code" }
 ): string {
   const config = CURRENCY_CONFIG[currency as SupportedCurrency];
   return new Intl.NumberFormat(config?.locale ?? "en-SG", {
     style: "currency",
     currency,
+    currencyDisplay: opts?.display ?? "symbol",
     minimumFractionDigits: config?.decimals ?? 2,
     maximumFractionDigits: config?.decimals ?? 2,
   }).format(amount);
