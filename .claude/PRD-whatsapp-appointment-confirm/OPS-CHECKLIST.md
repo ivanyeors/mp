@@ -39,13 +39,30 @@ Body parameter order must match `lib/appointments/whatsapp.ts` (positional).
 5. `GOOGLE_CALENDAR_ID=primary`.
 6. Confirm the Business phone syncs Google Contacts for that account (names in WhatsApp).
 
-### One-time refresh token (example)
+### Issue / re-issue the admin@ refresh token (calendar + contacts)
 
-```bash
-# After OAuth consent, exchange code for refresh_token and paste into Vercel env.
-```
+1. Google Cloud → APIs & Services → enable **Calendar API** and **People API** on the
+   project that owns `GOOGLE_OAUTH_CLIENT_ID`.
+2. Open https://developers.google.com/oauthplayground → gear → **Use your own OAuth
+   credentials** → paste `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET`.
+   (The client must list `https://developers.google.com/oauthplayground` as an
+   authorised redirect URI.)
+3. Select **both** scopes, nothing else:
+   - `https://www.googleapis.com/auth/calendar`
+   - `https://www.googleapis.com/auth/contacts`
+4. **Authorize APIs** → sign in as **`admin@mpillow.com`** → Accept every checkbox.
+5. **Exchange authorization code for tokens** → copy `refresh_token`.
+   No `refresh_token` in the response? https://myaccount.google.com/permissions →
+   remove the app for `admin@` → repeat from step 4.
+6. Vercel → Project → Settings → Environment Variables → `GOOGLE_OAUTH_REFRESH_TOKEN`
+   (Production) → replace → **Redeploy** the latest production deployment (env changes
+   only apply to new deployments). Update `.env.local` too.
+7. Keep the OAuth app **Published** — Testing-mode refresh tokens expire after ~7 days.
 
-Smoke: `events.list` on primary for tomorrow; People `searchContacts` by a test phone.
+Smoke: signed in as staff, open `/api/settings/appointments/google-status`. It reports
+the token's scopes, the account, and live Calendar + People probes; `ok: true` means
+the grant is complete, otherwise `nextStep` names the fix. Then book a test
+appointment and check `contact` in the response.
 
 ### Google Contacts sync (admin@mpillow.com)
 
