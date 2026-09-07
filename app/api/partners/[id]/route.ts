@@ -19,6 +19,7 @@ const UpdateSchema = z.object({
   type: z.enum(["own", "partner"]).optional(),
   address: z.string().nullable().optional(),
   postal_code: z.string().nullable().optional(),
+  bookable: z.boolean().optional(),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };

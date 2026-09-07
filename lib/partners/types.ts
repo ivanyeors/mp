@@ -40,6 +40,8 @@ export type PartnerRow = {
   type: "own" | "partner";
   address: string | null;
   postal_code: string | null;
+  /** Takes appointment bookings. Independent of `visible` (/our-partners only). */
+  bookable: boolean;
   created_at: string;
   updated_at: string;
 };

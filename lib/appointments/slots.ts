@@ -1,4 +1,4 @@
-import type { AppointmentSettings } from "./settings";
+import { minutesOf, type AppointmentSettings } from "./settings";
 
 /** Busy interval in UTC ms. */
 export type BusyInterval = { startMs: number; endMs: number };
@@ -83,8 +83,10 @@ export function blockedRangesToBusy(
 export type SgtDay = { y: number; m: number; d: number };
 
 /**
- * All free start times for ONE SGT day, respecting open/close hours, duration,
- * bookable weekdays, blocked ranges, and excluding past + busy-overlapping slots.
+ * All free start times for ONE SGT day. Slots are carved inside each of that
+ * weekday's availability windows, stepping by the appointment duration from
+ * the window start (a slot must end within its window — Google's schedule
+ * rule), then filtered against busy intervals, admin blocks and the past.
  * Pure: pass `now` for the past-slot cutoff (defaults to real clock).
  */
 export function listDaySlots(
@@ -94,32 +96,39 @@ export function listDaySlots(
   now: Date = new Date(),
 ): SlotOffer[] {
   const dow = new Date(Date.UTC(day.y, day.m - 1, day.d)).getUTCDay();
-  if (!settings.bookableDays.includes(dow)) return [];
+  const windows = settings.availability[dow] ?? [];
+  if (!windows.length) return [];
 
-  const durationMs = settings.durationMinutes * 60 * 1000;
+  const duration = Math.max(1, settings.durationMinutes);
+  const durationMs = duration * 60 * 1000;
   const nowMs = now.getTime();
   const allBusy = [...busy, ...blockedRangesToBusy(settings.blockedRanges)];
   const out: SlotOffer[] = [];
 
-  for (let hour = settings.openHour; hour <= settings.closeHour; hour++) {
-    const startMs = sgtLocalToUtcMs(day.y, day.m, day.d, hour, 0);
-    const endMs = startMs + durationMs;
-    if (startMs <= nowMs) continue;
-    if (overlaps(startMs, endMs, allBusy)) continue;
+  for (const w of windows) {
+    const from = minutesOf(w.start);
+    const to = minutesOf(w.end);
+    if (from == null || to == null) continue;
+    for (let t = from; t + duration <= to; t += duration) {
+      const startMs = sgtLocalToUtcMs(day.y, day.m, day.d, Math.floor(t / 60), t % 60);
+      const endMs = startMs + durationMs;
+      if (startMs <= nowMs) continue;
+      if (overlaps(startMs, endMs, allBusy)) continue;
 
-    const startIso = new Date(startMs).toISOString();
-    out.push({
-      startIso,
-      endIso: new Date(endMs).toISOString(),
-      id: `slot_${startIso}`,
-    });
+      const startIso = new Date(startMs).toISOString();
+      out.push({
+        startIso,
+        endIso: new Date(endMs).toISOString(),
+        id: `slot_${startIso}`,
+      });
+    }
   }
   return out;
 }
 
 /**
  * Carve up to `settings.slotOfferCount` free starts from freeBusy busy intervals.
- * Rules: bookable days, openHour–closeHour last start, durationMinutes, lookahead.
+ * Rules: per-weekday availability windows, durationMinutes, lookahead.
  * Walks SGT days from today and stops once enough slots are collected.
  */
 export function offerSlots(
@@ -148,10 +157,16 @@ export type EventGuest = {
   summary: string;
   /** Picked location's street address; stamped into the GCal `location` field. */
   locationAddress: string;
+  /** Picked Location row id; stamped into private extended properties so the
+   * admin calendar can resolve the Location without matching address text. */
+  locationId?: string;
   guestName: string;
   phone: string;
   email?: string;
 };
+
+/** Key under `extendedProperties.private` carrying the Location row id. */
+export const LOCATION_ID_PROP = "mpLocationId";
 
 export type EventInsertBody = {
   summary: string;
@@ -160,6 +175,7 @@ export type EventInsertBody = {
   start: { dateTime: string; timeZone: "Asia/Singapore" };
   end: { dateTime: string; timeZone: "Asia/Singapore" };
   attendees?: Array<{ email: string; displayName?: string }>;
+  extendedProperties?: { private: Record<string, string> };
 };
 
 /**
@@ -179,6 +195,9 @@ export function buildEventInsertBody(guest: EventGuest): EventInsertBody {
   };
   if (guest.email) {
     body.attendees = [{ email: guest.email, displayName: guest.guestName }];
+  }
+  if (guest.locationId) {
+    body.extendedProperties = { private: { [LOCATION_ID_PROP]: guest.locationId } };
   }
   return body;
 }

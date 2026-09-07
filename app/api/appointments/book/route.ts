@@ -49,6 +49,13 @@ export async function POST(req: Request) {
   if (!location.address) {
     return NextResponse.json({ error: "Location has no address" }, { status: 400 });
   }
+  // A stale deep link / open tab can still submit a location staff switched off.
+  if (!location.bookable) {
+    return NextResponse.json(
+      { error: "This location is not taking bookings right now" },
+      { status: 409 },
+    );
+  }
 
   const admin = supabaseAdmin();
   const { data, error } = await admin
@@ -81,6 +88,7 @@ export async function POST(req: Request) {
       endIso: parsed.end_iso,
       summary,
       locationAddress: location.address,
+      locationId: location.id,
       guestName: parsed.guest_name,
       phone,
       email: parsed.email,
