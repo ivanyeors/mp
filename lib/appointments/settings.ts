@@ -4,19 +4,32 @@ export type AppointmentType = "customisation" | "readjustment";
 
 export type BlockedRange = { start: string; end: string };
 
+/** One open window in Asia/Singapore wall clock, `HH:MM`, end exclusive (`24:00` allowed). */
+export type AvailabilityWindow = { start: string; end: string };
+/** Index = JS getDay() (0=Sun … 6=Sat). An empty list means the day is closed. */
+export type WeeklyAvailability = AvailabilityWindow[][];
+
+export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
 export type AppointmentSettings = {
   /** Default venue when calendar event has no location. */
   venue: string;
   /** Appointment length in minutes. */
   durationMinutes: number;
-  /** First bookable start hour in Asia/Singapore (0–23). */
-  openHour: number;
-  /** Last bookable start hour in Asia/Singapore (0–23), inclusive. */
-  closeHour: number;
   /**
-   * Bookable weekdays as JS getDay() values (0=Sun … 6=Sat).
-   * Default Tue–Sun: [0, 2, 3, 4, 5, 6].
+   * Per-weekday open windows (the source of truth for slots, the calendar's
+   * business-hours bands and the Open/Closed headers) — Google Calendar's
+   * appointment-schedule availability, one shared schedule for every Location.
    */
+  availability: WeeklyAvailability;
+  /**
+   * Derived from `availability` (earliest window start, in hours). Kept so
+   * coarse readers and the legacy store keep working; never edit directly.
+   */
+  openHour: number;
+  /** Derived: last bookable start hour (latest window end − duration), inclusive. */
+  closeHour: number;
+  /** Derived: weekdays with at least one window, as JS getDay() values. */
   bookableDays: number[];
   customisationBookingUrl: string;
   readjustmentBookingUrl: string;
@@ -36,9 +49,21 @@ export type AppointmentSettings = {
   showCancelled: boolean;
 };
 
+/** The window a day gets when reopened with nothing to copy from. */
+export const DEFAULT_AVAILABILITY_WINDOW: AvailabilityWindow = { start: "10:00", end: "19:00" };
+const DEFAULT_WINDOW = DEFAULT_AVAILABILITY_WINDOW;
+
 export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
   venue: "512 Chai Chee Lane Singapore 469028 #02-10",
   durationMinutes: 60,
+  // Sun, Tue–Sat 10:00–19:00 (last 60-min start 18:00); Monday closed.
+  availability: [0, 2, 3, 4, 5, 6].reduce<WeeklyAvailability>(
+    (av, dow) => {
+      av[dow] = [{ ...DEFAULT_WINDOW }];
+      return av;
+    },
+    Array.from({ length: 7 }, () => []),
+  ),
   openHour: 10,
   closeHour: 18,
   bookableDays: [0, 2, 3, 4, 5, 6], // Sun, Tue–Sat
@@ -66,7 +91,120 @@ export const APPOINTMENT_SETTING_KEYS = [
   "appointments_slot_offer_count",
   "appointments_blocked_ranges",
   "appointments_show_cancelled",
+  "appointments_availability",
 ] as const;
+
+/* ---------- availability helpers (pure) ---------- */
+
+/** `"HH:MM"` → minutes since midnight; `24:00` = 1440. null when malformed. */
+export function minutesOf(hhmm: string): number | null {
+  const m = /^(\d{2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h > 24 || min > 59 || (h === 24 && min !== 0)) return null;
+  return h * 60 + min;
+}
+
+/** Minutes since midnight → `"HH:MM"` (1440 → `24:00`). */
+export function hhmm(minutes: number): string {
+  const clamped = Math.max(0, Math.min(1440, Math.round(minutes)));
+  return `${String(Math.floor(clamped / 60)).padStart(2, "0")}:${String(clamped % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Why a week is invalid, or null when it is fine. Rules: seven days, each a
+ * list of `HH:MM` windows with start < end, no overlaps within a day, and at
+ * least one window somewhere (an all-closed week would offer no slots at all).
+ */
+export function validateAvailability(av: unknown): string | null {
+  if (!Array.isArray(av) || av.length !== 7) return "availability must list seven days";
+  let any = false;
+  for (let dow = 0; dow < 7; dow++) {
+    const day = av[dow];
+    if (!Array.isArray(day)) return `${WEEKDAY_LABELS[dow]}: windows must be a list`;
+    const spans: [number, number][] = [];
+    for (const w of day as unknown[]) {
+      if (!w || typeof w !== "object") return `${WEEKDAY_LABELS[dow]}: bad window`;
+      const { start, end } = w as Partial<AvailabilityWindow>;
+      const a = typeof start === "string" ? minutesOf(start) : null;
+      const b = typeof end === "string" ? minutesOf(end) : null;
+      if (a == null || b == null) return `${WEEKDAY_LABELS[dow]}: times must be HH:MM`;
+      if (a >= b) return `${WEEKDAY_LABELS[dow]}: a window must end after it starts`;
+      spans.push([a, b]);
+    }
+    spans.sort((x, y) => x[0] - y[0]);
+    for (let i = 1; i < spans.length; i++) {
+      if (spans[i]![0] < spans[i - 1]![1]) return `${WEEKDAY_LABELS[dow]}: windows overlap`;
+    }
+    if (spans.length) any = true;
+  }
+  return any ? null : "At least one open window is required";
+}
+
+/** Validated copy with each day's windows sorted by start. */
+export function normalizeAvailability(av: WeeklyAvailability): WeeklyAvailability {
+  return av.map((day) =>
+    [...day]
+      .map((w) => ({ start: w.start.trim(), end: w.end.trim() }))
+      .sort((x, y) => (minutesOf(x.start) ?? 0) - (minutesOf(y.start) ?? 0)),
+  );
+}
+
+/** The pre-window model (one range on every bookable day) as windows. */
+export function availabilityFromLegacy(legacy: {
+  openHour: number;
+  closeHour: number;
+  bookableDays: number[];
+  durationMinutes: number;
+}): WeeklyAvailability {
+  const start = hhmm(legacy.openHour * 60);
+  const end = hhmm(Math.min(1440, legacy.closeHour * 60 + legacy.durationMinutes));
+  return Array.from({ length: 7 }, (_, dow) =>
+    legacy.bookableDays.includes(dow) ? [{ start, end }] : [],
+  );
+}
+
+/** Coarse range readers still want: earliest start, last start, open days. */
+export function legacyFromAvailability(
+  av: WeeklyAvailability,
+  durationMinutes: number,
+): { openHour: number; closeHour: number; bookableDays: number[] } {
+  let earliest = Infinity;
+  let latestEnd = -Infinity;
+  const bookableDays: number[] = [];
+  av.forEach((day, dow) => {
+    if (!day.length) return;
+    bookableDays.push(dow);
+    for (const w of day) {
+      earliest = Math.min(earliest, minutesOf(w.start) ?? earliest);
+      latestEnd = Math.max(latestEnd, minutesOf(w.end) ?? latestEnd);
+    }
+  });
+  if (!bookableDays.length) {
+    const d = DEFAULT_APPOINTMENT_SETTINGS;
+    return { openHour: d.openHour, closeHour: d.closeHour, bookableDays: [] };
+  }
+  const openHour = Math.floor(earliest / 60);
+  const closeHour = Math.max(openHour, Math.floor((latestEnd - durationMinutes) / 60));
+  return { openHour, closeHour: Math.min(23, closeHour), bookableDays };
+}
+
+/** Same settings with the derived hour fields recomputed from `availability`. */
+export function withDerivedHours(s: AppointmentSettings): AppointmentSettings {
+  return { ...s, ...legacyFromAvailability(s.availability, s.durationMinutes) };
+}
+
+function parseAvailability(v: string | undefined): WeeklyAvailability | null {
+  if (v == null || v.trim() === "") return null;
+  try {
+    const raw = JSON.parse(v) as unknown;
+    if (validateAvailability(raw)) return null;
+    return normalizeAvailability(raw as WeeklyAvailability);
+  } catch {
+    return null;
+  }
+}
 
 function parsePositiveInt(v: string | undefined, fallback: number): number {
   if (v == null || v === "") return fallback;
@@ -127,18 +265,26 @@ export function parseAppointmentSettings(
   stored: Record<string, string>,
 ): AppointmentSettings {
   const d = DEFAULT_APPOINTMENT_SETTINGS;
-  return {
-    venue: stored.appointments_venue?.trim() || d.venue,
-    durationMinutes: parsePositiveInt(
-      stored.appointments_duration_minutes,
-      d.durationMinutes,
-    ),
+  const durationMinutes = parsePositiveInt(
+    stored.appointments_duration_minutes,
+    d.durationMinutes,
+  );
+  // Windows win. A store from before windows existed (or an unparsable one)
+  // is rebuilt from the old open/close/days trio so nothing changes for it.
+  const legacy = {
     openHour: parseHour(stored.appointments_open_hour, d.openHour),
     closeHour: parseHour(stored.appointments_close_hour, d.closeHour),
-    bookableDays: parseBookableDays(
-      stored.appointments_bookable_days,
-      d.bookableDays,
-    ),
+    bookableDays: parseBookableDays(stored.appointments_bookable_days, d.bookableDays),
+    durationMinutes,
+  };
+  const availability =
+    parseAvailability(stored.appointments_availability) ?? availabilityFromLegacy(legacy);
+  const derived = legacyFromAvailability(availability, durationMinutes);
+  return {
+    venue: stored.appointments_venue?.trim() || d.venue,
+    durationMinutes,
+    availability,
+    ...derived,
     customisationBookingUrl:
       stored.appointments_customisation_booking_url?.trim() ||
       d.customisationBookingUrl,
@@ -184,5 +330,6 @@ export function appointmentSettingsToStored(
     appointments_slot_offer_count: String(s.slotOfferCount),
     appointments_blocked_ranges: JSON.stringify(s.blockedRanges),
     appointments_show_cancelled: String(s.showCancelled),
+    appointments_availability: JSON.stringify(s.availability),
   };
 }

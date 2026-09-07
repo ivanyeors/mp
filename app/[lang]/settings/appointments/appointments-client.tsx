@@ -8,6 +8,7 @@ import { AppointmentsSettingsSheet } from "@/components/settings/appointments-se
 import { Button } from "@/components/ui/button";
 import {
   DEFAULT_APPOINTMENT_SETTINGS,
+  withDerivedHours,
   type AppointmentSettings,
 } from "@/lib/appointments/settings";
 import type { ResolvedLocation } from "@/lib/locations";
@@ -104,7 +105,8 @@ export default function AppointmentSettingsPage({
   const saveAvailability = useCallback((patch: Partial<AppointmentSettings>) => {
     const run = async () => {
       const previous = settingsRef.current;
-      const optimistic = { ...previous, ...patch };
+      // Hour fields are derived from the windows; keep them in step optimistically too.
+      const optimistic = withDerivedHours({ ...previous, ...patch });
       setSettings(optimistic);
       settingsRef.current = optimistic;
       setSavingAvailability(true);
@@ -127,21 +129,23 @@ export default function AppointmentSettingsPage({
         // Apply only this patch's keys from the server onto whatever is current
         // (later queued writes may have updated other fields already).
         if (json.settings) {
-          const after = { ...settingsRef.current };
+          let after = { ...settingsRef.current };
           for (const key of Object.keys(patch) as (keyof AppointmentSettings)[]) {
             if (patch[key] !== undefined) {
               (after as Record<string, unknown>)[key] = json.settings[key];
             }
           }
+          after = withDerivedHours(after);
           setSettings(after);
           settingsRef.current = after;
         }
         toast.success("Availability updated");
       } catch (e) {
-        const rolled = { ...settingsRef.current };
+        let rolled = { ...settingsRef.current };
         for (const key of Object.keys(patch) as (keyof AppointmentSettings)[]) {
           (rolled as Record<string, unknown>)[key] = previous[key];
         }
+        rolled = withDerivedHours(rolled);
         setSettings(rolled);
         settingsRef.current = rolled;
         toast.error(e instanceof Error ? e.message : "Save failed");

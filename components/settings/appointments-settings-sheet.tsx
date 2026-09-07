@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Copy, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
   SheetContent,
@@ -16,7 +18,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { AppointmentSettings } from "@/lib/appointments/settings";
+import {
+  DEFAULT_AVAILABILITY_WINDOW,
+  WEEKDAY_LABELS,
+  validateAvailability,
+  type AppointmentSettings,
+  type AvailabilityWindow,
+  type WeeklyAvailability,
+} from "@/lib/appointments/settings";
 import { locationColorMap } from "@/lib/appointments/location-colors";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import type { Locale } from "@/lib/i18n/locales";
@@ -43,6 +52,142 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
+/** Sun, Tue, Wed … — the calendar's firstDay=0 order. */
+const DAY_ORDER = [0, 1, 2, 3, 4, 5, 6] as const;
+
+type SheetTab = "locations" | "availability" | "booking" | "whatsapp" | "calendar";
+
+/**
+ * Per-weekday window editor — Google Calendar's appointment-schedule
+ * availability. One row per day: on/off switch, then each window as a pair
+ * of time inputs, plus add / copy-to-open-days. Validation is shared with
+ * the API (`validateAvailability`) so the Save button knows before the round trip.
+ */
+function AvailabilityEditor({
+  value,
+  onChange,
+}: {
+  value: WeeklyAvailability;
+  onChange: (next: WeeklyAvailability) => void;
+}) {
+  const setDay = (dow: number, windows: AvailabilityWindow[]) =>
+    onChange(value.map((d, i) => (i === dow ? windows : d)));
+  const template = (): AvailabilityWindow[] =>
+    (value.find((d) => d.length) ?? [DEFAULT_AVAILABILITY_WINDOW]).map((w) => ({ ...w }));
+  const openDays = value.filter((d) => d.length).length;
+
+  return (
+    <ul className="divide-y divide-border rounded-md border border-border">
+      {DAY_ORDER.map((dow) => {
+        const windows = value[dow] ?? [];
+        const open = windows.length > 0;
+        return (
+          <li key={dow} className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start">
+            {/* Whole row head is the tap target for the day switch. */}
+            <label
+              htmlFor={`day-${dow}`}
+              className="flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-between gap-3 sm:w-24 sm:justify-start"
+            >
+              <span className={open ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
+                {WEEKDAY_LABELS[dow]}
+              </span>
+              <Switch
+                id={`day-${dow}`}
+                checked={open}
+                aria-label={`${WEEKDAY_LABELS[dow]} open`}
+                onCheckedChange={(checked) => setDay(dow, checked ? template() : [])}
+              />
+            </label>
+
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              {open ? (
+                windows.map((w, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input
+                      type="time"
+                      step={900}
+                      value={w.start}
+                      aria-label={`${WEEKDAY_LABELS[dow]} window ${i + 1} start`}
+                      className="min-w-0 flex-1 tabular-nums"
+                      onChange={(e) =>
+                        setDay(
+                          dow,
+                          windows.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)),
+                        )
+                      }
+                    />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <Input
+                      type="time"
+                      step={900}
+                      value={w.end === "24:00" ? "23:59" : w.end}
+                      aria-label={`${WEEKDAY_LABELS[dow]} window ${i + 1} end`}
+                      className="min-w-0 flex-1 tabular-nums"
+                      onChange={(e) =>
+                        setDay(
+                          dow,
+                          windows.map((x, j) =>
+                            j === i ? { ...x, end: e.target.value === "23:59" ? "24:00" : e.target.value } : x,
+                          ),
+                        )
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="min-h-11 min-w-11 shrink-0 md:min-h-8 md:min-w-8"
+                      aria-label={`Remove ${WEEKDAY_LABELS[dow]} window ${i + 1}`}
+                      onClick={() => setDay(dow, windows.filter((_, j) => j !== i))}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <p className="py-2 text-xs text-muted-foreground">Closed</p>
+              )}
+              {open ? (
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="min-h-10 md:min-h-8"
+                    onClick={() => {
+                      const last = windows[windows.length - 1]!;
+                      const nextStart = last.end === "24:00" ? "23:00" : last.end;
+                      setDay(dow, [...windows, { start: nextStart, end: "24:00" }]);
+                    }}
+                  >
+                    <Plus className="size-3.5" /> Add window
+                  </Button>
+                  {openDays > 1 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-10 md:min-h-8"
+                      title="Give every open day these windows"
+                      onClick={() =>
+                        onChange(
+                          value.map((d) => (d.length ? windows.map((w) => ({ ...w })) : d)),
+                        )
+                      }
+                    >
+                      <Copy className="size-3.5" /> Copy to open days
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function AppointmentsSettingsSheet({
   open,
   onOpenChange,
@@ -53,7 +198,9 @@ export function AppointmentsSettingsSheet({
 }: Props) {
   const [draft, setDraft] = useState(settings);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<SheetTab>("locations");
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const availabilityError = validateAvailability(draft.availability);
   const pathname = usePathname() ?? "/";
   const locale = (getLocaleFromPathname(pathname) ?? "en-US") as Locale;
 
@@ -79,6 +226,11 @@ export function AppointmentsSettingsSheet({
   }, [open, settings]);
 
   const save = async () => {
+    if (availabilityError) {
+      setTab("availability");
+      toast.error(availabilityError);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/settings/appointments", {
@@ -94,6 +246,7 @@ export function AppointmentsSettingsSheet({
           slotLookaheadDays: draft.slotLookaheadDays,
           slotOfferCount: draft.slotOfferCount,
           showCancelled: draft.showCancelled,
+          availability: draft.availability,
         }),
       });
       const json = (await res.json()) as {
@@ -124,207 +277,269 @@ export function AppointmentsSettingsSheet({
         <SheetHeader>
           <SheetTitle>Appointment settings</SheetTitle>
           <SheetDescription>
-            Locations, venue, booking links, and WhatsApp slot rules. Hours and blocks are
-            edited on the calendar.
+            Locations, weekly hours, booking links, WhatsApp slot rules and calendar display.
+            Blocks are added on the calendar.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-1 py-2">
-          <SectionHeading
-            title="Bookable locations"
-            hint={`${bookableCount} of ${addressed.length} taking bookings · switches apply immediately`}
-          />
-          {addressed.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
-              No locations with an address yet.{" "}
-              <Link
-                className="underline underline-offset-2"
-                href={withLocale("/settings/partners", locale)}
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as SheetTab)}
+          className="flex min-h-0 flex-1 flex-col gap-3"
+        >
+          {/* Five sections: a scrolling strip of ≥40px tabs on a phone, a pill row on desktop. */}
+          <TabsList className="h-auto w-full justify-start overflow-x-auto md:w-fit">
+            {(
+              [
+                ["locations", "Locations"],
+                ["availability", "Availability"],
+                ["booking", "Booking"],
+                ["whatsapp", "WhatsApp"],
+                ["calendar", "Calendar"],
+              ] as [SheetTab, string][]
+            ).map(([id, label]) => (
+              <TabsTrigger
+                key={id}
+                value={id}
+                className={cn(
+                  "min-h-10 shrink-0 px-3 md:min-h-7",
+                  id === "availability" && availabilityError && "text-destructive",
+                )}
               >
-                Add one in Settings → Locations
-              </Link>
-              .
-            </p>
-          ) : (
-            <ul className="divide-y divide-border rounded-md border border-border">
-              {addressed.map((loc) => {
-                const busy = togglingId === loc.id;
-                return (
-                  <li key={loc.id}>
-                    {/* Whole row is the tap target: the switch alone is 20×36px. */}
-                    <label
-                      htmlFor={`bookable-${loc.id}`}
-                      className={cn(
-                        "flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2",
-                        busy && "opacity-70",
-                      )}
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-2">
-                          <span
-                            aria-hidden
-                            className="mp-loc-dot"
-                            style={{ backgroundColor: colors.get(loc.id) }}
-                          />
-                          <span className="truncate text-sm font-medium">{loc.name}</span>
-                          <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                            {loc.type === "own" ? "Own studio" : "Partner"}
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-2">
+            <TabsContent value="locations" className="space-y-3">
+              <SectionHeading
+                title="Bookable locations"
+                hint={`${bookableCount} of ${addressed.length} taking bookings · switches apply immediately`}
+              />
+              {addressed.length === 0 ? (
+                <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+                  No locations with an address yet.{" "}
+                  <Link
+                    className="underline underline-offset-2"
+                    href={withLocale("/settings/partners", locale)}
+                  >
+                    Add one in Settings → Locations
+                  </Link>
+                  .
+                </p>
+              ) : (
+                <ul className="divide-y divide-border rounded-md border border-border">
+                  {addressed.map((loc) => {
+                    const busy = togglingId === loc.id;
+                    return (
+                      <li key={loc.id}>
+                        {/* Whole row is the tap target: the switch alone is 20×36px. */}
+                        <label
+                          htmlFor={`bookable-${loc.id}`}
+                          className={cn(
+                            "flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2",
+                            busy && "opacity-70",
+                          )}
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2">
+                              <span
+                                aria-hidden
+                                className="mp-loc-dot"
+                                style={{ backgroundColor: colors.get(loc.id) }}
+                              />
+                              <span className="truncate text-sm font-medium">{loc.name}</span>
+                              <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {loc.type === "own" ? "Own studio" : "Partner"}
+                              </span>
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {loc.address}
+                            </span>
                           </span>
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {loc.address}
-                        </span>
-                      </span>
-                      <Switch
-                        id={`bookable-${loc.id}`}
-                        checked={loc.bookable}
-                        disabled={busy}
-                        aria-label={`${loc.name}: taking bookings`}
-                        onCheckedChange={(checked) => void toggle(loc, checked)}
-                      />
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                          <Switch
+                            id={`bookable-${loc.id}`}
+                            checked={loc.bookable}
+                            disabled={busy}
+                            aria-label={`${loc.name}: taking bookings`}
+                            onCheckedChange={(checked) => void toggle(loc, checked)}
+                          />
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </TabsContent>
 
-          <SectionHeading title="Booking" hint="Saved with the button below." />
-          <div className="grid gap-1.5">
-            <Label htmlFor="venue">Default venue</Label>
-            <Input
-              id="venue"
-              value={draft.venue}
-              onChange={(e) => setDraft((p) => ({ ...p, venue: e.target.value }))}
-            />
+            <TabsContent value="availability" className="space-y-3">
+              <SectionHeading
+                title="Weekly hours (SGT)"
+                hint="One shared schedule for every location, like Google Calendar's appointment availability. Saved with the button below."
+              />
+              <AvailabilityEditor
+                value={draft.availability}
+                onChange={(availability) => setDraft((p) => ({ ...p, availability }))}
+              />
+              {availabilityError ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {availabilityError}
+                </p>
+              ) : null}
+              <div className="grid gap-1.5">
+                <Label htmlFor="duration">Appointment length (minutes)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  min={15}
+                  max={240}
+                  value={draft.durationMinutes}
+                  onChange={(e) =>
+                    setDraft((p) => ({
+                      ...p,
+                      durationMinutes: Number(e.target.value) || 60,
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Slots step by this length inside each window; a slot must end within its window.
+                </p>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="booking" className="space-y-4">
+              <SectionHeading title="Booking" hint="Saved with the button below." />
+              <div className="grid gap-1.5">
+                <Label htmlFor="venue">Default venue</Label>
+                <Input
+                  id="venue"
+                  value={draft.venue}
+                  onChange={(e) => setDraft((p) => ({ ...p, venue: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used in reminders when an event carries no location.
+                </p>
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="cust-url">Customisation booking URL</Label>
+                <Input
+                  id="cust-url"
+                  value={draft.customisationBookingUrl}
+                  onChange={(e) =>
+                    setDraft((p) => ({ ...p, customisationBookingUrl: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="readj-url">Re-adjustment booking URL</Label>
+                <Input
+                  id="readj-url"
+                  value={draft.readjustmentBookingUrl}
+                  onChange={(e) =>
+                    setDraft((p) => ({ ...p, readjustmentBookingUrl: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="cust-match">Customisation summary match</Label>
+                <Input
+                  id="cust-match"
+                  value={draft.customisationSummaryMatch}
+                  onChange={(e) =>
+                    setDraft((p) => ({
+                      ...p,
+                      customisationSummaryMatch: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="readj-match">Re-adjustment summary match</Label>
+                <Input
+                  id="readj-match"
+                  value={draft.readjustmentSummaryMatch}
+                  onChange={(e) =>
+                    setDraft((p) => ({
+                      ...p,
+                      readjustmentSummaryMatch: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="whatsapp" className="space-y-4">
+              <SectionHeading
+                title="WhatsApp slot offers"
+                hint="How reschedule offers are built. Saved with the button below."
+              />
+              <div className="grid gap-1.5">
+                <Label htmlFor="lookahead">Slot lookahead (days)</Label>
+                <Input
+                  id="lookahead"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={draft.slotLookaheadDays}
+                  onChange={(e) =>
+                    setDraft((p) => ({
+                      ...p,
+                      slotLookaheadDays: Number(e.target.value) || 14,
+                    }))
+                  }
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="offer-count">Slots offered</Label>
+                <Input
+                  id="offer-count"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={draft.slotOfferCount}
+                  onChange={(e) =>
+                    setDraft((p) => ({
+                      ...p,
+                      slotOfferCount: Number(e.target.value) || 3,
+                    }))
+                  }
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="calendar" className="space-y-4">
+              <SectionHeading title="Calendar" hint="Saved with the button below." />
+              {/* Whole row is the tap target: the switch alone is 20×36px. */}
+              <label
+                htmlFor="show-cancelled"
+                className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">Show cancelled appointments</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Struck-through on the calendar. Off keeps cancellations out of the grid.
+                  </span>
+                </span>
+                <Switch
+                  id="show-cancelled"
+                  checked={draft.showCancelled}
+                  onCheckedChange={(checked) =>
+                    setDraft((p) => ({ ...p, showCancelled: checked }))
+                  }
+                />
+              </label>
+            </TabsContent>
           </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="duration">Duration (minutes)</Label>
-            <Input
-              id="duration"
-              type="number"
-              min={15}
-              max={240}
-              value={draft.durationMinutes}
-              onChange={(e) =>
-                setDraft((p) => ({
-                  ...p,
-                  durationMinutes: Number(e.target.value) || 60,
-                }))
-              }
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="cust-url">Customisation booking URL</Label>
-            <Input
-              id="cust-url"
-              value={draft.customisationBookingUrl}
-              onChange={(e) =>
-                setDraft((p) => ({ ...p, customisationBookingUrl: e.target.value }))
-              }
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="readj-url">Re-adjustment booking URL</Label>
-            <Input
-              id="readj-url"
-              value={draft.readjustmentBookingUrl}
-              onChange={(e) =>
-                setDraft((p) => ({ ...p, readjustmentBookingUrl: e.target.value }))
-              }
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="cust-match">Customisation summary match</Label>
-            <Input
-              id="cust-match"
-              value={draft.customisationSummaryMatch}
-              onChange={(e) =>
-                setDraft((p) => ({
-                  ...p,
-                  customisationSummaryMatch: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="readj-match">Re-adjustment summary match</Label>
-            <Input
-              id="readj-match"
-              value={draft.readjustmentSummaryMatch}
-              onChange={(e) =>
-                setDraft((p) => ({
-                  ...p,
-                  readjustmentSummaryMatch: e.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <SectionHeading title="WhatsApp slot offers" />
-          <div className="grid gap-1.5">
-            <Label htmlFor="lookahead">Slot lookahead (days)</Label>
-            <Input
-              id="lookahead"
-              type="number"
-              min={1}
-              max={60}
-              value={draft.slotLookaheadDays}
-              onChange={(e) =>
-                setDraft((p) => ({
-                  ...p,
-                  slotLookaheadDays: Number(e.target.value) || 14,
-                }))
-              }
-            />
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label htmlFor="offer-count">Slots offered</Label>
-            <Input
-              id="offer-count"
-              type="number"
-              min={1}
-              max={10}
-              value={draft.slotOfferCount}
-              onChange={(e) =>
-                setDraft((p) => ({
-                  ...p,
-                  slotOfferCount: Number(e.target.value) || 3,
-                }))
-              }
-            />
-          </div>
-
-          <SectionHeading title="Calendar" />
-          {/* Whole row is the tap target: the switch alone is 20×36px. */}
-          <label
-            htmlFor="show-cancelled"
-            className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
-          >
-            <span className="min-w-0">
-              <span className="block text-sm font-medium">Show cancelled appointments</span>
-              <span className="block text-xs text-muted-foreground">
-                Struck-through on the calendar. Off keeps cancellations out of the grid.
-              </span>
-            </span>
-            <Switch
-              id="show-cancelled"
-              checked={draft.showCancelled}
-              onCheckedChange={(checked) =>
-                setDraft((p) => ({ ...p, showCancelled: checked }))
-              }
-            />
-          </label>
-        </div>
+        </Tabs>
 
         <SheetFooter>
-          <Button type="button" disabled={saving} onClick={() => void save()}>
+          <Button
+            type="button"
+            className="min-h-11 md:min-h-9"
+            disabled={saving || !!availabilityError}
+            onClick={() => void save()}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
         </SheetFooter>

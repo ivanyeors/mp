@@ -12,7 +12,7 @@ Vertical-slice issues (tracer bullets). AFK unless marked HITL.
 | 04 | Location identity on events (stamp + resolver) | AFK | 02 | ② | done |
 | 05 | Location dot on chips, legend group, phone strip, detail row | AFK | 01, 04 | ② | done |
 | 06 | Guards + docs (mobile check, PRD, glossary) | AFK | 01–05 | — | done |
-| 07 | Weekly availability windows + sectioned gear sheet | AFK | 03 | ⑤ | todo |
+| 07 | Weekly availability windows + sectioned gear sheet | AFK | 03 | ⑤ | done |
 | 08 | Real-device sign-off (iOS Safari + Android Chrome @ ~390px) | HITL | 01–07 | all | todo |
 
 Tracker: local only (no GitHub issues created for this PRD).

@@ -6,7 +6,12 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import {
   APPOINTMENT_SETTING_KEYS,
   appointmentSettingsToStored,
+  availabilityFromLegacy,
+  normalizeAvailability,
   parseAppointmentSettings,
+  validateAvailability,
+  withDerivedHours,
+  type WeeklyAvailability,
 } from "@/lib/appointments/settings";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
 
@@ -40,6 +45,13 @@ const PutSchema = z.object({
     .max(200)
     .optional(),
   showCancelled: z.boolean().optional(),
+  // Seven days of HH:MM windows; content rules checked by validateAvailability.
+  availability: z
+    .array(
+      z.array(z.object({ start: z.string().max(5), end: z.string().max(5) })).max(8),
+    )
+    .length(7)
+    .optional(),
 });
 
 export async function GET() {
@@ -76,7 +88,7 @@ export async function PUT(req: Request) {
 
   const current = parseAppointmentSettings(stored);
   const input = parsed.data;
-  const next = {
+  const merged = {
     ...current,
     ...Object.fromEntries(
       Object.entries({
@@ -97,12 +109,30 @@ export async function PUT(req: Request) {
     ),
   };
 
-  if (next.openHour > next.closeHour) {
-    return NextResponse.json(
-      { error: "openHour must be <= closeHour (last bookable start)" },
-      { status: 400 },
-    );
+  // Windows are the source of truth. An explicit `availability` wins; a patch
+  // to the coarse trio (older callers) is translated into one window per
+  // open day; otherwise keep the stored windows. Hour fields are re-derived.
+  let availability: WeeklyAvailability;
+  if (input.availability) {
+    const problem = validateAvailability(input.availability);
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+    availability = normalizeAvailability(input.availability as WeeklyAvailability);
+  } else if (
+    input.openHour !== undefined ||
+    input.closeHour !== undefined ||
+    input.bookableDays !== undefined
+  ) {
+    if (merged.openHour > merged.closeHour) {
+      return NextResponse.json(
+        { error: "openHour must be <= closeHour (last bookable start)" },
+        { status: 400 },
+      );
+    }
+    availability = availabilityFromLegacy(merged);
+  } else {
+    availability = current.availability;
   }
+  const next = withDerivedHours({ ...merged, availability });
 
   const rows = Object.entries(appointmentSettingsToStored(next)).map(([key, value]) => ({
     key,

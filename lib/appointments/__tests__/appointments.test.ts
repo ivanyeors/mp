@@ -6,7 +6,10 @@ import {
 import {
   DEFAULT_APPOINTMENT_SETTINGS,
   appointmentSettingsToStored,
+  availabilityFromLegacy,
+  legacyFromAvailability,
   parseAppointmentSettings,
+  validateAvailability,
 } from "@/lib/appointments/settings";
 import { resolveAppointmentType, matchAppointmentType } from "@/lib/appointments/type";
 import {
@@ -221,6 +224,67 @@ describe("appointment-settings parse", () => {
     };
     const stored = appointmentSettingsToStored(settings);
     expect(parseAppointmentSettings(stored).blockedRanges).toEqual([{ start, end }]);
+  });
+
+  it("rebuilds windows from the legacy open/close/days trio when no availability is stored", () => {
+    const parsed = parseAppointmentSettings({
+      appointments_open_hour: "9",
+      appointments_close_hour: "17",
+      appointments_bookable_days: "1,2",
+      appointments_duration_minutes: "60",
+    });
+    expect(parsed.availability[1]).toEqual([{ start: "09:00", end: "18:00" }]);
+    expect(parsed.availability[2]).toEqual([{ start: "09:00", end: "18:00" }]);
+    expect(parsed.availability[0]).toEqual([]);
+    expect(parsed).toMatchObject({ openHour: 9, closeHour: 17, bookableDays: [1, 2] });
+    expect(DEFAULT_APPOINTMENT_SETTINGS.availability).toEqual(
+      availabilityFromLegacy(DEFAULT_APPOINTMENT_SETTINGS),
+    );
+  });
+
+  it("stored windows win over the trio and drive the derived hour fields", () => {
+    const availability = Array.from({ length: 7 }, () => [] as { start: string; end: string }[]);
+    availability[2] = [
+      { start: "14:00", end: "18:00" },
+      { start: "09:00", end: "12:00" },
+    ];
+    const parsed = parseAppointmentSettings({
+      appointments_availability: JSON.stringify(availability),
+      appointments_open_hour: "6",
+      appointments_close_hour: "23",
+      appointments_bookable_days: "0,1,2,3,4,5,6",
+    });
+    // sorted by start
+    expect(parsed.availability[2]).toEqual([
+      { start: "09:00", end: "12:00" },
+      { start: "14:00", end: "18:00" },
+    ]);
+    expect(parsed).toMatchObject({ openHour: 9, closeHour: 17, bookableDays: [2] });
+    const stored = appointmentSettingsToStored(parsed);
+    expect(parseAppointmentSettings(stored).availability).toEqual(parsed.availability);
+    // garbage → legacy trio
+    expect(
+      parseAppointmentSettings({ appointments_availability: "not json" }).availability,
+    ).toEqual(DEFAULT_APPOINTMENT_SETTINGS.availability);
+  });
+
+  it("validates a week of windows", () => {
+    const week = (day: { start: string; end: string }[]) => {
+      const av = Array.from({ length: 7 }, () => [] as { start: string; end: string }[]);
+      av[3] = day;
+      return av;
+    };
+    expect(validateAvailability(week([{ start: "10:00", end: "12:00" }]))).toBeNull();
+    expect(validateAvailability(week([{ start: "10:00", end: "24:00" }]))).toBeNull();
+    expect(validateAvailability(week([{ start: "12:00", end: "10:00" }]))).toMatch(/end after/);
+    expect(validateAvailability(week([{ start: "10:00", end: "10:00" }]))).toMatch(/end after/);
+    expect(validateAvailability(week([{ start: "1000", end: "12:00" }]))).toMatch(/HH:MM/);
+    expect(
+      validateAvailability(week([{ start: "10:00", end: "13:00" }, { start: "12:00", end: "14:00" }])),
+    ).toMatch(/overlap/);
+    expect(validateAvailability(week([]))).toMatch(/At least one/);
+    expect(validateAvailability([])).toMatch(/seven/);
+    expect(legacyFromAvailability(week([]), 60).bookableDays).toEqual([]);
   });
 
   it("parses showCancelled as a bool (default off, garbage → default)", () => {

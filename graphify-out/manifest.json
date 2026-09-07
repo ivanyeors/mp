@@ -6,9 +6,9 @@
     "semantic_hash": "85bbd5aec94e60baa29c3f08ea382022"
   },
   "lib/appointments/__tests__/appointments.test.ts": {
-    "mtime": 1788739922.3518395,
-    "seen": 1788739978.2281587,
-    "ast_hash": "3b3c1007bee07dd0d9fe5fd53feed9f0",
+    "mtime": 1788740449.6491652,
+    "seen": 1788740653.3042917,
+    "ast_hash": "fb0c4c6caaa0870439661fe544b53ac7",
     "semantic_hash": ""
   },
   "lib/appointments/calendar.ts": {
@@ -54,15 +54,15 @@
     "semantic_hash": "f3eaad1ad31c8a124d4584f50c617abe"
   },
   "lib/appointments/settings.ts": {
-    "mtime": 1788739477.4245727,
-    "seen": 1788739509.1979995,
-    "ast_hash": "7ccbffabd96ec0c07ef67a474bc573bd",
+    "mtime": 1788740449.6488578,
+    "seen": 1788740653.3043177,
+    "ast_hash": "5b0e8f5cb5aa43838bbceae310410960",
     "semantic_hash": ""
   },
   "lib/appointments/slots.ts": {
-    "mtime": 1788739922.3510332,
-    "seen": 1788739978.2281895,
-    "ast_hash": "5c9d32cac78d5e17067e13a326787b2c",
+    "mtime": 1788740380.173773,
+    "seen": 1788740653.3043187,
+    "ast_hash": "119922acb27d94902b05d938c32f2745",
     "semantic_hash": ""
   },
   "lib/appointments/state.ts": {
@@ -2808,9 +2808,9 @@
     "semantic_hash": ""
   },
   "app/api/settings/appointments/route.ts": {
-    "mtime": 1788739477.4245727,
-    "seen": 1788739509.1974142,
-    "ast_hash": "2207a5fd7a93a7800211e34bf48a8558",
+    "mtime": 1788740380.17399,
+    "seen": 1788740653.303856,
+    "ast_hash": "4a49ff24efbcf51309c8458efda1b67e",
     "semantic_hash": ""
   },
   "app/api/settings/forms/discovery-source/route.ts": {
@@ -4314,15 +4314,15 @@
     "semantic_hash": ""
   },
   "components/settings/appointments-calendar.tsx": {
-    "mtime": 1788740113.9220212,
-    "seen": 1788740168.2885513,
-    "ast_hash": "053bddb8eb642d5dc28d6e44fb9ff5cc",
+    "mtime": 1788740557.6841328,
+    "seen": 1788740653.3040876,
+    "ast_hash": "bc1aaa211313b37e0170dfbd0d123b03",
     "semantic_hash": ""
   },
   "components/settings/appointments-settings-sheet.tsx": {
-    "mtime": 1788740049.3322558,
-    "seen": 1788740168.288553,
-    "ast_hash": "4530ce4973eb8c9cc35f42c3fca8fd8c",
+    "mtime": 1788740544.8375332,
+    "seen": 1788740653.3040886,
+    "ast_hash": "f1da829a389b49ca4b0c60c4c79da053",
     "semantic_hash": ""
   },
   "components/settings/page-builder/section-editor.tsx": {
@@ -4386,9 +4386,9 @@
     "semantic_hash": ""
   },
   "components/settings/settings-mobile.check.ts": {
-    "mtime": 1788740049.3326511,
-    "seen": 1788740168.288565,
-    "ast_hash": "769c77a32fd9e7e99483ea85505191f4",
+    "mtime": 1788740547.4580135,
+    "seen": 1788740653.3041024,
+    "ast_hash": "e55d6ceff178f0d0dfe7206e2897fd0e",
     "semantic_hash": ""
   },
   "components/settings/settings-sidebar-nav.tsx": {
@@ -5358,9 +5358,9 @@
     "semantic_hash": ""
   },
   "lib/appointments/__tests__/booking.test.ts": {
-    "mtime": 1788739922.3516376,
-    "seen": 1788739978.2281613,
-    "ast_hash": "ff518014da9912b95b9057e814d602b6",
+    "mtime": 1788740449.6493304,
+    "seen": 1788740653.304294,
+    "ast_hash": "556971e050dd284bc31dfc87d028d79e",
     "semantic_hash": ""
   },
   "lib/appointments/__tests__/ics.test.ts": {
@@ -8286,9 +8286,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1788739477.4245727,
-    "seen": 1788739509.1993349,
-    "ast_hash": "05685d5d94ec95ffecdbe86ebf8527c7",
+    "mtime": 1788740222.583924,
+    "seen": 1788740653.3055017,
+    "ast_hash": "09c9d7e39514d5b447829ccbf91d3bba",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9864,9 +9864,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/appointments/appointments-client.tsx": {
-    "mtime": 1788739756.517995,
-    "seen": 1788739905.189498,
-    "ast_hash": "e098bf8255d1578d43f998e865cb3235",
+    "mtime": 1788740484.1647096,
+    "seen": 1788740653.3034837,
+    "ast_hash": "e7b6e4601d465cb911a422f03521b7a4",
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/[id]/page.tsx": {
@@ -10275,6 +10275,30 @@
     "mtime": 1788740113.9215071,
     "seen": 1788740168.2888243,
     "ast_hash": "c8279a82b0702559e486eb5a0a62df6f",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-appointments-locations-availability/appointments-locations-availability-prd.md": {
+    "mtime": 1788740222.5697074,
+    "seen": 1788740653.305175,
+    "ast_hash": "a191efdb1308e600958bf537ee0610d3",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-appointments-locations-availability/issues/07-weekly-availability-windows.md": {
+    "mtime": 1788740222.573311,
+    "seen": 1788740653.3051767,
+    "ast_hash": "430b0f0d686cf55d699af1479136ea41",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-appointments-locations-availability/issues/08-device-signoff.md": {
+    "mtime": 1788740627.323574,
+    "seen": 1788740653.305178,
+    "ast_hash": "c5627441739d6ec76f0989ae25b89ebb",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-appointments-locations-availability/issues/README.md": {
+    "mtime": 1788740627.3234482,
+    "seen": 1788740653.305179,
+    "ast_hash": "32dc6caf087ee7aece78c48f79da6dec",
     "semantic_hash": ""
   }
 }

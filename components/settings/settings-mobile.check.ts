@@ -70,6 +70,10 @@ assert.match(calendar, /overflow-x-auto border-t border-border px-3 py-2 text-xs
 const apptSheet = read("components/settings/appointments-settings-sheet.tsx");
 assert.match(apptSheet, /htmlFor=\{`bookable-\$\{loc\.id\}`\}/);
 assert.match(apptSheet, /flex min-h-11 cursor-pointer items-center gap-3/);
+// sectioned sheet: tab strip scrolls on a phone; day rows and window controls ≥44px
+assert.match(apptSheet, /h-auto w-full justify-start overflow-x-auto md:w-fit/);
+assert.match(apptSheet, /htmlFor=\{`day-\$\{dow\}`\}/);
+assert.match(apptSheet, /min-h-11 min-w-11 shrink-0 md:min-h-8 md:min-w-8/);
 
 // costings: pinned Part column (shared helper) + full-width money inputs; Save
 // pinned above the dock. The BOM configure editor reuses the same helper.

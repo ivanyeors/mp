@@ -45,7 +45,14 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { CalendarRangeEvent } from "@/lib/appointments/calendar";
-import type { AppointmentSettings, AppointmentType } from "@/lib/appointments/settings";
+import {
+  DEFAULT_AVAILABILITY_WINDOW,
+  WEEKDAY_LABELS,
+  hhmm,
+  type AppointmentSettings,
+  type AppointmentType,
+  type WeeklyAvailability,
+} from "@/lib/appointments/settings";
 import { locationColorMap, type LocationColorMap } from "@/lib/appointments/location-colors";
 import type { ResolvedLocation } from "@/lib/locations";
 import {
@@ -132,10 +139,6 @@ function padHour(h: number): string {
   return `${String(Math.min(Math.max(h, 0), 24)).padStart(2, "0")}:00`;
 }
 
-function formatHourLabel(h: number): string {
-  return `${String(h).padStart(2, "0")}:00`;
-}
-
 /** GCal all-day end is exclusive YYYY-MM-DD — show inclusive range. */
 function formatAllDayLabel(startDate: string, endDateExclusive: string): string {
   const end = new Date(`${endDateExclusive}T00:00:00Z`);
@@ -145,10 +148,31 @@ function formatAllDayLabel(startDate: string, endDateExclusive: string): string 
   return `All day · ${startDate} – ${endInclusive}`;
 }
 
-/** Last bookable start → wall-clock end of that slot. */
-function hoursEndLabel(closeHour: number, durationMinutes: number): string {
-  const end = Math.min(closeHour + Math.max(1, Math.ceil(durationMinutes / 60)), 24);
-  return formatHourLabel(end);
+/**
+ * Summary-tile copy for the week's windows. When every open day shares the
+ * same windows, show them; otherwise say so and point at the gear sheet.
+ */
+function summarizeAvailability(av: WeeklyAvailability): {
+  label: string;
+  caption: string;
+} {
+  const open = av.filter((d) => d.length);
+  if (!open.length) return { label: "Closed", caption: "no open days" };
+  const key = (d: { start: string; end: string }[]) =>
+    d.map((w) => `${w.start}–${w.end}`).join(", ");
+  const first = key(open[0]!);
+  const uniform = open.every((d) => key(d) === first);
+  if (uniform) return { label: first, caption: `${open.length} open days` };
+  return { label: "Varies by day", caption: "edit in settings" };
+}
+
+/** Copy of the week with one day replaced. */
+function withDay(
+  av: WeeklyAvailability,
+  dow: number,
+  windows: { start: string; end: string }[],
+): WeeklyAvailability {
+  return av.map((d, i) => (i === dow ? windows : d));
 }
 
 /** Browser-local getDay() is wrong when admin isn't in SGT — use wall-clock SGT. */
@@ -353,15 +377,18 @@ export function AppointmentsCalendar({
     [settings.blockedRanges],
   );
 
-  const businessHours = useMemo(() => {
-    const durationHours = Math.max(1, Math.ceil(settings.durationMinutes / 60));
-    return {
-      daysOfWeek: settings.bookableDays,
-      startTime: padHour(settings.openHour),
-      // closeHour is last bookable *start*; band ends when that slot would finish
-      endTime: padHour(Math.min(settings.closeHour + durationHours, 24)),
-    };
-  }, [settings.bookableDays, settings.openHour, settings.closeHour, settings.durationMinutes]);
+  // One band per window, so a split day (10–12, 14–18) shows the gap.
+  const businessHours = useMemo(
+    () =>
+      settings.availability.flatMap((day, dow) =>
+        day.map((w) => ({
+          daysOfWeek: [dow],
+          startTime: w.start === "24:00" ? "23:59" : w.start,
+          endTime: w.end,
+        })),
+      ),
+    [settings.availability],
+  );
 
   const fetchAppointments = useCallback<EventSourceFunc>(
     async (info, success, failure) => {
@@ -531,14 +558,42 @@ export function AppointmentsCalendar({
     if (ok) clearSelection();
   };
 
+  /** SGT weekdays a selection touches (end exclusive). */
+  const selectionDows = (sel: PendingSelect): number[] => {
+    const dows = new Set<number>();
+    let ms = sel.start.getTime();
+    const endMs = sel.end.getTime() - 1;
+    while (ms <= endMs) {
+      const p = sgtParts(ms);
+      dows.add(p.dow);
+      const next = addSgtDays(p.y, p.m, p.d, 1);
+      ms = sgtLocalToUtcMs(next.y, next.m, next.d, 0, 0);
+    }
+    return [...dows];
+  };
+
+  /**
+   * The selection's wall-clock band becomes the single window for every
+   * weekday it touches (Google's "set hours for Tuesday"). Other days keep
+   * their own windows.
+   */
   const handleSetHoursFromSelection = async () => {
     if (!pendingSelect) return;
     const startP = sgtParts(pendingSelect.start.getTime());
-    // Selection end is exclusive; back one minute to get inclusive last hour
-    const endP = sgtParts(pendingSelect.end.getTime() - 60_000);
-    const openHour = startP.hour;
-    const closeHour = Math.max(openHour, endP.hour);
-    const ok = await applyPatch({ openHour, closeHour });
+    const endP = sgtParts(pendingSelect.end.getTime());
+    const startMin = startP.hour * 60 + startP.minute;
+    // An exclusive end at midnight is the end of the day, not 00:00.
+    const endMin = endP.hour === 0 && endP.minute === 0 ? 1440 : endP.hour * 60 + endP.minute;
+    if (endMin <= startMin) {
+      toast.error("Pick a range that starts and ends on the same day");
+      return;
+    }
+    const window = { start: hhmm(startMin), end: hhmm(endMin) };
+    let availability = settingsRef.current.availability;
+    for (const dow of selectionDows(pendingSelect)) {
+      availability = withDay(availability, dow, [window]);
+    }
+    const ok = await applyPatch({ availability });
     if (ok) clearSelection();
   };
 
@@ -567,20 +622,21 @@ export function AppointmentsCalendar({
     if (ok) setDetail(null);
   };
 
-  // Ref-backed so dayHeaderDidMount listeners never go stale
+  // Ref-backed so dayHeaderDidMount listeners never go stale.
+  // Closing a day clears its windows; reopening copies the first open day's
+  // (or the default window) so the admin has something to adjust.
   toggleRef.current = async (dow: number) => {
-    const current = settingsRef.current.bookableDays;
-    const set = new Set(current);
-    if (set.has(dow)) {
-      if (set.size <= 1) {
+    const av = settingsRef.current.availability;
+    if (av[dow]?.length) {
+      if (av.filter((d) => d.length).length <= 1) {
         toast.error("At least one bookable day is required");
         return;
       }
-      set.delete(dow);
-    } else {
-      set.add(dow);
+      await applyPatch({ availability: withDay(av, dow, []) });
+      return;
     }
-    await applyPatch({ bookableDays: [...set].sort((a, b) => a - b) });
+    const template = av.find((d) => d.length) ?? [DEFAULT_AVAILABILITY_WINDOW];
+    await applyPatch({ availability: withDay(av, dow, template.map((w) => ({ ...w }))) });
   };
 
   const dayHeaderDidMount = useCallback((info: { el: HTMLElement; date: Date }) => {
@@ -618,6 +674,13 @@ export function AppointmentsCalendar({
   const visibleViews = VIEW_OPTIONS.filter((v) => isMobile || !v.mobileOnly);
 
   const detailEvent = detail?.kind === "event" ? detail.event : null;
+  const hoursSummary = summarizeAvailability(settings.availability);
+  const selectionDayLabel = pendingSelect
+    ? (() => {
+        const dows = selectionDows(pendingSelect);
+        return dows.length === 1 ? `Set ${WEEKDAY_LABELS[dows[0]!]} hours` : "Set hours for these days";
+      })()
+    : "";
 
   const addressedLocations = locations.filter((l) => !!l.address?.trim());
   const bookableLocationCount = addressedLocations.filter((l) => l.bookable).length;
@@ -653,13 +716,10 @@ export function AppointmentsCalendar({
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Open hours (SGT)
             </div>
-            <div className="text-sm font-semibold tabular-nums">
-              {formatHourLabel(settings.openHour)}–
-              {hoursEndLabel(settings.closeHour, settings.durationMinutes)}
+            <div className="truncate text-sm font-semibold tabular-nums" title={hoursSummary.label}>
+              {hoursSummary.label}
             </div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              last start {formatHourLabel(settings.closeHour)}
-            </div>
+            <div className="truncate text-[11px] text-muted-foreground">{hoursSummary.caption}</div>
           </div>
           <div className="min-w-0 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Slot</div>
@@ -1001,7 +1061,7 @@ export function AppointmentsCalendar({
                 disabled={busy}
                 onClick={() => void handleSetHoursFromSelection()}
               >
-                Set as open hours
+                {selectionDayLabel}
               </Button>
             </div>
           </div>
