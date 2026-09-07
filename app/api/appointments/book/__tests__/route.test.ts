@@ -1,5 +1,23 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { POST } from "@/app/api/appointments/book/route";
+
+// The bookable guard runs right after the location lookup, before any
+// supabase / calendar I/O, so only the location lookup needs stubbing.
+vi.mock("@/lib/locations", () => ({
+  getLocation: vi.fn(async (id: string) =>
+    id === "loc-off"
+      ? {
+          id,
+          name: "Closed Clinic",
+          type: "partner",
+          address: "3 Off St",
+          postalCode: null,
+          visible: true,
+          bookable: false,
+        }
+      : null,
+  ),
+}));
 
 // email is now required: zod parse runs before any I/O, so a bad/missing email
 // short-circuits to 400 without touching supabase/calendar/location.
@@ -29,5 +47,17 @@ describe("POST /api/appointments/book — email required", () => {
 
   it("400s when email is invalid", async () => {
     expect((await post({ ...valid, email: "not-an-email" })).status).toBe(400);
+  });
+});
+
+describe("POST /api/appointments/book — bookable guard", () => {
+  it("409s when the location has been switched off for bookings", async () => {
+    const res = await post({ ...valid, location_id: "loc-off" });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/not taking bookings/);
+  });
+
+  it("404s an unknown location", async () => {
+    expect((await post({ ...valid, location_id: "nope" })).status).toBe(404);
   });
 });

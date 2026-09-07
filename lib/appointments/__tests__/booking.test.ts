@@ -60,6 +60,33 @@ describe("listDaySlots", () => {
     expect(hours).not.toContain(13);
   });
 
+  it("carves slots inside each of the day's windows (two windows, gap between)", () => {
+    const availability = S.availability.map((d) => [...d]);
+    availability[3] = [
+      { start: "10:00", end: "12:00" },
+      { start: "14:00", end: "16:00" },
+    ];
+    expect(hoursSgt(listDaySlots([], { ...S, availability }, WED, beforeOpen))).toEqual([
+      10, 11, 14, 15,
+    ]);
+  });
+
+  it("offers nothing from a window shorter than one appointment", () => {
+    const availability = S.availability.map((d) => [...d]);
+    availability[3] = [{ start: "10:00", end: "10:30" }];
+    expect(listDaySlots([], { ...S, availability }, WED, beforeOpen)).toEqual([]);
+  });
+
+  it("steps by the appointment duration and keeps the last slot inside the window", () => {
+    const slots = listDaySlots([], { ...S, durationMinutes: 90 }, WED, beforeOpen);
+    const startsSgt = slots.map((s) => {
+      const d = new Date(Date.parse(s.startIso) + 8 * 3600_000);
+      return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+    });
+    // 10:00–19:00 window → last 90-min start is 17:30
+    expect(startsSgt).toEqual(["10:00", "11:30", "13:00", "14:30", "16:00", "17:30"]);
+  });
+
   it("respects a shorter duration for the busy-overlap boundary", () => {
     const settings = { ...S, durationMinutes: 30 };
     const busy: BusyInterval[] = [
@@ -102,5 +129,12 @@ describe("buildEventInsertBody", () => {
     expect(withEmail.attendees).toEqual([
       { email: "jane@example.com", displayName: "Jane" },
     ]);
+  });
+
+  it("stamps the Location id into private extended properties when given", () => {
+    expect(buildEventInsertBody(guest).extendedProperties).toBeUndefined();
+    expect(
+      buildEventInsertBody({ ...guest, locationId: "loc-1" }).extendedProperties,
+    ).toEqual({ private: { mpLocationId: "loc-1" } });
   });
 });

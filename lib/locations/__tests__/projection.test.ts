@@ -7,6 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 import {
+  selectBookableLocations,
   selectPartnerRows,
   toResolvedLocation,
   type LocationRow,
@@ -24,6 +25,7 @@ const row = (o: Partial<LocationRow>): LocationRow =>
     type: "partner",
     address: null,
     postal_code: null,
+    bookable: true,
     created_at: "",
     updated_at: "",
     ...o,
@@ -62,6 +64,29 @@ describe("toResolvedLocation", () => {
       address: "1 A St",
       postalCode: "12345",
       visible: true,
+      bookable: true,
     });
+  });
+
+  it("treats a missing bookable column as bookable", () => {
+    const { bookable: _omit, ...legacy } = row({ id: "l1" });
+    expect(toResolvedLocation(legacy as LocationRow).bookable).toBe(true);
+  });
+});
+
+describe("selectBookableLocations", () => {
+  const resolved = [
+    row({ id: "own-hidden", type: "own", visible: false, address: "1 Studio Rd" }),
+    row({ id: "partner-on", type: "partner", visible: true, address: "2 Clinic Ave" }),
+    row({ id: "partner-off", type: "partner", visible: true, address: "3 Off St", bookable: false }),
+    row({ id: "no-address", type: "partner", visible: true, address: "  " }),
+    row({ id: "online-only", type: "partner", visible: true, address: null }),
+  ].map(toResolvedLocation);
+
+  it("keeps bookable rows with an address regardless of /our-partners visibility", () => {
+    expect(selectBookableLocations(resolved).map((l) => l.id)).toEqual([
+      "own-hidden",
+      "partner-on",
+    ]);
   });
 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { listRangeEvents } from "@/lib/appointments/calendar";
+import { getLocations } from "@/lib/locations";
 import {
   APPOINTMENT_SETTING_KEYS,
   parseAppointmentSettings,
@@ -46,7 +47,9 @@ export async function GET(req: Request) {
   const settings = parseAppointmentSettings(stored);
 
   try {
-    const events = await listRangeEvents(timeMin, timeMax, settings);
+    // Cached behind the `locations` tag; lets each event name its Location.
+    const locations = await getLocations().catch(() => []);
+    const events = await listRangeEvents(timeMin, timeMax, settings, locations);
     return NextResponse.json({ ok: true, events });
   } catch (e) {
     return NextResponse.json(

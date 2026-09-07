@@ -3,7 +3,13 @@ import { normalizePhone } from "./phone";
 import { matchAppointmentType, resolveAppointmentType } from "./type";
 import type { AppointmentSettings, AppointmentType } from "./settings";
 import type { BusyInterval, EventGuest } from "./slots";
-import { addSgtDays, buildEventInsertBody, sgtLocalToUtcMs, sgtParts } from "./slots";
+import {
+  LOCATION_ID_PROP,
+  addSgtDays,
+  buildEventInsertBody,
+  sgtLocalToUtcMs,
+  sgtParts,
+} from "./slots";
 
 const CAL_BASE = "https://www.googleapis.com/calendar/v3";
 
@@ -36,12 +42,24 @@ export type CalendarRangeEvent = {
   description: string | null;
   eventType: string | null;
   location: string | null;
+  /**
+   * The Location row the event was booked at: the id stamped on insert, else
+   * an exact address match for events from before stamping, else null (staff
+   * typed a venue by hand, or none).
+   */
+  locationId: string | null;
+  locationName: string | null;
   guestName: string | null;
   phone: string | null;
   appointmentType: AppointmentType | null;
   typeLabel: string | null;
   /** Guest's Google RSVP. null for busy/blocked (non-appointment) ranges. */
   rsvp: "accepted" | "declined" | "tentative" | "needsAction" | null;
+  /**
+   * Google `status: "cancelled"`. Only surfaced for known appointments when the
+   * admin opts in (`settings.showCancelled`); drawn struck-through in the grid.
+   */
+  cancelled: boolean;
 };
 
 type GCalEvent = {
@@ -60,7 +78,34 @@ type GCalEvent = {
     self?: boolean;
     responseStatus?: string;
   }>;
+  extendedProperties?: { private?: Record<string, string>; shared?: Record<string, string> };
 };
+
+/** The subset of a Location the admin calendar needs to name and colour an event. */
+export type LocationRef = { id: string; name: string; address: string | null };
+
+function normalizeAddress(a: string | null | undefined): string {
+  return (a ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Pure: which Location an event belongs to. The stamped id wins; an exact
+ * (whitespace/case-insensitive) address match covers events booked before
+ * stamping; anything else is unresolved.
+ */
+export function resolveEventLocation(
+  ev: Pick<GCalEvent, "location" | "extendedProperties">,
+  locations: readonly LocationRef[],
+): LocationRef | null {
+  const stamped = ev.extendedProperties?.private?.[LOCATION_ID_PROP];
+  if (stamped) {
+    const byId = locations.find((l) => l.id === stamped);
+    if (byId) return byId;
+  }
+  const addr = normalizeAddress(ev.location);
+  if (!addr) return null;
+  return locations.find((l) => normalizeAddress(l.address) === addr) ?? null;
+}
 
 /** Guest's Google RSVP: first non-self attendee's responseStatus. Missing/unknown → needsAction. */
 function guestRsvp(
@@ -96,19 +141,26 @@ function isGCalBusyKind(ev: GCalEvent, matched: boolean): boolean {
   return true;
 }
 
-/** Map one GCal events.list item for the admin mirror view. Skips cancelled / incomplete. */
+/**
+ * Map one GCal events.list item for the admin mirror view. Skips incomplete
+ * items. Cancelled items are skipped too unless `includeCancelled` — and even
+ * then only known appointments survive: a cancelled random busy block is noise.
+ */
 export function mapGCalItemToRangeEvent(
   ev: GCalEvent,
   settings: AppointmentSettings,
+  opts: { includeCancelled?: boolean; locations?: readonly LocationRef[] } = {},
 ): CalendarRangeEvent | null {
   if (!ev.id) return null;
-  if (ev.status === "cancelled") return null;
+  const cancelled = ev.status === "cancelled";
+  if (cancelled && !opts.includeCancelled) return null;
 
   const eventType = (ev.eventType ?? "default").toLowerCase();
   // Not blocks — skip noise from status/location calendars
   if (eventType === "workinglocation" || eventType === "birthday") return null;
 
   const matched = matchAppointmentType(ev.summary, settings);
+  if (cancelled && !matched) return null;
   // Free-time markers aren't blocked off
   if (!matched && ev.transparency === "transparent") return null;
 
@@ -131,6 +183,7 @@ export function mapGCalItemToRangeEvent(
   const description = plainDescription(ev.description);
   const summary =
     ev.summary?.trim() || description?.split("\n")[0]?.trim() || "(No title)";
+  const resolved = busy ? null : resolveEventLocation(ev, opts.locations ?? []);
 
   return {
     id: ev.id,
@@ -142,12 +195,15 @@ export function mapGCalItemToRangeEvent(
     description,
     eventType: ev.eventType ?? null,
     location: ev.location?.trim() || null,
+    locationId: resolved?.id ?? null,
+    locationName: resolved?.name ?? null,
     guestName,
     phone,
     appointmentType: matched?.type ?? null,
     typeLabel: matched?.label ?? null,
-    // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → no pill.
+    // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → none.
     rsvp: busy ? null : guestRsvp(ev),
+    cancelled,
   };
 }
 
@@ -337,6 +393,7 @@ export async function listRangeEvents(
   timeMinIso: string,
   timeMaxIso: string,
   settings: AppointmentSettings,
+  locations: readonly LocationRef[] = [],
 ): Promise<CalendarRangeEvent[]> {
   const id = encodeURIComponent(calendarId());
   const qs = new URLSearchParams({
@@ -346,6 +403,9 @@ export async function listRangeEvents(
     orderBy: "startTime",
     maxResults: "250",
   });
+  // Google keeps a deleted event's fields until it is purged, so cancelled
+  // appointments still carry summary/start/end and can be drawn struck-through.
+  if (settings.showCancelled) qs.set("showDeleted", "true");
   const res = await calFetch(`/calendars/${id}/events?${qs}`);
   if (!res.ok) {
     throw new Error(formatGoogleCalendarError(res.status, await res.text()));
@@ -354,7 +414,10 @@ export async function listRangeEvents(
   const out: CalendarRangeEvent[] = [];
 
   for (const ev of json.items ?? []) {
-    const mapped = mapGCalItemToRangeEvent(ev, settings);
+    const mapped = mapGCalItemToRangeEvent(ev, settings, {
+      includeCancelled: settings.showCancelled,
+      locations,
+    });
     if (mapped) out.push(mapped);
   }
   return out;
