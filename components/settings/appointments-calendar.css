@@ -215,3 +215,24 @@
 .appointments-calendar .fc-cancelled-event .mp-title {
   text-decoration: line-through;
 }
+
+/* Location dot — unscoped so it also renders inside the settings/detail sheet portals. */
+.mp-loc-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--foreground) 25%, transparent);
+}
+.mp-loc-dot-hollow {
+  background: transparent;
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--foreground) 45%, transparent);
+}
+/* On the blue/violet event fill a white ring reads better than a dark one. */
+.mp-loc-dot-on-fill {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.6);
+}
+.mp-loc-dot-on-fill.mp-loc-dot-hollow {
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.75);
+}

@@ -63,6 +63,8 @@ assert.doesNotMatch(calendar, /window\.confirm/);
 // summary tiles: 2×2 on a phone; Locations tile opens the gear sheet
 assert.match(calendar, /grid grid-cols-2 sm:grid-cols-4/);
 assert.match(calendar, /onClick=\{onOpenSettings\}/);
+// location dots: always-visible scroll strip on a phone, folded into the legend on desktop
+assert.match(calendar, /overflow-x-auto border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden/);
 
 // appointments gear sheet: bookable-location rows are whole-row tap targets ≥44px
 const apptSheet = read("components/settings/appointments-settings-sheet.tsx");

@@ -17,6 +17,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { AppointmentSettings } from "@/lib/appointments/settings";
+import { locationColorMap } from "@/lib/appointments/location-colors";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import type { Locale } from "@/lib/i18n/locales";
 import type { ResolvedLocation } from "@/lib/locations";
@@ -59,6 +60,8 @@ export function AppointmentsSettingsSheet({
   // Only Locations with an address can be booked (the address is stamped on the event).
   const addressed = locations.filter((l) => !!l.address?.trim());
   const bookableCount = addressed.filter((l) => l.bookable).length;
+  // Same position-based colours the calendar dots and legend use.
+  const colors = locationColorMap(locations.map((l) => l.id));
 
   const toggle = async (loc: ResolvedLocation, bookable: boolean) => {
     setTogglingId(loc.id);
@@ -158,6 +161,11 @@ export function AppointmentsSettingsSheet({
                     >
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
+                          <span
+                            aria-hidden
+                            className="mp-loc-dot"
+                            style={{ backgroundColor: colors.get(loc.id) }}
+                          />
                           <span className="truncate text-sm font-medium">{loc.name}</span>
                           <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">
                             {loc.type === "own" ? "Own studio" : "Partner"}

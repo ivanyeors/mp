@@ -46,6 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { CalendarRangeEvent } from "@/lib/appointments/calendar";
 import type { AppointmentSettings, AppointmentType } from "@/lib/appointments/settings";
+import { locationColorMap, type LocationColorMap } from "@/lib/appointments/location-colors";
 import type { ResolvedLocation } from "@/lib/locations";
 import {
   addSgtDays,
@@ -195,6 +196,29 @@ function chipStatus(ev: CalendarRangeEvent | undefined): ChipStatus | null {
   return ev.rsvp;
 }
 
+/**
+ * Location dot. A colour when the event resolved to a Location; hollow for
+ * "Other / no location". Inside a chip it rides on the dark type fill (white
+ * ring); in the legend and sheets it sits on the page background (dark ring).
+ */
+function LocationDot({
+  color,
+  onFill = false,
+  className,
+}: {
+  color: string | null | undefined;
+  onFill?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn("mp-loc-dot", !color && "mp-loc-dot-hollow", onFill && "mp-loc-dot-on-fill", className)}
+      style={color ? { backgroundColor: color } : undefined}
+    />
+  );
+}
+
 /** Icon + label, used by the legend and the detail sheet (the chip shows the icon alone). */
 function StatusLabel({ status }: { status: ChipStatus }) {
   const { label, Icon, className } = STATUS_META[status];
@@ -217,24 +241,29 @@ function renderEventContent(arg: EventContentArg) {
   const props = arg.event.extendedProps as {
     kind?: string;
     event?: CalendarRangeEvent;
+    /** Resolved at fetch time from the Location colour map (null = unresolved). */
+    locationColor?: string | null;
   };
   const ev = props.event;
   const isAppointment = props.kind === "appointment";
   const type = isAppointment && ev?.appointmentType ? TYPE_META[ev.appointmentType] : null;
   const status = isAppointment ? chipStatus(ev) : null;
   const StatusIcon = status ? STATUS_META[status].Icon : null;
+  const locColor = props.locationColor ?? null;
+  const venue = ev?.locationName ?? ev?.location ?? null;
   return (
     <div className="mp-event">
       <div className="mp-event-head">
+        {isAppointment ? <LocationDot color={locColor} onFill /> : null}
         {type ? <type.Icon className="mp-icon" aria-label={type.label} /> : null}
         <span className="mp-title">{arg.event.title}</span>
         {status && StatusIcon ? (
           <StatusIcon className="mp-icon mp-status-icon" aria-label={STATUS_META[status].label} />
         ) : null}
       </div>
-      {isAppointment && ev?.location ? (
+      {isAppointment && venue ? (
         <div className="mp-event-sub" aria-hidden>
-          {ev.location}
+          {venue}
         </div>
       ) : null}
     </div>
@@ -276,6 +305,11 @@ export function AppointmentsCalendar({
   settingsRef.current = settings;
   const busyRef = useRef(false);
   const toggleRef = useRef<(dow: number) => Promise<void>>(async () => {});
+  // Colour by position across *all* Locations so the sheet and the chips agree.
+  // Ref-backed (like settingsRef) so the stable event source can read it.
+  const locationColors = useMemo(() => locationColorMap(locations.map((l) => l.id)), [locations]);
+  const locationColorsRef = useRef<LocationColorMap>(locationColors);
+  locationColorsRef.current = locationColors;
 
   const [pendingSelect, setPendingSelect] = useState<PendingSelect | null>(null);
   const [detail, setDetail] = useState<DetailTarget | null>(null);
@@ -377,6 +411,9 @@ export function AppointmentsCalendar({
                 kind: isBusy ? "gcal-busy" : "appointment",
                 rsvp: e.rsvp,
                 event: e,
+                locationColor: e.locationId
+                  ? (locationColorsRef.current.get(e.locationId) ?? null)
+                  : null,
               },
             };
           }),
@@ -399,16 +436,17 @@ export function AppointmentsCalendar({
     [blockedEvents, fetchAppointments],
   );
 
-  // The events route reads `showCancelled` server-side; re-pull when it flips.
+  // Re-pull events when the server-side `showCancelled` flips, or when the
+  // Location colour map changes (chips carry their colour from fetch time).
   const showCancelled = settings.showCancelled;
-  const firstShowCancelled = useRef(true);
+  const firstRefetchDeps = useRef(true);
   useEffect(() => {
-    if (firstShowCancelled.current) {
-      firstShowCancelled.current = false;
+    if (firstRefetchDeps.current) {
+      firstRefetchDeps.current = false;
       return;
     }
     calendarRef.current?.getApi().refetchEvents();
-  }, [showCancelled]);
+  }, [showCancelled, locationColors]);
 
   const clearSelection = () => {
     setPendingSelect(null);
@@ -583,6 +621,27 @@ export function AppointmentsCalendar({
 
   const addressedLocations = locations.filter((l) => !!l.address?.trim());
   const bookableLocationCount = addressedLocations.filter((l) => l.bookable).length;
+  const locationLegend = (
+    <>
+      {addressedLocations.map((l) => (
+        <span
+          key={l.id}
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap",
+            !l.bookable && "text-muted-foreground/70",
+          )}
+        >
+          <LocationDot color={locationColors.get(l.id)} />
+          {l.name}
+          {!l.bookable ? <span className="text-[10px]">(off)</span> : null}
+        </span>
+      ))}
+      <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+        <LocationDot color={null} />
+        Other / no location
+      </span>
+    </>
+  );
 
   return (
     <div className="appointments-calendar flex flex-col gap-3">
@@ -655,6 +714,17 @@ export function AppointmentsCalendar({
           </div>
         </div>
 
+        {/* Phone: the legend folds away, but the location dots are the one key
+            staff need there (the chip has no room for a name), so they stay
+            visible as a scrolling strip. */}
+        <div
+          className="flex items-center gap-3 overflow-x-auto border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
+          aria-label="Location colours"
+        >
+          <span className="shrink-0 font-medium text-foreground">Location</span>
+          {locationLegend}
+        </div>
+
         <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
           <CollapsibleTrigger asChild>
             <button
@@ -716,6 +786,13 @@ export function AppointmentsCalendar({
                   <StatusLabel key={st} status={st} />
                 ))}
                 {settings.showCancelled ? <StatusLabel status="cancelled" /> : null}
+              </span>
+
+              <span className="hidden h-4 w-px bg-border md:block" />
+
+              <span className="hidden flex-wrap items-center gap-2 md:inline-flex">
+                <span className="font-medium text-foreground">Location</span>
+                {locationLegend}
               </span>
 
               <span className="basis-full sm:ml-auto sm:basis-auto">
@@ -1015,10 +1092,29 @@ export function AppointmentsCalendar({
                     </dd>
                   </div>
                 ) : null}
-                {detailEvent.location ? (
+                {detailEvent.location || detailEvent.locationName ? (
                   <div>
                     <dt className="text-muted-foreground">Location</dt>
-                    <dd>{detailEvent.location}</dd>
+                    <dd className="flex items-start gap-2">
+                      {detailEvent.kind === "appointment" ? (
+                        <LocationDot
+                          className="mt-1.5"
+                          color={
+                            detailEvent.locationId
+                              ? locationColors.get(detailEvent.locationId)
+                              : null
+                          }
+                        />
+                      ) : null}
+                      <span>
+                        {detailEvent.locationName ? (
+                          <span className="block font-medium">{detailEvent.locationName}</span>
+                        ) : null}
+                        {detailEvent.location ? (
+                          <span className="block text-muted-foreground">{detailEvent.location}</span>
+                        ) : null}
+                      </span>
+                    </dd>
                   </div>
                 ) : null}
               </dl>

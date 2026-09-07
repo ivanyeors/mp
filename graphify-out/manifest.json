@@ -4314,15 +4314,15 @@
     "semantic_hash": ""
   },
   "components/settings/appointments-calendar.tsx": {
-    "mtime": 1788739801.364975,
-    "seen": 1788739905.1901128,
-    "ast_hash": "63f5aa39d2a70d51325974268444da47",
+    "mtime": 1788740113.9220212,
+    "seen": 1788740168.2885513,
+    "ast_hash": "053bddb8eb642d5dc28d6e44fb9ff5cc",
     "semantic_hash": ""
   },
   "components/settings/appointments-settings-sheet.tsx": {
-    "mtime": 1788739801.3644848,
-    "seen": 1788739905.1901143,
-    "ast_hash": "3dd592af3ca528cc1ef76b3b5ec8948e",
+    "mtime": 1788740049.3322558,
+    "seen": 1788740168.288553,
+    "ast_hash": "4530ce4973eb8c9cc35f42c3fca8fd8c",
     "semantic_hash": ""
   },
   "components/settings/page-builder/section-editor.tsx": {
@@ -4386,9 +4386,9 @@
     "semantic_hash": ""
   },
   "components/settings/settings-mobile.check.ts": {
-    "mtime": 1788739801.3651946,
-    "seen": 1788739905.1901278,
-    "ast_hash": "c79a9d8ba6f7cc80d69f8ce3d9b074d7",
+    "mtime": 1788740049.3326511,
+    "seen": 1788740168.288565,
+    "ast_hash": "769c77a32fd9e7e99483ea85505191f4",
     "semantic_hash": ""
   },
   "components/settings/settings-sidebar-nav.tsx": {
@@ -10263,6 +10263,18 @@
     "mtime": 1788739756.505873,
     "seen": 1788739905.1898248,
     "ast_hash": "f384a26a49f996d8ab66f0b4ca149a7c",
+    "semantic_hash": ""
+  },
+  "lib/appointments/__tests__/location-colors.test.ts": {
+    "mtime": 1788740011.8292844,
+    "seen": 1788740168.2888079,
+    "ast_hash": "37028d1a55775907bf818da8372ecb20",
+    "semantic_hash": ""
+  },
+  "lib/appointments/location-colors.ts": {
+    "mtime": 1788740113.9215071,
+    "seen": 1788740168.2888243,
+    "ast_hash": "c8279a82b0702559e486eb5a0a62df6f",
     "semantic_hash": ""
   }
 }
