@@ -64,7 +64,9 @@ function authPanels(root: string): Panel[] {
   const dir = join(root, "supabase", "templates");
   let files: string[];
   try {
-    files = readdirSync(dir).filter((f) => f.endsWith(".html"));
+    // Only the four generated auth templates. The folder can hold other HTML
+    // (e.g. a preview sheet), which must not be embedded as a template.
+    files = readdirSync(dir).filter((f) => f in AUTH_TEMPLATE_LABELS);
   } catch {
     return []; // Not generated yet — the sheet still renders the other 24.
   }
