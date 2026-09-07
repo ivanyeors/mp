@@ -143,6 +143,10 @@ ${ogsc}
  * The dark variant carries `display:none` INLINE, so a client that strips
  * <style> (Gmail, for some account types) simply shows the light logo rather
  * than both.
+ *
+ * It sits top-LEFT, flush with the card's left edge. The row sets both the
+ * `align` attribute and `text-align` — Outlook reads the attribute and ignores
+ * the style; most webmail does the reverse.
  */
 function logoHtml(origin: string): string {
   const size = LAYOUT.logoSize;
@@ -217,7 +221,7 @@ ${preheaderHtml(preview)}
         { width: "100%", "max-width": `${LAYOUT.containerWidth}px` },
       )}">
         <tr>
-          <td align="center" style="padding:0 0 20px;">
+          <td align="left" style="text-align:left;padding:0 0 20px;">
             ${logoHtml(origin)}
           </td>
         </tr>

@@ -106,8 +106,15 @@ export const LAYOUT = {
   outerPadding: 24,
   cardPadding: 28,
   gutter: 16,
-  /** Fixed pixel size the logo renders at (square source, so w === h). */
-  logoSize: 48,
+  /**
+   * Fixed pixel size the logo renders at (square source, so w === h).
+   *
+   * The art is a STACKED LOCKUP — the "m" mark above the word "pillow" — so the
+   * wordmark is only about a fifth of the box. At the old 48px it rendered ~10px
+   * tall and stopped being legible; 64 is the smallest size that still reads as
+   * the brand in a left-aligned header.
+   */
+  logoSize: 64,
 } as const;
 
 /** Spacing scale, in px. Mirrors Tailwind's 1/1.5/2/2.5/3/5/6/7 rungs. */

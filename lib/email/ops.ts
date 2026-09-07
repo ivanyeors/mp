@@ -63,7 +63,7 @@ export function renderHeldResultReminderEmail(p: {
     audience: "staff",
     bodyHtml: `${statusPill("Internal", "neutral")}
 ${paragraph("A held Result is still waiting for operator review.", { top: 16 })}
-${codeBlock(p.resultId, { caption: "Result id" })}
+${codeBlock(p.resultId, { caption: "Result id", variant: "identifier" })}
 ${infoList([
       { label: "Customer", value: p.customerEmail ?? "—" },
       { label: "Held since", value: p.heldAt },

@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { setEmailTransport } from "@/lib/email";
 import type { EmailTransport, OutgoingEmail } from "@/lib/email/types";
 import { renderRmaEmail, dispatchRmaEmail, type RmaEmailData } from "@/lib/email/rma";
+import { escapeHtml } from "@/lib/email/html";
 
 const DATA: RmaEmailData = {
   orderNumber: "MP-1001",
@@ -103,6 +104,44 @@ describe("renderRmaEmail", () => {
       expect(r.subject.length).toBeGreaterThan(0);
       expect(r.html.length).toBeGreaterThan(0);
       expect(r.text.length).toBeGreaterThan(0);
+    }
+  });
+
+  const LIFECYCLE = [
+    "rma_requested",
+    "rma_approved",
+    "rma_rejected",
+    "rma_instructions",
+    "rma_completed",
+    "rma_refunded",
+  ] as const;
+
+  it("gives every template a distinct subject naming the order", () => {
+    // A shared subject made Gmail collapse a customer's whole return history
+    // into one thread, so each new update hid behind "show trimmed content".
+    const subjects = LIFECYCLE.map((t) => renderRmaEmail(t, DATA).subject);
+    expect(new Set(subjects).size).toBe(LIFECYCLE.length);
+    for (const s of subjects) expect(s).toContain("MP-1001");
+  });
+
+  it("never says 'your return' twice in one sentence", () => {
+    // The old factory appended "for your return on order {n}" to a title that
+    // already said "your return", producing "your return was approved for your
+    // return on order MP-1001".
+    for (const t of LIFECYCLE) {
+      const sentence = renderRmaEmail(t, DATA).text.split("\n").filter(Boolean)[1];
+      expect(sentence.toLowerCase().match(/your return/g)?.length ?? 0).toBeLessThan(2);
+    }
+  });
+
+  it("keeps the HTML sentence and the plain-text sentence in step", () => {
+    // One `sentence` feeds both renderings; this catches the two drifting the
+    // way the shipping email's did.
+    for (const t of LIFECYCLE.slice(1)) {
+      const r = renderRmaEmail(t, DATA);
+      const sentence = r.text.split("\n").filter(Boolean)[1];
+      const inBody = escapeHtml(sentence.replace(/^./, (c) => c.toLowerCase()));
+      expect(r.html).toContain(inBody);
     }
   });
 });
