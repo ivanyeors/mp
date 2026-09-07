@@ -2028,9 +2028,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/appointments/page.tsx": {
-    "mtime": 1788736822.3703883,
-    "seen": 1788739509.196988,
-    "ast_hash": "012f2fc3173c11a04c71dee10c43f4fa",
+    "mtime": 1788739756.5177433,
+    "seen": 1788739905.1895006,
+    "ast_hash": "4a8386dd53c9316f70a9dd301a89219b",
     "semantic_hash": ""
   },
   "app/[lang]/settings/audit-log/page.tsx": {
@@ -4314,15 +4314,15 @@
     "semantic_hash": ""
   },
   "components/settings/appointments-calendar.tsx": {
-    "mtime": 1788739477.4245727,
-    "seen": 1788739509.1977544,
-    "ast_hash": "2d485fc61825b568b3d32f1bf1fc43f7",
+    "mtime": 1788739801.364975,
+    "seen": 1788739905.1901128,
+    "ast_hash": "63f5aa39d2a70d51325974268444da47",
     "semantic_hash": ""
   },
   "components/settings/appointments-settings-sheet.tsx": {
-    "mtime": 1788739477.4245727,
-    "seen": 1788739509.1977553,
-    "ast_hash": "28a769fe97dae940b08b0dff098b4330",
+    "mtime": 1788739801.3644848,
+    "seen": 1788739905.1901143,
+    "ast_hash": "3dd592af3ca528cc1ef76b3b5ec8948e",
     "semantic_hash": ""
   },
   "components/settings/page-builder/section-editor.tsx": {
@@ -4386,9 +4386,9 @@
     "semantic_hash": ""
   },
   "components/settings/settings-mobile.check.ts": {
-    "mtime": 1788736822.5120392,
-    "seen": 1788739509.1977727,
-    "ast_hash": "921101d6bf282f92988c0e831f89c28f",
+    "mtime": 1788739801.3651946,
+    "seen": 1788739905.1901278,
+    "ast_hash": "c79a9d8ba6f7cc80d69f8ce3d9b074d7",
     "semantic_hash": ""
   },
   "components/settings/settings-sidebar-nav.tsx": {
@@ -9864,9 +9864,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/appointments/appointments-client.tsx": {
-    "mtime": 1788736822.3674304,
-    "seen": 1788739509.1969864,
-    "ast_hash": "0499b952d72bc1f1ea43fcb7a6584407",
+    "mtime": 1788739756.517995,
+    "seen": 1788739905.189498,
+    "ast_hash": "e098bf8255d1578d43f998e865cb3235",
     "semantic_hash": ""
   },
   "app/[lang]/settings/discounts/[id]/page.tsx": {
@@ -10257,6 +10257,12 @@
     "mtime": 1788739614.427138,
     "seen": 1788739712.050359,
     "ast_hash": "424d87c7d4e6b932c94fd32e92806e46",
+    "semantic_hash": ""
+  },
+  "app/api/settings/appointments/locations/route.ts": {
+    "mtime": 1788739756.505873,
+    "seen": 1788739905.1898248,
+    "ast_hash": "f384a26a49f996d8ab66f0b4ca149a7c",
     "semantic_hash": ""
   }
 }

@@ -60,6 +60,14 @@ assert.match(calendar, /selectLongPressDelay=\{350\}/);
 assert.match(calendar, /dateClick=\{handleDateClick\}/);
 assert.match(calendar, /max-md:fixed max-md:inset-x-3 max-md:bottom-\[calc\(var\(--app-dock-clearance\)\+0\.25rem\)\]/);
 assert.doesNotMatch(calendar, /window\.confirm/);
+// summary tiles: 2×2 on a phone; Locations tile opens the gear sheet
+assert.match(calendar, /grid grid-cols-2 sm:grid-cols-4/);
+assert.match(calendar, /onClick=\{onOpenSettings\}/);
+
+// appointments gear sheet: bookable-location rows are whole-row tap targets ≥44px
+const apptSheet = read("components/settings/appointments-settings-sheet.tsx");
+assert.match(apptSheet, /htmlFor=\{`bookable-\$\{loc\.id\}`\}/);
+assert.match(apptSheet, /flex min-h-11 cursor-pointer items-center gap-3/);
 
 // costings: pinned Part column (shared helper) + full-width money inputs; Save
 // pinned above the dock. The BOM configure editor reuses the same helper.

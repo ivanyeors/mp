@@ -46,6 +46,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { CalendarRangeEvent } from "@/lib/appointments/calendar";
 import type { AppointmentSettings, AppointmentType } from "@/lib/appointments/settings";
+import type { ResolvedLocation } from "@/lib/locations";
 import {
   addSgtDays,
   formatSlotLabelSgt,
@@ -63,7 +64,11 @@ type DetailTarget =
 
 type Props = {
   settings: AppointmentSettings;
+  /** Every Location; the summary tile counts the bookable ones with an address. */
+  locations: ResolvedLocation[];
   onAvailabilityChange: (patch: Partial<AppointmentSettings>) => Promise<void>;
+  /** Opens the gear sheet (the Locations tile is a shortcut to it). */
+  onOpenSettings: () => void;
 };
 
 const PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin];
@@ -259,7 +264,12 @@ function LegendSwatch({ className }: { className: string }) {
   return <span className={cn("inline-block size-2.5 shrink-0 rounded-sm", className)} />;
 }
 
-export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) {
+export function AppointmentsCalendar({
+  settings,
+  locations,
+  onAvailabilityChange,
+  onOpenSettings,
+}: Props) {
   const isMobile = useSyncIsMobile();
   const calendarRef = useRef<FullCalendar>(null);
   const settingsRef = useRef(settings);
@@ -571,11 +581,15 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
 
   const detailEvent = detail?.kind === "event" ? detail.event : null;
 
+  const addressedLocations = locations.filter((l) => !!l.address?.trim());
+  const bookableLocationCount = addressedLocations.filter((l) => l.bookable).length;
+
   return (
     <div className="appointments-calendar flex flex-col gap-3">
       {/* Config summary — always-visible facts; legend folds away on a phone */}
       <div className="shrink-0 rounded-lg border border-border bg-muted/30">
-        <div className="grid grid-cols-3 divide-x divide-border">
+        {/* Four facts: 2×2 on a phone (four columns would truncate the hours). */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 sm:divide-x divide-border">
           <div className="min-w-0 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Open hours (SGT)
@@ -596,6 +610,20 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Blocks</div>
             <div className="text-sm font-semibold tabular-nums">{settings.blockedRanges.length}</div>
           </div>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            title="Choose which locations take bookings"
+            className="min-w-0 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Locations
+            </div>
+            <div className="text-sm font-semibold tabular-nums">
+              {bookableLocationCount} of {addressedLocations.length}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">taking bookings</div>
+          </button>
         </div>
 
         <div className="border-t border-border px-3 py-2.5">

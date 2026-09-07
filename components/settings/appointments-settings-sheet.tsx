@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,22 +17,59 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { AppointmentSettings } from "@/lib/appointments/settings";
+import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import type { Locale } from "@/lib/i18n/locales";
+import type { ResolvedLocation } from "@/lib/locations";
+import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   settings: AppointmentSettings;
   onSaved: (settings: AppointmentSettings) => void;
+  /** Every Location (own + partner); the sheet shows those with an address. */
+  locations: ResolvedLocation[];
+  /** Immediate, optimistic write — unlike the form fields, which wait for Save. */
+  onToggleLocation: (id: string, bookable: boolean) => Promise<void>;
 };
+
+function SectionHeading({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="pt-2">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+    </div>
+  );
+}
 
 export function AppointmentsSettingsSheet({
   open,
   onOpenChange,
   settings,
   onSaved,
+  locations,
+  onToggleLocation,
 }: Props) {
   const [draft, setDraft] = useState(settings);
   const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const pathname = usePathname() ?? "/";
+  const locale = (getLocaleFromPathname(pathname) ?? "en-US") as Locale;
+
+  // Only Locations with an address can be booked (the address is stamped on the event).
+  const addressed = locations.filter((l) => !!l.address?.trim());
+  const bookableCount = addressed.filter((l) => l.bookable).length;
+
+  const toggle = async (loc: ResolvedLocation, bookable: boolean) => {
+    setTogglingId(loc.id);
+    try {
+      await onToggleLocation(loc.id, bookable);
+    } catch {
+      /* toast + rollback handled by the caller */
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   useEffect(() => {
     if (open) setDraft(settings);
@@ -82,12 +121,67 @@ export function AppointmentsSettingsSheet({
         <SheetHeader>
           <SheetTitle>Appointment settings</SheetTitle>
           <SheetDescription>
-            Venue, booking links, and WhatsApp slot rules. Availability is edited on the
-            calendar.
+            Locations, venue, booking links, and WhatsApp slot rules. Hours and blocks are
+            edited on the calendar.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-1 py-2">
+          <SectionHeading
+            title="Bookable locations"
+            hint={`${bookableCount} of ${addressed.length} taking bookings · switches apply immediately`}
+          />
+          {addressed.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border p-3 text-sm text-muted-foreground">
+              No locations with an address yet.{" "}
+              <Link
+                className="underline underline-offset-2"
+                href={withLocale("/settings/partners", locale)}
+              >
+                Add one in Settings → Locations
+              </Link>
+              .
+            </p>
+          ) : (
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {addressed.map((loc) => {
+                const busy = togglingId === loc.id;
+                return (
+                  <li key={loc.id}>
+                    {/* Whole row is the tap target: the switch alone is 20×36px. */}
+                    <label
+                      htmlFor={`bookable-${loc.id}`}
+                      className={cn(
+                        "flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2",
+                        busy && "opacity-70",
+                      )}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate text-sm font-medium">{loc.name}</span>
+                          <span className="shrink-0 rounded border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                            {loc.type === "own" ? "Own studio" : "Partner"}
+                          </span>
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {loc.address}
+                        </span>
+                      </span>
+                      <Switch
+                        id={`bookable-${loc.id}`}
+                        checked={loc.bookable}
+                        disabled={busy}
+                        aria-label={`${loc.name}: taking bookings`}
+                        onCheckedChange={(checked) => void toggle(loc, checked)}
+                      />
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <SectionHeading title="Booking" hint="Saved with the button below." />
           <div className="grid gap-1.5">
             <Label htmlFor="venue">Default venue</Label>
             <Input
@@ -164,6 +258,7 @@ export function AppointmentsSettingsSheet({
             />
           </div>
 
+          <SectionHeading title="WhatsApp slot offers" />
           <div className="grid gap-1.5">
             <Label htmlFor="lookahead">Slot lookahead (days)</Label>
             <Input
@@ -198,6 +293,7 @@ export function AppointmentsSettingsSheet({
             />
           </div>
 
+          <SectionHeading title="Calendar" />
           {/* Whole row is the tap target: the switch alone is 20×36px. */}
           <label
             htmlFor="show-cancelled"
