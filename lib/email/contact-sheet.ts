@@ -16,7 +16,7 @@
 // background, which would otherwise collide with the host page and with the
 // other 27. Rendering needs no JavaScript; script only auto-sizes the frames.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { escapeHtml } from "./html";
 import { DARK, LIGHT } from "./theme";
@@ -62,27 +62,23 @@ interface Panel {
  */
 function authPanels(root: string): Panel[] {
   const dir = join(root, "supabase", "templates");
-  const panels: Panel[] = [];
-  // Read the four templates BY NAME rather than globbing *.html. The directory
-  // is a paste-into-the-dashboard drop box, so unrelated HTML lands in it — a
-  // saved copy of this very sheet did, and the glob then rendered the whole
-  // contact sheet inside itself, doubling the artefact to ~1 MB.
-  for (const [file, label] of Object.entries(AUTH_TEMPLATE_LABELS)) {
-    let html: string;
-    try {
-      html = readFileSync(join(dir, file), "utf8");
-    } catch {
-      continue; // Not generated yet — the sheet still renders the other 24.
-    }
-    panels.push({
+  let files: string[];
+  try {
+    // Only the four generated auth templates. The folder can hold other HTML
+    // (e.g. a preview sheet), which must not be embedded as a template.
+    files = readdirSync(dir).filter((f) => f in AUTH_TEMPLATE_LABELS);
+  } catch {
+    return []; // Not generated yet — the sheet still renders the other 24.
+  }
+  return files
+    .sort()
+    .map((file) => ({
       id: `supabase/${file}`,
-      label,
+      label: AUTH_TEMPLATE_LABELS[file] ?? file,
       meta: "sent by Supabase · paste into the dashboard",
       subject: "Subject is set in the Supabase dashboard, not in the file",
-      html,
-    });
-  }
-  return panels;
+      html: readFileSync(join(dir, file), "utf8"),
+    }));
 }
 
 function panelHtml(panel: Panel, index: number): string {
