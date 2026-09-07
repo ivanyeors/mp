@@ -88,7 +88,17 @@ async function handleAction(
   if (action.kind === "unknown") return;
 
   const row = await getOpenReminderByPhone(action.fromE164);
-  if (!row) return;
+  if (!row) {
+    // A real intent (confirm/reschedule/cancel) with no open reminder — already
+    // confirmed/cancelled, or booked but not yet reminded. The inbound message
+    // opens the 24h service window, so a free-text reply is allowed; don't drop
+    // it silently (only unknown chatter returned earlier reaches this quietly).
+    await sendText(
+      action.fromE164,
+      "Thanks for your message. To change or cancel your appointment, reply here and our team will help you.",
+    );
+    return;
+  }
 
   const stored = await getSiteSettings([...APPOINTMENT_SETTING_KEYS]);
   const settings = parseAppointmentSettings(stored);

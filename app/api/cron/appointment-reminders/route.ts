@@ -97,12 +97,30 @@ export async function GET(req: Request) {
         startsAt: ev.startsAt,
       });
 
-      if (row.status !== "pending") {
-        // Already processed (idempotent retry)
-        if (row.status === "reminded" || row.status === "confirmed") {
-          /* counted elsewhere if needed */
-        }
-        continue;
+      // Reschedule reconciliation: a move made directly in Google Calendar runs
+      // no app code, so a non-pending row is now stale. Compare by parsed ms (GCal
+      // sends +08:00 offset, the row stores UTC Z — string compare would misfire).
+      // On drift, re-arm to `pending` so the reminder/confirmation flow re-fires
+      // for the NEW time (same flow as a fresh booking). Detection is bounded by
+      // the daily cron: an event reconciles once it becomes "tomorrow"; real-time
+      // move notices would need Google Calendar push channels, which we don't run.
+      const movedMs = Date.parse(ev.startsAt);
+      const rowMs = Date.parse(row.starts_at);
+      const movedInGcal =
+        Number.isFinite(movedMs) &&
+        Number.isFinite(rowMs) &&
+        Math.abs(movedMs - rowMs) > 60_000;
+
+      let status = row.status;
+      if (status !== "pending") {
+        if (!movedInGcal) continue; // already processed for this time
+        const rearmed = await updateReminder(
+          ev.id,
+          { status: "pending", starts_at: ev.startsAt },
+          status,
+        );
+        if (!rearmed) continue; // race: another worker re-armed/advanced it
+        status = "pending";
       }
 
       const t = transitionReminder("pending", { type: "day_before_sent" });
