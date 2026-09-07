@@ -54,16 +54,30 @@ export function hasGooglePlaceReviewsConfig(): boolean {
   return Boolean(getRequiredEnv("GOOGLE_MAPS_API_KEY") && getRequiredEnv("GOOGLE_PLACE_ID"));
 }
 
+/**
+ * Reviews rated below this (1..5) are hidden from the storefront by default.
+ * Google's Places API returns its own "most relevant" pick of at most 5 reviews,
+ * so this is a display filter only — it cannot change what Google shows on Maps.
+ */
+export const DEFAULT_MIN_REVIEW_RATING = 4;
+
+export function isTestimonialVisible(rating: number | undefined, minRating: number): boolean {
+  return typeof rating === "number" && rating >= minRating;
+}
+
 export async function getGooglePlaceTestimonials(opts?: {
   limit?: number;
   languageCode?: string;
   revalidateSeconds?: number;
+  /** Hide reviews rated below this value. Defaults to DEFAULT_MIN_REVIEW_RATING; pass 1 to show all. */
+  minRating?: number;
 }): Promise<GooglePlaceTestimonial[]> {
   const apiKey = getRequiredEnv("GOOGLE_MAPS_API_KEY");
   const placeId = getRequiredEnv("GOOGLE_PLACE_ID");
   if (!apiKey || !placeId) return [];
 
   const limit = Math.max(1, Math.min(20, opts?.limit ?? 6));
+  const minRating = Math.max(1, Math.min(5, opts?.minRating ?? DEFAULT_MIN_REVIEW_RATING));
   const languageCode = (opts?.languageCode ?? process.env.GOOGLE_PLACE_REVIEWS_LANGUAGE ?? "en").trim();
   const revalidateSeconds = Math.max(60, Math.min(24 * 60 * 60, opts?.revalidateSeconds ?? 60 * 60));
 
@@ -86,7 +100,10 @@ export async function getGooglePlaceTestimonials(opts?: {
   const data = (await res.json()) as PlacesV1PlaceDetails;
   const sourceUrl = typeof data.googleMapsUri === "string" ? data.googleMapsUri : undefined;
 
-  return (data.reviews ?? []).slice(0, limit).map((r): GooglePlaceTestimonial => {
+  return (data.reviews ?? [])
+    .filter((r) => isTestimonialVisible(r.rating, minRating))
+    .slice(0, limit)
+    .map((r): GooglePlaceTestimonial => {
     const quote =
       r.text?.text?.trim() ||
       r.originalText?.text?.trim() ||
