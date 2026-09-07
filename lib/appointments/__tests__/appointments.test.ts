@@ -6,7 +6,10 @@ import {
 import {
   DEFAULT_APPOINTMENT_SETTINGS,
   appointmentSettingsToStored,
+  availabilityFromLegacy,
+  legacyFromAvailability,
   parseAppointmentSettings,
+  validateAvailability,
 } from "@/lib/appointments/settings";
 import { resolveAppointmentType, matchAppointmentType } from "@/lib/appointments/type";
 import {
@@ -23,6 +26,7 @@ import {
   extractPhoneFromEvent,
   extractGuestName,
   mapGCalItemToRangeEvent,
+  resolveEventLocation,
   plainDescription,
   toGCalRfc3339,
   formatGoogleCalendarError,
@@ -221,6 +225,80 @@ describe("appointment-settings parse", () => {
     const stored = appointmentSettingsToStored(settings);
     expect(parseAppointmentSettings(stored).blockedRanges).toEqual([{ start, end }]);
   });
+
+  it("rebuilds windows from the legacy open/close/days trio when no availability is stored", () => {
+    const parsed = parseAppointmentSettings({
+      appointments_open_hour: "9",
+      appointments_close_hour: "17",
+      appointments_bookable_days: "1,2",
+      appointments_duration_minutes: "60",
+    });
+    expect(parsed.availability[1]).toEqual([{ start: "09:00", end: "18:00" }]);
+    expect(parsed.availability[2]).toEqual([{ start: "09:00", end: "18:00" }]);
+    expect(parsed.availability[0]).toEqual([]);
+    expect(parsed).toMatchObject({ openHour: 9, closeHour: 17, bookableDays: [1, 2] });
+    expect(DEFAULT_APPOINTMENT_SETTINGS.availability).toEqual(
+      availabilityFromLegacy(DEFAULT_APPOINTMENT_SETTINGS),
+    );
+  });
+
+  it("stored windows win over the trio and drive the derived hour fields", () => {
+    const availability = Array.from({ length: 7 }, () => [] as { start: string; end: string }[]);
+    availability[2] = [
+      { start: "14:00", end: "18:00" },
+      { start: "09:00", end: "12:00" },
+    ];
+    const parsed = parseAppointmentSettings({
+      appointments_availability: JSON.stringify(availability),
+      appointments_open_hour: "6",
+      appointments_close_hour: "23",
+      appointments_bookable_days: "0,1,2,3,4,5,6",
+    });
+    // sorted by start
+    expect(parsed.availability[2]).toEqual([
+      { start: "09:00", end: "12:00" },
+      { start: "14:00", end: "18:00" },
+    ]);
+    expect(parsed).toMatchObject({ openHour: 9, closeHour: 17, bookableDays: [2] });
+    const stored = appointmentSettingsToStored(parsed);
+    expect(parseAppointmentSettings(stored).availability).toEqual(parsed.availability);
+    // garbage → legacy trio
+    expect(
+      parseAppointmentSettings({ appointments_availability: "not json" }).availability,
+    ).toEqual(DEFAULT_APPOINTMENT_SETTINGS.availability);
+  });
+
+  it("validates a week of windows", () => {
+    const week = (day: { start: string; end: string }[]) => {
+      const av = Array.from({ length: 7 }, () => [] as { start: string; end: string }[]);
+      av[3] = day;
+      return av;
+    };
+    expect(validateAvailability(week([{ start: "10:00", end: "12:00" }]))).toBeNull();
+    expect(validateAvailability(week([{ start: "10:00", end: "24:00" }]))).toBeNull();
+    expect(validateAvailability(week([{ start: "12:00", end: "10:00" }]))).toMatch(/end after/);
+    expect(validateAvailability(week([{ start: "10:00", end: "10:00" }]))).toMatch(/end after/);
+    expect(validateAvailability(week([{ start: "1000", end: "12:00" }]))).toMatch(/HH:MM/);
+    expect(
+      validateAvailability(week([{ start: "10:00", end: "13:00" }, { start: "12:00", end: "14:00" }])),
+    ).toMatch(/overlap/);
+    expect(validateAvailability(week([]))).toMatch(/At least one/);
+    expect(validateAvailability([])).toMatch(/seven/);
+    expect(legacyFromAvailability(week([]), 60).bookableDays).toEqual([]);
+  });
+
+  it("parses showCancelled as a bool (default off, garbage → default)", () => {
+    expect(parseAppointmentSettings({}).showCancelled).toBe(false);
+    expect(parseAppointmentSettings({ appointments_show_cancelled: "true" }).showCancelled).toBe(true);
+    expect(parseAppointmentSettings({ appointments_show_cancelled: "1" }).showCancelled).toBe(true);
+    expect(parseAppointmentSettings({ appointments_show_cancelled: "nope" }).showCancelled).toBe(false);
+    const stored = appointmentSettingsToStored({
+      ...DEFAULT_APPOINTMENT_SETTINGS,
+      showCancelled: true,
+    });
+    expect(stored.appointments_show_cancelled).toBe("true");
+    expect(parseAppointmentSettings(stored).showCancelled).toBe(true);
+  });
 });
 
 describe("calendar RFC3339 + errors", () => {
@@ -327,6 +405,35 @@ describe("calendar extract helpers", () => {
       ),
     ).toBeNull();
 
+    // Opt-in: a cancelled *appointment* survives, flagged; a cancelled stray block does not.
+    const cancelledAppt = {
+      id: "c2",
+      status: "cancelled",
+      summary: "Bob - Mpillow Customisation",
+      start: { dateTime: "2026-07-10T02:00:00Z" },
+      end: { dateTime: "2026-07-10T03:00:00Z" },
+    };
+    expect(mapGCalItemToRangeEvent(cancelledAppt, DEFAULT_APPOINTMENT_SETTINGS)).toBeNull();
+    expect(
+      mapGCalItemToRangeEvent(cancelledAppt, DEFAULT_APPOINTMENT_SETTINGS, {
+        includeCancelled: true,
+      }),
+    ).toMatchObject({ id: "c2", kind: "appointment", cancelled: true, guestName: "Bob" });
+    expect(
+      mapGCalItemToRangeEvent(
+        {
+          id: "c3",
+          status: "cancelled",
+          summary: "Dentist",
+          start: { dateTime: "2026-07-10T02:00:00Z" },
+          end: { dateTime: "2026-07-10T03:00:00Z" },
+        },
+        DEFAULT_APPOINTMENT_SETTINGS,
+        { includeCancelled: true },
+      ),
+    ).toBeNull();
+    expect(timed?.cancelled).toBe(false);
+
     expect(
       mapGCalItemToRangeEvent(
         {
@@ -339,6 +446,59 @@ describe("calendar extract helpers", () => {
         DEFAULT_APPOINTMENT_SETTINGS,
       ),
     ).toBeNull();
+  });
+
+  it("resolves an event's Location: stamped id first, then exact address, else null", () => {
+    const locations = [
+      { id: "own", name: "Chai Chee Studio", address: "512 Chai Chee Lane #02-10" },
+      { id: "clinic", name: "Spine Clinic", address: "1 Clinic Ave" },
+    ];
+    // stamped id wins even when the address text points elsewhere
+    expect(
+      resolveEventLocation(
+        { location: "1 Clinic Ave", extendedProperties: { private: { mpLocationId: "own" } } },
+        locations,
+      )?.id,
+    ).toBe("own");
+    // unknown stamp falls through to the address
+    expect(
+      resolveEventLocation(
+        { location: "1 clinic ave", extendedProperties: { private: { mpLocationId: "gone" } } },
+        locations,
+      )?.id,
+    ).toBe("clinic");
+    // whitespace/case-insensitive address match
+    expect(
+      resolveEventLocation({ location: "  512 Chai Chee   Lane #02-10 " }, locations)?.id,
+    ).toBe("own");
+    expect(resolveEventLocation({ location: "Somewhere else" }, locations)).toBeNull();
+    expect(resolveEventLocation({}, locations)).toBeNull();
+
+    const mapped = mapGCalItemToRangeEvent(
+      {
+        id: "t2",
+        summary: "Alice - Mpillow Customisation",
+        location: "1 Clinic Ave",
+        start: { dateTime: "2026-07-10T02:00:00Z" },
+        end: { dateTime: "2026-07-10T03:00:00Z" },
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+      { locations },
+    );
+    expect(mapped).toMatchObject({ locationId: "clinic", locationName: "Spine Clinic" });
+    // busy blocks never get a Location, even with a matching address
+    const busy = mapGCalItemToRangeEvent(
+      {
+        id: "b2",
+        summary: "Lunch",
+        location: "1 Clinic Ave",
+        start: { dateTime: "2026-07-10T02:00:00Z" },
+        end: { dateTime: "2026-07-10T03:00:00Z" },
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+      { locations },
+    );
+    expect(busy).toMatchObject({ kind: "busy", locationId: null, locationName: null });
   });
 
   it("derives guest RSVP from first non-self attendee (missing → needsAction, self ignored)", () => {
@@ -385,5 +545,21 @@ describe("calendar extract helpers", () => {
     );
     expect(ooo?.kind).toBe("busy");
     expect(ooo?.rsvp).toBeNull();
+  });
+});
+
+describe("gcal reschedule drift detection", () => {
+  // Guards the cron reconciliation (appointment-reminders): GCal sends +08:00
+  // offsets, the reminder row stores UTC Z. A naive string compare would flag the
+  // SAME instant as a move; parsed-ms compare must not. A real move must drift.
+  const drift = (gcal: string, row: string) =>
+    Math.abs(Date.parse(gcal) - Date.parse(row)) > 60_000;
+
+  it("same instant across +08:00 and UTC Z is not drift", () => {
+    expect(drift("2026-08-20T15:00:00+08:00", "2026-08-20T07:00:00.000Z")).toBe(false);
+  });
+
+  it("a moved appointment drifts", () => {
+    expect(drift("2026-08-20T18:00:00+08:00", "2026-08-20T07:00:00.000Z")).toBe(true);
   });
 });

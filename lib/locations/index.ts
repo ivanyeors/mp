@@ -14,6 +14,7 @@ export type ResolvedLocation = {
   address: string | null;
   postalCode: string | null;
   visible: boolean;
+  bookable: boolean;
 };
 
 export function toResolvedLocation(row: LocationRow): ResolvedLocation {
@@ -24,7 +25,19 @@ export function toResolvedLocation(row: LocationRow): ResolvedLocation {
     address: row.address ?? null,
     postalCode: row.postal_code ?? null,
     visible: row.visible,
+    // Rows written before the column existed read back as undefined → bookable.
+    bookable: row.bookable ?? true,
   };
+}
+
+/**
+ * Pure booking projection: the Locations a customer may pick. `bookable` is the
+ * admin switch; an address is required because it is stamped onto the calendar
+ * event. `visible` is deliberately *not* consulted — it only governs
+ * /our-partners, and own studios are saved with it off.
+ */
+export function selectBookableLocations(rows: ResolvedLocation[]): ResolvedLocation[] {
+  return rows.filter((l) => l.bookable && !!l.address?.trim());
 }
 
 /**

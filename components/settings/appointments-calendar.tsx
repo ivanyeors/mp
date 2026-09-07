@@ -15,7 +15,19 @@ import type { DateClickArg } from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  Ban,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  Mail,
+  RefreshCw,
+  Sparkles,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +45,16 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { CalendarRangeEvent } from "@/lib/appointments/calendar";
-import type { AppointmentSettings } from "@/lib/appointments/settings";
+import {
+  DEFAULT_AVAILABILITY_WINDOW,
+  WEEKDAY_LABELS,
+  hhmm,
+  type AppointmentSettings,
+  type AppointmentType,
+  type WeeklyAvailability,
+} from "@/lib/appointments/settings";
+import { locationColorMap, type LocationColorMap } from "@/lib/appointments/location-colors";
+import type { ResolvedLocation } from "@/lib/locations";
 import {
   addSgtDays,
   formatSlotLabelSgt,
@@ -51,7 +72,11 @@ type DetailTarget =
 
 type Props = {
   settings: AppointmentSettings;
+  /** Every Location; the summary tile counts the bookable ones with an address. */
+  locations: ResolvedLocation[];
   onAvailabilityChange: (patch: Partial<AppointmentSettings>) => Promise<void>;
+  /** Opens the gear sheet (the Locations tile is a shortcut to it). */
+  onOpenSettings: () => void;
 };
 
 const PLUGINS = [dayGridPlugin, timeGridPlugin, interactionPlugin];
@@ -114,10 +139,6 @@ function padHour(h: number): string {
   return `${String(Math.min(Math.max(h, 0), 24)).padStart(2, "0")}:00`;
 }
 
-function formatHourLabel(h: number): string {
-  return `${String(h).padStart(2, "0")}:00`;
-}
-
 /** GCal all-day end is exclusive YYYY-MM-DD — show inclusive range. */
 function formatAllDayLabel(startDate: string, endDateExclusive: string): string {
   const end = new Date(`${endDateExclusive}T00:00:00Z`);
@@ -127,10 +148,31 @@ function formatAllDayLabel(startDate: string, endDateExclusive: string): string 
   return `All day · ${startDate} – ${endInclusive}`;
 }
 
-/** Last bookable start → wall-clock end of that slot. */
-function hoursEndLabel(closeHour: number, durationMinutes: number): string {
-  const end = Math.min(closeHour + Math.max(1, Math.ceil(durationMinutes / 60)), 24);
-  return formatHourLabel(end);
+/**
+ * Summary-tile copy for the week's windows. When every open day shares the
+ * same windows, show them; otherwise say so and point at the gear sheet.
+ */
+function summarizeAvailability(av: WeeklyAvailability): {
+  label: string;
+  caption: string;
+} {
+  const open = av.filter((d) => d.length);
+  if (!open.length) return { label: "Closed", caption: "no open days" };
+  const key = (d: { start: string; end: string }[]) =>
+    d.map((w) => `${w.start}–${w.end}`).join(", ");
+  const first = key(open[0]!);
+  const uniform = open.every((d) => key(d) === first);
+  if (uniform) return { label: first, caption: `${open.length} open days` };
+  return { label: "Varies by day", caption: "edit in settings" };
+}
+
+/** Copy of the week with one day replaced. */
+function withDay(
+  av: WeeklyAvailability,
+  dow: number,
+  windows: { start: string; end: string }[],
+): WeeklyAvailability {
+  return av.map((d, i) => (i === dow ? windows : d));
 }
 
 /** Browser-local getDay() is wrong when admin isn't in SGT — use wall-clock SGT. */
@@ -145,34 +187,107 @@ function formatRangeLabel(start: Date, end: Date): string {
   )}`;
 }
 
-/** Google responseStatus → status-pill label (second visual channel, alongside type fill). */
-const RSVP_LABEL: Record<NonNullable<CalendarRangeEvent["rsvp"]>, string> = {
-  accepted: "Confirmed",
-  declined: "Declined",
-  tentative: "Tentative",
-  needsAction: "Invited",
+type Rsvp = NonNullable<CalendarRangeEvent["rsvp"]>;
+/** Chip status: the guest's RSVP, or Cancelled when Google dropped the event. */
+type ChipStatus = Rsvp | "cancelled";
+
+/**
+ * Status as an icon, not a pill: the chip has one line, so shape carries the
+ * status (tick / cross / ? / envelope / ban) and the left-border accent keeps
+ * the colour. Labels live in the legend and the detail sheet.
+ */
+const STATUS_META: Record<ChipStatus, { label: string; Icon: LucideIcon; className: string }> = {
+  accepted: { label: "Confirmed", Icon: Check, className: "text-green-600 dark:text-green-400" },
+  declined: { label: "Declined", Icon: X, className: "text-red-600 dark:text-red-400" },
+  tentative: {
+    label: "Tentative",
+    Icon: CircleHelp,
+    className: "text-amber-700 dark:text-amber-400",
+  },
+  needsAction: { label: "Invited", Icon: Mail, className: "text-slate-500 dark:text-slate-400" },
+  cancelled: { label: "Cancelled", Icon: Ban, className: "text-muted-foreground" },
 };
 
-/** Custom event body: time + title, plus type label + RSVP pill on appointments. */
+/** Type as fill colour + a small icon (blue vs violet alone is thin for colour-blind staff). */
+const TYPE_META: Record<AppointmentType, { label: string; Icon: LucideIcon; fill: string; border: string }> = {
+  customisation: { label: "Customise", Icon: Sparkles, fill: "#2563eb", border: "#1d4ed8" },
+  readjustment: { label: "Readjust", Icon: RefreshCw, fill: "#7c3aed", border: "#6d28d9" },
+};
+
+function chipStatus(ev: CalendarRangeEvent | undefined): ChipStatus | null {
+  if (!ev) return null;
+  if (ev.cancelled) return "cancelled";
+  return ev.rsvp;
+}
+
+/**
+ * Location dot. A colour when the event resolved to a Location; hollow for
+ * "Other / no location". Inside a chip it rides on the dark type fill (white
+ * ring); in the legend and sheets it sits on the page background (dark ring).
+ */
+function LocationDot({
+  color,
+  onFill = false,
+  className,
+}: {
+  color: string | null | undefined;
+  onFill?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn("mp-loc-dot", !color && "mp-loc-dot-hollow", onFill && "mp-loc-dot-on-fill", className)}
+      style={color ? { backgroundColor: color } : undefined}
+    />
+  );
+}
+
+/** Icon + label, used by the legend and the detail sheet (the chip shows the icon alone). */
+function StatusLabel({ status }: { status: ChipStatus }) {
+  const { label, Icon, className } = STATUS_META[status];
+  return (
+    <span className={cn("inline-flex items-center gap-1 font-medium", className)}>
+      <Icon className="size-3.5" aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Custom event body. One line: type icon, guest name, status icon — the grid
+ * row already says when, and the fill colour already says which type, so the
+ * chip drops the time and the "Mpillow Customisation" text that used to bleed
+ * out of short slots. A second line with the venue shows only where the slot
+ * is tall enough; otherwise it clips inside the chip.
+ */
 function renderEventContent(arg: EventContentArg) {
   const props = arg.event.extendedProps as {
     kind?: string;
     event?: CalendarRangeEvent;
+    /** Resolved at fetch time from the Location colour map (null = unresolved). */
+    locationColor?: string | null;
   };
   const ev = props.event;
-  const rsvp = ev?.rsvp ?? null;
+  const isAppointment = props.kind === "appointment";
+  const type = isAppointment && ev?.appointmentType ? TYPE_META[ev.appointmentType] : null;
+  const status = isAppointment ? chipStatus(ev) : null;
+  const StatusIcon = status ? STATUS_META[status].Icon : null;
+  const locColor = props.locationColor ?? null;
+  const venue = ev?.locationName ?? ev?.location ?? null;
   return (
     <div className="mp-event">
       <div className="mp-event-head">
-        {arg.timeText ? <span className="mp-time">{arg.timeText}</span> : null}
+        {isAppointment ? <LocationDot color={locColor} onFill /> : null}
+        {type ? <type.Icon className="mp-icon" aria-label={type.label} /> : null}
         <span className="mp-title">{arg.event.title}</span>
+        {status && StatusIcon ? (
+          <StatusIcon className="mp-icon mp-status-icon" aria-label={STATUS_META[status].label} />
+        ) : null}
       </div>
-      {props.kind === "appointment" ? (
-        <div className="mp-tags">
-          {ev?.typeLabel ? <span className="mp-type-chip">{ev.typeLabel}</span> : null}
-          {rsvp ? (
-            <span className={`mp-rsvp-pill mp-rsvp-${rsvp}`}>{RSVP_LABEL[rsvp]}</span>
-          ) : null}
+      {isAppointment && venue ? (
+        <div className="mp-event-sub" aria-hidden>
+          {venue}
         </div>
       ) : null}
     </div>
@@ -202,13 +317,23 @@ function LegendSwatch({ className }: { className: string }) {
   return <span className={cn("inline-block size-2.5 shrink-0 rounded-sm", className)} />;
 }
 
-export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) {
+export function AppointmentsCalendar({
+  settings,
+  locations,
+  onAvailabilityChange,
+  onOpenSettings,
+}: Props) {
   const isMobile = useSyncIsMobile();
   const calendarRef = useRef<FullCalendar>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const busyRef = useRef(false);
   const toggleRef = useRef<(dow: number) => Promise<void>>(async () => {});
+  // Colour by position across *all* Locations so the sheet and the chips agree.
+  // Ref-backed (like settingsRef) so the stable event source can read it.
+  const locationColors = useMemo(() => locationColorMap(locations.map((l) => l.id)), [locations]);
+  const locationColorsRef = useRef<LocationColorMap>(locationColors);
+  locationColorsRef.current = locationColors;
 
   const [pendingSelect, setPendingSelect] = useState<PendingSelect | null>(null);
   const [detail, setDetail] = useState<DetailTarget | null>(null);
@@ -252,15 +377,18 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
     [settings.blockedRanges],
   );
 
-  const businessHours = useMemo(() => {
-    const durationHours = Math.max(1, Math.ceil(settings.durationMinutes / 60));
-    return {
-      daysOfWeek: settings.bookableDays,
-      startTime: padHour(settings.openHour),
-      // closeHour is last bookable *start*; band ends when that slot would finish
-      endTime: padHour(Math.min(settings.closeHour + durationHours, 24)),
-    };
-  }, [settings.bookableDays, settings.openHour, settings.closeHour, settings.durationMinutes]);
+  // One band per window, so a split day (10–12, 14–18) shows the gap.
+  const businessHours = useMemo(
+    () =>
+      settings.availability.flatMap((day, dow) =>
+        day.map((w) => ({
+          daysOfWeek: [dow],
+          startTime: w.start === "24:00" ? "23:59" : w.start,
+          endTime: w.end,
+        })),
+      ),
+    [settings.availability],
+  );
 
   const fetchAppointments = useCallback<EventSourceFunc>(
     async (info, success, failure) => {
@@ -279,35 +407,40 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
         success(
           (json.events ?? []).map((e) => {
             const isBusy = e.kind === "busy";
-            const title =
-              isBusy && e.description
+            // Busy: first description line beats a bare "Busy". Appointment: the
+            // guest's name alone — type is the fill, and the summary's
+            // "Mpillow Customisation" boilerplate is what overflowed the chip.
+            const title = isBusy
+              ? e.description
                 ? e.description.split("\n")[0]!.trim() || e.summary
-                : e.summary;
+                : e.summary
+              : (e.guestName ?? e.summary);
+            const type = TYPE_META[e.appointmentType ?? "customisation"];
             return {
               id: e.id,
               title,
               start: e.startsAt,
               end: e.endsAt,
               allDay: e.allDay,
-              backgroundColor: isBusy
-                ? "rgba(148, 163, 184, 0.45)"
-                : e.appointmentType === "readjustment"
-                  ? "#7c3aed"
-                  : "#2563eb",
-              borderColor: isBusy
-                ? "rgba(100, 116, 139, 0.55)"
-                : e.appointmentType === "readjustment"
-                  ? "#6d28d9"
-                  : "#1d4ed8",
+              backgroundColor: isBusy ? "rgba(148, 163, 184, 0.45)" : type.fill,
+              borderColor: isBusy ? "rgba(100, 116, 139, 0.55)" : type.border,
               textColor: isBusy ? "#334155" : undefined,
               classNames: isBusy
                 ? ["fc-gcal-busy-event"]
-                : ["fc-gcal-appointment", `fc-rsvp-accent-${e.rsvp ?? "needsAction"}`],
+                : [
+                    "fc-gcal-appointment",
+                    e.cancelled
+                      ? "fc-cancelled-event"
+                      : `fc-rsvp-accent-${e.rsvp ?? "needsAction"}`,
+                  ],
               editable: false,
               extendedProps: {
                 kind: isBusy ? "gcal-busy" : "appointment",
                 rsvp: e.rsvp,
                 event: e,
+                locationColor: e.locationId
+                  ? (locationColorsRef.current.get(e.locationId) ?? null)
+                  : null,
               },
             };
           }),
@@ -329,6 +462,18 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
     ],
     [blockedEvents, fetchAppointments],
   );
+
+  // Re-pull events when the server-side `showCancelled` flips, or when the
+  // Location colour map changes (chips carry their colour from fetch time).
+  const showCancelled = settings.showCancelled;
+  const firstRefetchDeps = useRef(true);
+  useEffect(() => {
+    if (firstRefetchDeps.current) {
+      firstRefetchDeps.current = false;
+      return;
+    }
+    calendarRef.current?.getApi().refetchEvents();
+  }, [showCancelled, locationColors]);
 
   const clearSelection = () => {
     setPendingSelect(null);
@@ -413,14 +558,42 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
     if (ok) clearSelection();
   };
 
+  /** SGT weekdays a selection touches (end exclusive). */
+  const selectionDows = (sel: PendingSelect): number[] => {
+    const dows = new Set<number>();
+    let ms = sel.start.getTime();
+    const endMs = sel.end.getTime() - 1;
+    while (ms <= endMs) {
+      const p = sgtParts(ms);
+      dows.add(p.dow);
+      const next = addSgtDays(p.y, p.m, p.d, 1);
+      ms = sgtLocalToUtcMs(next.y, next.m, next.d, 0, 0);
+    }
+    return [...dows];
+  };
+
+  /**
+   * The selection's wall-clock band becomes the single window for every
+   * weekday it touches (Google's "set hours for Tuesday"). Other days keep
+   * their own windows.
+   */
   const handleSetHoursFromSelection = async () => {
     if (!pendingSelect) return;
     const startP = sgtParts(pendingSelect.start.getTime());
-    // Selection end is exclusive; back one minute to get inclusive last hour
-    const endP = sgtParts(pendingSelect.end.getTime() - 60_000);
-    const openHour = startP.hour;
-    const closeHour = Math.max(openHour, endP.hour);
-    const ok = await applyPatch({ openHour, closeHour });
+    const endP = sgtParts(pendingSelect.end.getTime());
+    const startMin = startP.hour * 60 + startP.minute;
+    // An exclusive end at midnight is the end of the day, not 00:00.
+    const endMin = endP.hour === 0 && endP.minute === 0 ? 1440 : endP.hour * 60 + endP.minute;
+    if (endMin <= startMin) {
+      toast.error("Pick a range that starts and ends on the same day");
+      return;
+    }
+    const window = { start: hhmm(startMin), end: hhmm(endMin) };
+    let availability = settingsRef.current.availability;
+    for (const dow of selectionDows(pendingSelect)) {
+      availability = withDay(availability, dow, [window]);
+    }
+    const ok = await applyPatch({ availability });
     if (ok) clearSelection();
   };
 
@@ -449,20 +622,21 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
     if (ok) setDetail(null);
   };
 
-  // Ref-backed so dayHeaderDidMount listeners never go stale
+  // Ref-backed so dayHeaderDidMount listeners never go stale.
+  // Closing a day clears its windows; reopening copies the first open day's
+  // (or the default window) so the admin has something to adjust.
   toggleRef.current = async (dow: number) => {
-    const current = settingsRef.current.bookableDays;
-    const set = new Set(current);
-    if (set.has(dow)) {
-      if (set.size <= 1) {
+    const av = settingsRef.current.availability;
+    if (av[dow]?.length) {
+      if (av.filter((d) => d.length).length <= 1) {
         toast.error("At least one bookable day is required");
         return;
       }
-      set.delete(dow);
-    } else {
-      set.add(dow);
+      await applyPatch({ availability: withDay(av, dow, []) });
+      return;
     }
-    await applyPatch({ bookableDays: [...set].sort((a, b) => a - b) });
+    const template = av.find((d) => d.length) ?? [DEFAULT_AVAILABILITY_WINDOW];
+    await applyPatch({ availability: withDay(av, dow, template.map((w) => ({ ...w }))) });
   };
 
   const dayHeaderDidMount = useCallback((info: { el: HTMLElement; date: Date }) => {
@@ -500,23 +674,52 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
   const visibleViews = VIEW_OPTIONS.filter((v) => isMobile || !v.mobileOnly);
 
   const detailEvent = detail?.kind === "event" ? detail.event : null;
+  const hoursSummary = summarizeAvailability(settings.availability);
+  const selectionDayLabel = pendingSelect
+    ? (() => {
+        const dows = selectionDows(pendingSelect);
+        return dows.length === 1 ? `Set ${WEEKDAY_LABELS[dows[0]!]} hours` : "Set hours for these days";
+      })()
+    : "";
+
+  const addressedLocations = locations.filter((l) => !!l.address?.trim());
+  const bookableLocationCount = addressedLocations.filter((l) => l.bookable).length;
+  const locationLegend = (
+    <>
+      {addressedLocations.map((l) => (
+        <span
+          key={l.id}
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap",
+            !l.bookable && "text-muted-foreground/70",
+          )}
+        >
+          <LocationDot color={locationColors.get(l.id)} />
+          {l.name}
+          {!l.bookable ? <span className="text-[10px]">(off)</span> : null}
+        </span>
+      ))}
+      <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+        <LocationDot color={null} />
+        Other / no location
+      </span>
+    </>
+  );
 
   return (
     <div className="appointments-calendar flex flex-col gap-3">
       {/* Config summary — always-visible facts; legend folds away on a phone */}
       <div className="shrink-0 rounded-lg border border-border bg-muted/30">
-        <div className="grid grid-cols-3 divide-x divide-border">
+        {/* Four facts: 2×2 on a phone (four columns would truncate the hours). */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 sm:divide-x divide-border">
           <div className="min-w-0 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
               Open hours (SGT)
             </div>
-            <div className="text-sm font-semibold tabular-nums">
-              {formatHourLabel(settings.openHour)}–
-              {hoursEndLabel(settings.closeHour, settings.durationMinutes)}
+            <div className="truncate text-sm font-semibold tabular-nums" title={hoursSummary.label}>
+              {hoursSummary.label}
             </div>
-            <div className="truncate text-[11px] text-muted-foreground">
-              last start {formatHourLabel(settings.closeHour)}
-            </div>
+            <div className="truncate text-[11px] text-muted-foreground">{hoursSummary.caption}</div>
           </div>
           <div className="min-w-0 px-3 py-2.5">
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Slot</div>
@@ -526,6 +729,20 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Blocks</div>
             <div className="text-sm font-semibold tabular-nums">{settings.blockedRanges.length}</div>
           </div>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            title="Choose which locations take bookings"
+            className="min-w-0 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Locations
+            </div>
+            <div className="text-sm font-semibold tabular-nums">
+              {bookableLocationCount} of {addressedLocations.length}
+            </div>
+            <div className="truncate text-[11px] text-muted-foreground">taking bookings</div>
+          </button>
         </div>
 
         <div className="border-t border-border px-3 py-2.5">
@@ -555,6 +772,17 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
               })}
             </div>
           </div>
+        </div>
+
+        {/* Phone: the legend folds away, but the location dots are the one key
+            staff need there (the chip has no room for a name), so they stay
+            visible as a scrolling strip. */}
+        <div
+          className="flex items-center gap-3 overflow-x-auto border-t border-border px-3 py-2 text-xs text-muted-foreground md:hidden"
+          aria-label="Location colours"
+        >
+          <span className="shrink-0 font-medium text-foreground">Location</span>
+          {locationLegend}
         </div>
 
         <Collapsible open={legendOpen} onOpenChange={setLegendOpen}>
@@ -592,24 +820,39 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
 
               <span className="inline-flex flex-wrap items-center gap-2">
                 <span className="font-medium text-foreground">Type</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <LegendSwatch className="bg-[#2563eb]" />
-                  Customise
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <LegendSwatch className="bg-[#7c3aed]" />
-                  Readjust
-                </span>
+                {(Object.keys(TYPE_META) as AppointmentType[]).map((t) => {
+                  const { label, Icon, fill } = TYPE_META[t];
+                  return (
+                    <span key={t} className="inline-flex items-center gap-1.5">
+                      <span
+                        className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-white"
+                        style={{ backgroundColor: fill }}
+                      >
+                        <Icon className="size-2.5" aria-hidden />
+                      </span>
+                      {label}
+                    </span>
+                  );
+                })}
               </span>
 
               <span className="hidden h-4 w-px bg-border sm:block" />
 
               <span className="inline-flex flex-wrap items-center gap-2">
                 <span className="font-medium text-foreground">Status</span>
-                <span className="mp-rsvp-pill mp-rsvp-accepted">Confirmed</span>
-                <span className="mp-rsvp-pill mp-rsvp-declined">Declined</span>
-                <span className="mp-rsvp-pill mp-rsvp-tentative">Tentative</span>
-                <span className="mp-rsvp-pill mp-rsvp-needsAction">Invited</span>
+                {(
+                  ["accepted", "declined", "tentative", "needsAction"] as ChipStatus[]
+                ).map((st) => (
+                  <StatusLabel key={st} status={st} />
+                ))}
+                {settings.showCancelled ? <StatusLabel status="cancelled" /> : null}
+              </span>
+
+              <span className="hidden h-4 w-px bg-border md:block" />
+
+              <span className="hidden flex-wrap items-center gap-2 md:inline-flex">
+                <span className="font-medium text-foreground">Location</span>
+                {locationLegend}
               </span>
 
               <span className="basis-full sm:ml-auto sm:basis-auto">
@@ -716,11 +959,8 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
             minute: "2-digit",
             hour12: false,
           }}
-          eventTimeFormat={{
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }}
+          // The grid row already says when; the chip spends its one line on who.
+          displayEventTime={false}
           allDaySlot
           nowIndicator
           selectable
@@ -821,7 +1061,7 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                 disabled={busy}
                 onClick={() => void handleSetHoursFromSelection()}
               >
-                Set as open hours
+                {selectionDayLabel}
               </Button>
             </div>
           </div>
@@ -847,7 +1087,9 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                 ? "Local block — customers can't book this range."
                 : detailEvent?.kind === "busy"
                   ? "Google Calendar busy / blocked time (read-only)"
-                  : "Google Calendar event (read-only)"}
+                  : detailEvent?.cancelled
+                    ? "Cancelled Google Calendar event (read-only)"
+                    : "Google Calendar event (read-only)"}
             </SheetDescription>
           </SheetHeader>
 
@@ -902,20 +1144,37 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                     <dd>{detailEvent.typeLabel}</dd>
                   </div>
                 ) : null}
-                {detailEvent.rsvp ? (
+                {chipStatus(detailEvent) ? (
                   <div>
                     <dt className="text-muted-foreground">Status</dt>
                     <dd>
-                      <span className={`mp-rsvp-pill mp-rsvp-${detailEvent.rsvp}`}>
-                        {RSVP_LABEL[detailEvent.rsvp]}
-                      </span>
+                      <StatusLabel status={chipStatus(detailEvent)!} />
                     </dd>
                   </div>
                 ) : null}
-                {detailEvent.location ? (
+                {detailEvent.location || detailEvent.locationName ? (
                   <div>
                     <dt className="text-muted-foreground">Location</dt>
-                    <dd>{detailEvent.location}</dd>
+                    <dd className="flex items-start gap-2">
+                      {detailEvent.kind === "appointment" ? (
+                        <LocationDot
+                          className="mt-1.5"
+                          color={
+                            detailEvent.locationId
+                              ? locationColors.get(detailEvent.locationId)
+                              : null
+                          }
+                        />
+                      ) : null}
+                      <span>
+                        {detailEvent.locationName ? (
+                          <span className="block font-medium">{detailEvent.locationName}</span>
+                        ) : null}
+                        {detailEvent.location ? (
+                          <span className="block text-muted-foreground">{detailEvent.location}</span>
+                        ) : null}
+                      </span>
+                    </dd>
                   </div>
                 ) : null}
               </dl>

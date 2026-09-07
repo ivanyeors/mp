@@ -1,6 +1,7 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
 import { getAppointmentSettings } from "@/lib/appointments/settings-store";
+import { getLocations } from "@/lib/locations";
 import AppointmentSettingsPage from "./appointments-client";
 
 export const runtime = "nodejs";
@@ -23,6 +24,16 @@ export default async function AppointmentSettingsRoute({
   // presents them as the *saved* settings and skips the client's mount fetch,
   // so an admin could save the defaults over real values. Leave `initialData`
   // undefined instead and let the client fetch and report the failure.
-  const settings = await getAppointmentSettings().catch(() => null);
-  return <AppointmentSettingsPage initialData={settings ?? undefined} />;
+  const [settings, locations] = await Promise.all([
+    getAppointmentSettings().catch(() => null),
+    // Same `locations`-tagged read as the booking picker; a miss just means the
+    // sheet fetches on open.
+    getLocations().catch(() => null),
+  ]);
+  return (
+    <AppointmentSettingsPage
+      initialData={settings ?? undefined}
+      initialLocations={locations ?? undefined}
+    />
+  );
 }
