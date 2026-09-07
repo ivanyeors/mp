@@ -23,6 +23,7 @@ import {
   extractPhoneFromEvent,
   extractGuestName,
   mapGCalItemToRangeEvent,
+  resolveEventLocation,
   plainDescription,
   toGCalRfc3339,
   formatGoogleCalendarError,
@@ -381,6 +382,59 @@ describe("calendar extract helpers", () => {
         DEFAULT_APPOINTMENT_SETTINGS,
       ),
     ).toBeNull();
+  });
+
+  it("resolves an event's Location: stamped id first, then exact address, else null", () => {
+    const locations = [
+      { id: "own", name: "Chai Chee Studio", address: "512 Chai Chee Lane #02-10" },
+      { id: "clinic", name: "Spine Clinic", address: "1 Clinic Ave" },
+    ];
+    // stamped id wins even when the address text points elsewhere
+    expect(
+      resolveEventLocation(
+        { location: "1 Clinic Ave", extendedProperties: { private: { mpLocationId: "own" } } },
+        locations,
+      )?.id,
+    ).toBe("own");
+    // unknown stamp falls through to the address
+    expect(
+      resolveEventLocation(
+        { location: "1 clinic ave", extendedProperties: { private: { mpLocationId: "gone" } } },
+        locations,
+      )?.id,
+    ).toBe("clinic");
+    // whitespace/case-insensitive address match
+    expect(
+      resolveEventLocation({ location: "  512 Chai Chee   Lane #02-10 " }, locations)?.id,
+    ).toBe("own");
+    expect(resolveEventLocation({ location: "Somewhere else" }, locations)).toBeNull();
+    expect(resolveEventLocation({}, locations)).toBeNull();
+
+    const mapped = mapGCalItemToRangeEvent(
+      {
+        id: "t2",
+        summary: "Alice - Mpillow Customisation",
+        location: "1 Clinic Ave",
+        start: { dateTime: "2026-07-10T02:00:00Z" },
+        end: { dateTime: "2026-07-10T03:00:00Z" },
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+      { locations },
+    );
+    expect(mapped).toMatchObject({ locationId: "clinic", locationName: "Spine Clinic" });
+    // busy blocks never get a Location, even with a matching address
+    const busy = mapGCalItemToRangeEvent(
+      {
+        id: "b2",
+        summary: "Lunch",
+        location: "1 Clinic Ave",
+        start: { dateTime: "2026-07-10T02:00:00Z" },
+        end: { dateTime: "2026-07-10T03:00:00Z" },
+      },
+      DEFAULT_APPOINTMENT_SETTINGS,
+      { locations },
+    );
+    expect(busy).toMatchObject({ kind: "busy", locationId: null, locationName: null });
   });
 
   it("derives guest RSVP from first non-self attendee (missing → needsAction, self ignored)", () => {

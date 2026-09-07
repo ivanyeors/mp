@@ -148,10 +148,16 @@ export type EventGuest = {
   summary: string;
   /** Picked location's street address; stamped into the GCal `location` field. */
   locationAddress: string;
+  /** Picked Location row id; stamped into private extended properties so the
+   * admin calendar can resolve the Location without matching address text. */
+  locationId?: string;
   guestName: string;
   phone: string;
   email?: string;
 };
+
+/** Key under `extendedProperties.private` carrying the Location row id. */
+export const LOCATION_ID_PROP = "mpLocationId";
 
 export type EventInsertBody = {
   summary: string;
@@ -160,6 +166,7 @@ export type EventInsertBody = {
   start: { dateTime: string; timeZone: "Asia/Singapore" };
   end: { dateTime: string; timeZone: "Asia/Singapore" };
   attendees?: Array<{ email: string; displayName?: string }>;
+  extendedProperties?: { private: Record<string, string> };
 };
 
 /**
@@ -179,6 +186,9 @@ export function buildEventInsertBody(guest: EventGuest): EventInsertBody {
   };
   if (guest.email) {
     body.attendees = [{ email: guest.email, displayName: guest.guestName }];
+  }
+  if (guest.locationId) {
+    body.extendedProperties = { private: { [LOCATION_ID_PROP]: guest.locationId } };
   }
   return body;
 }

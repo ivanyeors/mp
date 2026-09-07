@@ -103,4 +103,11 @@ describe("buildEventInsertBody", () => {
       { email: "jane@example.com", displayName: "Jane" },
     ]);
   });
+
+  it("stamps the Location id into private extended properties when given", () => {
+    expect(buildEventInsertBody(guest).extendedProperties).toBeUndefined();
+    expect(
+      buildEventInsertBody({ ...guest, locationId: "loc-1" }).extendedProperties,
+    ).toEqual({ private: { mpLocationId: "loc-1" } });
+  });
 });

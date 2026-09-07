@@ -88,6 +88,7 @@ export async function POST(req: Request) {
       endIso: parsed.end_iso,
       summary,
       locationAddress: location.address,
+      locationId: location.id,
       guestName: parsed.guest_name,
       phone,
       email: parsed.email,
