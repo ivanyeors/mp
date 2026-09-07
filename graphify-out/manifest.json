@@ -990,9 +990,9 @@
     "semantic_hash": ""
   },
   "lib/partners/types.ts": {
-    "mtime": 1788736822.812645,
-    "seen": 1788739509.198499,
-    "ast_hash": "d67e68bf0c1ee648da53cdd36807d270",
+    "mtime": 1788739614.445293,
+    "seen": 1788739712.0499015,
+    "ast_hash": "ea4ef2a94f81170fc69fa78761e79808",
     "semantic_hash": ""
   },
   "lib/product-slide-sections/__tests__/resolve-slide-content.test.ts": {
@@ -2718,9 +2718,9 @@
     "semantic_hash": ""
   },
   "app/api/partners/[id]/route.ts": {
-    "mtime": 1788736822.4487197,
-    "seen": 1788739509.1973796,
-    "ast_hash": "3d31a03507b328f3dc3fd609d0100d73",
+    "mtime": 1788739614.4458969,
+    "seen": 1788739712.0489714,
+    "ast_hash": "d355eb104895b9c7f72a73e0ac518e40",
     "semantic_hash": ""
   },
   "app/api/partners/reorder/route.ts": {
@@ -2730,9 +2730,9 @@
     "semantic_hash": ""
   },
   "app/api/partners/route.ts": {
-    "mtime": 1788736822.4487197,
-    "seen": 1788739509.1973834,
-    "ast_hash": "b20fd0dfad6d1bebfa8f99051ee7e879",
+    "mtime": 1788739614.4458082,
+    "seen": 1788739712.0489736,
+    "ast_hash": "1dc3de2e847afe07eacec36356f3418a",
     "semantic_hash": ""
   },
   "app/api/results/[id]/accept/route.ts": {
@@ -3462,15 +3462,15 @@
     "semantic_hash": ""
   },
   "app/api/appointments/book/__tests__/route.test.ts": {
-    "mtime": 1788736822.4234304,
-    "seen": 1788739509.1972716,
-    "ast_hash": "b9a2549772d271e607fe38c2a7487af0",
+    "mtime": 1788739630.0456474,
+    "seen": 1788739712.048892,
+    "ast_hash": "9d8aa0ff558cda83d45969fe71b02c23",
     "semantic_hash": ""
   },
   "app/api/appointments/book/route.ts": {
-    "mtime": 1788736822.4234304,
-    "seen": 1788739509.1972733,
-    "ast_hash": "23e6f9a5f780b5fe8d0a34a8d435631d",
+    "mtime": 1788739614.4456816,
+    "seen": 1788739712.0488937,
+    "ast_hash": "149af12ef9c4106ed5c0ba5fd7834be5",
     "semantic_hash": ""
   },
   "app/api/appointments/ics/__tests__/route.test.ts": {
@@ -3510,9 +3510,9 @@
     "semantic_hash": ""
   },
   "app/api/locations/route.ts": {
-    "mtime": 1788736822.431872,
-    "seen": 1788739509.1973107,
-    "ast_hash": "fa341a6b7f43ae74df58df029644c1aa",
+    "mtime": 1788739614.4455688,
+    "seen": 1788739712.0489268,
+    "ast_hash": "71b4ee4d89f464319258857452221cd2",
     "semantic_hash": ""
   },
   "app/api/mp-config/__tests__/telegram-chunk.test.ts": {
@@ -5562,15 +5562,15 @@
     "semantic_hash": ""
   },
   "lib/locations/__tests__/projection.test.ts": {
-    "mtime": 1788736822.8021915,
-    "seen": 1788739509.1984446,
-    "ast_hash": "1394317a130c86b7bb597b71b748264f",
+    "mtime": 1788739663.4496992,
+    "seen": 1788739712.0498364,
+    "ast_hash": "08b98557b1a69389938d96ceccd8fcd7",
     "semantic_hash": ""
   },
   "lib/locations/index.ts": {
-    "mtime": 1788736822.8021915,
-    "seen": 1788739509.1984458,
-    "ast_hash": "852449794e2fd87a737bb9b9fb1650d8",
+    "mtime": 1788739614.445466,
+    "seen": 1788739712.0498376,
+    "ast_hash": "b411be2cdfe075e35e737e8f2e75141a",
     "semantic_hash": ""
   },
   "lib/milestones/__tests__/index.test.ts": {
@@ -10251,6 +10251,12 @@
     "mtime": 1788736822.7674305,
     "seen": 1788739509.1979918,
     "ast_hash": "c1b6a34740075c126cde28bcedcfa7c9",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260907000000_locations_bookable.sql": {
+    "mtime": 1788739614.427138,
+    "seen": 1788739712.050359,
+    "ast_hash": "424d87c7d4e6b932c94fd32e92806e46",
     "semantic_hash": ""
   }
 }

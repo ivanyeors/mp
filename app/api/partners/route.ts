@@ -20,6 +20,7 @@ const CreateSchema = z.object({
   type: z.enum(["own", "partner"]).optional().default("partner"),
   address: z.string().nullable().optional(),
   postal_code: z.string().nullable().optional(),
+  bookable: z.boolean().optional().default(true),
 });
 
 export async function GET() {
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
         type: parsed.type,
         address: parsed.address ?? null,
         postal_code: parsed.postal_code ?? null,
+        bookable: parsed.bookable,
         position: nextPosition,
       })
       .select("*")
