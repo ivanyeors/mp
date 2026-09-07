@@ -105,11 +105,9 @@
     padding-left: 3px;
   }
 
-  .appointments-calendar .fc-timeGridWeek-view .mp-time {
-    display: none;
-  }
-
-  .appointments-calendar .fc-timeGridWeek-view .mp-tags {
+  /* Seven narrow columns: the status icon would eat the whole name. */
+  .appointments-calendar .fc-timeGridWeek-view .mp-status-icon,
+  .appointments-calendar .fc-dayGridMonth-view .mp-status-icon {
     display: none;
   }
 }
@@ -151,67 +149,69 @@
   box-shadow: inset 3px 0 0 0 #64748b;
 }
 
+/* Chip content is clipped to the slot — the old tag row painted past short events. */
+.appointments-calendar .fc-timegrid-event,
+.appointments-calendar .fc-daygrid-event {
+  overflow: hidden;
+}
+.appointments-calendar .fc-event-main {
+  height: 100%;
+  overflow: hidden;
+}
+
 /* Custom event body (eventContent) — inherits FullCalendar's per-event text color. */
 .appointments-calendar .mp-event {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  height: 100%;
   overflow: hidden;
-  padding: 1px 2px 1px 5px;
+  padding: 2px 3px 1px 5px;
 }
+/* One line: type icon · name · status icon. Name truncates; icons never wrap. */
 .appointments-calendar .mp-event-head {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 4px;
+  min-height: 0.95rem;
   line-height: 1.15;
 }
-.appointments-calendar .mp-time {
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 0.7rem;
-  opacity: 0.9;
-}
 .appointments-calendar .mp-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
   font-size: 0.75rem;
 }
-.appointments-calendar .mp-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
+.appointments-calendar .mp-icon {
+  flex: 0 0 auto;
+  width: 0.75rem;
+  height: 0.75rem;
+  stroke-width: 2.5;
+  opacity: 0.95;
 }
-.appointments-calendar .mp-type-chip {
+/* Venue line — only visible where the slot is tall enough; clips otherwise.
+   Month cells size to content, so there it is dropped to keep one row per event. */
+.appointments-calendar .fc-dayGridMonth-view .mp-event-sub {
+  display: none;
+}
+.appointments-calendar .mp-event-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.65rem;
-  font-weight: 600;
-  padding: 0 5px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.22);
-  color: inherit;
+  line-height: 1.2;
+  opacity: 0.85;
 }
 
-/* RSVP status pill — unscoped so it also renders inside the detail dialog portal + legend. */
-.mp-rsvp-pill {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1.4;
-  padding: 0 6px;
-  border-radius: 9999px;
-  color: #fff;
-  white-space: nowrap;
+/* Cancelled appointment — keeps the type fill, faded and struck through. */
+.appointments-calendar .fc-cancelled-event {
+  opacity: 0.55;
+  border-style: dashed;
 }
-.mp-rsvp-accepted {
-  background: #16a34a;
-}
-.mp-rsvp-declined {
-  background: #dc2626;
-}
-.mp-rsvp-tentative {
-  /* amber-700: ~5:1 on white text (WCAG AA); #d97706 was ~3.4:1 */
-  background: #b45309;
-}
-.mp-rsvp-needsAction {
-  background: #64748b;
+.appointments-calendar .fc-cancelled-event .mp-title {
+  text-decoration: line-through;
 }

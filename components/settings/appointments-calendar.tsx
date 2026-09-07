@@ -15,7 +15,19 @@ import type { DateClickArg } from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { ChevronDown, ChevronLeft, ChevronRight, X } from "lucide-react";
+import {
+  Ban,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  Mail,
+  RefreshCw,
+  Sparkles,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +45,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { CalendarRangeEvent } from "@/lib/appointments/calendar";
-import type { AppointmentSettings } from "@/lib/appointments/settings";
+import type { AppointmentSettings, AppointmentType } from "@/lib/appointments/settings";
 import {
   addSgtDays,
   formatSlotLabelSgt,
@@ -145,34 +157,79 @@ function formatRangeLabel(start: Date, end: Date): string {
   )}`;
 }
 
-/** Google responseStatus → status-pill label (second visual channel, alongside type fill). */
-const RSVP_LABEL: Record<NonNullable<CalendarRangeEvent["rsvp"]>, string> = {
-  accepted: "Confirmed",
-  declined: "Declined",
-  tentative: "Tentative",
-  needsAction: "Invited",
+type Rsvp = NonNullable<CalendarRangeEvent["rsvp"]>;
+/** Chip status: the guest's RSVP, or Cancelled when Google dropped the event. */
+type ChipStatus = Rsvp | "cancelled";
+
+/**
+ * Status as an icon, not a pill: the chip has one line, so shape carries the
+ * status (tick / cross / ? / envelope / ban) and the left-border accent keeps
+ * the colour. Labels live in the legend and the detail sheet.
+ */
+const STATUS_META: Record<ChipStatus, { label: string; Icon: LucideIcon; className: string }> = {
+  accepted: { label: "Confirmed", Icon: Check, className: "text-green-600 dark:text-green-400" },
+  declined: { label: "Declined", Icon: X, className: "text-red-600 dark:text-red-400" },
+  tentative: {
+    label: "Tentative",
+    Icon: CircleHelp,
+    className: "text-amber-700 dark:text-amber-400",
+  },
+  needsAction: { label: "Invited", Icon: Mail, className: "text-slate-500 dark:text-slate-400" },
+  cancelled: { label: "Cancelled", Icon: Ban, className: "text-muted-foreground" },
 };
 
-/** Custom event body: time + title, plus type label + RSVP pill on appointments. */
+/** Type as fill colour + a small icon (blue vs violet alone is thin for colour-blind staff). */
+const TYPE_META: Record<AppointmentType, { label: string; Icon: LucideIcon; fill: string; border: string }> = {
+  customisation: { label: "Customise", Icon: Sparkles, fill: "#2563eb", border: "#1d4ed8" },
+  readjustment: { label: "Readjust", Icon: RefreshCw, fill: "#7c3aed", border: "#6d28d9" },
+};
+
+function chipStatus(ev: CalendarRangeEvent | undefined): ChipStatus | null {
+  if (!ev) return null;
+  if (ev.cancelled) return "cancelled";
+  return ev.rsvp;
+}
+
+/** Icon + label, used by the legend and the detail sheet (the chip shows the icon alone). */
+function StatusLabel({ status }: { status: ChipStatus }) {
+  const { label, Icon, className } = STATUS_META[status];
+  return (
+    <span className={cn("inline-flex items-center gap-1 font-medium", className)}>
+      <Icon className="size-3.5" aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+/**
+ * Custom event body. One line: type icon, guest name, status icon — the grid
+ * row already says when, and the fill colour already says which type, so the
+ * chip drops the time and the "Mpillow Customisation" text that used to bleed
+ * out of short slots. A second line with the venue shows only where the slot
+ * is tall enough; otherwise it clips inside the chip.
+ */
 function renderEventContent(arg: EventContentArg) {
   const props = arg.event.extendedProps as {
     kind?: string;
     event?: CalendarRangeEvent;
   };
   const ev = props.event;
-  const rsvp = ev?.rsvp ?? null;
+  const isAppointment = props.kind === "appointment";
+  const type = isAppointment && ev?.appointmentType ? TYPE_META[ev.appointmentType] : null;
+  const status = isAppointment ? chipStatus(ev) : null;
+  const StatusIcon = status ? STATUS_META[status].Icon : null;
   return (
     <div className="mp-event">
       <div className="mp-event-head">
-        {arg.timeText ? <span className="mp-time">{arg.timeText}</span> : null}
+        {type ? <type.Icon className="mp-icon" aria-label={type.label} /> : null}
         <span className="mp-title">{arg.event.title}</span>
+        {status && StatusIcon ? (
+          <StatusIcon className="mp-icon mp-status-icon" aria-label={STATUS_META[status].label} />
+        ) : null}
       </div>
-      {props.kind === "appointment" ? (
-        <div className="mp-tags">
-          {ev?.typeLabel ? <span className="mp-type-chip">{ev.typeLabel}</span> : null}
-          {rsvp ? (
-            <span className={`mp-rsvp-pill mp-rsvp-${rsvp}`}>{RSVP_LABEL[rsvp]}</span>
-          ) : null}
+      {isAppointment && ev?.location ? (
+        <div className="mp-event-sub" aria-hidden>
+          {ev.location}
         </div>
       ) : null}
     </div>
@@ -279,30 +336,32 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
         success(
           (json.events ?? []).map((e) => {
             const isBusy = e.kind === "busy";
-            const title =
-              isBusy && e.description
+            // Busy: first description line beats a bare "Busy". Appointment: the
+            // guest's name alone — type is the fill, and the summary's
+            // "Mpillow Customisation" boilerplate is what overflowed the chip.
+            const title = isBusy
+              ? e.description
                 ? e.description.split("\n")[0]!.trim() || e.summary
-                : e.summary;
+                : e.summary
+              : (e.guestName ?? e.summary);
+            const type = TYPE_META[e.appointmentType ?? "customisation"];
             return {
               id: e.id,
               title,
               start: e.startsAt,
               end: e.endsAt,
               allDay: e.allDay,
-              backgroundColor: isBusy
-                ? "rgba(148, 163, 184, 0.45)"
-                : e.appointmentType === "readjustment"
-                  ? "#7c3aed"
-                  : "#2563eb",
-              borderColor: isBusy
-                ? "rgba(100, 116, 139, 0.55)"
-                : e.appointmentType === "readjustment"
-                  ? "#6d28d9"
-                  : "#1d4ed8",
+              backgroundColor: isBusy ? "rgba(148, 163, 184, 0.45)" : type.fill,
+              borderColor: isBusy ? "rgba(100, 116, 139, 0.55)" : type.border,
               textColor: isBusy ? "#334155" : undefined,
               classNames: isBusy
                 ? ["fc-gcal-busy-event"]
-                : ["fc-gcal-appointment", `fc-rsvp-accent-${e.rsvp ?? "needsAction"}`],
+                : [
+                    "fc-gcal-appointment",
+                    e.cancelled
+                      ? "fc-cancelled-event"
+                      : `fc-rsvp-accent-${e.rsvp ?? "needsAction"}`,
+                  ],
               editable: false,
               extendedProps: {
                 kind: isBusy ? "gcal-busy" : "appointment",
@@ -329,6 +388,17 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
     ],
     [blockedEvents, fetchAppointments],
   );
+
+  // The events route reads `showCancelled` server-side; re-pull when it flips.
+  const showCancelled = settings.showCancelled;
+  const firstShowCancelled = useRef(true);
+  useEffect(() => {
+    if (firstShowCancelled.current) {
+      firstShowCancelled.current = false;
+      return;
+    }
+    calendarRef.current?.getApi().refetchEvents();
+  }, [showCancelled]);
 
   const clearSelection = () => {
     setPendingSelect(null);
@@ -592,24 +662,32 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
 
               <span className="inline-flex flex-wrap items-center gap-2">
                 <span className="font-medium text-foreground">Type</span>
-                <span className="inline-flex items-center gap-1.5">
-                  <LegendSwatch className="bg-[#2563eb]" />
-                  Customise
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <LegendSwatch className="bg-[#7c3aed]" />
-                  Readjust
-                </span>
+                {(Object.keys(TYPE_META) as AppointmentType[]).map((t) => {
+                  const { label, Icon, fill } = TYPE_META[t];
+                  return (
+                    <span key={t} className="inline-flex items-center gap-1.5">
+                      <span
+                        className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-white"
+                        style={{ backgroundColor: fill }}
+                      >
+                        <Icon className="size-2.5" aria-hidden />
+                      </span>
+                      {label}
+                    </span>
+                  );
+                })}
               </span>
 
               <span className="hidden h-4 w-px bg-border sm:block" />
 
               <span className="inline-flex flex-wrap items-center gap-2">
                 <span className="font-medium text-foreground">Status</span>
-                <span className="mp-rsvp-pill mp-rsvp-accepted">Confirmed</span>
-                <span className="mp-rsvp-pill mp-rsvp-declined">Declined</span>
-                <span className="mp-rsvp-pill mp-rsvp-tentative">Tentative</span>
-                <span className="mp-rsvp-pill mp-rsvp-needsAction">Invited</span>
+                {(
+                  ["accepted", "declined", "tentative", "needsAction"] as ChipStatus[]
+                ).map((st) => (
+                  <StatusLabel key={st} status={st} />
+                ))}
+                {settings.showCancelled ? <StatusLabel status="cancelled" /> : null}
               </span>
 
               <span className="basis-full sm:ml-auto sm:basis-auto">
@@ -716,11 +794,8 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
             minute: "2-digit",
             hour12: false,
           }}
-          eventTimeFormat={{
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }}
+          // The grid row already says when; the chip spends its one line on who.
+          displayEventTime={false}
           allDaySlot
           nowIndicator
           selectable
@@ -847,7 +922,9 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                 ? "Local block — customers can't book this range."
                 : detailEvent?.kind === "busy"
                   ? "Google Calendar busy / blocked time (read-only)"
-                  : "Google Calendar event (read-only)"}
+                  : detailEvent?.cancelled
+                    ? "Cancelled Google Calendar event (read-only)"
+                    : "Google Calendar event (read-only)"}
             </SheetDescription>
           </SheetHeader>
 
@@ -902,13 +979,11 @@ export function AppointmentsCalendar({ settings, onAvailabilityChange }: Props) 
                     <dd>{detailEvent.typeLabel}</dd>
                   </div>
                 ) : null}
-                {detailEvent.rsvp ? (
+                {chipStatus(detailEvent) ? (
                   <div>
                     <dt className="text-muted-foreground">Status</dt>
                     <dd>
-                      <span className={`mp-rsvp-pill mp-rsvp-${detailEvent.rsvp}`}>
-                        {RSVP_LABEL[detailEvent.rsvp]}
-                      </span>
+                      <StatusLabel status={chipStatus(detailEvent)!} />
                     </dd>
                   </div>
                 ) : null}

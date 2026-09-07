@@ -39,6 +39,7 @@ const PutSchema = z.object({
     )
     .max(200)
     .optional(),
+  showCancelled: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -91,6 +92,7 @@ export async function PUT(req: Request) {
         slotLookaheadDays: input.slotLookaheadDays,
         slotOfferCount: input.slotOfferCount,
         blockedRanges: input.blockedRanges,
+        showCancelled: input.showCancelled,
       }).filter(([, v]) => v !== undefined),
     ),
   };

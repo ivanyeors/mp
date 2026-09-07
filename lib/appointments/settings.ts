@@ -29,6 +29,11 @@ export type AppointmentSettings = {
   slotOfferCount: number;
   /** Admin-blocked intervals (ISO datetimes); excluded from slot offers. */
   blockedRanges: BlockedRange[];
+  /**
+   * Admin calendar: also list cancelled appointments (Google `showDeleted`),
+   * drawn struck-through. Off by default so cancellations don't crowd the grid.
+   */
+  showCancelled: boolean;
 };
 
 export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
@@ -44,6 +49,7 @@ export const DEFAULT_APPOINTMENT_SETTINGS: AppointmentSettings = {
   slotLookaheadDays: 14,
   slotOfferCount: 3,
   blockedRanges: [],
+  showCancelled: false,
 };
 
 export const APPOINTMENT_SETTING_KEYS = [
@@ -59,6 +65,7 @@ export const APPOINTMENT_SETTING_KEYS = [
   "appointments_slot_lookahead_days",
   "appointments_slot_offer_count",
   "appointments_blocked_ranges",
+  "appointments_show_cancelled",
 ] as const;
 
 function parsePositiveInt(v: string | undefined, fallback: number): number {
@@ -73,6 +80,14 @@ function parseHour(v: string | undefined, fallback: number): number {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0 || n > 23) return fallback;
   return Math.floor(n);
+}
+
+function parseBool(v: string | undefined, fallback: boolean): boolean {
+  if (v == null || v.trim() === "") return fallback;
+  const t = v.trim().toLowerCase();
+  if (t === "true" || t === "1") return true;
+  if (t === "false" || t === "0") return false;
+  return fallback;
 }
 
 function parseBookableDays(v: string | undefined, fallback: number[]): number[] {
@@ -148,6 +163,7 @@ export function parseAppointmentSettings(
       stored.appointments_blocked_ranges,
       d.blockedRanges,
     ),
+    showCancelled: parseBool(stored.appointments_show_cancelled, d.showCancelled),
   };
 }
 
@@ -167,5 +183,6 @@ export function appointmentSettingsToStored(
     appointments_slot_lookahead_days: String(s.slotLookaheadDays),
     appointments_slot_offer_count: String(s.slotOfferCount),
     appointments_blocked_ranges: JSON.stringify(s.blockedRanges),
+    appointments_show_cancelled: String(s.showCancelled),
   };
 }

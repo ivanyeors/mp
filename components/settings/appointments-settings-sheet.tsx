@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Sheet,
   SheetContent,
@@ -50,6 +51,7 @@ export function AppointmentsSettingsSheet({
           readjustmentSummaryMatch: draft.readjustmentSummaryMatch,
           slotLookaheadDays: draft.slotLookaheadDays,
           slotOfferCount: draft.slotOfferCount,
+          showCancelled: draft.showCancelled,
         }),
       });
       const json = (await res.json()) as {
@@ -195,6 +197,26 @@ export function AppointmentsSettingsSheet({
               }
             />
           </div>
+
+          {/* Whole row is the tap target: the switch alone is 20×36px. */}
+          <label
+            htmlFor="show-cancelled"
+            className="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-medium">Show cancelled appointments</span>
+              <span className="block text-xs text-muted-foreground">
+                Struck-through on the calendar. Off keeps cancellations out of the grid.
+              </span>
+            </span>
+            <Switch
+              id="show-cancelled"
+              checked={draft.showCancelled}
+              onCheckedChange={(checked) =>
+                setDraft((p) => ({ ...p, showCancelled: checked }))
+              }
+            />
+          </label>
         </div>
 
         <SheetFooter>

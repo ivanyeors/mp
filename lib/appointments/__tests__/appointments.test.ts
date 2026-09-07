@@ -221,6 +221,19 @@ describe("appointment-settings parse", () => {
     const stored = appointmentSettingsToStored(settings);
     expect(parseAppointmentSettings(stored).blockedRanges).toEqual([{ start, end }]);
   });
+
+  it("parses showCancelled as a bool (default off, garbage → default)", () => {
+    expect(parseAppointmentSettings({}).showCancelled).toBe(false);
+    expect(parseAppointmentSettings({ appointments_show_cancelled: "true" }).showCancelled).toBe(true);
+    expect(parseAppointmentSettings({ appointments_show_cancelled: "1" }).showCancelled).toBe(true);
+    expect(parseAppointmentSettings({ appointments_show_cancelled: "nope" }).showCancelled).toBe(false);
+    const stored = appointmentSettingsToStored({
+      ...DEFAULT_APPOINTMENT_SETTINGS,
+      showCancelled: true,
+    });
+    expect(stored.appointments_show_cancelled).toBe("true");
+    expect(parseAppointmentSettings(stored).showCancelled).toBe(true);
+  });
 });
 
 describe("calendar RFC3339 + errors", () => {
@@ -326,6 +339,35 @@ describe("calendar extract helpers", () => {
         DEFAULT_APPOINTMENT_SETTINGS,
       ),
     ).toBeNull();
+
+    // Opt-in: a cancelled *appointment* survives, flagged; a cancelled stray block does not.
+    const cancelledAppt = {
+      id: "c2",
+      status: "cancelled",
+      summary: "Bob - Mpillow Customisation",
+      start: { dateTime: "2026-07-10T02:00:00Z" },
+      end: { dateTime: "2026-07-10T03:00:00Z" },
+    };
+    expect(mapGCalItemToRangeEvent(cancelledAppt, DEFAULT_APPOINTMENT_SETTINGS)).toBeNull();
+    expect(
+      mapGCalItemToRangeEvent(cancelledAppt, DEFAULT_APPOINTMENT_SETTINGS, {
+        includeCancelled: true,
+      }),
+    ).toMatchObject({ id: "c2", kind: "appointment", cancelled: true, guestName: "Bob" });
+    expect(
+      mapGCalItemToRangeEvent(
+        {
+          id: "c3",
+          status: "cancelled",
+          summary: "Dentist",
+          start: { dateTime: "2026-07-10T02:00:00Z" },
+          end: { dateTime: "2026-07-10T03:00:00Z" },
+        },
+        DEFAULT_APPOINTMENT_SETTINGS,
+        { includeCancelled: true },
+      ),
+    ).toBeNull();
+    expect(timed?.cancelled).toBe(false);
 
     expect(
       mapGCalItemToRangeEvent(

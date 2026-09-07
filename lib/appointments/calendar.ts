@@ -42,6 +42,11 @@ export type CalendarRangeEvent = {
   typeLabel: string | null;
   /** Guest's Google RSVP. null for busy/blocked (non-appointment) ranges. */
   rsvp: "accepted" | "declined" | "tentative" | "needsAction" | null;
+  /**
+   * Google `status: "cancelled"`. Only surfaced for known appointments when the
+   * admin opts in (`settings.showCancelled`); drawn struck-through in the grid.
+   */
+  cancelled: boolean;
 };
 
 type GCalEvent = {
@@ -96,19 +101,26 @@ function isGCalBusyKind(ev: GCalEvent, matched: boolean): boolean {
   return true;
 }
 
-/** Map one GCal events.list item for the admin mirror view. Skips cancelled / incomplete. */
+/**
+ * Map one GCal events.list item for the admin mirror view. Skips incomplete
+ * items. Cancelled items are skipped too unless `includeCancelled` — and even
+ * then only known appointments survive: a cancelled random busy block is noise.
+ */
 export function mapGCalItemToRangeEvent(
   ev: GCalEvent,
   settings: AppointmentSettings,
+  opts: { includeCancelled?: boolean } = {},
 ): CalendarRangeEvent | null {
   if (!ev.id) return null;
-  if (ev.status === "cancelled") return null;
+  const cancelled = ev.status === "cancelled";
+  if (cancelled && !opts.includeCancelled) return null;
 
   const eventType = (ev.eventType ?? "default").toLowerCase();
   // Not blocks — skip noise from status/location calendars
   if (eventType === "workinglocation" || eventType === "birthday") return null;
 
   const matched = matchAppointmentType(ev.summary, settings);
+  if (cancelled && !matched) return null;
   // Free-time markers aren't blocked off
   if (!matched && ev.transparency === "transparent") return null;
 
@@ -146,8 +158,9 @@ export function mapGCalItemToRangeEvent(
     phone,
     appointmentType: matched?.type ?? null,
     typeLabel: matched?.label ?? null,
-    // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → no pill.
+    // Second visual channel — only appointments carry an RSVP; busy/OOO/blocked → none.
     rsvp: busy ? null : guestRsvp(ev),
+    cancelled,
   };
 }
 
@@ -346,6 +359,9 @@ export async function listRangeEvents(
     orderBy: "startTime",
     maxResults: "250",
   });
+  // Google keeps a deleted event's fields until it is purged, so cancelled
+  // appointments still carry summary/start/end and can be drawn struck-through.
+  if (settings.showCancelled) qs.set("showDeleted", "true");
   const res = await calFetch(`/calendars/${id}/events?${qs}`);
   if (!res.ok) {
     throw new Error(formatGoogleCalendarError(res.status, await res.text()));
@@ -354,7 +370,9 @@ export async function listRangeEvents(
   const out: CalendarRangeEvent[] = [];
 
   for (const ev of json.items ?? []) {
-    const mapped = mapGCalItemToRangeEvent(ev, settings);
+    const mapped = mapGCalItemToRangeEvent(ev, settings, {
+      includeCancelled: settings.showCancelled,
+    });
     if (mapped) out.push(mapped);
   }
   return out;
