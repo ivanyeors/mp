@@ -22,6 +22,7 @@ import {
   statusPill,
 } from "./components";
 import { money } from "./format";
+import { LAYOUT, SPACE } from "./theme";
 import type { RenderedEmail } from "./types";
 
 /** Human product name from the stored product type. */
@@ -33,6 +34,14 @@ function statusUrl(origin: string, resultId: string, accessToken: string | null)
   const base = `${origin}/results/${encodeURIComponent(resultId)}`;
   return accessToken ? `${base}?token=${encodeURIComponent(accessToken)}` : base;
 }
+
+/**
+ * Link text for the status page.
+ *
+ * Never the URL itself: a tokenised status URL is ~95 characters, which wraps to
+ * three lines of muted 12px and reads as noise rather than as something to click.
+ */
+const STATUS_PAGE_LABEL = "status page";
 
 // ------------------------------------------------------------
 // Authorization hold placed → "under review"
@@ -172,8 +181,13 @@ export function renderResultAssignedEmail(p: {
       ]
     : [];
 
+  // Asymmetric spacing binds each label to the list it introduces. With
+  // heading()'s flat `0 0 16px` the three labels sat equidistant between the
+  // lists and read as belonging to neither.
   const section = (label: string, items: string[]): string =>
-    items.length > 0 ? `${heading(label, 3)}${bulletList(items)}` : "";
+    items.length > 0
+      ? `${heading(label, 3, { top: LAYOUT.gutter, bottom: SPACE.sm })}${bulletList(items)}`
+      : "";
 
   const html = renderEmailShell({
     title: "Your final build is ready",
@@ -225,10 +239,11 @@ ${paragraph(
       "Your customisation review window has expired and your card authorization hold has been released.",
       { top: 16 },
     )}
-${paragraph(
+${paragraphHtml(
       // The plain-text body has always linked the status page; the old HTML
-      // dropped it. Keep both in step.
-      `You can still view this customisation on its status page: ${url}`,
+      // dropped it, then carried it as unlinked text. Keep both in step, and
+      // make it clickable — a URL printed as prose is not a link.
+      `You can still view this customisation on its ${link({ href: url, label: STATUS_PAGE_LABEL })}.`,
       { muted: true },
     )}`,
     cta: { href: restartUrl, label: "Start customisation again" },
@@ -270,7 +285,10 @@ ${paragraph(
       "Sign in in a few days to track your customisation (Result) status.",
       { muted: true },
     )}
-${paragraphHtml(`Status page: ${link({ href: url, label: url })}`, { muted: true })}`,
+${paragraphHtml(
+      `You can also view this customisation on its ${link({ href: url, label: STATUS_PAGE_LABEL })}.`,
+      { muted: true },
+    )}`,
     cta: { href: loginUrl, label: "Sign in" },
   });
 

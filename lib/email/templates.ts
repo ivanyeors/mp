@@ -7,7 +7,7 @@ import {
   infoList,
   paragraph,
 } from "./components";
-import { money } from "./format";
+import { money, negativeMoney } from "./format";
 import type {
   EmailTemplateName,
   OrderEmailAddress,
@@ -67,7 +67,10 @@ function totalsRows(
   if (data.shippingAmount > 0)
     rows.push({ label: "Shipping", value: money(data.shippingAmount, data.currency) });
   if (data.discountAmount > 0)
-    rows.push({ label: "Discount", value: `-${money(data.discountAmount, data.currency)}` });
+    rows.push({
+      label: "Discount",
+      value: negativeMoney(data.discountAmount, data.currency),
+    });
   if (data.taxAmount > 0)
     rows.push({ label: "Tax", value: money(data.taxAmount, data.currency) });
   rows.push({ label: "Total", value: money(data.total, data.currency), strong: true });
@@ -175,7 +178,7 @@ function shipping(data: OrderEmailData): RenderedEmail {
   const url = data.trackingUrl || orderUrl(data.orderNumber);
   const text = `Hi ${data.customerName},
 
-Good news — order ${data.orderNumber} is on its way!${trackingText}
+Good news — order ${data.orderNumber} has shipped!${trackingText}
 
 ${data.trackingUrl ? "" : `View your order: ${url}`}`.trimEnd();
 

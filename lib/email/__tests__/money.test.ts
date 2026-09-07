@@ -10,7 +10,7 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
-import { money } from "../format";
+import { money, negativeMoney } from "../format";
 import { EMAIL_REGISTRY } from "../registry";
 
 /** Amounts as they appear in a body: a currency-ish prefix then digits. */
@@ -29,6 +29,24 @@ describe("money()", () => {
   it("falls back readably on a malformed currency code", () => {
     // The only input that makes Intl throw is a bad code out of the DB.
     expect(money(12, "not-a-code")).toBe("not-a-code 12.00");
+  });
+});
+
+describe("negativeMoney()", () => {
+  it("separates a true minus sign from the ISO code", () => {
+    // "-SGD 40.00" glues a hyphen to letters and reads as a compound word.
+    for (const c of ["SGD", "MYR", "USD", "CNY"]) {
+      const out = negativeMoney(40, c);
+      expect(out.startsWith("− ")).toBe(true);
+      expect(out).not.toMatch(/^-/);
+      expect(out).toContain(c);
+    }
+  });
+
+  it("is insensitive to the sign of its input", () => {
+    // Discounts arrive as positive magnitudes today, but a stored negative
+    // would otherwise render "− − SGD 40.00".
+    expect(negativeMoney(-40, "SGD")).toBe(negativeMoney(40, "SGD"));
   });
 });
 

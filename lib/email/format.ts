@@ -29,6 +29,18 @@ export function money(amount: number, currency: string): string {
   }
 }
 
+/**
+ * A deduction on a totals table, e.g. `− SGD 40.00`.
+ *
+ * The sign is U+2212 MINUS SIGN followed by a space, NOT a hyphen prefix. Since
+ * money() carries the ISO code, `-SGD 40.00` glues the hyphen to letters and
+ * reads as a compound word rather than a negative amount; the separated true
+ * minus is unambiguous and still aligns in the right-aligned mono column.
+ */
+export function negativeMoney(amount: number, currency: string): string {
+  return `− ${money(Math.abs(amount), currency)}`;
+}
+
 /** Human date in Singapore time (the business is SG), from a timestamptz ISO string. */
 export function formatSgDate(iso: string): string {
   // Shift to SGT, then read the UTC parts so the calendar day is SG's, not the

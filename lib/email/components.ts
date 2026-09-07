@@ -71,11 +71,28 @@ export function preheader(text: string): string {
   })}">${escapeHtml(text)}${pad}</div>`;
 }
 
-export function heading(text: string, level: 1 | 2 | 3 = 2): string {
+export interface HeadingOptions {
+  /** Space above, in px. Default 0. */
+  top?: number;
+  /** Space below, in px. Default `LAYOUT.gutter`. */
+  bottom?: number;
+}
+
+/**
+ * Heading. `top` / `bottom` exist because a sub-heading that labels the block
+ * beneath it needs asymmetric spacing: with the flat `0 0 16px` default it sits
+ * equidistant between its own list and the previous one, so it reads as
+ * belonging to neither.
+ */
+export function heading(
+  text: string,
+  level: 1 | 2 | 3 = 2,
+  opts: HeadingOptions = {},
+): string {
   const variant = (`h${level}` as "h1" | "h2" | "h3");
   return `<h${level} class="mp-fg" style="${typeStyle(variant, {
     color: LIGHT.fg,
-    margin: `0 0 ${LAYOUT.gutter}px`,
+    margin: `${opts.top ?? 0}px 0 ${opts.bottom ?? LAYOUT.gutter}px`,
   })}">${escapeHtml(text)}</h${level}>`;
 }
 
@@ -391,15 +408,31 @@ export function amountPanel(opts: {
   });
 }
 
-/** Monospaced, letter-spaced verification code. */
-export function codeBlock(code: string, opts: { caption?: string } = {}): string {
+export interface CodeBlockOptions {
+  caption?: string;
+  /**
+   * `"otp"` (default) is the display treatment for a short verification code —
+   * 28px, wide tracking, one glance to read.
+   *
+   * `"identifier"` is for a long opaque string: a Result UUID is 36 characters,
+   * and at OTP size with 0.2em tracking it is ~700px wide, so it overflowed the
+   * 600px container. This variant drops to body size and breaks anywhere.
+   */
+  variant?: "otp" | "identifier";
+}
+
+/** Monospaced code or identifier in a muted panel. */
+export function codeBlock(code: string, opts: CodeBlockOptions = {}): string {
+  const identifier = opts.variant === "identifier";
   return card({
     tone: "muted",
-    bodyHtml: `<p class="mp-fg" style="${typeStyle("code", {
+    bodyHtml: `<p class="mp-fg" style="${typeStyle(identifier ? "body" : "code", {
       color: LIGHT.fg,
       margin: 0,
       "text-align": "center",
       "font-family": FONT_MONO,
+      // `body` already carries tracking "0", which typeStyle drops.
+      ...(identifier ? { "font-weight": 600, "word-break": "break-all" } : {}),
     })}">${escapeHtml(code)}</p>${
       opts.caption
         ? `\n<p class="mp-muted" style="${typeStyle("small", {

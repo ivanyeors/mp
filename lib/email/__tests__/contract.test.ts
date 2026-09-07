@@ -82,6 +82,17 @@ describe("email contract", () => {
       }
     });
 
+    it("never prints a raw URL as visible copy", () => {
+      // A tokenised status URL is ~95 characters. Printed as prose it wraps to
+      // three lines of muted 12px and reads as noise; printed as its own link
+      // text it is no better. Both shipped, so both are locked out here.
+      const visible = rendered.html
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&[a-z]+;|&#\d+;/gi, " ");
+      const found = visible.match(/https?:\/\/\S+/g) ?? [];
+      expect(found, `${entry.id} shows a bare URL as text: ${found[0]}`).toEqual([]);
+    });
+
     it("keeps the plain-text body in step with the HTML links", () => {
       // Every non-chrome link in the HTML should also be reachable from the
       // text body — a text alternative that drops the CTA is a silent bug.

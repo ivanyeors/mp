@@ -2,7 +2,7 @@ process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
 import { renderEmailShell } from "../base";
-import { css } from "../theme";
+import { LAYOUT, css } from "../theme";
 
 describe("renderEmailShell", () => {
   it("renders the title as an escaped <h1>", () => {
@@ -73,6 +73,42 @@ describe("renderEmailShell", () => {
     const html = renderEmailShell({ bodyHtml: "" });
     expect(html).toContain("@media (prefers-color-scheme: dark)");
     expect(html).toContain("[data-ogsc]");
+  });
+
+  describe("logo header", () => {
+    // The mark is the only brand signal above the fold in most clients, so its
+    // placement and size are asserted rather than left to eyeball review.
+    it("sits top-left, declaring alignment for Outlook and for webmail", () => {
+      const html = renderEmailShell({ bodyHtml: "" });
+      // Anchor on the <img>, not the class name: `.mp-logo-light` also appears
+      // in the <head> style block, which precedes every <td>.
+      const beforeLogo = html.slice(0, html.indexOf('class="mp-logo-light"'));
+      const row = beforeLogo.slice(beforeLogo.lastIndexOf("<td "));
+      expect(row).toContain('align="left"');
+      expect(row).toContain("text-align:left");
+      expect(row).not.toContain('align="center"');
+    });
+
+    it("renders both logo variants at LAYOUT.logoSize in attributes and CSS", () => {
+      // Outlook sizes from the width/height ATTRIBUTES and ignores the CSS, so
+      // the two must agree or the logo renders at its intrinsic size there.
+      const html = renderEmailShell({ bodyHtml: "" });
+      const size = LAYOUT.logoSize;
+      for (const cls of ["mp-logo-light", "mp-logo-dark"]) {
+        const tag = html.slice(html.indexOf(`class="${cls}"`));
+        const img = tag.slice(0, tag.indexOf("/>"));
+        expect(img).toContain(`width="${size}"`);
+        expect(img).toContain(`height="${size}"`);
+        expect(img).toContain(`width:${size}px`);
+        expect(img).toContain(`height:${size}px`);
+      }
+    });
+
+    it("keeps the logo large enough to read the stacked wordmark", () => {
+      // The art is a lockup, not a bare glyph: the word "pillow" is about a
+      // fifth of the box, so below ~64px it stops being legible.
+      expect(LAYOUT.logoSize).toBeGreaterThanOrEqual(64);
+    });
   });
 });
 

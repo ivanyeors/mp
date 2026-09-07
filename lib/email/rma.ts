@@ -87,35 +87,53 @@ ${paragraph("We'll review it and email you the next steps shortly.", { muted: tr
   return { subject, html, text };
 }
 
+interface StatusUpdateSpec {
+  /** Headline and document <title>. */
+  title: string;
+  /** Short badge word. */
+  status: string;
+  tone?: "neutral" | "success" | "danger";
+  /** Inbox subject. Must name the order — see the note below. */
+  subject: (orderNumber: string) => string;
+  /** The one body sentence, used verbatim in BOTH the HTML and the plain text. */
+  sentence: (orderNumber: string) => string;
+}
+
 /**
- * Lifecycle-update body shared by the not-yet-specialised templates.
+ * Lifecycle-update body shared by the five post-request templates.
  *
  * `status` is the short badge word and `title` the sentence — passing the same
  * string to both would print a 33-character sentence inside a pill, which in
  * Outlook (no border-radius) renders as a highlighted strip rather than a badge.
+ *
+ * `subject` and `sentence` are supplied per template rather than derived from
+ * `title`, because deriving them produced two bugs:
+ *
+ *   * One subject for all five ("Update on your return for order {n}") meant
+ *     Gmail collapsed a customer's entire return history into a single thread,
+ *     hiding each new update behind a "show trimmed content" fold.
+ *   * Lowercasing the title into the sentence gave "your return was approved FOR
+ *     YOUR RETURN ON order {n}" — the title already says "your return" — and
+ *     read as nonsense for the noun-phrase titles.
+ *
+ * One `sentence` feeds both renderings, so the HTML and text cannot drift.
  */
-function statusUpdate(
-  title: string,
-  status: string,
-  tone: "neutral" | "success" | "danger" = "neutral",
-) {
+function statusUpdate(spec: StatusUpdateSpec) {
   return (data: RmaEmailData): RenderedEmail => {
-    const subject = `Update on your return for order ${data.orderNumber}`;
+    const subject = spec.subject(data.orderNumber);
+    const sentence = spec.sentence(data.orderNumber);
     const detail = data.message ? `\n\n${data.message}` : "";
     const text = `Hi ${data.customerName},
 
-${title} for your return on order ${data.orderNumber}.${detail}
+${sentence}${detail}
 
 Track your return: ${orderUrl(data.orderNumber)}`;
 
     const html = renderEmailShell({
-      title,
-      preheader: `${title} for order ${data.orderNumber}.`,
-      bodyHtml: `${statusPill(status, tone)}
-${paragraph(
-        `Hi ${data.customerName}, ${title.toLowerCase()} for your return on order ${data.orderNumber}.`,
-        { top: 16 },
-      )}
+      title: spec.title,
+      preheader: subject,
+      bodyHtml: `${statusPill(spec.status, spec.tone ?? "neutral")}
+${paragraph(`Hi ${data.customerName}, ${lowerFirst(sentence)}`, { top: 16 })}
 ${data.message ? card({ bodyHtml: paragraph(data.message, { bottom: 0 }) }) : ""}`,
       cta: { href: orderUrl(data.orderNumber), label: "Track your return" },
     });
@@ -123,16 +141,55 @@ ${data.message ? card({ bodyHtml: paragraph(data.message, { bottom: 0 }) }) : ""
   };
 }
 
+/**
+ * Lowercase only the first letter, so a sentence can be reused after "Hi {name},".
+ *
+ * Deliberately not `toLowerCase()` on the whole string — that would flatten the
+ * order number and any product name inside it.
+ */
+function lowerFirst(sentence: string): string {
+  return sentence.charAt(0).toLowerCase() + sentence.slice(1);
+}
+
 export const RMA_EMAIL_TEMPLATES: Record<
   RmaEmailTemplateName,
   (data: RmaEmailData) => RenderedEmail
 > = {
   rma_requested: requested,
-  rma_approved: statusUpdate("Your return was approved", "Approved", "success"),
-  rma_rejected: statusUpdate("Your return could not be approved", "Rejected", "danger"),
-  rma_instructions: statusUpdate("Return instructions", "Next steps"),
-  rma_completed: statusUpdate("Your return is complete", "Complete", "success"),
-  rma_refunded: statusUpdate("Your refund has been issued", "Refunded", "success"),
+  rma_approved: statusUpdate({
+    title: "Your return was approved",
+    status: "Approved",
+    tone: "success",
+    subject: (n) => `Your return for order ${n} was approved`,
+    sentence: (n) => `Your return for order ${n} was approved.`,
+  }),
+  rma_rejected: statusUpdate({
+    title: "Your return could not be approved",
+    status: "Rejected",
+    tone: "danger",
+    subject: (n) => `Your return for order ${n} could not be approved`,
+    sentence: (n) => `Your return for order ${n} could not be approved.`,
+  }),
+  rma_instructions: statusUpdate({
+    title: "Return instructions",
+    status: "Next steps",
+    subject: (n) => `Return instructions for order ${n}`,
+    sentence: (n) => `Here are the next steps for your return on order ${n}.`,
+  }),
+  rma_completed: statusUpdate({
+    title: "Your return is complete",
+    status: "Complete",
+    tone: "success",
+    subject: (n) => `Your return for order ${n} is complete`,
+    sentence: (n) => `Your return for order ${n} is complete.`,
+  }),
+  rma_refunded: statusUpdate({
+    title: "Your refund has been issued",
+    status: "Refunded",
+    tone: "success",
+    subject: (n) => `Your refund for order ${n} has been issued`,
+    sentence: (n) => `Your refund for order ${n} has been issued.`,
+  }),
 };
 
 export function renderRmaEmail(
