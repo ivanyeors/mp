@@ -448,6 +448,8 @@ export const enUS: Messages = {
         slotLabel: "Available times",
         noSlots: "No times available on this day. Try another date.",
         loadingSlots: "Loading times…",
+        suggestionsIntro: "Other dates with open times:",
+        suggestionTimes: "{n} times",
         nameLabel: "Full name",
         phoneLabel: "Phone",
         emailLabel: "Email",

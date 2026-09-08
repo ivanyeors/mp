@@ -413,6 +413,8 @@ export const zhCN: Messages = {
         slotLabel: "可预约时间",
         noSlots: "当天没有可预约时间，请选择其他日期。",
         loadingSlots: "正在加载时间…",
+        suggestionsIntro: "其他可预约的日期：",
+        suggestionTimes: "{n} 个时段",
         nameLabel: "姓名",
         phoneLabel: "电话",
         emailLabel: "邮箱",

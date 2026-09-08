@@ -126,6 +126,45 @@ export function listDaySlots(
   return out;
 }
 
+/** A nearby day worth offering when the picked one is full. */
+export type DaySuggestion = { date: string; count: number };
+
+/** SGT calendar day as `YYYY-MM-DD`. */
+export function formatSgtDay(day: SgtDay): string {
+  return `${day.y}-${String(day.m).padStart(2, "0")}-${String(day.d).padStart(2, "0")}`;
+}
+
+/**
+ * The earliest days with room, for a guest whose chosen date has none. The
+ * scan is rooted at today and runs to `settings.slotLookaheadDays` — never at
+ * the date the guest picked, so suggestions stay inside the same booking
+ * horizon the rest of the system offers and can point at an *earlier* day than
+ * a far-off pick. Days with at least `minSlots` free starts win; when no day
+ * reaches that (a long appointment duration can put it out of reach) any day
+ * with a single opening is offered rather than nothing.
+ * Pure: `now` is both the scan root and the past-slot cutoff, and `busy` must
+ * already span the whole scan.
+ */
+export function suggestNextDays(
+  busy: BusyInterval[],
+  settings: AppointmentSettings,
+  { minSlots = 3, maxDays = 3 }: { minSlots?: number; maxDays?: number } = {},
+  now: Date = new Date(),
+): DaySuggestion[] {
+  const today = sgtParts(now.getTime());
+  const roomy: DaySuggestion[] = [];
+  const any: DaySuggestion[] = [];
+  for (let i = 0; i <= settings.slotLookaheadDays && roomy.length < maxDays; i++) {
+    const day = addSgtDays(today.y, today.m, today.d, i);
+    const count = listDaySlots(busy, settings, day, now).length;
+    if (!count) continue;
+    const hit = { date: formatSgtDay(day), count };
+    if (any.length < maxDays) any.push(hit);
+    if (count >= minSlots) roomy.push(hit);
+  }
+  return roomy.length ? roomy : any;
+}
+
 /**
  * Carve up to `settings.slotOfferCount` free starts from freeBusy busy intervals.
  * Rules: per-weekday availability windows, durationMinutes, lookahead.
