@@ -2625,7 +2625,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
             </Collapsible>
           ))}
         </div>
-        <SheetFooter className="max-md:sticky max-md:bottom-0 max-md:z-10 max-md:border-t max-md:bg-background/95 max-md:pr-[4.25rem] max-md:backdrop-blur">
+        <SheetFooter className="max-md:sticky max-md:bottom-0 max-md:z-10 max-md:border-t max-md:bg-background/95 max-md:backdrop-blur">
           <div className="flex w-full gap-2">
             <Button onClick={onSaveAll} disabled={!hasPositive || saving} className="flex-1">
               {saving ? 'Saving…' : 'Save'}

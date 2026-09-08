@@ -14,7 +14,11 @@ import { CartShippingBar } from "@/components/shop/cart/cart-shipping-bar";
 import { CartCouponField } from "@/components/shop/cart/cart-coupon-field";
 import { CartSummary } from "@/components/shop/cart/cart-summary";
 import { Button } from "@/components/ui/button";
-import { MobileStickyActionBar } from "@/components/ui/mobile-sticky-action-bar";
+import {
+  MobileStickyActionBar,
+  mobileStickyActionBarSpacerClassName,
+} from "@/components/ui/mobile-sticky-action-bar";
+import { cn } from "@/lib/utils";
 
 interface CartPageClientProps {
   messages: CartMessages;
@@ -85,7 +89,7 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
   }
 
   return (
-    <div className="relative mx-auto flex w-full max-w-5xl flex-col px-4 py-8 pb-[calc(var(--mobile-bottom-clearance)+7rem+env(safe-area-inset-bottom,0px))] md:pb-8">
+    <div className={cn("relative mx-auto flex w-full max-w-5xl flex-col px-4 py-8", mobileStickyActionBarSpacerClassName, "md:pb-8")}>
       <div className="mb-4 flex items-center gap-2">
         <h1 className="text-2xl font-bold tracking-tight">{messages.title}</h1>
         {itemCount > 0 && (

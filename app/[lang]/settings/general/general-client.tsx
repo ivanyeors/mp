@@ -295,7 +295,7 @@ export default function GeneralSettingsPage({
 
       {/* Edit / Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit API Config" : "New API Config"}</DialogTitle>
             <DialogDescription>

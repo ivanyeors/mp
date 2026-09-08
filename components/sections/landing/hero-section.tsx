@@ -26,7 +26,7 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
 
   return (
     <section className="relative">
-      <div className="relative w-full overflow-hidden aspect-[3/4] md:aspect-video">
+      <div className="relative w-full overflow-hidden md:aspect-video">
         <Image
           src={heroImage}
           alt="Mpillow pillow hero"
@@ -38,9 +38,11 @@ export function HeroSection({ section, messages: m, locale, images }: HeroSectio
 
         <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-background/85 via-background/25 to-transparent" />
         <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/55 via-black/25 to-transparent md:hidden" />
-        <div className="absolute inset-0 z-10 flex md:items-center">
-          <div className="mx-auto h-full w-full max-w-6xl px-4 pt-12 md:h-auto md:py-16">
-            <div className="flex h-full max-w-xl flex-col md:block md:h-auto md:space-y-6">
+        {/* Mobile: in flow with a 3:4 floor so long copy grows the hero instead of
+            being clipped; md+: overlay centered on the 16:9 image. */}
+        <div className="relative z-10 flex min-h-[133.34vw] flex-col md:absolute md:inset-0 md:min-h-0 md:flex-row md:items-center">
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 pt-12 md:block md:h-auto md:flex-none md:py-16">
+            <div className="flex h-full max-w-xl flex-col flex-1 md:block md:h-auto md:space-y-6">
               <div className="space-y-3">
                 <h1 className="line-clamp-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-6xl">
                   {titlePrefix}

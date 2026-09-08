@@ -20,12 +20,16 @@ assert.match(html, /fixed/);
 assert.match(html, /bottom-0/);
 assert.match(html, /md:hidden/);
 assert.match(html, /--mobile-bottom-clearance/);
-assert.match(html, /env\(safe-area-inset-bottom/);
+// --mobile-bottom-clearance already contains --safe-bottom; adding the inset
+// again left ~34px of dead space on iPhones.
+assert.doesNotMatch(html, /env\(safe-area-inset-bottom/);
 assert.match(html, /child/);
 
-// Spacer helper pages use to clear the bar.
+// Spacer helper pages use to clear the bar: the bar's measured height while
+// mounted, the dock clearance alone otherwise.
+assert.match(mobileStickyActionBarSpacerClassName, /--mobile-sticky-action-bar-height/);
 assert.match(mobileStickyActionBarSpacerClassName, /--mobile-bottom-clearance/);
-assert.match(mobileStickyActionBarSpacerClassName, /env\(safe-area-inset-bottom/);
+assert.doesNotMatch(mobileStickyActionBarSpacerClassName, /env\(safe-area-inset-bottom/);
 assert.match(mobileStickyActionBarSpacerClassName, /md:pb-0/);
 
 console.log("mobile-sticky-action-bar.check.ts: ok");

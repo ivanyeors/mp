@@ -83,7 +83,8 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --mobile-top-offset: 0.25rem;
   --mobile-top-clearance: calc(var(--safe-top) + var(--mobile-top-offset));
-  --mobile-dock-height: 3.75rem;
+  /* Fallback only: AppDock measures itself and overrides this on <html>. */
+  --mobile-dock-height: 4rem;
   --mobile-dock-offset: 0.5rem;
   --mobile-bottom-breathing-room: 0.5rem;
   --mobile-bottom-clearance: calc(
@@ -133,6 +134,10 @@
 
 body.dock-hidden {
   --app-dock-clearance: 0rem;
+  /* No dock to clear: only the home indicator plus breathing room remains. */
+  --mobile-bottom-clearance: calc(
+    var(--safe-bottom) + var(--mobile-bottom-breathing-room)
+  );
 }
 
 body.dock-hidden .app-dock {
@@ -150,7 +155,8 @@ body.dock-hidden .app-dock {
 @media (display-mode: standalone), (display-mode: fullscreen) {
   body {
     padding-top: var(--safe-top);
-    padding-bottom: calc(var(--safe-bottom) + var(--app-dock-clearance));
+    /* --app-dock-clearance already includes --safe-bottom on mobile. */
+    padding-bottom: max(var(--safe-bottom), var(--app-dock-clearance));
   }
 }
 

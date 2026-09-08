@@ -57,7 +57,7 @@ export default async function PartnerHubPage({
   const greeting = ctx.partnerName ?? ctx.email;
   const referralCode = ctx.partnerId ? await ensureReferralCode(ctx.partnerId) : null;
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-10">
+    <div className="mx-auto w-full max-w-3xl space-y-8 px-4 pt-10 pb-[calc(2.5rem+var(--app-dock-clearance))]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Partner Hub</h1>

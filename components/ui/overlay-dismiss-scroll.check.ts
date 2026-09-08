@@ -31,13 +31,22 @@ assert.match(dismiss, /min-h-11 min-w-11/);
 assert.match(sheet, /overflow-y-auto/);
 assert.match(
   sheet,
-  /resolvedSide === "right" \|\| resolvedSide === "bottom"\s*\?\s*"pinned"/,
+  /!hideClose && \(resolvedSide === "right" \|\| resolvedSide === "bottom"\)/,
 );
+assert.match(sheet, /variant=\{hasPinnedClose \? "pinned" : "corner"\}/);
 assert.doesNotMatch(sheet, /<OverlayDismissButton \/>/);
 
 // Dialog: centered by a transform (which would also capture `fixed`), so the
 // X rides in flow and sticks to the bottom of the mobile scrollport.
 assert.match(dialog, /-translate-x-1\/2 -translate-y-1\/2/);
 assert.match(dialog, /<OverlayDismissButton variant="sticky" \/>/);
+// A grid item's containing block is its own grid area, which gives sticky no
+// travel; the mobile scroll container must be a flex column.
+assert.match(dialog, /max-md:overflow-y-auto max-md:flex max-md:flex-col/);
+
+// Mobile bottom sheets span the viewport so the pinned corner is the sheet's,
+// and SheetFooter keeps its actions clear of the pinned X.
+assert.match(sheet, /isMobileBottomSheet && "w-full max-w-none sm:max-w-none"/);
+assert.match(sheet, /hasPinnedClose && "max-md:pr-\[4\.25rem\]"/);
 
 console.log("overlay-dismiss-scroll.check.ts: ok");

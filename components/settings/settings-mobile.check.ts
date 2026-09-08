@@ -93,10 +93,13 @@ assert.match(select, /cn\(className, "inset-x-0 w-full min-w-0 max-w-none px-0 p
 assert.match(settingsNav, /overflow-x-clip md:overflow-x-visible/);
 assert.match(settingsNav, /pb-\[calc\(0\.75rem\+var\(--app-dock-clearance\)\)\]/);
 
-// analytics date chips ≥44px; journey filters fluid + min-h-11
+// analytics date chips ≥44px; journey filters are deliberately compact
+// (they float over the pan/zoom graph) but width-bounded so the phone
+// toolbar row fits, and the toolbar clears the safe-top inset
 assert.match(analytics, /inline-flex min-h-11 items-center/);
-assert.match(journey, /min-h-11 w-full sm:w-\[220px\]/);
-assert.match(journey, /min-h-11 w-full sm:w-\[180px\]/);
+assert.match(journey, /h-8 w-\[140px\] min-h-8 text-xs sm:w-\[180px\]/);
+assert.match(journey, /h-8 w-\[110px\] min-h-8 text-xs sm:w-\[130px\]/);
+assert.match(journey, /top-\[calc\(0\.5rem\+var\(--safe-top\)\)\]/);
 
 // general touch targets; shipping stacks; tag × always visible; pagination wrap
 assert.match(general, /min-h-11 min-w-11/);

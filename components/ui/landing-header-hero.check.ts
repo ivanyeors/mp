@@ -13,9 +13,11 @@ const hero = readFileSync(
   "utf8",
 );
 
+const expandedStart = header.indexOf('data-slot="home-header-expanded"');
+assert.ok(expandedStart > 0, "expanded header marker present");
 const expanded = header.slice(
-  header.indexOf("{!isCompact"),
-  header.indexOf(") : null}", header.indexOf("{!isCompact")) + 10,
+  expandedStart,
+  header.indexOf("</header>", expandedStart),
 );
 assert.match(expanded, /ProfileMenu/);
 assert.ok(
