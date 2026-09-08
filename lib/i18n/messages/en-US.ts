@@ -9,6 +9,7 @@ export const enUS: Messages = {
     learnMore: "Learn more",
     learnHow: "Learn how",
     fromPricePrefix: "From",
+    shopNow: "Shop now",
   },
   header: {
     customiseLabel: "Customise",

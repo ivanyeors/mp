@@ -15,11 +15,13 @@ import { VideoSection } from "./video-section";
 import { FounderSection } from "./founder-section";
 import { CustomTextImageSection } from "./custom-text-image-section";
 import { CustomRichTextSection } from "./custom-rich-text-section";
+import { CustomFullWidthImageSection } from "./custom-full-width-image-section";
 import { FeaturedProductsSection } from "./featured-products-section";
 import { ShopCtaSection } from "./shop-cta-section";
 import { PageFaqSection } from "@/components/page-faq/page-faq-section";
 
 import type { LandingRatings } from "@/lib/seo/review-aggregate";
+import { resolveContentLocale } from "@/lib/page-builder/locale";
 
 export interface LandingSectionProps {
   section: LandingSectionType;
@@ -34,7 +36,22 @@ export interface LandingSectionProps {
   landingRatings?: LandingRatings;
 }
 
-export function LandingSection({ section, messages, locale, images, prices, landingRatings }: LandingSectionProps) {
+export function LandingSection({
+  section: stored,
+  messages,
+  locale,
+  images,
+  prices,
+  landingRatings,
+}: LandingSectionProps) {
+  // The one place content is projected onto a locale. Every branch below — and every
+  // section component — therefore sees copy for `locale` only, with anything missing
+  // removed so each component's existing `?? messages…` fallback fires (slice 03).
+  const section: LandingSectionType = {
+    ...stored,
+    content: resolveContentLocale(stored.content, locale),
+  };
+
   switch (section.section_type) {
     case "hero":
       return <HeroSection section={section} messages={messages} locale={locale} images={images} />;
@@ -96,20 +113,8 @@ export function LandingSection({ section, messages, locale, images, prices, land
     case "custom_rich_text":
       return <CustomRichTextSection section={section} />;
 
-    case "custom_full_width_image": {
-      const img = (section.content as { image?: string }).image;
-      const alt = (section.content as { alt?: string }).alt ?? "";
-      return img ? (
-        <section className="relative py-12 md:py-16">
-          <div className="mx-auto w-full max-w-6xl px-4">
-            <div className="overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img} alt={alt} className="w-full object-cover" loading="lazy" />
-            </div>
-          </div>
-        </section>
-      ) : null;
-    }
+    case "custom_full_width_image":
+      return <CustomFullWidthImageSection section={section} />;
 
     case "custom_video": {
       // Re-use the video section logic for custom videos
@@ -120,7 +125,7 @@ export function LandingSection({ section, messages, locale, images, prices, land
       return <FeaturedProductsSection section={section} locale={locale} />;
 
     case "shop_cta":
-      return <ShopCtaSection section={section} locale={locale} />;
+      return <ShopCtaSection section={section} locale={locale} messages={messages} />;
 
     case "faq":
       // ponytail: content {} — Q&A owned by Page FAQ store (`home`)
