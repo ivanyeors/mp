@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 13–17
 
 ## What to build
@@ -45,17 +45,17 @@ English override shows the translated default in Chinese rather than the English
 
 ## Acceptance criteria
 
-- [ ] A pure locale resolver projects a section's content to one locale and is applied once, before the section dispatcher.
-- [ ] A value is treated as a locale map only when every one of its keys is a supported locale; nested label/description and card shapes are passed through untouched.
-- [ ] A legacy bare string resolves for `en-US` and yields nothing for `zh-CN`, so Chinese falls back to the translated default.
-- [ ] No section component under `components/sections/landing/` needs a locale-handling change; their existing fallback lines are untouched.
-- [ ] The section type previously rendered inline in the dispatcher is extracted to its own component and goes through the resolver.
-- [ ] The inspector has one language switch per section that re-binds the whole form; saving writes under the active locale key.
-- [ ] Switching language in the inspector does not discard unsaved edits in the other language.
-- [ ] The Shop CTA and Featured Products sections have real editor cases instead of "no editable fields".
-- [ ] The Shop CTA button label is translatable and no longer a hardcoded English literal on the Chinese page.
-- [ ] Vitest covers the resolver: locale map, legacy string, nested non-locale objects, unknown locale, empty content.
-- [ ] `pnpm ci` passes.
+- [x] A pure locale resolver projects a section's content to one locale and is applied once, before the section dispatcher.
+- [x] A value is treated as a locale map only when every one of its keys is a supported locale; nested label/description and card shapes are passed through untouched.
+- [x] A legacy bare string resolves for `en-US` and yields nothing for `zh-CN`, so Chinese falls back to the translated default.
+- [x] No section component under `components/sections/landing/` needs a locale-handling change; their existing fallback lines are untouched.
+- [x] The section type previously rendered inline in the dispatcher is extracted to its own component and goes through the resolver.
+- [x] The inspector has one language switch per section that re-binds the whole form; saving writes under the active locale key.
+- [x] Switching language in the inspector does not discard unsaved edits in the other language.
+- [x] The Shop CTA and Featured Products sections have real editor cases instead of "no editable fields".
+- [x] The Shop CTA button label is translatable and no longer a hardcoded English literal on the Chinese page.
+- [x] Vitest covers the resolver: locale map, legacy string, nested non-locale objects, unknown locale, empty content.
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local lib/page-builder/locale.check.ts` → `landing-locale self-check ok`
 

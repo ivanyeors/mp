@@ -8,18 +8,18 @@ demoable path through all layers (schema, API, UI, tests). Published locally
 
 ## Slices
 
-| # | Title | Type | Blocked by | User stories |
-|---|-------|------|------------|--------------|
-| 01 | Domain glossary: Landing section, Section draft, Publish, Publish snapshot, Preview mode | AFK | none | 1–3 |
-| 02 | Integrity pass: typed section types, locked slugs, validated images, guarded list, audit log | AFK | 01 | 4–12 |
-| 03 | Bilingual overrides: locale resolver + section language switch | AFK | 02 | 13–17 |
-| 04 | Copy-fit gate: wire the existing validator to the write path + live meters | AFK | 03 | 18–21 |
-| 05 | Draft/publish spine: draft columns, publish function, snapshots, media walks | AFK | 02 | 22–28, 44 |
-| 06 | Preview mode: shared renderer, admin-gated draft route, chrome and analytics suppression | AFK | 05 | 30, 37–40 |
-| 07 | Three-pane shell: tree, live preview, inspector, device and theme toolbars | AFK | 03, 06 | 29, 31–36 |
-| 08 | Publish history: snapshot list, restore into draft, retention | AFK | 05 | 41–43 |
-| 09 | Editor completeness and accessibility | AFK | 07 | 45–54 |
-| 10 | Sign-off: real device, both locales, production publish | HITL | 02–09 | 57 |
+| # | Title | Type | Status | Blocked by | User stories |
+|---|-------|------|--------|------------|--------------|
+| 01 | Domain glossary: Landing section, Section draft, Publish, Publish snapshot, Preview mode | AFK | **done** | none | 1–3 |
+| 02 | Integrity pass: typed section types, locked slugs, validated images, guarded list, audit log | AFK | **done** | 01 | 4–12 |
+| 03 | Bilingual overrides: locale resolver + section language switch | AFK | **done** | 02 | 13–17 |
+| 04 | Copy-fit gate: wire the existing validator to the write path + live meters | AFK |  | 03 | 18–21 |
+| 05 | Draft/publish spine: draft columns, publish function, snapshots, media walks | AFK |  | 02 | 22–28, 44 |
+| 06 | Preview mode: shared renderer, admin-gated draft route, chrome and analytics suppression | AFK |  | 05 | 30, 37–40 |
+| 07 | Three-pane shell: tree, live preview, inspector, device and theme toolbars | AFK |  | 03, 06 | 29, 31–36 |
+| 08 | Publish history: snapshot list, restore into draft, retention | AFK |  | 05 | 41–43 |
+| 09 | Editor completeness and accessibility | AFK |  | 07 | 45–54 |
+| 10 | Sign-off: real device, both locales, production publish | HITL |  | 02–09 | 57 |
 
 Test coverage for the pure helpers introduced by 03, 04, 05 and 06 rides along in those
 slices (stories 55–56) rather than forming a separate suite slice.

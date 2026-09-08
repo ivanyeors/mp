@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 1–3
 
 ## What to build
@@ -38,14 +38,14 @@ five terms correctly, and can tell landing **Publish** apart from **Rule graph**
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` defines **Landing section**, **Section draft**, **Publish**, **Publish snapshot** and **Preview mode**, each with an `_Avoid_:` line.
-- [ ] **Landing section** states that the noun is never bare "Section" (which is the pillow filling compartment) and names `landing_sections` as its store.
-- [ ] **Publish** distinguishes the landing meaning from **Rule graph** publish, from storefront publishing of a **Sellable item**, and from **Promote**.
-- [ ] **Preview mode** distinguishes it from the customisation preview and states that it renders the real landing route rather than a second renderer.
-- [ ] **Section draft** states that a draft is per-**Landing section** and invisible to shoppers until **Publish**.
-- [ ] **Publish snapshot** states it is append-only, bounded by retention, and never read by the render path.
-- [ ] A `## Flagged ambiguities` entry records the draft-storage resolution and its reason.
-- [ ] No term is introduced that an existing `CONTEXT.md` entry already covers.
+- [x] `CONTEXT.md` defines **Landing section**, **Section draft**, **Publish**, **Publish snapshot** and **Preview mode**, each with an `_Avoid_:` line.
+- [x] **Landing section** states that the noun is never bare "Section" (which is the pillow filling compartment) and names `landing_sections` as its store.
+- [x] **Publish** distinguishes the landing meaning from **Rule graph** publish, from storefront publishing of a **Sellable item**, and from **Promote**.
+- [x] **Preview mode** distinguishes it from the customisation preview and states that it renders the real landing route rather than a second renderer.
+- [x] **Section draft** states that a draft is per-**Landing section** and invisible to shoppers until **Publish**.
+- [x] **Publish snapshot** states it is append-only, bounded by retention, and never read by the render path.
+- [x] A `## Flagged ambiguities` entry records the draft-storage resolution and its reason.
+- [x] No term is introduced that an existing `CONTEXT.md` entry already covers.
 
 Proof: `npx tsx --env-file=.env.local lib/page-builder/glossary.check.ts` → `landing-glossary self-check ok`
 

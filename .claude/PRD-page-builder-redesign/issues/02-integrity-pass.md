@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 4–12
 
 ## What to build
@@ -52,20 +52,20 @@ log.
 
 ## Acceptance criteria
 
-- [ ] `section_type` is validated against the known union on create; an unknown type is rejected with a 400.
-- [ ] Creating a second instance of a singleton section type (`hero`) is rejected.
-- [ ] An image value pointing at a host outside the configured allowlist is rejected on save; allowlisted hosts and repo-relative paths are accepted.
-- [ ] A slug change is rejected unless the section's type is a custom one; built-in slugs are immutable.
-- [ ] The section store returns the seed layout only when the table has no rows at all — not when every row is hidden, and not on a query error.
-- [ ] A query error keeps the seed fallback on the public page (a degraded homepage beats a 500 on a
+- [x] `section_type` is validated against the known union on create; an unknown type is rejected with a 400.
+- [x] Creating a second instance of a singleton section type (`hero`) is rejected.
+- [x] An image value pointing at a host outside the configured allowlist is rejected on save; allowlisted hosts and repo-relative paths are accepted.
+- [x] A slug change is rejected unless the section's type is a custom one; built-in slugs are immutable.
+- [x] The section store returns the seed layout only when the table has no rows at all — not when every row is hidden, and not on a query error.
+- [x] A query error keeps the seed fallback on the public page (a degraded homepage beats a 500 on a
       route with no error boundary) and is logged; the builder's own read throws instead, so Staff never
       edit a fallback believing it is their page.
-- [ ] Listing landing sections requires the `page-builder` permission; an unauthenticated request is refused.
-- [ ] The rich-text section stores markdown and renders it through the existing markdown renderer; `dangerouslySetInnerHTML` is gone from the landing section components, and the editor field is labelled markdown.
-- [ ] Reordering applies the full order in a single statement and rejects an order that does not cover every section.
-- [ ] Create, update, delete and reorder each record an audit entry naming the section slug.
-- [ ] The unused section-store helper is deleted and nothing references it.
-- [ ] `pnpm ci` passes.
+- [x] Listing landing sections requires the `page-builder` permission; an unauthenticated request is refused.
+- [x] The rich-text section stores markdown and renders it through the existing markdown renderer; `dangerouslySetInnerHTML` is gone from the landing section components, and the editor field is labelled markdown.
+- [x] Reordering applies the full order in a single statement and rejects an order that does not cover every section.
+- [x] Create, update, delete and reorder each record an audit entry naming the section slug.
+- [x] The unused section-store helper is deleted and nothing references it.
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local lib/page-builder/integrity.check.ts` → `landing-integrity self-check ok`
 
