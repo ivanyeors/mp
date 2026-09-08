@@ -150,7 +150,7 @@ export function ProductCard({ product, locale = "en-US", reviewAggregate }: Prod
           <Button
             size="icon"
             variant="secondary"
-            className="absolute bottom-2 right-2 h-9 w-9 rounded-full opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 shadow-md"
+            className="absolute bottom-2 right-2 h-9 w-9 rounded-full opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 focus-visible:opacity-100 focus-visible:translate-y-0 max-md:opacity-100 max-md:translate-y-0 transition-all duration-200 shadow-md"
             onClick={handleQuickAdd}
             aria-label={`Quick add ${title} to cart`}
           >

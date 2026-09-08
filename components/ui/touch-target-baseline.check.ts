@@ -12,9 +12,10 @@ const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
 const button = read("components/ui/button.tsx");
 const input = read("components/ui/input.tsx");
 
-// Button default/sm/icon size tokens reach ≥44px on mobile; icon also gets min-w.
+// Button default/sm/lg/icon size tokens reach ≥44px on mobile; icon also gets min-w.
 assert.match(button, /default:\s*"h-9 max-md:min-h-11/);
 assert.match(button, /sm:\s*"h-8 max-md:min-h-11/);
+assert.match(button, /lg:\s*"h-10 max-md:min-h-11/);
 assert.match(button, /icon:\s*"size-9 max-md:min-h-11 max-md:min-w-11/);
 
 // Input base ≥44px on mobile.

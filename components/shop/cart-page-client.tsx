@@ -85,7 +85,7 @@ export function CartPageClient({ messages, locale }: CartPageClientProps) {
   }
 
   return (
-    <div className="relative flex flex-col pb-[calc(var(--mobile-bottom-clearance)+7rem+env(safe-area-inset-bottom,0px))] md:pb-0">
+    <div className="relative mx-auto flex w-full max-w-5xl flex-col px-4 py-8 pb-[calc(var(--mobile-bottom-clearance)+7rem+env(safe-area-inset-bottom,0px))] md:pb-8">
       <div className="mb-4 flex items-center gap-2">
         <h1 className="text-2xl font-bold tracking-tight">{messages.title}</h1>
         {itemCount > 0 && (

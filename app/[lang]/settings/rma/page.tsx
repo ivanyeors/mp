@@ -69,7 +69,7 @@ export default async function RmaQueuePage({
       </div>
 
       {/* Status filter — a plain GET form, no client JS needed. */}
-      <form method="get" className="mt-6 flex items-center gap-2">
+      <form method="get" className="mt-6 flex flex-wrap items-center gap-2">
         <label htmlFor="status" className="text-sm text-muted-foreground">
           Status
         </label>
@@ -77,7 +77,7 @@ export default async function RmaQueuePage({
           id="status"
           name="status"
           defaultValue={status ?? ""}
-          className="h-9 rounded-md border bg-background px-2 text-sm"
+          className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
         >
           <option value="">All statuses</option>
           {RMA_STATUSES.map((s) => (
@@ -88,7 +88,7 @@ export default async function RmaQueuePage({
         </select>
         <button
           type="submit"
-          className="h-9 rounded-md border bg-background px-3 text-sm hover:bg-accent"
+          className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
         >
           Filter
         </button>

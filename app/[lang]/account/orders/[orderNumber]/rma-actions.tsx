@@ -108,7 +108,7 @@ export function OrderRmaActions({ orderNumber, eligibleItems, ineligibleItems }:
     setSelections((s) => ({ ...s, [id]: { ...s[id], ...patch } }));
 
   const selectClass =
-    "h-9 rounded-md border border-input bg-transparent px-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring";
+    "h-9 max-md:min-h-11 rounded-md border border-input bg-transparent px-2 text-base md:text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring";
 
   return (
     <section className="rounded-lg border p-4 space-y-4">
@@ -134,9 +134,9 @@ export function OrderRmaActions({ orderNumber, eligibleItems, ineligibleItems }:
                   id={`rma-${item.id}`}
                   checked={sel?.checked ?? false}
                   onChange={(e) => setSel(item.id, { checked: e.target.checked })}
-                  className="h-4 w-4"
+                  className="h-4 w-4 max-md:h-5 max-md:w-5"
                 />
-                <Label htmlFor={`rma-${item.id}`} className="flex-1 text-sm font-normal">
+                <Label htmlFor={`rma-${item.id}`} className="flex-1 text-sm font-normal max-md:flex max-md:min-h-11 max-md:items-center">
                   {item.title}
                 </Label>
                 {sel?.checked ? (

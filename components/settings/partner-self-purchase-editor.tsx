@@ -82,7 +82,7 @@ export async function PartnerSelfPurchaseEditor() {
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Partner</span>
-          <select name="partner_id" required defaultValue="" className="h-9 rounded-md border bg-background px-2">
+          <select name="partner_id" required defaultValue="" className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm">
             <option value="" disabled>
               — Select partner —
             </option>
@@ -96,7 +96,7 @@ export async function PartnerSelfPurchaseEditor() {
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Kind</span>
-          <select name="kind" defaultValue="percent" className="h-9 rounded-md border bg-background px-2">
+          <select name="kind" defaultValue="percent" className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm">
             <option value="percent">Percent off MSRP</option>
             <option value="flat">Flat $ off per unit</option>
           </select>
@@ -111,7 +111,7 @@ export async function PartnerSelfPurchaseEditor() {
             step="0.01"
             defaultValue="20"
             required
-            className="h-9 rounded-md border bg-background px-2"
+            className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
           />
         </label>
 
@@ -124,7 +124,7 @@ export async function PartnerSelfPurchaseEditor() {
             step="1"
             defaultValue="0"
             required
-            className="h-9 rounded-md border bg-background px-2"
+            className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
           />
         </label>
 

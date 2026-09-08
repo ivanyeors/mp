@@ -47,7 +47,13 @@ function DialogContent({
         {children}
         {!hideClose && (
           <DialogClose asChild>
-            <OverlayDismissButton />
+            {/*
+              On mobile the dialog scrolls its own body (max-md:overflow-y-auto)
+              and is centered by a transform, so neither `absolute` nor `fixed`
+              keeps the X in view. Render it in flow after the content, stuck to
+              the bottom of the scrollport; desktop keeps the top-right corner.
+            */}
+            <OverlayDismissButton variant="sticky" />
           </DialogClose>
         )}
       </DialogPrimitive.Content>
@@ -60,7 +66,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-2", className)} {...props} />
+  return <div className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-2", className)} {...props} />
 }
 
 const DialogTitle = DialogPrimitive.Title

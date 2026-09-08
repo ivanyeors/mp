@@ -54,7 +54,7 @@ export function BottomBar({ onAddToCart }: BottomBarProps) {
   if (isFirstStep) return null;
 
   return (
-    <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-5 py-4 space-y-3">
+    <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-5 py-4 space-y-3 max-md:pb-[calc(1rem+var(--app-dock-clearance))]">
       {/* Price summary */}
       {showPrice && (
         <div className="space-y-1 text-sm">

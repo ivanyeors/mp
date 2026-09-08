@@ -530,7 +530,7 @@ function ResultStatusPage() {
   );
 
   const resultsTable = showTable ? (
-    <div className="overflow-hidden rounded-lg border">
+    <div className="overflow-hidden rounded-lg border max-lg:order-last">
       <div className="border-b px-4 py-3">
         <h2 className="text-sm font-medium">My results</h2>
         <p className="text-xs text-muted-foreground">Select a result to view status.</p>

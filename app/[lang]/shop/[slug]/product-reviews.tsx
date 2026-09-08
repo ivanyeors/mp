@@ -161,7 +161,7 @@ function ReviewForm({ productId }: { productId: string }) {
               onMouseEnter={() => setHoverRating(n)}
               onMouseLeave={() => setHoverRating(0)}
               onClick={() => setRating(n)}
-              className="p-0.5"
+              className="inline-flex items-center justify-center p-0.5 max-md:min-h-11 max-md:min-w-11"
             >
               <Star
                 className={

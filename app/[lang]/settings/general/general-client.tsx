@@ -295,7 +295,7 @@ export default function GeneralSettingsPage({
 
       {/* Edit / Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingId ? "Edit API Config" : "New API Config"}</DialogTitle>
             <DialogDescription>
@@ -371,7 +371,7 @@ export default function GeneralSettingsPage({
               <Textarea
                 id="cfg-config"
                 rows={5}
-                className="font-mono text-xs"
+                className="font-mono text-base md:text-xs"
                 placeholder='{"model": "gpt-4"}'
                 value={form.config}
                 onChange={(e) => updateField("config", e.target.value)}

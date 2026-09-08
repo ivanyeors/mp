@@ -100,7 +100,7 @@ export function HomeHeader() {
               href="http://wa.me/6587805311"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-1 text-foreground/90 hover:text-foreground"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-1 text-foreground/90 hover:text-foreground max-md:h-11 max-md:w-11 max-md:p-2.5"
               aria-label="WhatsApp"
             >
               <MessageCircleMore className="h-full w-full" />

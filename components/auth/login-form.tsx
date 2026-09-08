@@ -145,7 +145,7 @@ export function LoginForm({
           type="button"
           onClick={() => void requestOtp()}
           disabled={loading !== null}
-          className="w-full text-sm text-muted-foreground underline underline-offset-4 disabled:opacity-50"
+          className="w-full max-md:min-h-11 text-sm text-muted-foreground underline underline-offset-4 disabled:opacity-50"
         >
           Resend code
         </button>

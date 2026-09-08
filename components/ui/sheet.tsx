@@ -193,7 +193,19 @@ function SheetContent({
         {children}
         {!hideClose && (
           <SheetPrimitive.Close asChild>
-            <OverlayDismissButton />
+            {/*
+              SheetContent is its own scroll container, so an `absolute` X
+              scrolls away with the content. Right/bottom sheets share a
+              corner with the viewport, so pin the X there with `fixed`
+              instead; the rare left/top sheet keeps the absolute corner.
+            */}
+            <OverlayDismissButton
+              variant={
+                resolvedSide === "right" || resolvedSide === "bottom"
+                  ? "pinned"
+                  : "corner"
+              }
+            />
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>

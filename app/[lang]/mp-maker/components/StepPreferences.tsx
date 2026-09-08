@@ -209,7 +209,7 @@ export function StepPreferences() {
                 type="button"
                 onClick={() => setBodyType(bt.value)}
                 className={cn(
-                  "rounded-lg border-2 p-3 text-sm font-medium transition-all",
+                  "rounded-lg border-2 p-3 text-sm font-medium transition-all max-md:min-h-11",
                   "hover:border-primary/50",
                   bodyType === bt.value
                     ? "border-primary bg-primary/5"
@@ -341,7 +341,7 @@ export function StepPreferences() {
       {/* Sleep position */}
       <div className="space-y-3">
         <Label className="text-base font-semibold">Sleep Position</Label>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
           {(["side", "stomach", "other"] as const).map((pos) => (
             <button
               key={pos}

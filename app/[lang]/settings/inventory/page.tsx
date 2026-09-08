@@ -2508,7 +2508,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                               )}
                               <div className="mt-1 text-xs text-muted-foreground">On hand: {onHand}</div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                               {isRenaming ? (
                                 <>
                                   <Button size="sm" onClick={() => saveRename(variant.id)} disabled={renameSaving}>
@@ -2577,14 +2577,14 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                               Stock is tracked on the base filling variant.
                             </div>
                           ) : (
-                            <div className="mt-3 flex items-center gap-3 pr-10">
+                            <div className="mt-3 flex items-center gap-3 pr-12">
                               <Input
                                 type="number"
                                 placeholder="In"
                                 min={0}
                                 value={qtyByItem[variant.id] ?? ''}
                                 onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                                className="w-28"
+                                className="min-w-0 flex-1 sm:w-28 sm:flex-none"
                               />
                               <Input
                                 type="number"
@@ -2592,7 +2592,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                                 min={0}
                                 value={outQtyByItem[variant.id] ?? ''}
                                 onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                                className="w-28"
+                                className="min-w-0 flex-1 sm:w-28 sm:flex-none"
                               />
                             </div>
                           )}
@@ -2625,7 +2625,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
             </Collapsible>
           ))}
         </div>
-        <SheetFooter>
+        <SheetFooter className="max-md:sticky max-md:bottom-0 max-md:z-10 max-md:border-t max-md:bg-background/95 max-md:pr-[4.25rem] max-md:backdrop-blur">
           <div className="flex w-full gap-2">
             <Button onClick={onSaveAll} disabled={!hasPositive || saving} className="flex-1">
               {saving ? 'Saving…' : 'Save'}
@@ -2684,7 +2684,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
           <SheetDescription>Choose size, adjust parts and packaging, then sell.</SheetDescription>
         </SheetHeader>
         <div className="mt-4 space-y-4 px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label className="text-sm text-muted-foreground" htmlFor="custom-pillow-size">Size</label>
             <Select value={size} onValueChange={setSize}>
               <SelectTrigger id="custom-pillow-size" aria-label="Custom pillow size" className="w-28">
@@ -2830,7 +2830,7 @@ function CustomPillowDrawer({ open, onOpenChange, size, setSize, items, lines, s
         <SheetFooter>
           <div className="flex w-full gap-2">
             <Button onClick={onSell} disabled={saving} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
-            <Button onClick={onAdd} variant="secondary" className="w-28" aria-label="Add to cart">Add another</Button>
+            <Button onClick={onAdd} variant="secondary" className="shrink-0" aria-label="Add to cart">Add another</Button>
           </div>
         </SheetFooter>
       </SheetContent>
@@ -2885,7 +2885,7 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
           <SheetDescription>Choose variant, adjust parts and packaging, then sell.</SheetDescription>
         </SheetHeader>
         <div className="mt-4 space-y-4 px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label className="text-sm text-muted-foreground" htmlFor="custom-bolster-variant">Variant</label>
             <Select value={variant} onValueChange={(value) => setVariant(value as 'short' | 'medium' | 'long')}>
               <SelectTrigger id="custom-bolster-variant" aria-label="Custom bolster variant" className="w-36">
@@ -3005,7 +3005,7 @@ function CustomBolsterDrawer({ open, onOpenChange, variant, setVariant, items, l
         <SheetFooter>
           <div className="flex w-full gap-2">
             <Button onClick={onSell} disabled={saving} className="flex-1">{saving ? 'Selling…' : 'Sell'}</Button>
-            <Button onClick={onAdd} variant="secondary" className="w-28" aria-label="Add to cart">Add another</Button>
+            <Button onClick={onAdd} variant="secondary" className="shrink-0" aria-label="Add to cart">Add another</Button>
           </div>
         </SheetFooter>
       </SheetContent>

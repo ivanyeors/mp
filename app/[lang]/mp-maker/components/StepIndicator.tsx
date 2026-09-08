@@ -52,7 +52,7 @@ export function StepIndicator() {
               </div>
               <span
                 className={cn(
-                  "text-[10px] leading-tight text-center whitespace-nowrap transition-colors",
+                  "text-[10px] leading-tight text-center break-words transition-colors",
                   isCurrent ? "font-semibold text-foreground" : "text-muted-foreground"
                 )}
               >
