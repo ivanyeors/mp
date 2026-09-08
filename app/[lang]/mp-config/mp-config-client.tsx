@@ -1706,7 +1706,7 @@ export function MpConfigClient({
           description="This will clear your saved session and return to the start."
           onConfirmExit={exitToStart}
         />
-        <div className="relative min-h-screen min-w-0 max-w-full overflow-x-hidden bg-background">
+        <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background">
           {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
           <div
             key={currentStep}
@@ -1744,7 +1744,7 @@ export function MpConfigClient({
             </div>
           </header>
 
-          <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
+          <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
             {/* Left: product visual (mp-maker style) */}
             <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
               {!isMobile && (
@@ -1905,7 +1905,7 @@ export function MpConfigClient({
             </div>
 
             {/* Right: customization panel */}
-            <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
+            <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100vh-56px)] lg:border-l">
               <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
                 {partner ? <CoBrandBanner partner={partner} /> : null}
                 <div className="space-y-1">
@@ -2050,7 +2050,7 @@ export function MpConfigClient({
                       <p className="text-sm text-destructive">{fieldErrors.line1}</p>
                     ) : null}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="hold-city">City</Label>
                       <Input
@@ -2097,7 +2097,7 @@ export function MpConfigClient({
                               key={m.id}
                               type="button"
                               onClick={() => setSelectedShippingId(m.id)}
-                              className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                              className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
                                 selected
                                   ? "border-primary bg-primary/5"
                                   : fieldErrors.shipping
@@ -2105,8 +2105,8 @@ export function MpConfigClient({
                                     : "border-border"
                               }`}
                             >
-                              <span className="text-sm font-medium">{label}</span>
-                              <span className="text-sm tabular-nums text-muted-foreground">
+                              <span className="min-w-0 flex-1 break-words text-sm font-medium">{label}</span>
+                              <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                                 SGD {Number(m.base_rate).toFixed(2)}
                                 {selected && (
                                   <Check className="ml-2 inline size-4 text-primary" />
@@ -2238,7 +2238,7 @@ export function MpConfigClient({
   }
 
   return (
-    <div className="relative min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-background">
+    <div className="relative min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-background">
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
         key={currentStep}
@@ -2296,7 +2296,7 @@ export function MpConfigClient({
       {/* Content Container */}
       <div
         className={cn(
-          "relative z-10 flex min-h-screen items-center justify-center",
+          "relative z-10 flex min-h-dvh items-center justify-center",
           configuratorOuterPadClassName,
           currentStep !== "welcome" && configuratorMobileCloseClearanceClassName,
         )}
@@ -3011,7 +3011,7 @@ export function MpConfigClient({
                                 sleepPainAreas: togglePainArea(prev.sleepPainAreas, opt.value),
                               }));
                             }}
-                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all ${
+                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
                               isSelected
                                 ? "border-primary bg-primary/10 text-primary"
                                 : "border-border text-muted-foreground hover:border-primary/50"
@@ -3053,7 +3053,7 @@ export function MpConfigClient({
                                   : [...prev.sleepPositionType, opt.value],
                               }));
                             }}
-                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all ${
+                            className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 text-sm font-medium transition-all max-md:min-h-11 max-md:px-4 ${
                               isSelected
                                 ? "border-primary bg-primary/10 text-primary"
                                 : "border-border text-muted-foreground hover:border-primary/50"

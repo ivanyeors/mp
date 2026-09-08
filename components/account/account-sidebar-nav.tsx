@@ -244,7 +244,7 @@ export function AccountSidebarNav({ children }: { children: React.ReactNode }) {
             </Button>
           </header>
           {/* pb clears the marketing dock that still shows on account routes */}
-          <div className="px-4 py-6 pb-28 sm:px-6 md:px-8 md:py-8 md:pb-28 lg:px-10 lg:py-10">
+          <div className="px-4 py-6 pb-[calc(1.5rem+var(--app-dock-clearance))] sm:px-6 md:px-8 md:py-8 md:pb-28 lg:px-10 lg:py-10">
             {children}
           </div>
         </SidebarInset>

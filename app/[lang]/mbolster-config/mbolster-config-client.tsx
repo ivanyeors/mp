@@ -978,7 +978,7 @@ export function MbolsterConfigClient({
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
-      <div className="relative min-h-screen min-w-0 max-w-full overflow-x-hidden bg-background">
+      <div className="relative min-h-dvh min-w-0 max-w-full overflow-x-hidden bg-background">
         {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
         <div
           key={state.step}
@@ -1022,7 +1022,7 @@ export function MbolsterConfigClient({
           </div>
         </header>
 
-        <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
+        <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
           {/* Left: product visual */}
           <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
             {!isMobile && (
@@ -1182,7 +1182,7 @@ export function MbolsterConfigClient({
           </div>
 
           {/* Right: customization panel (case, add-ons, shipping) */}
-          <div className="flex min-h-0 flex-col border-l bg-background lg:h-[calc(100vh-56px)]">
+          <div className="flex min-h-0 flex-col bg-background lg:h-[calc(100vh-56px)] lg:border-l">
             <div
               className={cn(
                 "flex-1 space-y-8 overflow-y-auto",
@@ -1335,7 +1335,7 @@ export function MbolsterConfigClient({
                     <p className="text-sm text-destructive">{fieldErrors.line1}</p>
                   ) : null}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="hold-city">City</Label>
                     <Input
@@ -1379,7 +1379,7 @@ export function MbolsterConfigClient({
                             key={m.id}
                             type="button"
                             onClick={() => setSelectedShippingId(m.id)}
-                            className={`flex w-full items-center justify-between rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
+                            className={`flex w-full items-center justify-between gap-3 rounded-lg border-2 p-3 text-left transition-all hover:border-primary/50 ${
                               selected
                                 ? "border-primary bg-primary/5"
                                 : fieldErrors.shipping
@@ -1387,8 +1387,8 @@ export function MbolsterConfigClient({
                                   : "border-border"
                             }`}
                           >
-                            <span className="text-sm font-medium">{label}</span>
-                            <span className="text-sm tabular-nums text-muted-foreground">
+                            <span className="min-w-0 flex-1 break-words text-sm font-medium">{label}</span>
+                            <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                               SGD {Number(m.base_rate).toFixed(2)}
                               {selected && (
                                 <Check className="ml-2 inline size-4 text-primary" />
@@ -1465,7 +1465,7 @@ export function MbolsterConfigClient({
   }
 
   return (
-    <div className="relative min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-background">
+    <div className="relative min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden bg-background">
       {/* ponytail: remount beacon so step changes fire section_view without SPA path change */}
       <div
         key={state.step}
@@ -1486,7 +1486,7 @@ export function MbolsterConfigClient({
       )}
       <div
         className={cn(
-          "relative mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center py-10 px-3 md:px-6",
+          "relative mx-auto flex min-h-dvh w-full max-w-3xl flex-col justify-center py-10 px-3 md:px-6",
           state.step !== "welcome" && configuratorMobileCloseClearanceClassName,
         )}
       >

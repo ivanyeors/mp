@@ -109,6 +109,31 @@ export function AppDock() {
     setMbolsterOpen(false);
   }, [pathname]);
 
+  // Publish the rendered dock height so `--mobile-bottom-clearance` tracks the
+  // real chrome instead of a hard-coded estimate. Measure the toolbar panel,
+  // whose height is static; the wrapper's height is the hover-magnification
+  // spring, which touch browsers also trigger via synthesized mouse events.
+  const dockRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const root = document.documentElement;
+    const panel = dockRef.current?.querySelector<HTMLElement>('[role="toolbar"]');
+    if (!isMobile || !panel || typeof ResizeObserver === "undefined") {
+      root.style.removeProperty("--mobile-dock-height");
+      return;
+    }
+    const publish = () => {
+      const height = panel.getBoundingClientRect().height;
+      if (height > 0) root.style.setProperty("--mobile-dock-height", `${Math.round(height)}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(panel);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--mobile-dock-height");
+    };
+  }, [isMobile]);
+
   React.useEffect(() => {
     let lastY = window.scrollY;
 
@@ -221,6 +246,7 @@ export function AppDock() {
   return (
     <>
       <div
+        ref={dockRef}
         className={`app-dock fixed left-1/2 max-w-full -translate-x-1/2 z-50 transition-transform duration-200 ease-out ${isHidden ? "translate-y-24 opacity-0" : "translate-y-0 opacity-100"
           }`}
         style={{ bottom: "calc(var(--mobile-dock-offset) + var(--safe-bottom))" }}

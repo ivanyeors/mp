@@ -136,6 +136,7 @@ export default async function RmaDetailPage({
         {items.length === 0 ? (
           <p className="px-4 py-3 text-sm text-muted-foreground">No line items.</p>
         ) : (
+          <div className="min-w-0 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left">
               <tr>
@@ -163,6 +164,7 @@ export default async function RmaDetailPage({
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </section>
 
@@ -212,7 +214,7 @@ export default async function RmaDetailPage({
               <form action={approveRmaForm.bind(null, rma.id)}>
                 <button
                   type="submit"
-                  className="h-9 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+                  className="h-9 max-md:min-h-11 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
                 >
                   Approve
                 </button>
@@ -222,7 +224,7 @@ export default async function RmaDetailPage({
               <form action={sendInstructionsForm.bind(null, rma.id)}>
                 <button
                   type="submit"
-                  className="h-9 rounded-md border bg-background px-3 text-sm hover:bg-accent"
+                  className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
                 >
                   Send return instructions
                 </button>
@@ -232,7 +234,7 @@ export default async function RmaDetailPage({
               <form action={markReceivedForm.bind(null, rma.id)}>
                 <button
                   type="submit"
-                  className="h-9 rounded-md border bg-background px-3 text-sm hover:bg-accent"
+                  className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
                 >
                   Mark received
                 </button>
@@ -242,7 +244,7 @@ export default async function RmaDetailPage({
               <form action={issueRmaRefundForm.bind(null, rma.id)}>
                 <button
                   type="submit"
-                  className="h-9 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+                  className="h-9 max-md:min-h-11 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
                 >
                   Issue refund
                 </button>
@@ -256,17 +258,17 @@ export default async function RmaDetailPage({
                 <input
                   name="tracking_number"
                   placeholder="Tracking number (optional)"
-                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                  className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                 />
                 <input
                   name="tracking_url"
                   placeholder="Tracking URL (optional)"
-                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                  className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                 />
               </div>
               <button
                 type="submit"
-                className="h-9 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
+                className="h-9 max-md:min-h-11 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
               >
                 Complete return
               </button>
@@ -279,11 +281,11 @@ export default async function RmaDetailPage({
                 rows={2}
                 required
                 placeholder="Reason for rejection (shown to the customer)…"
-                className="w-full resize-none rounded-md border bg-background p-2 text-sm"
+                className="w-full resize-none rounded-md border bg-background p-2 text-base md:text-sm"
               />
               <button
                 type="submit"
-                className="h-9 rounded-md border border-destructive px-3 text-sm text-destructive hover:bg-destructive/10"
+                className="h-9 max-md:min-h-11 rounded-md border border-destructive px-3 text-sm text-destructive hover:bg-destructive/10"
               >
                 Reject return
               </button>
@@ -328,11 +330,11 @@ export default async function RmaDetailPage({
             rows={4}
             defaultValue={rma.admin_note ?? ""}
             placeholder="Add an internal note visible only to staff…"
-            className="w-full resize-none rounded-md border bg-background p-2 text-sm"
+            className="w-full resize-none rounded-md border bg-background p-2 text-base md:text-sm"
           />
           <button
             type="submit"
-            className="h-9 rounded-md border bg-background px-3 text-sm hover:bg-accent"
+            className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
           >
             Save note
           </button>

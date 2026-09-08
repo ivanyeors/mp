@@ -363,7 +363,7 @@ export function PillowCustomizer({
         side="right"
         mobilePreset="full"
         hideClose={false}
-        className="w-full sm:max-w-lg overflow-y-auto"
+        className="w-full sm:max-w-lg overflow-y-auto pb-[calc(1rem+var(--safe-bottom))]"
       >
         <SheetHeader className="md:pr-10">
           <SheetTitle>Customize Your Pillow</SheetTitle>
@@ -556,7 +556,7 @@ function StepPreferences({
               type="button"
               onClick={() => onBodyTypeChange(bt.value)}
               className={cn(
-                "flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all",
+                "flex-1 rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all max-md:min-h-11",
                 "hover:border-primary/50",
                 bodyType === bt.value
                   ? "border-primary bg-primary/5 text-primary"
@@ -579,7 +579,7 @@ function StepPreferences({
               type="button"
               onClick={() => onFirmnessChange(fl.value)}
               className={cn(
-                "flex-1 py-2.5 text-xs sm:text-sm font-medium transition-all border-r last:border-r-0",
+                "flex-1 py-2.5 text-xs sm:text-sm font-medium transition-all border-r last:border-r-0 max-md:min-h-11",
                 firmness === fl.value
                   ? "bg-primary text-primary-foreground"
                   : "bg-background text-muted-foreground hover:bg-accent"

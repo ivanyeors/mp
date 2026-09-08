@@ -160,7 +160,7 @@ const SelectContent = React.forwardRef<
         className={cn(className, "inset-x-0 w-full min-w-0 max-w-none px-0 pt-0")}
         {...sheetProps}
       >
-        <div className="max-h-[70svh] overflow-auto px-2 pb-4 pt-2">
+        <div className="max-h-[70svh] overflow-auto px-2 pb-14 pt-2">
           {children}
         </div>
       </SheetContent>

@@ -190,7 +190,7 @@ export async function PartnerPayouts() {
                     step="0.01"
                     defaultValue={bal > 0 ? bal.toFixed(2) : ""}
                     required
-                    className="h-9 rounded-md border bg-background px-2"
+                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                   />
                 </label>
 
@@ -201,7 +201,7 @@ export async function PartnerPayouts() {
                     name="paid_on"
                     defaultValue={today()}
                     required
-                    className="h-9 rounded-md border bg-background px-2"
+                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                   />
                 </label>
 
@@ -211,7 +211,7 @@ export async function PartnerPayouts() {
                     type="text"
                     name="method"
                     placeholder="PayNow / bank transfer"
-                    className="h-9 rounded-md border bg-background px-2"
+                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                   />
                 </label>
 
@@ -221,7 +221,7 @@ export async function PartnerPayouts() {
                     type="text"
                     name="reference"
                     placeholder="Txn ref"
-                    className="h-9 rounded-md border bg-background px-2"
+                    className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                   />
                 </label>
 
@@ -238,7 +238,7 @@ export async function PartnerPayouts() {
                 <div className="sm:col-span-2">
                   <button
                     type="submit"
-                    className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                    className="h-9 max-md:min-h-11 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   >
                     Record payout
                   </button>
