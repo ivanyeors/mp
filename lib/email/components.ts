@@ -194,19 +194,37 @@ export function button(opts: ButtonOptions): string {
 </v:roundrect>
 <![endif]-->`;
 
-  const anchor = `<!--[if !mso]><!-- --><a class="mp-btn${
-    secondary ? " mp-btn-secondary" : ""
-  }" href="${href}" style="${typeStyle("button", {
+  // The fill lives on the CELL, carrying a `bgcolor` ATTRIBUTE as well as the
+  // inline background — this is the one element in the system whose failure
+  // mode is invisible text rather than merely flat colour.
+  //
+  // A sanitizer that drops CSS `background` but keeps `color` leaves light ink
+  // on the white card (and, in dark mode, near-black ink on the near-black
+  // card). Gmail's compose sanitizer does exactly that. `bgcolor` is an HTML
+  // presentational attribute, so it survives; and because presentational
+  // attributes lose to any CSS rule, the dark-mode block still overrides it —
+  // it is the floor, not a ceiling. `background-color` is emitted alongside the
+  // shorthand for sanitizers that keep one and not the other.
+  const anchor = `<!--[if !mso]><!-- --><table ${TABLE_RESET} align="${align}" class="mp-btn-table" style="${TABLE_RESET_STYLE}">
+  <tr><td class="mp-btn-cell${
+    secondary ? " mp-btn-cell-secondary" : ""
+  }" bgcolor="${bg}" style="${css({
     background: bg,
+    "background-color": bg,
     "border-radius": `${RADIUS.button}px`,
     border: secondary ? `1px solid ${LIGHT.border}` : "none",
+    "text-align": "center",
+  })}"><a class="mp-btn${
+    secondary ? " mp-btn-secondary" : ""
+  }" href="${href}" style="${typeStyle("button", {
     color: fg,
     display: "inline-block",
     "text-align": "center",
     "text-decoration": "none",
     padding: `0 ${SPACE["3xl"]}px`,
     "mso-padding-alt": "0",
-  })}">${label}</a><!--<![endif]-->`;
+  })}">${label}</a></td></tr>
+</table><!--<![endif]-->`;
 
   return block(`${vml}${anchor}`, css({
     "text-align": align,
@@ -224,10 +242,11 @@ export function card(opts: {
   const bg = tone === "outline" ? LIGHT.card : LIGHT.mutedBg;
   // Inner radius is one rung below the shell's surface radius — concentric
   // corners with identical radii read as slightly wrong.
-  return withGutter(`<table ${TABLE_RESET} width="100%" class="mp-panel" style="${TABLE_RESET_STYLE};${css(
+  return withGutter(`<table ${TABLE_RESET} width="100%" class="mp-panel" bgcolor="${bg}" style="${TABLE_RESET_STYLE};${css(
     {
       width: "100%",
       background: bg,
+      "background-color": bg,
       border: `1px solid ${LIGHT.border}`,
       "border-radius": `${RADIUS.xl}px`,
     },
