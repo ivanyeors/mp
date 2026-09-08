@@ -1,32 +1,68 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireAdminContext } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
 import { touchLastUsed } from "@/lib/media-assets";
+import { SectionContentSchema, SlugSchema, isCustomSectionType } from "@/lib/page-builder/validation";
 
 export const runtime = "nodejs";
 
 const PatchSchema = z.object({
   visible: z.boolean().optional(),
-  content: z.record(z.string(), z.unknown()).optional(),
-  slug: z.string().min(1).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+  content: SectionContentSchema.optional(),
+  slug: SlugSchema.optional(),
 });
 
 /**
  * PATCH /api/landing-sections/[id]
  * Updates a section's visible, content, or slug.
+ *
+ * `slug` is only editable on custom sections: built-in components branch on it to
+ * pick their copy, image and CTA, and it is also the journey-analytics anchor, so
+ * renaming one silently blanks the section and orphans historical exit links.
  */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await requireAdmin("page-builder");
-  if (denied) return denied;
+  let ctx;
+  try {
+    ctx = await requireAdminContext("page-builder");
+  } catch (res) {
+    return res as NextResponse;
+  }
 
   try {
     const { id } = await params;
     const body = await req.json();
     const parsed = PatchSchema.parse(body);
+
+    const admin = supabaseAdmin();
+
+    const { data: before, error: beforeError } = await admin
+      .from("landing_sections")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (beforeError) {
+      return NextResponse.json({ error: beforeError.message }, { status: 500 });
+    }
+    if (!before) {
+      return NextResponse.json({ error: "Section not found" }, { status: 404 });
+    }
+
+    if (parsed.slug !== undefined && parsed.slug !== before.slug && !isCustomSectionType(before.section_type)) {
+      return NextResponse.json(
+        {
+          error:
+            `"${before.slug}" is a built-in section, so its name is fixed. ` +
+            `Its layout and its analytics links both depend on it.`,
+        },
+        { status: 409 },
+      );
+    }
 
     const update: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -35,7 +71,6 @@ export async function PATCH(
     if (parsed.content !== undefined) update.content = parsed.content;
     if (parsed.slug !== undefined) update.slug = parsed.slug;
 
-    const admin = supabaseAdmin();
     const { data, error } = await admin
       .from("landing_sections")
       .update(update)
@@ -63,6 +98,15 @@ export async function PATCH(
       }).catch(() => {});
     }
 
+    await recordAdminAction({
+      actor: ctx,
+      action: "landing_section.update",
+      entityType: "landing_section",
+      entityId: id,
+      before: { slug: before.slug, visible: before.visible, content: before.content },
+      after: { slug: data.slug, visible: data.visible, content: data.content },
+    });
+
     return NextResponse.json({ ok: true, section: data });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -77,16 +121,40 @@ export async function PATCH(
 
 /**
  * DELETE /api/landing-sections/[id]
+ * Custom sections only — built-ins are seeded and the page expects them.
  */
 export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const denied = await requireAdmin("page-builder");
-  if (denied) return denied;
+  let ctx;
+  try {
+    ctx = await requireAdminContext("page-builder");
+  } catch (res) {
+    return res as NextResponse;
+  }
 
   const { id } = await params;
   const admin = supabaseAdmin();
+
+  const { data: before, error: beforeError } = await admin
+    .from("landing_sections")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (beforeError) {
+    return NextResponse.json({ error: beforeError.message }, { status: 500 });
+  }
+  if (!before) {
+    return NextResponse.json({ error: "Section not found" }, { status: 404 });
+  }
+  if (!isCustomSectionType(before.section_type)) {
+    return NextResponse.json(
+      { error: `"${before.slug}" is a built-in section and cannot be deleted. Hide it instead.` },
+      { status: 409 },
+    );
+  }
 
   const { error } = await admin
     .from("landing_sections")
@@ -96,6 +164,20 @@ export async function DELETE(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await recordAdminAction({
+    actor: ctx,
+    action: "landing_section.delete",
+    entityType: "landing_section",
+    entityId: id,
+    before: {
+      slug: before.slug,
+      section_type: before.section_type,
+      position: before.position,
+      visible: before.visible,
+      content: before.content,
+    },
+  });
 
   return NextResponse.json({ ok: true });
 }

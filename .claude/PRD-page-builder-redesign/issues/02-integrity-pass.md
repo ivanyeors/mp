@@ -57,7 +57,9 @@ log.
 - [ ] An image value pointing at a host outside the configured allowlist is rejected on save; allowlisted hosts and repo-relative paths are accepted.
 - [ ] A slug change is rejected unless the section's type is a custom one; built-in slugs are immutable.
 - [ ] The section store returns the seed layout only when the table has no rows at all — not when every row is hidden, and not on a query error.
-- [ ] A query error is surfaced rather than silently returning the seed layout.
+- [ ] A query error keeps the seed fallback on the public page (a degraded homepage beats a 500 on a
+      route with no error boundary) and is logged; the builder's own read throws instead, so Staff never
+      edit a fallback believing it is their page.
 - [ ] Listing landing sections requires the `page-builder` permission; an unauthenticated request is refused.
 - [ ] The rich-text section stores markdown and renders it through the existing markdown renderer; `dangerouslySetInnerHTML` is gone from the landing section components, and the editor field is labelled markdown.
 - [ ] Reordering applies the full order in a single statement and rejects an order that does not cover every section.

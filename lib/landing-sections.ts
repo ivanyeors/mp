@@ -17,8 +17,35 @@ const DEFAULT_SECTIONS: LandingSection[] = [
   { id: "default-founder", section_type: "founder_note", slug: "founder", position: 11, visible: true, content: {}, created_at: "", updated_at: "" },
 ];
 
+/** Size of the seed layout, for tests asserting the empty-table fallback. */
+export const DEFAULT_SECTIONS_COUNT = DEFAULT_SECTIONS.length;
+
 /**
- * Fetch visible landing sections ordered by position (for landing page SSR).
+ * Which sections the public page renders, given every row in the table.
+ *
+ * Split out so the empty-vs-all-hidden distinction is testable without Supabase.
+ * An empty table means "not configured yet" and falls back to the seed layout; a
+ * populated table where every row is hidden means Staff hid everything, and must
+ * render nothing.
+ */
+export function selectRenderableSections(rows: LandingSection[]): LandingSection[] {
+  if (rows.length === 0) return DEFAULT_SECTIONS;
+  return rows.filter((section) => section.visible);
+}
+
+/**
+ * Visible landing sections in order, for the public landing page.
+ *
+ * The seed layout is a fallback for a genuinely empty table only. It used to also
+ * fire whenever the query returned no rows, so hiding every section brought the
+ * original twelve back and the visibility toggles appeared not to work. Visibility
+ * is therefore filtered here rather than in the query, so "no rows" and "all hidden"
+ * stay distinguishable.
+ *
+ * On a query error the seed layout still stands in: a degraded homepage beats a 500
+ * on a route with no error boundary. Nothing is written back, so a blip cannot
+ * overwrite Staff edits. The builder's own read (`listLandingSections`) throws
+ * instead, so Staff never edit a fallback believing it is their page.
  */
 export async function getLandingSections(): Promise<LandingSection[]> {
   try {
@@ -26,7 +53,6 @@ export async function getLandingSections(): Promise<LandingSection[]> {
     const { data, error } = await admin
       .from("landing_sections")
       .select("*")
-      .eq("visible", true)
       .order("position", { ascending: true });
 
     if (error) {
@@ -34,30 +60,9 @@ export async function getLandingSections(): Promise<LandingSection[]> {
       return DEFAULT_SECTIONS;
     }
 
-    return (data?.length ? data : DEFAULT_SECTIONS) as LandingSection[];
-  } catch {
-    return DEFAULT_SECTIONS;
-  }
-}
-
-/**
- * Fetch ALL landing sections including hidden (for page builder admin UI).
- */
-export async function getAllLandingSections(): Promise<LandingSection[]> {
-  try {
-    const admin = supabaseAdmin();
-    const { data, error } = await admin
-      .from("landing_sections")
-      .select("*")
-      .order("position", { ascending: true });
-
-    if (error) {
-      console.error("[getAllLandingSections]", error.message);
-      return DEFAULT_SECTIONS;
-    }
-
-    return (data?.length ? data : DEFAULT_SECTIONS) as LandingSection[];
-  } catch {
+    return selectRenderableSections((data ?? []) as LandingSection[]);
+  } catch (err) {
+    console.error("[getLandingSections]", err);
     return DEFAULT_SECTIONS;
   }
 }

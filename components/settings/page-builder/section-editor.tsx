@@ -340,7 +340,7 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
         return (
           <>
             <Field label="Title"><Input value={(content.title as string) ?? ""} onChange={(e) => set("title", e.target.value)} /></Field>
-            <Field label="Body (HTML)"><Textarea value={(content.body as string) ?? ""} onChange={(e) => set("body", e.target.value)} rows={6} /></Field>
+            <Field label="Body (Markdown)"><Textarea value={(content.body as string) ?? ""} onChange={(e) => set("body", e.target.value)} rows={6} /></Field>
           </>
         );
 
