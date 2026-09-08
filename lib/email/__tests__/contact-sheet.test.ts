@@ -7,7 +7,9 @@
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 import { describe, expect, it } from "vitest";
-import { renderContactSheet } from "../contact-sheet";
+import { AUTH_TEMPLATE_LABELS, renderContactSheet } from "../contact-sheet";
+
+const AUTH_COUNT = Object.keys(AUTH_TEMPLATE_LABELS).length;
 import { EMAIL_REGISTRY } from "../registry";
 
 const sheet = renderContactSheet({ root: process.cwd() });
@@ -15,7 +17,7 @@ const sheet = renderContactSheet({ root: process.cwd() });
 describe("contact sheet", () => {
   it("embeds one frame per registry entry, plus the Supabase auth templates", () => {
     const frames = (sheet.match(/<iframe/g) ?? []).length;
-    expect(frames).toBe(EMAIL_REGISTRY.length + 4);
+    expect(frames).toBe(EMAIL_REGISTRY.length + AUTH_COUNT);
   });
 
   it("lists every registry entry by id and subject", () => {
@@ -30,7 +32,7 @@ describe("contact sheet", () => {
     // escaped, or they would tear the host document apart.
     expect((sheet.match(/<!doctype html>/gi) ?? []).length).toBe(1);
     expect((sheet.match(/&lt;!doctype html&gt;/g) ?? []).length).toBe(
-      EMAIL_REGISTRY.length + 4,
+      EMAIL_REGISTRY.length + AUTH_COUNT,
     );
   });
 

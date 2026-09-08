@@ -20,7 +20,7 @@ process.env.NEXT_PUBLIC_SITE_URL ||= "https://custom.mpillow.com";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderEmailShell } from "../lib/email/base";
-import { codeBlock, paragraph } from "../lib/email/components";
+import { codeBlock, infoList, paragraph } from "../lib/email/components";
 
 const SENTINEL_URL = "https://auth.sentinel.invalid/confirm";
 const SENTINEL_TOKEN = "000000";
@@ -33,7 +33,10 @@ interface AuthTemplate {
   title: string;
   preheader: string;
   intro: string;
-  ctaLabel: string;
+  /** Rendered between the intro and the code. */
+  detailsHtml?: string;
+  /** Omit for templates Supabase renders without {{ .ConfirmationURL }}. */
+  ctaLabel?: string;
   outro: string;
 }
 
@@ -74,16 +77,49 @@ const TEMPLATES: AuthTemplate[] = [
     ctaLabel: "Or reset with one click",
     outro: "If you didn't request a password reset, you can ignore this email.",
   },
+  {
+    file: "change-email.html",
+    dashboardName: "Change Email Address",
+    title: "Confirm your new email",
+    preheader: "Confirm the new email address on your Mpillow account.",
+    intro: "Use this code to confirm your new email address:",
+    detailsHtml: infoList([
+      { label: "Current", value: "{{ .Email }}" },
+      { label: "New", value: "{{ .NewEmail }}", strong: true },
+    ]),
+    ctaLabel: "Or confirm with one click",
+    // Secure email change (Supabase's default) sends this to BOTH addresses and
+    // needs both confirmed, so say so — otherwise the change silently stalls
+    // after the first click and it reads as a broken link.
+    outro:
+      "We send this to both your current and new address; confirm from both to finish the change. If you didn't request it, you can ignore this email.",
+  },
+  {
+    // Reauthentication is the one template Supabase renders WITHOUT
+    // {{ .ConfirmationURL }} — code only, so no button here.
+    file: "reauthentication.html",
+    dashboardName: "Reauthentication",
+    title: "Confirm it's you",
+    preheader: "Your confirmation code for a sensitive change on Mpillow.",
+    intro: "Enter this code to confirm the change you just requested:",
+    outro:
+      "If you didn't request this, don't share the code — ignore this email and the request expires.",
+  },
 ];
 
 function render(t: AuthTemplate): string {
   const html = renderEmailShell({
     title: t.title,
     preheader: t.preheader,
-    bodyHtml: `${paragraph(t.intro)}
-${codeBlock(SENTINEL_TOKEN, { caption: "This code expires shortly" })}
-${paragraph(t.outro, { muted: true })}`,
-    cta: { href: SENTINEL_URL, label: t.ctaLabel },
+    bodyHtml: [
+      paragraph(t.intro),
+      t.detailsHtml,
+      codeBlock(SENTINEL_TOKEN, { caption: "This code expires shortly" }),
+      paragraph(t.outro, { muted: true }),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    cta: t.ctaLabel ? { href: SENTINEL_URL, label: t.ctaLabel } : undefined,
   });
 
   // Swap sentinels for the Go placeholders Supabase substitutes at send time.

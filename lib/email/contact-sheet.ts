@@ -39,11 +39,13 @@ const GROUP_ORDER: EmailGroup[] = [
 ];
 
 /** Dashboard template each generated auth file is pasted into. */
-const AUTH_TEMPLATE_LABELS: Record<string, string> = {
+export const AUTH_TEMPLATE_LABELS: Record<string, string> = {
   "magic-link.html": "Magic Link",
   "confirm-signup.html": "Confirm signup",
   "invite-user.html": "Invite user",
   "reset-password.html": "Reset password",
+  "change-email.html": "Change Email Address",
+  "reauthentication.html": "Reauthentication",
 };
 
 interface Panel {
@@ -64,7 +66,7 @@ function authPanels(root: string): Panel[] {
   const dir = join(root, "supabase", "templates");
   let files: string[];
   try {
-    // Only the four generated auth templates. The folder can hold other HTML
+    // Only the generated auth templates. The folder can hold other HTML
     // (e.g. a preview sheet), which must not be embedded as a template.
     files = readdirSync(dir).filter((f) => f in AUTH_TEMPLATE_LABELS);
   } catch {
