@@ -32,6 +32,8 @@ file's contents into the **Message body** field:
 | `confirm-signup.html` | Confirm signup |
 | `invite-user.html` | Invite user |
 | `reset-password.html` | Reset password |
+| `change-email.html` | Change Email Address |
+| `reauthentication.html` | Reauthentication |
 
 Subject lines are configured separately in the dashboard and are not part of
 these files.
@@ -62,6 +64,12 @@ They must stay literal — do not URL-encode or escape them:
 - `{{ .ConfirmationURL }}` — the magic link (→ `/auth/callback`).
 
 Both are present in every template so the code and the link always travel
-together.
+together — except **Reauthentication**, which Supabase renders without a
+`{{ .ConfirmationURL }}`; that one is code-only and carries no button.
+
+**Change Email Address** additionally uses `{{ .Email }}` (the current address)
+and `{{ .NewEmail }}`. With "Secure email change" on — Supabase's default — the
+email goes to *both* addresses and both must be confirmed before the change
+takes effect, which is why the copy says so.
 
 Google OAuth uses no email template and is unaffected.
