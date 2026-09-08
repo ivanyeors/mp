@@ -66,7 +66,7 @@ live page is unchanged, Publish ships all three at once, and the header returns 
 - [ ] Vitest covers draft merge (override, unset column, deleted marker), publish effects, and retention.
 - [ ] `pnpm ci` passes.
 
-Proof: `npx tsx --env-file=.env.local lib/landing-sections/draft-publish.check.ts` → `landing-draft-publish self-check ok`
+Proof: `npx tsx --env-file=.env.local lib/page-builder/draft-publish.check.ts` → `landing-draft-publish self-check ok`
 
 ## Blocked by
 

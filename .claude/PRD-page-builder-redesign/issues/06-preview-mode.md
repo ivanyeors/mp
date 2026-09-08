@@ -57,7 +57,7 @@ records no analytics events.
 - [ ] Vitest covers preview gating (admin context yields draft, no context yields published).
 - [ ] `pnpm ci` passes.
 
-Proof: `npx tsx --env-file=.env.local lib/landing-sections/preview.check.ts` → `landing-preview self-check ok`
+Proof: `npx tsx --env-file=.env.local lib/page-builder/preview.check.ts` → `landing-preview self-check ok`
 
 ## Blocked by
 

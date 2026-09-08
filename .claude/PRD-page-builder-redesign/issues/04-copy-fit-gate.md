@@ -48,7 +48,7 @@ while typing, and saving it is refused with a message saying by how much.
 - [ ] Vitest covers: in-band pass, over-length headline, out-of-range lede, banned term, and that both entry points give the same verdict for the same input.
 - [ ] `pnpm ci` passes.
 
-Proof: `npx tsx --env-file=.env.local lib/landing-sections/copy-fit.check.ts` → `landing-copy-fit self-check ok`
+Proof: `npx tsx --env-file=.env.local lib/page-builder/copy-fit.check.ts` → `landing-copy-fit self-check ok`
 
 ## Blocked by
 

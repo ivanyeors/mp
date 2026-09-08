@@ -65,7 +65,7 @@ log.
 - [ ] The unused section-store helper is deleted and nothing references it.
 - [ ] `pnpm ci` passes.
 
-Proof: `npx tsx --env-file=.env.local lib/landing-sections/integrity.check.ts` → `landing-integrity self-check ok`
+Proof: `npx tsx --env-file=.env.local lib/page-builder/integrity.check.ts` → `landing-integrity self-check ok`
 
 ## Blocked by
 

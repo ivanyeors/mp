@@ -39,7 +39,7 @@ first, see the restore land as a pending draft in the preview, and publish it to
 - [ ] Retention is enforced and the panel never lists more than the retained bound.
 - [ ] `pnpm ci` passes.
 
-Proof: `npx tsx --env-file=.env.local lib/landing-sections/history.check.ts` → `landing-history self-check ok`
+Proof: `npx tsx --env-file=.env.local lib/page-builder/history.check.ts` → `landing-history self-check ok`
 
 ## Blocked by
 

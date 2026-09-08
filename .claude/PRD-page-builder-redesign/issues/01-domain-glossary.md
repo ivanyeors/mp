@@ -47,7 +47,7 @@ five terms correctly, and can tell landing **Publish** apart from **Rule graph**
 - [ ] A `## Flagged ambiguities` entry records the draft-storage resolution and its reason.
 - [ ] No term is introduced that an existing `CONTEXT.md` entry already covers.
 
-Proof: `npx tsx --env-file=.env.local lib/landing-sections/glossary.check.ts` → `landing-glossary self-check ok`
+Proof: `npx tsx --env-file=.env.local lib/page-builder/glossary.check.ts` → `landing-glossary self-check ok`
 
 ## Blocked by
 

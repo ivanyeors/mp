@@ -57,7 +57,7 @@ English override shows the translated default in Chinese rather than the English
 - [ ] Vitest covers the resolver: locale map, legacy string, nested non-locale objects, unknown locale, empty content.
 - [ ] `pnpm ci` passes.
 
-Proof: `npx tsx --env-file=.env.local lib/landing-sections/locale.check.ts` → `landing-locale self-check ok`
+Proof: `npx tsx --env-file=.env.local lib/page-builder/locale.check.ts` → `landing-locale self-check ok`
 
 ## Blocked by
 
