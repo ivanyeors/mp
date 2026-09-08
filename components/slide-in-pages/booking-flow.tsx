@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 type Location = { id: string; name: string; type: string; address: string };
 type Slot = { id: string; startIso: string; endIso: string };
+type DaySuggestion = { date: string; count: number };
 
 /** Today's date in Asia/Singapore as YYYY-MM-DD (earliest bookable day). */
 function sgtToday(): string {
@@ -83,6 +84,8 @@ export function BookingFlow({ type }: { type: ApptType }) {
   const [date, setDate] = React.useState<string>("");
   const [dateOpen, setDateOpen] = React.useState(false);
   const [slots, setSlots] = React.useState<Slot[]>([]);
+  const [suggestions, setSuggestions] = React.useState<DaySuggestion[]>([]);
+  const [refreshKey, setRefreshKey] = React.useState(0);
   const [slotsLoading, setSlotsLoading] = React.useState(false);
   const [slot, setSlot] = React.useState<Slot | null>(null);
   const [name, setName] = React.useState("");
@@ -116,10 +119,15 @@ export function BookingFlow({ type }: { type: ApptType }) {
     fetch(`/api/appointments/slots?date=${date}`)
       .then((r) => r.json())
       .then((d) => {
-        if (alive) setSlots(d?.ok ? d.slots : []);
+        if (!alive) return;
+        setSlots(d?.ok ? d.slots : []);
+        setSuggestions(d?.ok ? (d.suggestions ?? []) : []);
       })
       .catch(() => {
-        if (alive) setSlots([]);
+        if (alive) {
+          setSlots([]);
+          setSuggestions([]);
+        }
       })
       .finally(() => {
         if (alive) setSlotsLoading(false);
@@ -127,7 +135,7 @@ export function BookingFlow({ type }: { type: ApptType }) {
     return () => {
       alive = false;
     };
-  }, [date]);
+  }, [date, refreshKey]);
 
   const location = locations.find((l) => l.id === locationId) ?? null;
   const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
@@ -167,9 +175,10 @@ export function BookingFlow({ type }: { type: ApptType }) {
       if (res.status === 409) {
         setError(t.errorSlotTaken);
         setSlot(null);
-        // Refresh the day's slots so the taken one drops off.
-        const d = await fetch(`/api/appointments/slots?date=${date}`).then((r) => r.json());
-        setSlots(d?.ok ? d.slots : []);
+        // Refresh the day's slots so the taken one drops off. Bumping the key
+        // re-runs the fetch effect, which is guarded against a stale response
+        // overwriting a date the guest has since changed.
+        setRefreshKey((k) => k + 1);
       } else {
         const body = await res.json().catch(() => null);
         setError(body?.error ?? t.errorGeneric);
@@ -213,6 +222,7 @@ export function BookingFlow({ type }: { type: ApptType }) {
             setConfirmedEventId(null);
             setSlot(null);
             setSlots([]);
+            setSuggestions([]);
             setDate("");
             setName("");
             setPhone("");
@@ -282,14 +292,37 @@ export function BookingFlow({ type }: { type: ApptType }) {
       </div>
 
       {/* Slot grid */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2" aria-live="polite">
         <Label>{t.slotLabel}</Label>
         {!date ? (
           <p className="text-sm text-muted-foreground">{t.pickDateFirst}</p>
         ) : slotsLoading ? (
           <p className="text-sm text-muted-foreground">{t.loadingSlots}</p>
         ) : slots.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t.noSlots}</p>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-muted-foreground">{t.noSlots}</p>
+            {suggestions.length ? (
+              <>
+                <p className="text-sm text-muted-foreground">{t.suggestionsIntro}</p>
+                <div className="flex flex-col gap-2">
+                  {suggestions.map((s) => (
+                    <Button
+                      key={s.date}
+                      type="button"
+                      variant="outline"
+                      className="h-auto justify-between py-2 max-md:min-h-11"
+                      onClick={() => setDate(s.date)}
+                    >
+                      <span>{dateLabel(s.date)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t.suggestionTimes.replace("{n}", String(s.count))}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
         ) : (
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {slots.map((s) => (

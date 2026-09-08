@@ -16,6 +16,7 @@ import {
   blockedRangesToBusy,
   offerSlots,
   sgtLocalToUtcMs,
+  suggestNextDays,
   type BusyInterval,
 } from "@/lib/appointments/slots";
 import {
@@ -124,6 +125,51 @@ describe("appointment-slots", () => {
       // not overlapping busy
       expect(start >= busy[0]!.endMs || start + 3600_000 <= busy[0]!.startMs).toBe(true);
     }
+  });
+
+  it("suggests the earliest days with three or more free times", () => {
+    // Sat 2026-07-04 09:00 SGT is "now"; Sun 5th booked out, Mon 6th closed.
+    const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
+    const busy: BusyInterval[] = [
+      { startMs: sgtLocalToUtcMs(2026, 7, 4, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 6, 0, 0) },
+    ];
+    const days = suggestNextDays(busy, DEFAULT_APPOINTMENT_SETTINGS, {}, now);
+    expect(days).toEqual([
+      { date: "2026-07-07", count: 9 },
+      { date: "2026-07-08", count: 9 },
+      { date: "2026-07-09", count: 9 },
+    ]);
+  });
+
+  it("drops a day that has fewer than three free times", () => {
+    const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
+    // Tue 7th: leave only 17:00 and 18:00 open (2 starts) → not roomy enough.
+    const busy: BusyInterval[] = [
+      { startMs: sgtLocalToUtcMs(2026, 7, 4, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 6, 0, 0) },
+      { startMs: sgtLocalToUtcMs(2026, 7, 7, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 7, 17, 0) },
+    ];
+    const days = suggestNextDays(busy, DEFAULT_APPOINTMENT_SETTINGS, {}, now);
+    expect(days.map((d) => d.date)).toEqual(["2026-07-08", "2026-07-09", "2026-07-10"]);
+  });
+
+  it("falls back to any opening when no day can reach three", () => {
+    // 240-minute appointments: a 10:00–19:00 window fits only two starts.
+    const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
+    const settings = { ...DEFAULT_APPOINTMENT_SETTINGS, durationMinutes: 240 };
+    const days = suggestNextDays([], settings, {}, now);
+    expect(days.map((d) => d.date)).toEqual(["2026-07-04", "2026-07-05", "2026-07-07"]);
+    for (const d of days) expect(d.count).toBe(2);
+  });
+
+  it("never suggests past the booking horizon", () => {
+    const now = new Date(sgtLocalToUtcMs(2026, 7, 4, 9, 0));
+    const settings = { ...DEFAULT_APPOINTMENT_SETTINGS, slotLookaheadDays: 2 };
+    const busy: BusyInterval[] = [
+      { startMs: sgtLocalToUtcMs(2026, 7, 4, 0, 0), endMs: sgtLocalToUtcMs(2026, 7, 5, 0, 0) },
+    ];
+    const days = suggestNextDays(busy, settings, {}, now);
+    // Scan is 4th–6th: 4th busy, 6th is a closed Monday → only the 5th.
+    expect(days.map((d) => d.date)).toEqual(["2026-07-05"]);
   });
 
   it("skips Monday when only Tue–Sun bookable", () => {

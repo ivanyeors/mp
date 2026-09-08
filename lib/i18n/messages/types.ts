@@ -274,6 +274,8 @@ export type Messages = {
         slotLabel: string;
         noSlots: string;
         loadingSlots: string;
+        suggestionsIntro: string;
+        suggestionTimes: string;
         nameLabel: string;
         phoneLabel: string;
         emailLabel: string;
