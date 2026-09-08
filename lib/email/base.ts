@@ -82,13 +82,20 @@ function darkRules(): Array<[selector: string, declarations: string]> {
     [".mp-fg, .mp-fg a", `color: ${DARK.fg} !important;`],
     [".mp-muted, .mp-muted a", `color: ${DARK.mutedFg} !important;`],
     [".mp-border", `border-color: ${DARK.border} !important;`],
-    [".mp-btn", `background: ${DARK.primary} !important; color: ${DARK.primaryFg} !important;`],
+    // Fill and ink are split across two rules because the fill now lives on the
+    // wrapping cell (see button() in components.ts). Painting the cell and the
+    // anchor from the SAME list is the point: a future edit cannot flip the ink
+    // to dark without also flipping the fill, which is how you get invisible
+    // text.
+    [".mp-btn-cell", `background: ${DARK.primary} !important;`],
+    [".mp-btn", `color: ${DARK.primaryFg} !important;`],
     // The secondary button is an outline treatment; without this it inherits
     // the filled primary colours above and the two variants look identical.
     [
-      ".mp-btn-secondary",
-      `background: ${DARK.card} !important; color: ${DARK.fg} !important; border-color: ${DARK.border} !important;`,
+      ".mp-btn-cell-secondary",
+      `background: ${DARK.card} !important; border-color: ${DARK.border} !important;`,
     ],
+    [".mp-btn-secondary", `color: ${DARK.fg} !important;`],
     ["td, th", `border-color: ${DARK.border} !important;`],
     [".mp-logo-light", "display: none !important;"],
     [".mp-logo-dark", "display: block !important;"],
@@ -126,6 +133,9 @@ function styleBlock(): string {
     @media only screen and (max-width: 620px) {
       .mp-container { width: 100% !important; }
       .mp-pad { padding: 20px !important; }
+      /* The button's fill table is auto-width so it hugs the label on desktop;
+         on a phone it goes full-bleed, and the anchor has to stretch with it. */
+      .mp-btn-table { width: 100% !important; }
       .mp-btn { display: block !important; }
     }
     @media (prefers-color-scheme: dark) {
@@ -213,7 +223,7 @@ ${styleBlock()}
     "-ms-text-size-adjust": "100%",
   })}">
 ${preheaderHtml(preview)}
-<table ${TABLE_RESET} width="100%" class="mp-page" style="${TABLE_RESET_STYLE};width:100%;background:${LIGHT.page};">
+<table ${TABLE_RESET} width="100%" class="mp-page" bgcolor="${LIGHT.page}" style="${TABLE_RESET_STYLE};width:100%;background:${LIGHT.page};background-color:${LIGHT.page};">
   <tr>
     <td align="center" style="padding:${LAYOUT.outerPadding}px;">
       <!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" width="${LAYOUT.containerWidth}"><tr><td><![endif]-->
@@ -226,8 +236,9 @@ ${preheaderHtml(preview)}
           </td>
         </tr>
         <tr>
-          <td class="mp-card mp-pad" style="${css({
+          <td class="mp-card mp-pad" bgcolor="${LIGHT.card}" style="${css({
             background: LIGHT.card,
+            "background-color": LIGHT.card,
             border: `1px solid ${LIGHT.border}`,
             "border-radius": `${RADIUS.surface}px`,
             padding: `${LAYOUT.cardPadding}px`,
