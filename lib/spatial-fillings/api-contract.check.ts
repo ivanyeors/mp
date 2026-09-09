@@ -165,15 +165,17 @@ for (const path of trackedFiles) {
   const src = readFileSync(path, "utf8");
   if (!PILLOW_PLACEMENT_TABLES.some((t) => src.includes(t))) continue;
   // Column lists live inline in .select() or hoisted into a `cols` / ROW_COLS
-  // constant, so match the literal itself. Newlines allowed: a multi-line list
-  // must not slip past the way it did before.
-  const columnLists = src.match(/(['"`])[^'"`]*\bsub_section\b[^'"`]*\1/g) ?? [];
+  // constant, so match the literal rather than the call site. A column list is
+  // exactly comma-separated identifiers — matching that shape (instead of "any
+  // quoted run containing sub_section") keeps zod shapes and TS type annotations
+  // out, and stops the match spanning newlines between two unrelated quotes.
+  const columnLists = (
+    src.match(/(['"`])\s*[A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*\s*\1/g) ?? []
+  ).filter((lit) => /\bsub_section\b/.test(lit));
   if (columnLists.length === 0) continue;
   scanned += 1;
   const excuse = DEPTH_IRRELEVANT[path];
   for (const cols of columnLists) {
-    // A zod shape (`sub_section: z.string()`) is a schema, not a column list.
-    if (cols.includes("z.")) continue;
     if (excuse) {
       assert.ok(
         !cols.includes("row_index"),
@@ -200,10 +202,16 @@ for (const path of [
   const src = readFileSync(path, "utf8");
   const bounds = src.match(/row_index:\s*z\.number\(\)\.int\(\)\.min\(0\)\.max\(([^)]*)\)/g) ?? [];
   assert.ok(bounds.length > 0, `${path} shape-gates row_index`);
+  assert.ok(
+    src.includes("MAX_PIECES_PER_CELL"),
+    `${path} must source its depth bound from MAX_PIECES_PER_CELL`,
+  );
   for (const bound of bounds) {
+    // Directly, or via a named constant derived from it — never a literal number,
+    // which is how this bound sat at the retired top/bottom lane for two months.
     assert.ok(
-      bound.includes("MAX_PIECES_PER_CELL"),
-      `${path} must derive its row_index bound from MAX_PIECES_PER_CELL (found: ${bound})`,
+      !/\.max\(\s*\d/.test(bound),
+      `${path} must not hardcode its row_index bound (found: ${bound})`,
     );
   }
 }

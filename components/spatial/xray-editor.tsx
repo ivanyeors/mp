@@ -18,6 +18,8 @@
  * so the three surfaces cannot drift.
  */
 
+import { useMemo } from "react";
+
 import { XrayPillow } from "./xray-pillow";
 import { XRAY_VIEW } from "./xray-assets";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
@@ -41,8 +43,18 @@ export function XrayEditor({
 }) {
   // The pouch shape and scale come from each Item's subtype and size, exactly as
   // in the configurator — derived here so call sites pass one items array.
-  const itemSubtypes = new Map((items ?? []).map((i) => [i.id, i.subtype]));
-  const itemSizes = new Map((items ?? []).map((i) => [i.id, i.size]));
+  //
+  // Memoised on `items`, not rebuilt per render: XrayPillow memoises its geometry
+  // chain (layoutPlacements → conformPouchPath polygon scans) on
+  // [placements, itemSizes], so a fresh Map identity invalidates all of it. Both
+  // host pages keep text inputs in the same component as this editor, so every
+  // keystroke would otherwise re-conform every pouch (~7ms at 11 pieces, ~10ms at
+  // 17). mp-config memoises these two maps for the same reason.
+  const itemSubtypes = useMemo(
+    () => new Map((items ?? []).map((i) => [i.id, i.subtype])),
+    [items],
+  );
+  const itemSizes = useMemo(() => new Map((items ?? []).map((i) => [i.id, i.size])), [items]);
 
   return (
     <div

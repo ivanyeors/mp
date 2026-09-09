@@ -32,6 +32,7 @@ import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment
 import {
   isSpatiallyAuthored,
   isSpatiallyAuthoredCoverage,
+  looksLikeLegacyImport,
   unauthoredReason,
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
@@ -484,6 +485,8 @@ export default function ConfigureCardPage() {
     }
   };
 
+  const [cardColorOverrides, setCardColorOverrides] = useState<ColorOverrideRow[]>([]);
+
   const loadFillingTemplates = useCallback(async (kind: "pillow" | "bolster", key: string) => {
     const url = settingsPath(
       `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}&role=filling`,
@@ -495,6 +498,12 @@ export default function ConfigureCardPage() {
     }
     const payload = await res.json().catch(() => null);
     const rows = (payload?.templates ?? []) as FillingTemplateRow[];
+    // Global per-subtype x-ray colours: lifted to the card so the editor has them
+    // before any template is opened (a new template would otherwise render on code
+    // defaults while the configurator shows Product Builder colours).
+    if (payload?.colorOverrides) {
+      setCardColorOverrides(payload.colorOverrides as ColorOverrideRow[]);
+    }
     // Fold Section coverage onto each row so the eight call sites keep the same
     // shape and only the badge has to know about it.
     const coverage = payload?.sectionCoverage as Record<number, string[]> | undefined;
@@ -879,6 +888,7 @@ export default function ConfigureCardPage() {
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
+                  colorOverrides={cardColorOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1052,6 +1062,7 @@ export default function ConfigureCardPage() {
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
+                  colorOverrides={cardColorOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1176,6 +1187,7 @@ function FillingConfigPanel({
   settingsPath,
   loadFillingTemplates,
   deleteTemplateById,
+  colorOverrides,
 }: {
   kind: "pillow" | "bolster";
   templateKey: string;
@@ -1183,6 +1195,8 @@ function FillingConfigPanel({
   settingsPath: (path: string) => string;
   loadFillingTemplates: (kind: "pillow" | "bolster", key: string) => Promise<FillingTemplateRow[]>;
   deleteTemplateById: (templateId: number) => Promise<void>;
+  /** Global per-subtype x-ray colours, owned by the card (not per-template). */
+  colorOverrides: ColorOverrideRow[];
 }) {
   const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
@@ -1195,7 +1209,6 @@ function FillingConfigPanel({
   const [placements, setPlacements] = useState<PillowPlacement[]>([]);
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [hadPlacements, setHadPlacements] = useState(false);
-  const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>([]);
   const [saving, setSaving] = useState(false);
   // Unpromoted ranking + Promote (slices 09/13): Admin Panel only.
   const [unpromoted, setUnpromoted] = useState<UnpromotedEntry[]>([]);
@@ -1319,9 +1332,6 @@ function FillingConfigPanel({
       }
       type LineRow = { item_id: number | string; quantity: number | string };
       setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
-      // Product Builder colours for the x-ray; server-supplied because the table
-      // is service-role-only under RLS.
-      setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
       // Per-kind spatial rows: bolster rows are slot-only (never pillow enums).
       if (kind === "pillow") {
         const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
@@ -1534,8 +1544,8 @@ function FillingConfigPanel({
           {unauthoredCount > 0 && (
             <p className="border-b px-3 py-2 text-xs text-muted-foreground">
               {unauthoredCount} of {templates.length} Filling Template
-              {templates.length === 1 ? "" : "s"} not yet spatially authored — their placements were
-              auto-generated from a legacy flat recipe and sit in a single section.
+              {templates.length === 1 ? "" : "s"} not yet spatially authored — pieces are not laid
+              out across the left, center and right sections.
             </p>
           )}
           <Table>
@@ -1559,11 +1569,11 @@ function FillingConfigPanel({
                     {t.sections && !isSpatiallyAuthoredCoverage(t.sections) && (
                       <span
                         className="ml-2 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
-                        title={
-                          t.sections.length === 0
-                            ? "No filling pieces placed yet."
-                            : `Every piece sits in the ${t.sections[0]} section. Placements were auto-generated from a legacy flat recipe and have never been laid out.`
-                        }
+                        title={`${unauthoredReason(t.sections)}${
+                          looksLikeLegacyImport(t.sections)
+                            ? " Placements were auto-generated from a legacy flat recipe and have never been laid out."
+                            : ""
+                        }`}
                       >
                         Not spatially authored
                       </span>
@@ -1597,10 +1607,12 @@ function FillingConfigPanel({
                 <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                   <div className="font-medium">Not spatially authored.</div>
                   <p className="mt-1 text-muted-foreground">
-                    {unauthoredReason(placements.map((p) => p.section))} These placements were
-                    auto-generated from a legacy flat recipe and have never been laid out. Side-sleep
-                    support belongs in the left and right sections, back-sleep support in center.
-                    Moving pieces between cells does not change the pack list.
+                    {unauthoredReason(placements.map((p) => p.section))}{" "}
+                    {looksLikeLegacyImport(placements.map((p) => p.section))
+                      ? "These placements were auto-generated from a legacy flat recipe and have never been laid out. "
+                      : ""}
+                    Side-sleep support belongs in the left and right sections, back-sleep support in
+                    center. Moving pieces between cells does not change the pack list.
                   </p>
                 </div>
               )}

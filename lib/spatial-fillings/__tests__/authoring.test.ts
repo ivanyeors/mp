@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { isSpatiallyAuthored, isSpatiallyAuthoredCoverage, sectionsInUse } from "../authoring";
+import {
+  isSpatiallyAuthored,
+  isSpatiallyAuthoredCoverage,
+  looksLikeLegacyImport,
+  sectionsInUse,
+  sectionsInUsePlacements,
+  unauthoredReason,
+} from "../authoring";
 import type { PillowPlacement, Section, SubSection } from "../core";
 
 const at = (section: Section, subSection: SubSection, slot: number): PillowPlacement => ({
@@ -27,16 +34,26 @@ const leftPacked: PillowPlacement[] = [
 
 describe("sectionsInUse", () => {
   it("returns nothing for an empty recipe", () => {
-    expect(sectionsInUse([])).toEqual([]);
+    expect(sectionsInUsePlacements([])).toEqual([]);
   });
 
   it("collapses many pieces in one Section to that Section", () => {
-    expect(sectionsInUse(leftPacked)).toEqual(["left"]);
+    expect(sectionsInUsePlacements(leftPacked)).toEqual(["left"]);
   });
 
   it("returns Sections in canonical left → center → right order, not insertion order", () => {
     const placements = [at("right", "front", 1), at("center", "front", 1), at("left", "front", 1)];
-    expect(sectionsInUse(placements)).toEqual(["left", "center", "right"]);
+    expect(sectionsInUsePlacements(placements)).toEqual(["left", "center", "right"]);
+  });
+});
+
+describe("sectionsInUse (coverage form)", () => {
+  it("drops nulls and orders canonically", () => {
+    expect(sectionsInUse(["right", null, "left", undefined])).toEqual(["left", "right"]);
+  });
+
+  it("ignores values that are not Sections", () => {
+    expect(sectionsInUse(["compartment", "left"])).toEqual(["left"]);
   });
 });
 
@@ -117,5 +134,40 @@ describe("isSpatiallyAuthoredCoverage", () => {
     for (const [name, sections] of catalog) {
       expect(isSpatiallyAuthoredCoverage(sections), name).toBe(false);
     }
+  });
+});
+
+describe("unauthoredReason", () => {
+  it("names the single Section a recipe is stuck in", () => {
+    expect(unauthoredReason(["left", "left"])).toBe("Every piece sits in the left section.");
+  });
+
+  it("names the missing flank for the XL spill rather than claiming one section", () => {
+    // The old copy said "Every piece sits in the left section" for left+center,
+    // which was false — one piece is in center.
+    expect(unauthoredReason(["left", "center"])).toBe(
+      "Nothing is placed in the right section, so the two sides are not balanced.",
+    );
+  });
+
+  it("handles an empty recipe", () => {
+    expect(unauthoredReason([])).toBe("No filling pieces have been placed yet.");
+  });
+});
+
+describe("looksLikeLegacyImport", () => {
+  it("is true for the shapes the backfill can actually produce", () => {
+    expect(looksLikeLegacyImport(["left"])).toBe(true);
+    expect(looksLikeLegacyImport(["left", "center"])).toBe(true);
+  });
+
+  it("is false without left — the spread fills left first, so this was placed by hand", () => {
+    expect(looksLikeLegacyImport(["center"])).toBe(false);
+    expect(looksLikeLegacyImport(["center", "right"])).toBe(false);
+    expect(looksLikeLegacyImport([])).toBe(false);
+  });
+
+  it("is false once right is used, even though the recipe may still be unbalanced", () => {
+    expect(looksLikeLegacyImport(["left", "right"])).toBe(false);
   });
 });

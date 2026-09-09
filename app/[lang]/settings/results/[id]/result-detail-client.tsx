@@ -6,20 +6,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { XrayEditor } from "@/components/spatial/xray-editor";
-import { isSpatiallyAuthored, unauthoredReason } from "@/lib/spatial-fillings/authoring";
+import {
+  isSpatiallyAuthored,
+  looksLikeLegacyImport,
+  unauthoredReason,
+} from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
@@ -783,56 +779,54 @@ export default function ResultDetailPage({
         </div>
       </div>
 
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancel this Result?</DialogTitle>
-            <DialogDescription>
+      {/* Inline rather than a modal: keeps Radix Dialog out of this route's bundle. */}
+      {cancelDialogOpen && (
+        <Card className="border-destructive/40 p-4 space-y-3">
+          <div>
+            <div className="text-sm font-medium">Cancel this Result?</div>
+            <p className="text-sm text-muted-foreground">
               {row.payment_intent_id
-                ? "The authorization hold on the customer's card is released and the Result is closed. This cannot be undone — the customer would need to configure again."
+                ? "The authorization hold on the customer's card is released and the Result is closed. The customer would have to configure again."
                 : "The Result is closed. It has no payment hold, so nothing is refunded."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Field label="Reason (optional)">
-              <Input
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="e.g. customer changed their mind"
-              />
-            </Field>
-            {cancelError && (
-              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {cancelError}
-                <div className="mt-1 text-muted-foreground">
-                  The hold could not be released — it may have already expired at Stripe.
-                  Force-cancel closes the Result anyway.
-                </div>
-              </div>
-            )}
+            </p>
           </div>
-          <DialogFooter>
-            <Button
-              variant="secondary"
-              onClick={() => setCancelDialogOpen(false)}
-              disabled={cancelling}
-            >
-              Keep it
-            </Button>
+          <Field label="Reason (optional)">
+            <Input
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g. customer changed their mind"
+            />
+          </Field>
+          {cancelError && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {cancelError}
+              <div className="mt-1 text-muted-foreground">
+                The hold could not be released — it may have already expired at Stripe.
+                Force-cancel closes the Result anyway.
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="destructive"
               onClick={() => void cancelResult(Boolean(cancelError))}
               disabled={cancelling}
             >
-              {cancelling
-                ? "Cancelling…"
-                : cancelError
-                  ? "Force cancel"
-                  : "Cancel Result"}
+              {cancelling ? "Cancelling…" : cancelError ? "Force cancel" : "Cancel Result"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setCancelDialogOpen(false);
+                setCancelError(null);
+              }}
+              disabled={cancelling}
+            >
+              Keep it
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Purchase-path assignment (held Results) */}
       {(row.status === "held" || row.status === "assigned") && (
@@ -1076,9 +1070,11 @@ export default function ResultDetailPage({
                             <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                               <div className="font-medium">Not spatially authored.</div>
                               <p className="mt-1 text-muted-foreground">
-                                {unauthoredReason(placements.map((p) => p.section))} These
-                                placements were auto-generated from a legacy flat recipe. Lay the
-                                pieces out before confirming the build.
+                                {unauthoredReason(placements.map((p) => p.section))}{" "}
+                                {looksLikeLegacyImport(placements.map((p) => p.section))
+                                  ? "These placements were auto-generated from a legacy flat recipe. "
+                                  : ""}
+                                Lay the pieces out before confirming the build.
                               </p>
                             </div>
                           )}

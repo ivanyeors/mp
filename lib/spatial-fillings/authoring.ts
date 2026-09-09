@@ -7,7 +7,9 @@
  * The 2026-07-24 backfill materialised Placements for every legacy Filling
  * Template from flat bom_template_lines (quantities only, no spatial data) using
  * a fill-cells-in-order spread: all three `left` cells (3 x 5 = 15 pieces) before
- * it reaches `center`, and `right` never.
+ * it reaches `center`, and `right` only past 30. No template exceeds 17 pieces so
+ * `right` is unreached today — a bound on the current catalog, not a property of
+ * the spread (the migration's own guard permits 45).
  *
  * "Occupies more than one Section" alone is NOT enough. The two XL templates hold
  * 16 and 17 pieces, so they spill 1-2 into `center` and would pass — while being
@@ -23,11 +25,19 @@
 
 import { SECTIONS, type PillowPlacement, type Section } from "./core";
 
-/** Sections holding at least one piece, in canonical left → center → right order. */
-export function sectionsInUse(placements: readonly PillowPlacement[]): Section[] {
-  const seen = new Set<Section>();
-  for (const p of placements) seen.add(p.section);
+/**
+ * Sections holding at least one piece, in canonical left → center → right order.
+ * Tolerates the nulls a left join yields for a template with no Placements, and
+ * any string, since coverage arrives from the API as plain strings.
+ */
+export function sectionsInUse(coverage: readonly (string | null | undefined)[]): Section[] {
+  const seen = new Set(coverage.filter(Boolean));
   return SECTIONS.filter((s) => seen.has(s));
+}
+
+/** Same, for a placement list. */
+export function sectionsInUsePlacements(placements: readonly PillowPlacement[]): Section[] {
+  return sectionsInUse(placements.map((p) => p.section));
 }
 
 /**
@@ -39,27 +49,38 @@ export function sectionsInUse(placements: readonly PillowPlacement[]): Section[]
  * empty center is a real pillow, and the warning must clear the moment Staff do
  * real work.
  */
+export function isSpatiallyAuthoredCoverage(
+  coverage: readonly (string | null | undefined)[],
+): boolean {
+  const used = sectionsInUse(coverage);
+  if (used.length < 2) return false;
+  // Asymmetric side support: one flank filled, the other empty. That is the
+  // backfill's signature (it never reaches `right`), not a build.
+  return used.includes("left") === used.includes("right");
+}
+
 export function isSpatiallyAuthored(placements: readonly PillowPlacement[]): boolean {
   return isSpatiallyAuthoredCoverage(placements.map((p) => p.section));
 }
 
 /** Why a recipe is not Spatially authored, as a sentence for the warning. */
-export function unauthoredReason(coverage: readonly string[]): string {
-  const used = new Set(coverage.filter(Boolean));
-  if (used.size === 0) return "No filling pieces have been placed yet.";
-  if (used.size === 1) return `Every piece sits in the ${[...used][0]} section.`;
-  const missing = used.has("left") ? "right" : "left";
+export function unauthoredReason(coverage: readonly (string | null | undefined)[]): string {
+  const used = sectionsInUse(coverage);
+  if (used.length === 0) return "No filling pieces have been placed yet.";
+  if (used.length === 1) return `Every piece sits in the ${used[0]} section.`;
+  const missing = used.includes("left") ? "right" : "left";
   return `Nothing is placed in the ${missing} section, so the two sides are not balanced.`;
 }
 
 /**
- * Same predicate over the per-Section coverage the list endpoint returns, so the
- * template list does not have to fetch every placement row to render a badge.
+ * True only when the coverage could actually have come from the 2026-07-24
+ * backfill, whose spread fills `left` first and reaches `center` only past 15
+ * pieces. A recipe without `left`, or one already touching `right`, was placed by
+ * hand — so the warning must not tell Staff their own work was auto-generated.
  */
-export function isSpatiallyAuthoredCoverage(coverage: readonly string[]): boolean {
-  const used = new Set(coverage.filter(Boolean));
-  if (used.size < 2) return false;
-  // Asymmetric side support: one flank filled, the other empty. That is the
-  // backfill's signature (it never reaches `right`), not a build.
-  return used.has("left") === used.has("right");
+export function looksLikeLegacyImport(
+  coverage: readonly (string | null | undefined)[],
+): boolean {
+  const used = sectionsInUse(coverage);
+  return used.includes("left") && !used.includes("right");
 }

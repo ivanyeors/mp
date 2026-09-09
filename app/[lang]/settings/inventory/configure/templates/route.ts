@@ -138,7 +138,25 @@ export async function GET(req: NextRequest) {
     sectionCoverage = Object.fromEntries(ids.map((id) => [id, [...(bySection.get(id) ?? [])]]))
   }
 
-  return NextResponse.json({ ok: true, templates, ...(sectionCoverage ? { sectionCoverage } : {}) })
+  // Per-subtype x-ray colours are global, not per-template, so they ride the list
+  // response: without this the editor renders code defaults until a template is
+  // opened, and a brand-new template never gets them at all. Service-role-only
+  // under RLS, so the browser cannot fetch them itself.
+  let colorOverrides: Array<{ subtype: string; color: string }> | undefined
+  if (role === 'filling' && parsed.data.kind === 'pillow') {
+    const { data: colors, error: colorErr } = await admin
+      .from('filling_color_overrides')
+      .select('subtype,color')
+    if (colorErr) return NextResponse.json({ error: colorErr.message }, { status: 500 })
+    colorOverrides = colors ?? []
+  }
+
+  return NextResponse.json({
+    ok: true,
+    templates,
+    ...(sectionCoverage ? { sectionCoverage } : {}),
+    ...(colorOverrides ? { colorOverrides } : {}),
+  })
 }
 
 export async function POST(req: NextRequest) {
