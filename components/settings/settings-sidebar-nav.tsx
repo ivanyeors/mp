@@ -19,6 +19,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuSub,
   SidebarMenuSubButton,
@@ -218,6 +219,9 @@ export function SettingsSidebarNav({
     () => initialAuth?.permissions ?? [],
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  // Work waiting in the Results queue, so staff see it without opening the page.
+  const [resultsQueue, setResultsQueue] = useState(0);
+  const [resultsStuck, setResultsStuck] = useState(0);
 
   // Keep in sync if the server re-renders the layout with a new session
   // (e.g. after sign-in redirects back into the Admin Panel).
@@ -235,6 +239,24 @@ export function SettingsSidebarNav({
     if (!isMobile) return;
     return subscribeAdminPanelMenu(() => setMenuOpen(true));
   }, [isMobile]);
+
+  // Refetched per navigation (pathname dep) so the badge settles after an assign
+  // without needing a poll. Best-effort: a failure just leaves the badge hidden.
+  useEffect(() => {
+    if (status !== "authed" || !permissions.includes("results")) return;
+    let cancelled = false;
+    fetch("/api/results/queue-counts")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { needsAssign?: number; stuck?: number } | null) => {
+        if (cancelled || !data) return;
+        setResultsQueue((data.needsAssign ?? 0) + (data.stuck ?? 0));
+        setResultsStuck(data.stuck ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [status, permissions, basePathname]);
 
   useEffect(() => {
     if (isLoginRoute || initialAuth) return;
