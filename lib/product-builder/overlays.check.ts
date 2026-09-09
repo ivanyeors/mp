@@ -55,8 +55,20 @@ assert.match(bench, /SILHOUETTE_PATH/, "stage clips against the shared silhouett
 // The static BOLSTER_SILHOUETTE_PATH is a placeholder no configurator draws;
 // /mbolster-config uses bolsterCapsulePath(length), so the workbench must too.
 assert.match(bench, /bolsterCapsulePath\(length\)/, "bolster cases preview against the real capsule");
-assert.doesNotMatch(bench, /BOLSTER_SILHOUETTE_PATH/, "stale placeholder capsule is not used");
-assert.match(bench, /if \(s === "S"\) return "short";/, "item size drives the capsule length");
+assert.doesNotMatch(
+  /import \{[^}]*\} from "@\/components\/spatial\/xray-assets";/.exec(bench)?.[0] ?? "",
+  /BOLSTER_SILHOUETTE_PATH/,
+  "stale placeholder capsule is not imported",
+);
+// /mbolster-config takes the capsule length from the shopper's recommendation
+// (bolster_variant), not from the case item's size, so one mapping ships
+// against all three — the stage has to be able to show all three.
+assert.match(bench, /BOLSTER_LENGTHS\.map/, "capsule length is switchable, not inferred once");
+assert.match(bench, /function defaultBolsterLength/, "item size only seeds the opening length");
+// The ghost must not paint inside the silhouette: an asset with alpha would
+// otherwise show content the configurator never renders.
+assert.match(bench, /mask=\{`url\(#\$\{maskId\}\)`\}/, "ghost is masked out of the silhouette");
+assert.match(bench, /aria-live=\{dragging \? "off" : "polite"\}/, "drag does not flood the live region");
 // React's generated ids carry colons/guillemets — invalid inside url(#...).
 assert.doesNotMatch(/import \{[^}]*\} from "react";/.exec(bench)?.[0] ?? "", /useId/, "useId is not imported");
 assert.match(bench, /const clipId = `overlay-clip-\$\{item\.id\}`/, "clip id is deterministic per item");
@@ -64,7 +76,6 @@ assert.match(bench, /const clipId = `overlay-clip-\$\{item\.id\}`/, "clip id is 
 assert.doesNotMatch(bench, /ScrollArea/, "rail uses a native overflow container that honours max-h");
 assert.match(bench, /max-h-\[28rem\] overflow-y-auto/, "rail scrolls instead of spilling into the next section");
 assert.match(bench, /onKeyDown=\{url \? onKeyDown : undefined\}/, "fit is keyboard-reachable, not drag-only");
-assert.match(bench, /aria-live="polite"/, "keyboard nudges are announced");
 // A mapping row whose asset lost its hosted_url is dropped by fetchOverlayMap,
 // so the shop renders nothing — the workbench must not call that "unmapped".
 assert.match(bench, /const assetMissing = item\.mapping != null && url == null;/, "missing asset is a distinct state");

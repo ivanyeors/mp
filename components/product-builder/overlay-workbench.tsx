@@ -46,8 +46,15 @@ function roleLabel(category: string): "cover" | "case" {
   return category === "cover" ? "cover" : "case";
 }
 
-/** Mbolster item size (S/M/L) → the capsule length /mbolster-config draws. */
-function bolsterLengthFor(size: string | null): BolsterLength {
+export const BOLSTER_LENGTHS: readonly BolsterLength[] = ["short", "medium", "long"];
+
+/**
+ * Opening capsule length for a bolster case, guessed from its inventory size.
+ * Only a starting point: /mbolster-config picks the length from the shopper's
+ * recommendation (`bolster_variant`), not from the case's size, so the same
+ * mapping can ship against any of the three. Hence the length switcher.
+ */
+function defaultBolsterLength(size: string | null): BolsterLength {
   const s = size?.trim().toUpperCase();
   if (s === "S") return "short";
   if (s === "L") return "long";
@@ -55,15 +62,17 @@ function bolsterLengthFor(size: string | null): BolsterLength {
 }
 
 /**
- * The silhouette this item is previewed against — the same shape its own
- * configurator renders, so a fit dialled in here transfers exactly.
- * Bolster cases get `bolsterCapsulePath` at their size (what /mbolster-config
- * draws), not the static placeholder capsule.
+ * The silhouette this item is previewed against — the shape its own configurator
+ * draws, so the fit is judged against what ships. Bolster cases use
+ * `bolsterCapsulePath` (what /mbolster-config renders), never the static
+ * BOLSTER_SILHOUETTE_PATH placeholder, which nothing draws.
  */
-function silhouetteFor(item: OverlayMappingItem): { d: string; label: string } {
+function silhouetteFor(
+  item: OverlayMappingItem,
+  length: BolsterLength,
+): { d: string; label: string } {
   if (item.category === "bolster_case") {
-    const length = bolsterLengthFor(item.size);
-    return { d: bolsterCapsulePath(length), label: `Mbolster capsule (${length})` };
+    return { d: bolsterCapsulePath(length), label: `Mbolster capsule · ${length}` };
   }
   return { d: SILHOUETTE_PATH, label: "Mpillow silhouette" };
 }
@@ -214,14 +223,20 @@ function OverlayStage({
   // Derived from the item, not useId(): React's generated ids carry colons /
   // guillemets, which are not safe inside a url(#...) fragment.
   const clipId = `overlay-clip-${item.id}`;
+  const maskId = `overlay-outside-${item.id}`;
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
 
   const [scale, setScale] = useState(item.mapping?.fit?.scale ?? 1);
   const [x, setX] = useState(item.mapping?.fit?.x ?? 0);
   const [y, setY] = useState(item.mapping?.fit?.y ?? 0);
+  const [length, setLength] = useState(() => defaultBolsterLength(item.size));
+  // Announcing every pointermove would be a stream of coordinates; keyboard
+  // nudges are discrete and worth hearing.
+  const [dragging, setDragging] = useState(false);
 
-  const { d: path, label: shapeLabel } = silhouetteFor(item);
+  const isBolster = item.category === "bolster_case";
+  const { d: path, label: shapeLabel } = silhouetteFor(item, length);
   const url = item.mapping?.hosted_url ?? null;
   // fetchOverlayMap skips mapping rows whose asset has no hosted_url, so the
   // shop shows a plain silhouette. Say so rather than looking merely unmapped.
@@ -238,6 +253,7 @@ function OverlayStage({
       if (!url) return;
       e.currentTarget.setPointerCapture(e.pointerId);
       drag.current = { px: e.clientX, py: e.clientY, x, y };
+      setDragging(true);
     },
     [url, x, y],
   );
@@ -255,6 +271,7 @@ function OverlayStage({
 
   const endDrag = useCallback(() => {
     drag.current = null;
+    setDragging(false);
   }, []);
 
   /** Arrow keys nudge the fit (Shift = 10 units) — dragging cannot be the only input. */
@@ -288,6 +305,27 @@ function OverlayStage({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          {isBolster && (
+            <div
+              className="mr-1 flex items-center gap-0.5 rounded-md border p-0.5"
+              role="group"
+              aria-label="Preview capsule length"
+            >
+              {BOLSTER_LENGTHS.map((l) => (
+                <Button
+                  key={l}
+                  type="button"
+                  size="sm"
+                  variant={l === length ? "secondary" : "ghost"}
+                  onClick={() => setLength(l)}
+                  aria-pressed={l === length}
+                  className="h-6 px-1.5 text-[11px] capitalize"
+                >
+                  {l}
+                </Button>
+              ))}
+            </div>
+          )}
           <ImagePicker onSelect={(sel) => onPick(sel, fit)}>
             <Button type="button" size="sm" variant="outline">
               <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
@@ -322,11 +360,13 @@ function OverlayStage({
               "block w-full select-none",
               url && "touch-none outline-none focus-visible:ring-2 focus-visible:ring-ring",
             )}
-            role="img"
+            role={url ? "application" : "img"}
             tabIndex={url ? 0 : undefined}
             aria-label={
               url
-                ? `${item.name} overlay placement — drag or use arrow keys to reposition`
+                ? `${item.name} overlay placement against the ${shapeLabel}. ` +
+                  `Scale ${scale.toFixed(2)}, x ${x}, y ${y}. ` +
+                  `Arrow keys reposition, hold shift for larger steps.`
                 : `${item.name} preview, no overlay`
             }
             onPointerDown={onPointerDown}
@@ -339,13 +379,27 @@ function OverlayStage({
               <clipPath id={clipId}>
                 <path d={path} />
               </clipPath>
+              {/* Everything except the silhouette, so the ghost cannot paint
+                  inside it — an asset with alpha would otherwise show ghost
+                  content the configurator never renders. */}
+              <mask id={maskId}>
+                <rect
+                  x={-PAD_X}
+                  y={-PAD_Y}
+                  width={VIEW_W + PAD_X * 2}
+                  height={VIEW_H + PAD_Y * 2}
+                  fill="white"
+                />
+                <path d={path} fill="black" />
+              </mask>
             </defs>
             <path d={path} fill="none" />
             {url && (
               <>
-                {/* Ghost of the whole asset — shows the part the clip discards. */}
+                {/* Ghost of the discarded part only — masked out of the silhouette. */}
                 <image
                   href={url}
+                  mask={`url(#${maskId})`}
                   preserveAspectRatio="xMidYMid slice"
                   opacity={0.18}
                   {...frame}
@@ -407,7 +461,7 @@ function OverlayStage({
           </div>
           <p
             className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-muted-foreground"
-            aria-live="polite"
+            aria-live={dragging ? "off" : "polite"}
           >
             <Move className="h-3.5 w-3.5" aria-hidden />
             {scale.toFixed(2)}× · x {x} · y {y}
@@ -443,6 +497,9 @@ function OverlayStage({
             Drag the preview or use arrow keys (Shift for 10) to reposition. The dashed
             frame is the whole image; the silhouette clips it exactly as the
             configurator does.
+            {isBolster
+              ? " Mbolster picks its capsule length from the shopper's recommendation, not the case size — check the fit against all three."
+              : ""}
           </p>
         )}
       </div>
