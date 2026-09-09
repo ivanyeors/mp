@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { CELLS, cellsToPlacements, placementsToCells, type CellMap } from "./pillow-cell-grid";
+import { CELLS, cellsToPlacements, placementsToCells, type CellMap } from "../cells";
 import {
   MAX_PIECES_PER_CELL,
   derivePackList,

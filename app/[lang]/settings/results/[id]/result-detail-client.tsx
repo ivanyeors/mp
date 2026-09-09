@@ -10,7 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { PillowCellGrid } from "@/components/spatial/pillow-cell-grid";
+import { XrayEditor } from "@/components/spatial/xray-editor";
+import { isSpatiallyAuthored, sectionsInUse } from "@/lib/spatial-fillings/authoring";
+import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
   bolsterPlacementsToRows,
@@ -257,6 +259,7 @@ export default function ResultDetailPage({
   const [placements, setPlacements] = useState<PillowPlacement[]>([]);
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
+  const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>([]);
   const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [fillingItems, setFillingItems] = useState<BolsterListItem[]>(seed.fillingItems);
 
@@ -504,6 +507,9 @@ export default function ResultDetailPage({
           setTemplateHadPlacements(placementRows.length > 0);
         }
         setTemplateLegacyLines(lines);
+        // Product Builder colours for the x-ray — same server route as Configure,
+        // because filling_color_overrides is service-role-only under RLS.
+        setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
       } catch {
         setPlacements([]);
         setBolsterMix([]);
@@ -933,7 +939,24 @@ export default function ResultDetailPage({
                         </div>
                       )}
                       {productType === "pillow" ? (
-                        <PillowCellGrid value={placements} onChange={setPlacements} items={fillingItems} />
+                        <>
+                          {placements.length > 0 && !isSpatiallyAuthored(placements) && (
+                            <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                              <div className="font-medium">Not spatially authored.</div>
+                              <p className="mt-1 text-muted-foreground">
+                                Every piece sits in the {sectionsInUse(placements)[0]} section — this
+                                template's placements were auto-generated from a legacy flat recipe.
+                                Lay the pieces out before confirming the build.
+                              </p>
+                            </div>
+                          )}
+                          <XrayEditor
+                            placements={placements}
+                            onPlacementsChange={setPlacements}
+                            items={fillingItems}
+                            colorOverrides={colorOverrides}
+                          />
+                        </>
                       ) : (
                         // Mbolster: single compartment — ordered list, no cap, never the 3×3 grid.
                         <BolsterCompartmentList

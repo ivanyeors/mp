@@ -27,9 +27,14 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
-import { PillowCellGrid } from "@/components/spatial/pillow-cell-grid";
+import { XrayEditor } from "@/components/spatial/xray-editor";
 import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment-list";
-import { isSpatiallyAuthoredCoverage } from "@/lib/spatial-fillings/authoring";
+import {
+  isSpatiallyAuthored,
+  isSpatiallyAuthoredCoverage,
+  sectionsInUse,
+} from "@/lib/spatial-fillings/authoring";
+import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import {
   bolsterPlacementsToRows,
   flattenToPackList,
@@ -1190,6 +1195,7 @@ function FillingConfigPanel({
   const [placements, setPlacements] = useState<PillowPlacement[]>([]);
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [hadPlacements, setHadPlacements] = useState(false);
+  const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>([]);
   const [saving, setSaving] = useState(false);
   // Unpromoted ranking + Promote (slices 09/13): Admin Panel only.
   const [unpromoted, setUnpromoted] = useState<UnpromotedEntry[]>([]);
@@ -1313,6 +1319,9 @@ function FillingConfigPanel({
       }
       type LineRow = { item_id: number | string; quantity: number | string };
       setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
+      // Product Builder colours for the x-ray; server-supplied because the table
+      // is service-role-only under RLS.
+      setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
       // Per-kind spatial rows: bolster rows are slot-only (never pillow enums).
       if (kind === "pillow") {
         const placementRows = (payload?.placements ?? []) as PillowPlacementRow[];
@@ -1583,8 +1592,24 @@ function FillingConfigPanel({
             </div>
           )}
           {kind === "pillow" ? (
-            <Section title="Spatial recipe (Section × sub-section, up to 5 pieces per cell)">
-              <PillowCellGrid value={placements} onChange={setPlacements} items={gridItems} />
+            <Section title="Spatial recipe — click a section to dive in (up to 5 pieces per cell)">
+              {placements.length > 0 && !isSpatiallyAuthored(placements) && (
+                <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                  <div className="font-medium">Not spatially authored.</div>
+                  <p className="mt-1 text-muted-foreground">
+                    Every piece sits in the {sectionsInUse(placements)[0]} section. These placements
+                    were auto-generated from a legacy flat recipe and have never been laid out. Side-sleep
+                    support belongs in the left and right sections, back-sleep support in center.
+                    Moving pieces between cells does not change the pack list.
+                  </p>
+                </div>
+              )}
+              <XrayEditor
+                placements={placements}
+                onPlacementsChange={setPlacements}
+                items={gridItems}
+                colorOverrides={colorOverrides}
+              />
             </Section>
           ) : (
             // Mbolster: one long compartment — ordered list, no piece cap, never the 3×3 grid.
