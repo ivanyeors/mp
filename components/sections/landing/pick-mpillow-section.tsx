@@ -55,7 +55,7 @@ export function PickMpillowSection({ section, messages: m, locale, images, price
   ];
 
   return (
-    <section id="pick" className="relative">
+    <section className="relative">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="space-y-8">
           <div className="space-y-2">

@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { stripLocale } from "@/lib/i18n/routing";
+import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 
 import { BookingPills } from "@/components/slide-in-pages/booking-pills";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,6 +31,9 @@ export function BookAppointmentOverlay() {
   const seg = pathname?.split("/")[1] ?? "";
   const lang = isSupportedLocale(seg) ? seg : DEFAULT_LOCALE;
   const t = m.slides.bookAppointment;
+
+  // Not part of the page content Staff are previewing.
+  if (isPageBuilderPreviewRoute(stripLocale(pathname ?? "/"))) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

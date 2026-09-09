@@ -34,6 +34,8 @@ export interface LandingSectionProps {
     bolsterFromPrice: string;
   };
   landingRatings?: LandingRatings;
+  /** Preview mode: keep the reviews section off the paid Places API. */
+  preview?: boolean;
 }
 
 export function LandingSection({
@@ -43,6 +45,7 @@ export function LandingSection({
   images,
   prices,
   landingRatings,
+  preview = false,
 }: LandingSectionProps) {
   // The one place content is projected onto a locale. Every branch below — and every
   // section component — therefore sees copy for `locale` only, with anything missing
@@ -63,7 +66,7 @@ export function LandingSection({
       return <MarqueeSection section={section} images={images} />;
 
     case "stories":
-      return <StoriesSectionWrapper messages={messages} />;
+      return <StoriesSectionWrapper messages={messages} preview={preview} />;
 
     case "pick_your_mpillow":
       return (

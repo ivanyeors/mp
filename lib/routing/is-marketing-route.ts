@@ -1,4 +1,9 @@
+import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
+
 export function isMarketingRoute(basePathname: string): boolean {
+  // Preview mode renders landing content but is an Admin Panel surface: it must not
+  // carry storefront chrome that would sit on top of what Staff are reviewing.
+  if (isPageBuilderPreviewRoute(basePathname)) return false;
   if (basePathname === "/settings" || basePathname.startsWith("/settings/")) return false;
   if (basePathname === "/account" || basePathname.startsWith("/account/")) return false;
   if (basePathname === "/results" || basePathname.startsWith("/results/")) return false;

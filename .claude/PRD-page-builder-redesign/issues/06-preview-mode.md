@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 30, 37–40
 
 ## What to build
@@ -45,17 +45,17 @@ records no analytics events.
 
 ## Acceptance criteria
 
-- [ ] The landing section list is a shared server component used by both the public route and the preview route; no section markup is duplicated.
-- [ ] The preview route returns draft content only for a request with an admin context; without one it returns published content.
-- [ ] Next draft mode is not used, and no new bypass cookie is introduced.
-- [ ] Journey analytics, Google Analytics and Speed Insights record nothing from a preview render.
-- [ ] The staff dock pill, app dock, footer and analytics notice bar are not rendered in **Preview mode**.
-- [ ] The reviews section uses fallback testimonials in **Preview mode**; the external reviews API is not called.
-- [ ] Hidden sections are visibly marked in **Preview mode** rather than simply absent, so the visibility toggle has an observable effect.
-- [ ] Every section anchor id on the landing page is unique; the three duplicated ids are removed and the two slug-mismatched ids are reconciled.
-- [ ] The public landing route renders exactly as before — same sections, same order, same markup apart from the removed duplicate ids.
-- [ ] Vitest covers preview gating (admin context yields draft, no context yields published).
-- [ ] `pnpm ci` passes.
+- [x] The landing section list is a shared server component used by both the public route and the preview route; no section markup is duplicated.
+- [x] The preview route returns draft content only for a request with an admin context; without one it returns published content.
+- [x] Next draft mode is not used, and no new bypass cookie is introduced.
+- [x] Journey analytics, Google Analytics and Speed Insights record nothing from a preview render.
+- [x] The staff dock pill, app dock, footer and analytics notice bar are not rendered in **Preview mode**.
+- [x] The reviews section uses fallback testimonials in **Preview mode**; the external reviews API is not called.
+- [x] Hidden sections are visibly marked in **Preview mode** rather than simply absent, so the visibility toggle has an observable effect.
+- [x] Every section anchor id on the landing page is unique; the three duplicated ids are removed and the two slug-mismatched ids are reconciled.
+- [x] The public landing route renders exactly as before — same sections, same order, same markup apart from the removed duplicate ids.
+- [x] Vitest covers preview gating (admin context yields draft, no context yields published).
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local lib/page-builder/preview.check.ts` → `landing-preview self-check ok`
 

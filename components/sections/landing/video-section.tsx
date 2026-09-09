@@ -15,7 +15,7 @@ export function VideoSection({ section, messages: m }: VideoSectionProps) {
   const videoId = c.videoId ?? "nvFI6woJD9g";
 
   return (
-    <section id="review" className="relative">
+    <section className="relative">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="space-y-6">
           <div className="space-y-2">

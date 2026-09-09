@@ -15,7 +15,7 @@ demoable path through all layers (schema, API, UI, tests). Published locally
 | 03 | Bilingual overrides: locale resolver + section language switch | AFK | **done** | 02 | 13–17 |
 | 04 | Copy-fit gate: wire the existing validator to the write path + live meters | AFK | **done** | 03 | 18–21 |
 | 05 | Draft/publish spine: draft columns, publish function, snapshots, media walks | AFK | **built, migration not applied** | 02 | 22–28, 44 |
-| 06 | Preview mode: shared renderer, admin-gated draft route, chrome and analytics suppression | AFK |  | 05 | 30, 37–40 |
+| 06 | Preview mode: shared renderer, admin-gated draft route, chrome and analytics suppression | AFK | **done** | 05 | 30, 37–40 |
 | 07 | Three-pane shell: tree, live preview, inspector, device and theme toolbars | AFK |  | 03, 06 | 29, 31–36 |
 | 08 | Publish history: snapshot list, restore into draft, retention | AFK |  | 05 | 41–43 |
 | 09 | Editor completeness and accessibility | AFK |  | 07 | 45–54 |

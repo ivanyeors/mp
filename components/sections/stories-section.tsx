@@ -4,12 +4,23 @@ import { FALLBACK_TESTIMONIALS, type Testimonial } from "@/lib/google/fallback-t
 
 const DEFAULT_WRITE_REVIEW_URL = "https://share.google/92zAQnQWGM1SBCFh9";
 
-export async function StoriesSection({ title, subtitle }: { title: string; subtitle: string }) {
+export async function StoriesSection({
+  title,
+  subtitle,
+  preview = false,
+}: {
+  title: string;
+  subtitle: string;
+  /** Preview mode reloads on every edit; the Places call is paid and cached, so skip it. */
+  preview?: boolean;
+}) {
   let testimonials: Testimonial[] = [];
-  try {
-    testimonials = await getGooglePlaceTestimonials({ limit: 20 });
-  } catch {
-    testimonials = [];
+  if (!preview) {
+    try {
+      testimonials = await getGooglePlaceTestimonials({ limit: 20 });
+    } catch {
+      testimonials = [];
+    }
   }
 
   return (

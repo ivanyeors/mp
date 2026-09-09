@@ -40,7 +40,7 @@ export function TextImageSection({ section, messages: m, images }: TextImageSect
   const image = c.image ?? defaultImage;
 
   return (
-    <section id={isAmbassadors ? "ambassadors" : undefined} className="relative">
+    <section className="relative">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
           <div className="space-y-4">
