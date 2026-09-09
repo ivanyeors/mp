@@ -33,9 +33,13 @@ export async function PUT(req: Request) {
 
     const admin = supabaseAdmin();
 
+    // Sections staged for removal are already gone from the builder's list, so the
+    // order it sends excludes them. Counting them here rejected every reorder — with a
+    // 400 that persisted until someone published or discarded.
     const { data: existing, error: readError } = await admin
       .from("landing_sections")
       .select("*")
+      .not("draft_deleted", "is", true)
       .order("position", { ascending: true });
 
     if (readError) {

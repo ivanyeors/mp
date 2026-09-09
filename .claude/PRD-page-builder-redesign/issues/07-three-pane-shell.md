@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 29, 31–36
 
 ## What to build
@@ -51,20 +51,20 @@ watch the preview update, switch to phone width and to Chinese, and see the chan
 
 ## Acceptance criteria
 
-- [ ] The page builder renders three panes above the large breakpoint: section tree, preview iframe, inspector.
-- [ ] Clicking a section in the preview selects it in the tree and opens its inspector.
-- [ ] Selecting a section in the tree scrolls the preview to it.
-- [ ] Hovering a section in select mode outlines it in the preview.
-- [ ] A select/interact toggle switches the overlay; in interact mode the page's own controls work normally.
-- [ ] Selection survives the preview reload that follows an edit.
-- [ ] If the preview navigates away from the landing path, selection is cleared rather than binding to a foreign section anchor.
-- [ ] Phone, tablet and desktop width presets are available; desktop renders at a real desktop width and is scaled to fit the pane.
-- [ ] The toolbar has an explicit light/dark control that changes the preview only, not the admin interface.
-- [ ] The toolbar language switch reloads the preview in the other locale.
-- [ ] Edits debounce into the draft and the preview refreshes without a full page navigation of the admin route.
-- [ ] Below the large breakpoint the builder shows the section list plus a full-screen preview sheet with a back control; there is no second inspector layout.
-- [ ] Drag-to-reorder still works and persists.
-- [ ] `pnpm ci` passes.
+- [x] The page builder renders three panes above the large breakpoint: section tree, preview iframe, inspector.
+- [x] Clicking a section in the preview selects it in the tree and opens its inspector.
+- [x] Selecting a section in the tree scrolls the preview to it.
+- [x] Hovering a section in select mode outlines it in the preview.
+- [x] A select/interact toggle switches the overlay; in interact mode the page's own controls work normally.
+- [x] Selection survives the preview reload that follows an edit.
+- [x] If the preview navigates away from the landing path, selection is cleared rather than binding to a foreign section anchor.
+- [x] Phone, tablet and desktop width presets are available; desktop renders at a real desktop width and is scaled to fit the pane.
+- [x] The toolbar has an explicit light/dark control that changes the preview only, not the admin interface.
+- [x] The toolbar language switch reloads the preview in the other locale.
+- [x] Edits debounce into the draft and the preview refreshes without a full page navigation of the admin route.
+- [x] Below the large breakpoint the builder shows the section list plus a full-screen preview sheet with a back control; there is no second inspector layout.
+- [x] Drag-to-reorder still works and persists.
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local components/settings/page-builder/shell.check.ts` → `page-builder-shell self-check ok`
 
