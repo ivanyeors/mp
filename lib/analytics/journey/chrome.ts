@@ -15,6 +15,8 @@ export type PageNodeChrome = {
   /** Landings of return Visits after a prior Drop-off. */
   returnHits: number;
   medianReturnGapMs: number | null;
+  /** Distinct pages behind a collapsed group node (`/blog/*`); unset otherwise. */
+  groupedPaths?: number;
 };
 
 export type ReturnTimelineEntry = {
@@ -31,6 +33,31 @@ export type ExitSectionRow = {
 };
 
 export type OutboundTransition = { to: string; count: number };
+
+/** What an aggregated node stands for: the members behind it, ranked. */
+export type JourneyGroupDetail = {
+  /** Pages behind `/blog/*`, or Entry sources behind an entry node. */
+  kind: "pages" | "sources";
+  total: number;
+  members: { label: string; count: number; sharePct: number }[];
+};
+
+/** Rank group members by count and attach each one's share of the total. */
+export function buildGroupDetail(
+  kind: JourneyGroupDetail["kind"],
+  entries: Iterable<readonly [string, number]>,
+): JourneyGroupDetail {
+  const rows = [...entries].filter(([, count]) => count > 0);
+  const total = rows.reduce((sum, [, count]) => sum + count, 0);
+  const members = rows
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([label, count]) => ({
+      label,
+      count,
+      sharePct: total > 0 ? Math.round((count / total) * 100) : 0,
+    }));
+  return { kind, total, members };
+}
 
 export type JourneyRoute = { pathSeq: string[]; count: number };
 

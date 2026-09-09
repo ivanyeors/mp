@@ -25,24 +25,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   ArrowRight,
-  ChevronDown,
   ChevronRight,
   ExternalLink,
   LayoutGrid,
   Maximize2,
   Minimize2,
   RefreshCw,
+  RotateCcw,
   Scan,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
@@ -53,6 +49,12 @@ import {
 } from "@/lib/analytics/journey/chrome";
 import { CONVERTED_NODE } from "@/lib/analytics/journey/converted-sink";
 import {
+  DEFAULT_ENTRY_TOP_N,
+  entrySourceOf,
+  isEntryNode,
+  OTHER_ENTRY,
+} from "@/lib/analytics/journey/entry-nodes";
+import {
   DIVE_ENTRY,
   DIVE_EXIT,
   buildDiveGraph,
@@ -60,6 +62,7 @@ import {
   layoutDiveGraph,
 } from "@/lib/analytics/journey/dive";
 import { layoutJourneyGraph } from "@/lib/analytics/journey/layout";
+import { isGroupedPath } from "@/lib/analytics/journey/path-groups";
 import {
   exitSectionHref,
   isSectionChildPath,
@@ -70,6 +73,7 @@ import {
   getProspectJourneyNodeDetail,
   getProspectJourneyTransitions,
   type JourneyConvertedDetail,
+  type JourneyGroupDetail,
   type JourneyNodeDetail,
   type JourneyTransitionEdge,
   type JourneyTransitionNode,
@@ -128,6 +132,7 @@ type EdgeTooltipData = {
 
 function labelPath(path: string) {
   if (path === DROP_OFF) return "Drop-off";
+  if (isEntryNode(path)) return entrySourceOf(path) ?? path;
   if (path === CONVERTED) return "Converted";
   if (path === DIVE_ENTRY) return "Entry";
   if (path === DIVE_EXIT) return "Exit";
@@ -237,11 +242,30 @@ function canExpandNode(path: string) {
 }
 
 /** Dig-in body height so the expanded node can grow to fit (no inner scroll). */
-function pageDigInH(detail: JourneyNodeDetail | null): number {
+/** One ranked member row: label line + share bar. */
+const GROUP_ROW_H = 30;
+
+function groupBlockH(detail: JourneyGroupDetail | null): number {
+  if (!detail) return 16;
+  return Math.max(1, detail.members.length) * GROUP_ROW_H;
+}
+
+/** Entry source / group node dig-in: the breakdown plus one action button. */
+function groupDigInH(detail: JourneyGroupDetail | null): number {
+  const chrome = 30 + 16;
+  if (!detail) return chrome + 90;
+  return chrome + 14 + groupBlockH(detail) + 10 + 34 + 12;
+}
+
+function pageDigInH(
+  detail: JourneyNodeDetail | null,
+  groupDetail: JourneyGroupDetail | null,
+): number {
   const chrome = 30 + 16; // title bar + padding
-  if (!detail) return chrome + 120;
+  if (!detail) return chrome + 120 + (groupDetail ? groupBlockH(groupDetail) + 24 : 0);
   let h = chrome + 48; // median dwell hero
   const block = (body: number) => 14 + body + 10;
+  if (groupDetail) h += block(groupBlockH(groupDetail));
   h += block(
     (detail.exitSections?.length ?? 0) === 0
       ? 16
@@ -271,14 +295,20 @@ function convertedDigInH(detail: JourneyConvertedDetail | null): number {
 }
 
 function expandedNodeBox(
-  isConverted: boolean,
+  kind: "page" | "converted" | "entry",
   detail: JourneyNodeDetail | null,
   convertedDetail: JourneyConvertedDetail | null,
+  groupDetail: JourneyGroupDetail | null,
 ): { hw: number; hh: number; digInTop: number; digInH: number } {
-  const digInH = isConverted
-    ? convertedDigInH(convertedDetail)
-    : pageDigInH(detail);
-  const digInTop = isConverted ? EXP_CONV_TOP : EXP_KPI_H;
+  const digInH =
+    kind === "converted"
+      ? convertedDigInH(convertedDetail)
+      : kind === "entry"
+        ? groupDigInH(groupDetail)
+        : pageDigInH(detail, groupDetail);
+  // Only page nodes keep their KPI face when expanded; the rest give it all
+  // to the dig-in, so they must not reserve the gap above it.
+  const digInTop = kind === "page" ? EXP_KPI_H : EXP_CONV_TOP;
   const totalH = digInTop + digInH + EXP_BOTTOM_PAD;
   return { hw: NODE_W_EXP / 2, hh: totalH / 2, digInTop, digInH };
 }
@@ -342,6 +372,7 @@ function edgeKey(e: JourneyTransitionEdge) {
 
 /** Semantic base hue: drop-off / converted / return / forward. */
 function edgeHueVar(e: JourneyTransitionEdge): string {
+  if (isEntryNode(e.from)) return "var(--chart-4)";
   if (e.to === DROP_OFF) return "var(--destructive)";
   if (e.to === CONVERTED) return "var(--chart-2)";
   if (e.dashed) return "var(--muted-foreground)";
@@ -406,6 +437,7 @@ function NodeCardBody({
   selected,
   isDropOff,
   isConverted,
+  entrySharePct,
 }: {
   n: LayoutNode;
   hw: number;
@@ -413,14 +445,86 @@ function NodeCardBody({
   selected: boolean;
   isDropOff: boolean;
   isConverted: boolean;
+  /** Share of all aggregated entries; only set on Entry source nodes. */
+  entrySharePct?: number;
 }) {
   const isPort = isDivePort(n.path);
   const isSection = isSectionChildPath(n.path);
+  const isEntry = isEntryNode(n.path);
   const isSink = isDropOff || isConverted || isPort;
   const padX = 12;
   const left = -hw + padX;
   const barW = hw * 2 - padX * 2 - (isSink || isSection ? 0 : 6);
   const dropFill = Math.min(1, Math.max(0, n.dropOffPct / 100));
+
+  if (isEntry) {
+    const share = Math.min(100, Math.max(0, entrySharePct ?? 0));
+    return (
+      <>
+        <rect
+          x={-hw}
+          y={-hh + 10}
+          width={4}
+          height={hh * 2 - 20}
+          rx={2}
+          className="fill-[var(--chart-4)]"
+        />
+        <SvgText
+          x={left + 4}
+          y={-hh + 16}
+          textAnchor="start"
+          maxChars={20}
+          className="fill-foreground text-[11px] font-semibold"
+        >
+          {labelPath(n.path)}
+        </SvgText>
+        <text
+          x={left + 4}
+          y={-hh + 42}
+          textAnchor="start"
+          className="fill-foreground text-[20px] font-semibold tabular-nums"
+        >
+          {n.views}
+        </text>
+        <text
+          x={left + 4 + Math.min(5, String(n.views).length) * 12 + 6}
+          y={-hh + 42}
+          textAnchor="start"
+          className="fill-muted-foreground text-[10px]"
+        >
+          visits
+        </text>
+        <rect
+          x={left + 4}
+          y={-hh + 56}
+          width={barW}
+          height={5}
+          rx={2.5}
+          className="fill-muted"
+        />
+        <rect
+          x={left + 4}
+          y={-hh + 56}
+          width={Math.max(0, barW * (share / 100))}
+          height={5}
+          rx={2.5}
+          className="fill-[var(--chart-4)]"
+          opacity={0.85}
+        />
+        <SvgText
+          x={left + 4}
+          y={-hh + 72}
+          textAnchor="start"
+          maxChars={24}
+          className="fill-muted-foreground text-[9px]"
+        >
+          {n.groupedPaths
+            ? `${share}% · ${n.groupedPaths} sources`
+            : `${share}% of entries`}
+        </SvgText>
+      </>
+    );
+  }
 
   if (isSink || isSection) {
     return (
@@ -516,11 +620,13 @@ function NodeCardBody({
         maxChars={selected ? 30 : 22}
         className="fill-muted-foreground/90 text-[9px]"
       >
-        {selected
-          ? `dwell ${formatDwell(n.medianDwellMs)} · ${n.views} views · ret ${n.returnHits}${
-              n.medianReturnGapMs != null ? ` (${formatGap(n.medianReturnGapMs)})` : ""
-            }`
-          : `dwell ${formatDwell(n.medianDwellMs)} · ret ${n.returnHits}`}
+        {`${n.groupedPaths ? `${n.groupedPaths} pages · ` : ""}${
+          selected
+            ? `dwell ${formatDwell(n.medianDwellMs)} · ${n.views} views · ret ${n.returnHits}${
+                n.medianReturnGapMs != null ? ` (${formatGap(n.medianReturnGapMs)})` : ""
+              }`
+            : `dwell ${formatDwell(n.medianDwellMs)} · ret ${n.returnHits}`
+        }`}
       </SvgText>
     </>
   );
@@ -577,15 +683,110 @@ function DigInShell({
   );
 }
 
+/** Ranked members behind an aggregated node — the list and its share bars. */
+function GroupBreakdown({
+  detail,
+  empty,
+}: {
+  detail: JourneyGroupDetail | null;
+  empty: string;
+}) {
+  if (!detail || detail.members.length === 0) {
+    return <DigInEmpty>{empty}</DigInEmpty>;
+  }
+  return (
+    <ul className="space-y-2">
+      {detail.members.map((m) => (
+        <li key={m.label} className="space-y-1">
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className="min-w-0 truncate text-[11px] font-medium text-foreground"
+              title={m.label}
+            >
+              {m.label}
+            </span>
+            <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground">
+              {m.count}
+              <span className="mx-1 text-border">·</span>
+              {m.sharePct}%
+            </span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-[var(--chart-4)]"
+              style={{ width: `${Math.min(100, Math.max(0, m.sharePct))}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Title for a breakdown block: what it lists and how many. */
+function groupTitle(detail: JourneyGroupDetail | null, fallback: string) {
+  if (!detail || detail.members.length === 0) return fallback;
+  const n = detail.members.length;
+  const noun = detail.kind === "sources" ? "source" : "page";
+  return `${n} ${noun}${n === 1 ? "" : "s"} · ${detail.total} visits`;
+}
+
+/** Entry source node dig-in: what it aggregates, plus the matching filter. */
+function ExpandedEntryDigIn({
+  source,
+  detail,
+  activeEntrySource,
+  onClose,
+  onPickEntrySource,
+}: {
+  source: string;
+  detail: JourneyGroupDetail | null;
+  activeEntrySource: string | null;
+  onClose: () => void;
+  onPickEntrySource: (source: string) => void;
+}) {
+  const isOther = source === OTHER_ENTRY;
+  const isActive = activeEntrySource === source;
+  return (
+    <DigInShell title={source} onClose={onClose}>
+      <DigInSection
+        title={groupTitle(
+          detail,
+          isOther ? "Rolled-up sources" : "Landing pages",
+        )}
+      >
+        <GroupBreakdown
+          detail={detail}
+          empty={isOther ? "Nothing rolled up." : "No landings yet."}
+        />
+      </DigInSection>
+      <button
+        type="button"
+        className="w-full cursor-pointer rounded-md border px-2 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
+        onClick={() => onPickEntrySource(source)}
+      >
+        {isOther
+          ? "Show every source"
+          : isActive
+            ? "Clear source filter"
+            : "Only this source"}
+      </button>
+    </DigInShell>
+  );
+}
+
 /** In-node dig-in body (HTML inside foreignObject). */
 function ExpandedPageDigIn({
   detailPath,
   detail,
+  groupDetail,
   locale,
   onClose,
 }: {
   detailPath: string;
   detail: JourneyNodeDetail | null;
+  /** Set when this node is a collapsed group (`/blog/*`). */
+  groupDetail: JourneyGroupDetail | null;
   locale: Locale;
   onClose: () => void;
 }) {
@@ -601,6 +802,12 @@ function ExpandedPageDigIn({
         </div>
       ) : (
         <>
+          {groupDetail ? (
+            <DigInSection title={groupTitle(groupDetail, "Pages in this group")}>
+              <GroupBreakdown detail={groupDetail} empty="No pages yet." />
+            </DigInSection>
+          ) : null}
+
           <div className="rounded-md bg-muted/55 px-2.5 py-2">
             <p className="text-[10px] text-muted-foreground">Median dwell</p>
             <p className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight">
@@ -616,15 +823,21 @@ function ExpandedPageDigIn({
                 {detail.exitSections.map((s) => (
                   <li key={s.sectionId} className="space-y-1">
                     <div className="flex items-center justify-between gap-2">
-                      <a
-                        href={exitSectionHref(locale, detailPath, s.sectionId)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex min-w-0 cursor-pointer items-center gap-1 text-[11px] font-medium text-foreground underline-offset-2 hover:underline"
-                      >
-                        <span className="truncate">#{s.sectionId}</span>
-                        <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
-                      </a>
+                      {isGroupedPath(detailPath) ? (
+                        <span className="min-w-0 truncate text-[11px] font-medium text-foreground">
+                          #{s.sectionId}
+                        </span>
+                      ) : (
+                        <a
+                          href={exitSectionHref(locale, detailPath, s.sectionId)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-w-0 cursor-pointer items-center gap-1 text-[11px] font-medium text-foreground underline-offset-2 hover:underline"
+                        >
+                          <span className="truncate">#{s.sectionId}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                        </a>
+                      )}
                       <span className="shrink-0 tabular-nums text-[11px] text-muted-foreground">
                         {s.count}
                         <span className="mx-1 text-border">·</span>
@@ -801,12 +1014,18 @@ function JourneyGraph({
   colorByCode,
   detailsByPath,
   convertedDetailByPath,
+  groupDetailByPath,
+  activeEntrySource,
   locale,
   divePath,
   expandablePaths,
   onDive,
   onExitDive,
-  filterBar,
+  onPickEntrySource,
+  filterPanel,
+  filterChips,
+  activeFilterCount,
+  legend,
 }: {
   nodes: JourneyTransitionNode[];
   edges: JourneyTransitionEdge[];
@@ -816,18 +1035,28 @@ function JourneyGraph({
   colorByCode: Map<string, string>;
   detailsByPath: Map<string, JourneyNodeDetail>;
   convertedDetailByPath: Map<string, JourneyConvertedDetail>;
+  groupDetailByPath: Map<string, JourneyGroupDetail>;
+  /** Entry source the graph is currently filtered to, for the dig-in action. */
+  activeEntrySource: string | null;
   locale: Locale;
   divePath: string | null;
   expandablePaths: string[];
   onDive: (path: string) => void;
   onExitDive: () => void;
-  filterBar: ReactNode;
+  /** Click an aggregated Entry source node to filter the journey by it. */
+  onPickEntrySource: (source: string) => void;
+  filterPanel: ReactNode;
+  filterChips: ReactNode;
+  activeFilterCount: number;
+  legend: ReactNode;
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
+  const paneRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [viewport, setViewport] = useState({ w: 800, h: 500 });
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, k: 1 });
   const [fullscreen, setFullscreen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [spaceDown, setSpaceDown] = useState(false);
   const [panning, setPanning] = useState(false);
   const [overrides, setOverrides] = useState<PosMap>({});
@@ -869,7 +1098,7 @@ function JourneyGraph({
   }, [posKey]);
 
   useEffect(() => {
-    const el = shellRef.current;
+    const el = paneRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       const cr = entries[0]?.contentRect;
@@ -893,6 +1122,11 @@ function JourneyGraph({
     });
   }, [seeded, overrides]);
   const byPath = useMemo(() => new Map(laid.map((n) => [n.path, n])), [laid]);
+  const entryTotal = useMemo(
+    () =>
+      laid.reduce((s, n) => (isEntryNode(n.path) ? s + n.views : s), 0),
+    [laid],
+  );
   const maxCount = Math.max(1, ...edges.map((e) => e.count));
   const totalTransitions = useMemo(
     () => edges.reduce((s, e) => s + e.count, 0),
@@ -959,9 +1193,8 @@ function JourneyGraph({
     window.removeEventListener("pointermove", onNodePointerMove);
     window.removeEventListener("pointerup", onNodePointerUp);
     if (!d) return;
-    if (!d.moved && !divePath && canExpandNode(d.path)) {
-      onToggleSelect(d.path);
-    }
+    if (d.moved || divePath) return;
+    if (canExpandNode(d.path)) onToggleSelect(d.path);
   }, [onNodePointerMove, onToggleSelect, divePath]);
 
   const onPanMove = useCallback((ev: PointerEvent) => {
@@ -1117,6 +1350,10 @@ function JourneyGraph({
         return;
       }
       if (ev.key === "Escape") {
+        if (filtersOpen) {
+          setFiltersOpen(false);
+          return;
+        }
         if (selectedPaths.length > 0) {
           onClearSelection();
           return;
@@ -1167,6 +1404,7 @@ function JourneyGraph({
     };
   }, [
     fullscreen,
+    filtersOpen,
     onClearSelection,
     onExitDive,
     selectedPaths.length,
@@ -1195,11 +1433,12 @@ function JourneyGraph({
       : "cursor-default";
 
   const shellClass = fullscreen
-    ? `fixed inset-0 z-50 flex flex-col bg-background ${cursorClass}`
-    : `relative h-[min(80vh,860px)] w-full overflow-hidden bg-muted/30 ${cursorClass}`;
+    ? `fixed inset-0 z-50 flex bg-background ${cursorClass}`
+    : `relative flex h-[min(80vh,860px)] w-full overflow-hidden bg-muted/30 ${cursorClass}`;
 
   return (
     <div ref={shellRef} className={shellClass} tabIndex={0}>
+      <div ref={paneRef} className="relative min-w-0 flex-1 overflow-hidden">
       <div className="pointer-events-none absolute inset-x-2 top-2 z-30 flex flex-col gap-2">
         <nav
           className="pointer-events-auto flex min-h-8 flex-wrap items-center gap-1 rounded-md border bg-background/95 px-2 py-1 text-xs shadow-sm"
@@ -1236,7 +1475,24 @@ function JourneyGraph({
           ) : null}
         </nav>
         <div className="pointer-events-auto flex flex-wrap items-center gap-1.5 rounded-md border bg-background/95 p-1.5 shadow-sm">
-          {filterBar}
+          <Button
+            type="button"
+            variant={filtersOpen ? "default" : "secondary"}
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setFiltersOpen((v) => !v)}
+            aria-expanded={filtersOpen}
+            aria-controls="journey-filters"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filters
+            {activeFilterCount > 0 ? (
+              <span className="rounded-full bg-foreground/10 px-1.5 text-[10px] font-medium tabular-nums">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </Button>
+          {filterChips}
           <div className="ml-auto flex flex-wrap items-center gap-1">
             <Button
               type="button"
@@ -1337,20 +1593,9 @@ function JourneyGraph({
             if (!a || !b) return null;
             const aExp = selectedSet.has(a.path) && canExpandNode(a.path);
             const bExp = selectedSet.has(b.path) && canExpandNode(b.path);
-            const { hw: aHw } = aExp
-              ? expandedNodeBox(
-                  a.path === CONVERTED,
-                  detailsByPath.get(a.path) ?? null,
-                  convertedDetailByPath.get(a.path) ?? null,
-                )
-              : nodeHalfSize(false);
-            const { hw: bHw } = bExp
-              ? expandedNodeBox(
-                  b.path === CONVERTED,
-                  detailsByPath.get(b.path) ?? null,
-                  convertedDetailByPath.get(b.path) ?? null,
-                )
-              : nodeHalfSize(false);
+            // Edge routing needs the half-width only, which is fixed per state.
+            const { hw: aHw } = nodeHalfSize(aExp);
+            const { hw: bHw } = nodeHalfSize(bExp);
             const isBack = a.x > b.x;
             const pk = `${e.from}->${e.to}${e.dashed ? ":re" : ""}`;
             const idx = pairIndex.get(`${pk}\0${e.country ?? ""}`) ?? 0;
@@ -1404,11 +1649,18 @@ function JourneyGraph({
             const isDropOff = n.path === DROP_OFF;
             const isConverted = n.path === CONVERTED;
             const isPort = isDivePort(n.path);
+            const isEntry = isEntryNode(n.path);
             const isSink = isDropOff || isConverted || isPort;
             const pageDetail = detailsByPath.get(n.path) ?? null;
             const convDetail = convertedDetailByPath.get(n.path) ?? null;
+            const groupDetail = groupDetailByPath.get(n.path) ?? null;
             const box = expanded
-              ? expandedNodeBox(isConverted, pageDetail, convDetail)
+              ? expandedNodeBox(
+                  isConverted ? "converted" : isEntry ? "entry" : "page",
+                  pageDetail,
+                  convDetail,
+                  groupDetail,
+                )
               : { ...nodeHalfSize(false), digInTop: 0, digInH: 0 };
             const { hw, hh, digInTop, digInH } = box;
             const nodeCursor =
@@ -1428,12 +1680,9 @@ function JourneyGraph({
                 role="button"
                 tabIndex={0}
                 onKeyDown={(ev) => {
-                  if (ev.key === "Enter") {
-                    ev.preventDefault();
-                    if (!divePath && canExpandNode(n.path)) {
-                      onToggleSelect(n.path);
-                    }
-                  }
+                  if (ev.key !== "Enter" || divePath) return;
+                  ev.preventDefault();
+                  if (canExpandNode(n.path)) onToggleSelect(n.path);
                 }}
                 filter={expanded ? "url(#journey-shadow)" : undefined}
               >
@@ -1446,11 +1695,13 @@ function JourneyGraph({
                   className={
                     isDropOff
                       ? "fill-background stroke-destructive/50"
-                      : isConverted || isPort
-                        ? "fill-muted/40 stroke-muted-foreground/40"
-                        : expanded
-                          ? "fill-card stroke-foreground/80"
-                          : "fill-card stroke-border"
+                      : isEntry
+                        ? "fill-card stroke-[var(--chart-4)]"
+                        : isConverted || isPort
+                          ? "fill-muted/40 stroke-muted-foreground/40"
+                          : expanded
+                            ? "fill-card stroke-foreground/80"
+                            : "fill-card stroke-border"
                   }
                   strokeWidth={expanded ? 1.75 : 1}
                 />
@@ -1473,7 +1724,7 @@ function JourneyGraph({
                     className="fill-destructive/5"
                   />
                 ) : null}
-                {!(isConverted && expanded) ? (
+                {!((isConverted || isEntry) && expanded) ? (
                   <NodeCardBody
                     n={n}
                     hw={hw}
@@ -1481,6 +1732,11 @@ function JourneyGraph({
                     selected={expanded}
                     isDropOff={isDropOff}
                     isConverted={isConverted}
+                    entrySharePct={
+                      isEntry && entryTotal > 0
+                        ? Math.round((n.views / entryTotal) * 100)
+                        : undefined
+                    }
                   />
                 ) : null}
                 {expanded ? (
@@ -1495,10 +1751,19 @@ function JourneyGraph({
                         detail={convDetail}
                         onClose={() => onToggleSelect(n.path)}
                       />
+                    ) : isEntry ? (
+                      <ExpandedEntryDigIn
+                        source={entrySourceOf(n.path) ?? ""}
+                        detail={groupDetail}
+                        activeEntrySource={activeEntrySource}
+                        onClose={() => onToggleSelect(n.path)}
+                        onPickEntrySource={onPickEntrySource}
+                      />
                     ) : (
                       <ExpandedPageDigIn
                         detailPath={n.path}
                         detail={pageDetail}
+                        groupDetail={groupDetail}
                         locale={locale}
                         onClose={() => onToggleSelect(n.path)}
                       />
@@ -1596,7 +1861,11 @@ function JourneyGraph({
         </TooltipWithBounds>
       ) : null}
 
-      <div className="pointer-events-none absolute bottom-2 left-2 z-30 flex items-center gap-2 rounded-md bg-background/85 px-2 py-1.5 text-[10px] text-muted-foreground shadow-sm">
+      <div
+        className={`pointer-events-none absolute left-2 z-30 flex items-center gap-2 rounded-md bg-background/85 px-2 py-1.5 text-[10px] text-muted-foreground shadow-sm ${
+          legend ? "bottom-12" : "bottom-2"
+        }`}
+      >
         <span>Traffic</span>
         <span
           className="inline-block h-1.5 w-16 rounded-full"
@@ -1608,7 +1877,78 @@ function JourneyGraph({
         />
         <span>less → more</span>
       </div>
+      {legend}
+      </div>
+
+      {filtersOpen ? (
+        <aside
+          id="journey-filters"
+          className="flex w-72 shrink-0 flex-col border-l bg-background"
+          aria-label="Journey filters"
+        >
+          <div className="flex items-center justify-between border-b px-3 py-2">
+            <p className="text-sm font-medium">Filters</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setFiltersOpen(false)}
+              aria-label="Close filters"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-3">
+            {filterPanel}
+          </div>
+        </aside>
+      ) : null}
     </div>
+  );
+}
+
+function FilterChip({
+  label,
+  onClear,
+}: {
+  label: string;
+  onClear: () => void;
+}) {
+  return (
+    <span className="inline-flex h-8 items-center gap-1 rounded-md border bg-muted/40 pl-2 pr-1 text-[11px] text-muted-foreground">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Clear ${label}`}
+        className="cursor-pointer rounded-sm p-0.5 hover:bg-muted hover:text-foreground"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+function FilterGroup({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      <div className="space-y-0.5">
+        <h4 className="text-xs font-semibold text-foreground">{title}</h4>
+        {hint ? (
+          <p className="text-[11px] leading-snug text-muted-foreground">{hint}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -1633,7 +1973,13 @@ export function ProspectJourneyCard({ from, to }: Props) {
   const [convertedDetailByPath, setConvertedDetailByPath] = useState<
     Map<string, JourneyConvertedDetail>
   >(() => new Map());
+  const [groupDetailByPath, setGroupDetailByPath] = useState<
+    Map<string, JourneyGroupDetail>
+  >(() => new Map());
   const [includeConverted, setIncludeConverted] = useState(false);
+  const [groupPaths, setGroupPaths] = useState(true);
+  const [showEntryNodes, setShowEntryNodes] = useState(true);
+  const [entryTopN, setEntryTopN] = useState<number>(DEFAULT_ENTRY_TOP_N);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -1645,8 +1991,15 @@ export function ProspectJourneyCard({ from, to }: Props) {
         : null) as "new" | "returning" | null,
       countries: selectedCountries.length > 0 ? selectedCountries : null,
       includeConverted,
+      groupPaths,
     }),
-    [entrySource, visitorCohort, selectedCountries, includeConverted],
+    [entrySource, visitorCohort, selectedCountries, includeConverted, groupPaths],
+  );
+
+  // Entry-column shape is graph-only — the dig-in action takes cohort filters.
+  const entryArgs = useMemo(
+    () => ({ entryNodes: showEntryNodes, entryTopN }),
+    [showEntryNodes, entryTopN],
   );
 
   const load = useCallback(async () => {
@@ -1657,6 +2010,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
         from,
         to,
         ...filterArgs,
+        ...entryArgs,
         // When diving, fetch expanded section children; page view stays page-only.
         expandPath: divePath,
       });
@@ -1683,7 +2037,7 @@ export function ProspectJourneyCard({ from, to }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [from, to, filterArgs, divePath]);
+  }, [from, to, filterArgs, entryArgs, divePath]);
 
   useEffect(() => {
     void load();
@@ -1707,31 +2061,39 @@ export function ProspectJourneyCard({ from, to }: Props) {
     if (paths.length === 0) {
       setDetailsByPath(new Map());
       setConvertedDetailByPath(new Map());
+      setGroupDetailByPath(new Map());
       return;
     }
     let cancelled = false;
     void Promise.all(
       paths.map((path) =>
-        getProspectJourneyNodeDetail({ path, from, to, ...filterArgs }).then(
-          (res) => ({ path, res }),
-        ),
+        getProspectJourneyNodeDetail({
+          path,
+          from,
+          to,
+          ...filterArgs,
+          entryTopN,
+        }).then((res) => ({ path, res })),
       ),
     ).then((results) => {
       if (cancelled) return;
       const nextDetails = new Map<string, JourneyNodeDetail>();
       const nextConverted = new Map<string, JourneyConvertedDetail>();
+      const nextGroups = new Map<string, JourneyGroupDetail>();
       for (const { path, res } of results) {
         if (!res.ok) continue;
         if (res.detail) nextDetails.set(path, res.detail);
         if (res.convertedDetail) nextConverted.set(path, res.convertedDetail);
+        if (res.groupDetail) nextGroups.set(path, res.groupDetail);
       }
       setDetailsByPath(nextDetails);
       setConvertedDetailByPath(nextConverted);
+      setGroupDetailByPath(nextGroups);
     });
     return () => {
       cancelled = true;
     };
-  }, [detailPaths, from, to, filterArgs]);
+  }, [detailPaths, from, to, filterArgs, entryTopN]);
 
   function onDive(path: string) {
     setDetailPaths([]);
@@ -1760,109 +2122,271 @@ export function ProspectJourneyCard({ from, to }: Props) {
     [countryLegend],
   );
 
-  const filterBar = (
+  const activeFilterCount =
+    (entrySource === ALL ? 0 : 1) +
+    (visitorCohort === ALL ? 0 : 1) +
+    (selectedCountries.length > 0 ? 1 : 0) +
+    (includeConverted ? 1 : 0) +
+    (groupPaths ? 0 : 1) +
+    (showEntryNodes ? 0 : 1);
+
+  function resetFilters() {
+    setEntrySource(ALL);
+    setVisitorCohort(ALL);
+    setSelectedCountries([]);
+    setIncludeConverted(false);
+    setGroupPaths(true);
+    setShowEntryNodes(true);
+    setEntryTopN(DEFAULT_ENTRY_TOP_N);
+  }
+
+  /** Click an Entry source node: "Other" widens the tail, a real source filters. */
+  function onPickEntrySource(source: string) {
+    if (!source) return;
+    if (source === OTHER_ENTRY) {
+      setEntryTopN(0);
+      return;
+    }
+    setEntrySource((prev) => (prev === source ? ALL : source));
+  }
+
+  const filterChips = (
     <>
-      <label htmlFor="entry-source-filter" className="sr-only">
-        Entry source
-      </label>
-      <Select value={entrySource} onValueChange={setEntrySource}>
-        <SelectTrigger
-          id="entry-source-filter"
-          className="h-8 w-[140px] min-h-8 text-xs sm:w-[180px]"
-        >
-          <SelectValue placeholder="Entry source" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>All entry sources</SelectItem>
-          {entrySources.map((s) => (
-            <SelectItem key={s} value={s}>
-              {s}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <label htmlFor="visitor-cohort-filter" className="sr-only">
-        Visitors
-      </label>
-      <Select value={visitorCohort} onValueChange={setVisitorCohort}>
-        <SelectTrigger
-          id="visitor-cohort-filter"
-          className="h-8 w-[110px] min-h-8 text-xs sm:w-[130px]"
-        >
-          <SelectValue placeholder="Visitors" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>All visitors</SelectItem>
-          <SelectItem value="new">New</SelectItem>
-          <SelectItem value="returning">Returning</SelectItem>
-        </SelectContent>
-      </Select>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 min-h-8 min-w-0 justify-between font-normal text-xs sm:min-w-[120px]"
-            aria-label="Filter countries"
-          >
-            {selectedCountries.length === 0
-              ? "All countries"
-              : selectedCountries.length === 1
-                ? selectedCountries[0]
-                : `${selectedCountries.length} countries`}
-            <ChevronDown className="ml-1 h-3 w-3 opacity-60" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-56 p-2">
-          {countryOptions.length === 0 ? (
-            <p className="px-1 py-2 text-xs text-muted-foreground">No countries yet.</p>
-          ) : (
-            <ul className="max-h-48 space-y-1 overflow-auto">
-              {countryOptions.map((code) => {
-                const checked = selectedCountries.includes(code);
-                return (
-                  <li key={code}>
-                    <label className="flex cursor-pointer items-center gap-2 rounded-sm px-1 py-1 text-sm hover:bg-muted">
-                      <Checkbox
-                        checked={checked}
-                        onCheckedChange={() => toggleCountry(code)}
-                      />
-                      <span className="font-mono text-xs">{code}</span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {selectedCountries.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="mt-1 h-7 w-full text-xs"
-              onClick={() => setSelectedCountries([])}
-            >
-              Clear
-            </Button>
-          ) : null}
-        </PopoverContent>
-      </Popover>
-      <div className="flex items-center gap-1.5 px-1">
-        <Switch
-          id="include-converted"
-          checked={includeConverted}
-          onCheckedChange={setIncludeConverted}
+      {entrySource === ALL ? null : (
+        <FilterChip
+          label={`Source: ${entrySource}`}
+          onClear={() => setEntrySource(ALL)}
         />
-        <Label
-          htmlFor="include-converted"
-          className="text-[11px] font-medium text-muted-foreground"
-        >
-          Include converted
-        </Label>
-      </div>
+      )}
+      {visitorCohort === ALL ? null : (
+        <FilterChip
+          label={visitorCohort === "new" ? "New visitors" : "Returning visitors"}
+          onClear={() => setVisitorCohort(ALL)}
+        />
+      )}
+      {selectedCountries.length > 0 ? (
+        <FilterChip
+          label={
+            selectedCountries.length === 1
+              ? `Country: ${selectedCountries[0]}`
+              : `${selectedCountries.length} countries`
+          }
+          onClear={() => setSelectedCountries([])}
+        />
+      ) : null}
+      {includeConverted ? (
+        <FilterChip
+          label="Incl. converted"
+          onClear={() => setIncludeConverted(false)}
+        />
+      ) : null}
+      {showEntryNodes ? null : (
+        <FilterChip
+          label="Entry sources hidden"
+          onClear={() => setShowEntryNodes(true)}
+        />
+      )}
+      {groupPaths ? null : (
+        <FilterChip
+          label="Blog posts split"
+          onClear={() => setGroupPaths(true)}
+        />
+      )}
     </>
   );
+
+  const filterPanel = (
+    <>
+      <FilterGroup
+        title="Pages"
+        hint="Blog posts are one node per slug — grouping collapses them into /blog/* so the flow stays readable."
+      >
+        <div className="flex items-center justify-between gap-2">
+          <Label
+            htmlFor="group-paths"
+            className="text-xs font-normal text-muted-foreground"
+          >
+            Group blog posts
+          </Label>
+          <Switch
+            id="group-paths"
+            checked={groupPaths}
+            onCheckedChange={setGroupPaths}
+          />
+        </div>
+      </FilterGroup>
+
+      <FilterGroup
+        title="Entry points"
+        hint="Visits grouped by where they arrived from, feeding the first page of each journey."
+      >
+        <div className="flex items-center justify-between gap-2">
+          <Label
+            htmlFor="show-entry-nodes"
+            className="text-xs font-normal text-muted-foreground"
+          >
+            Show entry sources
+          </Label>
+          <Switch
+            id="show-entry-nodes"
+            checked={showEntryNodes}
+            onCheckedChange={setShowEntryNodes}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="entry-top-n"
+            className="text-xs font-normal text-muted-foreground"
+          >
+            Group after
+          </Label>
+          <Select
+            value={String(entryTopN)}
+            onValueChange={(v) => setEntryTopN(Number(v))}
+          >
+            <SelectTrigger
+              id="entry-top-n"
+              className="h-8 w-full min-h-8 text-xs"
+              disabled={!showEntryNodes}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">Top 3 · rest as Other</SelectItem>
+              <SelectItem value="5">Top 5 · rest as Other</SelectItem>
+              <SelectItem value="8">Top 8 · rest as Other</SelectItem>
+              <SelectItem value="0">Every source</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="entry-source-filter"
+            className="text-xs font-normal text-muted-foreground"
+          >
+            Only this source
+          </Label>
+          <Select value={entrySource} onValueChange={setEntrySource}>
+            <SelectTrigger
+              id="entry-source-filter"
+              className="h-8 w-full min-h-8 text-xs"
+            >
+              <SelectValue placeholder="Entry source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All entry sources</SelectItem>
+              {entrySources.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </FilterGroup>
+
+      <FilterGroup title="Visitors">
+        <Select value={visitorCohort} onValueChange={setVisitorCohort}>
+          <SelectTrigger
+            id="visitor-cohort-filter"
+            className="h-8 w-full min-h-8 text-xs"
+          >
+            <SelectValue placeholder="Visitors" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All visitors</SelectItem>
+            <SelectItem value="new">New</SelectItem>
+            <SelectItem value="returning">Returning</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterGroup>
+
+      <FilterGroup
+        title="Countries"
+        hint="Pick two or more to colour edges by country."
+      >
+        {countryOptions.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">No countries yet.</p>
+        ) : (
+          <ul className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border p-1">
+            {countryOptions.map((code) => (
+              <li key={code}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-sm px-1.5 py-1 text-sm hover:bg-muted">
+                  <Checkbox
+                    checked={selectedCountries.includes(code)}
+                    onCheckedChange={() => toggleCountry(code)}
+                  />
+                  <span className="font-mono text-xs">{code}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        {selectedCountries.length > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-full text-xs"
+            onClick={() => setSelectedCountries([])}
+          >
+            Clear countries
+          </Button>
+        ) : null}
+      </FilterGroup>
+
+      <FilterGroup
+        title="Outcome"
+        hint="Prospects exclude paid Visits; switch on to attach the Converted sink."
+      >
+        <div className="flex items-center justify-between gap-2">
+          <Label
+            htmlFor="include-converted"
+            className="text-xs font-normal text-muted-foreground"
+          >
+            Include converted
+          </Label>
+          <Switch
+            id="include-converted"
+            checked={includeConverted}
+            onCheckedChange={setIncludeConverted}
+          />
+        </div>
+      </FilterGroup>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-8 w-full gap-1.5 text-xs"
+        onClick={resetFilters}
+        disabled={activeFilterCount === 0 && entryTopN === DEFAULT_ENTRY_TOP_N}
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        Reset filters
+      </Button>
+    </>
+  );
+
+  const legend =
+    countryLegend.length >= 2 ? (
+      <ul
+        className="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex flex-wrap gap-3 rounded-md border bg-background/95 px-2 py-1.5 text-xs shadow-sm"
+        aria-label="Country color legend"
+      >
+        {countryLegend.map((c) => (
+          <li key={c.code} className="inline-flex items-center gap-1.5">
+            <span
+              className="inline-block h-2.5 w-2.5 rounded-sm"
+              style={{ backgroundColor: c.color }}
+              aria-hidden
+            />
+            <span className="font-mono">{c.code}</span>
+          </li>
+        ))}
+        <li className="text-muted-foreground">Opacity scales with traffic</li>
+      </ul>
+    ) : null;
 
   return (
     <Card className="gap-0 overflow-hidden py-0">
@@ -1889,42 +2413,28 @@ export function ProspectJourneyCard({ from, to }: Props) {
             No page views in this range yet. Browse the storefront to generate transitions.
           </p>
         ) : (
-          <div className="relative">
-            <JourneyGraph
-              nodes={nodes}
-              edges={edges}
-              selectedPaths={detailPaths}
-              onToggleSelect={onToggleSelect}
-              onClearSelection={() => setDetailPaths([])}
-              colorByCode={colorByCode}
-              detailsByPath={detailsByPath}
-              convertedDetailByPath={convertedDetailByPath}
-              locale={locale}
-              divePath={divePath}
-              expandablePaths={expandablePaths}
-              onDive={onDive}
-              onExitDive={onExitDive}
-              filterBar={filterBar}
-            />
-            {countryLegend.length >= 2 ? (
-              <ul
-                className="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex flex-wrap gap-3 rounded-md border bg-background/95 px-2 py-1.5 text-xs shadow-sm"
-                aria-label="Country color legend"
-              >
-                {countryLegend.map((c) => (
-                  <li key={c.code} className="inline-flex items-center gap-1.5">
-                    <span
-                      className="inline-block h-2.5 w-2.5 rounded-sm"
-                      style={{ backgroundColor: c.color }}
-                      aria-hidden
-                    />
-                    <span className="font-mono">{c.code}</span>
-                  </li>
-                ))}
-                <li className="text-muted-foreground">Opacity scales with traffic</li>
-              </ul>
-            ) : null}
-          </div>
+          <JourneyGraph
+            nodes={nodes}
+            edges={edges}
+            selectedPaths={detailPaths}
+            onToggleSelect={onToggleSelect}
+            onClearSelection={() => setDetailPaths([])}
+            colorByCode={colorByCode}
+            detailsByPath={detailsByPath}
+            convertedDetailByPath={convertedDetailByPath}
+            groupDetailByPath={groupDetailByPath}
+            activeEntrySource={entrySource === ALL ? null : entrySource}
+            locale={locale}
+            divePath={divePath}
+            expandablePaths={expandablePaths}
+            onDive={onDive}
+            onExitDive={onExitDive}
+            onPickEntrySource={onPickEntrySource}
+            filterPanel={filterPanel}
+            filterChips={filterChips}
+            activeFilterCount={activeFilterCount}
+            legend={legend}
+          />
         )}
       </CardContent>
     </Card>
