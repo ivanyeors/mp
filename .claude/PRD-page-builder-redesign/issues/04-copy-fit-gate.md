@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 18–21
 
 ## What to build
@@ -38,15 +38,15 @@ while typing, and saving it is refused with a message saying by how much.
 
 ## Acceptance criteria
 
-- [ ] The existing marketing-copy validator is called from the section save path; no second implementation of the bands exists.
-- [ ] Hero copy exceeding a **Copy fit** band is rejected on save.
-- [ ] A rejection message names the field, the band and the measured value.
-- [ ] Copy containing a banned clinical term is rejected on save.
-- [ ] Copy inside the bands saves unchanged.
-- [ ] Bands defined for `en-US` only are not applied to other locales.
-- [ ] The inspector shows a live character or word count against the band for each governed field, marked clearly when over.
-- [ ] Vitest covers: in-band pass, over-length headline, out-of-range lede, banned term, and that both entry points give the same verdict for the same input.
-- [ ] `pnpm ci` passes.
+- [x] The existing marketing-copy validator is called from the section save path; no second implementation of the bands exists.
+- [x] Hero copy exceeding a **Copy fit** band is rejected on save.
+- [x] A rejection message names the field, the band and the measured value.
+- [x] Copy containing a banned clinical term is rejected on save.
+- [x] Copy inside the bands saves unchanged.
+- [x] Bands defined for `en-US` only are not applied to other locales.
+- [x] The inspector shows a live character or word count against the band for each governed field, marked clearly when over.
+- [x] Vitest covers: in-band pass, over-length headline, out-of-range lede, banned term, and that both entry points give the same verdict for the same input.
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local lib/page-builder/copy-fit.check.ts` → `landing-copy-fit self-check ok`
 

@@ -28,16 +28,21 @@ assert.deepEqual(
 assert.ok(OverlayFitSchema.safeParse({ scale: 1.2, x: 30, y: -15 }).success);
 assert.ok(!OverlayFitSchema.safeParse({ scale: 9 }).success, "scale out of bounds rejected");
 
-// --- Product Builder page under Landing Site nav ---
+// --- Product Builder + Rules Engine nested under Store > Products ---
 readFileSync("app/[lang]/settings/product-builder/product-builder-client.tsx", "utf8");
 const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
-const landingGroup = nav.slice(nav.indexOf('"Landing Site"'), nav.indexOf('"Insights"'));
-assert.match(landingGroup, /\/settings\/product-builder/, "Product Builder in Landing Site group");
-assert.match(landingGroup, /Product Builder/, "Product Builder label registered");
+const storeGroup = nav.slice(nav.indexOf('"Store"'), nav.indexOf('"Landing Site"'));
+assert.match(storeGroup, /\/settings\/product-builder"/, "Product Builder in Store group");
+assert.match(storeGroup, /Product Builder/, "Product Builder label registered");
 assert.match(
-  landingGroup,
+  storeGroup,
+  /\/settings\/product-builder\/rules-engine/,
+  "Rules Engine is a sibling of Product Builder, not its child",
+);
+assert.match(
+  storeGroup,
   /product-builder[^}]*perm: "page-builder"/,
-  "perm gating matches Landing Site siblings",
+  "perm gating unchanged by the move",
 );
 
 // --- Mapping API contract ---

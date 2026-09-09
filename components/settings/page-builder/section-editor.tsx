@@ -10,6 +10,13 @@ import { RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { SUPPORTED_LOCALES, type Locale, DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import {
+  HERO_H1_CHAR_BAND,
+  HERO_H1_WORD_BAND,
+  HERO_SUBTITLE_BAND,
+  measure,
+  type CopyBand,
+} from "@/lib/i18n/copy-bands";
+import {
   readLocalisedField,
   readLocalisedValue,
   writeLocalisedField,
@@ -27,6 +34,42 @@ const LOCALE_LABELS: Record<Locale, string> = {
   "en-US": "EN",
   "zh-CN": "中文",
 };
+
+/**
+ * Live count against a copy-fit band (CONTEXT.md "Copy fit"), so an operator compresses
+ * while typing rather than after the save is refused. Bands are en-US only, matching the
+ * server gate — whitespace word counts are meaningless for Chinese.
+ */
+function BandMeter({ text, band, locale }: { text: string; band: CopyBand; locale: Locale }) {
+  if (locale !== DEFAULT_LOCALE) return null;
+  const value = measure(text, band.unit);
+  if (value === 0) return null;
+
+  const over = value > band.max;
+  const under = band.min !== undefined && value < band.min;
+  const pct = Math.min(100, Math.round((value / band.max) * 100));
+
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all ${
+            over ? "bg-destructive" : under ? "bg-amber-500" : "bg-primary"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span
+        className={`shrink-0 text-xs tabular-nums ${
+          over ? "font-medium text-destructive" : "text-muted-foreground"
+        }`}
+      >
+        {value}/{band.max} {band.unit}
+        {over ? " — too long" : under ? ` — min ${band.min}` : ""}
+      </span>
+    </div>
+  );
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -218,16 +261,34 @@ export function SectionEditor({ section, onSave, onCancel }: SectionEditorProps)
 
   const renderFields = () => {
     switch (section.section_type) {
-      case "hero":
+      case "hero": {
+        // The <h1> is the three title fields concatenated, so the band applies to the
+        // composed string — metering each part alone would be misleading.
+        const sep = locale === "zh-CN" ? "" : " ";
+        const h1 = [get("titlePrefix"), get("titleEmphasis"), get("titleSuffix")]
+          .filter((p) => p.trim() !== "")
+          .join(sep)
+          .trim();
         return (
           <>
             <ImageField label="Hero Image" value={(content.image as string) ?? ""} onChange={setImage} />
             <Field label="Title Prefix"><Input value={get("titlePrefix")} onChange={(e) => set("titlePrefix", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Title Emphasis"><Input value={get("titleEmphasis")} onChange={(e) => set("titleEmphasis", e.target.value)} placeholder="i18n default" /></Field>
             <Field label="Title Suffix"><Input value={get("titleSuffix")} onChange={(e) => set("titleSuffix", e.target.value)} placeholder="i18n default" /></Field>
-            <Field label="Subtitle"><Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" rows={2} /></Field>
+            {h1 !== "" && (
+              <div className="rounded-md border bg-muted/40 px-3 py-2">
+                <p className="text-xs text-muted-foreground">Headline (all three fields together)</p>
+                <BandMeter text={h1} band={HERO_H1_WORD_BAND} locale={locale} />
+                <BandMeter text={h1} band={HERO_H1_CHAR_BAND} locale={locale} />
+              </div>
+            )}
+            <Field label="Subtitle">
+              <Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} placeholder="i18n default" rows={2} />
+              <BandMeter text={get("subtitle")} band={HERO_SUBTITLE_BAND} locale={locale} />
+            </Field>
           </>
         );
+      }
 
       case "text_image":
         return (

@@ -100,7 +100,17 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Store",
     items: [
-      { href: "/settings/products", label: "Products", tooltip: "Product Management", Icon: ShoppingBag, perm: "products" },
+      {
+        href: "/settings/products",
+        label: "Products",
+        tooltip: "Product Management",
+        Icon: ShoppingBag,
+        perm: "products",
+        items: [
+          { href: "/settings/product-builder", label: "Product Builder", tooltip: "Configurator overlay mapping", Icon: Shapes, perm: "page-builder" },
+          { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch, perm: "page-builder" },
+        ],
+      },
       { href: "/settings/customers", label: "Customers", tooltip: "Customer Management", Icon: UserCircle, perm: "customers" },
       { href: "/settings/results", label: "Results", tooltip: "Mp-config Results", Icon: ClipboardList, perm: "results" },
       { href: "/settings/orders", label: "Orders", tooltip: "Order Management", Icon: ShoppingCart, perm: "orders" },
@@ -113,22 +123,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Landing Site",
     items: [
       { href: "/settings/page-builder", label: "Page Builder", tooltip: "Customise landing page sections", Icon: LayoutDashboard, perm: "page-builder" },
-      {
-        href: "/settings/product-builder",
-        label: "Product Builder",
-        tooltip: "Configurator overlay mapping",
-        Icon: Shapes,
-        perm: "page-builder",
-        items: [
-          {
-            href: "/settings/product-builder/rules-engine",
-            label: "Rules Engine",
-            tooltip: "Recommendation rule graphs",
-            Icon: GitBranch,
-            perm: "page-builder",
-          },
-        ],
-      },
       {
         href: "/settings/partners",
         label: "Partners",

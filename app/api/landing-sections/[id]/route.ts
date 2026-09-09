@@ -5,6 +5,7 @@ import { requireAdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { touchLastUsed } from "@/lib/media-assets";
 import { SectionContentSchema, SlugSchema, isCustomSectionType } from "@/lib/page-builder/validation";
+import { formatCopyFitIssues, validateSectionCopy } from "@/lib/page-builder/copy-fit";
 
 export const runtime = "nodejs";
 
@@ -62,6 +63,18 @@ export async function PATCH(
         },
         { status: 409 },
       );
+    }
+
+    if (parsed.content !== undefined) {
+      // Copy-fit and banned-claim bands (CONTEXT.md "Copy fit"). Already enforced over
+      // the i18n literals; the CMS override is the string that actually ships.
+      const issues = validateSectionCopy(before.section_type, parsed.content);
+      if (issues.length > 0) {
+        return NextResponse.json(
+          { error: formatCopyFitIssues(issues), issues },
+          { status: 400 },
+        );
+      }
     }
 
     const update: Record<string, unknown> = {
