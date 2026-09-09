@@ -5,6 +5,7 @@ import { useSortable } from "@dnd-kit/react/sortable";
 import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, Eye, EyeOff, GripVertical, Trash2 } from "lucide-react";
 import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
+import type { SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import type { LandingSection } from "@/lib/types/landing-sections";
 
 /** Human labels for the section type badge. */
@@ -145,8 +146,7 @@ export interface SectionTreeProps {
   onToggleVisibility: (section: LandingSection) => void;
   onDelete: (section: LandingSection) => void;
   onMove: (section: LandingSection, direction: -1 | 1) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  onDragEnd: (event: any) => void;
+  onDragEnd: (event: SortableDragEndEvent) => void;
 }
 
 /** Ordered list of Landing sections — the builder's left pane. */

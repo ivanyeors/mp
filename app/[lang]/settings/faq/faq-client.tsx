@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import type { FaqItemContent, FaqLocalizedText } from "@/lib/faq/types";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -449,19 +450,9 @@ export default function SettingsFaqPage({ initialData }: { initialData?: FaqInit
     toast.success("Question added");
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCategoryDragEnd = async (event: any) => {
-    const source = event.operation?.source;
-    const target = event.operation?.target;
-    if (!source || !target || source.id === target.id) return;
-
-    const oldIndex = categories.findIndex((c) => c.id === source.id);
-    const newIndex = categories.findIndex((c) => c.id === target.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    const reordered = [...categories];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
+  const handleCategoryDragEnd = async (event: SortableDragEndEvent) => {
+    const reordered = sortableMove(categories, event, (c) => c.id);
+    if (!reordered) return;
     setCategories(reordered);
 
     const res = await fetch("/api/faq/categories/reorder", {

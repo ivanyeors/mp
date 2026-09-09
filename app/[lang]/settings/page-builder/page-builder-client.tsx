@@ -21,6 +21,7 @@ import { ExternalLink, Eye, Loader2, Plus, Undo2, UploadCloud } from "lucide-rea
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { describePending, type PendingSummary } from "@/lib/page-builder/draft";
 import type { LandingSection } from "@/lib/types/landing-sections";
 import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
@@ -428,22 +429,9 @@ export default function PageBuilderPage({
     persistOrder(next);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleDragEnd = (event: any) => {
-    // Escape mid-drag still fires onDragEnd with source/target populated.
-    if (event.canceled) return;
-    const source = event.operation?.source;
-    const target = event.operation?.target;
-    if (!source || !target || source.id === target.id) return;
-
-    const oldIndex = sections.findIndex((s) => s.id === source.id);
-    const newIndex = sections.findIndex((s) => s.id === target.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const next = [...sections];
-    const [moved] = next.splice(oldIndex, 1);
-    next.splice(newIndex, 0, moved);
-    persistOrder(next);
+  const handleDragEnd = (event: SortableDragEndEvent) => {
+    const next = sortableMove(sections, event, (s) => s.id);
+    if (next) persistOrder(next);
   };
 
   const handleSectionSaved = (updated: LandingSection) => {
