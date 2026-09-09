@@ -61,13 +61,23 @@ describe("isSpatiallyAuthored", () => {
     expect(isSpatiallyAuthored(fullLeft)).toBe(false);
   });
 
-  it("is true as soon as a second Section is used — the XL spill case", () => {
-    expect(isSpatiallyAuthored([...leftPacked, at("center", "front", 1)])).toBe(true);
+  it("is false for the XL spill — left+center with right still empty is the same artefact", () => {
+    // XL - basic (16 pieces) and XL - premium (17) overflow the three left cells
+    // and land 1-2 pieces in center. Spanning two Sections must not be enough.
+    expect(isSpatiallyAuthored([...leftPacked, at("center", "front", 1)])).toBe(false);
   });
 
   it("is true across all three Sections", () => {
     const spread = [at("left", "front", 1), at("center", "middle", 1), at("right", "back", 1)];
     expect(isSpatiallyAuthored(spread)).toBe(true);
+  });
+
+  it("is true for a symmetric left+right build with an empty center", () => {
+    expect(isSpatiallyAuthored([at("left", "front", 1), at("right", "front", 1)])).toBe(true);
+  });
+
+  it("is false for center+right — asymmetry is flagged whichever flank is missing", () => {
+    expect(isSpatiallyAuthored([at("center", "front", 1), at("right", "front", 1)])).toBe(false);
   });
 
   it("ignores sub-section spread — three bands in one Section is still unauthored", () => {
@@ -81,7 +91,31 @@ describe("isSpatiallyAuthoredCoverage", () => {
     expect(isSpatiallyAuthoredCoverage([])).toBe(false);
     expect(isSpatiallyAuthoredCoverage(["left"])).toBe(false);
     expect(isSpatiallyAuthoredCoverage(["left", "left"])).toBe(false);
-    expect(isSpatiallyAuthoredCoverage(["left", "center"])).toBe(true);
+    expect(isSpatiallyAuthoredCoverage(["left", "center"])).toBe(false);
+    expect(isSpatiallyAuthoredCoverage(["left", "right"])).toBe(true);
     expect(isSpatiallyAuthoredCoverage(["left", "center", "right"])).toBe(true);
+  });
+
+  it("ignores the null section a left join produces for a placement-less template", () => {
+    expect(isSpatiallyAuthoredCoverage([null as unknown as string])).toBe(false);
+  });
+
+  /** The exact catalog, queried from production while building this. */
+  it("flags all ten default templates and no legitimate build", () => {
+    const catalog: Array<[string, string[]]> = [
+      ["XS - basic - default", ["left"]],
+      ["XS - premium - default", ["left"]],
+      ["S - basic - default", ["left"]],
+      ["S - premium - default", ["left"]],
+      ["M - basic - default", ["left"]],
+      ["M - premium - default", ["left"]],
+      ["L - basic - default", ["left"]],
+      ["L - premium - default", ["left"]],
+      ["XL - basic - default", ["left", "center"]],
+      ["XL - premium - default", ["left", "center"]],
+    ];
+    for (const [name, sections] of catalog) {
+      expect(isSpatiallyAuthoredCoverage(sections), name).toBe(false);
+    }
   });
 });

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { XrayEditor } from "@/components/spatial/xray-editor";
-import { isSpatiallyAuthored, sectionsInUse } from "@/lib/spatial-fillings/authoring";
+import { isSpatiallyAuthored, unauthoredReason } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
@@ -944,9 +944,9 @@ export default function ResultDetailPage({
                             <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                               <div className="font-medium">Not spatially authored.</div>
                               <p className="mt-1 text-muted-foreground">
-                                Every piece sits in the {sectionsInUse(placements)[0]} section — this
-                                template's placements were auto-generated from a legacy flat recipe.
-                                Lay the pieces out before confirming the build.
+                                {unauthoredReason(placements.map((p) => p.section))} These
+                                placements were auto-generated from a legacy flat recipe. Lay the
+                                pieces out before confirming the build.
                               </p>
                             </div>
                           )}

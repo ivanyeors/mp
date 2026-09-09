@@ -32,7 +32,7 @@ import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment
 import {
   isSpatiallyAuthored,
   isSpatiallyAuthoredCoverage,
-  sectionsInUse,
+  unauthoredReason,
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import {
@@ -1597,8 +1597,8 @@ function FillingConfigPanel({
                 <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
                   <div className="font-medium">Not spatially authored.</div>
                   <p className="mt-1 text-muted-foreground">
-                    Every piece sits in the {sectionsInUse(placements)[0]} section. These placements
-                    were auto-generated from a legacy flat recipe and have never been laid out. Side-sleep
+                    {unauthoredReason(placements.map((p) => p.section))} These placements were
+                    auto-generated from a legacy flat recipe and have never been laid out. Side-sleep
                     support belongs in the left and right sections, back-sleep support in center.
                     Moving pieces between cells does not change the pack list.
                   </p>

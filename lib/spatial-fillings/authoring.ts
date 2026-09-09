@@ -6,10 +6,16 @@
  *
  * The 2026-07-24 backfill materialised Placements for every legacy Filling
  * Template from flat bom_template_lines (quantities only, no spatial data) using
- * a fill-cells-in-order spread. It fills all three `left` cells — 3 x 5 = 15
- * pieces — before it reaches `center`, and no default template holds more than
- * 17 pieces. So "occupies exactly one Section" identifies an import artefact
- * with no false negatives on the current catalog.
+ * a fill-cells-in-order spread: all three `left` cells (3 x 5 = 15 pieces) before
+ * it reaches `center`, and `right` never.
+ *
+ * "Occupies more than one Section" alone is NOT enough. The two XL templates hold
+ * 16 and 17 pieces, so they spill 1-2 into `center` and would pass — while being
+ * exactly the same artefact, with `right` still empty. The second test is
+ * symmetry: per CONTEXT.md, side-sleep support lives in left AND right, so a
+ * recipe using one side but not the other has not been laid out for a pillow.
+ * Together these flag all ten defaults and nag no legitimate build — left+right,
+ * or all three, both pass.
  *
  * Derived on read, never stored: a column could disagree with the placements it
  * describes. Mbolster has no Section enum and is never evaluated here.
@@ -25,21 +31,35 @@ export function sectionsInUse(placements: readonly PillowPlacement[]): Section[]
 }
 
 /**
- * True when the recipe spans more than one Section — the operational test for
- * Spatially authored. An empty recipe is NOT authored: nothing has been placed,
- * so there is nothing to have been laid out.
+ * True when the recipe spans more than one Section AND treats the two sides
+ * symmetrically — the operational test for Spatially authored. An empty recipe
+ * is NOT authored: nothing has been placed, so nothing has been laid out.
  *
- * ponytail: deliberately not "every Section is used" — a two-Section recipe can
- * be a real build, and the warning must clear the moment Staff do real work.
+ * ponytail: deliberately not "every Section is used" — a left+right build with an
+ * empty center is a real pillow, and the warning must clear the moment Staff do
+ * real work.
  */
 export function isSpatiallyAuthored(placements: readonly PillowPlacement[]): boolean {
-  return sectionsInUse(placements).length > 1;
+  return isSpatiallyAuthoredCoverage(placements.map((p) => p.section));
+}
+
+/** Why a recipe is not Spatially authored, as a sentence for the warning. */
+export function unauthoredReason(coverage: readonly string[]): string {
+  const used = new Set(coverage.filter(Boolean));
+  if (used.size === 0) return "No filling pieces have been placed yet.";
+  if (used.size === 1) return `Every piece sits in the ${[...used][0]} section.`;
+  const missing = used.has("left") ? "right" : "left";
+  return `Nothing is placed in the ${missing} section, so the two sides are not balanced.`;
 }
 
 /**
- * Same predicate over the per-Section counts the list endpoint returns, so the
+ * Same predicate over the per-Section coverage the list endpoint returns, so the
  * template list does not have to fetch every placement row to render a badge.
  */
 export function isSpatiallyAuthoredCoverage(coverage: readonly string[]): boolean {
-  return new Set(coverage).size > 1;
+  const used = new Set(coverage.filter(Boolean));
+  if (used.size < 2) return false;
+  // Asymmetric side support: one flank filled, the other empty. That is the
+  // backfill's signature (it never reaches `right`), not a build.
+  return used.has("left") === used.has("right");
 }
