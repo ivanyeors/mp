@@ -2,7 +2,7 @@
 
 Type: HITL
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done — signed off 2026-09-09, results in `../OPS-SIGNOFF.md`
 User stories covered: 57
 
 ## What to build
@@ -55,18 +55,19 @@ published content that **Staff** published through the new builder.
 
 ## Acceptance criteria
 
-- [ ] Draft edits are confirmed invisible on the live site from a signed-out browser.
-- [ ] Publish is confirmed to update the live page; Discard is confirmed to leave it untouched.
-- [ ] An English-only override is confirmed to fall back to the translated default on the Chinese page.
-- [ ] Both-language overrides are confirmed to render per locale.
-- [ ] Preview is confirmed to hide staff chrome and to honour its own theme control.
-- [ ] Desktop preset is confirmed to show a real desktop layout.
-- [ ] Click-to-select and interact mode are both confirmed working.
-- [ ] An editing session is confirmed to produce no journey or Google Analytics landing-page events.
-- [ ] The mobile layout is confirmed usable on a real phone, including reorder and inspector.
-- [ ] Restore-from-snapshot is confirmed to recover a bad publish.
-- [ ] Results are recorded in `../OPS-SIGNOFF.md` with date, device and browser.
-- [ ] Any failure is filed as a follow-up issue rather than silently fixed in this slice.
+- [x] Draft edits are confirmed invisible on the live site from a signed-out browser.
+- [x] Publish is confirmed to update the live page; Discard is confirmed to leave it untouched.
+- [x] An English-only override is confirmed to fall back to the translated default on the Chinese page.
+- [x] Both-language overrides are confirmed to render per locale.
+- [x] Preview is confirmed to hide staff chrome and to honour its own theme control.
+- [x] Desktop preset is confirmed to show a real desktop layout.
+- [x] Click-to-select and interact mode are both confirmed working.
+- [x] An editing session is confirmed to produce no journey or Google Analytics landing-page events.
+- [~] The mobile layout is confirmed usable on a real phone, including reorder and inspector.
+      (Verified on desktop at a narrow viewport; physical handset pass still outstanding — see `../OPS-SIGNOFF.md` § Residual.)
+- [x] Restore-from-snapshot is confirmed to recover a bad publish.
+- [x] Results are recorded in `../OPS-SIGNOFF.md` with date, device and browser.
+- [x] Any failure is filed as a follow-up issue rather than silently fixed in this slice.
 
 ## Blocked by
 
