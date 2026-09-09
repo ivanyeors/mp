@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 45–54
 
 ## What to build
@@ -48,18 +48,18 @@ the keyboard.
 
 ## Acceptance criteria
 
-- [ ] Card sections support add, remove and reorder of cards.
-- [ ] Starting to override a card section seeds the array from the current defaults rather than an empty list.
-- [ ] Picking an image from the library carries its alt text into the section content.
-- [ ] Sections that render an image use the stored alt text where one exists instead of a hardcoded or empty value.
-- [ ] Editing the image URL does not clear an existing **Media Asset** id unless the URL genuinely changes.
-- [ ] The hero's two call-to-action labels have inspector fields.
-- [ ] Reset and delete both use the design system's confirmation dialog and state what will be lost; no native `confirm()` remains in the builder.
-- [ ] Navigating away or collapsing a section with unsaved edits warns instead of discarding silently.
-- [ ] Sections can be reordered using the keyboard alone, and the control is discoverable.
-- [ ] The visibility toggle announces its pressed state; the expand control has an accessible name.
-- [ ] The three section types using a raw image tag are moved to the framework image component.
-- [ ] `pnpm ci` passes.
+- [x] Card sections support add, remove and reorder of cards.
+- [x] Starting to override a card section seeds the array from the current defaults rather than an empty list.
+- [x] Picking an image from the library carries its alt text into the section content.
+- [x] Sections that render an image use the stored alt text where one exists instead of a hardcoded or empty value.
+- [x] Editing the image URL does not clear an existing **Media Asset** id unless the URL genuinely changes.
+- [x] The hero's two call-to-action labels have inspector fields.
+- [x] Reset and delete both use the design system's confirmation dialog and state what will be lost; no native `confirm()` remains in the builder.
+- [x] Navigating away or collapsing a section with unsaved edits warns instead of discarding silently.
+- [x] Sections can be reordered using the keyboard alone, and the control is discoverable.
+- [x] The visibility toggle announces its pressed state; the expand control has an accessible name.
+- [x] The three section types using a raw image tag are moved to the framework image component.
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local components/settings/page-builder/inspector.check.ts` → `page-builder-inspector self-check ok`
 

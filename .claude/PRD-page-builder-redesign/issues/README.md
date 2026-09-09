@@ -18,7 +18,7 @@ demoable path through all layers (schema, API, UI, tests). Published locally
 | 06 | Preview mode: shared renderer, admin-gated draft route, chrome and analytics suppression | AFK | **done** | 05 | 30, 37–40 |
 | 07 | Three-pane shell: tree, live preview, inspector, device and theme toolbars | AFK | **done** | 03, 06 | 29, 31–36 |
 | 08 | Publish history: snapshot list, restore into draft, retention | AFK | **built, migration not applied** | 05 | 41–43 |
-| 09 | Editor completeness and accessibility | AFK |  | 07 | 45–54 |
+| 09 | Editor completeness and accessibility | AFK | **done** | 07 | 45–54 |
 | 10 | Sign-off: real device, both locales, production publish | HITL |  | 02–09 | 57 |
 
 Test coverage for the pure helpers introduced by 03, 04, 05 and 06 rides along in those

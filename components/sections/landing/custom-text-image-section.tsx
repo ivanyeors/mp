@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { LandingSection, CustomTextImageContent } from "@/lib/types/landing-sections";
 
 interface CustomTextImageSectionProps {
@@ -7,6 +8,7 @@ interface CustomTextImageSectionProps {
 export function CustomTextImageSection({ section }: CustomTextImageSectionProps) {
   const c = section.content as CustomTextImageContent;
   const title = c.title ?? "Untitled Section";
+  const alt = c.alt ?? title;
   const description = c.description ?? "";
   const image = c.image ?? "";
   const flip = c.flip ?? false;
@@ -24,12 +26,12 @@ export function CustomTextImageSection({ section }: CustomTextImageSectionProps)
 
           <div className={`relative aspect-[3/4] md:aspect-video overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm ${flip ? "md:order-1" : ""}`}>
             {image && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={image}
-                alt={title}
-                className="absolute inset-0 h-full w-full object-cover"
-                loading="lazy"
+                alt={alt}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
             )}
           </div>

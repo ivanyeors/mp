@@ -77,7 +77,7 @@ export function NeckPainsSection({ section, messages: m, images }: NeckPainsSect
         <div className="relative mt-8 overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm md:mt-10 aspect-[4/3] md:aspect-[1048/444]">
           <Image
             src={image}
-            alt="Mpillow cervical neck support"
+            alt={c.alt ?? "Mpillow cervical neck support"}
             fill
             className="object-cover"
             sizes="(min-width: 1280px) 1120px, (min-width: 768px) calc(100vw - 2rem), 100vw"
