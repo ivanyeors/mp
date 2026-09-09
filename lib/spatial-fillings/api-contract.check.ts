@@ -3,6 +3,7 @@
  * Run: npx tsx lib/spatial-fillings/api-contract.check.ts
  */
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 import {
@@ -99,14 +100,6 @@ assert.ok(route.includes("rejectFillingLines"), "warehouse lines path (ADR 0003)
 // The route's zod bound sat at the retired two-value top/bottom lane while the DB
 // constraint and validatePillowPlacements both moved to the full 0..4 depth range,
 // so the API silently refused any stack deeper than layer 1.
-assert.ok(
-  route.includes("MAX_PIECES_PER_CELL - 1"),
-  "route derives its row_index bound from MAX_PIECES_PER_CELL, not a restated literal",
-);
-assert.ok(
-  !/row_index:\s*z\.number\(\)\.int\(\)\.min\(0\)\.max\(\d/.test(route),
-  "route's row_index bound is not a hardcoded number",
-);
 for (const depth of [0, MAX_PIECES_PER_CELL - 1]) {
   assert.deepEqual(
     validatePillowPlacements(
@@ -139,33 +132,78 @@ assert.ok(
   "template GET ships colour overrides for the x-ray CSS-variable pipeline",
 );
 
-// --- Render-path reads must carry row_index (x-ray stack depth) ---
-// Depth is visual-only and deliberately OUT of the fingerprint (core.ts), so this
-// is scoped to routes whose placements get rendered. Readers deliberately excluded,
-// because depth cannot affect their answer:
-//   results/hold + results/[id]/assign — load template rows only to compare against
-//     the session mix via canonicalizePlacements, which drops slot and never reads row.
-//   results/assign-prep — selects item_id alone for the derived pack list.
-//   configure/unpromoted — fingerprints mixes; row_index is excluded from the
-//     fingerprint by design, so selecting it here would signal the opposite.
-// Adding a render surface? Add its route here.
-const RENDER_PATH_PLACEMENT_READERS = [
-  "app/api/mp-config/assist/route.ts",
-  "app/api/mp-config/assist/context/route.ts",
-  "app/api/shop/customize/route.ts",
-  "app/api/mp-basic/recommend/route.ts",
-  "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-];
-for (const path of RENDER_PATH_PLACEMENT_READERS) {
+// --- Every pillow Placement column list must carry row_index (x-ray stack depth) ---
+//
+// Enumerated, not hardcoded: an earlier version of this check listed the five
+// routes it knew about, which is exactly how it certified `configure/unpromoted`
+// as safe while that route was SELECTing without row_index and INSERTing the rows
+// back into filling_template_placements — silently flattening every stacked cell
+// on Promote. So: discover every file touching a pillow placement table, and make
+// omission opt-out with a written reason rather than opt-in.
+const PILLOW_PLACEMENT_TABLES = ["filling_template_placements", "result_filling_placements"];
+
+/** Files that may omit row_index, each with the reason depth cannot affect them. */
+const DEPTH_IRRELEVANT: Record<string, string> = {
+  "app/api/results/hold/route.ts":
+    "template rows feed placementsExactMatch only; canonicalizePlacements drops row",
+  "app/api/results/[id]/assign/route.ts":
+    "template rows feed decideFillingAssign only; canonicalizePlacements drops row",
+  "lib/results/assign-prep.ts": "selects item_id alone for derivePackList",
+  "app/api/results/[id]/route.ts": "selects item_id alone for the pack list",
+};
+
+const trackedFiles = execSync(
+  "git ls-files 'app/**/*.ts' 'app/**/*.tsx' 'lib/**/*.ts' 'components/**/*.tsx'",
+  { encoding: "utf8" },
+)
+  .split("\n")
+  .filter(Boolean);
+
+let scanned = 0;
+for (const path of trackedFiles) {
+  if (path.endsWith(".check.ts") || path.includes("__tests__")) continue;
   const src = readFileSync(path, "utf8");
-  // Column lists are sometimes inlined in .select() and sometimes hoisted into a
-  // `cols` variable, so match the literal itself rather than the call site.
-  const columnLists = src.match(/(['"`])[^'"`\n]*\bsub_section\b[^'"`\n]*\1/g) ?? [];
-  assert.ok(columnLists.length > 0, `${path} reads pillow placement rows`);
+  if (!PILLOW_PLACEMENT_TABLES.some((t) => src.includes(t))) continue;
+  // Column lists live inline in .select() or hoisted into a `cols` / ROW_COLS
+  // constant, so match the literal itself. Newlines allowed: a multi-line list
+  // must not slip past the way it did before.
+  const columnLists = src.match(/(['"`])[^'"`]*\bsub_section\b[^'"`]*\1/g) ?? [];
+  if (columnLists.length === 0) continue;
+  scanned += 1;
+  const excuse = DEPTH_IRRELEVANT[path];
   for (const cols of columnLists) {
+    // A zod shape (`sub_section: z.string()`) is a schema, not a column list.
+    if (cols.includes("z.")) continue;
+    if (excuse) {
+      assert.ok(
+        !cols.includes("row_index"),
+        `${path} is on the depth-irrelevant list (${excuse}) but selects row_index — remove the exemption`,
+      );
+      continue;
+    }
     assert.ok(
       cols.includes("row_index"),
-      `${path} must select row_index on the render path (found: ${cols})`,
+      `${path} must select row_index: pillow Placement rows carry x-ray stack depth. ` +
+        `If depth genuinely cannot affect this reader, add it to DEPTH_IRRELEVANT with a reason. (found: ${cols})`,
+    );
+  }
+}
+assert.ok(scanned >= 6, `expected to scan the known pillow placement readers, scanned ${scanned}`);
+
+// Write paths must accept every depth the DB constraint allows. Promote and the
+// hold/assign schemas are separate code from the Configure PUT and drifted apart.
+for (const path of [
+  "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+  "app/api/results/[id]/assign/route.ts",
+  "app/api/results/hold/route.ts",
+]) {
+  const src = readFileSync(path, "utf8");
+  const bounds = src.match(/row_index:\s*z\.number\(\)\.int\(\)\.min\(0\)\.max\(([^)]*)\)/g) ?? [];
+  assert.ok(bounds.length > 0, `${path} shape-gates row_index`);
+  for (const bound of bounds) {
+    assert.ok(
+      bound.includes("MAX_PIECES_PER_CELL"),
+      `${path} must derive its row_index bound from MAX_PIECES_PER_CELL (found: ${bound})`,
     );
   }
 }

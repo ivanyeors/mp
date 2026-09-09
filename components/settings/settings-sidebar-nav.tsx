@@ -94,7 +94,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes, perm: "inventory" },
       { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign, perm: "costings" },
-      { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
     ],
   },
   {
@@ -107,6 +106,7 @@ const NAV_GROUPS: NavGroup[] = [
         Icon: ShoppingBag,
         perm: "products",
         items: [
+          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
           { href: "/settings/product-builder", label: "Product Builder", tooltip: "Configurator overlay mapping", Icon: Shapes, perm: "page-builder" },
           { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch, perm: "page-builder" },
         ],
@@ -380,6 +380,22 @@ export function SettingsSidebarNav({
                                 <span>{label}</span>
                               </Link>
                             </SidebarMenuButton>
+                            {href === "/settings/results" && resultsQueue > 0 ? (
+                              <SidebarMenuBadge
+                                className={
+                                  resultsStuck > 0
+                                    ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                                    : undefined
+                                }
+                                title={
+                                  resultsStuck > 0
+                                    ? `${resultsStuck} stuck, ${resultsQueue - resultsStuck} awaiting assignment`
+                                    : `${resultsQueue} awaiting assignment`
+                                }
+                              >
+                                {resultsQueue}
+                              </SidebarMenuBadge>
+                            ) : null}
 
                             {visibleSubs.length ? (
                               <SidebarMenuSub>

@@ -39,8 +39,12 @@ const RESULT_TABLE: Record<Kind, string> = {
   pillow: 'result_filling_placements',
   bolster: 'result_bolster_filling_placements',
 }
+// row_index rides along because Promote INSERTs these rows verbatim into
+// filling_template_placements below: without it, promoting a stacked mix
+// silently flattens every cell to side-by-side in the new catalog template.
+// Harmless on the two fingerprint reads — canonicalizePlacements drops `row`.
 const ROW_COLS: Record<Kind, string> = {
-  pillow: 'section, sub_section, slot, item_id',
+  pillow: 'section, sub_section, slot, item_id, row_index',
   bolster: 'slot, item_id',
 }
 
