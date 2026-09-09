@@ -38,6 +38,10 @@ export type SunburstMenuProps = {
   ariaLabel?: string;
   /** Fired when the bloom opens/closes — lets a parent hide sibling menus. */
   onOpenChange?: (open: boolean) => void;
+  /** Controlled open state. Pass it when the trigger lives OUTSIDE the menu
+   *  (the x-ray blooms from a whole-cell hit area, not the centre dot); the
+   *  centre button then only steps back / closes. Omit for the built-in dot. */
+  open?: boolean;
   className?: string;
 };
 
@@ -68,6 +72,7 @@ export function SunburstMenu({
   centerIcon: CenterIcon = Menu,
   ariaLabel,
   onOpenChange,
+  open: openProp,
   className,
 }: SunburstMenuProps) {
   // Issue #63 (ADR 0009): the bloom is `size` wide and centered on the trigger,
@@ -99,18 +104,21 @@ export function SunburstMenu({
   const scale = size / sizeProp;
   const ringWidth = ringWidthProp * scale;
   const holeRadius = holeRadiusProp * scale;
-  const [open, setOpen] = React.useState(false);
-  // Fire onOpenChange only when `open` flips — via a ref so a fresh inline
-  // callback each parent render doesn't retrigger it (that would thrash the
-  // parent's "hide siblings" state). The sync effect is declared first, so the
-  // ref holds the latest callback before the open effect reads it.
+  // Controlled when `openProp` is given, self-owned otherwise. onOpenChange is
+  // notified from setOpen (not an effect on `open`) so a controlled parent hears
+  // an internal close — an effect would never fire, the prop having not moved.
+  // The callback lives in a ref so a fresh inline closure each parent render
+  // can't thrash the parent's open-cell state.
+  const [selfOpen, setSelfOpen] = React.useState(false);
+  const open = openProp ?? selfOpen;
   const onOpenChangeRef = React.useRef(onOpenChange);
   React.useEffect(() => {
     onOpenChangeRef.current = onOpenChange;
   }, [onOpenChange]);
-  React.useEffect(() => {
-    onOpenChangeRef.current?.(open);
-  }, [open]);
+  const setOpen = React.useCallback((next: boolean) => {
+    setSelfOpen(next);
+    onOpenChangeRef.current?.(next);
+  }, []);
   const [expansionPath, setExpansionPath] = React.useState<string[]>([]);
   const [hoverId, setHoverId] = React.useState<string | null>(null);
   const [focusId, setFocusId] = React.useState<string | null>(null);
@@ -178,7 +186,7 @@ export function SunburstMenu({
   const collapse = React.useCallback(() => {
     setOpen(false);
     setExpansionPath([]);
-  }, []);
+  }, [setOpen]);
 
   // Click away closes the whole menu.
   React.useEffect(() => {
@@ -200,7 +208,7 @@ export function SunburstMenu({
     } else {
       collapse();
     }
-  }, [open, expansionPath.length, collapse]);
+  }, [open, expansionPath.length, collapse, setOpen]);
 
   const activate = React.useCallback(
     (arc: ArcSpec) => {

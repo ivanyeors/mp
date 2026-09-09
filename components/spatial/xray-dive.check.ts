@@ -60,6 +60,22 @@ assert.doesNotMatch(renderer, /animate=\{\{ x/, "dive never pans — the x-ray o
 assert.match(renderer, /setAttribute\("d"/, "morphs write path d only (no layout thrash)");
 assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1)");
 
+// --- Add target = the cell region, not a floating + button --------------------
+// The old picker parked a ~28px + in each band's footer: a tiny thing to aim at,
+// and the bottom one landed under the silhouette's curve. The target is now the
+// cell itself, clipped to the shell so it can never sit outside the pillow.
+assert.match(
+  renderer,
+  /d=\{CELL_CLIP_PATHS\[`\$\{dived\}\/\$\{subSection\}`\]\}/,
+  "add hit area is the whole cell region",
+);
+assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "hit area clipped to the silhouette");
+assert.match(renderer, /<SunburstMenu\s+open\b/, "the cell opens the bloom — the menu has no trigger of its own");
+assert.equal(renderer.match(/<SunburstMenu/g)?.length, 1, "one picker, mounted at the cell you opened");
+const sunburst = readFileSync(join(process.cwd(), "components", "ui", "sunburst-menu.tsx"), "utf8");
+assert.match(sunburst, /open: openProp/, "SunburstMenu accepts a controlled open for external triggers");
+assert.match(sunburst, /onOpenChangeRef\.current\?\.\(next\)/, "a controlled parent still hears an internal close");
+
 // --- Gating: edit affordances only behind staffAssist (guests read-only) -----
 const client = readFileSync(join(process.cwd(), "app", "[lang]", "mp-config", "mp-config-client.tsx"), "utf8");
 assert.match(

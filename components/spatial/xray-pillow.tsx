@@ -232,20 +232,31 @@ export function XrayPillow({
   const rootRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<Section | null>(null);
   const [dived, setDived] = useState<Section | null>(null);
-  // Which sub-section's Add-filling menu is blooming — the others hide while it is.
-  const [openSub, setOpenSub] = useState<string | null>(null);
+  // Which sub-section's Add-filling menu is blooming (one at a time), and which
+  // cell the pointer/keyboard is on — the add target is the whole cell, so both
+  // drive on-canvas affordances rather than a per-cell button.
+  const [openSub, setOpenSub] = useState<SubSection | null>(null);
+  const [hoverSub, setHoverSub] = useState<SubSection | null>(null);
   const editable = Boolean(items && onPlacementsChange);
   // Ring 1 = filling family (3D/6D/6D+), leaves = deduped inventory items.
   const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
+
+  // Leaving the dive takes the open picker and the cell hover with it — the
+  // cell hit areas unmount, so no mouseleave would ever fire to clear them.
+  const endDive = useCallback(() => {
+    setDived(null);
+    setOpenSub(null);
+    setHoverSub(null);
+  }, []);
 
   // Exit the dive on Escape or a click anywhere outside the pillow — no CTA needed.
   useEffect(() => {
     if (!dived) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDived(null);
+      if (e.key === "Escape") endDive();
     };
     const onPointerDown = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setDived(null);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) endDive();
     };
     window.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onPointerDown);
@@ -253,7 +264,7 @@ export function XrayPillow({
       window.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [dived]);
+  }, [dived, endDive]);
 
   // layoutPlacements + conformPouchPath are pure and deterministic, so the whole
   // geometry chain memoises on (placements, itemSizes): a hover/dive re-render
@@ -324,6 +335,21 @@ export function XrayPillow({
         </button>
       </span>
     );
+  };
+
+  /** A cell at the 5-piece cap takes no more: hover says so instead of adding. */
+  const cellIsFull = (subSection: SubSection) =>
+    dived !== null &&
+    cellPieces(placements, { section: dived, subSection }).length >= MAX_PIECES_PER_CELL;
+  /** The cell the add affordance is on right now — an open bloom outranks hover. */
+  const addTarget = openSub ?? hoverSub;
+  /** Cell centre in container % (the dive overlay's linear view→% map). */
+  const cellCenter = (subSection: SubSection) => {
+    const b = SUB_SECTIONS.indexOf(subSection);
+    return {
+      left: `${(((COL_X[divedIdx] + COL_X[divedIdx + 1]) / 2) / XRAY_VIEW.width) * 100}%`,
+      top: `${(((ROW_Y[b] + ROW_Y[b + 1]) / 2) / XRAY_VIEW.height) * 100}%`,
+    };
   };
 
   const rectByKey = new Map(pieces.map((pl) => [pl.key, pl] as const));
@@ -524,6 +550,17 @@ export function XrayPillow({
               SECTIONS.filter((s) => s !== dived).map((s) => (
                 <path key={s} d={SECTION_HIT_PATHS[s]} fill="rgb(2,6,23)" fillOpacity={0.55} />
               ))}
+
+            {/* The add target is a whole cell, and its highlight IS the cell
+                region — clipped to the silhouette, so the affordance can never
+                sit outside the shell the way a floating + button did. */}
+            {dived && editable && addTarget && (
+              <path
+                d={CELL_CLIP_PATHS[`${dived}/${addTarget}`]}
+                fill="white"
+                fillOpacity={cellIsFull(addTarget) ? 0.05 : 0.14}
+              />
+            )}
           </g>
 
           <path
@@ -546,9 +583,55 @@ export function XrayPillow({
               style={{ pointerEvents: "auto", cursor: editable ? "pointer" : "default" }}
               onMouseEnter={() => setHovered(section)}
               onMouseLeave={() => setHovered((h) => (h === section ? null : h))}
-              onClick={editable ? () => setDived(section) : undefined}
+              onClick={
+                editable
+                  ? () => {
+                      setDived(section);
+                      setOpenSub(null);
+                    }
+                  : undefined
+              }
             />
           ))}
+
+          {/* Add hit areas (dived Section only): one per cell, sized to the cell
+              ∩ silhouette so the target is a big region you cannot miss — the
+              clip also keeps hover and clicks inside the shell. */}
+          {dived &&
+            editable &&
+            SUB_SECTIONS.map((subSection) => {
+              const full = cellIsFull(subSection);
+              return (
+                <path
+                  key={subSection}
+                  d={CELL_CLIP_PATHS[`${dived}/${subSection}`]}
+                  clipPath={`url(#${clipId("sil")})`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={
+                    full
+                      ? `${dived} ${subSection} cell full`
+                      : `Add filling to ${dived} ${subSection}`
+                  }
+                  aria-disabled={full || undefined}
+                  fill="transparent"
+                  // The cell's own highlight is the focus indicator, so the
+                  // browser's default ring — a box around the path bbox, the
+                  // one straight-edged rectangle on this canvas — is dropped.
+                  style={{ pointerEvents: "auto", cursor: full ? "not-allowed" : "pointer", outline: "none" }}
+                  onMouseEnter={() => setHoverSub(subSection)}
+                  onMouseLeave={() => setHoverSub((h) => (h === subSection ? null : h))}
+                  onFocus={() => setHoverSub(subSection)}
+                  onBlur={() => setHoverSub((h) => (h === subSection ? null : h))}
+                  onClick={() => !full && setOpenSub(subSection)}
+                  onKeyDown={(e) => {
+                    if (full || (e.key !== "Enter" && e.key !== " ")) return;
+                    e.preventDefault();
+                    setOpenSub(subSection);
+                  }}
+                />
+              );
+            })}
         </g>
       </svg>
 
@@ -662,49 +745,44 @@ export function XrayPillow({
             })}
           </DragDropProvider>
 
-          {/* Add-filling picker stays in the dived column footer. */}
-          <div
-            className="absolute inset-y-0 flex flex-col"
-            style={{
-              left: `${(COL_X[divedIdx] / XRAY_VIEW.width) * 100}%`,
-              width: `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
-            }}
-          >
-            {SUB_SECTIONS.map((subSection) => {
-              const cell: Cell = { section: dived, subSection };
-              const cellPcs = cellPieces(placements, cell);
-              const full = cellPcs.length >= MAX_PIECES_PER_CELL;
-              const otherOpen = openSub !== null && openSub !== subSection;
-              return (
-                <div
-                  key={subSection}
-                  className="flex flex-1 flex-col items-center justify-end gap-0.5 p-1"
-                  style={{ pointerEvents: "auto" }}
-                >
-                  {full ? (
-                    <span
-                      className="rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                      aria-label={`${dived} ${subSection} cell full`}
-                    >
-                      Cell full (max 5)
-                    </span>
-                  ) : otherOpen ? null : (
-                    <SunburstMenu
-                      root={fillingTree}
-                      display="text"
-                      size={220}
-                      ringWidth={40}
-                      holeRadius={18}
-                      centerIcon={Plus}
-                      ariaLabel={`Add filling to ${dived} ${subSection}`}
-                      onOpenChange={(o) => setOpenSub(o ? subSection : null)}
-                      onSelect={(leaf) => addToCell(cell, Number(leaf.id))}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {/* Hover hint for the cell add-target: the label the tiny + used to
+              carry, at the cell centre, never in the way of a click. */}
+          {hoverSub && hoverSub !== openSub && (
+            <div
+              className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+              style={cellCenter(hoverSub)}
+            >
+              {cellIsFull(hoverSub) ? "Cell full (max 5)" : "Click to add filling"}
+            </div>
+          )}
+
+          {/* Add-filling picker blooms from the centre of the cell you clicked —
+              the whole cell is the trigger, so the menu has none of its own. */}
+          {openSub && (
+            <div
+              className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
+              style={{
+                ...cellCenter(openSub),
+                width: `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
+                pointerEvents: "auto",
+              }}
+            >
+              <SunburstMenu
+                open
+                root={fillingTree}
+                display="text"
+                size={220}
+                ringWidth={40}
+                holeRadius={18}
+                centerIcon={Plus}
+                ariaLabel={`Add filling to ${dived} ${openSub}`}
+                onOpenChange={(o) => {
+                  if (!o) setOpenSub(null);
+                }}
+                onSelect={(leaf) => addToCell({ section: dived, subSection: openSub }, Number(leaf.id))}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
