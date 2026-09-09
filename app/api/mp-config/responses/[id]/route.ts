@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
+import { releaseHold } from "@/lib/authorization-hold";
 import { loadMpConfigResponseDetail } from "@/lib/results/admin/response-detail";
 
 export const runtime = "nodejs";
@@ -18,13 +21,57 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 }
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  // Staff-only: the only callers are the two Admin Panel Results clients. GET and
+  // POST stay open because the guest configurator uses them.
+  const denied = await requireAdmin("results");
+  if (denied) return denied;
+
   const { id } = await ctx.params;
   const parsedParams = ParamsSchema.safeParse({ id });
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
   const admin = supabaseAdmin();
+
+  // Deleting the row used to orphan a live Stripe authorization on the customer's
+  // card — nothing else references the payment intent once the row is gone.
+  const { data: row } = await admin
+    .from("mp_config_responses")
+    .select("payment_intent_id, status, order_id")
+    .eq("id", parsedParams.data.id)
+    .maybeSingle();
+
+  if (row?.order_id) {
+    return NextResponse.json(
+      { error: "This Result has an Order. Delete is blocked — cancel the Order instead." },
+      { status: 400 },
+    );
+  }
+
+  if (row?.payment_intent_id && row.status !== "captured") {
+    try {
+      await releaseHold(row.payment_intent_id);
+    } catch (e) {
+      return NextResponse.json(
+        {
+          error: `Could not release the payment hold: ${
+            e instanceof Error ? e.message : "unknown error"
+          }. Cancel the Result instead.`,
+        },
+        { status: 502 },
+      );
+    }
+  }
+
   const { error } = await admin.from("mp_config_responses").delete().eq("id", parsedParams.data.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await recordAdminAction({
+    actor: await getAdminContext(),
+    action: "result.delete",
+    entityType: "mp_config_response",
+    entityId: parsedParams.data.id,
+    before: { status: row?.status ?? null, payment_intent_id: row?.payment_intent_id ?? null },
+  });
 
   return NextResponse.json({ ok: true });
 }

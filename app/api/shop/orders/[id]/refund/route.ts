@@ -35,7 +35,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { data: order, error } = await admin
     .from("orders")
     .select(
-      "id, order_number, payment_reference, total, amount_refunded, currency, status, shipped_at, delivered_at, refund_request_status, items:order_items(customization_snapshot)",
+      "id, order_number, payment_reference, total, amount_refunded, amount_captured, currency, status, shipped_at, delivered_at, refund_request_status, items:order_items(customization_snapshot)",
     )
     .eq("id", orderId)
     .single();

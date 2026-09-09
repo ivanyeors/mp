@@ -8,7 +8,7 @@ describe("rowsToCsv", () => {
   it("emits a header row with stable field order", () => {
     const [header] = rowsToCsv([]).split("\r\n");
     expect(header).toBe(
-      "id,updated_at,name,customer_email,status,source,location_id,order_number,suggested_size,suggested_tier,assigned_size,assigned_tier",
+      "id,updated_at,name,customer_email,status,source,location_id,stage,order_number,order_status,suggested_size,suggested_tier,assigned_size,assigned_tier",
     );
   });
 
@@ -19,7 +19,7 @@ describe("rowsToCsv", () => {
     ]);
     const [, row] = csv.split("\r\n");
     // id first, updated_at empty, then name, then email
-    expect(row).toBe("r1,,Ann,a@b.com,,,,,,,,");
+    expect(row).toBe("r1,,Ann,a@b.com,,,,,,,,,,");
   });
 
   it("escapes commas, quotes, and newlines per RFC-4180", () => {
@@ -40,6 +40,6 @@ describe("rowsToCsv", () => {
   it("renders null/undefined fields as empty cells", () => {
     const csv = rowsToCsv([{ id: "r1", name: null, customer_email: undefined }]);
     const [, row] = csv.split("\r\n");
-    expect(row).toBe("r1,,,,,,,,,,,");
+    expect(row).toBe("r1,,,,,,,,,,,,,");
   });
 });

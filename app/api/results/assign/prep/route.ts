@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { BOLSTER_LENGTHS } from "@/lib/results/composed-sellable";
 import { loadAssignPrep } from "@/lib/results/assign-prep";
 
@@ -26,6 +27,10 @@ const PrepQuerySchema = z.union([
 ]);
 
 export async function GET(req: Request) {
+  // Staff-only: exposes the filling catalog and costed build for a product card.
+  const denied = await requireAdmin("results");
+  if (denied) return denied;
+
   const url = new URL(req.url);
   const preferredRaw = url.searchParams.get("preferredTemplateId");
   const raw = {

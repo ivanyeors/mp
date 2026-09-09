@@ -7,10 +7,25 @@ const ListQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
+/** The linked Order's fulfilment facts, so the queue can show the stage without a page load. */
+export interface LinkedOrderSummary {
+  id: string;
+  order_number: string | null;
+  status: string | null;
+  total: number | null;
+  currency: string | null;
+  paid_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  tracking_number: string | null;
+  needs_attention: boolean | null;
+}
+
 export interface MpConfigResponseListRow extends Record<string, unknown> {
   id: string;
   order_id: string | null;
   order_number: string | null;
+  order: LinkedOrderSummary | null;
   created_at: string;
   updated_at: string;
 }
@@ -54,28 +69,52 @@ export async function listMpConfigResponses(params: {
   const [listResult, locations] = await Promise.all([
     admin
       .from("mp_config_responses")
-      .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,location_id,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email", { count: "exact" })
+      .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,location_id,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email,payment_intent_id,topup_paid_at", { count: "exact" })
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1),
     getLocations(),
   ]);
   const { data, error, count } = listResult;
 
-  // Fetch order numbers for linked responses
+  // Fulfilment facts for linked responses. The Result row is terminal at capture,
+  // so the rest of the customisation's story lives here — the queue derives its
+  // stage from the pair (see lib/results/result-stage).
   const orderIds = (data ?? []).map((r) => r.order_id).filter(Boolean) as string[];
-  let orderNumberMap = new Map<string, string>();
+  let orderMap = new Map<string, LinkedOrderSummary>();
   if (orderIds.length > 0) {
     const { data: orders } = await admin
       .from("orders")
-      .select("id, order_number")
+      .select(
+        "id, order_number, status, total, currency, paid_at, shipped_at, delivered_at, tracking_number, needs_attention",
+      )
       .in("id", orderIds);
-    orderNumberMap = new Map((orders ?? []).map((o) => [o.id, o.order_number]));
+    orderMap = new Map(
+      (orders ?? []).map((o) => [
+        o.id,
+        {
+          id: o.id,
+          order_number: o.order_number ?? null,
+          status: o.status ?? null,
+          total: o.total != null ? Number(o.total) : null,
+          currency: o.currency ?? null,
+          paid_at: o.paid_at ?? null,
+          shipped_at: o.shipped_at ?? null,
+          delivered_at: o.delivered_at ?? null,
+          tracking_number: o.tracking_number ?? null,
+          needs_attention: o.needs_attention ?? null,
+        } satisfies LinkedOrderSummary,
+      ]),
+    );
   }
 
-  const rows = (data ?? []).map((r) => ({
-    ...r,
-    order_number: r.order_id ? orderNumberMap.get(r.order_id) ?? null : null,
-  })) as MpConfigResponseListRow[];
+  const rows = (data ?? []).map((r) => {
+    const order = r.order_id ? orderMap.get(r.order_id) ?? null : null;
+    return {
+      ...r,
+      order,
+      order_number: order?.order_number ?? null,
+    };
+  }) as MpConfigResponseListRow[];
 
   if (error) return { status: 500, body: { error: error.message } };
 

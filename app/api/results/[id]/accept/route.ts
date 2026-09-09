@@ -12,6 +12,7 @@ import { authorizeResultAccess } from "@/lib/results/access";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
+import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
 
@@ -41,7 +42,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, payment_intent_id, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source",
+      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source",
     )
     .eq("id", id)
     .maybeSingle();
@@ -100,9 +101,24 @@ export async function POST(
 
   const plan = planCapture(finalAmount, authorized);
   let topUpPaid = 0;
+  /** Second PaymentIntent when the final total outgrew the hold. Ledgered separately. */
+  let topUpPaymentIntentId: string | null = null;
 
   if (plan.kind === "top_up") {
-    if (!topupSessionId) {
+    if (!topupSessionId && row.topup_payment_intent_id && row.topup_paid_at) {
+      // The customer paid a top-up and never made it back (tab closed, redirect
+      // lost). The webhook persisted the intent, so settle with it rather than
+      // charging a second time. Amount comes from Stripe, not a stored column.
+      const stripe = getStripe();
+      const intent = await stripe.paymentIntents.retrieve(row.topup_payment_intent_id);
+      const paidMajor = (intent.amount_received ?? 0) / 100;
+      if (intent.status === "succeeded" && paidMajor + 0.001 >= plan.topUp) {
+        topUpPaid = paidMajor;
+        topUpPaymentIntentId = row.topup_payment_intent_id;
+      }
+    }
+
+    if (!topupSessionId && !topUpPaymentIntentId) {
       if (!row.customer_email || !row.access_token) {
         return NextResponse.json(
           { error: "Top-up requires customer email and access token" },
@@ -129,28 +145,43 @@ export async function POST(
       });
     }
 
-    const stripe = getStripe();
-    const session = await stripe.checkout.sessions.retrieve(topupSessionId);
-    if (session.metadata?.result_id !== id || session.metadata?.purpose !== "result_topup") {
-      return NextResponse.json({ error: "Top-up session does not match this Result" }, { status: 400 });
+    if (topupSessionId) {
+      const stripe = getStripe();
+      const session = await stripe.checkout.sessions.retrieve(topupSessionId);
+      if (session.metadata?.result_id !== id || session.metadata?.purpose !== "result_topup") {
+        return NextResponse.json({ error: "Top-up session does not match this Result" }, { status: 400 });
+      }
+      if (session.payment_status !== "paid") {
+        return NextResponse.json({ error: "Top-up payment is not complete" }, { status: 400 });
+      }
+      const paidMajor = (session.amount_total ?? 0) / 100;
+      if (paidMajor + 0.001 < plan.topUp) {
+        return NextResponse.json(
+          { error: `Top-up amount too low: paid ${paidMajor}, need ${plan.topUp}` },
+          { status: 400 },
+        );
+      }
+      topUpPaid = paidMajor;
+      topUpPaymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : (session.payment_intent?.id ?? null);
     }
-    if (session.payment_status !== "paid") {
-      return NextResponse.json({ error: "Top-up payment is not complete" }, { status: 400 });
-    }
-    const paidMajor = (session.amount_total ?? 0) / 100;
-    if (paidMajor + 0.001 < plan.topUp) {
-      return NextResponse.json(
-        { error: `Top-up amount too low: paid ${paidMajor}, need ${plan.topUp}` },
-        { status: 400 },
-      );
-    }
-    topUpPaid = paidMajor;
   }
 
   const holdCaptureAmount = plan.kind === "capture" ? plan.amount : plan.holdCapture;
 
+  // Capture is not the last write in this route, so a failure after it used to
+  // strand the money: a retry re-entered capture on an already-captured intent and
+  // 502'd forever. Ask Stripe what actually happened first — a succeeded intent
+  // means a previous attempt captured and died downstream, so skip straight to
+  // rebuilding the Order. This is what makes the whole route retryable.
   try {
-    await captureHold(row.payment_intent_id!, holdCaptureAmount);
+    const stripe = getStripe();
+    const intent = await stripe.paymentIntents.retrieve(row.payment_intent_id!);
+    if (intent.status !== "succeeded") {
+      await captureHold(row.payment_intent_id!, holdCaptureAmount);
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : "Capture failed";
     return NextResponse.json({ error: message }, { status: 502 });
@@ -187,13 +218,20 @@ export async function POST(
   }) as Record<string, unknown>;
 
   const now = new Date().toISOString();
+  // In-store Results carry no shipping address — that is exactly why the placeholder
+  // above exists. Those are handed over at the counter, so capture *is* delivery.
+  // Everything else still has to be built and shipped, and must not be born
+  // "delivered": `delivered_at` anchors the RMA return window (lib/rma/eligibility)
+  // and partner commission release (lib/commissions/ledger).
+  const inStoreHandover = row.source === "manual" || row.shipping_address == null;
+
   const { data: order, error: orderErr } = await admin
     .from("orders")
     .insert({
       order_number: "",
       email: row.customer_email ?? "unknown@example.com",
       customer_id: row.customer_id,
-      status: "confirmed",
+      status: inStoreHandover ? "delivered" : "confirmed",
       currency: row.currency ?? "SGD",
       subtotal: build.pricing.subtotal,
       shipping_amount: build.pricing.shipping,
@@ -204,10 +242,9 @@ export async function POST(
       payment_method: "stripe",
       payment_reference: row.payment_intent_id,
       paid_at: now,
-      // In-store handover == delivered immediately: stamp delivered_at at capture so
-      // the RMA return window (and commission release, #77) is dated from delivery,
-      // never paid_at. The in-store path has no later "mark delivered" step.
-      delivered_at: now,
+      // Only the in-store path has no later "mark delivered" step; a shipped order
+      // gets its delivered_at from the Orders fulfilment flow.
+      delivered_at: inStoreHandover ? now : null,
       amount_captured: holdCaptureAmount + topUpPaid,
       // Referral attribution carried from the Result (#74). One partner per order.
       partner_id: row.partner_id,
@@ -275,6 +312,36 @@ export async function POST(
     return NextResponse.json({ error: itemErr?.message ?? "Failed to create order item" }, { status: 500 });
   }
 
+  // Record what we actually charged as ledger rows. Without these the order has no
+  // `charge` row at all, so summarize() reads captured = 0 and *any* refund
+  // satisfies `refunded >= captured` — flipping a partially-refunded Result order
+  // to fully refunded, zeroing amount_captured and voiding partner commissions.
+  // A topped-up order charges two intents; both must be ledgered or a full refund
+  // asks Stripe for more than the hold intent ever captured.
+  const charges: Array<{ amount: number; stripeObjectId: string | null }> = [
+    { amount: holdCaptureAmount, stripeObjectId: row.payment_intent_id },
+  ];
+  if (topUpPaid > 0) {
+    charges.push({ amount: topUpPaid, stripeObjectId: topUpPaymentIntentId });
+  }
+  try {
+    for (const charge of charges) {
+      await recordLedgerEntry(admin, order.id, {
+        type: "charge",
+        amount: charge.amount,
+        currency: row.currency ?? "SGD",
+        stripeObjectId: charge.stripeObjectId,
+        metadata: { result_id: id },
+      });
+    }
+    await rollupOrderMoney(admin, order.id);
+  } catch (e) {
+    // Money is captured and the Order exists — never fatal. Flag it instead so the
+    // row surfaces as stuck rather than silently carrying a broken refund ceiling.
+    await admin.from("orders").update({ needs_attention: true }).eq("id", order.id);
+    console.error("Ledger write failed after capture", e);
+  }
+
   // Held commission for an attributed in-store order (#77). Base = pillow/bolster
   // BASE price only (build.basePrice = composed MSRP; excludes preference/add-on
   // MSRPs, shipping, tax). Best-effort: money is already captured and the order
@@ -284,7 +351,8 @@ export async function POST(
       await createHeldCommissionsForOrder(admin, {
         orderId: order.id,
         partnerId: row.partner_id,
-        deliveredAt: now,
+        // Null for shipped orders: release is dated from real delivery, not capture.
+        deliveredAt: inStoreHandover ? now : null,
         lines: [
           {
             orderItemId: orderItem.id,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { lookupItemCategories } from "@/lib/bom-sanitizer";
 import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
@@ -8,6 +9,7 @@ import { transitionResult } from "@/lib/result-lifecycle";
 import { decideFillingAssign } from "@/lib/results/filling-assign";
 import {
   derivePackList,
+  MAX_PIECES_PER_CELL,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -50,7 +52,10 @@ const AssignSchema = z.object({
         sub_section: z.string().default(""),
         slot: z.number().int(),
         item_id: z.number().int().positive(),
-        row_index: z.number().int().min(0).max(1).nullable().optional(),
+        // Bound derives from MAX_PIECES_PER_CELL, matching the DB constraint and
+        // validatePillowPlacements. It sat at the retired two-value top/bottom
+        // lane, so the x-ray's depth reordering could not be saved from here.
+        row_index: z.number().int().min(0).max(MAX_PIECES_PER_CELL - 1).nullable().optional(),
       }),
     )
     .optional(),
@@ -95,6 +100,11 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  // Assign sets the sold configuration and the final amount that will be captured.
+  // It is staff-only; the route had no gate at all, and proxy.ts skips /api.
+  const denied = await requireAdmin("results");
+  if (denied) return denied;
+
   const { id } = await params;
   const body = await req.json().catch(() => null);
   const parsed = AssignSchema.safeParse(body);

@@ -6,6 +6,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,6 +35,7 @@ import {
 } from "@/lib/spatial-fillings/core";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
+import type { LinkedOrderDetail } from "@/lib/results/admin/response-detail";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
 import {
@@ -35,6 +44,18 @@ import {
   resolveAssignHintTemplateId,
   selectAssignHintSource,
 } from "@/lib/rules-engine";
+
+function formatOrderMoney(amount: number | null, currency: string | null): string {
+  if (amount == null) return "—";
+  try {
+    return new Intl.NumberFormat("en-SG", {
+      style: "currency",
+      currency: currency ?? "SGD",
+    }).format(amount);
+  } catch {
+    return `${currency ?? "SGD"} ${amount.toFixed(2)}`;
+  }
+}
 
 type YesNoEmpty = "yes" | "no" | "";
 
@@ -157,6 +178,7 @@ export type ResultDetailInitialData = {
     ok: true;
     response: MpConfigResponseRow;
     order_number: string | null;
+    order: LinkedOrderDetail | null;
     suggestion: MpConfigSuggestion;
   } | null;
   assignPrep: AssignPrepData | null;
@@ -199,6 +221,7 @@ function deriveSeed(initialData: ResultDetailInitialData | undefined) {
   return {
     row: response,
     orderNumber: detail?.order_number ?? null,
+    order: detail?.order ?? null,
     suggestion,
     draft: normalizeMeasurement(response?.data ?? null),
     assignSize,
@@ -241,6 +264,11 @@ export default function ResultDetailPage({
 
   const [row, setRow] = useState<MpConfigResponseRow | null>(seed.row);
   const [orderNumber, setOrderNumber] = useState<string | null>(seed.orderNumber);
+  const [linkedOrder, setLinkedOrder] = useState<LinkedOrderDetail | null>(seed.order);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(seed.suggestion);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
 
@@ -294,6 +322,7 @@ export default function ResultDetailPage({
       const response = payload?.response as MpConfigResponseRow | null;
       setRow(response);
       setOrderNumber((payload?.order_number as string) ?? null);
+      setLinkedOrder((payload?.order as LinkedOrderDetail | null) ?? null);
       const sug = (payload?.suggestion ?? null) as MpConfigSuggestion | null;
       setSuggestion(sug);
       setDraft(normalizeMeasurement(response?.data ?? null));
@@ -326,6 +355,9 @@ export default function ResultDetailPage({
   const productType = row?.product_type === "bolster" ? "bolster" : "pillow";
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
   const canAssign = row?.status === "held";
+  // Both open states. Once an Order exists the money moves through the Order, not here.
+  const canCancel =
+    !row?.order_id && (row?.status === "held" || row?.status === "assigned");
 
   const engineRecord = useMemo(
     () => parseRecommendationRecord(row?.recommendation_record ?? null),
@@ -647,6 +679,45 @@ export default function ResultDetailPage({
     }
   }, [id, router, to]);
 
+  /**
+   * Staff void. Covers both open states — unlike the SLA cron, which only expires
+   * `held`, so an `assigned` Result whose customer goes quiet had no exit at all.
+   * A release failure offers force: a Stripe auth that already died cannot be
+   * cancelled, and refusing outright would strand the row forever.
+   */
+  const cancelResult = useCallback(
+    async (force: boolean) => {
+      if (!id) return;
+      setCancelling(true);
+      try {
+        const res = await fetch(`/api/results/${encodeURIComponent(id)}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force, reason: cancelReason.trim() || undefined }),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok) {
+          if (payload?.canForce) {
+            setCancelError(payload?.error ?? "Failed to release the hold");
+            return;
+          }
+          throw new Error(payload?.error ?? "Failed to cancel");
+        }
+        toast.success(
+          payload?.holdReleased ? "Result cancelled and hold released" : "Result cancelled",
+        );
+        setCancelDialogOpen(false);
+        setCancelError(null);
+        await load();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Failed to cancel");
+      } finally {
+        setCancelling(false);
+      }
+    },
+    [cancelReason, id, load],
+  );
+
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
@@ -696,11 +767,72 @@ export default function ResultDetailPage({
           >
             Refresh
           </Button>
+          {canCancel && (
+            <Button
+              variant="outline"
+              className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 sm:w-auto"
+              onClick={() => setCancelDialogOpen(true)}
+              disabled={saving || deleting || cancelling}
+            >
+              {cancelling ? "Cancelling…" : "Cancel Result"}
+            </Button>
+          )}
           <Button className="w-full sm:w-auto" onClick={save} disabled={saving || deleting}>
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel this Result?</DialogTitle>
+            <DialogDescription>
+              {row.payment_intent_id
+                ? "The authorization hold on the customer's card is released and the Result is closed. This cannot be undone — the customer would need to configure again."
+                : "The Result is closed. It has no payment hold, so nothing is refunded."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Field label="Reason (optional)">
+              <Input
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. customer changed their mind"
+              />
+            </Field>
+            {cancelError && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {cancelError}
+                <div className="mt-1 text-muted-foreground">
+                  The hold could not be released — it may have already expired at Stripe.
+                  Force-cancel closes the Result anyway.
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={cancelling}
+            >
+              Keep it
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void cancelResult(Boolean(cancelError))}
+              disabled={cancelling}
+            >
+              {cancelling
+                ? "Cancelling…"
+                : cancelError
+                  ? "Force cancel"
+                  : "Cancel Result"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Purchase-path assignment (held Results) */}
       {(row.status === "held" || row.status === "assigned") && (
@@ -1043,22 +1175,95 @@ export default function ResultDetailPage({
         </Card>
       )}
 
-      {/* Order link banner */}
-      {row.order_id && orderNumber && (
-        <div className="flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-2.5">
-          <span className="text-sm">Linked to Order</span>
-          <a
-            href={to(`/settings/orders/${row.order_id}`)}
-            className="text-sm font-semibold text-primary hover:underline"
-          >
-            #{orderNumber}
-          </a>
-          {row.source === "online_customization" && (
-            <span className="ml-auto rounded-full bg-blue-100 dark:bg-blue-900/40 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-              Online Customization
-            </span>
+      {/* Linked Order — the fulfilment half of this customisation's story. */}
+      {row.order_id && (
+        <Card className="p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-semibold">Order</h2>
+            <a
+              href={to(`/settings/orders/${row.order_id}`)}
+              className="font-mono text-sm font-semibold text-primary hover:underline"
+            >
+              #{orderNumber ?? "view"}
+            </a>
+            {linkedOrder?.status && (
+              <span className="rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize">
+                {linkedOrder.status.replace(/_/g, " ")}
+              </span>
+            )}
+            {row.source === "online_customization" && (
+              <span className="ml-auto rounded-full bg-blue-100 dark:bg-blue-900/40 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                Online Customization
+              </span>
+            )}
+          </div>
+
+          {linkedOrder?.needs_attention && (
+            <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200">
+              This Order needs attention — inventory could not be deducted, or the
+              payment ledger failed to record. Open the Order to resolve it.
+            </div>
           )}
-        </div>
+
+          {linkedOrder && (
+            <div className="mt-3 grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+              {linkedOrder.total != null && (
+                <div>
+                  <span className="text-muted-foreground">Total: </span>
+                  <span className="font-medium tabular-nums">
+                    {formatOrderMoney(linkedOrder.total, linkedOrder.currency)}
+                  </span>
+                  {linkedOrder.amount_refunded ? (
+                    <span className="ml-2 text-xs text-orange-700">
+                      −{formatOrderMoney(linkedOrder.amount_refunded, linkedOrder.currency)}{" "}
+                      refunded
+                    </span>
+                  ) : null}
+                </div>
+              )}
+              {linkedOrder.paid_at && (
+                <div>
+                  <span className="text-muted-foreground">Paid: </span>
+                  {formatAdminDateTime(linkedOrder.paid_at)}
+                </div>
+              )}
+              {linkedOrder.tracking_number && (
+                <div>
+                  <span className="text-muted-foreground">Tracking: </span>
+                  {linkedOrder.tracking_url ? (
+                    <a
+                      href={linkedOrder.tracking_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-primary hover:underline"
+                    >
+                      {linkedOrder.tracking_number}
+                    </a>
+                  ) : (
+                    <span className="font-mono">{linkedOrder.tracking_number}</span>
+                  )}
+                </div>
+              )}
+              <div>
+                <span className="text-muted-foreground">Delivered: </span>
+                {linkedOrder.delivered_at ? (
+                  formatAdminDateTime(linkedOrder.delivered_at)
+                ) : (
+                  <span className="text-muted-foreground">
+                    not yet — mark it on the Order when it arrives
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!linkedOrder?.delivered_at && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              The return window and any partner commission are dated from delivery, so
+              this Order stays open until someone marks it delivered.
+            </p>
+          )}
+        </Card>
       )}
 
       {/* Online customization preferences (read-only, only for online-sourced results) */}
