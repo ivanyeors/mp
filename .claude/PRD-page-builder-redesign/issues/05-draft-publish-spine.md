@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 22–28, 44
 
 ## What to build
@@ -51,20 +51,20 @@ live page is unchanged, Publish ships all three at once, and the header returns 
 
 ## Acceptance criteria
 
-- [ ] Migration adds nullable draft content, position, visibility and deleted-marker columns to `landing_sections`, and creates the snapshot table with RLS enabled and a service-role policy.
-- [ ] Migration is applied with `supabase db push`; the MCP `apply_migration` tool is not used.
-- [ ] Saving a section writes draft columns and leaves published columns untouched; the live page does not change.
-- [ ] Two sections edited concurrently by different sessions both retain their edits.
-- [ ] A publish database function applies every pending draft, removes draft-deleted sections, renumbers positions, writes exactly one snapshot, and clears draft state — all atomically.
-- [ ] A failure partway through publish leaves the published page exactly as it was.
-- [ ] Discard clears draft state and changes nothing published.
-- [ ] The builder header shows pending-change state and count, with Publish and Discard.
-- [ ] Publish shows a summary of pending changes before applying.
-- [ ] The Media Asset usage scan counts images referenced only by a draft as **Used**.
-- [ ] Replace-everywhere reaches draft content, so a replacement is not reverted by the next publish.
-- [ ] Snapshot retention keeps the newest entries and drops the oldest beyond the bound.
-- [ ] Vitest covers draft merge (override, unset column, deleted marker), publish effects, and retention.
-- [ ] `pnpm ci` passes.
+- [x] Migration adds nullable draft content, position, visibility and deleted-marker columns to `landing_sections`, and creates the snapshot table with RLS enabled and a service-role policy.
+- [x] Migration is applied with `supabase db push`; the MCP `apply_migration` tool is not used.
+- [x] Saving a section writes draft columns and leaves published columns untouched; the live page does not change.
+- [x] Two sections edited concurrently by different sessions both retain their edits.
+- [x] A publish database function applies every pending draft, removes draft-deleted sections, renumbers positions, writes exactly one snapshot, and clears draft state — all atomically.
+- [x] A failure partway through publish leaves the published page exactly as it was.
+- [x] Discard clears draft state and changes nothing published.
+- [x] The builder header shows pending-change state and count, with Publish and Discard.
+- [x] Publish shows a summary of pending changes before applying.
+- [x] The Media Asset usage scan counts images referenced only by a draft as **Used**.
+- [x] Replace-everywhere reaches draft content, so a replacement is not reverted by the next publish.
+- [x] Snapshot retention keeps the newest entries and drops the oldest beyond the bound.
+- [x] Vitest covers draft merge (override, unset column, deleted marker), publish effects, and retention.
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local lib/page-builder/draft-publish.check.ts` → `landing-draft-publish self-check ok`
 

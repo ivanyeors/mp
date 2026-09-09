@@ -55,13 +55,18 @@ describe("usagePredicateTerms", () => {
   });
 
   it("uses a text search on the JSON blob tables", () => {
+    // landing_sections also searches draft_content: an image referenced only by a
+    // pending Section draft must still report as Used (CONTEXT.md — drafts count).
     expect(usagePredicateTerms("landing_sections", ASSET)).toEqual([
+      { column: "content::text", op: "ilike", value: `%${ASSET.id}%` },
+      { column: "draft_content::text", op: "ilike", value: `%${ASSET.id}%` },
+      { column: "content::text", op: "ilike", value: `%${ASSET.hosted_url}%` },
+      { column: "draft_content::text", op: "ilike", value: `%${ASSET.hosted_url}%` },
+    ]);
+    expect(usagePredicateTerms("partners_page", ASSET)).toEqual([
       { column: "content::text", op: "ilike", value: `%${ASSET.id}%` },
       { column: "content::text", op: "ilike", value: `%${ASSET.hosted_url}%` },
     ]);
-    expect(usagePredicateTerms("partners_page", ASSET)).toEqual(
-      usagePredicateTerms("landing_sections", ASSET),
-    );
     expect(usagePredicateTerms("blog_posts", ASSET)).toEqual([
       { column: "media_asset_id", op: "eq", value: ASSET.id },
       { column: "content::text", op: "ilike", value: `%${ASSET.id}%` },
@@ -159,7 +164,7 @@ describe("single-asset usage equals the full scan", () => {
       expect(sections.length).toBeGreaterThan(assets.length);
       expect(sections.some((q) => q.filters.some((f) => f.includes("content::text")))).toBe(true);
       expect(sections.some((q) => q.filters.length === 0)).toBe(true);
-      expect(new Set(sections.map((q) => q.select))).toEqual(new Set(["id, slug, content"]));
+      expect(new Set(sections.map((q) => q.select))).toEqual(new Set(["id, slug, content, draft_content"]));
     } finally {
       warn.mockRestore();
     }

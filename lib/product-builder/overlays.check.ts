@@ -7,6 +7,9 @@ import { readFileSync } from "node:fs";
 
 import { OverlayFitSchema, overlayFrame } from "./overlays";
 
+/** Bounds the workbench slider must not exceed (mirrors OverlayFitSchema). */
+const SCALE_BOUNDS = { min: 0.2, max: 3 };
+
 // --- overlayFrame math ---
 assert.deepEqual(
   overlayFrame(null),
@@ -44,6 +47,33 @@ assert.match(
   /product-builder[^}]*perm: "page-builder"/,
   "perm gating unchanged by the move",
 );
+
+// --- Visual workbench: the stage renders what the configurator renders ---
+const bench = readFileSync("components/product-builder/overlay-workbench.tsx", "utf8");
+assert.match(bench, /overlayFrame\(fit, VIEW_W, VIEW_H\)/, "stage places the image with overlayFrame");
+assert.match(bench, /SILHOUETTE_PATH/, "stage clips against the shared silhouette, not a copy");
+assert.match(bench, /BOLSTER_SILHOUETTE_PATH/, "bolster cases preview against the capsule");
+assert.match(bench, /preserveAspectRatio="xMidYMid slice"/, "same cover behaviour as the configurator");
+assert.match(bench, /clipPath=\{`url\(#\$\{clipId\}\)`\}/, "overlay is clipped to the silhouette");
+assert.match(bench, /onPointerMove=\{onPointerMove\}/, "fit is dragged, not typed");
+assert.match(bench, /VIEW_W \/ rect\.width/, "pointer pixels convert to viewBox units");
+// The stage must not be able to dial in a fit the API would reject.
+assert.equal(SCALE_BOUNDS.min, 0.2, "stage scale floor matches OverlayFitSchema");
+assert.equal(SCALE_BOUNDS.max, 3, "stage scale ceiling matches OverlayFitSchema");
+assert.match(bench, /const SCALE_MIN = 0\.2;/, "stage slider floor pinned to the schema");
+assert.match(bench, /const SCALE_MAX = 3;/, "stage slider ceiling pinned to the schema");
+assert.match(bench, /const OFFSET_LIMIT = 400;/, "stage offset clamp pinned to the schema");
+assert.ok(
+  !OverlayFitSchema.safeParse({ scale: SCALE_BOUNDS.max + 0.05 }).success,
+  "a scale one slider step past the ceiling is rejected — so the clamp is load-bearing",
+);
+
+const pageSrc = readFileSync(
+  "app/[lang]/settings/product-builder/product-builder-client.tsx",
+  "utf8",
+);
+assert.match(pageSrc, /<OverlayWorkbench/, "page mounts the workbench");
+assert.doesNotMatch(pageSrc, /fit scale`/, "the blind scale/x/y number inputs are gone");
 
 // --- Mapping API contract ---
 const api = readFileSync("app/[lang]/settings/product-builder/mappings/route.ts", "utf8");

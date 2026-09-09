@@ -29,9 +29,16 @@ import {
   Plus,
   Trash2,
   ExternalLink,
+  Loader2,
+  Undo2,
+  UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { LandingSection } from "@/lib/types/landing-sections";
+import {
+  describePending,
+  type PendingSummary,
+} from "@/lib/page-builder/draft";
 import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
 
 const SECTION_TYPE_LABELS: Record<string, string> = {
@@ -263,10 +270,134 @@ function AddSectionDialog({
   );
 }
 
+// --- Publish bar ---
+
+const EMPTY_PENDING: PendingSummary = {
+  total: 0,
+  content: 0,
+  position: 0,
+  visibility: 0,
+  removal: 0,
+  slugs: [],
+};
+
+/**
+ * Draft state and the one action that reaches shoppers.
+ *
+ * Every edit lands in a Section draft; nothing is live until Publish. Discard is the
+ * mirror — it clears pending edits and leaves published content untouched.
+ */
+function PublishBar({
+  pending,
+  onPublished,
+  onDiscarded,
+}: {
+  pending: PendingSummary;
+  onPublished: () => void;
+  onDiscarded: () => void;
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const dirty = pending.total > 0;
+
+  const run = async (method: "POST" | "DELETE") => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/landing-sections/publish", { method });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Request failed");
+      if (method === "POST") {
+        toast.success("Published to the live site");
+        onPublished();
+      } else {
+        toast.success("Draft discarded");
+        onDiscarded();
+      }
+      setConfirmOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const parts = [
+    pending.content > 0 ? `${pending.content} edited` : null,
+    pending.position > 0 ? `${pending.position} moved` : null,
+    pending.visibility > 0 ? `${pending.visibility} shown/hidden` : null,
+    pending.removal > 0 ? `${pending.removal} removed` : null,
+  ].filter(Boolean);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+          dirty ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground"
+        }`}
+        data-page-builder-draft-state=""
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${dirty ? "bg-amber-500" : "bg-muted-foreground/50"}`} />
+        {describePending(pending)}
+      </span>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!dirty || busy}
+        onClick={() => run("DELETE")}
+      >
+        <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+        Discard
+      </Button>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogTrigger asChild>
+          <Button size="sm" disabled={!dirty || busy}>
+            <UploadCloud className="mr-1.5 h-3.5 w-3.5" />
+            Publish
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish to the live site?</DialogTitle>
+            <DialogDescription>
+              {parts.length > 0
+                ? `${parts.join(", ")}. This is what shoppers will see.`
+                : "This is what shoppers will see."}
+            </DialogDescription>
+          </DialogHeader>
+          {pending.slugs.length > 0 && (
+            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
+              {pending.slugs.map((slug) => (
+                <li key={slug} className="text-muted-foreground">
+                  {slug}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => run("POST")} disabled={busy}>
+              {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Publish
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // --- Main Page Builder ---
 
 /** The `/api/landing-sections` payload the builder mounts with. */
-export type PageBuilderInitialData = { ok: true; sections: LandingSection[] };
+export type PageBuilderInitialData = {
+  ok: true;
+  sections: LandingSection[];
+  pending?: PendingSummary;
+};
 
 export default function PageBuilderPage({
   initialData,
@@ -274,6 +405,7 @@ export default function PageBuilderPage({
   initialData?: PageBuilderInitialData;
 }) {
   const [sections, setSections] = useState<LandingSection[]>(initialData?.sections ?? []);
+  const [pending, setPending] = useState<PendingSummary>(initialData?.pending ?? EMPTY_PENDING);
   const [loading, setLoading] = useState(!initialData);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // The server already loaded the sections; every later change still refetches.
@@ -285,6 +417,7 @@ export default function PageBuilderPage({
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setSections(data.sections);
+      setPending(data.pending ?? EMPTY_PENDING);
     } catch {
       toast.error("Failed to load sections");
     } finally {
@@ -319,6 +452,7 @@ export default function PageBuilderPage({
       });
       if (!res.ok) throw new Error("Failed");
       toast.success(newVisible ? "Section shown" : "Section hidden");
+      loadSections();
     } catch {
       // Revert
       setSections((prev) =>
@@ -331,7 +465,7 @@ export default function PageBuilderPage({
   };
 
   const handleDelete = async (section: LandingSection) => {
-    if (!confirm(`Delete "${section.slug}"? This cannot be undone.`)) return;
+    if (!confirm(`Remove "${section.slug}"? It stays on the live site until you publish.`)) return;
 
     setSections((prev) => prev.filter((s) => s.id !== section.id));
 
@@ -340,7 +474,8 @@ export default function PageBuilderPage({
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed");
-      toast.success("Section deleted");
+      toast.success("Section removed — publish to apply");
+      loadSections();
     } catch {
       loadSections(); // Revert by reloading
       toast.error("Failed to delete section");
@@ -351,6 +486,8 @@ export default function PageBuilderPage({
     setSections((prev) =>
       prev.map((s) => (s.id === updated.id ? updated : s))
     );
+    // The edit became a Section draft, so the pending count moved.
+    loadSections();
   };
 
   const handleAddSection = async (type: string, slug: string) => {
@@ -367,6 +504,7 @@ export default function PageBuilderPage({
       const { section } = await res.json();
       setSections((prev) => [...prev, section]);
       toast.success("Section added");
+      loadSections();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to add section"
@@ -400,6 +538,7 @@ export default function PageBuilderPage({
       });
       if (!res.ok) throw new Error("Failed");
       toast.success("Order updated");
+      loadSections();
     } catch {
       loadSections(); // Revert
       toast.error("Failed to reorder");
@@ -420,10 +559,16 @@ export default function PageBuilderPage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Page Builder</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Drag to reorder, toggle visibility, and edit section content.
+            Drag to reorder, toggle visibility, and edit section content. Changes stay in
+            a draft until you publish.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <PublishBar
+            pending={pending}
+            onPublished={loadSections}
+            onDiscarded={loadSections}
+          />
           <Button variant="outline" size="sm" className="flex-1 sm:flex-none" asChild>
             <a href="/" target="_blank" rel="noopener noreferrer">
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" />

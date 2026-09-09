@@ -59,9 +59,10 @@ export async function PUT(req: Request) {
     }
 
     const now = new Date().toISOString();
-    // One statement: positions never pass through a half-applied state.
+    // One statement: positions never pass through a half-applied state. The new order is
+    // a Section draft — the live page keeps its published order until Publish.
     const { error } = await admin.from("landing_sections").upsert(
-      order.map((id, index) => ({ ...byId.get(id)!, position: index, updated_at: now })),
+      order.map((id, index) => ({ ...byId.get(id)!, draft_position: index, updated_at: now })),
       { onConflict: "id" },
     );
 

@@ -732,7 +732,9 @@ const CONSUMER_SELECT: Record<ConsumerTable, string> = {
   // slug + content: label; image_url + media_asset_id: featured; content: inline
   blog_posts: "id, slug, image_url, content, media_asset_id",
   site_settings: "key, value",
-  landing_sections: "id, slug, content",
+  // draft_content included so an image referenced only by a pending Section draft
+  // still reports as Used — CONTEXT.md is explicit that drafts count.
+  landing_sections: "id, slug, content, draft_content",
   product_images: "id, product_id, url, media_asset_id",
   // product_id was selected but never read — the label is `Variant ${id}`.
   product_variants: "id, image_url",
@@ -792,7 +794,15 @@ export function usagePredicateTerms(
       if (url) terms.push(contains("value", url));
       return terms;
     }
-    case "landing_sections":
+    case "landing_sections": {
+      if (!byId) return [];
+      const terms = [contains("content::text", id), contains("draft_content::text", id)];
+      if (url) {
+        terms.push(contains("content::text", url));
+        terms.push(contains("draft_content::text", url));
+      }
+      return terms;
+    }
     case "partners_page": {
       if (!byId) return [];
       const terms = [contains("content::text", id)];

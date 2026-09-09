@@ -1,6 +1,7 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
-import { listLandingSections } from "@/lib/landing-sections";
+import { listLandingSectionRows } from "@/lib/landing-sections";
+import { draftSections, summarisePending } from "@/lib/page-builder/draft";
 import PageBuilderPage from "./page-builder-client";
 
 export const runtime = "nodejs";
@@ -21,8 +22,15 @@ export default async function PageBuilderRoute({
 
   // A failed read must not look like "no sections": leave `initialData`
   // undefined so the client runs its own mount fetch and surfaces the error.
-  const sections = await listLandingSections().catch(() => null);
+  // The builder edits the Section draft, so it mounts with drafts applied.
+  const rows = await listLandingSectionRows().catch(() => null);
   return (
-    <PageBuilderPage initialData={sections ? { ok: true, sections } : undefined} />
+    <PageBuilderPage
+      initialData={
+        rows
+          ? { ok: true, sections: draftSections(rows), pending: summarisePending(rows) }
+          : undefined
+      }
+    />
   );
 }

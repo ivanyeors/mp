@@ -77,11 +77,14 @@ export async function PATCH(
       }
     }
 
+    // Edits land in the Section draft, not on the live page. Slug is the exception:
+    // it is structural (analytics anchor, uniqueness) rather than content, and is only
+    // editable on custom sections anyway.
     const update: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
-    if (parsed.visible !== undefined) update.visible = parsed.visible;
-    if (parsed.content !== undefined) update.content = parsed.content;
+    if (parsed.visible !== undefined) update.draft_visible = parsed.visible;
+    if (parsed.content !== undefined) update.draft_content = parsed.content;
     if (parsed.slug !== undefined) update.slug = parsed.slug;
 
     const { data, error } = await admin
@@ -102,6 +105,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Section not found" }, { status: 404 });
     }
 
+    // Drafts count as Used (CONTEXT.md), so a pending image is still marked in the DAM.
     if (parsed.content) {
       const image = parsed.content.image;
       const assetId = parsed.content.media_asset_id;
@@ -116,8 +120,8 @@ export async function PATCH(
       action: "landing_section.update",
       entityType: "landing_section",
       entityId: id,
-      before: { slug: before.slug, visible: before.visible, content: before.content },
-      after: { slug: data.slug, visible: data.visible, content: data.content },
+      before: { slug: before.slug, draft_visible: before.draft_visible, draft_content: before.draft_content },
+      after: { slug: data.slug, draft_visible: data.draft_visible, draft_content: data.draft_content },
     });
 
     return NextResponse.json({ ok: true, section: data });
@@ -169,9 +173,11 @@ export async function DELETE(
     );
   }
 
+  // Marked for removal by the next Publish rather than deleted now, so the deletion is
+  // reviewable in Preview mode and Discard can undo it.
   const { error } = await admin
     .from("landing_sections")
-    .delete()
+    .update({ draft_deleted: true, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) {
@@ -180,7 +186,7 @@ export async function DELETE(
 
   await recordAdminAction({
     actor: ctx,
-    action: "landing_section.delete",
+    action: "landing_section.mark_deleted",
     entityType: "landing_section",
     entityId: id,
     before: {

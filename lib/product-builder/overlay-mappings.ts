@@ -1,5 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
-import type { OverlayFit } from "./overlays";
+import type { OverlayFit, OverlayMappingItem } from "./overlays";
+
+export type { OverlayMappingItem };
 
 /** Slice 10: cover/case Item → overlay Media Asset mappings for Product Builder. */
 export const OVERLAY_CATEGORIES = ["cover", "pillow_case", "bolster_case", "case"];
@@ -9,18 +11,6 @@ type MappingRow = {
   media_asset_id: string;
   fit: unknown;
   media_assets: { hosted_url: string | null } | { hosted_url: string | null }[] | null;
-};
-
-export type OverlayMappingItem = {
-  id: number;
-  name: string;
-  category: string;
-  size: string | null;
-  mapping: {
-    media_asset_id: string;
-    hosted_url: string | null;
-    fit: OverlayFit | null;
-  } | null;
 };
 
 /**

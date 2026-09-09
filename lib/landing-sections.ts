@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { LandingSection } from "@/lib/types/landing-sections";
+import { draftSections, type LandingSectionRow } from "@/lib/page-builder/draft";
 
 /** Hardcoded fallback so the landing page never breaks if the table is empty. */
 const DEFAULT_SECTIONS: LandingSection[] = [
@@ -60,6 +61,7 @@ export async function getLandingSections(): Promise<LandingSection[]> {
       return DEFAULT_SECTIONS;
     }
 
+    // Published columns only — a Section draft is invisible until Publish.
     return selectRenderableSections((data ?? []) as LandingSection[]);
   } catch (err) {
     console.error("[getLandingSections]", err);
@@ -81,4 +83,28 @@ export async function listLandingSections(): Promise<LandingSection[]> {
 
   if (error) throw new Error(error.message);
   return (data ?? []) as LandingSection[];
+}
+
+/**
+ * Every section with its **Section draft** applied — what Preview mode renders and what
+ * the Page Builder edits against. Hidden sections are kept so the builder can mark them;
+ * sections pending removal are dropped.
+ *
+ * Throws on a Supabase error, like `listLandingSections`, so Staff never edit a fallback
+ * believing it is their page.
+ */
+export async function listLandingSectionsWithDrafts(): Promise<LandingSection[]> {
+  return draftSections(await listLandingSectionRows());
+}
+
+/** Raw rows including draft columns, for the builder and the pending-change summary. */
+export async function listLandingSectionRows(): Promise<LandingSectionRow[]> {
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("landing_sections")
+    .select("*")
+    .order("position", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as LandingSectionRow[];
 }

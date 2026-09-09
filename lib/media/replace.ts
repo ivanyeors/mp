@@ -119,7 +119,7 @@ export type ReplacePlanRows = {
     media_asset_id?: string | null;
   }>;
   settings?: Array<{ key: string; value: string }>;
-  landingSections?: Array<{ id: string; content: unknown }>;
+  landingSections?: Array<{ id: string; content: unknown; draft_content: unknown }>;
   productImages?: Array<{
     id: string;
     url: string;
@@ -245,8 +245,14 @@ export function planReplaceEverywhere(
   if (rows.landingSections) {
     out.landingSections = rows.landingSections.map((section) => {
       const r = replaceJsonRefs(section.content, input);
-      if (r.changed) summary.landingSections++;
-      return { ...section, content: r.value };
+      // A pending Section draft holds its own copy of the content, so it must be
+      // rewritten too — otherwise the next Publish would quietly revert the replacement.
+      const d =
+        section.draft_content == null
+          ? { changed: false, value: section.draft_content }
+          : replaceJsonRefs(section.draft_content, input);
+      if (r.changed || d.changed) summary.landingSections++;
+      return { ...section, content: r.value, draft_content: d.value };
     });
   }
 
@@ -361,7 +367,7 @@ export async function runReplaceEverywhere(
   ] = await Promise.all([
     admin.from("blog_posts").select("id, image_url, content, media_asset_id"),
     admin.from("site_settings").select("key, value").like("key", "landing_%"),
-    admin.from("landing_sections").select("id, content"),
+    admin.from("landing_sections").select("id, content, draft_content"),
     admin.from("product_images").select("id, url, media_asset_id"),
     admin.from("product_variants").select("id, image_url"),
     admin.from("categories").select("id, image_url, media_asset_id"),
@@ -430,10 +436,12 @@ export async function runReplaceEverywhere(
   for (let i = 0; i < (before.landingSections?.length ?? 0); i++) {
     const prev = before.landingSections![i];
     const next = rows.landingSections![i];
-    if (JSON.stringify(prev.content) === JSON.stringify(next.content)) continue;
+    const contentSame = JSON.stringify(prev.content) === JSON.stringify(next.content);
+    const draftSame = JSON.stringify(prev.draft_content) === JSON.stringify(next.draft_content);
+    if (contentSame && draftSame) continue;
     const { error } = await admin
       .from("landing_sections")
-      .update({ content: next.content, updated_at: now })
+      .update({ content: next.content, draft_content: next.draft_content, updated_at: now })
       .eq("id", next.id);
     if (error) throw new Error(error.message);
   }

@@ -78,7 +78,8 @@ assert.match(listRoute, /landing_section\.create/, "create is audited");
 const idRoute = read("app/api/landing-sections/[id]/route.ts");
 assert.match(idRoute, /isCustomSectionType\(before\.section_type\)/, "slug lock and delete lock consult the type");
 assert.match(idRoute, /landing_section\.update/, "update is audited");
-assert.match(idRoute, /landing_section\.delete/, "delete is audited");
+// Slice 05 turned delete into a draft mark, so the audited action was renamed.
+assert.match(idRoute, /landing_section\.(delete|mark_deleted)/, "delete is audited");
 assert.match(idRoute, /built-in section and cannot be deleted/, "built-ins cannot be deleted");
 assert.match(idRoute, /SectionContentSchema/, "PATCH validates content");
 

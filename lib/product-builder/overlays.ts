@@ -17,6 +17,23 @@ export type OverlayFit = z.infer<typeof OverlayFitSchema>;
 export type ItemOverlay = { url: string; fit: OverlayFit | null };
 
 /**
+ * An overlay-eligible cover/case Item with its current mapping. Lives here
+ * rather than next to the Supabase read so the client workbench can import the
+ * type without pulling `supabaseAdmin` into the bundle.
+ */
+export type OverlayMappingItem = {
+  id: number;
+  name: string;
+  category: string;
+  size: string | null;
+  mapping: {
+    media_asset_id: string;
+    hosted_url: string | null;
+    fit: OverlayFit | null;
+  } | null;
+};
+
+/**
  * SVG <image> frame for an overlay inside the silhouette viewBox.
  * No fit (or identity fit) fills the whole viewBox, centered.
  */

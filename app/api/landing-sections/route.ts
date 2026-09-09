@@ -3,7 +3,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
 import { requireAdmin, requireAdminContext } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
-import { listLandingSections } from "@/lib/landing-sections";
+import { listLandingSectionRows } from "@/lib/landing-sections";
+import { draftSections, summarisePending } from "@/lib/page-builder/draft";
 import {
   CreatableSectionTypeSchema,
   SectionContentSchema,
@@ -23,7 +24,13 @@ export async function GET() {
   if (denied) return denied;
 
   try {
-    return NextResponse.json({ ok: true, sections: await listLandingSections() });
+    const rows = await listLandingSectionRows();
+    // The builder edits the draft, so it must see the draft.
+    return NextResponse.json({
+      ok: true,
+      sections: draftSections(rows),
+      pending: summarisePending(rows),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
@@ -88,8 +95,10 @@ export async function POST(req: Request) {
         section_type: parsed.section_type,
         slug: parsed.slug,
         position: nextPosition,
-        visible: true,
+        visible: false,
         content: parsed.content,
+        // New sections are hidden on the live page until Publish shows them.
+        draft_visible: true,
       })
       .select()
       .single();
