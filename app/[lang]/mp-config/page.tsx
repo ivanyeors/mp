@@ -5,6 +5,7 @@ import { getConfiguratorOfferRange } from "@/lib/seo/configurator-offer-range";
 import { buildConfiguratorProductJsonLd } from "@/lib/seo/jsonld-product";
 import { getSiteOrigin } from "@/lib/site-url";
 import { getAdminContext } from "@/lib/auth/admin";
+import { roleHasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MpConfigClient } from "./mp-config-client";
@@ -66,6 +67,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
           faqItems: faq?.items ?? [],
         }}
         staffAssist={Boolean(staffCtx)}
+        canViewResults={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
         partner={
           partner
             ? {

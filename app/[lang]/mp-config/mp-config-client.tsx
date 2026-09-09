@@ -240,11 +240,15 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
 export function MpConfigClient({
   info,
   staffAssist = false,
+  canViewResults = false,
   partner = null,
 }: {
   info: MpConfigInfo;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
   staffAssist?: boolean;
+  /** Admin Panel `results` permission. Gates the completion dialog's link into
+   * /settings/results, which redirects everyone else to Sign in. */
+  canViewResults?: boolean;
   /**
    * Partner-assisted co-brand context (#78). Non-null → assisted run: co-brand
    * finish panel, no filling-template / add-on / upsell surfaces, assist-priority
@@ -1602,16 +1606,18 @@ export function MpConfigClient({
           >
             New measurement
           </Button>
-          <Button
-            onClick={() => {
-              const id = completedResponseId ?? responseId;
-              if (!id) return;
-              setCompletionDialogOpen(false);
-              router.push(to(`/settings/results/${id}`));
-            }}
-          >
-            Results page
-          </Button>
+          {canViewResults ? (
+            <Button
+              onClick={() => {
+                const id = completedResponseId ?? responseId;
+                if (!id) return;
+                setCompletionDialogOpen(false);
+                router.push(to(`/settings/results/${id}`));
+              }}
+            >
+              Results page
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
