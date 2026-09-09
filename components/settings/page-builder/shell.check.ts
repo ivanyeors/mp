@@ -25,7 +25,8 @@ assert.match(shellCode, /<PreviewFrame/, "centre pane is the preview");
 assert.match(shellCode, /<SectionEditor/, "right pane is the inspector");
 
 // --- Selection is two-way ---
-assert.match(shellCode, /onSelect=\{setSelectedSlug\}/, "the tree selects");
+// Slice 09 routed selection through a guard that asks before discarding unsaved edits.
+assert.match(shellCode, /onSelect=\{selectSection\}/, "the tree selects");
 assert.match(frameCode, /onSelect\(hit\.slug\)/, "the preview selects");
 assert.match(frameCode, /getElementById\(selectedSlug\)\?\.scrollIntoView/, "tree selection scrolls the preview");
 assert.match(frameCode, /closest\("\[data-section\]"\)/, "selection reads the existing section anchors");

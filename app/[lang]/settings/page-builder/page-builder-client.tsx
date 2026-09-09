@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { SectionEditor } from "@/components/settings/page-builder/section-editor";
 import { SectionTree, SECTION_TYPE_LABELS, sectionTitle } from "@/components/settings/page-builder/section-tree";
 import { PreviewFrame } from "@/components/settings/page-builder/preview-frame";
+import { PublishHistory } from "@/components/settings/page-builder/publish-history";
 import { ExternalLink, Eye, Loader2, Plus, Undo2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -262,6 +263,12 @@ export default function PageBuilderPage({
   const [previewLocale, setPreviewLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  /**
+   * Whether the open inspector has unsaved edits. A ref, not state: it is only read at
+   * the moment selection changes, and re-rendering the shell on every keystroke would
+   * reload the preview.
+   */
+  const inspectorDirty = useRef(false);
   // Not useIsMobile(): that breaks at 768 while the grid needs 1024, so tablets
   // (including the 834px preset) landed in neither layout.
   const narrow = useMediaQuery("(max-width: 1023px)");
@@ -301,6 +308,28 @@ export default function PageBuilderPage({
     loadSections();
     setRefreshKey((k) => k + 1);
   }, [loadSections]);
+
+  /**
+   * Changing selection remounts the inspector and discards its unsaved edits, so ask
+   * first. `beforeunload` cannot cover this — it only fires on a real document unload.
+   */
+  const selectSection = useCallback((slug: string | null) => {
+    if (
+      inspectorDirty.current &&
+      !window.confirm("Discard your unsaved edits to this section?")
+    ) {
+      return;
+    }
+    inspectorDirty.current = false;
+    setSelectedSlug(slug);
+  }, []);
+
+  /** For changes that replace the whole draft: drop the open inspector too. */
+  const resetAndRefresh = useCallback(() => {
+    inspectorDirty.current = false;
+    setSelectedSlug(null);
+    afterChange();
+  }, [afterChange]);
 
   const handleToggleVisibility = async (section: LandingSection) => {
     const newVisible = !section.visible;
@@ -434,7 +463,7 @@ export default function PageBuilderPage({
     <SectionTree
       sections={sections}
       selectedSlug={selectedSlug}
-      onSelect={setSelectedSlug}
+      onSelect={selectSection}
       onToggleVisibility={handleToggleVisibility}
       onDelete={handleDelete}
       onMove={handleMove}
@@ -454,7 +483,10 @@ export default function PageBuilderPage({
         key={selected.id}
         section={selected}
         onSave={handleSectionSaved}
-        onCancel={() => setSelectedSlug(null)}
+        onCancel={() => selectSection(null)}
+        onDirtyChange={(d) => {
+          inspectorDirty.current = d;
+        }}
       />
     </div>
   ) : (
@@ -473,7 +505,13 @@ export default function PageBuilderPage({
         </p>
       </div>
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-        <PublishBar pending={pending} onPublished={afterChange} onDiscarded={afterChange} />
+        {/*
+          Close the inspector first: it is keyed on section id, which a restore or discard
+          does not change, so its local edits would survive and could be saved back over
+          the very state that was just restored.
+        */}
+        <PublishBar pending={pending} onPublished={afterChange} onDiscarded={resetAndRefresh} />
+        <PublishHistory pending={pending} onRestored={resetAndRefresh} />
         <Button variant="outline" size="sm" asChild>
           <a href="/" target="_blank" rel="noopener noreferrer">
             <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
@@ -506,7 +544,7 @@ export default function PageBuilderPage({
                 locale={previewLocale}
                 onLocaleChange={setPreviewLocale}
                 selectedSlug={selectedSlug}
-                onSelect={setSelectedSlug}
+                onSelect={selectSection}
                 refreshKey={refreshKey}
                 initialDevice="mobile"
               />
@@ -514,7 +552,7 @@ export default function PageBuilderPage({
           </SheetContent>
         </Sheet>
 
-        <Sheet open={selected != null} onOpenChange={(open) => !open && setSelectedSlug(null)}>
+        <Sheet open={selected != null} onOpenChange={(open) => !open && selectSection(null)}>
           {/*
             Closing unmounts the editor and its unsaved edits, so it must be deliberate:
             an outside tap is too easy to hit while typing.
@@ -551,7 +589,7 @@ export default function PageBuilderPage({
             locale={previewLocale}
             onLocaleChange={setPreviewLocale}
             selectedSlug={selectedSlug}
-            onSelect={setSelectedSlug}
+            onSelect={selectSection}
             refreshKey={refreshKey}
           />
         </section>

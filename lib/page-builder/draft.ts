@@ -106,3 +106,72 @@ export function describePending(summary: PendingSummary): string {
   if (summary.total === 0) return "Published";
   return `Draft · ${summary.total} ${summary.total === 1 ? "change" : "changes"}`;
 }
+
+// --- Publish snapshots -----------------------------------------------------------
+
+/** One entry inside a **Publish snapshot**'s `sections` array. */
+export interface SnapshotSection {
+  slug: string;
+  section_type: string;
+  position: number;
+  visible: boolean;
+  content: Record<string, unknown>;
+}
+
+/** A **Publish snapshot** row, as the history panel lists it. */
+export interface PublishSnapshot {
+  id: string;
+  sections: SnapshotSection[];
+  published_at: string;
+  published_by: string | null;
+}
+
+export interface SnapshotDiff {
+  /** Sections whose content, position or visibility differ from what is live now. */
+  changed: string[];
+  /** In the snapshot but no longer on the page — restoring cannot bring these back. */
+  missing: string[];
+  /** Live now but absent from the snapshot — restoring would remove them. */
+  added: string[];
+}
+
+/**
+ * How a snapshot differs from what is published now, so the history panel can tell two
+ * neighbouring entries apart and say what restoring would actually do.
+ */
+export function diffSnapshot(
+  snapshot: SnapshotSection[],
+  live: LandingSectionRow[],
+): SnapshotDiff {
+  const liveBySlug = new Map(live.map((row) => [row.slug, row]));
+  const snapSlugs = new Set(snapshot.map((s) => s.slug));
+
+  const changed: string[] = [];
+  const missing: string[] = [];
+
+  for (const entry of snapshot) {
+    const row = liveBySlug.get(entry.slug);
+    if (!row) {
+      missing.push(entry.slug);
+      continue;
+    }
+    const sameContent = JSON.stringify(row.content ?? {}) === JSON.stringify(entry.content ?? {});
+    if (!sameContent || row.position !== entry.position || row.visible !== entry.visible) {
+      changed.push(entry.slug);
+    }
+  }
+
+  const added = live.filter((row) => !snapSlugs.has(row.slug)).map((row) => row.slug);
+
+  return { changed, missing, added };
+}
+
+/** One line describing what restoring a snapshot would do. */
+export function describeSnapshotDiff(diff: SnapshotDiff): string {
+  const parts = [
+    diff.changed.length > 0 ? `${diff.changed.length} would change` : null,
+    diff.added.length > 0 ? `${diff.added.length} would be removed` : null,
+    diff.missing.length > 0 ? `${diff.missing.length} no longer exist` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "Matches the live page";
+}

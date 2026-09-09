@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   describePending,
+  describeSnapshotDiff,
+  diffSnapshot,
   draftSections,
   hasPendingDraft,
   mergeDraft,
@@ -123,5 +125,64 @@ describe("summarisePending", () => {
     expect(
       describePending(summarisePending([row({ slug: "a", draft_content: {} }), row({ slug: "b", draft_position: 1 })])),
     ).toBe("Draft · 2 changes");
+  });
+});
+
+describe("diffSnapshot", () => {
+  const snap = [
+    { slug: "hero", section_type: "hero", position: 0, visible: true, content: { title: "A" } },
+    { slug: "marquee", section_type: "marquee", position: 1, visible: true, content: {} },
+  ];
+
+  it("reports nothing when the snapshot matches the live page", () => {
+    const live = [
+      row({ slug: "hero", position: 0, visible: true, content: { title: "A" } }),
+      row({ slug: "marquee", position: 1, visible: true, content: {} }),
+    ];
+    const diff = diffSnapshot(snap, live);
+    expect(diff).toEqual({ changed: [], missing: [], added: [] });
+    expect(describeSnapshotDiff(diff)).toBe("Matches the live page");
+  });
+
+  it("flags a content difference", () => {
+    const live = [
+      row({ slug: "hero", position: 0, visible: true, content: { title: "B" } }),
+      row({ slug: "marquee", position: 1, visible: true, content: {} }),
+    ];
+    expect(diffSnapshot(snap, live).changed).toEqual(["hero"]);
+  });
+
+  it("flags a position or visibility difference", () => {
+    const live = [
+      row({ slug: "hero", position: 3, visible: true, content: { title: "A" } }),
+      row({ slug: "marquee", position: 1, visible: false, content: {} }),
+    ];
+    expect(diffSnapshot(snap, live).changed).toEqual(["hero", "marquee"]);
+  });
+
+  it("flags sections that no longer exist — restoring cannot bring them back", () => {
+    const live = [row({ slug: "hero", position: 0, visible: true, content: { title: "A" } })];
+    const diff = diffSnapshot(snap, live);
+    expect(diff.missing).toEqual(["marquee"]);
+    expect(describeSnapshotDiff(diff)).toMatch(/no longer exist/);
+  });
+
+  it("flags sections added since, which restoring would remove", () => {
+    const live = [
+      row({ slug: "hero", position: 0, visible: true, content: { title: "A" } }),
+      row({ slug: "marquee", position: 1, visible: true, content: {} }),
+      row({ slug: "new-banner", position: 2, visible: true, content: {} }),
+    ];
+    const diff = diffSnapshot(snap, live);
+    expect(diff.added).toEqual(["new-banner"]);
+    expect(describeSnapshotDiff(diff)).toMatch(/would be removed/);
+  });
+
+  it("compares against published content, not the pending draft", () => {
+    const live = [
+      row({ slug: "hero", position: 0, visible: true, content: { title: "A" }, draft_content: { title: "Z" } }),
+      row({ slug: "marquee", position: 1, visible: true, content: {} }),
+    ];
+    expect(diffSnapshot(snap, live).changed).toEqual([]);
   });
 });

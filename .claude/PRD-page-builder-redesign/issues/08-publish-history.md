@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `page-builder-redesign` (`.claude/PRD-page-builder-redesign/page-builder-redesign-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 41–43
 
 ## What to build
@@ -29,15 +29,15 @@ first, see the restore land as a pending draft in the preview, and publish it to
 
 ## Acceptance criteria
 
-- [ ] A history panel lists **Publish snapshots** newest first with publish time and author.
-- [ ] Each entry summarises what it holds well enough to distinguish it from its neighbours.
-- [ ] Restore writes the snapshot into the draft layer and never directly into published state.
-- [ ] Restoring warns first, naming how many pending draft changes it will discard, using the design system's confirmation dialog rather than a native confirm.
-- [ ] After a restore the header reflects the resulting pending-change count, and the preview shows the restored layout.
-- [ ] A restore is recorded in the audit log naming the snapshot.
-- [ ] Restoring a snapshot that references a since-deleted image does not break the builder; the missing reference is visible in the preview before publishing.
-- [ ] Retention is enforced and the panel never lists more than the retained bound.
-- [ ] `pnpm ci` passes.
+- [x] A history panel lists **Publish snapshots** newest first with publish time and author.
+- [x] Each entry summarises what it holds well enough to distinguish it from its neighbours.
+- [x] Restore writes the snapshot into the draft layer and never directly into published state.
+- [x] Restoring warns first, naming how many pending draft changes it will discard, using the design system's confirmation dialog rather than a native confirm.
+- [x] After a restore the header reflects the resulting pending-change count, and the preview shows the restored layout.
+- [x] A restore is recorded in the audit log naming the snapshot.
+- [x] Restoring a snapshot that references a since-deleted image does not break the builder; the missing reference is visible in the preview before publishing.
+- [x] Retention is enforced and the panel never lists more than the retained bound.
+- [x] `pnpm ci` passes.
 
 Proof: `npx tsx --env-file=.env.local lib/page-builder/history.check.ts` → `landing-history self-check ok`
 
