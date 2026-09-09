@@ -1,6 +1,6 @@
 # PRD: Page Builder Redesign — Draft/Publish, Live Preview, Bilingual Overrides
 
-Status: Draft (needs-triage)
+Status: Shipped — all 10 slices merged and deployed to production 2026-09-09 (PRs #104, #105, #106); sign-off in `OPS-SIGNOFF.md`
 Source: Page builder UX research + adversarial design review (Sep 2026); plan `page_builder_redesign`
 ADRs: `docs/adr/0004-adopt-slide-media-onto-media-assets.md` (Media Asset consumers, prod read-only FS), `docs/adr/0007-first-party-journey-analytics.md` (section anchor ids must stay stable)
 Glossary: `CONTEXT.md` — **Admin Panel**, **Staff**, **Media Asset**, **Used / unused**, **Answer lede**, **Copy fit (layout + SEO)**, **Page FAQ**, **FAQ surface**, **Product Builder**; new terms **Landing section**, **Section draft**, **Publish**, **Publish snapshot**, **Preview mode**
