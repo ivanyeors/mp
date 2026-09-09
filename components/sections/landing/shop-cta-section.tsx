@@ -1,17 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Messages } from "@/lib/i18n/messages/types";
 import type { LandingSection } from "@/lib/types/landing-sections";
 import type { ShopCtaContent } from "@/lib/types/landing-sections";
 
 interface ShopCtaSectionProps {
   section: LandingSection;
   locale: string;
+  messages: Messages;
 }
 
-export function ShopCtaSection({ section, locale }: ShopCtaSectionProps) {
+export function ShopCtaSection({ section, locale, messages: m }: ShopCtaSectionProps) {
   const content = section.content as ShopCtaContent;
   const buttonUrl = content.buttonUrl || `/${locale}/shop`;
-  const buttonLabel = content.buttonLabel || "Shop Now";
+  // Was a hardcoded English literal, so the zh-CN page shipped an English button (slice 03).
+  const buttonLabel = content.buttonLabel || m.common.shopNow;
 
   return (
     <section className="relative py-16 md:py-24">

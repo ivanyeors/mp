@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
-import { requireAdmin } from "@/lib/auth/admin";
+import { requireAdminContext } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
 
 export const runtime = "nodejs";
 
@@ -11,12 +12,20 @@ const ReorderSchema = z.object({
 
 /**
  * PUT /api/landing-sections/reorder
- * Accepts { order: string[] } — an array of section IDs in the desired order.
- * Updates all positions in bulk.
+ * Accepts { order: string[] } — every section id, in the desired order.
+ *
+ * The order must cover the table exactly. Before slice 02 this fired one UPDATE per
+ * section through `Promise.all` with no transaction, so a partial failure left
+ * duplicate positions and a half-reordered page; and a partial order silently
+ * collided with the untouched rows it did not mention.
  */
 export async function PUT(req: Request) {
-  const denied = await requireAdmin("page-builder");
-  if (denied) return denied;
+  let ctx;
+  try {
+    ctx = await requireAdminContext("page-builder");
+  } catch (res) {
+    return res as NextResponse;
+  }
 
   try {
     const body = await req.json();
@@ -24,19 +33,54 @@ export async function PUT(req: Request) {
 
     const admin = supabaseAdmin();
 
-    // Update each section's position
-    const updates = order.map((id, index) =>
-      admin
-        .from("landing_sections")
-        .update({ position: index, updated_at: new Date().toISOString() })
-        .eq("id", id)
+    // Sections staged for removal are already gone from the builder's list, so the
+    // order it sends excludes them. Counting them here rejected every reorder — with a
+    // 400 that persisted until someone published or discarded.
+    const { data: existing, error: readError } = await admin
+      .from("landing_sections")
+      .select("*")
+      .not("draft_deleted", "is", true)
+      .order("position", { ascending: true });
+
+    if (readError) {
+      return NextResponse.json({ error: readError.message }, { status: 500 });
+    }
+
+    const rows = existing ?? [];
+    const byId = new Map(rows.map((row) => [row.id, row]));
+
+    if (new Set(order).size !== order.length) {
+      return NextResponse.json({ error: "Order contains duplicate section ids" }, { status: 400 });
+    }
+    if (order.length !== rows.length || order.some((id) => !byId.has(id))) {
+      return NextResponse.json(
+        {
+          error:
+            `Order must list every section exactly once (expected ${rows.length}, got ${order.length}).`,
+        },
+        { status: 400 },
+      );
+    }
+
+    const now = new Date().toISOString();
+    // One statement: positions never pass through a half-applied state. The new order is
+    // a Section draft — the live page keeps its published order until Publish.
+    const { error } = await admin.from("landing_sections").upsert(
+      order.map((id, index) => ({ ...byId.get(id)!, draft_position: index, updated_at: now })),
+      { onConflict: "id" },
     );
 
-    const results = await Promise.all(updates);
-    const failed = results.find((r) => r.error);
-    if (failed?.error) {
-      return NextResponse.json({ error: failed.error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    await recordAdminAction({
+      actor: ctx,
+      action: "landing_section.reorder",
+      entityType: "landing_section",
+      before: { order: rows.map((r) => r.slug) },
+      after: { order: order.map((id) => byId.get(id)!.slug) },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

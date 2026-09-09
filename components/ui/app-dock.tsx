@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 import dynamic from "next/dynamic";
 import type { BubbleMenuItem } from "@/components/ui/bubble-menu";
 import { openAdminPanelMenu } from "@/lib/auth/admin-panel-menu";
@@ -243,6 +244,9 @@ export function AppDock() {
 
   const signOutAction = `/auth/signout?next=${encodeURIComponent(to("/"))}`;
 
+  // Preview mode is the landing page inside the Page Builder: a fixed dock would cover
+  // what Staff are reviewing and swallow clicks meant for section selection.
+  if (isPageBuilderPreviewRoute(basePathname)) return null;
   return (
     <>
       <div

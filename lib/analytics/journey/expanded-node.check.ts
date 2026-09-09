@@ -64,7 +64,14 @@ assert.match(card, /TimeOnPageChart/);
 assert.match(card, /RoutesChart/);
 assert.match(card, /onDive/);
 assert.match(card, /selectedPaths/);
-assert.doesNotMatch(card, /overflow-y-auto/);
+// Dig-in bodies grow to fit — no inner scroll. Scoped to the dig-in components:
+// the filter sidebar outside them is allowed to scroll.
+const digIn = card.slice(
+  card.indexOf("function DigInSection("),
+  card.indexOf("function JourneyGraph("),
+);
+assert.ok(digIn.length > 0);
+assert.doesNotMatch(digIn, /overflow-y-auto/);
 assert.doesNotMatch(card, /function DetailPanel/);
 assert.doesNotMatch(card, /function ConvertedDetailPanel/);
 assert.doesNotMatch(card, /translate-x-full/);
@@ -91,8 +98,13 @@ assert.match(aggregates, /pageDropOffTotal/);
 assert.match(aggregates, /outbound/);
 
 // --- storefront ids match data-section ---
-const home = readFileSync(join(root, "app/[lang]/page.tsx"), "utf8");
-assert.match(home, /id=\{section\.slug\} data-section=\{section\.slug\}/);
+// Landing sections moved into the shared list component (page-builder slice 06).
+const home = readFileSync(
+  join(root, "components/sections/landing/landing-sections-list.tsx"),
+  "utf8",
+);
+assert.match(home, /id=\{section\.slug\}/);
+assert.match(home, /data-section=\{section\.slug\}/);
 
 const pdp = readFileSync(
   join(root, "app/[lang]/shop/[slug]/product-detail-client.tsx"),

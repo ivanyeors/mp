@@ -16,7 +16,11 @@ import {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
-const home = readFileSync(join(root, "app/[lang]/page.tsx"), "utf8");
+// Landing sections moved into the shared list component (page-builder slice 06).
+const home = readFileSync(
+  join(root, "components/sections/landing/landing-sections-list.tsx"),
+  "utf8",
+);
 assert.match(home, /data-section=\{section\.slug\}/);
 
 const tracker = readFileSync(join(root, "components/analytics/journey-tracker.tsx"), "utf8");

@@ -2,24 +2,38 @@
  * Claims / SEO / copy-fit gate for marketing surfaces.
  * Banned clinical verbs + Singapore/cervical intent + hero H1 + Answer lede bands.
  * Bands: CONTEXT.md “Copy fit” — H1 ≤2 lines, hero lede ≤4 lines.
+ *
+ * The bands themselves live in `./copy-bands`, which is client-safe, so the Page
+ * Builder inspector can meter against the same numbers this gate enforces. They are
+ * re-exported here so existing importers are unaffected.
  */
 import assert from "node:assert/strict";
 
-export const BANNED_CLINICAL = /\b(prescribe|treat|cure|rehab)\b/i;
+import {
+  BANNED_CLINICAL,
+  HERO_H1_CHAR_BAND,
+  HERO_H1_CHAR_MAX,
+  HERO_H1_WORD_BAND,
+  HERO_H1_WORD_MAX,
+  HERO_H1_WORD_MIN,
+  HERO_LEDE_WORD_MAX,
+  HERO_LEDE_WORD_MIN,
+  HERO_SUBTITLE_BAND,
+  HERO_SUBTITLE_WORD_MAX,
+  checkBand,
+  wordCount,
+} from "./copy-bands";
 
-/** Hero H1: ≤2 lines at max-w-xl + md:text-6xl ≈ ≤8 words / ≤55 chars (taglines may be 4–5). */
-export const HERO_H1_WORD_MIN = 4;
-export const HERO_H1_WORD_MAX = 8;
-export const HERO_H1_CHAR_MAX = 55;
-
-/**
- * Hero Answer lede: ≤4 lines at max-w-prose / text-lg ≈ 28–40 words.
- * (Non-hero Answer ledes elsewhere may still target 40–60 for AEO peak.)
- */
-export const HERO_LEDE_WORD_MIN = 28;
-export const HERO_LEDE_WORD_MAX = 40;
-
-export const HERO_SUBTITLE_WORD_MAX = 12;
+export {
+  BANNED_CLINICAL,
+  HERO_H1_CHAR_MAX,
+  HERO_H1_WORD_MAX,
+  HERO_H1_WORD_MIN,
+  HERO_LEDE_WORD_MAX,
+  HERO_LEDE_WORD_MIN,
+  HERO_SUBTITLE_WORD_MAX,
+  wordCount,
+};
 
 export type GatedString = {
   label: string;
@@ -27,11 +41,6 @@ export type GatedString = {
   /** SEO-flagged surfaces should name Singapore and/or cervical/neck intent. */
   requireSingaporeOrCervical?: boolean;
 };
-
-export function wordCount(s: string) {
-  const t = s.trim();
-  return t ? t.split(/\s+/).length : 0;
-}
 
 /** Throws AssertionError if any gated string fails claims/SEO/copy-fit rules. */
 export function assertMarketingCopySafe(
@@ -57,21 +66,17 @@ export function assertMarketingCopySafe(
 
   if (opts?.heroH1 != null) {
     const h1 = opts.heroH1.trim();
-    const w = wordCount(h1);
-    assert.ok(
-      w >= HERO_H1_WORD_MIN && w <= HERO_H1_WORD_MAX,
-      `hero H1 word count ${w} (need ${HERO_H1_WORD_MIN}–${HERO_H1_WORD_MAX} for ≤2 lines)`
-    );
-    assert.ok(
-      h1.length <= HERO_H1_CHAR_MAX,
-      `hero H1 chars ${h1.length} (max ${HERO_H1_CHAR_MAX} for ≤2 lines)`
-    );
+    assert.equal(checkBand("hero H1", h1, HERO_H1_WORD_BAND), null, `hero H1 word count out of band: ${h1}`);
+    assert.equal(checkBand("hero H1", h1, HERO_H1_CHAR_BAND), null, `hero H1 chars out of band: ${h1}`);
     assert.doesNotMatch(h1, BANNED_CLINICAL, "hero H1: banned clinical verb");
   }
 
   if (opts?.heroSubtitle != null && opts.heroSubtitle.trim() !== "") {
-    const w = wordCount(opts.heroSubtitle);
-    assert.ok(w <= HERO_SUBTITLE_WORD_MAX, `hero subtitle words ${w} (max ${HERO_SUBTITLE_WORD_MAX})`);
+    assert.equal(
+      checkBand("hero subtitle", opts.heroSubtitle, HERO_SUBTITLE_BAND),
+      null,
+      "hero subtitle out of band",
+    );
     assert.doesNotMatch(opts.heroSubtitle, BANNED_CLINICAL, "hero subtitle: banned clinical verb");
   }
 

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { AmbassadorsSlideIn } from "@/components/slide-in-pages/ambassadors-slide-in";
 import { SizeMattersSlideIn } from "@/components/slide-in-pages/size-matters-slide-in";
 import type { Messages } from "@/lib/i18n/messages/types";
@@ -36,11 +37,12 @@ export function TextImageSection({ section, messages: m, images }: TextImageSect
       : "";
 
   const title = c.title ?? defaultTitle;
+  const alt = c.alt ?? title;
   const description = c.description ?? defaultDesc;
   const image = c.image ?? defaultImage;
 
   return (
-    <section id={isAmbassadors ? "ambassadors" : undefined} className="relative">
+    <section className="relative">
       <div className="mx-auto w-full max-w-6xl px-4 py-12 md:py-16">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
           <div className="space-y-4">
@@ -57,12 +59,12 @@ export function TextImageSection({ section, messages: m, images }: TextImageSect
           </div>
 
           <div className="relative aspect-[3/4] md:aspect-video overflow-hidden rounded-2xl border bg-card/40 backdrop-blur-sm">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={image}
-              alt={title}
-              className="absolute inset-0 h-full w-full object-cover"
-              loading="lazy"
+              alt={alt}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
         </div>

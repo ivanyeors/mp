@@ -1,18 +1,36 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { z } from "zod/v4";
-import { requireAdmin } from "@/lib/auth/admin";
-import { listLandingSections } from "@/lib/landing-sections";
+import { requireAdmin, requireAdminContext } from "@/lib/auth/admin";
+import { recordAdminAction } from "@/lib/auth/audit";
+import { listLandingSectionRows } from "@/lib/landing-sections";
+import { draftSections, summarisePending } from "@/lib/page-builder/draft";
+import {
+  CreatableSectionTypeSchema,
+  SectionContentSchema,
+  SlugSchema,
+  isSingletonSectionType,
+} from "@/lib/page-builder/validation";
 
 export const runtime = "nodejs";
 
 /**
  * GET /api/landing-sections
- * Returns all sections ordered by position.
+ * Returns all sections ordered by position, including hidden ones — so it is
+ * staff-only. (It was public until slice 02, which leaked unpublished copy.)
  */
 export async function GET() {
+  const denied = await requireAdmin("page-builder");
+  if (denied) return denied;
+
   try {
-    return NextResponse.json({ ok: true, sections: await listLandingSections() });
+    const rows = await listLandingSectionRows();
+    // The builder edits the draft, so it must see the draft.
+    return NextResponse.json({
+      ok: true,
+      sections: draftSections(rows),
+      pending: summarisePending(rows),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
@@ -22,24 +40,44 @@ export async function GET() {
 }
 
 const CreateSchema = z.object({
-  section_type: z.string().min(1),
-  slug: z.string().min(1).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  content: z.record(z.string(), z.unknown()).optional().default({}),
+  section_type: CreatableSectionTypeSchema,
+  slug: SlugSchema,
+  content: SectionContentSchema.optional().default({}),
 });
 
 /**
  * POST /api/landing-sections
- * Creates a new section at the end.
+ * Creates a new section at the end. Only custom types can be created — built-ins
+ * are seeded by migration and their components branch on `slug`.
  */
 export async function POST(req: Request) {
-  const denied = await requireAdmin("page-builder");
-  if (denied) return denied;
+  let ctx;
+  try {
+    ctx = await requireAdminContext("page-builder");
+  } catch (res) {
+    return res as NextResponse;
+  }
 
   try {
     const body = await req.json();
     const parsed = CreateSchema.parse(body);
 
     const admin = supabaseAdmin();
+
+    if (isSingletonSectionType(parsed.section_type)) {
+      const { count } = await admin
+        .from("landing_sections")
+        .select("id", { count: "exact", head: true })
+        .eq("section_type", parsed.section_type);
+      if ((count ?? 0) > 0) {
+        return NextResponse.json(
+          {
+            error: `The page already has a "${parsed.section_type}" section, and it can only appear once.`,
+          },
+          { status: 409 },
+        );
+      }
+    }
 
     // Get next position
     const { data: maxRow } = await admin
@@ -57,8 +95,10 @@ export async function POST(req: Request) {
         section_type: parsed.section_type,
         slug: parsed.slug,
         position: nextPosition,
-        visible: true,
+        visible: false,
         content: parsed.content,
+        // New sections are hidden on the live page until Publish shows them.
+        draft_visible: true,
       })
       .select()
       .single();
@@ -70,6 +110,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    await recordAdminAction({
+      actor: ctx,
+      action: "landing_section.create",
+      entityType: "landing_section",
+      entityId: data.id,
+      after: { slug: data.slug, section_type: data.section_type, position: data.position },
+    });
+
     return NextResponse.json({ ok: true, section: data }, { status: 201 });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -77,7 +125,7 @@ export async function POST(req: Request) {
     }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

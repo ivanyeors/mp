@@ -1,9 +1,18 @@
+import ReactMarkdown from "react-markdown";
 import type { LandingSection, CustomRichTextContent } from "@/lib/types/landing-sections";
 
 interface CustomRichTextSectionProps {
   section: LandingSection;
 }
 
+/**
+ * Markdown body, rendered through react-markdown (which escapes raw HTML by default).
+ *
+ * This used to be `dangerouslySetInnerHTML` over the same field while the type
+ * documented it as markdown — so anything a page-builder operator pasted became live
+ * storefront markup. The editor now says markdown too; existing HTML degrades to
+ * escaped text rather than executing.
+ */
 export function CustomRichTextSection({ section }: CustomRichTextSectionProps) {
   const c = section.content as CustomRichTextContent;
   const title = c.title ?? "";
@@ -16,10 +25,9 @@ export function CustomRichTextSection({ section }: CustomRichTextSectionProps) {
           <h2 className="mb-6 text-3xl font-semibold tracking-tight md:text-4xl">{title}</h2>
         )}
         {body && (
-          <div
-            className="prose prose-neutral dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: body }}
-          />
+          <div className="prose prose-neutral dark:prose-invert max-w-none">
+            <ReactMarkdown>{body}</ReactMarkdown>
+          </div>
         )}
       </div>
     </section>

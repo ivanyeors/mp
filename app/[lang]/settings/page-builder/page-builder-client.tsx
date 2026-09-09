@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { DragDropProvider } from "@dnd-kit/react";
-import { useSortable } from "@dnd-kit/react/sortable";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -15,169 +12,24 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SectionEditor } from "@/components/settings/page-builder/section-editor";
-import {
-  GripVertical,
-  Eye,
-  EyeOff,
-  ChevronDown,
-  Plus,
-  Trash2,
-  ExternalLink,
-} from "lucide-react";
+import { SectionTree, SECTION_TYPE_LABELS, sectionTitle } from "@/components/settings/page-builder/section-tree";
+import { PreviewFrame } from "@/components/settings/page-builder/preview-frame";
+import { PublishHistory } from "@/components/settings/page-builder/publish-history";
+import { ExternalLink, Eye, Loader2, Plus, Undo2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
+import { describePending, type PendingSummary } from "@/lib/page-builder/draft";
 import type { LandingSection } from "@/lib/types/landing-sections";
 import { CUSTOM_SECTION_TEMPLATES } from "@/lib/types/landing-sections";
-
-const SECTION_TYPE_LABELS: Record<string, string> = {
-  hero: "Hero",
-  text_image: "Text + Image",
-  marquee: "Marquee",
-  stories: "Testimonials",
-  pick_your_mpillow: "Pick Your Mpillow",
-  neck_pains: "Neck Pains",
-  why_choose_highlights: "Why Choose",
-  product_card: "Product Card",
-  credibility: "Credibility",
-  video_embed: "Video Embed",
-  founder_note: "Founder Note",
-  custom_text_image: "Custom: Text + Image",
-  custom_full_width_image: "Custom: Full-Width Image",
-  custom_video: "Custom: Video",
-  custom_rich_text: "Custom: Rich Text",
-  featured_products: "Featured Products",
-  shop_cta: "Shop CTA Banner",
-  faq: "Page FAQs",
-};
 
 function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-// --- Sortable section row ---
-
-function SortableSectionRow({
-  section,
-  index,
-  expandedId,
-  onToggleExpand,
-  onToggleVisibility,
-  onDelete,
-  onSectionUpdated,
-}: {
-  section: LandingSection;
-  index: number;
-  expandedId: string | null;
-  onToggleExpand: (id: string) => void;
-  onToggleVisibility: (section: LandingSection) => void;
-  onDelete: (section: LandingSection) => void;
-  onSectionUpdated: (section: LandingSection) => void;
-}) {
-  const { ref, isDragging, handleRef } = useSortable({
-    id: section.id,
-    index,
-  });
-
-  const isExpanded = expandedId === section.id;
-  const isCustom = section.section_type.startsWith("custom_");
-  const label =
-    SECTION_TYPE_LABELS[section.section_type] ?? section.section_type;
-
-  return (
-    <div
-      ref={ref}
-      className={`rounded-lg border bg-card transition-shadow ${
-        isDragging ? "shadow-lg opacity-70 z-50" : ""
-      } ${!section.visible ? "opacity-60" : ""}`}
-    >
-      <Collapsible open={isExpanded} onOpenChange={() => onToggleExpand(section.id)}>
-        <div className="flex items-center gap-2 px-3 py-2.5">
-          {/* Drag handle */}
-          <button
-            ref={handleRef}
-            className="cursor-grab touch-none min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing"
-            aria-label="Drag to reorder"
-          >
-            <GripVertical className="h-4 w-4" />
-          </button>
-
-          {/* Visibility toggle */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleVisibility(section);
-            }}
-            className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
-            aria-label={section.visible ? "Hide section" : "Show section"}
-          >
-            {section.visible ? (
-              <Eye className="h-4 w-4" />
-            ) : (
-              <EyeOff className="h-4 w-4" />
-            )}
-          </button>
-
-          {/* Section name */}
-          <div className="flex-1 min-w-0">
-            <span className="font-medium text-sm truncate block">
-              {section.slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-            </span>
-          </div>
-
-          {/* Type badge */}
-          <Badge variant="outline" className="text-xs shrink-0">
-            {label}
-          </Badge>
-
-          {/* Delete button (custom sections only) */}
-          {isCustom && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(section);
-              }}
-              className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-destructive"
-              aria-label="Delete section"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-
-          {/* Expand toggle */}
-          <CollapsibleTrigger asChild>
-            <button className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground">
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${
-                  isExpanded ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-          </CollapsibleTrigger>
-        </div>
-
-        <CollapsibleContent>
-          <div className="px-3 pb-3">
-            <SectionEditor
-              section={section}
-              onSave={(updated) => {
-                onSectionUpdated(updated);
-                onToggleExpand(section.id);
-              }}
-              onCancel={() => onToggleExpand(section.id)}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
-  );
 }
 
 // --- Add Section Dialog ---
@@ -263,21 +115,171 @@ function AddSectionDialog({
   );
 }
 
+// --- Publish bar ---
+
+const EMPTY_PENDING: PendingSummary = {
+  total: 0,
+  content: 0,
+  position: 0,
+  visibility: 0,
+  removal: 0,
+  slugs: [],
+};
+
+/**
+ * Draft state and the one action that reaches shoppers.
+ *
+ * Every edit lands in a Section draft; nothing is live until Publish. Discard is the
+ * mirror — it clears pending edits and leaves published content untouched.
+ */
+function PublishBar({
+  pending,
+  onPublished,
+  onDiscarded,
+}: {
+  pending: PendingSummary;
+  onPublished: () => void;
+  onDiscarded: () => void;
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const dirty = pending.total > 0;
+
+  const run = async (method: "POST" | "DELETE") => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/landing-sections/publish", { method });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error ?? "Request failed");
+      if (method === "POST") {
+        toast.success("Published to the live site");
+        onPublished();
+      } else {
+        toast.success("Draft discarded");
+        onDiscarded();
+      }
+      setConfirmOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const parts = [
+    pending.content > 0 ? `${pending.content} edited` : null,
+    pending.position > 0 ? `${pending.position} moved` : null,
+    pending.visibility > 0 ? `${pending.visibility} shown/hidden` : null,
+    pending.removal > 0 ? `${pending.removal} removed` : null,
+  ].filter(Boolean);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+          dirty ? "bg-amber-500/15 text-amber-700 dark:text-amber-400" : "bg-muted text-muted-foreground"
+        }`}
+        data-page-builder-draft-state=""
+      >
+        <span className={`h-1.5 w-1.5 rounded-full ${dirty ? "bg-amber-500" : "bg-muted-foreground/50"}`} />
+        {describePending(pending)}
+      </span>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={!dirty || busy}
+        onClick={() => run("DELETE")}
+      >
+        <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+        Discard
+      </Button>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogTrigger asChild>
+          <Button size="sm" disabled={!dirty || busy}>
+            <UploadCloud className="mr-1.5 h-3.5 w-3.5" />
+            Publish
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Publish to the live site?</DialogTitle>
+            <DialogDescription>
+              {parts.length > 0
+                ? `${parts.join(", ")}. This is what shoppers will see.`
+                : "This is what shoppers will see."}
+            </DialogDescription>
+          </DialogHeader>
+          {pending.slugs.length > 0 && (
+            <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
+              {pending.slugs.map((slug) => (
+                <li key={slug} className="text-muted-foreground">
+                  {slug}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setConfirmOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => run("POST")} disabled={busy}>
+              {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Publish
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // --- Main Page Builder ---
 
 /** The `/api/landing-sections` payload the builder mounts with. */
-export type PageBuilderInitialData = { ok: true; sections: LandingSection[] };
+export type PageBuilderInitialData = {
+  ok: true;
+  sections: LandingSection[];
+  pending?: PendingSummary;
+};
 
+/**
+ * Three panes: the section tree, Preview mode, and the inspector.
+ *
+ * Below `lg` the panes collapse to the tree plus a full-screen preview sheet and a
+ * full-screen inspector sheet — one layout, not a second inspector, and the phone still
+ * gets a preview, which is the point.
+ */
 export default function PageBuilderPage({
   initialData,
 }: {
   initialData?: PageBuilderInitialData;
 }) {
   const [sections, setSections] = useState<LandingSection[]>(initialData?.sections ?? []);
+  const [pending, setPending] = useState<PendingSummary>(initialData?.pending ?? EMPTY_PENDING);
   const [loading, setLoading] = useState(!initialData);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [previewLocale, setPreviewLocale] = useState<Locale>(DEFAULT_LOCALE);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  /**
+   * Whether the open inspector has unsaved edits. A ref, not state: it is only read at
+   * the moment selection changes, and re-rendering the shell on every keystroke would
+   * reload the preview.
+   */
+  const inspectorDirty = useRef(false);
+  // Not useIsMobile(): that breaks at 768 while the grid needs 1024, so tablets
+  // (including the 834px preset) landed in neither layout.
+  const narrow = useMediaQuery("(max-width: 1023px)");
+
   // The server already loaded the sections; every later change still refetches.
   const skipFirstFetch = useRef(initialData != null);
+
+  const selected = useMemo(
+    () => sections.find((s) => s.slug === selectedSlug) ?? null,
+    [sections, selectedSlug],
+  );
 
   const loadSections = useCallback(async () => {
     try {
@@ -285,6 +287,7 @@ export default function PageBuilderPage({
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setSections(data.sections);
+      setPending(data.pending ?? EMPTY_PENDING);
     } catch {
       toast.error("Failed to load sections");
     } finally {
@@ -300,15 +303,38 @@ export default function PageBuilderPage({
     loadSections();
   }, [loadSections]);
 
-  const handleToggleExpand = (id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
+  /** Anything that changed the draft: refresh the list and re-render the preview. */
+  const afterChange = useCallback(() => {
+    loadSections();
+    setRefreshKey((k) => k + 1);
+  }, [loadSections]);
+
+  /**
+   * Changing selection remounts the inspector and discards its unsaved edits, so ask
+   * first. `beforeunload` cannot cover this — it only fires on a real document unload.
+   */
+  const selectSection = useCallback((slug: string | null) => {
+    if (
+      inspectorDirty.current &&
+      !window.confirm("Discard your unsaved edits to this section?")
+    ) {
+      return;
+    }
+    inspectorDirty.current = false;
+    setSelectedSlug(slug);
+  }, []);
+
+  /** For changes that replace the whole draft: drop the open inspector too. */
+  const resetAndRefresh = useCallback(() => {
+    inspectorDirty.current = false;
+    setSelectedSlug(null);
+    afterChange();
+  }, [afterChange]);
 
   const handleToggleVisibility = async (section: LandingSection) => {
     const newVisible = !section.visible;
-    // Optimistic update
     setSections((prev) =>
-      prev.map((s) => (s.id === section.id ? { ...s, visible: newVisible } : s))
+      prev.map((s) => (s.id === section.id ? { ...s, visible: newVisible } : s)),
     );
 
     try {
@@ -319,38 +345,33 @@ export default function PageBuilderPage({
       });
       if (!res.ok) throw new Error("Failed");
       toast.success(newVisible ? "Section shown" : "Section hidden");
+      afterChange();
     } catch {
-      // Revert
       setSections((prev) =>
-        prev.map((s) =>
-          s.id === section.id ? { ...s, visible: !newVisible } : s
-        )
+        prev.map((s) => (s.id === section.id ? { ...s, visible: !newVisible } : s)),
       );
       toast.error("Failed to update visibility");
     }
   };
 
   const handleDelete = async (section: LandingSection) => {
-    if (!confirm(`Delete "${section.slug}"? This cannot be undone.`)) return;
+    if (!confirm(`Remove "${section.slug}"? It stays on the live site until you publish.`)) return;
 
     setSections((prev) => prev.filter((s) => s.id !== section.id));
+    if (selectedSlug === section.slug) setSelectedSlug(null);
 
     try {
-      const res = await fetch(`/api/landing-sections/${section.id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed");
-      toast.success("Section deleted");
-    } catch {
-      loadSections(); // Revert by reloading
-      toast.error("Failed to delete section");
+      const res = await fetch(`/api/landing-sections/${section.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error ?? "Failed");
+      }
+      toast.success("Section removed — publish to apply");
+      afterChange();
+    } catch (err) {
+      loadSections();
+      toast.error(err instanceof Error ? err.message : "Failed to remove section");
     }
-  };
-
-  const handleSectionUpdated = (updated: LandingSection) => {
-    setSections((prev) =>
-      prev.map((s) => (s.id === updated.id ? updated : s))
-    );
   };
 
   const handleAddSection = async (type: string, slug: string) => {
@@ -362,20 +383,55 @@ export default function PageBuilderPage({
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Failed to create");
+        throw new Error(typeof err.error === "string" ? err.error : "Failed to create");
       }
       const { section } = await res.json();
-      setSections((prev) => [...prev, section]);
+      setSelectedSlug(section.slug);
       toast.success("Section added");
+      afterChange();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to add section"
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to add section");
     }
   };
 
+  /** Persist a whole order — shared by drag and the keyboard move buttons. */
+  const persistOrder = useCallback(
+    async (ordered: LandingSection[]) => {
+      setSections(ordered);
+      try {
+        const res = await fetch("/api/landing-sections/reorder", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: ordered.map((s) => s.id) }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(typeof body?.error === "string" ? body.error : "Failed to reorder");
+        }
+        toast.success("Order updated");
+        afterChange();
+      } catch (err) {
+        loadSections();
+        toast.error(err instanceof Error ? err.message : "Failed to reorder");
+      }
+    },
+    [afterChange, loadSections],
+  );
+
+  const handleMove = (section: LandingSection, direction: -1 | 1) => {
+    const from = sections.findIndex((s) => s.id === section.id);
+    const to = from + direction;
+    if (from === -1 || to < 0 || to >= sections.length) return;
+    const next = [...sections];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    persistOrder(next);
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleDragEnd = async (event: any) => {
+  const handleDragEnd = (event: any) => {
+    // Escape mid-drag still fires onDragEnd with source/target populated.
+    if (event.canceled) return;
     const source = event.operation?.source;
     const target = event.operation?.target;
     if (!source || !target || source.id === target.id) return;
@@ -384,78 +440,164 @@ export default function PageBuilderPage({
     const newIndex = sections.findIndex((s) => s.id === target.id);
     if (oldIndex === -1 || newIndex === -1) return;
 
-    // Reorder locally
-    const updated = [...sections];
-    const [moved] = updated.splice(oldIndex, 1);
-    updated.splice(newIndex, 0, moved);
-    setSections(updated);
+    const next = [...sections];
+    const [moved] = next.splice(oldIndex, 1);
+    next.splice(newIndex, 0, moved);
+    persistOrder(next);
+  };
 
-    // Persist
-    try {
-      const order = updated.map((s) => s.id);
-      const res = await fetch("/api/landing-sections/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ order }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      toast.success("Order updated");
-    } catch {
-      loadSections(); // Revert
-      toast.error("Failed to reorder");
-    }
+  const handleSectionSaved = (updated: LandingSection) => {
+    setSections((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    afterChange();
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-muted-foreground text-sm">Loading sections...</div>
+        <div className="text-sm text-muted-foreground">Loading sections...</div>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Page Builder</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Drag to reorder, toggle visibility, and edit section content.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" asChild>
-            <a href="/" target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-              Preview
-            </a>
-          </Button>
-          <AddSectionDialog onAdd={handleAddSection} />
-        </div>
+  const tree = (
+    <SectionTree
+      sections={sections}
+      selectedSlug={selectedSlug}
+      onSelect={selectSection}
+      onToggleVisibility={handleToggleVisibility}
+      onDelete={handleDelete}
+      onMove={handleMove}
+      onDragEnd={handleDragEnd}
+    />
+  );
+
+  const inspector = selected ? (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <h2 className="truncate text-sm font-semibold">{sectionTitle(selected)}</h2>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {SECTION_TYPE_LABELS[selected.section_type] ?? selected.section_type}
+        </span>
       </div>
+      <SectionEditor
+        key={selected.id}
+        section={selected}
+        onSave={handleSectionSaved}
+        onCancel={() => selectSection(null)}
+        onDirtyChange={(d) => {
+          inspectorDirty.current = d;
+        }}
+      />
+    </div>
+  ) : (
+    <p className="text-sm text-muted-foreground">
+      Pick a section — in the list or in the preview — to edit it.
+    </p>
+  );
 
-      <DragDropProvider onDragEnd={handleDragEnd}>
-        <div className="space-y-2">
-          {sections.map((section, index) => (
-            <SortableSectionRow
-              key={section.id}
-              section={section}
-              index={index}
-              expandedId={expandedId}
-              onToggleExpand={handleToggleExpand}
-              onToggleVisibility={handleToggleVisibility}
-              onDelete={handleDelete}
-              onSectionUpdated={handleSectionUpdated}
-            />
-          ))}
-        </div>
-      </DragDropProvider>
+  const header = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Page Builder</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Drag to reorder, toggle visibility, and edit section content. Changes stay in a
+          draft until you publish.
+        </p>
+      </div>
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        {/*
+          Close the inspector first: it is keyed on section id, which a restore or discard
+          does not change, so its local edits would survive and could be saved back over
+          the very state that was just restored.
+        */}
+        <PublishBar pending={pending} onPublished={afterChange} onDiscarded={resetAndRefresh} />
+        <PublishHistory pending={pending} onRestored={resetAndRefresh} />
+        <Button variant="outline" size="sm" asChild>
+          <a href="/" target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+            Live site
+          </a>
+        </Button>
+        <AddSectionDialog onAdd={handleAddSection} />
+      </div>
+    </div>
+  );
 
-      {sections.length === 0 && (
-        <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          No sections configured. Add a section to get started.
-        </div>
-      )}
+  // --- Narrow screens: list + full-screen preview and inspector sheets ---
+  if (narrow) {
+    return (
+      <div className="space-y-4">
+        {header}
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setMobilePreviewOpen(true)}>
+          <Eye className="mr-1.5 h-3.5 w-3.5" />
+          Preview
+        </Button>
+        {tree}
+
+        <Sheet open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}>
+          <SheetContent side="bottom" className="h-[92vh] p-0">
+            <SheetHeader className="border-b px-4 py-3">
+              <SheetTitle>Preview</SheetTitle>
+            </SheetHeader>
+            <div className="flex h-[calc(92vh-3.5rem)] flex-col">
+              <PreviewFrame
+                locale={previewLocale}
+                onLocaleChange={setPreviewLocale}
+                selectedSlug={selectedSlug}
+                onSelect={selectSection}
+                refreshKey={refreshKey}
+                initialDevice="mobile"
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <Sheet open={selected != null} onOpenChange={(open) => !open && selectSection(null)}>
+          {/*
+            Closing unmounts the editor and its unsaved edits, so it must be deliberate:
+            an outside tap is too easy to hit while typing.
+          */}
+          <SheetContent
+            side="bottom"
+            className="h-[85vh] overflow-y-auto"
+            onInteractOutside={(e) => e.preventDefault()}
+          >
+            <SheetHeader>
+              <SheetTitle>{selected ? sectionTitle(selected) : "Section"}</SheetTitle>
+            </SheetHeader>
+            <div className="px-4 pb-6">{inspector}</div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    );
+  }
+
+  // --- Three panes ---
+  return (
+    <div className="space-y-4">
+      {header}
+      <div
+        className="grid gap-3 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(300px,340px)]"
+        data-page-builder-shell=""
+      >
+        <aside className="min-w-0 space-y-2 overflow-y-auto lg:max-h-[calc(100vh-12rem)]">
+          {tree}
+        </aside>
+
+        <section className="flex min-w-0 flex-col overflow-hidden rounded-lg border">
+          <PreviewFrame
+            locale={previewLocale}
+            onLocaleChange={setPreviewLocale}
+            selectedSlug={selectedSlug}
+            onSelect={selectSection}
+            refreshKey={refreshKey}
+          />
+        </section>
+
+        <aside className="min-w-0 overflow-y-auto rounded-lg border p-3 lg:max-h-[calc(100vh-12rem)]">
+          {inspector}
+        </aside>
+      </div>
     </div>
   );
 }

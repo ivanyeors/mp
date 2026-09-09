@@ -12,7 +12,7 @@ export function WhyChooseSection({ section, messages: m }: WhyChooseSectionProps
   const c = section.content as WhyChooseContent;
   const rawCards = c.cards?.length ? c.cards : m.home.whyChoose.cards;
   const cards = rawCards.map((card) => ({
-    key: card.key ?? "",
+    key: card.key,
     label: card.label ?? "",
     title: card.title ?? "",
     description: card.description ?? "",

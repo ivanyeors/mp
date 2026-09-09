@@ -37,6 +37,7 @@ export interface LandingSection {
 
 export interface HeroContent {
   image?: string;
+  alt?: string;
   titlePrefix?: string;
   titleEmphasis?: string;
   titleSuffix?: string;
@@ -47,6 +48,8 @@ export interface HeroContent {
 
 export interface TextImageContent {
   image?: string;
+  /** Alt text for the image; falls back to the title. Carried over from the DAM. */
+  alt?: string;
   title?: string;
   description?: string;
   flip?: boolean; // swap text/image sides
@@ -63,6 +66,7 @@ export interface PickYourMpillowContent {
 
 export interface NeckPainsContent {
   image?: string;
+  alt?: string;
   title?: string;
   description?: string;
   feelTitle?: string;
@@ -104,6 +108,7 @@ export interface FounderNoteContent {
 // Custom section content types
 export interface CustomTextImageContent {
   image?: string;
+  alt?: string;
   title?: string;
   description?: string;
   flip?: boolean;

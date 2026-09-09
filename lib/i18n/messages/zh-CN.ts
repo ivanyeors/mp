@@ -9,6 +9,7 @@ export const zhCN: Messages = {
     learnMore: "了解更多",
     learnHow: "了解方法",
     fromPricePrefix: "起",
+    shopNow: "前往商城",
   },
   header: {
     customiseLabel: "定制",

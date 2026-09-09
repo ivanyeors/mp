@@ -511,6 +511,54 @@ _Avoid_: a parallel upload silo outside **Media Assets**; hard-coding overlay fi
 The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. Staff can see the mapping and edit the **color** in **Product Builder**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
 _Avoid_: rect/bounding-box cropping of filling shapes; gooey-merging pieces so the count is unreadable; generating random blob shapes in v1
 
+**Landing section**:
+One ordered block of the landing page (`landing_sections`): a `section_type` from the code-defined
+catalog, a stable `slug`, a position, a visibility flag, and a `content` JSONB of **Staff** overrides.
+Content is an override layer, not the copy itself — each section resolves `content` first and falls
+back to its i18n message, and images fall back to the `landing_*` **site_settings** slot then a code
+default. Built-in types are seeded and cannot be deleted or re-slugged (their components branch on
+`slug`, and the slug is also the journey-analytics anchor); custom types can be added, renamed and
+removed. Edited in the **Admin Panel** under Landing Site → Page Builder.
+_Avoid_: bare **Section** (that is an Mpillow filling compartment — `left | center | right`); "block"
+(no block model exists — a section is the smallest unit); **Product section template** (the
+learn-more slide-in primitive, a different catalog)
+
+**Section draft**:
+A pending, unpublished edit to one **Landing section**, held in nullable draft columns on that same
+row. A row with no draft columns set has no pending change. Drafts are per-section, so two **Staff**
+editing different sections never clobber each other. Invisible to shoppers until **Publish**; visible
+to **Staff** in **Preview mode**. Images referenced only by a **Section draft** still count as
+**Used** in the **Media Asset Library**.
+_Avoid_: a single shared whole-page draft row (last-write-wins across every section — strictly worse
+than per-row writes); "revision" (that is a **Publish snapshot**); treating a draft as a second
+published state
+
+**Publish** (landing):
+The single **Staff** action that applies every pending **Section draft** to the live landing page at
+once — atomically, in one database function — and writes one **Publish snapshot**. Discard is its
+mirror: clears draft state, touches nothing published. This is the only path from draft to live.
+_Avoid_: conflating with **Rule graph** publish (Rules Engine versions), with publishing a
+**Sellable item** to the storefront, or with **Promote** (fillings); per-section publishing; treating
+a save as a publish
+
+**Publish snapshot**:
+The full ordered **Landing section** array as it stood at one **Publish**, with timestamp and author.
+Append-only, bounded by retention, written by the publish function and read only by Restore — never
+by the render path. Restore writes a snapshot back into the **Section draft** layer, never straight
+into published state, so a recovery is reviewed in **Preview mode** before it ships.
+_Avoid_: "revision" / "version" used interchangeably in UI copy (pick one label and keep it);
+restoring directly to live; treating snapshots as a backup of anything but section content
+
+**Preview mode**:
+A render of the real landing route showing **Section draft** content, gated on an admin context and
+embedded same-origin in the Page Builder. It reuses the landing route's own section renderer — there
+is no second renderer, so preview and production cannot diverge. Visitor-facing chrome is shown and
+**Staff** chrome is not; journey analytics, Google Analytics and Speed Insights record nothing; and
+the reviews section serves fallback testimonials rather than calling the paid API on every reload.
+_Avoid_: the customisation preview (**Your Custom Mpillow** / bolster preview — an unrelated
+surface); Next draft mode (it would drop the Data Cache and bill a reviews call per reload, and its
+bypass cookie is browser-wide); the retired "Preview" link that opened the published site in a new tab
+
 **Learn-more slide-in**:
 The full-height sheet opened from landing-page "Learn more" CTAs (Basic Mpillow, Premium Mpillow, Mbolster). Primary job: product story + route to customisation or book appointment. Layout redesign target: reuse shared section templates across the three slide-ins with minimal hard-coded layout.
 _Avoid_: conflating with standalone routes like `/mbolster` or the `/mp-basic` / `/mp-config` wizards
@@ -654,3 +702,18 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Calendar "accept/decline" vs **Result** Accept/Decline — resolved: new term **Appointment RSVP status** (the guest's Google `responseStatus`, read live from the attendee; not the shopper *build* Accept → capture → **Order**). Shown as a status **pill** + type label in the **Admin Panel** calendar. Prereqs: **email required** (guest always an attendee) + `sendUpdates: "all"` on `events.insert`/reschedule (so Google actually sends the invite the customer responds to). See glossary. (Q1/Q2 Jul 2026.)
 - Guest "add to their own calendar" (item ②) — resolved: a **Save to calendar** button on the booking confirmation screen serving a hand-built `.ics` (`text/calendar`, no new dependency) — on phones this triggers the native add-sheet (iPhone) / intent chooser (Android), no per-provider dropdown. Complements the Google invite email, which already carries an addable `.ics` for any provider once `sendUpdates: "all"` is on.
 - Booking "dupe" — resolved: the reported dupe was **two stacked slide-in drawers** (booking Sheet opened on top of a learn-more slide-in; the flow also mounted twice — global `BookAppointmentHost` + an inline hero `BookAppointmentSheet`). Fix: booking converts from **Sheet** to a page route **`/[lang]/appointments`** (`?type=customisation|readjustment`), fronted by a **pill overlay** (Customise/Readjust, styled after the hero tier pills) before navigation; direct load with no `type` renders the same pills inline. All 7 entry points navigate instead of `openBookAppointmentSheet()`; host + inline sheet + `mpillow:open-book-appointment` event removed. Backend unchanged. ADR 0013 amendment (2026-07-27).
+- Landing draft storage — resolved: **Section draft** state lives in nullable draft columns on
+  `landing_sections`, not in a separate draft table or a single shared whole-page draft row. Reason:
+  per-row drafts preserve the concurrency the current per-row writes already have (a shared row makes
+  two **Staff** clobber each other across the whole page), and keeping drafts on the same row means
+  `lib/media/replace.ts` and the **Used / unused** scan reach them by widening the selected columns
+  rather than learning a new table. **Publish snapshot** history is a separate append-only table,
+  written by the publish function and never on the render path.
+- Landing preview transport — resolved: same-origin `iframe` of the real landing route under
+  **Preview mode**, with selection and scroll as direct DOM reads against the frame. Cross-origin
+  machinery (message protocols, content-source-map encoding) is unnecessary because the storefront and
+  **Admin Panel** share an origin — which also means adding a `frame-ancestors` CSP or splitting the
+  origins would break the Page Builder, and is worth an ADR before anyone tries.
+- Landing "Publish" was overloaded — resolved: **Publish** (landing) applies **Section drafts** to the
+  live landing page. It is not **Rule graph** publish, not storefront publishing of a **Sellable
+  item**, and not **Promote** (fillings). Say which one in prose whenever the surface is ambiguous.

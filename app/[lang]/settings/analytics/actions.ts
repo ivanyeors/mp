@@ -499,6 +499,8 @@ export type JourneyTransitionNode = {
   topDropOffSection: string | null;
   returnHits: number;
   medianReturnGapMs: number | null;
+  /** Distinct pages behind a collapsed group node (`/blog/*`). */
+  groupedPaths?: number;
 };
 export type JourneyTransitionEdge = {
   from: string;
@@ -527,6 +529,12 @@ export type JourneyNodeDetail = {
   outbound: { to: string; count: number }[];
 };
 
+/** Members behind an aggregated node — the pages in `/blog/*`, the sources in "Other". */
+export type JourneyGroupDetail = {
+  kind: "pages" | "sources";
+  total: number;
+  members: { label: string; count: number; sharePct: number }[];
+};
 export type JourneyConvertedDetail = {
   count: number;
   totalValue: number;
@@ -553,6 +561,12 @@ export async function getProspectJourneyTransitions(input: {
   includeConverted?: boolean;
   /** Expand this page path into section child nodes. */
   expandPath?: string | null;
+  /** Show the aggregated Entry source column (default on). */
+  entryNodes?: boolean;
+  /** Entry sources kept before the tail rolls into "Other"; 0 = keep all. */
+  entryTopN?: number;
+  /** Collapse detail pages (/blog/<slug> → /blog/*); default on. */
+  groupPaths?: boolean;
 }): Promise<
   | {
       ok: true;
@@ -596,6 +610,12 @@ export async function getProspectJourneyTransitions(input: {
         countries: countries.length > 0 ? countries : null,
         includeConverted: input.includeConverted === true,
         expandPath,
+        groupPaths: input.groupPaths !== false,
+        entryNodes: input.entryNodes !== false,
+        entryTopN:
+          typeof input.entryTopN === "number" && input.entryTopN >= 0
+            ? input.entryTopN
+            : undefined,
       }),
       listEntrySourcesFromDb(db),
       listCountriesFromDb(db),
@@ -624,10 +644,15 @@ export async function getProspectJourneyNodeDetail(input: {
   visitorCohort?: "new" | "returning" | null;
   countries?: string[] | null;
   includeConverted?: boolean;
+  /** Must match the graph, or a group node has no detail to show. */
+  groupPaths?: boolean;
+  /** Must match the graph, or "Other" rolls up a different tail. */
+  entryTopN?: number;
 }): Promise<
   | {
       ok: true;
       detail: JourneyNodeDetail | null;
+      groupDetail: JourneyGroupDetail | null;
       convertedDetail: JourneyConvertedDetail | null;
     }
   | { ok: false; error: string }
@@ -647,7 +672,7 @@ export async function getProspectJourneyNodeDetail(input: {
     const countries = (input.countries ?? [])
       .map((c) => c.trim())
       .filter(Boolean);
-    const { detail, convertedDetail } = await loadNodeDetailFromDb(
+    const { detail, groupDetail, convertedDetail } = await loadNodeDetailFromDb(
       supabaseAdmin(),
       {
         path,
@@ -657,9 +682,14 @@ export async function getProspectJourneyNodeDetail(input: {
         visitorCohort,
         countries: countries.length > 0 ? countries : null,
         includeConverted: input.includeConverted === true,
+        groupPaths: input.groupPaths !== false,
+        entryTopN:
+          typeof input.entryTopN === "number" && input.entryTopN >= 0
+            ? input.entryTopN
+            : undefined,
       },
     );
-    return { ok: true, detail, convertedDetail };
+    return { ok: true, detail, groupDetail, convertedDetail };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to load detail" };
   }

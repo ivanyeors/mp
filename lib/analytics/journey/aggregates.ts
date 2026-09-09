@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  buildGroupDetail,
   buildNodeChrome,
   buildNodeSidePanel,
+  type JourneyGroupDetail,
   type NodeSidePanel,
   type PageNodeChrome,
 } from "./chrome";
@@ -16,7 +18,19 @@ import {
   type ConvertedVisitRow,
 } from "./converted-sink";
 import { buildCountryLegend, UNKNOWN_COUNTRY } from "./country";
+import {
+  attachEntrySources,
+  DEFAULT_ENTRY_TOP_N,
+  entryNodePath,
+  entrySourceOf,
+  isEntryNode,
+  normalizeEntrySource,
+  OTHER_ENTRY,
+  rankEntrySources,
+  type EntryFeed,
+} from "./entry-nodes";
 import { attachDropOffSink, DROP_OFF_NODE } from "./drop-off-sink";
+import { collapseJourneyPath, isGroupedPath } from "./path-groups";
 import {
   buildReentryEdges,
   collectReturns,
@@ -92,7 +106,12 @@ function rowToVisitMeta(row: {
 
 async function loadSectionGraphFromDb(
   db: SupabaseClient,
-  opts: { from: string; to: string; visitIds: string[] | null },
+  opts: {
+    from: string;
+    to: string;
+    visitIds: string[] | null;
+    groupPath: (path: string) => string;
+  },
 ): Promise<{ nodes: SectionNode[]; edges: SectionEdge[] }> {
   let q = db
     .from("analytics_events")
@@ -123,7 +142,7 @@ async function loadSectionGraphFromDb(
 
   const dropCounts = new Map<string, number>();
   for (const row of dropped ?? []) {
-    const path = row.drop_off_path as string;
+    const path = opts.groupPath(row.drop_off_path as string);
     const sectionId = row.drop_off_section as string;
     if (!path || !sectionId) continue;
     const k = `${path}\0${sectionId}`;
@@ -135,7 +154,7 @@ async function loadSectionGraphFromDb(
       .filter((row) => row.section_id)
       .map((row) => ({
         visitId: row.visit_id as string,
-        path: row.path as string,
+        path: opts.groupPath(row.path as string),
         sectionId: row.section_id as string,
         occurredAt: row.occurred_at as string,
       })),
@@ -187,7 +206,10 @@ function attachReentryEdges(
 
 async function loadConvertedRecordsFromDb(
   db: SupabaseClient,
-  opts: { convertedVisits: ConvertedVisitRow[] },
+  opts: {
+    convertedVisits: ConvertedVisitRow[];
+    groupPath: (path: string) => string;
+  },
 ): Promise<ReturnType<typeof buildConvertedRecords>> {
   if (opts.convertedVisits.length === 0) return [];
 
@@ -228,7 +250,7 @@ async function loadConvertedRecordsFromDb(
     const list = eventsByVisit.get(visitId) ?? [];
     list.push({
       visitId,
-      path: row.path as string,
+      path: opts.groupPath(row.path as string),
       occurredAt: row.occurred_at as string,
     });
     eventsByVisit.set(visitId, list);
@@ -248,6 +270,7 @@ const emptyGraph = {
   sectionEdges: [] as SectionEdge[],
   expandablePaths: [] as string[],
   detail: null as NodeSidePanel | null,
+  groupDetail: null as JourneyGroupDetail | null,
   countryLegend: [] as { code: string; color: string }[],
   convertedDetail: null as ConvertedSinkDetail | null,
 };
@@ -266,6 +289,12 @@ export async function loadPageTransitionsFromDb(
     includeConverted?: boolean;
     /** When set, replace that page node with its section children. */
     expandPath?: string | null;
+    /** Aggregated Entry source column feeding landing pages (default on). */
+    entryNodes?: boolean;
+    /** Sources kept before the long tail rolls into "Other"; 0 = keep all. */
+    entryTopN?: number;
+    /** Collapse detail pages (/blog/<slug> → /blog/*) into one node; default on. */
+    groupPaths?: boolean;
     /** When set, include side-panel detail for this page node. */
     detailPath?: string | null;
   },
@@ -276,10 +305,17 @@ export async function loadPageTransitionsFromDb(
   sectionEdges: SectionEdge[];
   expandablePaths: string[];
   detail: NodeSidePanel | null;
+  /** Members behind an aggregated node (`/blog/*`, an Entry source). */
+  groupDetail: JourneyGroupDetail | null;
   /** Non-empty when ≥2 countries selected (color-by-country mode). */
   countryLegend: { code: string; color: string }[];
   convertedDetail: ConvertedSinkDetail | null;
 }> {
+  // One rewrite, applied where paths enter — every metric below aggregates with it.
+  const groupPath =
+    opts.groupPaths === false
+      ? (path: string) => path
+      : collapseJourneyPath;
   const selectedCountries = [
     ...new Set((opts.countries ?? []).map((c) => c.trim()).filter(Boolean)),
   ];
@@ -375,6 +411,7 @@ export async function loadPageTransitionsFromDb(
   }
 
   let events: PageViewEvent[] = [];
+  const groupedPaths = new Map<string, Map<string, number>>();
   if (visitIds.length > 0) {
     const { data, error } = await db
       .from("analytics_events")
@@ -387,11 +424,19 @@ export async function loadPageTransitionsFromDb(
       .limit(5000);
     if (error) throw new Error(error.message);
 
+    for (const row of data ?? []) {
+      const raw = row.path as string;
+      const grouped = groupPath(raw);
+      if (grouped === raw) continue;
+      const seen = groupedPaths.get(grouped) ?? new Map<string, number>();
+      seen.set(raw, (seen.get(raw) ?? 0) + 1);
+      groupedPaths.set(grouped, seen);
+    }
     events = (data ?? []).map((row) => {
       const visitId = row.visit_id as string;
       return {
         visitId,
-        path: row.path as string,
+        path: groupPath(row.path as string),
         occurredAt: row.occurred_at as string,
         ...(colorByCountry
           ? { country: countryByVisitId.get(visitId) ?? UNKNOWN_COUNTRY }
@@ -425,8 +470,9 @@ export async function loadPageTransitionsFromDb(
   const visitEndedAt = new Map<string, string>();
   const feeds: { lastPath: string; count: number; country?: string }[] = [];
   for (const row of dropped) {
-    const p = row.drop_off_path as string;
-    if (!p) continue;
+    const rawPath = row.drop_off_path as string;
+    if (!rawPath) continue;
+    const p = groupPath(rawPath);
     feedMap.set(p, (feedMap.get(p) ?? 0) + 1);
     const section = row.drop_off_section as string | null;
     if (section) {
@@ -475,7 +521,10 @@ export async function loadPageTransitionsFromDb(
 
   let convertedRecords: ReturnType<typeof buildConvertedRecords> = [];
   if (opts.includeConverted && convertedVisits.length > 0) {
-    convertedRecords = await loadConvertedRecordsFromDb(db, { convertedVisits });
+    convertedRecords = await loadConvertedRecordsFromDb(db, {
+      convertedVisits,
+      groupPath,
+    });
     withSink = attachConvertedSink(withSink, collectConvertedFeeds(convertedRecords));
   }
 
@@ -492,16 +541,45 @@ export async function loadPageTransitionsFromDb(
     from: opts.from,
     to: opts.to,
     visitIds: visitIds.length > 0 ? visitIds : null,
+    groupPath,
   });
   const expandablePaths = [
     ...new Set(sectionGraph.nodes.map((n) => n.path)),
   ].sort((a, b) => a.localeCompare(b));
 
+  const entrySourceByVisit = new Map(
+    rangeRaw.map((v) => [v.id, v.entry_source] as const),
+  );
+  const entryFeeds: EntryFeed[] = [...landings].map(([visitId, landingPath]) => ({
+    entrySource: entrySourceByVisit.get(visitId) ?? null,
+    landingPath,
+    count: 1,
+    ...(colorByCountry
+      ? { country: countryByVisitId.get(visitId) ?? UNKNOWN_COUNTRY }
+      : {}),
+  }));
+
+  // Rank from the feeds the column is actually built from, so the "Other"
+  // rollup and its breakdown can never disagree.
+  const graphPaths = new Set(withReturns.nodes.map((n) => n.path));
+  const validEntryFeeds = entryFeeds.filter((f) => graphPaths.has(f.landingPath));
+  const entryTopN = opts.entryTopN ?? DEFAULT_ENTRY_TOP_N;
+  const entryRank = rankEntrySources(validEntryFeeds, entryTopN);
+  if (entryRank.rolled.length > 0) {
+    groupedPaths.set(
+      entryNodePath(OTHER_ENTRY),
+      new Map(entryRank.rolled.map((src) => [src, entryRank.totals.get(src) ?? 0])),
+    );
+  }
+
   const expandPath = opts.expandPath?.trim() || null;
   const expanded =
     expandPath && expandablePaths.includes(expandPath)
-      ? expandPageToSections(withReturns, sectionGraph, expandPath)
-      : withReturns;
+      ? // Section dive swaps the canvas — the source column would dangle there.
+        expandPageToSections(withReturns, sectionGraph, expandPath)
+      : opts.entryNodes === false
+        ? withReturns
+        : attachEntrySources(withReturns, validEntryFeeds, { topN: entryTopN });
 
   const pageChrome = buildNodeChrome({
     nodes: withReturns.nodes,
@@ -513,9 +591,13 @@ export async function loadPageTransitionsFromDb(
   });
   const chromeByPath = new Map(pageChrome.map((n) => [n.path, n]));
   const nodes: PageNodeChrome[] = expanded.nodes.map((n) => {
+    const groupSize = groupedPaths.get(n.path)?.size;
     const existing = chromeByPath.get(n.path);
-    if (existing) return existing;
+    if (existing) {
+      return groupSize ? { ...existing, groupedPaths: groupSize } : existing;
+    }
     return {
+      ...(groupSize ? { groupedPaths: groupSize } : {}),
       path: n.path,
       views: n.views,
       prospects: n.views,
@@ -531,9 +613,40 @@ export async function loadPageTransitionsFromDb(
   const detailPath = opts.detailPath?.trim() || null;
   let detail: NodeSidePanel | null = null;
   let convertedDetail: ConvertedSinkDetail | null = null;
+  let groupDetail: JourneyGroupDetail | null = null;
+  if (detailPath && isEntryNode(detailPath)) {
+    const source = entrySourceOf(detailPath);
+    if (source === OTHER_ENTRY) {
+      // The tail this node stands for.
+      groupDetail = buildGroupDetail(
+        "sources",
+        entryRank.rolled.map(
+          (src) => [src, entryRank.totals.get(src) ?? 0] as const,
+        ),
+      );
+    } else if (source) {
+      // A single source: the landing pages it arrives on.
+      const landingCounts = new Map<string, number>();
+      for (const f of validEntryFeeds) {
+        if (normalizeEntrySource(f.entrySource) !== source) continue;
+        landingCounts.set(
+          f.landingPath,
+          (landingCounts.get(f.landingPath) ?? 0) + f.count,
+        );
+      }
+      groupDetail = buildGroupDetail("pages", landingCounts);
+    }
+  } else if (detailPath && isGroupedPath(detailPath)) {
+    groupDetail = buildGroupDetail("pages", groupedPaths.get(detailPath) ?? []);
+  }
+
   if (detailPath === CONVERTED_NODE) {
     convertedDetail = buildConvertedSinkDetail(convertedRecords);
-  } else if (detailPath && detailPath !== DROP_OFF_NODE) {
+  } else if (
+    detailPath &&
+    detailPath !== DROP_OFF_NODE &&
+    !isEntryNode(detailPath)
+  ) {
     const exitSections = sectionGraph.nodes
       .filter((s) => s.path === detailPath && s.dropOffs > 0)
       .map((s) => ({ sectionId: s.sectionId, count: s.dropOffs }));
@@ -566,6 +679,7 @@ export async function loadPageTransitionsFromDb(
     sectionEdges: sectionGraph.edges,
     expandablePaths,
     detail,
+    groupDetail,
     countryLegend,
     convertedDetail,
   };
@@ -582,9 +696,14 @@ export async function loadNodeDetailFromDb(
     visitorCohort?: VisitorCohort | null;
     countries?: string[] | null;
     includeConverted?: boolean;
+    /** Must match the graph call, or a group node resolves to no detail. */
+    groupPaths?: boolean;
+    /** Must match the graph call, or "Other" rolls up a different tail. */
+    entryTopN?: number;
   },
 ): Promise<{
   detail: NodeSidePanel | null;
+  groupDetail: JourneyGroupDetail | null;
   convertedDetail: ConvertedSinkDetail | null;
 }> {
   const r = await loadPageTransitionsFromDb(db, {
@@ -594,7 +713,16 @@ export async function loadNodeDetailFromDb(
     visitorCohort: opts.visitorCohort,
     countries: opts.countries,
     includeConverted: opts.includeConverted === true || opts.path === CONVERTED_NODE,
+    groupPaths: opts.groupPaths !== false,
+    entryTopN: opts.entryTopN,
+    // Detail-only call: the column itself is not needed, but the source ranking
+    // behind it is — that is what an Entry node's breakdown is built from.
+    entryNodes: false,
     detailPath: opts.path,
   });
-  return { detail: r.detail, convertedDetail: r.convertedDetail };
+  return {
+    detail: r.detail,
+    groupDetail: r.groupDetail,
+    convertedDetail: r.convertedDetail,
+  };
 }

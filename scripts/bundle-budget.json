@@ -4,6 +4,7 @@
   "/[lang]/mp-basic": 675,
   "/[lang]/settings": 425,
   "/[lang]": 525,
+  "/[lang]/page-builder-preview": 525,
   "/[lang]/settings/**": 475,
   "/[lang]/**": 475,
   "**": 410

@@ -65,7 +65,7 @@ describe("replace-everywhere (slice 15)", () => {
           { key: "landing_hero_asset_id", value: OLD_ID },
         ],
         landingSections: [
-          { id: "ls1", content: { image: OLD_URL, media_asset_id: OLD_ID } },
+          { id: "ls1", content: { image: OLD_URL, media_asset_id: OLD_ID }, draft_content: null },
         ],
         productImages: [
           { id: "pi1", url: OLD_URL, media_asset_id: OLD_ID },
@@ -153,5 +153,39 @@ describe("replace-everywhere (slice 15)", () => {
     expect(rows.settings?.find((s) => s.key === "landing_founder_asset_id")?.value).toBe(
       NEW_ID,
     );
+  });
+});
+
+describe("landing section drafts", () => {
+  it("rewrites a pending draft, so the next publish does not revert the replacement", () => {
+    const { rows, summary } = planReplaceEverywhere(
+      {
+        landingSections: [
+          {
+            id: "ls1",
+            content: { image: "https://cdn.test/other.webp" },
+            draft_content: { image: OLD_URL, media_asset_id: OLD_ID },
+          },
+        ],
+      },
+      INPUT,
+    );
+
+    expect(summary.landingSections).toBe(1);
+    expect(rows.landingSections?.[0].draft_content).toEqual({
+      image: NEW_URL,
+      media_asset_id: NEW_ID,
+    });
+  });
+
+  it("leaves a null draft null", () => {
+    const { rows } = planReplaceEverywhere(
+      {
+        landingSections: [{ id: "ls1", content: { image: OLD_URL }, draft_content: null }],
+      },
+      INPUT,
+    );
+
+    expect(rows.landingSections?.[0].draft_content).toBeNull();
   });
 });

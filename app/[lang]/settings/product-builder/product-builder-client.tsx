@@ -8,12 +8,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GitBranch, ImageIcon, Loader2, Trash2 } from "lucide-react";
+import { GitBranch, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,35 +21,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ImagePicker, type AssetSelection } from "@/components/ui/image-picker";
+import { OverlayWorkbench } from "@/components/product-builder/overlay-workbench";
 import { FILLING_SHAPE_PATHS } from "@/components/spatial/xray-assets";
 import {
   effectiveFillingColors,
   type ColorOverrideRow,
   type EffectiveFillingColor,
 } from "@/lib/spatial-fillings/color-overrides";
-import type { OverlayFit } from "@/lib/product-builder/overlays";
+import type { OverlayFit, OverlayMappingItem } from "@/lib/product-builder/overlays";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { getApiErrorMessage } from "@/lib/utils";
 
-/** Inventory category → shopper-facing role (cover | case). */
-// ponytail: inline copy of toComponentRole — importing it drags supabaseAdmin into the client bundle
-function roleLabel(category: string): string {
-  return category === "cover" ? "cover" : "case";
-}
-
-export type OverlayItem = {
-  id: number;
-  name: string;
-  category: string;
-  size: string | null;
-  mapping: {
-    media_asset_id: string;
-    hosted_url: string | null;
-    fit: OverlayFit | null;
-  } | null;
-};
+export type OverlayItem = OverlayMappingItem;
 
 /** The mappings payload the page mounts with. */
 export type ProductBuilderInitialData = { ok: true; items: OverlayItem[] };
@@ -134,7 +117,7 @@ export default function ProductBuilderPage({
   );
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Product Builder</h1>
@@ -152,44 +135,19 @@ export default function ProductBuilderPage({
         </Button>
       </div>
 
+      <h2 className="text-lg font-semibold tracking-tight">Overlay mapping</h2>
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-20">Overlay</TableHead>
-              <TableHead>Item</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Fit (scale / x / y)</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((item) => (
-              <OverlayRow
-                key={item.id}
-                item={item}
-                onPick={(sel, fit) => void upsert(item.id, sel.assetId, fit)}
-                onSaveFit={(fit) =>
-                  item.mapping
-                    ? void upsert(item.id, item.mapping.media_asset_id, fit)
-                    : undefined
-                }
-                onRemove={() => void remove(item.id)}
-              />
-            ))}
-            {items.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  No active cover or case items found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <OverlayWorkbench
+          items={items}
+          onPick={(itemId, sel, fit) => void upsert(itemId, sel.assetId, fit)}
+          onSaveFit={(itemId, assetId, fit) => void upsert(itemId, assetId, fit)}
+          onRemove={(itemId) => void remove(itemId)}
+        />
       )}
 
       <FillingVisualsSection settingsPath={settingsPath} />
@@ -373,115 +331,6 @@ function FillingVisualRow({
             >
               <Trash2 className="mr-1 h-3.5 w-3.5" />
               Use default
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function OverlayRow({
-  item,
-  onPick,
-  onSaveFit,
-  onRemove,
-}: {
-  item: OverlayItem;
-  onPick: (selection: AssetSelection, fit: OverlayFit | null) => void;
-  onSaveFit: (fit: OverlayFit | null) => void;
-  onRemove: () => void;
-}) {
-  const [scale, setScale] = useState(item.mapping?.fit?.scale?.toString() ?? "");
-  const [x, setX] = useState(item.mapping?.fit?.x?.toString() ?? "");
-  const [y, setY] = useState(item.mapping?.fit?.y?.toString() ?? "");
-
-  const fitFromInputs = (): OverlayFit | null => {
-    const fit: OverlayFit = {};
-    if (scale.trim() !== "" && !Number.isNaN(Number(scale))) fit.scale = Number(scale);
-    if (x.trim() !== "" && !Number.isNaN(Number(x))) fit.x = Number(x);
-    if (y.trim() !== "" && !Number.isNaN(Number(y))) fit.y = Number(y);
-    return Object.keys(fit).length ? fit : null;
-  };
-
-  return (
-    <TableRow>
-      <TableCell>
-        <div className="h-12 w-12 rounded border bg-muted flex items-center justify-center overflow-hidden">
-          {item.mapping?.hosted_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.mapping.hosted_url}
-              alt={item.name}
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <ImageIcon className="h-5 w-5 text-muted-foreground opacity-50" />
-          )}
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="font-medium">{item.name}</div>
-        {item.size && <div className="text-xs text-muted-foreground">Size {item.size}</div>}
-      </TableCell>
-      <TableCell className="capitalize">{roleLabel(item.category)}</TableCell>
-      <TableCell>
-        <div className="flex items-center gap-1">
-          <Input
-            type="number"
-            step="0.1"
-            placeholder="1"
-            value={scale}
-            onChange={(e) => setScale(e.target.value)}
-            className="h-8 w-16"
-            aria-label={`${item.name} fit scale`}
-          />
-          <Input
-            type="number"
-            placeholder="0"
-            value={x}
-            onChange={(e) => setX(e.target.value)}
-            className="h-8 w-16"
-            aria-label={`${item.name} fit x`}
-          />
-          <Input
-            type="number"
-            placeholder="0"
-            value={y}
-            onChange={(e) => setY(e.target.value)}
-            className="h-8 w-16"
-            aria-label={`${item.name} fit y`}
-          />
-          {item.mapping && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => onSaveFit(fitFromInputs())}
-            >
-              Save fit
-            </Button>
-          )}
-        </div>
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-1">
-          <ImagePicker onSelect={(sel) => onPick(sel, fitFromInputs())}>
-            <Button type="button" size="sm" variant="outline">
-              <ImageIcon className="mr-1.5 h-3.5 w-3.5" />
-              {item.mapping ? "Change" : "Pick"}
-            </Button>
-          </ImagePicker>
-          {item.mapping && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={onRemove}
-              aria-label={`Remove ${item.name} overlay`}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>

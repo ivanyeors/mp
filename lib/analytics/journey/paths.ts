@@ -1,9 +1,15 @@
 import type { Locale } from "@/lib/i18n/locales";
 import { stripLocale, withLocale } from "@/lib/i18n/routing";
+import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 
-/** Admin Panel paths must never enter the journey store. */
+/**
+ * Admin Panel paths must never enter the journey store — nor must Preview mode, which
+ * renders the landing path's own markup inside the builder. Without this an editing
+ * session would pollute the very funnel the section anchors exist to measure.
+ */
 export function isAdminJourneyPath(pathname: string): boolean {
   const base = stripLocale(pathname);
+  if (isPageBuilderPreviewRoute(base)) return true;
   return base === "/settings" || base.startsWith("/settings/");
 }
 
