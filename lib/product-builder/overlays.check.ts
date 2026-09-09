@@ -52,11 +52,36 @@ assert.match(
 const bench = readFileSync("components/product-builder/overlay-workbench.tsx", "utf8");
 assert.match(bench, /overlayFrame\(fit, VIEW_W, VIEW_H\)/, "stage places the image with overlayFrame");
 assert.match(bench, /SILHOUETTE_PATH/, "stage clips against the shared silhouette, not a copy");
-assert.match(bench, /BOLSTER_SILHOUETTE_PATH/, "bolster cases preview against the capsule");
+// The static BOLSTER_SILHOUETTE_PATH is a placeholder no configurator draws;
+// /mbolster-config uses bolsterCapsulePath(length), so the workbench must too.
+assert.match(bench, /bolsterCapsulePath\(length\)/, "bolster cases preview against the real capsule");
+assert.doesNotMatch(bench, /BOLSTER_SILHOUETTE_PATH/, "stale placeholder capsule is not used");
+assert.match(bench, /if \(s === "S"\) return "short";/, "item size drives the capsule length");
+// React's generated ids carry colons/guillemets — invalid inside url(#...).
+assert.doesNotMatch(/import \{[^}]*\} from "react";/.exec(bench)?.[0] ?? "", /useId/, "useId is not imported");
+assert.match(bench, /const clipId = `overlay-clip-\$\{item\.id\}`/, "clip id is deterministic per item");
+// Radix ScrollArea's Root is only `relative`, so a max-h on it never clips.
+assert.doesNotMatch(bench, /ScrollArea/, "rail uses a native overflow container that honours max-h");
+assert.match(bench, /max-h-\[28rem\] overflow-y-auto/, "rail scrolls instead of spilling into the next section");
+assert.match(bench, /onKeyDown=\{url \? onKeyDown : undefined\}/, "fit is keyboard-reachable, not drag-only");
+assert.match(bench, /aria-live="polite"/, "keyboard nudges are announced");
+// A mapping row whose asset lost its hosted_url is dropped by fetchOverlayMap,
+// so the shop renders nothing — the workbench must not call that "unmapped".
+assert.match(bench, /const assetMissing = item\.mapping != null && url == null;/, "missing asset is a distinct state");
+assert.match(
+  bench,
+  /items\.filter\(\(i\) => i\.mapping\?\.hosted_url\)\.length/,
+  "the mapped counter counts overlays that actually ship, not mapping rows",
+);
 assert.match(bench, /preserveAspectRatio="xMidYMid slice"/, "same cover behaviour as the configurator");
 assert.match(bench, /clipPath=\{`url\(#\$\{clipId\}\)`\}/, "overlay is clipped to the silhouette");
 assert.match(bench, /onPointerMove=\{onPointerMove\}/, "fit is dragged, not typed");
-assert.match(bench, /VIEW_W \/ rect\.width/, "pointer pixels convert to viewBox units");
+assert.match(
+  bench,
+  /const k = \(VIEW_W \+ PAD_X \* 2\) \/ rect\.width/,
+  "pointer pixels convert through the padded stage width, not the bare viewBox",
+);
+assert.match(bench, /opacity=\{0\.18\}/, "ghost shows the part of the asset the clip discards");
 // The stage must not be able to dial in a fit the API would reject.
 assert.equal(SCALE_BOUNDS.min, 0.2, "stage scale floor matches OverlayFitSchema");
 assert.equal(SCALE_BOUNDS.max, 3, "stage scale ceiling matches OverlayFitSchema");

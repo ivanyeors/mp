@@ -9,18 +9,15 @@
  * `overlayFrame` math, same clip — so what is dialled in here is what ships.
  */
 
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ImageIcon, Move, RotateCcw, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { ImagePicker, type AssetSelection } from "@/components/ui/image-picker";
-import {
-  BOLSTER_SILHOUETTE_PATH,
-  SILHOUETTE_PATH,
-} from "@/components/spatial/xray-assets";
+import { bolsterCapsulePath, SILHOUETTE_PATH } from "@/components/spatial/xray-assets";
+import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import {
   overlayFrame,
   type OverlayFit,
@@ -31,6 +28,13 @@ import { cn } from "@/lib/utils";
 /** Silhouette viewBox shared by the configurator previews and `overlayFrame`. */
 const VIEW_W = 664;
 const VIEW_H = 374;
+/**
+ * Breathing room around the silhouette so an overlay scaled past 1x still shows
+ * its frame instead of being cropped by the stage edge. Placement math stays in
+ * 664x374 units; only the stage viewport is wider.
+ */
+const PAD_X = 88;
+const PAD_Y = 50;
 /** Mirrors OverlayFitSchema so the stage can never dial in a rejected save. */
 const SCALE_MIN = 0.2;
 const SCALE_MAX = 3;
@@ -42,9 +46,26 @@ function roleLabel(category: string): "cover" | "case" {
   return category === "cover" ? "cover" : "case";
 }
 
-/** Bolster cases preview against the capsule; everything else is the pillow. */
-function silhouetteFor(category: string): string {
-  return category === "bolster_case" ? BOLSTER_SILHOUETTE_PATH : SILHOUETTE_PATH;
+/** Mbolster item size (S/M/L) → the capsule length /mbolster-config draws. */
+function bolsterLengthFor(size: string | null): BolsterLength {
+  const s = size?.trim().toUpperCase();
+  if (s === "S") return "short";
+  if (s === "L") return "long";
+  return "medium";
+}
+
+/**
+ * The silhouette this item is previewed against — the same shape its own
+ * configurator renders, so a fit dialled in here transfers exactly.
+ * Bolster cases get `bolsterCapsulePath` at their size (what /mbolster-config
+ * draws), not the static placeholder capsule.
+ */
+function silhouetteFor(item: OverlayMappingItem): { d: string; label: string } {
+  if (item.category === "bolster_case") {
+    const length = bolsterLengthFor(item.size);
+    return { d: bolsterCapsulePath(length), label: `Mbolster capsule (${length})` };
+  }
+  return { d: SILHOUETTE_PATH, label: "Mpillow silhouette" };
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -79,7 +100,7 @@ export function OverlayWorkbench({
     return by;
   }, [items]);
 
-  const mappedCount = items.filter((i) => i.mapping).length;
+  const mappedCount = items.filter((i) => i.mapping?.hosted_url).length;
 
   if (items.length === 0) {
     return (
@@ -98,8 +119,7 @@ export function OverlayWorkbench({
             {mappedCount}/{items.length} mapped
           </span>
         </div>
-        <ScrollArea className="max-h-[28rem] md:max-h-[32rem]">
-          <div className="p-2">
+        <div className="max-h-[28rem] overflow-y-auto p-2 md:max-h-[34rem]">
             {(["cover", "case"] as const).map((role) =>
               groups[role].length ? (
                 <div key={role} className="mb-2 last:mb-0">
@@ -131,9 +151,12 @@ export function OverlayWorkbench({
                               </span>
                             )}
                           </span>
-                          {!item.mapping && (
-                            <Badge variant="outline" className="shrink-0 text-[10px]">
-                              Unmapped
+                          {!item.mapping?.hosted_url && (
+                            <Badge
+                              variant={item.mapping ? "destructive" : "outline"}
+                              className="shrink-0 text-[10px]"
+                            >
+                              {item.mapping ? "Asset missing" : "Unmapped"}
                             </Badge>
                           )}
                         </button>
@@ -143,8 +166,7 @@ export function OverlayWorkbench({
                 </div>
               ) : null,
             )}
-          </div>
-        </ScrollArea>
+        </div>
       </aside>
 
       {selected && (
@@ -189,7 +211,9 @@ function OverlayStage({
   onSaveFit: (fit: OverlayFit | null) => void;
   onRemove: () => void;
 }) {
-  const clipId = useId();
+  // Derived from the item, not useId(): React's generated ids carry colons /
+  // guillemets, which are not safe inside a url(#...) fragment.
+  const clipId = `overlay-clip-${item.id}`;
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
 
@@ -197,8 +221,11 @@ function OverlayStage({
   const [x, setX] = useState(item.mapping?.fit?.x ?? 0);
   const [y, setY] = useState(item.mapping?.fit?.y ?? 0);
 
-  const path = silhouetteFor(item.category);
+  const { d: path, label: shapeLabel } = silhouetteFor(item);
   const url = item.mapping?.hosted_url ?? null;
+  // fetchOverlayMap skips mapping rows whose asset has no hosted_url, so the
+  // shop shows a plain silhouette. Say so rather than looking merely unmapped.
+  const assetMissing = item.mapping != null && url == null;
   const fit = toFit(scale, x, y);
   const saved = item.mapping?.fit ?? null;
   const dirty =
@@ -221,7 +248,7 @@ function OverlayStage({
     if (!start || !rect || rect.width === 0) return;
     // Pointer pixels → viewBox units; the stage keeps the 664×374 aspect so one
     // ratio covers both axes.
-    const k = VIEW_W / rect.width;
+    const k = (VIEW_W + PAD_X * 2) / rect.width;
     setX(clamp(Math.round(start.x + (e.clientX - start.px) * k), -OFFSET_LIMIT, OFFSET_LIMIT));
     setY(clamp(Math.round(start.y + (e.clientY - start.py) * k), -OFFSET_LIMIT, OFFSET_LIMIT));
   }, []);
@@ -230,14 +257,34 @@ function OverlayStage({
     drag.current = null;
   }, []);
 
+  /** Arrow keys nudge the fit (Shift = 10 units) — dragging cannot be the only input. */
+  const onKeyDown = useCallback(
+    (e: React.KeyboardEvent<SVGSVGElement>) => {
+      const step = e.shiftKey ? 10 : 1;
+      const move: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step],
+      };
+      const delta = move[e.key];
+      if (!delta) return;
+      e.preventDefault();
+      setX((v) => clamp(v + delta[0], -OFFSET_LIMIT, OFFSET_LIMIT));
+      setY((v) => clamp(v + delta[1], -OFFSET_LIMIT, OFFSET_LIMIT));
+    },
+    [],
+  );
+
   return (
     <section className="rounded-lg border">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{item.name}</p>
-          <p className="text-xs capitalize text-muted-foreground">
-            {roleLabel(item.category)}
+          <p className="truncate text-xs text-muted-foreground">
+            <span className="capitalize">{roleLabel(item.category)}</span>
             {item.size ? ` · size ${item.size}` : ""}
+            {` · ${shapeLabel}`}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -264,29 +311,45 @@ function OverlayStage({
       <div className="p-3">
         <div
           className={cn(
-            "relative overflow-hidden rounded-md border bg-muted/40",
+            "relative mx-auto w-full max-w-3xl",
             url ? "cursor-grab active:cursor-grabbing" : "",
           )}
         >
           <svg
             ref={svgRef}
-            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-            className="block w-full touch-none select-none"
+            viewBox={`${-PAD_X} ${-PAD_Y} ${VIEW_W + PAD_X * 2} ${VIEW_H + PAD_Y * 2}`}
+            className={cn(
+              "block w-full select-none",
+              url && "touch-none outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            )}
             role="img"
-            aria-label={`${item.name} overlay preview`}
+            tabIndex={url ? 0 : undefined}
+            aria-label={
+              url
+                ? `${item.name} overlay placement — drag or use arrow keys to reposition`
+                : `${item.name} preview, no overlay`
+            }
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={endDrag}
             onPointerCancel={endDrag}
+            onKeyDown={url ? onKeyDown : undefined}
           >
             <defs>
               <clipPath id={clipId}>
                 <path d={path} />
               </clipPath>
             </defs>
-            <path d={path} className="fill-background" />
+            <path d={path} fill="none" />
             {url && (
               <>
+                {/* Ghost of the whole asset — shows the part the clip discards. */}
+                <image
+                  href={url}
+                  preserveAspectRatio="xMidYMid slice"
+                  opacity={0.18}
+                  {...frame}
+                />
                 <image
                   href={url}
                   clipPath={`url(#${clipId})`}
@@ -315,12 +378,20 @@ function OverlayStage({
             />
           </svg>
           {!url && (
-            <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-              No overlay — the configurator shows the plain silhouette.
+            <p
+              className={cn(
+                "pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-sm",
+                assetMissing ? "text-destructive" : "text-muted-foreground",
+              )}
+            >
+              {assetMissing
+                ? "Mapped asset is missing from the library — the configurator falls back to the plain silhouette. Pick a new image."
+                : "No overlay — the configurator shows the plain silhouette."}
             </p>
           )}
         </div>
 
+        {url && (
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-3">
           <div className="flex min-w-[12rem] flex-1 items-center gap-2">
             <span className="text-xs text-muted-foreground">Scale</span>
@@ -329,13 +400,15 @@ function OverlayStage({
               min={SCALE_MIN}
               max={SCALE_MAX}
               step={0.05}
-              disabled={!url}
-              onValueChange={([v]) => setScale(Number(v.toFixed(2)))}
+              onValueChange={([v]) => setScale(Number((v ?? 1).toFixed(2)))}
               aria-label={`${item.name} overlay scale`}
               className="flex-1"
             />
           </div>
-          <p className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+          <p
+            className="flex items-center gap-1.5 font-mono text-xs tabular-nums text-muted-foreground"
+            aria-live="polite"
+          >
             <Move className="h-3.5 w-3.5" aria-hidden />
             {scale.toFixed(2)}× · x {x} · y {y}
           </p>
@@ -344,7 +417,7 @@ function OverlayStage({
               type="button"
               size="sm"
               variant="ghost"
-              disabled={!url || (scale === 1 && x === 0 && y === 0)}
+              disabled={scale === 1 && x === 0 && y === 0}
               onClick={() => {
                 setScale(1);
                 setX(0);
@@ -357,17 +430,19 @@ function OverlayStage({
             <Button
               type="button"
               size="sm"
-              disabled={!item.mapping || !dirty}
+              disabled={!dirty}
               onClick={() => onSaveFit(fit)}
             >
               {dirty ? "Save fit" : "Saved"}
             </Button>
           </div>
         </div>
+        )}
         {url && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Drag the preview to reposition; the dashed frame shows the full image,
-            the silhouette clips it exactly as the configurator does.
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            Drag the preview or use arrow keys (Shift for 10) to reposition. The dashed
+            frame is the whole image; the silhouette clips it exactly as the
+            configurator does.
           </p>
         )}
       </div>
