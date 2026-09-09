@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 
 import {
   derivePackList,
+  MAX_PIECES_PER_CELL,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -93,5 +94,80 @@ for (const needle of [
 }
 assert.ok(route.includes("tpl.role !== 'filling'"), "PUT rejects placements on warehouse templates");
 assert.ok(route.includes("rejectFillingLines"), "warehouse lines path (ADR 0003) untouched");
+
+// --- Depth bound: request schema must not be tighter than the validator ---
+// The route's zod bound sat at the retired two-value top/bottom lane while the DB
+// constraint and validatePillowPlacements both moved to the full 0..4 depth range,
+// so the API silently refused any stack deeper than layer 1.
+assert.ok(
+  route.includes("MAX_PIECES_PER_CELL - 1"),
+  "route derives its row_index bound from MAX_PIECES_PER_CELL, not a restated literal",
+);
+assert.ok(
+  !/row_index:\s*z\.number\(\)\.int\(\)\.min\(0\)\.max\(\d/.test(route),
+  "route's row_index bound is not a hardcoded number",
+);
+for (const depth of [0, MAX_PIECES_PER_CELL - 1]) {
+  assert.deepEqual(
+    validatePillowPlacements(
+      rowsToPillowPlacements([
+        { section: "left", sub_section: "front", slot: 1, item_id: 1, row_index: depth },
+      ]),
+      categories,
+    ),
+    { ok: true },
+    `validator accepts stack depth ${depth}, so the route schema must too`,
+  );
+}
+assert.equal(
+  validatePillowPlacements(
+    rowsToPillowPlacements([
+      { section: "left", sub_section: "front", slot: 1, item_id: 1, row_index: MAX_PIECES_PER_CELL },
+    ]),
+    categories,
+  ).ok,
+  false,
+  "validator still rejects a stack depth past the cell cap",
+);
+
+// --- Colour overrides reach the Admin Panel from the server ---
+// filling_color_overrides is service-role-only under RLS; a browser query returns
+// nothing and the x-ray silently falls back to code defaults, so the Admin Panel
+// would colour pouches differently from the configurator.
+assert.ok(
+  route.includes("filling_color_overrides") && route.includes("colorOverrides"),
+  "template GET ships colour overrides for the x-ray CSS-variable pipeline",
+);
+
+// --- Render-path reads must carry row_index (x-ray stack depth) ---
+// Depth is visual-only and deliberately OUT of the fingerprint (core.ts), so this
+// is scoped to routes whose placements get rendered. Readers deliberately excluded,
+// because depth cannot affect their answer:
+//   results/hold + results/[id]/assign — load template rows only to compare against
+//     the session mix via canonicalizePlacements, which drops slot and never reads row.
+//   results/assign-prep — selects item_id alone for the derived pack list.
+//   configure/unpromoted — fingerprints mixes; row_index is excluded from the
+//     fingerprint by design, so selecting it here would signal the opposite.
+// Adding a render surface? Add its route here.
+const RENDER_PATH_PLACEMENT_READERS = [
+  "app/api/mp-config/assist/route.ts",
+  "app/api/mp-config/assist/context/route.ts",
+  "app/api/shop/customize/route.ts",
+  "app/api/mp-basic/recommend/route.ts",
+  "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+];
+for (const path of RENDER_PATH_PLACEMENT_READERS) {
+  const src = readFileSync(path, "utf8");
+  // Column lists are sometimes inlined in .select() and sometimes hoisted into a
+  // `cols` variable, so match the literal itself rather than the call site.
+  const columnLists = src.match(/(['"`])[^'"`\n]*\bsub_section\b[^'"`\n]*\1/g) ?? [];
+  assert.ok(columnLists.length > 0, `${path} reads pillow placement rows`);
+  for (const cols of columnLists) {
+    assert.ok(
+      cols.includes("row_index"),
+      `${path} must select row_index on the render path (found: ${cols})`,
+    );
+  }
+}
 
 console.log("api-contract.check: all assertions passed");

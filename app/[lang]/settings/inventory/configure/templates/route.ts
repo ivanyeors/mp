@@ -114,7 +114,31 @@ export async function GET(req: NextRequest) {
   const { data, error } = await q
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, templates: data ?? [] })
+  const templates = data ?? []
+
+  // Section coverage per pillow Filling Template, so the list can badge the ones
+  // that are not Spatially authored (CONTEXT.md) without fetching every placement
+  // row. One `in` query for the whole page — never one per template. Bolster has
+  // no Section enum and is never evaluated (ADR 0008).
+  let sectionCoverage: Record<number, string[]> | undefined
+  if (role === 'filling' && parsed.data.kind === 'pillow' && templates.length) {
+    const ids = templates.map((t: { id: number }) => Number(t.id))
+    const { data: cov, error: covErr } = await admin
+      .from('filling_template_placements')
+      .select('template_id,section')
+      .in('template_id', ids)
+    if (covErr) return NextResponse.json({ error: covErr.message }, { status: 500 })
+    const bySection = new Map<number, Set<string>>()
+    for (const row of (cov ?? []) as Array<{ template_id: number; section: string }>) {
+      const id = Number(row.template_id)
+      const set = bySection.get(id) ?? new Set<string>()
+      set.add(row.section)
+      bySection.set(id, set)
+    }
+    sectionCoverage = Object.fromEntries(ids.map((id) => [id, [...(bySection.get(id) ?? [])]]))
+  }
+
+  return NextResponse.json({ ok: true, templates, ...(sectionCoverage ? { sectionCoverage } : {}) })
 }
 
 export async function POST(req: NextRequest) {

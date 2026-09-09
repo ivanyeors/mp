@@ -29,6 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
 import { PillowCellGrid } from "@/components/spatial/pillow-cell-grid";
 import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment-list";
+import { isSpatiallyAuthoredCoverage } from "@/lib/spatial-fillings/authoring";
 import {
   bolsterPlacementsToRows,
   flattenToPackList,
@@ -49,6 +50,8 @@ type FillingTemplateRow = {
   name: string;
   notes: string | null;
   is_active: boolean;
+  /** Sections holding at least one Placement; pillow filling templates only. */
+  sections?: string[];
 };
 
 /** Ranked unpromoted mix (slices 09/13): fingerprint-grouped Result snapshots for this scope.
@@ -486,7 +489,11 @@ export default function ConfigureCardPage() {
       throw new Error(payload?.error ?? "Failed to load Filling Templates");
     }
     const payload = await res.json().catch(() => null);
-    return (payload?.templates ?? []) as FillingTemplateRow[];
+    const rows = (payload?.templates ?? []) as FillingTemplateRow[];
+    // Fold Section coverage onto each row so the eight call sites keep the same
+    // shape and only the badge has to know about it.
+    const coverage = payload?.sectionCoverage as Record<number, string[]> | undefined;
+    return coverage ? rows.map((t) => ({ ...t, sections: coverage[t.id] ?? [] })) : rows;
   }, [settingsPath]);
 
   const loadTemplateLines = async (templateId: number) => {
@@ -1439,6 +1446,12 @@ function FillingConfigPanel({
     [items, templateKey],
   );
   // Derived BOM: same flatten the server runs over placement rows (ADR 0008).
+  // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
+  // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
+  const unauthoredCount = useMemo(
+    () => templates.filter((t) => t.sections && !isSpatiallyAuthoredCoverage(t.sections)).length,
+    [templates],
+  );
   const packList = useMemo(
     () => flattenToPackList(kind === "pillow" ? placements : bolsterMix),
     [kind, placements, bolsterMix],
@@ -1509,6 +1522,13 @@ function FillingConfigPanel({
       </div>
       {templates.length > 0 && (
         <div className="rounded-lg border">
+          {unauthoredCount > 0 && (
+            <p className="border-b px-3 py-2 text-xs text-muted-foreground">
+              {unauthoredCount} of {templates.length} Filling Template
+              {templates.length === 1 ? "" : "s"} not yet spatially authored — their placements were
+              auto-generated from a legacy flat recipe and sit in a single section.
+            </p>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
@@ -1527,6 +1547,18 @@ function FillingConfigPanel({
                     >
                       {t.name}
                     </button>
+                    {t.sections && !isSpatiallyAuthoredCoverage(t.sections) && (
+                      <span
+                        className="ml-2 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                        title={
+                          t.sections.length === 0
+                            ? "No filling pieces placed yet."
+                            : `Every piece sits in the ${t.sections[0]} section. Placements were auto-generated from a legacy flat recipe and have never been laid out.`
+                        }
+                      >
+                        Not spatially authored
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Switch checked={t.is_active} onCheckedChange={(checked) => void toggleActive(t.id, checked)} />

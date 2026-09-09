@@ -6,6 +6,7 @@ import { validateFillingOnlyLines } from '@/lib/filling-templates'
 import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
 import {
   derivePackList,
+  MAX_PIECES_PER_CELL,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -78,16 +79,38 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
   // Pack list is derived: placements when present, legacy flat lines otherwise (ADR 0008)
   const packList = derivePackList(placements, lines ?? [])
 
-  return NextResponse.json({ ok: true, template: tpl, lines: lines ?? [], placements, packList })
+  // Product Builder per-subtype colours for the x-ray CSS-variable pipeline. The
+  // table is service-role-only under RLS, so the Admin Panel must receive them
+  // from here — the browser client cannot query it (and must not be granted a
+  // policy to). Same rows the staff-assist endpoint ships to the configurator,
+  // so both surfaces render a pouch in the same colour.
+  const { data: colorOverrides, error: cErr } = await admin
+    .from('filling_color_overrides')
+    .select('subtype,color')
+  if (cErr) return NextResponse.json({ error: cErr.message }, { status: 500 })
+
+  return NextResponse.json({
+    ok: true,
+    template: tpl,
+    lines: lines ?? [],
+    placements,
+    packList,
+    colorOverrides: colorOverrides ?? [],
+  })
 }
 
 // Shape gate only; the spatial-fillings lib does the semantic validation per kind.
+// row_index is the x-ray stack depth (0 = top/front). Bound derives from
+// MAX_PIECES_PER_CELL so it cannot drift from validatePillowPlacements or the
+// `row_index between 0 and 4` DB constraint again — it was left at the retired
+// two-value top/bottom lane long after the 2026-07-21 depth migration.
+const MAX_STACK_DEPTH = MAX_PIECES_PER_CELL - 1
 const PlacementRowSchema = z.object({
   section: z.string().default(''),
   sub_section: z.string().default(''),
   slot: z.number().int(),
   item_id: z.number().int().positive(),
-  row_index: z.number().int().min(0).max(1).nullable().optional(),
+  row_index: z.number().int().min(0).max(MAX_STACK_DEPTH).nullable().optional(),
 })
 
 const UpdateSchema = z.object({
