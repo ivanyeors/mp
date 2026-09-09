@@ -76,6 +76,30 @@ const sunburst = readFileSync(join(process.cwd(), "components", "ui", "sunburst-
 assert.match(sunburst, /open: openProp/, "SunburstMenu accepts a controlled open for external triggers");
 assert.match(sunburst, /onOpenChangeRef\.current\?\.\(next\)/, "a controlled parent still hears an internal close");
 
+// --- Arrangement controls sit ON the cell, never in an outside gutter --------
+// XrayEditor frames the pillow at the x-ray's own aspect ratio with
+// overflow-hidden, so the old left/right/top gutter cluster was clipped away on
+// both Admin surfaces: staff could not switch a cell to stacked at all.
+const frame = readFileSync(join(process.cwd(), "components", "spatial", "xray-editor.tsx"), "utf8");
+assert.match(frame, /overflow-hidden/, "the Admin frame clips to the x-ray box");
+assert.doesNotMatch(renderer, /(bottom|left|right): "100%"/, "nothing positioned outside the pillow box");
+assert.doesNotMatch(
+  renderer,
+  /externalSide|connectors|labelRefs|assignRef/,
+  "gutter + leader-line + label-measurement machinery deleted, not just unused",
+);
+assert.match(renderer, /\.\.\.cellCenter\(subSection\)/, "the control panel is anchored to the cell centre");
+// Mounted on piece count, NOT hover/focus: focusin/focusout are discrete in
+// React and flush synchronously, so a focus-gated panel would unmount under the
+// very Tab that reaches it and the toggle would be keyboard-unreachable.
+assert.match(
+  renderer,
+  /if \(cellPcs\.length < 2 && !hinting\) return null;/,
+  "controls mount on piece count — Tab must be able to reach the toggle",
+);
+assert.match(renderer, /role="group"/, "toggle keeps its group semantics");
+assert.match(renderer, /aria-pressed=\{on\}/, "two aria-pressed buttons, not a custom widget");
+
 // --- Gating: edit affordances only behind staffAssist (guests read-only) -----
 const client = readFileSync(join(process.cwd(), "app", "[lang]", "mp-config", "mp-config-client.tsx"), "utf8");
 assert.match(
