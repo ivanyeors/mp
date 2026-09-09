@@ -1439,7 +1439,7 @@ function JourneyGraph({
   return (
     <div ref={shellRef} className={shellClass} tabIndex={0}>
       <div ref={paneRef} className="relative min-w-0 flex-1 overflow-hidden">
-      <div className="pointer-events-none absolute inset-x-2 top-2 z-30 flex flex-col gap-2">
+      <div className="pointer-events-none absolute inset-x-2 top-[calc(0.5rem+var(--safe-top))] z-30 flex flex-col gap-2">
         <nav
           className="pointer-events-auto flex min-h-8 flex-wrap items-center gap-1 rounded-md border bg-background/95 px-2 py-1 text-xs shadow-sm"
           aria-label="Journey breadcrumb"

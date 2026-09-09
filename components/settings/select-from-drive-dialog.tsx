@@ -240,7 +240,7 @@ export function SelectFromDriveDialog({ open, onOpenChange, onImported }: Props)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-3">
+      <DialogContent className="max-w-2xl max-h-[85dvh] flex flex-col gap-3">
         <DialogHeader>
           <DialogTitle>Select from Drive</DialogTitle>
           <DialogDescription>

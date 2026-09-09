@@ -466,7 +466,7 @@ export default function SettingsShippingPage({
                                 value={form.slug}
                                 onChange={(e) => setField("slug", e.target.value)}
                                 placeholder="e.g. standard-delivery"
-                                className="font-mono text-sm"
+                                className="font-mono text-base md:text-sm"
                             />
                             <p className="text-xs text-muted-foreground">
                                 Lowercase letters, numbers and hyphens only.
@@ -513,7 +513,7 @@ export default function SettingsShippingPage({
                                 value={form.countries}
                                 onChange={(e) => setField("countries", e.target.value)}
                                 placeholder="MY, SG, ID, ..."
-                                className="font-mono text-sm"
+                                className="font-mono text-base md:text-sm"
                             />
                             <p className="text-xs text-muted-foreground">
                                 Comma-separated ISO country codes (e.g. MY, SG, ID).

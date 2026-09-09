@@ -238,7 +238,7 @@ export function ApplyForm({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[60vh] overflow-y-auto rounded-md border bg-muted/30 p-4">
+          <div className="max-h-[60vh] overflow-y-auto rounded-md border bg-muted/30 p-4 max-md:max-h-none">
             <AgreementContent content={agreementMd} />
           </div>
 

@@ -110,13 +110,13 @@ function BasicMpillowLearnMoreSheetInner() {
 
         <div className={sheetStickyBottomClassName}>
           <div className="flex items-center gap-1.5 px-3 py-2.5 md:gap-3 md:px-6 md:py-4">
-            <Button asChild className="h-auto min-w-0 flex-1 px-2.5 py-2.5 text-sm md:h-9 md:flex-none md:px-4 md:py-2 md:text-base">
+            <Button asChild className="h-auto min-w-0 flex-1 whitespace-normal px-2.5 py-2.5 text-center text-sm leading-tight md:h-9 md:flex-none md:px-4 md:py-2 md:text-base">
               <Link href={to("/mp-basic")}>{m.slides.basicMpillow.bottomCustomise}</Link>
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-auto min-w-0 flex-1 px-2.5 py-2.5 text-sm md:h-9 md:flex-none md:px-4 md:py-2 md:text-base"
+              className="h-auto min-w-0 flex-1 whitespace-normal px-2.5 py-2.5 text-center text-sm leading-tight md:h-9 md:flex-none md:px-4 md:py-2 md:text-base"
               onClick={openBookAppointment}
             >
               {m.slides.basicMpillow.bookAdjustment}

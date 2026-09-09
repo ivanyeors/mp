@@ -45,7 +45,7 @@ export default async function ShopPage({ params, searchParams }: ShopPageProps) 
   const hasFilters = !!(category || search || sort !== "newest");
 
   return (
-    <div className="space-y-8">
+    <div className="container mx-auto max-w-7xl space-y-8 px-4 py-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>

@@ -730,7 +730,7 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* City / State / Postal */}
-                <div className="grid grid-cols-3 gap-3 sm:col-span-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:col-span-2">
                   <div className="flex flex-col gap-1.5">
                     <Label htmlFor="city">
                       City <span className="text-destructive">*</span>

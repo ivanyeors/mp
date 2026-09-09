@@ -20,8 +20,13 @@ export function HomeHeader() {
   const [isCompact, setIsCompact] = React.useState(false);
 
   React.useEffect(() => {
+    // Hysteresis so a 1px overscroll or iOS rubber-band cannot flip the header
+    // back and forth: compact once past COMPACT_AT, expand again below EXPAND_AT.
+    const COMPACT_AT = 24;
+    const EXPAND_AT = 4;
     const onScroll = () => {
-      setIsCompact(window.scrollY > 0);
+      const y = window.scrollY;
+      setIsCompact((compact) => (compact ? y > EXPAND_AT : y > COMPACT_AT));
     };
 
     onScroll();
@@ -35,7 +40,8 @@ export function HomeHeader() {
     <>
       {/* Keep compact header explicitly top-anchored so mobile scroll can't drift it. */}
       <div
-        className={`fixed left-1/2 top-[var(--mobile-top-clearance)] z-40 w-fit max-w-[calc(100%-0.5rem)] -translate-x-1/2 px-2 py-2 transition-all duration-200 ease-out sm:max-w-full sm:px-4 ${isCompact ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+        aria-hidden={!isCompact}
+        className={`fixed left-1/2 top-[var(--mobile-top-clearance)] z-40 w-fit max-w-[calc(100%-0.5rem)] -translate-x-1/2 px-2 py-2 transition-all duration-200 ease-out sm:max-w-full sm:px-4 ${isCompact ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none invisible"
           }`}
       >
         <div
@@ -100,7 +106,7 @@ export function HomeHeader() {
               href="http://wa.me/6587805311"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-1 text-foreground/90 hover:text-foreground"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-1 text-foreground/90 hover:text-foreground max-md:h-11 max-md:w-11 max-md:p-2.5"
               aria-label="WhatsApp"
             >
               <MessageCircleMore className="h-full w-full" />
@@ -109,12 +115,23 @@ export function HomeHeader() {
         </div>
       </div>
 
+      {/*
+        The expanded header stays in flow (visibility toggled, never unmounted)
+        so collapsing does not shorten the document and jolt the page on the
+        first pixel of scroll. It is not sticky: the fixed compact pill above
+        takes over once the page scrolls, and a sticky bar would sit under the
+        status bar in the installed app.
+      */}
       <header
-        className={`sticky top-0 z-30 ${isCompact ? "" : "border-b bg-background/60 backdrop-blur supports-[backdrop-filter]:bg-background/40"
+        data-slot="home-header-expanded"
+        aria-hidden={isCompact}
+        className={`relative z-30 border-b bg-background/60 backdrop-blur transition-opacity duration-200 supports-[backdrop-filter]:bg-background/40 ${isCompact ? "pointer-events-none opacity-0" : "opacity-100"
           }`}
       >
-        {!isCompact ? (
-          <div className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2 py-3 sm:gap-2 sm:px-4">
+        <div
+          className={`mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2 py-3 sm:gap-2 sm:px-4 ${isCompact ? "invisible" : ""
+            }`}
+        >
             <div className="flex min-w-0 justify-start">
               <ProfileMenu />
             </div>
@@ -133,7 +150,6 @@ export function HomeHeader() {
               <ModeToggle />
             </div>
           </div>
-        ) : null}
       </header>
     </>
   );

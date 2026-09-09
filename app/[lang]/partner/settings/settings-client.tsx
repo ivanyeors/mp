@@ -97,7 +97,7 @@ export function PartnerSettingsClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-10">
+    <div className="mx-auto w-full max-w-3xl space-y-8 px-4 pt-10 pb-[calc(2.5rem+var(--app-dock-clearance))]">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-2 text-sm text-muted-foreground">

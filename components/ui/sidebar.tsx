@@ -189,7 +189,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           mobilePreset="full"
-          className="bg-sidebar text-sidebar-foreground h-svh max-h-svh w-full p-0 [&>button]:hidden"
+          className="bg-sidebar text-sidebar-foreground h-svh max-h-svh w-full px-0 pb-0 [&>button]:hidden"
           style={
             {
               "--sidebar-width": "100%",
@@ -203,7 +203,7 @@ function Sidebar({
           </SheetHeader>
           <div className="flex h-full w-full flex-col">
             {children}
-            <div className="mt-auto flex justify-end border-t p-3 md:hidden">
+            <div className="mt-auto flex justify-end border-t p-3 pb-[calc(0.75rem+var(--safe-bottom))] md:hidden">
               <SheetClose asChild>
                 <OverlayDismissButton variant="inline" />
               </SheetClose>
@@ -492,8 +492,8 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
       },
       size: {
-        default: "h-8 text-sm",
-        sm: "h-7 text-xs",
+        default: "h-8 max-md:h-11 text-sm",
+        sm: "h-7 max-md:h-11 text-xs",
         lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
       },
     },

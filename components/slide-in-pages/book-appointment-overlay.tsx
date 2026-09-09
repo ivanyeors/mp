@@ -6,7 +6,15 @@ import { stripLocale } from "@/lib/i18n/routing";
 import { isPageBuilderPreviewRoute } from "@/lib/routing/preview-route";
 
 import { BookingPills } from "@/components/slide-in-pages/booking-pills";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { OverlayDismissButton } from "@/components/ui/overlay-dismiss";
 import { OPEN_BOOK_APPOINTMENT_EVENT } from "@/lib/book-appointment";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { useI18n } from "@/lib/i18n/use-i18n";
@@ -49,6 +57,15 @@ export function BookAppointmentOverlay() {
             router.push(`/${lang}/appointments?type=${type}`);
           }}
         />
+        {/* The dialog box is transparent, so give it an explicit dismiss
+            instead of relying on a backdrop tap. */}
+        <DialogClose asChild>
+          <OverlayDismissButton
+            variant="inline"
+            label={m.common.close}
+            className="mx-auto rounded-full border border-border bg-background/90"
+          />
+        </DialogClose>
       </DialogContent>
     </Dialog>
   );

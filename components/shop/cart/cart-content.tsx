@@ -159,7 +159,7 @@ export function CartContent({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-sm text-center text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+                className="max-md:min-h-11 text-sm text-center text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
               >
                 {messages.continueShopping}
               </button>

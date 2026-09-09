@@ -23,14 +23,22 @@ function TabsList({
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
-    <TabsPrimitive.List
-      data-slot="tabs-list"
-      className={cn(
-        "bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]",
-        className
-      )}
-      {...props}
-    />
+    // The wrapper scrolls (a long strip on a phone must stay reachable) with a
+    // 4px negative-margin gutter so the triggers' focus ring and active shadow
+    // are not clipped; the list itself keeps its rounded pill layout.
+    <div
+      data-slot="tabs-list-scroll"
+      className="-m-1 max-w-[calc(100%+0.5rem)] overflow-x-auto overscroll-x-contain p-1 [scrollbar-width:none]"
+    >
+      <TabsPrimitive.List
+        data-slot="tabs-list"
+        className={cn(
+          "bg-muted text-muted-foreground inline-flex h-9 max-md:h-11 w-fit items-center justify-center rounded-lg p-[3px]",
+          className
+        )}
+        {...props}
+      />
+    </div>
   )
 }
 

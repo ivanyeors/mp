@@ -17,7 +17,10 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 
 import { Button } from "@/components/ui/button";
-import { MobileStickyActionBar } from "@/components/ui/mobile-sticky-action-bar";
+import {
+  MobileStickyActionBar,
+  mobileStickyActionBarSpacerClassName,
+} from "@/components/ui/mobile-sticky-action-bar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -37,6 +40,7 @@ import {
   SPEC_FIELDS,
 } from "@/lib/shop/product-specifications";
 import type { Product, ProductVariant } from "@/lib/types/ecommerce";
+import { cn } from "@/lib/utils";
 
 function getTitle(product: Product, lang: string): string {
   return (
@@ -190,7 +194,7 @@ export function ProductDetailClient({
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-7xl pb-[calc(var(--mobile-bottom-clearance)+7rem+env(safe-area-inset-bottom,0px))] md:pb-8">
+      <div className={cn("container mx-auto px-4 py-8 max-w-7xl", mobileStickyActionBarSpacerClassName, "md:pb-8")}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* LEFT: Image Gallery */}
           <div className="flex flex-col gap-4" id="gallery" data-section="gallery">

@@ -112,7 +112,7 @@ export default async function PartnerCommissionsPage({
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Partner (blank = DEFAULT)</span>
-          <select name="partner_id" defaultValue="" className="h-9 rounded-md border bg-background px-2">
+          <select name="partner_id" defaultValue="" className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm">
             <option value="">— DEFAULT —</option>
             {partners.map((p) => (
               <option key={p.id} value={p.id}>
@@ -124,7 +124,7 @@ export default async function PartnerCommissionsPage({
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Product type</span>
-          <select name="product_type" defaultValue="pillow" className="h-9 rounded-md border bg-background px-2">
+          <select name="product_type" defaultValue="pillow" className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm">
             <option value="pillow">Pillow</option>
             <option value="bolster">Bolster</option>
           </select>
@@ -132,7 +132,7 @@ export default async function PartnerCommissionsPage({
 
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted-foreground">Kind</span>
-          <select name="kind" defaultValue="percent" className="h-9 rounded-md border bg-background px-2">
+          <select name="kind" defaultValue="percent" className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm">
             <option value="percent">Percent of base</option>
             <option value="flat">Flat $ per unit</option>
           </select>
@@ -147,14 +147,14 @@ export default async function PartnerCommissionsPage({
             step="0.01"
             defaultValue="10"
             required
-            className="h-9 rounded-md border bg-background px-2"
+            className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
           />
         </label>
 
         <div className="sm:col-span-2">
           <button
             type="submit"
-            className="h-9 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="h-9 max-md:min-h-11 rounded-md border bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Save scheme
           </button>

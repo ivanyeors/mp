@@ -39,7 +39,9 @@ function DialogContent({
       <DialogPrimitive.Content
         className={cn(
           // ponytail: fixed (not relative) — relative was overriding fixed via twMerge and dumping modals at page bottom; fixed still contains absolute close btn
-          "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg max-md:max-h-[90dvh] max-md:overflow-y-auto",
+          // max-md: flex column, not grid, so the sticky close button's containing block is the
+          // whole scrolling content box (a grid item's containing block is only its own grid area).
+          "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg max-md:max-h-[90dvh] max-md:overflow-y-auto max-md:flex max-md:flex-col",
           className
         )}
         {...props}
@@ -47,7 +49,13 @@ function DialogContent({
         {children}
         {!hideClose && (
           <DialogClose asChild>
-            <OverlayDismissButton />
+            {/*
+              On mobile the dialog scrolls its own body (max-md:overflow-y-auto)
+              and is centered by a transform, so neither `absolute` nor `fixed`
+              keeps the X in view. Render it in flow after the content, stuck to
+              the bottom of the scrollport; desktop keeps the top-right corner.
+            */}
+            <OverlayDismissButton variant="sticky" />
           </DialogClose>
         )}
       </DialogPrimitive.Content>
@@ -60,7 +68,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-2", className)} {...props} />
+  return <div className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-2", className)} {...props} />
 }
 
 const DialogTitle = DialogPrimitive.Title

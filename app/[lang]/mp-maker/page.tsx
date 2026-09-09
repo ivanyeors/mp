@@ -293,7 +293,7 @@ function MakerContent() {
   const isMobile = useIsMobile();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="flex h-14 items-center justify-between px-4 max-w-[1400px] mx-auto">
@@ -328,7 +328,7 @@ function MakerContent() {
       </header>
 
       {/* Split-panel layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] min-h-[calc(100vh-56px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_460px] min-h-[calc(100dvh-56px)]">
         {/* ─── LEFT PANEL: Product Visual + Background Effects ─── */}
         <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] max-h-[40vh] lg:max-h-none overflow-hidden">
           {/* Background effects: desktop only — mobile skips the WebGL/canvas work (#64). */}
@@ -364,7 +364,7 @@ function MakerContent() {
         </div>
 
         {/* ─── RIGHT PANEL: Customization ─── */}
-        <div className="flex flex-col border-l bg-background min-h-0 lg:h-[calc(100vh-56px)]">
+        <div className="flex flex-col bg-background min-h-0 lg:h-[calc(100vh-56px)] lg:border-l">
           {/* Step indicator */}
           <div className="px-5 pt-5 pb-3 border-b">
             <StepIndicator />

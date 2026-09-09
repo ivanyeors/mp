@@ -976,7 +976,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 setDriveUrl(e.target.value);
                                 setDrivePreview(null);
                             }}
-                            className="flex-1 px-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="flex-1 min-w-0 max-md:min-h-11 px-3 py-2 text-base md:text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                         />
                         <Button
                             variant="outline"
@@ -1047,7 +1047,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                 placeholder="Search images..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-full max-md:min-h-11 pl-9 pr-3 py-2 text-base md:text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                             />
                         </div>
                         <div className="flex gap-1 border rounded-lg p-1">
@@ -1095,7 +1095,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <select
                             value={folderFilter}
                             onChange={(e) => setFolderFilter(e.target.value as FolderFilter)}
-                            className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[180px]"
+                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[180px]"
                             aria-label="Filter by folder"
                         >
                             <option value="all">All folders</option>
@@ -1109,7 +1109,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                         <select
                             value={tagFilter}
                             onChange={(e) => setTagFilter(e.target.value)}
-                            className="text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[160px]"
+                            className="max-md:min-h-11 text-base md:text-sm border rounded-lg px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-primary sm:min-w-[160px]"
                             aria-label="Filter by tag"
                         >
                             <option value="all">All tags</option>
@@ -1419,7 +1419,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
                                             onChange={(e) =>
                                                 setEditFolderId(e.target.value ? e.target.value : null)
                                             }
-                                            className="w-full text-sm border rounded-md px-3 py-2 bg-background"
+                                            className="w-full max-md:min-h-11 text-base md:text-sm border rounded-md px-3 py-2 bg-background"
                                         >
                                             <option value="">Unfiled</option>
                                             {folders.map((f) => (
@@ -1590,7 +1590,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
 
             {/* ===== Landing Slot Picker Dialog ===== */}
             <Dialog open={!!pickerSlot} onOpenChange={(open) => !open && setPickerSlot(null)}>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogContent className="max-w-3xl max-h-[80dvh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>
                             Choose image for &ldquo;{pickerSlot?.label}&rdquo;
@@ -1657,7 +1657,7 @@ export default function MediaPage({ initialData }: { initialData?: MediaInitialD
 
             {/* ===== Replace Image Dialog ===== */}
             <Dialog open={!!replaceFile} onOpenChange={(open) => !open && setReplaceFile(null)}>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogContent className="max-w-3xl max-h-[80dvh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Replace Image Everywhere</DialogTitle>
                         <DialogDescription>

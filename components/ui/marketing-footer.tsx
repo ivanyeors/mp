@@ -101,7 +101,7 @@ export function MarketingFooter() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={label}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+                    className="inline-flex h-10 w-10 max-md:h-11 max-md:w-11 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
                   >
                     <Icon className="h-5 w-5" />
                   </a>

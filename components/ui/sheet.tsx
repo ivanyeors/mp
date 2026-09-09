@@ -13,6 +13,12 @@ import {
 import { cn } from "@/lib/utils"
 
 type SheetSide = "top" | "right" | "bottom" | "left"
+
+/**
+ * True while a SheetContent renders its pinned close button in the mobile
+ * bottom-right corner, so SheetFooter can keep its actions clear of it.
+ */
+const SheetPinnedCloseContext = React.createContext(false)
 type SheetDismissBehavior = "default" | "locked"
 type SheetAnimation = "slide" | "fade-up"
 
@@ -111,6 +117,10 @@ function SheetContent({
     isMobileBottomSheet
   )
   const isDismissLocked = dismissBehavior === "locked"
+  // Right/bottom sheets share a corner with the viewport, so the close X can be
+  // pinned there with `fixed` and never scrolls away with the content.
+  const hasPinnedClose =
+    !hideClose && (resolvedSide === "right" || resolvedSide === "bottom")
 
   const handleEscapeKeyDown: React.ComponentProps<
     typeof SheetPrimitive.Content
@@ -174,7 +184,11 @@ function SheetContent({
           isMobileBottomSheet && "rounded-t-2xl",
           shouldInsetTopPadding && sheetContentTopInsetClassName,
           shouldInsetBottomPadding && "pb-[calc(0.75rem+var(--safe-bottom))]",
-          className
+          className,
+          // A mobile bottom sheet must span the viewport: consumers' `sm:max-w-*`
+          // (meant for the desktop side sheet) would otherwise leave it
+          // left-aligned at 640-767px, away from the pinned close corner.
+          isMobileBottomSheet && "w-full max-w-none sm:max-w-none"
         )}
         onEscapeKeyDown={handleEscapeKeyDown}
         onPointerDownOutside={handlePointerDownOutside}
@@ -190,10 +204,17 @@ function SheetContent({
             <div className="bg-muted mx-auto h-1.5 w-12 rounded-full" />
           </div>
         )}
-        {children}
+        <SheetPinnedCloseContext.Provider value={hasPinnedClose}>
+          {children}
+        </SheetPinnedCloseContext.Provider>
         {!hideClose && (
           <SheetPrimitive.Close asChild>
-            <OverlayDismissButton />
+            {/*
+              SheetContent is its own scroll container, so an `absolute` X
+              scrolls away with the content; the rare left/top sheet keeps
+              that corner, right/bottom sheets pin it to the viewport.
+            */}
+            <OverlayDismissButton variant={hasPinnedClose ? "pinned" : "corner"} />
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>
@@ -212,11 +233,14 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
+  const hasPinnedClose = React.useContext(SheetPinnedCloseContext)
   return (
     <div
       data-slot="sheet-footer"
       className={cn(
         "mt-auto flex flex-col gap-2 p-4 pb-[calc(1rem+var(--safe-bottom))] md:pb-4",
+        // Keep footer actions out from under the pinned mobile close button.
+        hasPinnedClose && "max-md:pr-[4.25rem]",
         className
       )}
       {...props}
