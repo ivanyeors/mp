@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTheme } from "next-themes";
+import { DragDropProvider } from "@dnd-kit/react";
 import {
   ChevronDown,
   ChevronUp,
@@ -31,6 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImagePicker } from "@/components/ui/image-picker";
+import { SortableRow } from "@/components/ui/sortable-row";
 import { Switch } from "@/components/ui/switch";
 import {
   DEFAULT_AGREEMENT_MD,
@@ -40,6 +42,7 @@ import {
   type WorkWithUsContent,
 } from "@/lib/partners/types";
 import { AGREEMENT_VERSION } from "@/lib/partner-application";
+import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { usePathname } from "next/navigation";
@@ -352,13 +355,8 @@ export default function PartnersSettingsPage({
     loadData();
   };
 
-  const movePartner = async (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= partners.length) return;
-    const order = [...partners];
-    const [item] = order.splice(index, 1);
-    order.splice(target, 0, item);
-
+  const persistPartnerOrder = async (order: PartnerRow[]) => {
+    setPartners(order);
     const res = await fetch("/api/partners/reorder", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -367,9 +365,22 @@ export default function PartnersSettingsPage({
     const json = await res.json();
     if (!json.ok) {
       toast.error("Failed to reorder");
-      return;
+      loadData();
     }
-    setPartners(order);
+  };
+
+  const movePartner = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= partners.length) return;
+    const order = [...partners];
+    const [item] = order.splice(index, 1);
+    order.splice(target, 0, item);
+    void persistPartnerOrder(order);
+  };
+
+  const handlePartnerDragEnd = (event: SortableDragEndEvent) => {
+    const order = sortableMove(partners, event, (p) => p.id);
+    if (order) void persistPartnerOrder(order);
   };
 
   if (loading) {
@@ -571,98 +582,108 @@ export default function PartnersSettingsPage({
             </Button>
           </div>
 
-          <div className="space-y-2">
-            {partners.map((partner, index) => (
-              <div
-                key={partner.id}
-                className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
-              >
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="min-h-11 min-w-11"
-                    disabled={index === 0}
-                    onClick={() => movePartner(index, -1)}
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="min-h-11 min-w-11"
-                    disabled={index === partners.length - 1}
-                    onClick={() => movePartner(index, 1)}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </div>
+          <DragDropProvider onDragEnd={handlePartnerDragEnd}>
+            <div className="space-y-2">
+              {partners.map((partner, index) => (
+                <SortableRow
+                  key={partner.id}
+                  id={partner.id}
+                  index={index}
+                  label={partner.name}
+                  className="flex flex-wrap items-center gap-3 rounded-lg border p-3"
+                >
+                  {(grip) => (
+                    <>
+                      {grip}
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-h-11 min-w-11"
+                          disabled={index === 0}
+                          onClick={() => movePartner(index, -1)}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="min-h-11 min-w-11"
+                          disabled={index === partners.length - 1}
+                          onClick={() => movePartner(index, 1)}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
 
-                <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted">
-                  {partner.logo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={partner.logo_url}
-                      alt=""
-                      className="max-h-8 max-w-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
+                      <div className="flex h-10 w-16 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted">
+                        {partner.logo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={partner.logo_url}
+                            alt=""
+                            className="max-h-8 max-w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{partner.name}</span>
+                          <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                            {partner.type === "own" ? "Own studio" : "Partner"}
+                          </span>
+                        </div>
+                        {partner.address || partner.description ? (
+                          <div className="truncate text-sm text-muted-foreground">
+                            {partner.address ?? partner.description}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {partner.type === "own" ? null : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleVisibility(partner)}
+                            title={partner.visible ? "Hide" : "Show"}
+                          >
+                            {partner.visible ? (
+                              <Eye className="h-4 w-4" />
+                            ) : (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openPartnerDialog(partner)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeletePartner(partner.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </>
                   )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{partner.name}</span>
-                    <span className="rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
-                      {partner.type === "own" ? "Own studio" : "Partner"}
-                    </span>
-                  </div>
-                  {partner.address || partner.description ? (
-                    <div className="truncate text-sm text-muted-foreground">
-                      {partner.address ?? partner.description}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="flex items-center gap-1">
-                  {partner.type === "own" ? null : (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleToggleVisibility(partner)}
-                      title={partner.visible ? "Hide" : "Show"}
-                    >
-                      {partner.visible ? (
-                        <Eye className="h-4 w-4" />
-                      ) : (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openPartnerDialog(partner)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeletePartner(partner.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+                </SortableRow>
+              ))}
+            </div>
+          </DragDropProvider>
         </TabsContent>
 
         <TabsContent value="agreement" className="space-y-4 pt-4">

@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { DragDropProvider } from "@dnd-kit/react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -28,12 +29,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SortableRow } from "@/components/ui/sortable-row";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   OTHER_DISCOVERY_SOURCE_ID,
   type DiscoverySourceCatalog,
   type DiscoverySourceOption,
 } from "@/lib/discovery-source";
+import { sortableMove, type SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { getApiErrorMessage } from "@/lib/utils";
 
 const LOCALES = ["en-US", "zh-CN"] as const;
@@ -180,6 +183,12 @@ export default function FormsSettingsPage({
   const editable = options.filter((o) => o.id !== OTHER_DISCOVERY_SOURCE_ID);
   const other = options.find((o) => o.id === OTHER_DISCOVERY_SOURCE_ID);
 
+  // Only `editable` is sortable, so "Other" keeps its always-last slot on a drop too.
+  const handleDragEnd = (event: SortableDragEndEvent) => {
+    const next = sortableMove(editable, event, (o) => o.id);
+    if (next) void save(other ? [...next, other] : next);
+  };
+
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8" data-settings-forms="">
       <div>
@@ -268,153 +277,163 @@ export default function FormsSettingsPage({
             Loading…
           </div>
         ) : (
-          <ul className="space-y-2">
-            {editable.map((opt, index) => (
-              <li key={opt.id}>
-                <Collapsible
-                  open={expanded === opt.id}
-                  onOpenChange={(open) => setExpanded(open ? opt.id : null)}
-                >
-                  <div
-                    className={`rounded-lg border bg-card ${!opt.active ? "opacity-60" : ""}`}
+          <DragDropProvider onDragEnd={handleDragEnd}>
+            <ul className="space-y-2">
+              {editable.map((opt, index) => (
+                <li key={opt.id}>
+                  <Collapsible
+                    open={expanded === opt.id}
+                    onOpenChange={(open) => setExpanded(open ? opt.id : null)}
                   >
-                    <div className="flex items-center gap-1 px-2 py-2">
-                      <div className="flex flex-col">
-                        <button
-                          type="button"
-                          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                          disabled={index === 0 || saving}
-                          onClick={() => move(index, -1)}
-                          aria-label="Move up"
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
-                          disabled={index === editable.length - 1 || saving}
-                          onClick={() => move(index, 1)}
-                          aria-label="Move down"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
-                        onClick={() => archiveToggle(opt.id)}
-                        aria-label={opt.active ? "Archive" : "Restore"}
-                      >
-                        {opt.active ? (
-                          <Archive className="h-4 w-4" />
-                        ) : (
-                          <ArchiveRestore className="h-4 w-4" />
-                        )}
-                      </button>
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="min-w-0 flex-1 px-2 text-left text-sm font-medium"
-                        >
-                          {opt.labels["en-US"]}
-                          <span className="ml-2 font-normal text-muted-foreground">
-                            {opt.id}
-                            {!opt.active ? " · archived" : ""}
-                          </span>
-                        </button>
-                      </CollapsibleTrigger>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="min-h-11 min-w-11 text-muted-foreground"
-                        onClick={() => removeOption(opt.id)}
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <CollapsibleContent className="border-t px-4 py-3">
-                      <Tabs defaultValue="en-US">
-                        <TabsList>
-                          {LOCALES.map((loc) => (
-                            <TabsTrigger key={loc} value={loc}>
-                              {loc}
-                            </TabsTrigger>
-                          ))}
-                        </TabsList>
-                        {LOCALES.map((loc) => (
-                          <TabsContent key={loc} value={loc} className="mt-2">
-                            <Label className="text-xs">Label</Label>
-                            <Input
-                              value={opt.labels[loc] ?? ""}
-                              onChange={(e) =>
-                                updateOption(opt.id, {
-                                  labels: { ...opt.labels, [loc]: e.target.value },
-                                })
-                              }
-                            />
-                          </TabsContent>
-                        ))}
-                      </Tabs>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              </li>
-            ))}
+                    <SortableRow
+                      id={opt.id}
+                      index={index}
+                      label={opt.labels["en-US"] || opt.id}
+                      className={`rounded-lg border bg-card ${!opt.active ? "opacity-60" : ""}`}
+                    >
+                      {(grip) => (
+                        <>
+                          <div className="flex items-center gap-1 px-2 py-2">
+                            {grip}
+                            <div className="flex flex-col">
+                              <button
+                                type="button"
+                                className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                disabled={index === 0 || saving}
+                                onClick={() => move(index, -1)}
+                                aria-label="Move up"
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                disabled={index === editable.length - 1 || saving}
+                                onClick={() => move(index, 1)}
+                                aria-label="Move down"
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              className="min-h-11 min-w-11 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+                              onClick={() => archiveToggle(opt.id)}
+                              aria-label={opt.active ? "Archive" : "Restore"}
+                            >
+                              {opt.active ? (
+                                <Archive className="h-4 w-4" />
+                              ) : (
+                                <ArchiveRestore className="h-4 w-4" />
+                              )}
+                            </button>
+                            <CollapsibleTrigger asChild>
+                              <button
+                                type="button"
+                                className="min-w-0 flex-1 px-2 text-left text-sm font-medium"
+                              >
+                                {opt.labels["en-US"]}
+                                <span className="ml-2 font-normal text-muted-foreground">
+                                  {opt.id}
+                                  {!opt.active ? " · archived" : ""}
+                                </span>
+                              </button>
+                            </CollapsibleTrigger>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="min-h-11 min-w-11 text-muted-foreground"
+                              onClick={() => removeOption(opt.id)}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <CollapsibleContent className="border-t px-4 py-3">
+                            <Tabs defaultValue="en-US">
+                              <TabsList>
+                                {LOCALES.map((loc) => (
+                                  <TabsTrigger key={loc} value={loc}>
+                                    {loc}
+                                  </TabsTrigger>
+                                ))}
+                              </TabsList>
+                              {LOCALES.map((loc) => (
+                                <TabsContent key={loc} value={loc} className="mt-2">
+                                  <Label className="text-xs">Label</Label>
+                                  <Input
+                                    value={opt.labels[loc] ?? ""}
+                                    onChange={(e) =>
+                                      updateOption(opt.id, {
+                                        labels: { ...opt.labels, [loc]: e.target.value },
+                                      })
+                                    }
+                                  />
+                                </TabsContent>
+                              ))}
+                            </Tabs>
+                          </CollapsibleContent>
+                        </>
+                      )}
+                    </SortableRow>
+                  </Collapsible>
+                </li>
+              ))}
 
-            {other ? (
-              <li>
-                <Collapsible
-                  open={expanded === other.id}
-                  onOpenChange={(open) => setExpanded(open ? other.id : null)}
-                >
-                  <div className="rounded-lg border border-dashed bg-card">
-                    <div className="flex items-center gap-2 px-3 py-2.5">
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        System
-                      </span>
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="min-w-0 flex-1 text-left text-sm font-medium"
-                        >
-                          {other.labels["en-US"]}
-                          <span className="ml-2 font-normal text-muted-foreground">
-                            always last · not archivable
-                          </span>
-                        </button>
-                      </CollapsibleTrigger>
-                    </div>
-                    <CollapsibleContent className="border-t px-4 py-3">
-                      <Tabs defaultValue="en-US">
-                        <TabsList>
+              {other ? (
+                <li>
+                  <Collapsible
+                    open={expanded === other.id}
+                    onOpenChange={(open) => setExpanded(open ? other.id : null)}
+                  >
+                    <div className="rounded-lg border border-dashed bg-card">
+                      <div className="flex items-center gap-2 px-3 py-2.5">
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          System
+                        </span>
+                        <CollapsibleTrigger asChild>
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 text-left text-sm font-medium"
+                          >
+                            {other.labels["en-US"]}
+                            <span className="ml-2 font-normal text-muted-foreground">
+                              always last · not archivable
+                            </span>
+                          </button>
+                        </CollapsibleTrigger>
+                      </div>
+                      <CollapsibleContent className="border-t px-4 py-3">
+                        <Tabs defaultValue="en-US">
+                          <TabsList>
+                            {LOCALES.map((loc) => (
+                              <TabsTrigger key={loc} value={loc}>
+                                {loc}
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
                           {LOCALES.map((loc) => (
-                            <TabsTrigger key={loc} value={loc}>
-                              {loc}
-                            </TabsTrigger>
+                            <TabsContent key={loc} value={loc} className="mt-2">
+                              <Label className="text-xs">Label</Label>
+                              <Input
+                                value={other.labels[loc] ?? ""}
+                                onChange={(e) =>
+                                  updateOption(other.id, {
+                                    labels: { ...other.labels, [loc]: e.target.value },
+                                  })
+                                }
+                              />
+                            </TabsContent>
                           ))}
-                        </TabsList>
-                        {LOCALES.map((loc) => (
-                          <TabsContent key={loc} value={loc} className="mt-2">
-                            <Label className="text-xs">Label</Label>
-                            <Input
-                              value={other.labels[loc] ?? ""}
-                              onChange={(e) =>
-                                updateOption(other.id, {
-                                  labels: { ...other.labels, [loc]: e.target.value },
-                                })
-                              }
-                            />
-                          </TabsContent>
-                        ))}
-                      </Tabs>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              </li>
-            ) : null}
-          </ul>
+                        </Tabs>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                </li>
+              ) : null}
+            </ul>
+          </DragDropProvider>
         )}
       </section>
     </div>
