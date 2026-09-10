@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { GripVertical, Plus, X } from "lucide-react";
+import { GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 
@@ -22,15 +22,18 @@ import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import {
   addPiece,
   cellArrangement,
+  cellLayers,
   cellPieces,
-  cellStack,
+  moveLayer,
+  removeLayer,
   removePiece,
   setCellArrangement,
-  setDepthOrder,
   type Cell,
 } from "@/lib/configurator/staff-assist";
 import {
+  MAX_LAYERS_PER_CELL,
   MAX_PIECES_PER_CELL,
+  MAX_PIECES_PER_LAYER,
   SECTIONS,
   SUB_SECTIONS,
   type PillowPlacement,
@@ -157,20 +160,28 @@ export function MorphPiece({
 }
 
 /**
- * One stack label (staff dive, stacked cells): draggable to reorder the cell's
- * depth (top→deep). Sits on the cell it controls, so it needs no leader line
- * back to its pouch; the sortable id is the piece key `sec/sub/slot`.
+ * One layer row (staff dive): the cell's pieces at one depth, draggable to
+ * reorder the cell top→deep. Sits on the cell it controls, so it needs no leader
+ * line back to its pouches; the sortable id is the layer key `sec/sub/L{depth}`.
  */
-function StackLabel({
+function LayerRow({
   id,
   index,
-  label,
-  onRemove,
+  depth,
+  pieces,
+  full,
+  onAdd,
+  onRemoveLayer,
+  onRemovePiece,
 }: {
   id: string;
   index: number;
-  label: string;
-  onRemove: () => void;
+  depth: number;
+  pieces: Array<{ slot: number; label: string }>;
+  full: boolean;
+  onAdd: () => void;
+  onRemoveLayer: () => void;
+  onRemovePiece: (slot: number) => void;
 }) {
   const { ref, isDragging, handleRef } = useSortable<HTMLDivElement>({ id, index });
   return (
@@ -182,18 +193,40 @@ function StackLabel({
         ref={handleRef}
         type="button"
         className="shrink-0 cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
-        aria-label={`Drag ${label} to reorder depth`}
+        aria-label={`Drag layer ${depth + 1} to reorder depth`}
       >
         <GripVertical className="size-2.5" />
       </button>
-      <span className="max-w-24 truncate">{label}</span>
+      <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
+      {pieces.map((piece) => (
+        <span key={piece.slot} className="flex items-center gap-0.5 rounded bg-muted px-1">
+          <span className="max-w-16 truncate">{piece.label}</span>
+          <button
+            type="button"
+            className="shrink-0 rounded hover:bg-destructive/20"
+            aria-label={`Remove one ${piece.label} from layer ${depth + 1}`}
+            onClick={() => onRemovePiece(piece.slot)}
+          >
+            <X className="size-2.5" />
+          </button>
+        </span>
+      ))}
       <button
         type="button"
-        className="shrink-0 rounded hover:bg-destructive/20"
-        aria-label={`Remove one ${label}`}
-        onClick={onRemove}
+        disabled={full}
+        className="shrink-0 rounded hover:bg-accent disabled:opacity-40"
+        aria-label={full ? `Layer ${depth + 1} full (max ${MAX_PIECES_PER_LAYER})` : `Add filling to layer ${depth + 1}`}
+        onClick={onAdd}
       >
-        <X className="size-2.5" />
+        <Plus className="size-2.5" />
+      </button>
+      <button
+        type="button"
+        className="shrink-0 rounded text-muted-foreground hover:bg-destructive/20 hover:text-foreground"
+        aria-label={`Remove layer ${depth + 1}`}
+        onClick={onRemoveLayer}
+      >
+        <Trash2 className="size-2.5" />
       </button>
     </div>
   );
@@ -226,6 +259,9 @@ export function XrayPillow({
   // cell the pointer/keyboard is on — the add target is the whole cell, so both
   // drive on-canvas affordances rather than a per-cell button.
   const [openSub, setOpenSub] = useState<SubSection | null>(null);
+  // Which layer the blooming picker adds into: null = anywhere in the cell (a
+  // click on the cell art), n = that layer exactly, layers.length = a new one.
+  const [openLayer, setOpenLayer] = useState<number | null>(null);
   const [hoverSub, setHoverSub] = useState<SubSection | null>(null);
   const editable = Boolean(items && onPlacementsChange);
   // Ring 1 = filling family (3D/6D/6D+), leaves = deduped inventory items.
@@ -236,7 +272,14 @@ export function XrayPillow({
   const endDive = useCallback(() => {
     setDived(null);
     setOpenSub(null);
+    setOpenLayer(null);
     setHoverSub(null);
+  }, []);
+
+  /** Open the add-filling bloom on a cell, targeting one of its layers. */
+  const openPicker = useCallback((subSection: SubSection, layer: number | null) => {
+    setOpenLayer(layer);
+    setOpenSub(subSection);
   }, []);
 
   // Exit the dive on Escape or a click anywhere outside the pillow — no CTA needed.
@@ -290,8 +333,8 @@ export function XrayPillow({
   // the editor overlay aligns to the dived column in place.
   const divedIdx = dived ? SECTIONS.indexOf(dived) : -1;
 
-  const addToCell = (cell: Cell, itemId: number) => {
-    const result = addPiece(placements, cell, itemId);
+  const addToCell = (cell: Cell, itemId: number, layer: number | null) => {
+    const result = addPiece(placements, cell, itemId, layer);
     if (!result.ok) {
       toast.error(result.error); // cap / rule feedback, visible on-canvas
       return;
@@ -327,7 +370,7 @@ export function XrayPillow({
     );
   };
 
-  /** A cell at the 5-piece cap takes no more: hover says so instead of adding. */
+  /** A cell at its piece cap takes no more: hover says so instead of adding. */
   const cellIsFull = (subSection: SubSection) =>
     dived !== null &&
     cellPieces(placements, { section: dived, subSection }).length >= MAX_PIECES_PER_CELL;
@@ -373,43 +416,39 @@ export function XrayPillow({
         });
 
   // Per-sub-section control-panel data for the dived section: the arrangement
-  // toggle (2+ pieces), plus the ordered stack (top→deep) when the cell is
-  // stacked. Every sub-section maps, empty cells included — they still hint.
+  // toggle (2+ pieces), plus the cell's layers top→deep. Every sub-section maps,
+  // empty cells included — they still hint. A one-layer cell lists no rows: its
+  // pieces already read as centroid chips on the pouches themselves.
   const panels =
     dived === null
       ? []
       : SUB_SECTIONS.map((subSection) => {
           const cell: Cell = { section: dived, subSection };
           const cellPcs = cellPieces(placements, cell);
-          const stacked = cellPcs.length >= 2 && cellArrangement(placements, cell) === "stacked";
-          return { subSection, cell, cellPcs, stacked, stack: stacked ? cellStack(placements, cell) : [] };
+          const layers = cellLayers(placements, cell);
+          return { subSection, cell, cellPcs, stacked: layers.length > 1, layers };
         });
-  // Flat top→deep order across the dived section → stable sortable indices.
-  const stackKeys = panels.flatMap((c) =>
-    c.stack.map((p) => `${c.cell.section}/${c.cell.subSection}/${p.slot}`),
+  // Flat top→deep layer order across the dived section → stable sortable indices.
+  const layerKeys = panels.flatMap((c) =>
+    c.layers.length > 1
+      ? c.layers.map((_, depth) => `${c.cell.section}/${c.cell.subSection}/L${depth}`)
+      : [],
   );
 
-  // Drag a stacked label onto another → reorder that cell's depth (top→deep).
-  const onStackDragEnd = (event: {
+  // Drag a layer row onto another → reorder that cell's depth (top→deep).
+  const onLayerDragEnd = (event: {
     operation?: { source?: { id?: string | number } | null; target?: { id?: string | number } | null };
   }) => {
     const src = event.operation?.source?.id;
     const tgt = event.operation?.target?.id;
     if (src == null || tgt == null || src === tgt) return;
-    const srcKey = String(src);
-    const tgtKey = String(tgt);
-    const [ssec, ssub] = srcKey.split("/");
-    const [tsec, tsub] = tgtKey.split("/");
-    if (ssec !== tsec || ssub !== tsub) return; // depth reorders within one cell
+    const [ssec, ssub, sdepth] = String(src).split("/");
+    const [tsec, tsub, tdepth] = String(tgt).split("/");
+    if (ssec !== tsec || ssub !== tsub) return; // layers reorder within one cell
     const cell: Cell = { section: ssec as Section, subSection: ssub as SubSection };
-    const order = cellStack(placements, cell).map((p) => `${cell.section}/${cell.subSection}/${p.slot}`);
-    const from = order.indexOf(srcKey);
-    const to = order.indexOf(tgtKey);
-    if (from < 0 || to < 0) return;
-    const reordered = [...order];
-    const [moved] = reordered.splice(from, 1);
-    reordered.splice(to, 0, moved);
-    onPlacementsChange?.(setDepthOrder(placements, cell, reordered.map((k) => Number(k.split("/")[2]))));
+    const from = Number(sdepth.slice(1));
+    const to = Number(tdepth.slice(1));
+    onPlacementsChange?.(moveLayer(placements, cell, from, to));
   };
 
   return (
@@ -540,11 +579,11 @@ export function XrayPillow({
                   onMouseLeave={() => setHoverSub((h) => (h === subSection ? null : h))}
                   onFocus={() => setHoverSub(subSection)}
                   onBlur={() => setHoverSub((h) => (h === subSection ? null : h))}
-                  onClick={() => !full && setOpenSub(subSection)}
+                  onClick={() => !full && openPicker(subSection, null)}
                   onKeyDown={(e) => {
                     if (full || (e.key !== "Enter" && e.key !== " ")) return;
                     e.preventDefault();
-                    setOpenSub(subSection);
+                    openPicker(subSection, null);
                   }}
                 />
               );
@@ -578,13 +617,16 @@ export function XrayPillow({
               Mounted on piece count, never on hover: focusin/focusout are
               DISCRETE in React and flush synchronously, so a focus-gated panel
               would unmount under the very Tab that reaches it. */}
-          <DragDropProvider onDragEnd={onStackDragEnd}>
-            {panels.map(({ subSection, cell, cellPcs, stacked, stack }) => {
+          <DragDropProvider onDragEnd={onLayerDragEnd}>
+            {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
               const hinting = hoverSub === subSection;
               // The bloom is centred on this same point while it is open, so the
               // cell yields its panel rather than stacking controls under a ring.
               if (openSub === subSection) return null;
-              if (cellPcs.length < 2 && !hinting) return null;
+              // From ONE piece, not two: that cell's only route to a second
+              // layer is the Add-layer button, and a hover-gated button is
+              // keyboard-unreachable. The toggle below still waits for two.
+              if (cellPcs.length < 1 && !hinting) return null;
               return (
                 <div
                   key={subSection}
@@ -616,23 +658,46 @@ export function XrayPillow({
                       })}
                     </div>
                   )}
-                  {/* `stack` is [] unless the cell is stacked — no second gate. */}
-                  {stack.map((p) => {
-                    const key = `${cell.section}/${cell.subSection}/${p.slot}`;
-                    return (
-                      <StackLabel
-                        key={key}
-                        id={key}
-                        index={stackKeys.indexOf(key)}
-                        label={pieceLabel(p.itemId)}
-                        onRemove={() => onPlacementsChange?.(removePiece(placements, cell, p.slot))}
-                      />
-                    );
-                  })}
+                  {/* One layer needs no row of its own — its pieces are the
+                      centroid chips on the pouches. Rows appear from two up. */}
+                  {stacked &&
+                    layers.map((layer, depth) => {
+                      const key = `${cell.section}/${cell.subSection}/L${depth}`;
+                      return (
+                        <LayerRow
+                          key={key}
+                          id={key}
+                          index={layerKeys.indexOf(key)}
+                          depth={depth}
+                          full={layer.length >= MAX_PIECES_PER_LAYER}
+                          pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
+                          onAdd={() => openPicker(subSection, depth)}
+                          onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
+                          onRemovePiece={(slot) =>
+                            onPlacementsChange?.(removePiece(placements, cell, slot))
+                          }
+                        />
+                      );
+                    })}
+                  {/* Adding a layer IS adding a piece at a new depth, so an empty
+                      layer is never created and never has to be persisted. */}
+                  {cellPcs.length > 0 && layers.length < MAX_LAYERS_PER_CELL && (
+                    <button
+                      type="button"
+                      className="pointer-events-auto flex items-center gap-0.5 rounded border bg-background/90 px-1 text-[9px] leading-4 shadow-sm hover:bg-accent"
+                      aria-label={`Add a layer under ${cell.section} ${subSection}`}
+                      onClick={() => openPicker(subSection, layers.length)}
+                    >
+                      <Layers className="size-2.5" />
+                      Add layer
+                    </button>
+                  )}
                   {/* Out of flow: appearing on hover must not shove the controls. */}
                   {hinting && (
                     <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                      {cellIsFull(subSection) ? "Cell full (max 5)" : "Click to add filling"}
+                      {cellIsFull(subSection)
+                        ? `Cell full (max ${MAX_PIECES_PER_CELL})`
+                        : "Click to add filling"}
                     </span>
                   )}
                 </div>
@@ -659,11 +724,17 @@ export function XrayPillow({
                 ringWidth={40}
                 holeRadius={18}
                 centerIcon={Plus}
-                ariaLabel={`Add filling to ${dived} ${openSub}`}
+                ariaLabel={
+                  openLayer === null
+                    ? `Add filling to ${dived} ${openSub}`
+                    : `Add filling to ${dived} ${openSub} layer ${openLayer + 1}`
+                }
                 onOpenChange={(o) => {
                   if (!o) setOpenSub(null);
                 }}
-                onSelect={(leaf) => addToCell({ section: dived, subSection: openSub }, Number(leaf.id))}
+                onSelect={(leaf) =>
+                  addToCell({ section: dived, subSection: openSub }, Number(leaf.id), openLayer)
+                }
               />
             </div>
           )}

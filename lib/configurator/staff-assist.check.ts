@@ -10,6 +10,7 @@ import {
   addPiece,
   cellArrangement,
   cellPieces,
+  cellLayers,
   cellStack,
   confirmGate,
   PILLOW_CELLS,
@@ -18,7 +19,8 @@ import {
   removePiece,
   sessionTemplateId,
   setCellArrangement,
-  setDepthOrder,
+  moveLayer,
+  removeLayer,
   type Cell,
   type SizeTier,
 } from "./staff-assist";
@@ -80,7 +82,7 @@ assert.deepEqual(
   "empty selections stay empty with no notes",
 );
 
-// --- Per-cell list editor rules: start empty, lowest free slot, max 5 ---
+// --- Per-cell list editor rules: start empty, lowest free slot, per-layer cap ---
 assert.equal(PILLOW_CELLS.length, 9, "nine cells (Section × sub-section)");
 const cell: Cell = { section: "left", subSection: "front" };
 let mix: PillowPlacement[] = [];
@@ -94,9 +96,13 @@ assert.deepEqual(
   [1, 2, 3, 4, 5],
   "slots fill 1→5",
 );
-const sixth = addPiece(mix, cell, 1);
-assert.ok(!sixth.ok && /Max 5/.test(sixth.error), "6th piece rejected with clear feedback");
-assert.ok(addPiece(mix, { section: "left", subSection: "middle" }, 1).ok, "cap is per cell");
+const sixth = addPiece(mix, cell, 1, 0);
+assert.ok(!sixth.ok && /Max 5 pieces per layer/.test(sixth.error), "6th piece in a NAMED full layer is rejected with clear feedback");
+const anywhere = addPiece(mix, cell, 1);
+assert.ok(anywhere.ok, "…but an unaddressed add opens a new layer rather than dead-ending");
+assert.equal(cellLayers(anywhere.placements, cell).length, 2, "the cell art's add starts layer 2 once layer 1 is full");
+assert.ok(addPiece(mix, cell, 1, 1).ok, "a NEW layer takes it: the cap is per layer, not per cell");
+assert.ok(addPiece(mix, { section: "left", subSection: "middle" }, 1).ok, "cells stay independent");
 mix = removePiece(mix, cell, 3);
 assert.equal(cellPieces(mix, cell).length, 4, "remove drops one piece");
 const readd = addPiece(mix, cell, 2);
@@ -104,25 +110,55 @@ assert.ok(readd.ok, "re-add after remove fits");
 const diverged = readd.placements;
 assert.ok(cellPieces(diverged, cell).some((p) => p.slot === 3 && p.itemId === 2), "re-add reuses lowest free slot");
 
-// --- X-ray arrangement: side ⇄ stacked depth + drag reorder -----------------
+// --- Layers: side ⇄ stacked, add/remove/reorder, dense renumbering ----------
 let arr: PillowPlacement[] = [];
 for (let i = 0; i < 4; i++) arr = (addPiece(arr, cell, 1) as { placements: PillowPlacement[] }).placements;
-assert.equal(cellArrangement(arr, cell), "side", "untouched cell reads side-by-side");
+assert.equal(cellArrangement(arr, cell), "side", "untouched cell is one layer, side-by-side");
+assert.equal(cellLayers(arr, cell).length, 1, "…and reads as exactly one layer");
 arr = setCellArrangement(arr, cell, "stacked");
-assert.equal(cellArrangement(arr, cell), "stacked", "stacked once pieces carry a depth");
+assert.equal(cellArrangement(arr, cell), "stacked", "stacked once the pieces span layers");
 assert.deepEqual(
   cellPieces(arr, cell).map((p) => p.row),
   [0, 1, 2, 3],
-  "stacked assigns depth 0..N-1 in slot order (slot 1 = top)",
+  "stacked assigns layer 0..N-1 in slot order (slot 1 = top) while they fit one each",
 );
-// Drag slot 1 (top) to the bottom of the stack → depths reindex from the new order.
-const stackSlots = cellStack(arr, cell).map((p) => p.slot); // [1,2,3,4] top→deep
-const moved = [...stackSlots.slice(1), stackSlots[0]]; // [2,3,4,1]
-arr = setDepthOrder(arr, cell, moved);
+// Drag layer 0 (top) to the bottom → layers reindex from the new order.
+arr = moveLayer(arr, cell, 0, 3);
 assert.equal(cellPieces(arr, cell).find((p) => p.slot === 1)?.row, 3, "reorder pushes the old top to the deepest");
 assert.deepEqual(cellStack(arr, cell).map((p) => p.slot), [2, 3, 4, 1], "cellStack reads top→deep after reorder");
+
+// Several pieces share a layer: that is the whole point of layers.
+let shared = (addPiece([], cell, 1) as { placements: PillowPlacement[] }).placements;
+shared = (addPiece(shared, cell, 2, 1) as { placements: PillowPlacement[] }).placements;
+shared = (addPiece(shared, cell, 3, 1) as { placements: PillowPlacement[] }).placements;
+assert.deepEqual(cellLayers(shared, cell).map((l) => l.length), [1, 2], "layer 2 holds two pieces side by side");
+
+// Removing a layer closes the gap; dropping to one layer drops `row` entirely.
+const afterRemove = removeLayer(shared, cell, 0);
+assert.equal(cellLayers(afterRemove, cell).length, 1, "deeper layers move up when one is removed");
+assert.ok(
+  cellPieces(afterRemove, cell).every((p) => p.row === undefined),
+  "a cell back down to one layer stores no depth — the side-by-side encoding",
+);
+assert.equal(cellArrangement(afterRemove, cell), "side", "…so it reads side again");
+
+// Beyond one piece per layer, "stacked" chunks evenly rather than failing.
+let full: PillowPlacement[] = [];
+for (let i = 0; i < 10; i++) {
+  full = (addPiece(full, cell, 1, Math.floor(i / 5)) as { placements: PillowPlacement[] }).placements;
+}
+full = setCellArrangement(full, cell, "stacked");
+assert.deepEqual(cellLayers(full, cell).map((l) => l.length), [2, 2, 2, 2, 2], "ten pieces spread evenly over five layers");
+assert.ok(!addPiece(full, cell, 1, 5).ok, "a sixth layer is refused");
+assert.ok(addPiece(full, cell, 1).ok, "…while the five existing layers still have room");
+let packed: PillowPlacement[] = [];
+for (let i = 0; i < 25; i++) packed = (addPiece(packed, cell, 1) as { placements: PillowPlacement[] }).placements;
+assert.equal(cellLayers(packed, cell).length, 5, "an unaddressed add fills 5 layers of 5");
+const twentySixth = addPiece(packed, cell, 1);
+assert.ok(!twentySixth.ok && /Max 5 layers/.test(twentySixth.error), "a full cell refuses the 26th piece");
+
 arr = setCellArrangement(arr, cell, "side");
-assert.ok(cellPieces(arr, cell).every((p) => p.row === undefined), "side clears every depth");
+assert.ok(cellPieces(arr, cell).every((p) => p.row === undefined), "side collapses back to one layer");
 
 // --- Mbolster session mix: single compartment, no cap (ADR 0008) ------------
 let bolsterMix: BolsterPlacement[] = [];

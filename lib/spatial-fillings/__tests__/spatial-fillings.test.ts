@@ -98,7 +98,7 @@ describe("validatePillowPlacements", () => {
     ).toBe(false);
   });
 
-  it("accepts stack depth 0–4, rejects out-of-range depth", () => {
+  it("accepts layer 0–4, rejects out-of-range layer", () => {
     expect(
       validatePillowPlacements([{ section: "left", subSection: "front", slot: 1, itemId: 1, row: 4 }], categories).ok,
     ).toBe(true);
@@ -107,15 +107,50 @@ describe("validatePillowPlacements", () => {
     ).toBe(false);
   });
 
-  it("rejects two pieces sharing a stack depth in one cell", () => {
-    const dup = validatePillowPlacements(
+  it("accepts pieces sharing a layer — that is what a layer is", () => {
+    const shared = validatePillowPlacements(
       [
         { section: "left", subSection: "front", slot: 1, itemId: 1, row: 0 },
         { section: "left", subSection: "front", slot: 2, itemId: 1, row: 0 },
       ],
       categories,
     );
-    expect(dup.ok).toBe(false);
+    expect(shared.ok).toBe(true);
+  });
+
+  it("caps one layer at five pieces, and counts row: undefined as layer 0", () => {
+    const cell = (slot: number, row?: number) => ({
+      section: "left" as const,
+      subSection: "front" as const,
+      slot,
+      itemId: 1,
+      ...(row === undefined ? {} : { row }),
+    });
+    expect(validatePillowPlacements([1, 2, 3, 4, 5].map((s) => cell(s, 0)), categories).ok).toBe(true);
+    expect(validatePillowPlacements([1, 2, 3, 4, 5, 6].map((s) => cell(s, 0)), categories).ok).toBe(false);
+    // Mixed encodings of the same layer must add up, or the cap is bypassable.
+    const mixed = validatePillowPlacements(
+      [cell(1), cell(2), cell(3), cell(4, 0), cell(5, 0), cell(6, 0)],
+      categories,
+    );
+    expect(mixed.ok).toBe(false);
+  });
+
+  it("fills a cell to five layers of five", () => {
+    const full = Array.from({ length: 25 }, (_, i) => ({
+      section: "left" as const,
+      subSection: "front" as const,
+      slot: i + 1,
+      itemId: 1,
+      row: Math.floor(i / 5),
+    }));
+    expect(validatePillowPlacements(full, categories).ok).toBe(true);
+    expect(
+      validatePillowPlacements(
+        [...full, { section: "left" as const, subSection: "front" as const, slot: 26, itemId: 1, row: 4 }],
+        categories,
+      ).ok,
+    ).toBe(false);
   });
 });
 

@@ -44,14 +44,15 @@ assert.equal(ringSelfIntersects([[0, 0], [10, 0], [10, 10], [0, 10]]), false, "s
 // --- Renderer wiring: dive edits reuse the session-mix functions --------------
 const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray-pillow.tsx"), "utf8");
 assert.match(renderer, /from "@\/lib\/configurator\/staff-assist"/, "edits go through the shared lib");
-assert.match(renderer, /addPiece\(placements, cell, itemId\)/, "add uses addPiece (cap + slot rules)");
+assert.match(renderer, /addPiece\(placements, cell, itemId, layer\)/, "add uses addPiece (layer + cap + slot rules)");
 assert.match(renderer, /removePiece\(placements, cell, lastSlot\)/, "remove uses removePiece (collated chip → last slot)");
 assert.match(renderer, /setCellArrangement\(placements, cell, mode\)/, "arrangement toggle writes through the shared lib");
-assert.match(renderer, /setDepthOrder\(placements, cell,/, "drag reorders stack depth through the lib");
-assert.match(renderer, /<DragDropProvider onDragEnd=\{onStackDragEnd\}>/, "stacked labels are drag-sortable");
+assert.match(renderer, /moveLayer\(placements, cell, from, to\)/, "drag reorders layers through the lib");
+assert.match(renderer, /removeLayer\(placements, cell, depth\)/, "layer delete goes through the lib");
+assert.match(renderer, /<DragDropProvider onDragEnd=\{onLayerDragEnd\}>/, "layer rows are drag-sortable");
 assert.doesNotMatch(renderer, /setPieceRow|ChevronUp|ChevronDown/, "chevrons gone — drag replaces the move buttons");
 assert.match(renderer, /toast\.error\(result\.error\)/, "cap/inventory errors surface on-canvas");
-assert.match(renderer, /Cell full \(max 5\)/, "cap state visible on-canvas");
+assert.match(renderer, /Cell full \(max \$\{MAX_PIECES_PER_CELL\}\)/, "cap state visible on-canvas, sourced from the constant");
 assert.match(renderer, /e\.key === "Escape"/, "Escape returns to full view");
 assert.match(renderer, /setDived\(null\)/, "back button returns to full view");
 assert.match(renderer, /getShapeMorph\(from, shape\)/, "shape swaps use prepared morphs");
@@ -94,11 +95,25 @@ assert.match(renderer, /\.\.\.cellCenter\(subSection\)/, "the control panel is a
 // very Tab that reaches it and the toggle would be keyboard-unreachable.
 assert.match(
   renderer,
-  /if \(cellPcs\.length < 2 && !hinting\) return null;/,
-  "controls mount on piece count — Tab must be able to reach the toggle",
+  /if \(cellPcs\.length < 1 && !hinting\) return null;/,
+  "controls mount on piece count from ONE piece up — Tab must be able to reach " +
+    "the toggle, and a one-piece cell's only route to a second layer is Add layer",
 );
 assert.match(renderer, /role="group"/, "toggle keeps its group semantics");
 assert.match(renderer, /aria-pressed=\{on\}/, "two aria-pressed buttons, not a custom widget");
+
+// --- Layers: the picker targets a layer, and "add layer" is "add a piece" ----
+// An empty layer has no Placement rows, so it cannot be stored. Making "Add
+// layer" open the picker at index `layers.length` means a layer only ever exists
+// once something is in it — no ghost rows, no schema for emptiness.
+assert.match(renderer, /openPicker\(subSection, layers\.length\)/, "Add layer opens the picker at a new depth");
+assert.match(
+  renderer,
+  /openPicker\(subSection, null\)/,
+  "a click on the cell art asks for ANY layer with room — it must not dead-end on a full top layer",
+);
+assert.match(renderer, /layers\.length < MAX_LAYERS_PER_CELL/, "the Add-layer affordance respects the five-layer cap");
+assert.doesNotMatch(renderer, /setDepthOrder|cellStack/, "the retired one-piece-per-depth helpers are gone, not just unused");
 
 // --- Gating: edit affordances only behind staffAssist (guests read-only) -----
 const client = readFileSync(join(process.cwd(), "app", "[lang]", "mp-config", "mp-config-client.tsx"), "utf8");

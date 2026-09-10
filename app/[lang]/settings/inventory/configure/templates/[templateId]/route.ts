@@ -6,7 +6,7 @@ import { validateFillingOnlyLines } from '@/lib/filling-templates'
 import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
 import {
   derivePackList,
-  MAX_PIECES_PER_CELL,
+  MAX_LAYERS_PER_CELL,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -100,11 +100,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
 }
 
 // Shape gate only; the spatial-fillings lib does the semantic validation per kind.
-// row_index is the x-ray stack depth (0 = top/front). Bound derives from
-// MAX_PIECES_PER_CELL so it cannot drift from validatePillowPlacements or the
+// row_index is the piece's LAYER (0 = top/front). Bound derives from
+// MAX_LAYERS_PER_CELL so it cannot drift from validatePillowPlacements or the
 // `row_index between 0 and 4` DB constraint again — it was left at the retired
-// two-value top/bottom lane long after the 2026-07-21 depth migration.
-const MAX_STACK_DEPTH = MAX_PIECES_PER_CELL - 1
+// two-value top/bottom lane long after the 2026-07-21 depth migration, and the
+// per-cell piece cap it briefly borrowed is now five layers' worth, not one.
+const MAX_STACK_DEPTH = MAX_LAYERS_PER_CELL - 1
 const PlacementRowSchema = z.object({
   section: z.string().default(''),
   sub_section: z.string().default(''),

@@ -9,7 +9,7 @@ import { transitionResult } from "@/lib/result-lifecycle";
 import { decideFillingAssign } from "@/lib/results/filling-assign";
 import {
   derivePackList,
-  MAX_PIECES_PER_CELL,
+  MAX_LAYERS_PER_CELL,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -52,10 +52,11 @@ const AssignSchema = z.object({
         sub_section: z.string().default(""),
         slot: z.number().int(),
         item_id: z.number().int().positive(),
-        // Bound derives from MAX_PIECES_PER_CELL, matching the DB constraint and
-        // validatePillowPlacements. It sat at the retired two-value top/bottom
-        // lane, so the x-ray's depth reordering could not be saved from here.
-        row_index: z.number().int().min(0).max(MAX_PIECES_PER_CELL - 1).nullable().optional(),
+        // row_index is the piece's LAYER (0 = top/front). Bound derives from
+        // MAX_LAYERS_PER_CELL, matching the DB constraint and
+        // validatePillowPlacements — NOT from the per-cell piece cap, which is
+        // five times larger now that a layer holds several pieces.
+        row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
       }),
     )
     .optional(),

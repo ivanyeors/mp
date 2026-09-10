@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 
 import {
   derivePackList,
-  MAX_PIECES_PER_CELL,
+  MAX_LAYERS_PER_CELL,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -96,11 +96,11 @@ for (const needle of [
 assert.ok(route.includes("tpl.role !== 'filling'"), "PUT rejects placements on warehouse templates");
 assert.ok(route.includes("rejectFillingLines"), "warehouse lines path (ADR 0003) untouched");
 
-// --- Depth bound: request schema must not be tighter than the validator ---
+// --- Layer bound: request schema must not be tighter than the validator ---
 // The route's zod bound sat at the retired two-value top/bottom lane while the DB
-// constraint and validatePillowPlacements both moved to the full 0..4 depth range,
+// constraint and validatePillowPlacements both moved to the full 0..4 layer range,
 // so the API silently refused any stack deeper than layer 1.
-for (const depth of [0, MAX_PIECES_PER_CELL - 1]) {
+for (const depth of [0, MAX_LAYERS_PER_CELL - 1]) {
   assert.deepEqual(
     validatePillowPlacements(
       rowsToPillowPlacements([
@@ -115,12 +115,12 @@ for (const depth of [0, MAX_PIECES_PER_CELL - 1]) {
 assert.equal(
   validatePillowPlacements(
     rowsToPillowPlacements([
-      { section: "left", sub_section: "front", slot: 1, item_id: 1, row_index: MAX_PIECES_PER_CELL },
+      { section: "left", sub_section: "front", slot: 1, item_id: 1, row_index: MAX_LAYERS_PER_CELL },
     ]),
     categories,
   ).ok,
   false,
-  "validator still rejects a stack depth past the cell cap",
+  "validator still rejects a layer past the per-cell layer cap",
 );
 
 // --- Colour overrides reach the Admin Panel from the server ---
@@ -203,8 +203,9 @@ for (const path of [
   const bounds = src.match(/row_index:\s*z\.number\(\)\.int\(\)\.min\(0\)\.max\(([^)]*)\)/g) ?? [];
   assert.ok(bounds.length > 0, `${path} shape-gates row_index`);
   assert.ok(
-    src.includes("MAX_PIECES_PER_CELL"),
-    `${path} must source its depth bound from MAX_PIECES_PER_CELL`,
+    src.includes("MAX_LAYERS_PER_CELL"),
+    `${path} must source its layer bound from MAX_LAYERS_PER_CELL — NOT from the ` +
+      `per-cell piece cap, which is five layers' worth of pieces`,
   );
   for (const bound of bounds) {
     // Directly, or via a named constant derived from it — never a literal number,

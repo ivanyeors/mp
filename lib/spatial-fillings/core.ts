@@ -7,11 +7,13 @@ export type Section = "left" | "center" | "right";
 export type SubSection = "front" | "middle" | "back";
 
 /**
- * One Mpillow piece: cell (Section × sub-section) + slot 1–5 + inventory item.
- * `row` is the x-ray stack DEPTH within the cell (the view is top-down): 0 = top
- * (front), increasing = deeper into the pillow; depths are distinct per cell.
- * undefined = side-by-side / auto layout (backward-compatible default). Visual
- * only — the pack list ignores it, so it stays out of the fingerprint.
+ * One Mpillow piece: cell (Section × sub-section) + slot + inventory item.
+ * `row` is the piece's LAYER within the cell (the view is top-down): 0 = top
+ * (front), increasing = deeper into the pillow. Pieces SHARE a layer — several
+ * at the same depth lie side by side across the cell — so `row` is no longer
+ * distinct per cell. undefined = layer 0, the single-layer default every recipe
+ * written before layers carries. Visual only: the pack list ignores it, so it
+ * stays out of the fingerprint.
  */
 export type PillowPlacement = {
   section: Section;
@@ -44,7 +46,14 @@ export type BolsterPlacementRow = {
 
 export type PackLine = { item_id: number; count: number };
 
-export const MAX_PIECES_PER_CELL = 5;
+/**
+ * Layers: a cell is up to five depth planes, each holding up to five pieces
+ * side by side. The slot key is unique per CELL, so the cell cap is the product
+ * — the DB `slot between 1 and 25` check and the API bounds both derive from it.
+ */
+export const MAX_LAYERS_PER_CELL = 5;
+export const MAX_PIECES_PER_LAYER = 5;
+export const MAX_PIECES_PER_CELL = MAX_LAYERS_PER_CELL * MAX_PIECES_PER_LAYER;
 
 export const SECTIONS: readonly Section[] = ["left", "center", "right"];
 export const SUB_SECTIONS: readonly SubSection[] = ["front", "middle", "back"];
@@ -96,15 +105,17 @@ function assertFillingItem(
 }
 
 /**
- * Validate cell addresses, slot 1–5, unique (section, subSection, slot), filling items only.
- * The ≤5-per-cell cap follows from the slot range plus slot uniqueness.
+ * Validate cell addresses, slot range, unique (section, subSection, slot),
+ * layer range, the per-layer piece cap, and filling items only. The per-cell cap
+ * follows from the slot range plus slot uniqueness; the per-layer cap has to be
+ * counted, because a layer is a group of slots rather than a slot of its own.
  */
 export function validatePillowPlacements(
   placements: PillowPlacement[],
   itemCategories: ReadonlyMap<number, string>,
 ): Validation {
   const seen = new Set<string>();
-  const depthSeen = new Set<string>();
+  const perLayer = new Map<string, number>();
   for (const p of placements) {
     if (!SECTIONS.includes(p.section) || !SUB_SECTIONS.includes(p.subSection)) {
       return { ok: false, error: `Invalid cell address: ${p.section}/${p.subSection}` };
@@ -115,16 +126,19 @@ export function validatePillowPlacements(
         error: `Slot must be an integer 1–${MAX_PIECES_PER_CELL}, max ${MAX_PIECES_PER_CELL} pieces per cell (got ${p.slot})`,
       };
     }
-    if (p.row !== undefined) {
-      if (!Number.isInteger(p.row) || p.row < 0 || p.row > MAX_PIECES_PER_CELL - 1) {
-        return { ok: false, error: `Stack depth must be an integer 0–${MAX_PIECES_PER_CELL - 1} (got ${p.row})` };
-      }
-      const depthKey = `${p.section}/${p.subSection}/${p.row}`;
-      if (depthSeen.has(depthKey)) {
-        return { ok: false, error: `Duplicate stack depth ${p.row} at ${p.section}/${p.subSection}` };
-      }
-      depthSeen.add(depthKey);
+    if (p.row !== undefined && (!Number.isInteger(p.row) || p.row < 0 || p.row > MAX_LAYERS_PER_CELL - 1)) {
+      return { ok: false, error: `Layer must be an integer 0–${MAX_LAYERS_PER_CELL - 1} (got ${p.row})` };
     }
+    // `row: undefined` and `row: 0` are the same layer — count them together.
+    const layerKey = `${p.section}/${p.subSection}/${p.row ?? 0}`;
+    const inLayer = (perLayer.get(layerKey) ?? 0) + 1;
+    if (inLayer > MAX_PIECES_PER_LAYER) {
+      return {
+        ok: false,
+        error: `Max ${MAX_PIECES_PER_LAYER} pieces per layer (${p.section}/${p.subSection} layer ${(p.row ?? 0) + 1})`,
+      };
+    }
+    perLayer.set(layerKey, inLayer);
     const slotKey = `${p.section}/${p.subSection}/${p.slot}`;
     if (seen.has(slotKey)) return { ok: false, error: `Duplicate placement at ${slotKey}` };
     seen.add(slotKey);

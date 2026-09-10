@@ -2130,9 +2130,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts": {
-    "mtime": 1788964953.5229664,
-    "seen": 1788965376.755842,
-    "ast_hash": "8c3407825138e57df66bf1b526027774",
+    "mtime": 1788969567.860663,
+    "seen": 1788970199.756184,
+    "ast_hash": "afe44f53e23e313bb6972accc5835c4d",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/templates/apply/route.ts": {
@@ -2706,9 +2706,9 @@
     "semantic_hash": ""
   },
   "app/api/results/[id]/assign/route.ts": {
-    "mtime": 1788966519.2207067,
-    "seen": 1788966925.570053,
-    "ast_hash": "8a99a4a0a33ba04e60488389c4b7ab48",
+    "mtime": 1788969567.8603373,
+    "seen": 1788970199.756268,
+    "ast_hash": "82b6557a575bfa3341fe11b87a0fb889",
     "semantic_hash": ""
   },
   "app/api/results/[id]/decline/route.ts": {
@@ -2736,9 +2736,9 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/route.ts": {
-    "mtime": 1788966530.1443002,
-    "seen": 1788966925.570056,
-    "ast_hash": "b002dde460482534b7c5f1c8c08d10b8",
+    "mtime": 1788969567.860521,
+    "seen": 1788970199.756272,
+    "ast_hash": "5a30d08c3be53cde5ab869f293e8e2e1",
     "semantic_hash": ""
   },
   "app/api/results/route.ts": {
@@ -4614,9 +4614,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-dive.check.ts": {
-    "mtime": 1788969290.6250272,
-    "seen": 1788969377.576816,
-    "ast_hash": "9e570d22ec27cca2aabc61fe0e066790",
+    "mtime": 1788970357.05229,
+    "seen": 1788970416.938314,
+    "ast_hash": "88a742a6ce90b5661cd6495c89005061",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
@@ -4626,9 +4626,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1788969271.1711197,
-    "seen": 1788969377.576818,
-    "ast_hash": "57a7be2b823fc5e61ece689628f1fe01",
+    "mtime": 1788970357.0519352,
+    "seen": 1788970416.938317,
+    "ast_hash": "2353c9ade3c9b4ad4b433788d9ec424d",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -5448,15 +5448,15 @@
     "semantic_hash": ""
   },
   "lib/configurator/staff-assist.check.ts": {
-    "mtime": 1784566880.8339067,
-    "seen": 1788964866.5886002,
-    "ast_hash": "f537c6bd251a0baf407d6f97f22f65f4",
+    "mtime": 1788970255.017152,
+    "seen": 1788970334.177748,
+    "ast_hash": "baa5ec84d6bf4e7092ef9b7ca1a06f90",
     "semantic_hash": ""
   },
   "lib/configurator/staff-assist.ts": {
-    "mtime": 1784566355.6304896,
-    "seen": 1788964866.588601,
-    "ast_hash": "9ed08a3b98e227ac65b1e4185ec342b0",
+    "mtime": 1788970237.0292995,
+    "seen": 1788970334.177748,
+    "ast_hash": "8a07094ea2f7e77aa9db8befd0ede1fd",
     "semantic_hash": ""
   },
   "lib/costings/on-hand-value-kpis.check.ts": {
@@ -6084,21 +6084,21 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/spatial-fillings.test.ts": {
-    "mtime": 1784566848.5350447,
-    "seen": 1788964866.588913,
-    "ast_hash": "ba04c1d4eaa6945adab94bf648ca37ab",
+    "mtime": 1788969703.8822353,
+    "seen": 1788970199.7567549,
+    "ast_hash": "bdc9ab0451f0d1c4f5db5d4dfbbaaff8",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/xray-layout.test.ts": {
-    "mtime": 1784566832.204418,
-    "seen": 1788964866.588913,
-    "ast_hash": "d75187adee784d41c493586d808d72f2",
+    "mtime": 1788969722.1131012,
+    "seen": 1788970199.756756,
+    "ast_hash": "ff0da2c22cdb4f9ca00843e75fc7632c",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/api-contract.check.ts": {
-    "mtime": 1788966634.1737282,
-    "seen": 1788966925.570524,
-    "ast_hash": "327efe27a21089b7dfea2646636bb8f2",
+    "mtime": 1788969593.479867,
+    "seen": 1788970199.756756,
+    "ast_hash": "c1c7f03efb67d8720d392e73908a8792",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/color-overrides.check.ts": {
@@ -6120,9 +6120,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/core.ts": {
-    "mtime": 1784566227.6755462,
-    "seen": 1788964866.588916,
-    "ast_hash": "b0bcf993e1a1afede20a8b8570162b4f",
+    "mtime": 1788969416.9356513,
+    "seen": 1788970199.7567601,
+    "ast_hash": "ecb90f97243123d6a644b90d3403d180",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/filling-groups.check.ts": {
@@ -6162,9 +6162,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/xray-layout.ts": {
-    "mtime": 1784566327.812639,
-    "seen": 1788964866.588922,
-    "ast_hash": "b6dc89cdad0fa640d1b5ba03e33e04a4",
+    "mtime": 1788969463.556015,
+    "seen": 1788970199.756763,
+    "ast_hash": "4fead1c3d4433de43ee63815be00c394",
     "semantic_hash": ""
   },
   "lib/whatsapp/__tests__/partner-notify.test.ts": {
@@ -8238,9 +8238,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1788966684.390633,
-    "seen": 1788966925.570787,
-    "ast_hash": "58275f7bc5fbaa6d1d73490918b92de5",
+    "mtime": 1788969751.8541682,
+    "seen": 1788970199.7570372,
+    "ast_hash": "709c2c509312eedb659728676f235137",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -9786,8 +9786,8 @@
     "semantic_hash": ""
   },
   "scripts/bundle-budget.json": {
-    "mtime": 1788967247.3513432,
-    "seen": 1788967329.9779441,
+    "mtime": 1789020581.0745077,
+    "seen": 1789020622.808173,
     "ast_hash": "285a5b17a601c0f869bfdcb40b9e3151",
     "semantic_hash": ""
   },
@@ -10698,9 +10698,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/cells.test.ts": {
-    "mtime": 1788965177.4163303,
-    "seen": 1788965376.756429,
-    "ast_hash": "3f037804d58149595c0e0b09b09f769e",
+    "mtime": 1788969703.8821113,
+    "seen": 1788970199.756753,
+    "ast_hash": "1a5e005d435dd5694f35b6ecfb25de7f",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/authoring.ts": {
@@ -10710,9 +10710,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/cells.ts": {
-    "mtime": 1788965173.1531618,
-    "seen": 1788965376.756433,
-    "ast_hash": "f9ca95f61b8cd34c077000b2c2a6e5fd",
+    "mtime": 1788969703.8812237,
+    "seen": 1788970199.756757,
+    "ast_hash": "93350d2fb38e3102a0bf68d4ec4181a1",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/surface-parity.check.ts": {
@@ -10731,6 +10731,12 @@
     "mtime": 1788966554.4293592,
     "seen": 1788966925.570057,
     "ast_hash": "9d8d80dbc6305bfe9a1cf36f9fb61e02",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260909200000_filling_placement_layers.sql": {
+    "mtime": 1788969580.3353882,
+    "seen": 1788970199.756866,
+    "ast_hash": "30e9a61deeb88cbdb242369e6aea8deb",
     "semantic_hash": ""
   }
 }

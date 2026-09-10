@@ -29,7 +29,12 @@ export function placementsToCells(value: PillowPlacement[]): CellMap {
   return cells;
 }
 
-/** Per-cell item lists → placements; slot numbers are the 1-based position in each cell's list. */
+/**
+ * Per-cell item lists → placements; slot numbers are the 1-based position in
+ * each cell's list. The CellMap view has no layer axis, so this builds a
+ * SINGLE-layer cell (no `row`) and is capped by MAX_PIECES_PER_LAYER, not by the
+ * per-cell piece cap. Summarising surfaces flatten layers away on the way in.
+ */
 export function cellsToPlacements(cells: CellMap): PillowPlacement[] {
   const out: PillowPlacement[] = [];
   for (const { section, subSection } of CELLS) {
