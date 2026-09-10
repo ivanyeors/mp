@@ -47,55 +47,103 @@ async function getNode(id: string, fields: string[], token: string, minimal: str
 }
 
 /**
- * The phone-number node does not expose its owning WABA, so recover it the way
- * scripts/whatsapp-whoami.ts does: the token's granular scopes name every WABA
- * it can reach, and the one listing this phone number is the owner.
+ * The phone-number node does not expose its owning WABA, and there is no single
+ * route to it that every token type can take — so try each in turn:
+ *
+ *   1. WHATSAPP_WABA_ID, when ops has pinned it explicitly.
+ *   2. debug_token with an app access token (needs WHATSAPP_APP_ID + _SECRET).
+ *   3. debug_token with the token itself — only works when it is a user token
+ *      owned by an app owner/developer, not for a system-user token.
+ *   4. The business route: every WABA the token's businesses own or client.
+ *
+ * Whichever route wins, the answer is confirmed the same way: the owning WABA
+ * is the one whose phone_numbers list contains this phone id.
  */
+async function wabaOwnsNumber(waba: string, phoneId: string, token: string): Promise<boolean> {
+  const nums = await get(`${GRAPH}/${waba}/phone_numbers?fields=id&limit=100`, token);
+  const list = (nums.json.data as Array<{ id?: string }>) ?? [];
+  return list.some((n) => n.id === phoneId);
+}
+
+async function wabaIdsFromDebugToken(token: string, appToken?: string): Promise<string[]> {
+  const auth = encodeURIComponent(appToken ?? token);
+  const dbg = await get(
+    `${GRAPH}/debug_token?input_token=${encodeURIComponent(token)}&access_token=${auth}`,
+    token,
+  );
+  if (!dbg.ok) return [];
+  const scopes =
+    ((dbg.json.data as { granular_scopes?: Array<{ scope: string; target_ids?: string[] }> })
+      ?.granular_scopes) ?? [];
+  const out: string[] = [];
+  for (const s of scopes) {
+    if (/whatsapp_business/.test(s.scope)) out.push(...(s.target_ids ?? []));
+  }
+  return out;
+}
+
+async function wabaIdsFromBusinesses(token: string): Promise<string[]> {
+  const me = await get(`${GRAPH}/me?fields=businesses{id}`, token);
+  const businesses =
+    ((me.json.businesses as { data?: Array<{ id?: string }> })?.data ?? [])
+      .map((b) => b.id)
+      .filter((x): x is string => Boolean(x));
+
+  const out: string[] = [];
+  for (const biz of businesses) {
+    for (const edge of ["owned_whatsapp_business_accounts", "client_whatsapp_business_accounts"]) {
+      const res = await get(`${GRAPH}/${biz}/${edge}?fields=id&limit=100`, token);
+      for (const w of (res.json.data as Array<{ id?: string }>) ?? []) {
+        if (w.id) out.push(w.id);
+      }
+    }
+  }
+  return out;
+}
+
 async function resolveWaba(
   phoneId: string,
   token: string,
 ): Promise<{ id: string | null; detail: string }> {
-  const enc = encodeURIComponent(token);
-  const dbg = await get(`${GRAPH}/debug_token?input_token=${enc}&access_token=${enc}`, token);
-  if (!dbg.ok) {
-    return { id: null, detail: `debug_token failed (${dbg.status}): ${dbg.json.error?.message ?? "?"}` };
+  const pinned = process.env.WHATSAPP_WABA_ID?.trim();
+  if (pinned) {
+    if (await wabaOwnsNumber(pinned, phoneId, token)) {
+      return { id: pinned, detail: `${pinned} (pinned via WHATSAPP_WABA_ID)` };
+    }
+    return { id: null, detail: `WHATSAPP_WABA_ID ${pinned} does not own this phone number` };
   }
 
-  const scopes =
-    ((dbg.json.data as { granular_scopes?: Array<{ scope: string; target_ids?: string[] }> })
-      ?.granular_scopes) ?? [];
+  const appId = process.env.WHATSAPP_APP_ID?.trim();
+  const appSecret = process.env.WHATSAPP_APP_SECRET?.trim();
+  const appToken = appId && appSecret ? `${appId}|${appSecret}` : undefined;
+
+  const tried: string[] = [];
   const candidates = new Set<string>();
-  for (const s of scopes) {
-    if (/whatsapp_business/.test(s.scope)) for (const t of s.target_ids ?? []) candidates.add(t);
-  }
-  if (candidates.size === 0) {
-    return { id: null, detail: "token has no whatsapp_business_* granular scope with a WABA target" };
+  for (const [label, ids] of [
+    ["debug_token(app)", appToken ? await wabaIdsFromDebugToken(token, appToken) : []],
+    ["debug_token", await wabaIdsFromDebugToken(token)],
+    ["businesses", await wabaIdsFromBusinesses(token)],
+  ] as [string, string[]][]) {
+    tried.push(`${label}:${ids.length}`);
+    for (const id of ids) candidates.add(id);
+    for (const waba of ids) {
+      if (await wabaOwnsNumber(waba, phoneId, token)) return { id: waba, detail: waba };
+    }
   }
 
-  for (const waba of candidates) {
-    const nums = await get(`${GRAPH}/${waba}/phone_numbers?fields=id&limit=100`, token);
-    const list = (nums.json.data as Array<{ id?: string }>) ?? [];
-    if (list.some((n) => n.id === phoneId)) return { id: waba, detail: waba };
+  if (candidates.size === 0) {
+    return {
+      id: null,
+      detail:
+        `no WABA reachable from this token (${tried.join(", ")}). ` +
+        "Run scripts/whatsapp-discover.ts, then set WHATSAPP_WABA_ID, " +
+        "or set WHATSAPP_APP_ID so debug_token can use an app access token",
+    };
   }
   return {
     id: null,
-    detail: `none of the reachable WABAs (${[...candidates].join(", ")}) own this phone number`,
+    detail: `reachable WABAs (${[...candidates].join(", ")}) do not own this phone number`,
   };
-}
-
-/** Highest {{n}} in the approved BODY text — how many params Meta expects. */
-function bodyParamCount(components: unknown): number {
-  const list = Array.isArray(components) ? components : [];
-  for (const c of list) {
-    const comp = c as { type?: string; text?: string };
-    if (comp.type?.toUpperCase() !== "BODY" || typeof comp.text !== "string") continue;
-    let max = 0;
-    for (const m of comp.text.matchAll(/\{\{(\d+)\}\}/g)) {
-      max = Math.max(max, Number(m[1]));
-    }
-    return max;
-  }
-  return 0;
 }
 
 async function main() {
@@ -151,6 +199,19 @@ async function main() {
     "sender",
     `${sender} — "${num.json.verified_name ?? "?"}" · quality ${num.json.quality_rating ?? "?"}`,
   );
+
+  // Meta auto-provisions a sandbox number (+1 555-…, the reserved fictional US
+  // prefix) with every new app. It looks healthy — verified name, quality GREEN,
+  // CLOUD_API — but it only reaches up to five pre-registered test recipients,
+  // so real guests silently never get a reminder. Worth failing loudly on.
+  if (/^\+?1\s*555/.test(sender)) {
+    fail(
+      "test number",
+      `${sender} is Meta's sandbox test number — it can only message pre-registered test recipients, never real guests`,
+    );
+  } else {
+    pass("test number", "not a +1 555 sandbox number");
+  }
 
   const platform = String(num.json.platform_type ?? "");
   if (platform && platform.toUpperCase() !== "CLOUD_API") {
