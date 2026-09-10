@@ -2,6 +2,9 @@
 
 Tracker: #111
 Parent: PRD `unified-spatial-filling-editor` (`.claude/PRD-unified-spatial-filling-editor/unified-spatial-filling-editor-prd.md`)
+Status: **Done — merged to main via PR #117 (91fc61ab) 2026-09-10.**
+Criteria verified against the merged code, its unit tests and the `.check.ts`
+self-checks, except where noted inline with `[~]`.
 
 ## Parent
 
@@ -23,17 +26,20 @@ Demoable outcome: open Settings → Inventory → Configure on a pillow card and
 
 ## Acceptance criteria
 
-- [ ] A pure module in the spatial-fillings library exposes the **Section** coverage of a placement list and the **Spatially authored** predicate; it performs no I/O and imports no React.
-- [ ] Unit tests cover: empty recipe, single-**Section** recipe, two **Sections**, all three **Sections**, and a single-piece recipe. Prior art: `lib/spatial-fillings/__tests__/xray-layout.test.ts`.
-- [ ] The Configure templates list endpoint returns per-template **Section** coverage for `role = 'filling'` pillow templates.
-- [ ] Coverage is fetched in one grouped query for the whole list, not one query per template.
-- [ ] Bolster templates are never evaluated for **Spatially authored** and are never badged.
-- [ ] The list shows a badge on each template that is not **Spatially authored**, with copy naming the legacy flat recipe as the cause.
-- [ ] The badge is advisory: no control is disabled and no save is blocked.
-- [ ] The list shows a count of templates still needing authoring.
-- [ ] All ten default pillow **Filling Templates** are flagged in production data; the three bolster templates are not.
-- [ ] No **Placement** row is created, modified or deleted by this slice.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] A pure module in the spatial-fillings library exposes the **Section** coverage of a placement list and the **Spatially authored** predicate; it performs no I/O and imports no React.
+- [x] Unit tests cover: empty recipe, single-**Section** recipe, two **Sections**, all three **Sections**, and a single-piece recipe. Prior art: `lib/spatial-fillings/__tests__/xray-layout.test.ts`.
+- [x] The Configure templates list endpoint returns per-template **Section** coverage for `role = 'filling'` pillow templates.
+- [x] Coverage is fetched in one grouped query for the whole list, not one query per template.
+- [x] Bolster templates are never evaluated for **Spatially authored** and are never badged.
+- [x] The list shows a badge on each template that is not **Spatially authored**, with copy naming the legacy flat recipe as the cause.
+- [x] The badge is advisory: no control is disabled and no save is blocked.
+- [x] The list shows a count of templates still needing authoring.
+- [~] All ten default pillow **Filling Templates** are flagged in production data; the three bolster templates are not.
+      Point-in-time production check, made when the slice landed and not re-verifiable
+      from the repo. Superseded in any case by slice 07: the ten are now authored, so
+      they no longer flag.
+- [x] No **Placement** row is created, modified or deleted by this slice.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

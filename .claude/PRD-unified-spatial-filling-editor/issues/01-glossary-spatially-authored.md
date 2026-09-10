@@ -2,6 +2,9 @@
 
 Tracker: #110
 Parent: PRD `unified-spatial-filling-editor` (`.claude/PRD-unified-spatial-filling-editor/unified-spatial-filling-editor-prd.md`)
+Status: **Done — merged to main via PR #117 (91fc61ab) 2026-09-10.**
+Criteria verified against the merged code, its unit tests and the `.check.ts`
+self-checks, except where noted inline with `[~]`.
 
 ## Parent
 
@@ -29,12 +32,12 @@ Demoable outcome: a reader who knows nothing about this PRD can read `CONTEXT.md
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` defines **Spatially authored** and **X-ray editor**, each with an `_Avoid_:` line.
-- [ ] **Spatially authored** states the operational test (more than one **Section** occupied), that it is derived and never stored, and that a single-**Section** recipe is a legacy import artefact.
-- [ ] **X-ray editor** distinguishes the editable surface from the read-only shopper preview x-ray, and names the three surfaces that will host it.
-- [ ] Neither entry duplicates a term `CONTEXT.md` already covers.
-- [ ] A `## Flagged ambiguities` entry records the no-migration decision and its reason.
-- [ ] The **Section** entry's existing meaning (side-sleep support in left/right, back-sleep in center) is left intact and cross-referenced from **Spatially authored**.
+- [x] `CONTEXT.md` defines **Spatially authored** and **X-ray editor**, each with an `_Avoid_:` line.
+- [x] **Spatially authored** states the operational test (more than one **Section** occupied), that it is derived and never stored, and that a single-**Section** recipe is a legacy import artefact.
+- [x] **X-ray editor** distinguishes the editable surface from the read-only shopper preview x-ray, and names the three surfaces that will host it.
+- [x] Neither entry duplicates a term `CONTEXT.md` already covers.
+- [x] A `## Flagged ambiguities` entry records the no-migration decision and its reason.
+- [x] The **Section** entry's existing meaning (side-sleep support in left/right, back-sleep in center) is left intact and cross-referenced from **Spatially authored**.
 
 ## Blocked by
 

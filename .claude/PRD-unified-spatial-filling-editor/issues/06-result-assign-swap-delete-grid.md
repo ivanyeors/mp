@@ -2,6 +2,9 @@
 
 Tracker: #115
 Parent: PRD `unified-spatial-filling-editor` (`.claude/PRD-unified-spatial-filling-editor/unified-spatial-filling-editor-prd.md`)
+Status: **Done — merged to main via PR #117 (91fc61ab) 2026-09-10.**
+Criteria verified against the merged code, its unit tests and the `.check.ts`
+self-checks, except where noted inline with `[~]`.
 
 ## Parent
 
@@ -25,20 +28,24 @@ Demoable outcome: open a **Result** with an assigned pillow size and tier, edit 
 
 ## Acceptance criteria
 
-- [ ] The **Result** detail assign editor renders the **X-ray editor** for pillow **Filling configurations** in place of the 3×3 grid.
-- [ ] Diving, the radial picker, depth reordering and chip removal all work there, identically to Configure and the configurator.
-- [ ] Pouch colours match the other two surfaces, sourced from a server route rather than a browser query.
-- [ ] A single-**Section** recipe shows the **Spatially authored** warning, advisory and non-blocking.
-- [ ] Saving persists the **Filling configuration** snapshot including stack depth, and the derived pack list still reflects it.
-- [ ] The three pure helpers move into the spatial-fillings library and the order detail page imports them from their new home.
-- [ ] The existing round-trip unit test for those helpers moves with them and passes unchanged.
-- [ ] The 3×3 grid component file is deleted and nothing imports it.
-- [ ] The order detail page's cell summary renders correctly after the move.
-- [ ] A self-check asserts both **Admin Panel** filling surfaces mount the x-ray and neither imports the deleted grid.
-- [ ] The **Mbolster** compartment list on this page is unchanged.
-- [ ] The slice is a net deletion in lines of code.
-- [ ] `npm run build` and the repo's type-check and test suites pass.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] The **Result** detail assign editor renders the **X-ray editor** for pillow **Filling configurations** in place of the 3×3 grid.
+- [x] Diving, the radial picker, depth reordering and chip removal all work there, identically to Configure and the configurator.
+- [x] Pouch colours match the other two surfaces, sourced from a server route rather than a browser query.
+- [x] A single-**Section** recipe shows the **Spatially authored** warning, advisory and non-blocking.
+- [x] Saving persists the **Filling configuration** snapshot including stack depth, and the derived pack list still reflects it.
+- [x] The three pure helpers move into the spatial-fillings library and the order detail page imports them from their new home.
+- [x] The existing round-trip unit test for those helpers moves with them and passes unchanged.
+- [x] The 3×3 grid component file is deleted and nothing imports it.
+- [x] The order detail page's cell summary renders correctly after the move.
+- [x] A self-check asserts both **Admin Panel** filling surfaces mount the x-ray and neither imports the deleted grid.
+- [x] The **Mbolster** compartment list on this page is unchanged.
+- [~] The slice is a net deletion in lines of code.
+      Not met as stated: +238/-151 excluding the knowledge graph, a net +87. The grid
+      component did go, but lib/spatial-fillings/cells.ts (41) and
+      surface-parity.check.ts (79) more than replaced it. The intent — one filling
+      editor in the codebase — was achieved.
+- [x] `npm run build` and the repo's type-check and test suites pass.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

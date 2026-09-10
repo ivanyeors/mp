@@ -2,6 +2,9 @@
 
 Tracker: #114
 Parent: PRD `unified-spatial-filling-editor` (`.claude/PRD-unified-spatial-filling-editor/unified-spatial-filling-editor-prd.md`)
+Status: **Done — merged to main via PR #117 (91fc61ab) 2026-09-10.**
+Criteria verified against the merged code, its unit tests and the `.check.ts`
+self-checks, except where noted inline with `[~]`.
 
 ## Parent
 
@@ -27,21 +30,23 @@ Demoable outcome: open a pillow card in Configure, pick `M - basic - default`, s
 
 ## Acceptance criteria
 
-- [ ] A wrapper mounts `XrayPillow` in normal document flow at its own aspect ratio, with a positioned ancestor and a definite height.
-- [ ] `XrayPillow` is reused without modification to its props or its read-only detection.
-- [ ] The Configure page renders the **X-ray editor** for pillow **Filling Templates** in place of the 3×3 grid.
-- [ ] Diving into a **Section**, the radial filling picker, drag-to-reorder stack depth and chip removal all work in the **Admin Panel**.
-- [ ] Pouch colours match the configurator, using the overrides from the route's read response.
-- [ ] Exceeding the five-piece **cell** cap is refused with a visible message, as in the configurator.
-- [ ] Saving persists **Placement** rows including stack depth, and a reload renders the same layout.
-- [ ] The derived pack list stays visible and still reflects a flatten of **Placement** rows, per ADR 0008.
-- [ ] The legacy-flat-recipe notice still renders for templates without placements.
-- [ ] The **Mbolster** compartment list is unchanged and never renders the pillow x-ray.
-- [ ] A template that is not **Spatially authored** shows the warning on the editor, advisory and non-blocking.
-- [ ] Placement writes still go through the admin route; the browser never writes placement tables directly.
-- [ ] The 3×3 grid component still exists and still works on the **Result** detail page.
-- [ ] `npm run build` and the repo's type-check and test suites pass.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] A wrapper mounts `XrayPillow` in normal document flow at its own aspect ratio, with a positioned ancestor and a definite height.
+- [x] `XrayPillow` is reused without modification to its props or its read-only detection.
+- [x] The Configure page renders the **X-ray editor** for pillow **Filling Templates** in place of the 3×3 grid.
+- [x] Diving into a **Section**, the radial filling picker, drag-to-reorder stack depth and chip removal all work in the **Admin Panel**.
+- [x] Pouch colours match the configurator, using the overrides from the route's read response.
+- [x] Exceeding the five-piece **cell** cap is refused with a visible message, as in the configurator.
+- [x] Saving persists **Placement** rows including stack depth, and a reload renders the same layout.
+- [x] The derived pack list stays visible and still reflects a flatten of **Placement** rows, per ADR 0008.
+- [x] The legacy-flat-recipe notice still renders for templates without placements.
+- [x] The **Mbolster** compartment list is unchanged and never renders the pillow x-ray.
+- [x] A template that is not **Spatially authored** shows the warning on the editor, advisory and non-blocking.
+- [x] Placement writes still go through the admin route; the browser never writes placement tables directly.
+- [~] The 3×3 grid component still exists and still works on the **Result** detail page.
+      True when slice 05 landed. Slice 06 then deleted the grid by design, so this
+      criterion is satisfied historically rather than in the current tree.
+- [x] `npm run build` and the repo's type-check and test suites pass.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

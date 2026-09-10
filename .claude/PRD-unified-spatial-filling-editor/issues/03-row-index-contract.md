@@ -2,6 +2,9 @@
 
 Tracker: #112
 Parent: PRD `unified-spatial-filling-editor` (`.claude/PRD-unified-spatial-filling-editor/unified-spatial-filling-editor-prd.md`)
+Status: **Done — merged to main via PR #117 (91fc61ab) 2026-09-10.**
+Criteria verified against the merged code, its unit tests and the `.check.ts`
+self-checks, except where noted inline with `[~]`.
 
 ## Parent
 
@@ -23,14 +26,14 @@ Demoable outcome: author a template with a stacked **cell** through the **Admin 
 
 ## Acceptance criteria
 
-- [ ] The staff-assist template-placement query selects `row_index` for pillow templates.
-- [ ] Bolster templates are unaffected — they have a single compartment and no depth column.
-- [ ] A template with a stacked **cell** loads into **Staff assist mode** with its depth intact and renders with the depth offset and scrim.
-- [ ] A template with all-null `row_index` still renders auto side-by-side, unchanged.
-- [ ] A self-check asserts that every route reading pillow **Placement** rows selects `row_index`, and fails if one does not.
-- [ ] The self-check is runnable standalone and named in the acceptance proof, matching the repo's `.check.ts` convention.
-- [ ] No schema change and no **Placement** row modified.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] The staff-assist template-placement query selects `row_index` for pillow templates.
+- [x] Bolster templates are unaffected — they have a single compartment and no depth column.
+- [x] A template with a stacked **cell** loads into **Staff assist mode** with its depth intact and renders with the depth offset and scrim.
+- [x] A template with all-null `row_index` still renders auto side-by-side, unchanged.
+- [x] A self-check asserts that every route reading pillow **Placement** rows selects `row_index`, and fails if one does not.
+- [x] The self-check is runnable standalone and named in the acceptance proof, matching the repo's `.check.ts` convention.
+- [x] No schema change and no **Placement** row modified.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

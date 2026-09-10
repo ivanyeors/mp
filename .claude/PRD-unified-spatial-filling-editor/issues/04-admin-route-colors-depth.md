@@ -2,6 +2,9 @@
 
 Tracker: #113
 Parent: PRD `unified-spatial-filling-editor` (`.claude/PRD-unified-spatial-filling-editor/unified-spatial-filling-editor-prd.md`)
+Status: **Done — merged to main via PR #117 (91fc61ab) 2026-09-10.**
+Criteria verified against the merged code, its unit tests and the `.check.ts`
+self-checks, except where noted inline with `[~]`.
 
 ## Parent
 
@@ -21,16 +24,16 @@ Demoable outcome: the route's read response includes colour overrides, and a pla
 
 ## Acceptance criteria
 
-- [ ] The **Admin Panel** filling-template read response includes per-subtype colour overrides.
-- [ ] Overrides are read server-side with the admin client; no row-level-security policy is added or relaxed, and the browser never queries the override table.
-- [ ] The update schema's `row_index` bound is derived from the same constant the placement validator uses, not a restated literal.
-- [ ] A placement with a stack depth of four is accepted by the route and persisted.
-- [ ] A placement with a stack depth above the cap is still rejected, with the validator's message rather than a raw schema error.
-- [ ] A self-check asserts the request schema's depth bound matches the validator's, and fails if they drift.
-- [ ] Semantic validation still runs through the spatial-fillings validator per kind; the schema stays a shape gate only.
-- [ ] Bolster templates are unaffected — no depth column, no section columns.
-- [ ] No schema change and no **Placement** row modified.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] The **Admin Panel** filling-template read response includes per-subtype colour overrides.
+- [x] Overrides are read server-side with the admin client; no row-level-security policy is added or relaxed, and the browser never queries the override table.
+- [x] The update schema's `row_index` bound is derived from the same constant the placement validator uses, not a restated literal.
+- [x] A placement with a stack depth of four is accepted by the route and persisted.
+- [x] A placement with a stack depth above the cap is still rejected, with the validator's message rather than a raw schema error.
+- [x] A self-check asserts the request schema's depth bound matches the validator's, and fails if they drift.
+- [x] Semantic validation still runs through the spatial-fillings validator per kind; the schema stays a shape gate only.
+- [x] Bolster templates are unaffected — no depth column, no section columns.
+- [x] No schema change and no **Placement** row modified.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 
