@@ -35,6 +35,54 @@ async function get(url: string, token: string) {
   return { ok: res.ok, status: res.status, json };
 }
 
+/**
+ * Graph rejects the whole request when one requested field is unsupported
+ * (#100), and the supported set drifts between API versions. Retry once with a
+ * minimal set so a single unknown field cannot mask every other check.
+ */
+async function getNode(id: string, fields: string[], token: string, minimal: string[]) {
+  const full = await get(`${GRAPH}/${id}?fields=${fields.join(",")}`, token);
+  if (full.ok || full.json.error?.code !== 100) return full;
+  return get(`${GRAPH}/${id}?fields=${minimal.join(",")}`, token);
+}
+
+/**
+ * The phone-number node does not expose its owning WABA, so recover it the way
+ * scripts/whatsapp-whoami.ts does: the token's granular scopes name every WABA
+ * it can reach, and the one listing this phone number is the owner.
+ */
+async function resolveWaba(
+  phoneId: string,
+  token: string,
+): Promise<{ id: string | null; detail: string }> {
+  const enc = encodeURIComponent(token);
+  const dbg = await get(`${GRAPH}/debug_token?input_token=${enc}&access_token=${enc}`, token);
+  if (!dbg.ok) {
+    return { id: null, detail: `debug_token failed (${dbg.status}): ${dbg.json.error?.message ?? "?"}` };
+  }
+
+  const scopes =
+    ((dbg.json.data as { granular_scopes?: Array<{ scope: string; target_ids?: string[] }> })
+      ?.granular_scopes) ?? [];
+  const candidates = new Set<string>();
+  for (const s of scopes) {
+    if (/whatsapp_business/.test(s.scope)) for (const t of s.target_ids ?? []) candidates.add(t);
+  }
+  if (candidates.size === 0) {
+    return { id: null, detail: "token has no whatsapp_business_* granular scope with a WABA target" };
+  }
+
+  for (const waba of candidates) {
+    const nums = await get(`${GRAPH}/${waba}/phone_numbers?fields=id&limit=100`, token);
+    const list = (nums.json.data as Array<{ id?: string }>) ?? [];
+    if (list.some((n) => n.id === phoneId)) return { id: waba, detail: waba };
+  }
+  return {
+    id: null,
+    detail: `none of the reachable WABAs (${[...candidates].join(", ")}) own this phone number`,
+  };
+}
+
 /** Highest {{n}} in the approved BODY text — how many params Meta expects. */
 function bodyParamCount(components: unknown): number {
   const list = Array.isArray(components) ? components : [];
@@ -76,9 +124,17 @@ async function main() {
   }
 
   // --- 2. Who is the sender? ----------------------------------------------
-  const num = await get(
-    `${GRAPH}/${phoneId}?fields=display_phone_number,verified_name,quality_rating,platform_type,code_verification_status,whatsapp_business_account`,
+  const num = await getNode(
+    phoneId,
+    [
+      "display_phone_number",
+      "verified_name",
+      "quality_rating",
+      "platform_type",
+      "code_verification_status",
+    ],
     token,
+    ["display_phone_number", "verified_name"],
   );
   if (!num.ok) {
     fail(
@@ -106,14 +162,13 @@ async function main() {
     pass("cloud api registration", platform || "assumed (field not returned)");
   }
 
-  const waba = (
-    num.json.whatsapp_business_account as { id?: string } | undefined
-  )?.id;
-  if (!waba) {
-    fail("waba", "could not resolve the owning WABA from the phone-number node");
+  const resolved = await resolveWaba(phoneId, token);
+  if (!resolved.id) {
+    fail("waba", resolved.detail);
     report();
     return;
   }
+  const waba = resolved.id;
   pass("waba", waba);
 
   // --- 3. The two numbers must stay distinct -------------------------------
