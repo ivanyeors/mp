@@ -1,6 +1,7 @@
 # Slice 02 — Revoke public access to the body-photo table; delete the dead read endpoint
 
 Type: AFK
+Tracker: live verification split to #121 (parent #120)
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
 Triage: done — migration applied to production 2026-09-10 via `supabase db push`; live anon-key verification carried into slice 10
 User stories covered: 4–7
