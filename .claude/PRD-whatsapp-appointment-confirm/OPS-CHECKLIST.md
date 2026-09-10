@@ -14,6 +14,21 @@ in customer-facing copy starts conversations nobody reads: the webhook only
 understands Confirm, Reschedule, and "none of these", and silently drops
 anything else.
 
+## 0.5 The sandbox number trap
+
+Every new Meta app is provisioned a test number on the reserved `+1 555-…`
+prefix. It reports a verified name, GREEN quality and `CLOUD_API`, so every
+health signal reads fine — but it only ever delivers to up to five
+pre-registered test recipients. Real guests get nothing, and nothing errors.
+
+`scripts/whatsapp-preflight.ts` fails on it. Before trusting any reminder in
+staging or production, confirm the sender it prints is the real business number,
+not a `+1 555` line. Meta labels it "Test number" in WhatsApp → API Setup.
+
+A token that cannot reach any WABA by any route is usually the matching symptom:
+the temporary token on that same API Setup page expires in 24 hours and is not
+what production should carry. Production wants a system-user token.
+
 ## 1. Meta WhatsApp Cloud API
 
 1. Business portfolio owns the WABA for the **utility sender** `+65 8809 7571`.
