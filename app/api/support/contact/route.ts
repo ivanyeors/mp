@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { sendContactMessage } from "@/lib/email/contact";
+import { clientIp, isRateLimited } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -13,27 +14,8 @@ const ContactSchema = z.object({
   company: z.string().max(0).optional().default(""),
 });
 
-// Best-effort, per-instance rate limiting. Not a hard guarantee across serverless
-// instances, but cheap protection against a single client hammering the form.
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 5;
-const hits = new Map<string, number[]>();
-
-function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(key, recent);
-  return recent.length > MAX_PER_WINDOW;
-}
-
 export async function POST(req: Request) {
-  const ip =
-    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    req.headers.get("x-real-ip") ||
-    "unknown";
-
-  if (isRateLimited(ip)) {
+  if (isRateLimited({ bucket: "support-contact", key: clientIp(req), windowMs: 60_000, max: 5 })) {
     return NextResponse.json(
       { error: "Too many messages. Please try again in a minute." },
       { status: 429 }

@@ -56,6 +56,46 @@ export interface MpConfigResponseDetailPayload {
   };
 }
 
+/**
+ * What an Owner (not Staff) may see of their own Result.
+ *
+ * Built as an allowlist, never as a delete-the-sensitive-keys pass: a column
+ * added to the query later must be excluded by default rather than included by
+ * default. Traced against every guest reader — the configurator reads
+ * `response.is_final` and `suggestion.recommended|product`, and /mp-maker reads
+ * `response.data`. Nothing guest-side reads `suggestion.bom` (our bill of
+ * materials) or `suggestion.reasons` (the rules-engine graph version and trace).
+ */
+export interface OwnerResultPayload {
+  ok: true;
+  response: {
+    id: string;
+    data: unknown;
+    is_final: unknown;
+  };
+  suggestion: {
+    recommended: { size: string; tier: string };
+    product: { id: number; size: string; tier: "basic" | "premium" } | null;
+  };
+}
+
+export function toOwnerResultPayload(
+  full: MpConfigResponseDetailPayload,
+): OwnerResultPayload {
+  return {
+    ok: true,
+    response: {
+      id: full.response.id,
+      data: full.response.data,
+      is_final: full.response.is_final,
+    },
+    suggestion: {
+      recommended: full.suggestion.recommended,
+      product: full.suggestion.product,
+    },
+  };
+}
+
 export type MpConfigResponseDetailResult =
   | { status: 200; body: MpConfigResponseDetailPayload }
   | { status: 404 | 500; body: { error: string } }

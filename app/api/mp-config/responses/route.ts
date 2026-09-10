@@ -11,7 +11,9 @@ import {
   normalizeDiscoverySourceOther,
   validateDiscoverySource,
 } from "@/lib/discovery-source";
-import { requireAdmin, requireAnyAdmin } from "@/lib/auth/admin";
+import { requireAnyAdmin } from "@/lib/auth/admin";
+import { requireResultAccess } from "@/lib/results/access";
+import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
 
@@ -223,6 +225,8 @@ const UpsertSchema = z.object({
   locationId: z.string().uuid().nullable().optional(),
   /** Explicit flag: require + write contact columns on this upsert. */
   persistContact: z.boolean().optional(),
+  /** Result access token — proves the caller owns an existing row. */
+  token: z.string().uuid().nullish(),
 });
 
 export async function GET(req: Request) {
@@ -299,24 +303,60 @@ export async function POST(req: Request) {
 
   const admin = supabaseAdmin();
   const isFinal = parsed.data.isFinal === true;
+
+  // Loaded for every write, not only finalization: the Draft Result guard below
+  // needs the status, and the isFinal branch reuses this same fetch rather than
+  // adding a second round trip.
+  const { data: existing, error: existingErr } = await admin
+    .from("mp_config_responses")
+    .select(
+      "is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status,access_token,customer_id,customer_email",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
+
+  // Creating a row stays open — there is nothing to own yet, and the configurator
+  // saves from the first keystroke. Updating one does not.
+  if (existing) {
+    // draftOnly: Staff keep editing measured-by / location / is_final on `held`
+    // rows from the Admin Panel; everyone else may write drafts only.
+    const access = await requireResultAccess(existing, parsed.data.token ?? null, {
+      draftOnly: true,
+    });
+    if (!access.ok) return access.response;
+  } else if (
+    // Creating a Draft Result is the one write left that cannot require a
+    // credential, so cap it. One create per configurator session (plus a few for
+    // "start again"), against a limit no real shopper reaches — including several
+    // customers behind one in-store IP.
+    isRateLimited({
+      bucket: "mp-config-create",
+      key: clientIp(req),
+      windowMs: 60_000,
+      max: 20,
+    })
+  ) {
+    return NextResponse.json(
+      { error: "Too many new sessions. Please try again in a minute." },
+      { status: 429 },
+    );
+  }
+
+  // Result access token (CONTEXT.md): minted once, when the Draft Result is
+  // created, and returned so the configurator can prove ownership on later
+  // requests. Deliberately never minted on update — a legacy draft carrying a
+  // null token has to stay writable by the pre-deploy browser tab that owns it,
+  // and binding a token here would lock out the very session it just let through.
+  // Rotation at hold is app/api/results/hold/route.ts's job, not ours.
+  const accessToken = existing == null ? crypto.randomUUID() : null;
+  if (accessToken) row.access_token = accessToken;
+
   let wasFinal = false;
   let existingMeasuredByType: string | null = null;
   let existingMeasuredByStaffId: string | null = null;
-  let existingForFinalize: {
-    is_final?: boolean | null;
-    payment_intent_id?: string | null;
-    source?: string | null;
-    status?: string | null;
-  } | null = null;
   if (isFinal) {
-    const { data: existing, error: existingErr } = await admin
-      .from("mp_config_responses")
-      .select("is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status")
-      .eq("id", id)
-      .maybeSingle();
-    if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
     wasFinal = Boolean(existing?.is_final);
-    existingForFinalize = existing;
     const existingMeasuredByParsed = ExistingMeasuredBySchema.safeParse(existing);
     if (existingMeasuredByParsed.success) {
       existingMeasuredByType = existingMeasuredByParsed.data.measured_by_type ?? null;
@@ -341,7 +381,7 @@ export async function POST(req: Request) {
   if (
     isFinal &&
     !wasFinal &&
-    shouldCreateInstoreReviewOnly(existingForFinalize) &&
+    shouldCreateInstoreReviewOnly(existing) &&
     parsed.data.data
   ) {
     reviewOnlyPatch = await buildInstoreReviewOnlyPatch(
@@ -433,11 +473,12 @@ export async function POST(req: Request) {
   const reviewOnly =
     isFinal &&
     !wasFinal &&
-    shouldCreateInstoreReviewOnly(existingForFinalize);
+    shouldCreateInstoreReviewOnly(existing);
 
   return NextResponse.json({
     ok: true,
     id,
+    ...(accessToken ? { accessToken } : {}),
     telegramStatus,
     reviewOnly,
     ...(reviewOnly && reviewOnlyPatch ? reviewOnlyPatch : {}),

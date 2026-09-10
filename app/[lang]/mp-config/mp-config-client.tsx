@@ -90,8 +90,10 @@ import {
 } from "@/components/shop/saved-address-select";
 import {
   configPathFor,
+  newResponseId,
   sessionKeyFor,
   stepOrderFor,
+  tokenKeyFor,
   variantFromPathname,
   type MpConfigVariant,
 } from "@/lib/mp-config/flow-variant";
@@ -237,6 +239,31 @@ const FAQ_VIEW_ALL: Record<Locale, string> = {
   "zh-CN": "查看全部常见问题",
 };
 
+/**
+ * Result access token storage (CONTEXT.md). Module scope, not hooks: it never
+ * affects render, localStorage is the source of truth, and keeping it out of
+ * dependency arrays leaves the surrounding callbacks memoizable. Every access is
+ * try/caught because private mode throws on read as well as write.
+ */
+function readToken(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeToken(key: string, token: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (token) window.localStorage.setItem(key, token);
+    else window.localStorage.removeItem(key);
+  } catch {
+    // private mode — the caller falls back to the legacy draft path
+  }
+}
+
 export function MpConfigClient({
   info,
   staffAssist = false,
@@ -270,6 +297,10 @@ export function MpConfigClient({
   const isBasic = variant === "basic";
   const holdSurface: HoldCancelSurface = isBasic ? "mp-basic" : "mp-full";
   const sessionStorageKey = sessionKeyFor(variant);
+  // Result access token (CONTEXT.md). Not React state — it never affects render,
+  // localStorage is the source of truth, and every access is try/caught because
+  // private mode throws on both read and write.
+  const tokenStorageKey = tokenKeyFor(variant);
   const configPath = configPathFor(variant);
   const to = (href: string) => withLocale(href, locale);
 
@@ -712,31 +743,46 @@ export function MpConfigClient({
     if (typeof window === "undefined") return;
     let id = window.localStorage.getItem(sessionStorageKey);
     if (!id) {
-      id = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      id = newResponseId();
       window.localStorage.setItem(sessionStorageKey, id);
+      writeToken(tokenStorageKey, null);
     }
     setResponseId(id);
 
     // If the saved id is already "released" in the DB, start a fresh session id.
     // This prevents new measurements from overwriting a released result and appearing directly in the Released tab.
     (async () => {
+      const rotate = () => {
+        const newId = newResponseId();
+        window.localStorage.setItem(sessionStorageKey, newId);
+        writeToken(tokenStorageKey, null);
+        setResponseId(newId);
+        lastSavedRef.current = "";
+        setSaveStatus("idle");
+      };
       try {
-        const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(id!)}`, { method: "GET", cache: "no-store" });
+        const token = readToken(tokenStorageKey);
+        const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+        const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(id!)}${qs}`, { method: "GET", cache: "no-store" });
+        // Refused: this id is no longer ours. It happens after a hold — the token
+        // rotates server-side — and the stored id then points at a `held` Result
+        // every later write would be refused for. Rotating here is what keeps a
+        // customer who cancelled at Stripe able to save again; treating a refusal
+        // as "keep the id" strands them on a save indicator stuck at "error".
+        if (res.status === 401 || res.status === 403) {
+          rotate();
+          return;
+        }
         const payload = await res.json().catch(() => null);
         if (!res.ok) return; // If it doesn't exist yet (or can't be read), keep the id for draft saving.
         const isFinal = Boolean(payload?.response?.is_final);
         if (!isFinal) return;
-
-        const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-        window.localStorage.setItem(sessionStorageKey, newId);
-        setResponseId(newId);
-        lastSavedRef.current = "";
-        setSaveStatus("idle");
+        rotate();
       } catch {
         // Best-effort only; never block the UI.
       }
     })();
-  }, [sessionStorageKey]);
+  }, [sessionStorageKey, tokenStorageKey]);
 
   // Stripe hold cancel → restore preview + selections (and light notice).
   useEffect(() => {
@@ -907,16 +953,18 @@ export function MpConfigClient({
   const ensureResponseId = () => {
     if (responseId) return responseId;
     if (typeof window === "undefined") return null;
-    const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const newId = newResponseId();
     window.localStorage.setItem(sessionStorageKey, newId);
+    writeToken(tokenStorageKey, null);
     setResponseId(newId);
     return newId;
   };
 
   const startNewMeasurement = () => {
     if (typeof window !== "undefined") {
-      const newId = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+      const newId = newResponseId();
       window.localStorage.setItem(sessionStorageKey, newId);
+      writeToken(tokenStorageKey, null);
       clearHoldCancelDraft(window.localStorage, holdSurface);
       setResponseId(newId);
     } else {
@@ -928,6 +976,7 @@ export function MpConfigClient({
   const exitToStart = () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(sessionStorageKey);
+      writeToken(tokenStorageKey, null);
       clearHoldCancelDraft(window.localStorage, holdSurface);
     }
     setResponseId(null);
@@ -993,11 +1042,14 @@ export function MpConfigClient({
         body: JSON.stringify({
           id: responseId,
           data: measurementData,
+          ...(readToken(tokenStorageKey) ? { token: readToken(tokenStorageKey) } : {}),
           ...(typeof opts?.isFinal === "boolean" ? { isFinal: opts.isFinal } : {}),
         }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to save");
+      // Minted on create only; later saves echo nothing back.
+      if (typeof payload?.accessToken === "string") writeToken(tokenStorageKey, payload.accessToken);
       lastSavedRef.current = snapshot;
       setSaveStatus("saved");
       return {
@@ -1008,13 +1060,15 @@ export function MpConfigClient({
       setSaveStatus("error");
       return null;
     }
-  }, [responseId, hasAnyInput, measurementData]);
+  }, [responseId, hasAnyInput, measurementData, tokenStorageKey]);
 
   const loadSuggestion = async () => {
     if (!responseId) return;
     setSuggestionLoading(true);
     try {
-      const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(responseId)}`, {
+      const token = readToken(tokenStorageKey);
+      const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+      const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(responseId)}${qs}`, {
         method: "GET",
       });
       const payload = await res.json().catch(() => null);
@@ -1067,10 +1121,15 @@ export function MpConfigClient({
       const dataUrl = await fileToDataUrl(file);
       setPhotoDataUrls((p) => ({ ...p, [view]: dataUrl }));
 
+      // The photo route refuses an unknown responseId, so make sure the Draft
+      // Result exists (and our token with it) before writing to it. Idempotent —
+      // it early-returns when nothing changed since the last save.
+      await upsertToDb();
+
       const res = await fetch("/api/mp-config/photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ responseId, view, dataUrl }),
+        body: JSON.stringify({ responseId, view, dataUrl, token: readToken(tokenStorageKey) }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to save photo");
@@ -2160,6 +2219,7 @@ export function MpConfigClient({
                               ...measurementData,
                               notes: holdNotes.trim(),
                             },
+                            token: readToken(tokenStorageKey),
                             persistContact: true,
                             email: holdEmail.trim(),
                             phone: holdPhone.trim(),

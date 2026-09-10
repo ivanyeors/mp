@@ -10,6 +10,13 @@ const ParamsSchema = z.object({ id: z.string().uuid() });
 
 // GET — return linked mp_config_responses for this order
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  // Staff-only, matching the POST and DELETE below. Reading was weaker than
+  // writing on the same resource: this returns the linked Results' full `data`
+  // blob — measurements, age group, blood pressure, acid reflux, notes — for any
+  // order id. Its only caller is the Admin Panel order detail client.
+  const denied = await requireAdmin("orders");
+  if (denied) return denied;
+
   const { id } = await ctx.params;
   const parsed = ParamsSchema.safeParse({ id });
   if (!parsed.success) return NextResponse.json({ error: "Invalid order id" }, { status: 400 });
