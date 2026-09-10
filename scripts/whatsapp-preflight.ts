@@ -9,6 +9,13 @@
  * It reads config only; it never sends a message. Use scripts/whatsapp-test.ts
  * for an actual send.
  *
+ * `scripts/**` is excluded from tsconfig.ci.json, so `pnpm typecheck` does NOT
+ * cover this file. Check it explicitly after editing:
+ *
+ *   npx tsc --noEmit --strict --target es2022 --module esnext \
+ *     --moduleResolution bundler --lib es2022,dom --types node \
+ *     --skipLibCheck scripts/whatsapp-preflight.ts
+ *
  * Checks: required env, that the phone-number ID resolves to the number you
  * expect and is registered for Cloud API, that every template the code names is
  * APPROVED in the language that code sends it as and takes the number of body
@@ -44,6 +51,21 @@ async function getNode(id: string, fields: string[], token: string, minimal: str
   const full = await get(`${GRAPH}/${id}?fields=${fields.join(",")}`, token);
   if (full.ok || full.json.error?.code !== 100) return full;
   return get(`${GRAPH}/${id}?fields=${minimal.join(",")}`, token);
+}
+
+/** Highest {{n}} in the approved BODY text — how many params Meta expects. */
+function bodyParamCount(components: unknown): number {
+  const list = Array.isArray(components) ? components : [];
+  for (const c of list) {
+    const comp = c as { type?: string; text?: string };
+    if (comp.type?.toUpperCase() !== "BODY" || typeof comp.text !== "string") continue;
+    let max = 0;
+    for (const m of comp.text.matchAll(/\{\{(\d+)\}\}/g)) {
+      max = Math.max(max, Number(m[1]));
+    }
+    return max;
+  }
+  return 0;
 }
 
 /**
