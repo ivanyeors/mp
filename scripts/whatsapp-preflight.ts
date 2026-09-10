@@ -157,9 +157,24 @@ async function main() {
     "WHATSAPP_VERIFY_TOKEN",
     "WHATSAPP_APP_SECRET",
   ]) {
-    if (process.env[key]?.trim()) pass(`env ${key}`, "set");
-    else fail(`env ${key}`, "missing — sends throw and the webhook rejects");
+    const v = process.env[key]?.trim();
+    if (!v) {
+      fail(`env ${key}`, "missing — sends throw and the webhook rejects");
+      continue;
+    }
+    // Echo the tail of the ids. An edit that silently did not land (unsaved
+    // file, or a duplicate key later in .env.local winning) otherwise looks
+    // identical to a correct run, which costs a diagnostic round trip.
+    const ident = key.endsWith("_ID") || key === "WHATSAPP_TOKEN";
+    pass(`env ${key}`, ident ? `set (…${v.slice(-4)})` : "set");
   }
+
+  const pinnedWaba = process.env.WHATSAPP_WABA_ID?.trim();
+  pass(
+    "env WHATSAPP_WABA_ID",
+    pinnedWaba ? `set (…${pinnedWaba.slice(-4)})` : "unset — will be discovered from the token",
+  );
+
   if (!process.env.CRON_SECRET?.trim()) {
     fail("env CRON_SECRET", "unset — the reminders cron is open in non-prod", false);
   } else {

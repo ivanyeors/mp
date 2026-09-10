@@ -8034,9 +8034,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/OPS-CHECKLIST.md": {
-    "mtime": 1789051177.051546,
-    "seen": 1789051547.9727116,
-    "ast_hash": "d2056b415cae4a5706e210b75d40fb80",
+    "mtime": 1789051817.7542322,
+    "seen": 1789052703.8717036,
+    "ast_hash": "7f8cd01ca81b74bd35f9133b48bceed2",
     "semantic_hash": ""
   },
   ".claude/PRD-whatsapp-appointment-confirm/issues/01-ops-meta-google-setup.md": {
@@ -10866,9 +10866,9 @@
     "semantic_hash": ""
   },
   "scripts/whatsapp-preflight.ts": {
-    "mtime": 1789051504.5590231,
-    "seen": 1789051547.972178,
-    "ast_hash": "bbc81e7943932682b75ff234b263fd31",
+    "mtime": 1789052650.4319704,
+    "seen": 1789052703.8711674,
+    "ast_hash": "8cff7831706394c2da991a5d03efb8a0",
     "semantic_hash": ""
   }
 }
