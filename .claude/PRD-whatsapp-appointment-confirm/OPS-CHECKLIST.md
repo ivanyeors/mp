@@ -2,10 +2,23 @@
 
 HITL slices 01 + 08. Complete before relying on staging/prod automation.
 
+## 0. Two numbers, different jobs
+
+| Number | Role | Where it lives |
+|--------|------|----------------|
+| `+65 8809 7571` | **Utility sender.** Automated Cloud API line: sends appointment templates, receives Confirm / Reschedule button replies. | `WHATSAPP_PHONE_NUMBER_ID` |
+| `+65 8780 5311` | **Staffed sales line.** What customers see and chat to. Never used by the Cloud API. | `NEXT_PUBLIC_SUPPORT_WHATSAPP` (`lib/contact.ts`) |
+
+These are separate on purpose — do not sync them. Publishing the utility number
+in customer-facing copy starts conversations nobody reads: the webhook only
+understands Confirm, Reschedule, and "none of these", and silently drops
+anything else.
+
 ## 1. Meta WhatsApp Cloud API
 
-1. Business portfolio owns WABA for `+65 8780 5311`.
-2. Enable **WhatsApp Business app coexistence** so Cloud API and the phone app share one inbox.
+1. Business portfolio owns the WABA for the **utility sender** `+65 8809 7571`.
+2. Enable **WhatsApp Business app coexistence** on it so a human can still see
+   stray free-text replies that the webhook ignores.
 3. Create a **system user** token with:
    - `whatsapp_business_messaging`
    - `whatsapp_business_management`
@@ -127,7 +140,51 @@ If Hobby rejects a second cron at deploy, chain a fetch to appointment-reminders
 8. Silent path: day-before with no reply → next morning cron → `morning_sent`; no further messages.
 9. Confirm Google Contact upsert + name visible in Business app after sync.
 
-## 7. Production cutover
+## 7. Changing the sending number
+
+The sending number lives only in `WHATSAPP_PHONE_NUMBER_ID` — nothing in the
+code names a number. To move it (e.g. to `+65 8809 7571`):
+
+1. Add and verify the number in the **same WABA** that owns the current one.
+   Templates are approved per WABA, so staying in it carries all three across;
+   a new WABA means re-approving `appointment_day_before`,
+   `appointment_morning_of`, and `appointment_cancelled` from scratch.
+2. Register it for Cloud API and set its 2FA PIN — **save the PIN**, it is
+   required to re-register or move the number later:
+   `npx tsx --env-file=.env.local scripts/whatsapp-register.ts`
+3. Read the new **Phone number ID** (API Setup, or `scripts/whatsapp-discover.ts`,
+   which maps every reachable WABA to its numbers and templates).
+4. Update `WHATSAPP_PHONE_NUMBER_ID` in Vercel (Production **and** Preview) and
+   redeploy.
+5. Re-point the Meta webhook to `https://<host>/api/webhooks/whatsapp` and
+   re-subscribe to `messages`. Update `WHATSAPP_VERIFY_TOKEN` /
+   `WHATSAPP_APP_SECRET` if the number moved to a different Meta app.
+6. Leave `NEXT_PUBLIC_SUPPORT_WHATSAPP` alone — the public number is the sales
+   line and does not follow the sending number (see §0).
+7. Verify the whole configuration in one pass — it checks the resolved sender,
+   Cloud API registration, every template's language and param count, the
+   webhook subscription, and that the public sales number is still distinct:
+   `npx tsx --env-file=.env.local scripts/whatsapp-preflight.ts`
+   Then send for real: `npx tsx --env-file=.env.local scripts/whatsapp-test.ts`,
+   with `WHATSAPP_ALLOWLIST` set to your own number.
+8. Watch the utility number's inbox for a few days. Guests who reply with free
+   text instead of tapping a button get no answer — point them to the sales
+   line by hand, or ask for the auto-reply fallback to be built.
+
+## 8. Turning notifications off
+
+Settings → Appointments → **WhatsApp** tab → **WhatsApp notifications** is the
+kill switch (`appointments_whatsapp_enabled` in `site_settings`). Off silences
+all three send paths:
+
+- the booking route skips its immediate confirmation;
+- the daily cron returns `{ disabled: true }` without touching Calendar or Meta;
+- the inbound webhook acks without replying or mutating reminder rows.
+
+Bookings, calendar events, and email invites are unaffected. No redeploy or env
+change needed.
+
+## 9. Production cutover
 
 - Remove or empty `WHATSAPP_ALLOWLIST` (ignored in production anyway).
 - Confirm coexistence still shows Cloud API messages in the phone app.

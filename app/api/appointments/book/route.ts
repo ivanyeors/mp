@@ -110,8 +110,10 @@ export async function POST(req: Request) {
     // it, short-notice bookers get no message at all (the daily reminder cron only
     // fires the day-before/morning-of and skips same-day/pending rows). Never let a
     // send failure fail the booking. Params match the 4-slot day_before shape.
+    // Also honours the Settings → Appointments kill switch, so turning
+    // notifications off silences this path too, not just the cron and webhook.
     const confirmTemplate = process.env.WHATSAPP_TEMPLATE_CONFIRM?.trim();
-    if (confirmTemplate && isPhoneAllowed(phone)) {
+    if (settings.whatsappEnabled && confirmTemplate && isPhoneAllowed(phone)) {
       try {
         await sendTemplateMessage(phone, confirmTemplate, [
           parsed.guest_name,

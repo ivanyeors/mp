@@ -5,8 +5,10 @@ import { SupportContactForm } from "@/app/[lang]/support/support-contact-form";
 import { BookAppointmentButton } from "@/components/book-appointment-button";
 import { InfoCallout } from "@/components/marketing/info-callout";
 import { Separator } from "@/components/ui/separator";
-
-const WHATSAPP_URL = "https://wa.me/6587805311";
+import {
+  SUPPORT_WHATSAPP_DISPLAY,
+  SUPPORT_WHATSAPP_URL,
+} from "@/lib/contact";
 
 const QUICK_LINKS = [
   { href: "#book-appointment", label: "Book appointment" },
@@ -70,8 +72,8 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
             Select your preferred available slot using the button below to open our calendar. One slot is
             only for one person. If you have 2 people, please book 2 adjacent time slots. For
             rescheduling, please WhatsApp to{" "}
-            <a href={WHATSAPP_URL} className="underline underline-offset-4" target="_blank" rel="noopener noreferrer">
-              +65 8780 5311
+            <a href={SUPPORT_WHATSAPP_URL} className="underline underline-offset-4" target="_blank" rel="noopener noreferrer">
+              {SUPPORT_WHATSAPP_DISPLAY}
             </a>{" "}
             at least 48 hours before appointment in order for other customers to have a chance to take over
             your slot.
@@ -102,7 +104,7 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
         </div>
 
         <a
-          href={WHATSAPP_URL}
+          href={SUPPORT_WHATSAPP_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-colors hover:bg-muted/50 active:bg-muted/70"
@@ -113,7 +115,7 @@ export async function SupportContactPage({ params }: SupportContactPageProps) {
           <span className="min-w-0 flex-1">
             <span className="block font-medium">Chat on WhatsApp</span>
             <span className="mt-0.5 block text-sm text-muted-foreground">
-              +65 8780 5311 · Usually replies within a few hours
+              {SUPPORT_WHATSAPP_DISPLAY} · Usually replies within a few hours
             </span>
           </span>
         </a>

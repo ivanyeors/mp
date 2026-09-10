@@ -3,6 +3,7 @@ import { getSiteSettings } from "@/lib/site-settings";
 import {
   APPOINTMENT_SETTING_KEYS,
   parseAppointmentSettings,
+  type AppointmentSettings,
 } from "@/lib/appointments/settings";
 import {
   deleteEvent,
@@ -66,10 +67,21 @@ export async function POST(req: Request) {
   }
 
   const actions = parseInboundActions(payload);
+  if (actions.length === 0) return NextResponse.json({ ok: true });
+
+  const stored = await getSiteSettings([...APPOINTMENT_SETTING_KEYS]);
+  const settings = parseAppointmentSettings(stored);
+
+  // Admin kill switch (Settings → Appointments). Ack so Meta stops retrying,
+  // but neither reply nor mutate the reminder while notifications are off.
+  if (!settings.whatsappEnabled) {
+    return NextResponse.json({ ok: true, disabled: true });
+  }
+
   // Always 200 to Meta after signature ok — process best-effort.
   for (const action of actions) {
     try {
-      await handleAction(action);
+      await handleAction(action, settings);
     } catch (e) {
       console.error(
         "[whatsapp/webhook]",
@@ -84,6 +96,7 @@ export async function POST(req: Request) {
 
 async function handleAction(
   action: ReturnType<typeof parseInboundActions>[number],
+  settings: AppointmentSettings,
 ): Promise<void> {
   if (action.kind === "unknown") return;
 
@@ -99,9 +112,6 @@ async function handleAction(
     );
     return;
   }
-
-  const stored = await getSiteSettings([...APPOINTMENT_SETTING_KEYS]);
-  const settings = parseAppointmentSettings(stored);
 
   if (action.kind === "confirm") {
     const t = transitionReminder(row.status, { type: "confirm" });

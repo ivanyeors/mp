@@ -1,4 +1,5 @@
 import type { Messages } from "./types";
+import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
 
 export const zhCN: Messages = {
   common: {
@@ -301,7 +302,7 @@ export const zhCN: Messages = {
       commitmentWarrantyDescription:
         "所有产品填充物均享有 10 年保固。若需保固服务，请预约并将枕头带到服务点进行复调与填充更换（复调费用另计）。",
       helpTitle: "需要帮助？",
-      helpDescription: "欢迎联系客户支持：+65 8780 5311。",
+      helpDescription: `欢迎联系客户支持：${SUPPORT_WHATSAPP_DISPLAY}。`,
       bottomBookBespoke: "预约专属服务",
     },
     cervicalNeckSupport: {
