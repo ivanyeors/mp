@@ -215,14 +215,17 @@ async function main() {
     `${sender} — "${num.json.verified_name ?? "?"}" · quality ${num.json.quality_rating ?? "?"}`,
   );
 
-  // Meta auto-provisions a sandbox number (+1 555-…, the reserved fictional US
-  // prefix) with every new app. It looks healthy — verified name, quality GREEN,
-  // CLOUD_API — but it only reaches up to five pre-registered test recipients,
-  // so real guests silently never get a reminder. Worth failing loudly on.
+  // Meta auto-provisions a sandbox number (+1 555-…, the reserved test prefix)
+  // with every new app. It reads healthy everywhere else — verified name, a
+  // quality rating, CLOUD_API, and a normal messaging-limit tier — while
+  // delivery stays restricted to a short list of verified test recipients. The
+  // tier and that restriction are separate axes, so a healthy-looking limit is
+  // no evidence the number can reach guests. Confirm in API Setup, where the
+  // recipient list is capped and the number is labelled a test number.
   if (/^\+?1\s*555/.test(sender)) {
     fail(
       "test number",
-      `${sender} is Meta's sandbox test number — it can only message pre-registered test recipients, never real guests`,
+      `${sender} is on Meta's +1 555 sandbox prefix — not a production sender; confirm the recipient list in API Setup`,
     );
   } else {
     pass("test number", "not a +1 555 sandbox number");
