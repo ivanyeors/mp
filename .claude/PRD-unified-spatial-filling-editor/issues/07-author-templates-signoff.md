@@ -2,6 +2,12 @@
 
 Tracker: #116
 Parent: PRD `unified-spatial-filling-editor` (`.claude/PRD-unified-spatial-filling-editor/unified-spatial-filling-editor-prd.md`)
+Status: **Done — signed off 2026-09-10 by @ivanyeors (sg@mpillow.com).**
+
+The authoring pass and the physical-build comparison are human work; this record
+is the sign-off itself, not a machine verification of it. Nothing in the repo can
+confirm that ten templates were laid out against a real pillow — that is exactly
+why the slice exists and why the PRD refused to automate it.
 
 ## Parent
 
@@ -27,15 +33,15 @@ Do not revert or edit the backfill migration. It is applied, idempotent, and ski
 
 ## Acceptance criteria
 
-- [ ] All ten pillow **Filling Templates** occupy more than one **Section** and no longer show the **Spatially authored** warning.
-- [ ] Side-sleep support sits in the left and right **Sections**, back-sleep support in center, matching the meaning `CONTEXT.md` gives the **Section** enum.
-- [ ] Each template's derived pack list is byte-identical before and after authoring, verified per template.
-- [ ] Stack depth is used where the physical build actually layers pieces, rather than left auto everywhere by default.
-- [ ] Each authored template is compared against a physical build and signed off by a person.
-- [ ] The unauthored count on the Configure list reads zero for pillow templates.
-- [ ] The three bolster **Filling Templates** are untouched.
-- [ ] The 2026-07-24 backfill migration is neither reverted nor edited.
-- [ ] Completed before any customer **Result** carries a filling snapshot; confirm the production counts are still zero at the time of the pass.
+- [x] All ten pillow **Filling Templates** occupy more than one **Section** and no longer show the **Spatially authored** warning.
+- [x] Side-sleep support sits in the left and right **Sections**, back-sleep support in center, matching the meaning `CONTEXT.md` gives the **Section** enum.
+- [x] Each template's derived pack list is byte-identical before and after authoring, verified per template.
+- [x] Stack depth is used where the physical build actually layers pieces, rather than left auto everywhere by default.
+- [x] Each authored template is compared against a physical build and signed off by a person.
+- [x] The unauthored count on the Configure list reads zero for pillow templates.
+- [x] The three bolster **Filling Templates** are untouched.
+- [x] The 2026-07-24 backfill migration is neither reverted nor edited.
+- [x] Completed before any customer **Result** carries a filling snapshot; confirm the production counts are still zero at the time of the pass.
 
 ## Blocked by
 
