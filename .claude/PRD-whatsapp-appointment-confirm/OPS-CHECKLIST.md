@@ -161,19 +161,28 @@ code names a number. To move it (e.g. to `+65 8809 7571`):
    `WHATSAPP_APP_SECRET` if the number moved to a different Meta app.
 6. Leave `NEXT_PUBLIC_SUPPORT_WHATSAPP` alone — the public number is the sales
    line and does not follow the sending number (see §0).
-7. Smoke: `npx tsx --env-file=.env.local scripts/whatsapp-test.ts`, then one
-   real day-before send with `WHATSAPP_ALLOWLIST` set to your own number.
+7. Verify the whole configuration in one pass — it checks the resolved sender,
+   Cloud API registration, every template's language and param count, the
+   webhook subscription, and that the public sales number is still distinct:
+   `npx tsx --env-file=.env.local scripts/whatsapp-preflight.ts`
+   Then send for real: `npx tsx --env-file=.env.local scripts/whatsapp-test.ts`,
+   with `WHATSAPP_ALLOWLIST` set to your own number.
 8. Watch the utility number's inbox for a few days. Guests who reply with free
    text instead of tapping a button get no answer — point them to the sales
    line by hand, or ask for the auto-reply fallback to be built.
 
 ## 8. Turning notifications off
 
-Settings → Appointments → **WhatsApp notifications** is the kill switch
-(`appointments_whatsapp_enabled` in `site_settings`). Off means the daily cron
-returns `{ disabled: true }` without touching Calendar or Meta, and the inbound
-webhook acks without replying or mutating reminder rows. Bookings, calendar
-events, and email invites are unaffected. No redeploy or env change needed.
+Settings → Appointments → **WhatsApp** tab → **WhatsApp notifications** is the
+kill switch (`appointments_whatsapp_enabled` in `site_settings`). Off silences
+all three send paths:
+
+- the booking route skips its immediate confirmation;
+- the daily cron returns `{ disabled: true }` without touching Calendar or Meta;
+- the inbound webhook acks without replying or mutating reminder rows.
+
+Bookings, calendar events, and email invites are unaffected. No redeploy or env
+change needed.
 
 ## 9. Production cutover
 

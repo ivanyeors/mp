@@ -252,6 +252,34 @@ describe("appointment-settings parse", () => {
     expect(parseAppointmentSettings({})).toEqual(DEFAULT_APPOINTMENT_SETTINGS);
   });
 
+  it("defaults the WhatsApp kill switch to on", () => {
+    // An install with no stored key must keep sending — the switch is opt-out.
+    expect(parseAppointmentSettings({}).whatsappEnabled).toBe(true);
+  });
+
+  it("turns WhatsApp off only for an explicit false", () => {
+    expect(
+      parseAppointmentSettings({ appointments_whatsapp_enabled: "false" }).whatsappEnabled,
+    ).toBe(false);
+    expect(
+      parseAppointmentSettings({ appointments_whatsapp_enabled: "0" }).whatsappEnabled,
+    ).toBe(false);
+    // Anything unparsable falls back to on rather than silently muting sends.
+    expect(
+      parseAppointmentSettings({ appointments_whatsapp_enabled: "" }).whatsappEnabled,
+    ).toBe(true);
+    expect(
+      parseAppointmentSettings({ appointments_whatsapp_enabled: "nope" }).whatsappEnabled,
+    ).toBe(true);
+  });
+
+  it("round-trips the WhatsApp switch via stored keys", () => {
+    const off = { ...DEFAULT_APPOINTMENT_SETTINGS, whatsappEnabled: false };
+    expect(parseAppointmentSettings(appointmentSettingsToStored(off)).whatsappEnabled).toBe(
+      false,
+    );
+  });
+
   it("parses blocked ranges JSON", () => {
     const start = new Date(sgtLocalToUtcMs(2026, 7, 10, 14, 0)).toISOString();
     const end = new Date(sgtLocalToUtcMs(2026, 7, 10, 16, 0)).toISOString();
