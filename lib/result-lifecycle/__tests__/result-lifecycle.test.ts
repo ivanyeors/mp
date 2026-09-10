@@ -115,4 +115,41 @@ describe("transitionResult", () => {
       releaseHold: false,
     });
   });
+
+  describe("cancel", () => {
+    it("voids a held Result and releases its hold", () => {
+      expect(transitionResult(heldWithHold, { action: "cancel" })).toEqual({
+        ok: true,
+        status: "cancelled",
+        releaseHold: true,
+      });
+    });
+
+    it("voids an assigned Result — the state the SLA cron never watches", () => {
+      expect(
+        transitionResult(
+          { status: "assigned", filling_template_id: 1, payment_intent_id: "pi_abc" },
+          { action: "cancel" },
+        ),
+      ).toEqual({ ok: true, status: "cancelled", releaseHold: true });
+    });
+
+    it("releases nothing on a review-only Result", () => {
+      expect(transitionResult(heldReviewOnly, { action: "cancel" })).toEqual({
+        ok: true,
+        status: "cancelled",
+        releaseHold: false,
+      });
+    });
+
+    it("leaves terminal states terminal", () => {
+      for (const status of ["captured", "declined", "expired", "cancelled"] as const) {
+        const res = transitionResult(
+          { status, filling_template_id: 1, payment_intent_id: "pi_abc" },
+          { action: "cancel" },
+        );
+        expect(res.ok).toBe(false);
+      }
+    });
+  });
 });

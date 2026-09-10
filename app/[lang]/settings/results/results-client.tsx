@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { rowsToCsv } from "@/lib/results/rows-to-csv";
+import {
+  STAGE_BUCKETS,
+  STAGE_LABELS,
+  STUCK_REASON_LABELS,
+  bucketFor,
+  resultStage,
+  type ResultStage,
+} from "@/lib/results/result-stage";
 import { formatAdminDateTime } from "@/lib/format/admin-date";
+import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
+import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
 type YesNoEmpty = "yes" | "no" | "";
 
@@ -38,6 +48,19 @@ type MeasurementData = {
   neckLength: string;
 };
 
+type LinkedOrder = {
+  id: string;
+  order_number: string | null;
+  status: string | null;
+  total: number | null;
+  currency: string | null;
+  paid_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  tracking_number: string | null;
+  needs_attention: boolean | null;
+};
+
 type MpConfigResponseRow = {
   id: string;
   data: Partial<MeasurementData> | null;
@@ -48,6 +71,9 @@ type MpConfigResponseRow = {
   location_id?: string | null;
   order_id?: string | null;
   order_number?: string | null;
+  order?: LinkedOrder | null;
+  payment_intent_id?: string | null;
+  topup_paid_at?: string | null;
   created_at: string;
   updated_at: string;
   status?: string | null;
@@ -69,7 +95,69 @@ type LocationOption = {
   name: string;
 };
 
-type ResultsTab = "active" | "released";
+type ResultsTab = (typeof STAGE_BUCKETS)[number];
+
+/** Order-linkage filter: staff need to find rows whose Order state is wrong. */
+type OrderFilter = "all" | "has_order" | "no_order" | "mismatch";
+
+const STAGE_BADGE_CLASS: Record<ResultStage, string> = {
+  measurement_only: "bg-slate-100 text-slate-700 border-slate-200",
+  needs_assign: "bg-amber-100 text-amber-800 border-amber-200",
+  awaiting_customer: "bg-blue-100 text-blue-800 border-blue-200",
+  to_build: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  building: "bg-violet-100 text-violet-800 border-violet-200",
+  shipped: "bg-purple-100 text-purple-800 border-purple-200",
+  handed_over: "bg-green-100 text-green-800 border-green-200",
+  closed: "bg-slate-100 text-slate-600 border-slate-200",
+  stuck: "bg-red-100 text-red-800 border-red-200",
+};
+
+const TAB_LABELS: Record<ResultsTab, string> = {
+  needs_assign: "Needs assign",
+  awaiting_customer: "Awaiting customer",
+  to_build: "To build",
+  shipped: "Shipped",
+  stuck: "Stuck",
+  closed: "Closed",
+};
+
+/** Order-status badge tone, mirroring the Orders list vocabulary. */
+const ORDER_STATUS_CLASS: Record<string, string> = {
+  confirmed: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  processing: "bg-violet-100 text-violet-800 border-violet-200",
+  shipped: "bg-purple-100 text-purple-800 border-purple-200",
+  delivered: "bg-green-100 text-green-800 border-green-200",
+  cancelled: "bg-slate-100 text-slate-600 border-slate-200",
+  refunded: "bg-red-100 text-red-800 border-red-200",
+  partially_refunded: "bg-orange-100 text-orange-800 border-orange-200",
+};
+
+/** Why a row has no Order yet — a bare dash reads as a data bug, and usually isn't. */
+function noOrderReason(stage: ResultStage): string {
+  switch (stage) {
+    case "measurement_only":
+      return "Measurement only";
+    case "needs_assign":
+    case "awaiting_customer":
+      return "Not yet captured";
+    case "closed":
+      return "Closed — no sale";
+    default:
+      return "—";
+  }
+}
+
+function formatMoney(amount: number | null, currency: string | null): string {
+  if (amount == null) return "";
+  try {
+    return new Intl.NumberFormat("en-SG", {
+      style: "currency",
+      currency: currency ?? "SGD",
+    }).format(amount);
+  } catch {
+    return `${currency ?? "SGD"} ${amount.toFixed(2)}`;
+  }
+}
 
 const safeString = (value: unknown): string =>
   typeof value === "string" ? value : value == null ? "" : String(value);
@@ -115,12 +203,17 @@ export default function ResultsPage({
   initialData?: ResultsInitialData;
 }) {
   const router = useRouter();
+  const pathname = usePathname() ?? "/";
+  const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
+  const to = useCallback((href: string) => withLocale(href, locale), [locale]);
   const [rows, setRows] = useState<MpConfigResponseRow[]>(
     initialData?.responses?.rows ?? [],
   );
   const [loading, setLoading] = useState(!initialData?.responses);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<ResultsTab>("active");
+  const [tab, setTab] = useState<ResultsTab>("needs_assign");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [orderFilter, setOrderFilter] = useState<OrderFilter>("all");
   const [sending, setSending] = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -307,27 +400,68 @@ export default function ResultsPage({
     [],
   );
 
+  /**
+   * One stage per row, spanning the Result → Order handover. Computed once and
+   * reused by the tabs, the counts and the row badges. `now` is pinned per render
+   * so a row cannot change bucket midway through a pass.
+   */
+  const staged = useMemo(() => {
+    const now = new Date();
+    return rows.map((row) => ({
+      row,
+      ...resultStage(
+        {
+          status: row.status ?? null,
+          source: row.source ?? null,
+          payment_intent_id: row.payment_intent_id ?? null,
+          created_at: row.created_at,
+          order_id: row.order_id ?? null,
+          topup_paid_at: row.topup_paid_at ?? null,
+          order: row.order ?? null,
+        },
+        now,
+      ),
+    }));
+  }, [rows]);
+
+  const stageById = useMemo(
+    () => new Map(staged.map((s) => [s.row.id, s])),
+    [staged],
+  );
+
+  /** Per-tab counts, so staff can see where the work is without switching tabs. */
+  const bucketCounts = useMemo(() => {
+    const counts = Object.fromEntries(STAGE_BUCKETS.map((b) => [b, 0])) as Record<
+      ResultsTab,
+      number
+    >;
+    for (const s of staged) counts[bucketFor(s.stage)] += 1;
+    return counts;
+  }, [staged]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    // Purchase-path held/assigned Results stay in Active until the customer decides.
-    const inQueue = (r: MpConfigResponseRow) =>
-      r.status === "held" || r.status === "assigned";
-    const scope =
-      tab === "active"
-        ? rows.filter((r) => !r.is_final || inQueue(r))
-        : rows.filter((r) => r.is_final && !inQueue(r));
-    if (!q) return scope;
-    return scope.filter((row) => {
-      const d = row.data ?? {};
-      const name = safeString(d.name).toLowerCase();
-      const email = safeString(row.customer_email).toLowerCase();
-      return (
-        row.id.toLowerCase().includes(q) ||
-        name.includes(q) ||
-        email.includes(q)
-      );
-    });
-  }, [rows, search, tab]);
+    return staged
+      .filter((s) => bucketFor(s.stage) === tab)
+      .filter((s) => sourceFilter === "all" || (s.row.source ?? "manual") === sourceFilter)
+      .filter((s) => {
+        if (orderFilter === "all") return true;
+        if (orderFilter === "has_order") return Boolean(s.row.order_id);
+        if (orderFilter === "no_order") return !s.row.order_id;
+        return s.stuckReason === "order_mismatch";
+      })
+      .filter((s) => {
+        if (!q) return true;
+        const d = s.row.data ?? {};
+        return (
+          s.row.id.toLowerCase().includes(q) ||
+          safeString(d.name).toLowerCase().includes(q) ||
+          safeString(s.row.customer_email).toLowerCase().includes(q) ||
+          safeString(s.row.order_number).toLowerCase().includes(q)
+        );
+      })
+      .map((s) => s.row);
+  }, [staged, search, tab, sourceFilter, orderFilter]);
 
   const sendToTelegram = useCallback(
     async (row: MpConfigResponseRow) => {
@@ -373,8 +507,8 @@ export default function ResultsPage({
         if (telegramStatus === "sent") toast.success("Sent to Telegram");
         else if (telegramStatus === "failed") toast.error("Saved, but failed to send to Telegram");
         else toast.success("Sent");
-
-        setTab("released");
+        // No tab switch: releasing to the Telegram group is a notification, not a
+        // lifecycle move. The row keeps its stage.
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Failed to update");
       } finally {
@@ -474,7 +608,9 @@ export default function ResultsPage({
         status: r.status,
         source: r.source,
         location_id: r.location_id,
+        stage: stageById.get(r.id)?.stage ?? null,
         order_number: r.order_number,
+        order_status: r.order?.status ?? null,
         suggested_size: r.suggested_size,
         suggested_tier: r.suggested_tier,
         assigned_size: r.assigned_size,
@@ -487,7 +623,7 @@ export default function ResultsPage({
     a.download = `results-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [selectedRows]);
+  }, [selectedRows, stageById]);
 
   return (
     <div className="space-y-6">
@@ -546,25 +682,68 @@ export default function ResultsPage({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-full flex-col gap-2 sm:max-w-md">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or id…"
-          />
-          <Tabs value={tab} onValueChange={(v) => setTab(v as ResultsTab)}>
-            <TabsList>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="released">Released</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        <div className="text-xs text-muted-foreground text-right">
-          <div>Showing {filtered.length} result(s)</div>
-          <div>
-            Loaded {rows.length}
-            {typeof totalCount === "number" ? ` of ${totalCount}` : ""} (page {pageLimit})
+      <div className="flex flex-col gap-3">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as ResultsTab)}>
+          <TabsList className="flex-wrap">
+            {STAGE_BUCKETS.map((bucket) => (
+              <TabsTrigger key={bucket} value={bucket}>
+                {TAB_LABELS[bucket]}
+                {bucketCounts[bucket] > 0 && (
+                  <span
+                    className={
+                      bucket === "stuck"
+                        ? "ml-1.5 rounded-full bg-red-100 px-1.5 text-[11px] font-semibold text-red-800"
+                        : "ml-1.5 rounded-full bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground"
+                    }
+                  >
+                    {bucketCounts[bucket]}
+                  </span>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex w-full flex-col gap-2 sm:max-w-2xl sm:flex-row">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email, order # or id…"
+              className="sm:max-w-xs"
+            />
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="sm:w-40">
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sources</SelectItem>
+                <SelectItem value="online_purchase">Purchase</SelectItem>
+                <SelectItem value="online_customization">Online</SelectItem>
+                <SelectItem value="manual">In-store</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={orderFilter}
+              onValueChange={(v) => setOrderFilter(v as OrderFilter)}
+            >
+              <SelectTrigger className="sm:w-44">
+                <SelectValue placeholder="Order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any order state</SelectItem>
+                <SelectItem value="has_order">Has an Order</SelectItem>
+                <SelectItem value="no_order">No Order</SelectItem>
+                <SelectItem value="mismatch">Order without capture</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="text-xs text-muted-foreground text-right">
+            <div>Showing {filtered.length} result(s)</div>
+            <div>
+              Loaded {rows.length}
+              {typeof totalCount === "number" ? ` of ${totalCount}` : ""} (page {pageLimit})
+            </div>
           </div>
         </div>
       </div>
@@ -640,7 +819,9 @@ export default function ResultsPage({
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={14} className="py-10 text-center text-sm text-muted-foreground">
-                    {tab === "active" ? "No active results yet." : "No released results yet."}
+                    {tab === "stuck"
+                      ? "Nothing stuck — every Result is moving."
+                      : `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -655,6 +836,9 @@ export default function ResultsPage({
                   const isDeleting = Boolean(deleting[row.id]);
                   const measuredByText = measuredByLabel(row);
                   const measuredByOk = isMeasuredByValid(row);
+                  const staging = stageById.get(row.id);
+                  const stage = staging?.stage ?? "measurement_only";
+                  const stuckReason = staging?.stuckReason ?? null;
 
                   return (
                     <TableRow
@@ -662,11 +846,11 @@ export default function ResultsPage({
                       role="button"
                       tabIndex={0}
                       className="group cursor-pointer"
-                      onClick={() => router.push(`/settings/results/${row.id}`)}
+                      onClick={() => router.push(to(`/settings/results/${row.id}`))}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
-                          router.push(`/settings/results/${row.id}`);
+                          router.push(to(`/settings/results/${row.id}`));
                         }
                       }}
                     >
@@ -688,12 +872,16 @@ export default function ResultsPage({
                         )}
                       </TableCell>
                       <TableCell>
-                        {row.status ? (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">
-                            {row.status}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 ${STAGE_BADGE_CLASS[stage]}`}
+                        >
+                          {STAGE_LABELS[stage]}
+                        </Badge>
+                        {stuckReason && (
+                          <div className="mt-0.5 text-[10px] leading-tight text-red-700">
+                            {STUCK_REASON_LABELS[stuckReason]}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -728,15 +916,34 @@ export default function ResultsPage({
                           if (row.order_id) e.stopPropagation();
                         }}
                       >
-                        {row.order_number ? (
-                          <a
-                            href={`/settings/orders/${row.order_id}`}
-                            className="text-xs text-primary hover:underline font-mono"
-                          >
-                            {row.order_number}
-                          </a>
+                        {row.order_id ? (
+                          <div className="flex flex-col gap-0.5">
+                            <a
+                              href={to(`/settings/orders/${row.order_id}`)}
+                              className="text-xs text-primary hover:underline font-mono"
+                            >
+                              {row.order_number ?? "View order"}
+                            </a>
+                            {row.order?.status && (
+                              <Badge
+                                variant="outline"
+                                className={`w-fit text-[10px] px-1.5 py-0 capitalize ${
+                                  ORDER_STATUS_CLASS[row.order.status] ?? ""
+                                }`}
+                              >
+                                {row.order.status.replace(/_/g, " ")}
+                              </Badge>
+                            )}
+                            {row.order?.total != null && (
+                              <span className="text-[10px] tabular-nums text-muted-foreground">
+                                {formatMoney(row.order.total, row.order.currency)}
+                              </span>
+                            )}
+                          </div>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">
+                            {noOrderReason(stage)}
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">{gender}</TableCell>

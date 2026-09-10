@@ -12,6 +12,9 @@ export type CsvRow = {
   source?: string | null;
   location_id?: string | null;
   order_number?: string | null;
+  /** Derived queue stage (see lib/results/result-stage) — an exported queue stays legible. */
+  stage?: string | null;
+  order_status?: string | null;
   suggested_size?: string | null;
   suggested_tier?: string | null;
   assigned_size?: string | null;
@@ -27,7 +30,9 @@ const FIELDS = [
   "status",
   "source",
   "location_id",
+  "stage",
   "order_number",
+  "order_status",
   "suggested_size",
   "suggested_tier",
   "assigned_size",

@@ -66,7 +66,7 @@ import {
     groupBuildLinesByRole,
     isResultOrderBuildSnapshot,
 } from "@/lib/results/order-build-snapshot";
-import { CELLS } from "@/components/spatial/pillow-cell-grid";
+import { CELLS } from "@/lib/spatial-fillings/cells";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
 

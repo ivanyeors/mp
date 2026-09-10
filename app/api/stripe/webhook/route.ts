@@ -88,6 +88,27 @@ export async function POST(req: Request) {
             typeof session.payment_intent === "string"
               ? session.payment_intent
               : session.payment_intent?.id ?? null;
+
+          // A top-up rides the same shape (result_id, no order_id) but is an
+          // immediate-capture second charge on an ALREADY-assigned Result. The old
+          // `.eq("status","held")` guard made it a silent no-op, so a customer who
+          // paid and never returned left money charged with nothing recording it.
+          // Stamp it instead; accept settles with this intent rather than charging
+          // twice, and the Results queue can surface it as stuck meanwhile.
+          if (session.metadata?.purpose === "result_topup") {
+            if (paymentIntent && session.payment_status === "paid") {
+              await admin
+                .from("mp_config_responses")
+                .update({
+                  topup_payment_intent_id: paymentIntent,
+                  topup_paid_at: new Date().toISOString(),
+                })
+                .eq("id", resultId)
+                .eq("status", "assigned");
+            }
+            break;
+          }
+
           if (paymentIntent) {
             await admin
               .from("mp_config_responses")

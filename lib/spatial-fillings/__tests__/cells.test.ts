@@ -5,9 +5,9 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { CELLS, cellsToPlacements, placementsToCells, type CellMap } from "./pillow-cell-grid";
+import { CELLS, cellsToPlacements, placementsToCells, type CellMap } from "../cells";
 import {
-  MAX_PIECES_PER_CELL,
+  MAX_PIECES_PER_LAYER,
   derivePackList,
   flattenToPackList,
   pillowPlacementsToRows,
@@ -15,10 +15,12 @@ import {
   validatePillowPlacements,
 } from "@/lib/spatial-fillings/core";
 
-// Full 9-cell recipe: 1–5 pieces per cell, repeated items included.
+// Full 9-cell recipe: 1–5 pieces per cell, repeated items included. The CellMap
+// view is single-layer, so the fixture is bounded by the PER-LAYER cap — the
+// per-cell cap is five layers' worth and unreachable from a flat cell list.
 const fullGrid: CellMap = new Map(
   CELLS.map(({ section, subSection }, i) => {
-    const count = (i % MAX_PIECES_PER_CELL) + 1;
+    const count = (i % MAX_PIECES_PER_LAYER) + 1;
     return [`${section}/${subSection}`, Array.from({ length: count }, (_, s) => (s % 2 === 0 ? 1 : 2))];
   }),
 );
@@ -51,7 +53,7 @@ describe("pillow cell grid save→reload fidelity", () => {
     expect(flattenToPackList(placements)).toEqual(derivePackList(pillowPlacementsToRows(placements), []));
   });
 
-  it("a sixth piece in a cell fails the shared validator (5-per-cell cap)", () => {
+  it("a sixth piece in one layer fails the shared validator (5-per-layer cap)", () => {
     const over = new Map(fullGrid);
     over.set("left/front", [1, 1, 1, 2, 2, 2]);
     const result = validatePillowPlacements(cellsToPlacements(over), categories);

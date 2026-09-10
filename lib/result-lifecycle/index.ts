@@ -6,7 +6,8 @@ export type ResultStatus =
   | "accepted"
   | "declined"
   | "expired"
-  | "captured";
+  | "captured"
+  | "cancelled";
 
 export type ResultState = {
   status: ResultStatus;
@@ -20,7 +21,8 @@ export type Transition =
   | { action: "accept" }
   | { action: "decline" }
   | { action: "expire" }
-  | { action: "capture" };
+  | { action: "capture" }
+  | { action: "cancel" };
 
 export type TransitionResult =
   | { ok: true; status: ResultStatus; releaseHold: boolean }
@@ -86,6 +88,19 @@ export function transitionResult(
         };
       }
       return { ok: true, status: "captured", releaseHold: false };
+    }
+    case "cancel": {
+      // Staff void. Legal from both open states: the SLA cron only expires `held`,
+      // so an `assigned` Result whose customer goes quiet is otherwise unreachable
+      // by any human. Terminal states stay terminal.
+      if (state.status !== "held" && state.status !== "assigned") {
+        return { ok: false, error: `Cannot cancel from status ${state.status}` };
+      }
+      return {
+        ok: true,
+        status: "cancelled",
+        releaseHold: state.payment_intent_id != null,
+      };
     }
   }
 }

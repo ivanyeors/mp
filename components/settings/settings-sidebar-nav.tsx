@@ -19,6 +19,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuSub,
   SidebarMenuSubButton,
@@ -94,7 +95,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/settings/inventory", label: "Inventory", tooltip: "Inventory", Icon: Boxes, perm: "inventory" },
       { href: "/settings/costings", label: "Costings", tooltip: "Costings", Icon: CircleDollarSign, perm: "costings" },
-      { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
     ],
   },
   {
@@ -107,6 +107,7 @@ const NAV_GROUPS: NavGroup[] = [
         Icon: ShoppingBag,
         perm: "products",
         items: [
+          { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
           { href: "/settings/product-builder", label: "Product Builder", tooltip: "Configurator overlay mapping", Icon: Shapes, perm: "page-builder" },
           { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch, perm: "page-builder" },
         ],
@@ -218,6 +219,9 @@ export function SettingsSidebarNav({
     () => initialAuth?.permissions ?? [],
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  // Work waiting in the Results queue, so staff see it without opening the page.
+  const [resultsQueue, setResultsQueue] = useState(0);
+  const [resultsStuck, setResultsStuck] = useState(0);
 
   // Keep in sync if the server re-renders the layout with a new session
   // (e.g. after sign-in redirects back into the Admin Panel).
@@ -235,6 +239,24 @@ export function SettingsSidebarNav({
     if (!isMobile) return;
     return subscribeAdminPanelMenu(() => setMenuOpen(true));
   }, [isMobile]);
+
+  // Refetched per navigation (pathname dep) so the badge settles after an assign
+  // without needing a poll. Best-effort: a failure just leaves the badge hidden.
+  useEffect(() => {
+    if (status !== "authed" || !permissions.includes("results")) return;
+    let cancelled = false;
+    fetch("/api/results/queue-counts")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { needsAssign?: number; stuck?: number } | null) => {
+        if (cancelled || !data) return;
+        setResultsQueue((data.needsAssign ?? 0) + (data.stuck ?? 0));
+        setResultsStuck(data.stuck ?? 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [status, permissions, basePathname]);
 
   useEffect(() => {
     if (isLoginRoute || initialAuth) return;
@@ -380,6 +402,22 @@ export function SettingsSidebarNav({
                                 <span>{label}</span>
                               </Link>
                             </SidebarMenuButton>
+                            {href === "/settings/results" && resultsQueue > 0 ? (
+                              <SidebarMenuBadge
+                                className={
+                                  resultsStuck > 0
+                                    ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                                    : undefined
+                                }
+                                title={
+                                  resultsStuck > 0
+                                    ? `${resultsStuck} stuck, ${resultsQueue - resultsStuck} awaiting assignment`
+                                    : `${resultsQueue} awaiting assignment`
+                                }
+                              >
+                                {resultsQueue}
+                              </SidebarMenuBadge>
+                            ) : null}
 
                             {visibleSubs.length ? (
                               <SidebarMenuSub>

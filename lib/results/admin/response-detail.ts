@@ -21,6 +21,22 @@ type BomLineRow = {
   } | null;
 };
 
+/** Fulfilment facts of the linked Order, shown on the Result detail page. */
+export interface LinkedOrderDetail {
+  id: string;
+  order_number: string | null;
+  status: string | null;
+  total: number | null;
+  currency: string | null;
+  paid_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
+  needs_attention: boolean | null;
+  amount_refunded: number | null;
+}
+
 export interface MpConfigResponseDetailPayload {
   ok: true;
   response: Record<string, unknown> & {
@@ -29,6 +45,7 @@ export interface MpConfigResponseDetailPayload {
     recommendation_record: unknown;
   };
   order_number: string | null;
+  order: LinkedOrderDetail | null;
   suggestion: {
     recommended: { size: string; tier: string };
     product: { id: number; size: string; tier: "basic" | "premium" } | null;
@@ -56,7 +73,7 @@ export async function loadMpConfigResponseDetail(
   const { data: responseRow, error: rErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,customer_email,customer_phone,discovery_source,discovery_source_other,is_pre_order,recommendation_record,filling_fingerprint",
+      "id,data,is_final,measured_by_type,measured_by_staff_id,source,order_id,order_item_id,created_at,updated_at,status,product_type,suggested_size,suggested_tier,suggested_length,assigned_size,assigned_tier,assigned_length,filling_template_id,preference_lines,addon_lines,shipping_method,authorized_amount,final_amount,currency,payment_intent_id,topup_payment_intent_id,topup_paid_at,customer_email,customer_phone,discovery_source,discovery_source_other,is_pre_order,recommendation_record,filling_fingerprint",
     )
     .eq("id", id)
     .maybeSingle();
@@ -71,14 +88,37 @@ export async function loadMpConfigResponseDetail(
     DEFAULT_LOCALE,
   );
 
+  // The Result is terminal at capture, so the fulfilment half of the story lives on
+  // the Order. Carry it through so the detail page can show the stage without
+  // sending staff to a second surface.
   let orderNumber: string | null = null;
+  let order: LinkedOrderDetail | null = null;
   if (responseRow.order_id) {
     const { data: orderRow } = await admin
       .from("orders")
-      .select("order_number")
+      .select(
+        "id, order_number, status, total, currency, paid_at, shipped_at, delivered_at, tracking_number, tracking_url, needs_attention, amount_refunded",
+      )
       .eq("id", responseRow.order_id)
       .maybeSingle();
     orderNumber = orderRow?.order_number ?? null;
+    order = orderRow
+      ? {
+          id: orderRow.id,
+          order_number: orderRow.order_number ?? null,
+          status: orderRow.status ?? null,
+          total: orderRow.total != null ? Number(orderRow.total) : null,
+          currency: orderRow.currency ?? null,
+          paid_at: orderRow.paid_at ?? null,
+          shipped_at: orderRow.shipped_at ?? null,
+          delivered_at: orderRow.delivered_at ?? null,
+          tracking_number: orderRow.tracking_number ?? null,
+          tracking_url: orderRow.tracking_url ?? null,
+          needs_attention: orderRow.needs_attention ?? null,
+          amount_refunded:
+            orderRow.amount_refunded != null ? Number(orderRow.amount_refunded) : null,
+        }
+      : null;
   }
 
   const data = (responseRow.data ?? {}) as Record<string, unknown>;
@@ -154,6 +194,7 @@ export async function loadMpConfigResponseDetail(
           responseRow.recommendation_record ?? toPersistedRecommendationRecord(engineResult),
       },
       order_number: orderNumber,
+      order,
       suggestion: {
         recommended: {
           size,

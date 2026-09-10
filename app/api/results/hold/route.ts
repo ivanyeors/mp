@@ -39,6 +39,7 @@ import {
 } from "@/lib/configurator/pre-order-persist";
 import { getAdminContext } from "@/lib/auth/admin";
 import {
+  MAX_LAYERS_PER_CELL,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -93,6 +94,10 @@ const AssistFillingSchema = z.object({
         sub_section: z.string().default(""),
         slot: z.number().int(),
         item_id: z.number().int().positive(),
+        // The piece's LAYER (0 = top/front). Without this, zod strips it and
+        // every layered cell the configurator built persists to
+        // result_filling_placements with depth NULL.
+        row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
       }),
     )
     .min(1),

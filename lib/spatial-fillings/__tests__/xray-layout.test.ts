@@ -121,6 +121,44 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     expect(withUndef).toEqual(layoutPlacements([piece(1), piece(2)]));
     expect(withUndef.every((p) => p.depth === 0)).toBe(true);
   });
+
+  it("pieces sharing a layer split that layer's slab, not the whole cell", () => {
+    const layout = layoutPlacements([
+      { ...piece(1), row: 0 },
+      { ...piece(2), row: 0 },
+      { ...piece(3), row: 1 },
+    ]);
+    const top = layout.filter((p) => p.depth === 0);
+    const deep = layout.filter((p) => p.depth === 1);
+    expect(top).toHaveLength(2);
+    expect(deep).toHaveLength(1);
+    // The two top pieces sit side by side: same band, different columns.
+    expect(top[0].y).toBeCloseTo(top[1].y, 5);
+    expect(top[0].x).not.toBeCloseTo(top[1].x, 1);
+    // …and together they span what the single deeper piece spans alone.
+    expect(top[0].w + top[1].w).toBeGreaterThan(deep[0].w * 0.9);
+    expect(deep[0].y).toBeGreaterThan(top[0].y); // the layer itself is still deeper
+  });
+
+  it("a layer emptied out of the middle does not render as a gap", () => {
+    // Stored rows can carry a hole (layer 1 deleted); layers compact on layout,
+    // so two surviving layers overlay as 0/1 — never 0 and a two-step-deep 2.
+    const holed = layoutPlacements([
+      { ...piece(1), row: 0 },
+      { ...piece(2), row: 2 },
+    ]);
+    const dense = layoutPlacements([
+      { ...piece(1), row: 0 },
+      { ...piece(2), row: 1 },
+    ]);
+    expect(holed).toEqual(dense);
+  });
+
+  it("row: undefined and row: 0 are the same layer", () => {
+    const mixed = layoutPlacements([{ ...piece(1), row: undefined }, { ...piece(2), row: 0 }]);
+    expect(mixed.every((p) => p.depth === 0)).toBe(true);
+    expect(mixed).toEqual(layoutPlacements([piece(1), piece(2)]));
+  });
 });
 
 const bolsterPiece = (slot: number, itemId = 1): BolsterPlacement => ({ slot, itemId });

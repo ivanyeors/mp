@@ -14,6 +14,18 @@ describe("refundableAmount", () => {
   it("never goes negative", () => {
     expect(refundableAmount({ total: 50, amount_refunded: 60 })).toBe(0);
   });
+
+  it("caps at what was captured, not the order total", () => {
+    // A Result order topped up beyond its hold is paid by two intents; only what a
+    // charge actually brought in can be refunded.
+    expect(
+      refundableAmount({ total: 500, amount_captured: 420, amount_refunded: 20 })
+    ).toBe(400);
+  });
+
+  it("falls back to total when no capture has been rolled up", () => {
+    expect(refundableAmount({ total: 100, amount_captured: 0, amount_refunded: 0 })).toBe(100);
+  });
 });
 
 describe("idempotency keys", () => {

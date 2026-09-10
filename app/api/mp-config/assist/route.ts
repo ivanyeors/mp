@@ -38,7 +38,12 @@ export async function GET(req: NextRequest) {
     }
     // Bolster templates use their own schema: slot rows only, never pillow enums.
     const table = tpl.kind === "bolster" ? "bolster_template_placements" : "filling_template_placements";
-    const cols = tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id";
+    // row_index is the x-ray stack depth: a render-path read must carry it, or a
+    // stacked template flattens to side-by-side here while the shopper preview
+    // (shop/customize, mp-basic/recommend) renders it stacked. See
+    // spatial-fillings/api-contract.check.ts for the render-path reader list.
+    const cols =
+      tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index";
     const { data: placements, error: pErr } = await admin
       .from(table)
       .select(cols)

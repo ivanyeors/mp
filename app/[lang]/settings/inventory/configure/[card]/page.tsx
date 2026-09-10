@@ -27,8 +27,15 @@ import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
-import { PillowCellGrid } from "@/components/spatial/pillow-cell-grid";
+import { XrayEditor } from "@/components/spatial/xray-editor";
 import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment-list";
+import {
+  isSpatiallyAuthored,
+  isSpatiallyAuthoredCoverage,
+  looksLikeLegacyImport,
+  unauthoredReason,
+} from "@/lib/spatial-fillings/authoring";
+import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import {
   bolsterPlacementsToRows,
   flattenToPackList,
@@ -49,6 +56,8 @@ type FillingTemplateRow = {
   name: string;
   notes: string | null;
   is_active: boolean;
+  /** Sections holding at least one Placement; pillow filling templates only. */
+  sections?: string[];
 };
 
 /** Ranked unpromoted mix (slices 09/13): fingerprint-grouped Result snapshots for this scope.
@@ -476,6 +485,8 @@ export default function ConfigureCardPage() {
     }
   };
 
+  const [cardColorOverrides, setCardColorOverrides] = useState<ColorOverrideRow[]>([]);
+
   const loadFillingTemplates = useCallback(async (kind: "pillow" | "bolster", key: string) => {
     const url = settingsPath(
       `/settings/inventory/configure/templates?kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(key)}&role=filling`,
@@ -486,7 +497,17 @@ export default function ConfigureCardPage() {
       throw new Error(payload?.error ?? "Failed to load Filling Templates");
     }
     const payload = await res.json().catch(() => null);
-    return (payload?.templates ?? []) as FillingTemplateRow[];
+    const rows = (payload?.templates ?? []) as FillingTemplateRow[];
+    // Global per-subtype x-ray colours: lifted to the card so the editor has them
+    // before any template is opened (a new template would otherwise render on code
+    // defaults while the configurator shows Product Builder colours).
+    if (payload?.colorOverrides) {
+      setCardColorOverrides(payload.colorOverrides as ColorOverrideRow[]);
+    }
+    // Fold Section coverage onto each row so the eight call sites keep the same
+    // shape and only the badge has to know about it.
+    const coverage = payload?.sectionCoverage as Record<number, string[]> | undefined;
+    return coverage ? rows.map((t) => ({ ...t, sections: coverage[t.id] ?? [] })) : rows;
   }, [settingsPath]);
 
   const loadTemplateLines = async (templateId: number) => {
@@ -867,6 +888,7 @@ export default function ConfigureCardPage() {
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
+                  colorOverrides={cardColorOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1040,6 +1062,7 @@ export default function ConfigureCardPage() {
                   settingsPath={settingsPath}
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
+                  colorOverrides={cardColorOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1164,6 +1187,7 @@ function FillingConfigPanel({
   settingsPath,
   loadFillingTemplates,
   deleteTemplateById,
+  colorOverrides,
 }: {
   kind: "pillow" | "bolster";
   templateKey: string;
@@ -1171,6 +1195,8 @@ function FillingConfigPanel({
   settingsPath: (path: string) => string;
   loadFillingTemplates: (kind: "pillow" | "bolster", key: string) => Promise<FillingTemplateRow[]>;
   deleteTemplateById: (templateId: number) => Promise<void>;
+  /** Global per-subtype x-ray colours, owned by the card (not per-template). */
+  colorOverrides: ColorOverrideRow[];
 }) {
   const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
@@ -1439,6 +1465,12 @@ function FillingConfigPanel({
     [items, templateKey],
   );
   // Derived BOM: same flatten the server runs over placement rows (ADR 0008).
+  // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
+  // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
+  const unauthoredCount = useMemo(
+    () => templates.filter((t) => t.sections && !isSpatiallyAuthoredCoverage(t.sections)).length,
+    [templates],
+  );
   const packList = useMemo(
     () => flattenToPackList(kind === "pillow" ? placements : bolsterMix),
     [kind, placements, bolsterMix],
@@ -1509,6 +1541,13 @@ function FillingConfigPanel({
       </div>
       {templates.length > 0 && (
         <div className="rounded-lg border">
+          {unauthoredCount > 0 && (
+            <p className="border-b px-3 py-2 text-xs text-muted-foreground">
+              {unauthoredCount} of {templates.length} Filling Template
+              {templates.length === 1 ? "" : "s"} not yet spatially authored — pieces are not laid
+              out across the left, center and right sections.
+            </p>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
@@ -1527,6 +1566,18 @@ function FillingConfigPanel({
                     >
                       {t.name}
                     </button>
+                    {t.sections && !isSpatiallyAuthoredCoverage(t.sections) && (
+                      <span
+                        className="ml-2 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+                        title={`${unauthoredReason(t.sections)}${
+                          looksLikeLegacyImport(t.sections)
+                            ? " Placements were auto-generated from a legacy flat recipe and have never been laid out."
+                            : ""
+                        }`}
+                      >
+                        Not spatially authored
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Switch checked={t.is_active} onCheckedChange={(checked) => void toggleActive(t.id, checked)} />
@@ -1551,8 +1602,26 @@ function FillingConfigPanel({
             </div>
           )}
           {kind === "pillow" ? (
-            <Section title="Spatial recipe (Section × sub-section, up to 5 pieces per cell)">
-              <PillowCellGrid value={placements} onChange={setPlacements} items={gridItems} />
+            <Section title="Spatial recipe — click a section to dive in (up to 5 pieces per cell)">
+              {placements.length > 0 && !isSpatiallyAuthored(placements) && (
+                <div className="mb-3 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+                  <div className="font-medium">Not spatially authored.</div>
+                  <p className="mt-1 text-muted-foreground">
+                    {unauthoredReason(placements.map((p) => p.section))}{" "}
+                    {looksLikeLegacyImport(placements.map((p) => p.section))
+                      ? "These placements were auto-generated from a legacy flat recipe and have never been laid out. "
+                      : ""}
+                    Side-sleep support belongs in the left and right sections, back-sleep support in
+                    center. Moving pieces between cells does not change the pack list.
+                  </p>
+                </div>
+              )}
+              <XrayEditor
+                placements={placements}
+                onPlacementsChange={setPlacements}
+                items={gridItems}
+                colorOverrides={colorOverrides}
+              />
             </Section>
           ) : (
             // Mbolster: one long compartment — ordered list, no piece cap, never the 3×3 grid.
