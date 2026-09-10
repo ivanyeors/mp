@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { syncProductToStripe } from "@/lib/stripe/sync";
+import { requireAdmin } from "@/lib/auth/admin";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,14 @@ const SyncProductSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Staff-only: the sole remaining caller is the Admin Panel product editor,
+  // which already sits behind requireAdminPage("products"). Ungated, anyone with
+  // a product id could force Stripe Product/Price writes and burn API quota.
+  // scripts/stripe-sync-all.ts used to POST here; it now calls
+  // syncProductToStripe() directly and needs no running app at all.
+  const denied = await requireAdmin("products");
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   const parsed = SyncProductSchema.safeParse(body);
   if (!parsed.success) {
