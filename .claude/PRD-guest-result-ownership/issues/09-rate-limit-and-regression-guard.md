@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 29–33
 
 ## What to build
@@ -46,23 +46,24 @@ suite.
 
 ## Acceptance criteria
 
-- [ ] `lib/rate-limit.ts` exists, lifted from `app/api/support/contact/route.ts`, and carries a
+- [x] `lib/rate-limit.ts` exists, lifted from `app/api/support/contact/route.ts`, and carries a
       `ponytail:` comment naming the per-instance ceiling and the upgrade path.
-- [ ] The limiter applies to the create path of `POST /api/mp-config/responses` and **not** to the
+- [x] The limiter applies to the create path of `POST /api/mp-config/responses` and **not** to the
       update path.
-- [ ] Exceeding the limit returns 429 in the house error shape.
-- [ ] A normal configurator session — first keystroke through save-without-purchasing — never trips
+- [x] Exceeding the limit returns 429 in the house error shape.
+- [~] A normal configurator session — first keystroke through save-without-purchasing — never trips
       the limit.
-- [ ] The contact route keeps its existing behaviour and limits, whether or not it is refactored
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [x] The contact route keeps its existing behaviour and limits, whether or not it is refactored
       onto the shared function.
-- [ ] A structural test walks `app/api/mp-config/**` per exported handler and fails on any handler
+- [x] A structural test walks `app/api/mp-config/**` per exported handler and fails on any handler
       with no recognised gate.
-- [ ] The create-path exemption is listed by name in that test, not inferred.
-- [ ] The test is proved to work: temporarily removing a guard makes it fail.
-- [ ] Unit tests cover the limiter's window boundary (allowed at the limit, refused past it,
+- [x] The create-path exemption is listed by name in that test, not inferred.
+- [x] The test is proved to work: temporarily removing a guard makes it fail.
+- [x] Unit tests cover the limiter's window boundary (allowed at the limit, refused past it,
       allowed again after the window).
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

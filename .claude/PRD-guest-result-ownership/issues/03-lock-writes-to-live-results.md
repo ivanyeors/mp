@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 8–11
 
 ## What to build
@@ -47,23 +47,25 @@ its measurements exactly as before.
 
 ## Acceptance criteria
 
-- [ ] `POST /api/mp-config/responses` loads the existing row's `status` for every write, not only
+- [x] `POST /api/mp-config/responses` loads the existing row's `status` for every write, not only
       on the `isFinal` path, and without adding a second database round trip.
-- [ ] A non-**Staff** write to a row whose status is `held`, `assigned`, `captured`, `declined`,
+- [x] A non-**Staff** write to a row whose status is `held`, `assigned`, `captured`, `declined`,
       `expired` or `cancelled` is refused with 403.
-- [ ] A non-**Staff** write to a **Draft Result**, or a create of a row that does not yet exist,
+- [x] A non-**Staff** write to a **Draft Result**, or a create of a row that does not yet exist,
       succeeds.
-- [ ] A **Staff** write succeeds regardless of the row's status.
-- [ ] The guest "save without purchasing" flow (`persistContact`) still succeeds on a **Draft
+- [x] A **Staff** write succeeds regardless of the row's status.
+- [x] The guest "save without purchasing" flow (`persistContact`) still succeeds on a **Draft
       Result**.
-- [ ] The in-store review-only finalisation still succeeds for **Staff** and still writes
+- [~] The in-store review-only finalisation still succeeds for **Staff** and still writes
       `status: 'held'`.
-- [ ] The **Admin Panel** "measured by", **Location** and send-to-Telegram writes on `held` rows
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [~] The **Admin Panel** "measured by", **Location** and send-to-Telegram writes on `held` rows
       still succeed.
-- [ ] Unit tests cover status null / `held` / `assigned` / `captured` crossed with **Staff** and
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [x] Unit tests cover status null / `held` / `assigned` / `captured` crossed with **Staff** and
       non-**Staff**, using the stub harness from `lib/auth/__tests__/admin-guard.test.ts`.
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

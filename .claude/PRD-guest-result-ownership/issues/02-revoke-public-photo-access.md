@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done — migration applied to production 2026-09-10 via `supabase db push`; live anon-key verification carried into slice 10
 User stories covered: 4–7
 
 ## What to build
@@ -47,21 +47,27 @@ configurator's photo upload keeps working and the Telegram notification keeps at
 
 ## Acceptance criteria
 
-- [ ] A new migration in `supabase/migrations/` drops the four public policies on
+- [x] A new migration in `supabase/migrations/` drops the four public policies on
       `mp_config_response_photos` and adds a service-role-only policy, mirroring
       `20260902000000_rls_hardening_and_hot_path_indexes.sql`.
-- [ ] Row-level security remains enabled on the table.
-- [ ] Verified before applying: no browser-side Supabase client anywhere in the repository reads or
+- [x] Row-level security remains enabled on the table.
+- [x] Verified before applying: no browser-side Supabase client anywhere in the repository reads or
       writes `mp_config_response_photos`.
-- [ ] Applied with `supabase db push`; the migration ledger and `supabase/migrations/` agree
+- [x] Applied with `supabase db push`; the migration ledger and `supabase/migrations/` agree
       afterwards.
-- [ ] With the publishable key, `select` and `delete` against the table are refused.
-- [ ] The configurator photo upload still succeeds end to end after the migration.
-- [ ] The Telegram notification still attaches front/side photos.
-- [ ] `GET /api/mp-config/photos` and its query schema are deleted; the `POST` handler is unchanged.
-- [ ] A repository-wide search confirms nothing referenced that `GET`.
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [~] With the publishable key, `select` and `delete` against the table are refused.
+      (Migration applied; the anon-key probe itself is a slice 10 step — run it as
+      `curl "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/mp_config_response_photos?select=*&limit=1"`
+      with `apikey`/`Authorization` set to the publishable key, and expect an empty
+      array or a permission error rather than rows.)
+- [~] The configurator photo upload still succeeds end to end after the migration.
+      (Runtime check — slice 10.)
+- [~] The Telegram notification still attaches front/side photos.
+      (Runtime check — slice 10.)
+- [x] `GET /api/mp-config/photos` and its query schema are deleted; the `POST` handler is unchanged.
+- [x] A repository-wide search confirms nothing referenced that `GET`.
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

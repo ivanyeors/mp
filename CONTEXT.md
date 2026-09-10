@@ -42,6 +42,18 @@ A **Storefront product** that is not inventory-linked (`is_auto_generated = fals
 **Result**:
 A customisation submission with optional **Authorization hold** and operator assignment. After assignment it links to a **Composed sellable** (size×tier or length) and a **Filling Template**. Accepted Results become an **Order** after successful payment capture (when a hold exists).
 
+**Draft Result**:
+A **Result** that has not entered the money path: `mp_config_responses.status` is null. Measurements typed into the configurator and autosaved, before any **Authorization hold** and before in-store finalization. The only state a guest may write — `/api/results/hold` writes `held`, and in-store finalization writes `held` via `buildInstoreReviewOnlyPatch`, so a non-null status means the submission is live and configurator writes are refused.
+_Avoid_: "unsaved" (a Draft Result is persisted); "unfinalised" (`is_final` records that the Telegram message was sent, not a lifecycle state); cart
+
+**Result access token**:
+The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created, and rotated at every **Authorization hold**; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`).
+_Avoid_: Stripe checkout `session_id`; the **Result** id itself (an identifier, never a credential)
+
+**Owner**:
+Whoever may act on a **Result** without being **Staff**: a holder of its **Result access token**, or a signed-in **Customer** whose id or email matches the row. Exactly one implementation — `authorizeResultAccess` — so the two ways of being an Owner cannot drift into two different checks. An Owner receives a redacted payload; **Staff** receive the full one.
+_Avoid_: "the customer" (a **Staff** member assisting in store is not the Owner); "authenticated" (an Owner may be a signed-out guest)
+
 **Customisation session**:
 The unit a **Reference photo** hangs off, keyed by a `session_id`. For **Mpillow** it is the configurator `responseId` (`mp_config_responses.id`); for **Mbolster** it is a UUID minted upfront in the hold draft and reused as the `responseId` at hold. Because the session id becomes the **Result** id, one id addresses both a session's reference photos and its Result across both products.
 _Avoid_: Stripe checkout `session_id`; **Visit** (analytics browsing session)

@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 1–3
 
 ## What to build
@@ -40,15 +40,15 @@ Demoable outcome: `CONTEXT.md` defines the three terms, and the guard conditions
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` defines **Draft Result**, **Result access token** and **Owner**, in the house
+- [x] `CONTEXT.md` defines **Draft Result**, **Result access token** and **Owner**, in the house
       entry format (bold term, definition, `_Avoid_:` line).
-- [ ] **Draft Result** names `status IS NULL` as the discriminator and cites the three writers of
+- [x] **Draft Result** names `status IS NULL` as the discriminator and cites the three writers of
       `status` that make it true.
-- [ ] **Result access token** records that it is rotated at every **Authorization hold**, and lists
+- [x] **Result access token** records that it is rotated at every **Authorization hold**, and lists
       the emails that carry it.
-- [ ] **Owner** names `authorizeResultAccess` as the single implementation of the check.
-- [ ] Each entry carries an `_Avoid_:` line naming at least one term it must not be confused with.
-- [ ] No code changes in this slice.
+- [x] **Owner** names `authorizeResultAccess` as the single implementation of the check.
+- [x] Each entry carries an `_Avoid_:` line naming at least one term it must not be confused with.
+- [x] No code changes in this slice.
 
 ## Blocked by
 

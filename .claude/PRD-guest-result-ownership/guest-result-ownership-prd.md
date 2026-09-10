@@ -1,6 +1,6 @@
 # PRD: Guest Result Ownership — the Result id stops being a password
 
-Status: Draft (needs-triage)
+Status: In progress — slices 01–09 built; `pnpm run ci` green (0 lint errors, 1620 tests, build and bundle clean) and the Sizing photo RLS migration applied to production 2026-09-10. Slice 10 (human sign-off) outstanding.
 Source: Auth trace of the customisation flow (Sep 2026), started from the question "why can't we just `requireAdmin` these two routes?" — answered by tracing every caller, then falsified by an adversarial pass that found two larger holes than the three the trace started with. All findings confirmed against the committed source, not inferred.
 ADRs: `docs/adr/0002-authorize-then-capture-customised-goods.md` (the **Result** money path this protects — hold, assign, accept, capture), `docs/adr/0014-config-reference-photos.md` (**Customisation session** id is the **Result** id, which is exactly why one leaked id opens several doors), `docs/adr/0010-rules-engine-single-recommendation-authority.md` (the suggestion payload that guests currently receive in full)
 Glossary: `CONTEXT.md` — **Result**, **Customisation session**, **Authorization hold**, **Staff**, **Staff assist mode**, **Admin Panel**; new terms **Draft Result**, **Result access token**, **Owner**

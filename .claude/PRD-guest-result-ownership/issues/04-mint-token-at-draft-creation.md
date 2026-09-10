@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 12, 17
 
 ## What to build
@@ -43,18 +43,18 @@ rotate it; a pre-existing token-less draft still saves and still has no token af
 
 ## Acceptance criteria
 
-- [ ] A create through `POST /api/mp-config/responses` writes a `randomUUID()` into `access_token`
+- [x] A create through `POST /api/mp-config/responses` writes a `randomUUID()` into `access_token`
       and returns it as `accessToken` in the response body.
-- [ ] An update through the same route leaves `access_token` untouched — including on a row where
+- [x] An update through the same route leaves `access_token` untouched — including on a row where
       it is null.
-- [ ] A pre-existing draft with a null `access_token` still saves successfully and still has a null
+- [x] A pre-existing draft with a null `access_token` still saves successfully and still has a null
       token afterwards.
-- [ ] `app/api/results/hold/route.ts` is unchanged and still rotates the token at hold.
-- [ ] No migration is added; `0045_result_customer_access.sql` already provides the column, the
+- [x] `app/api/results/hold/route.ts` is unchanged and still rotates the token at hold.
+- [x] No migration is added; `0045_result_customer_access.sql` already provides the column, the
       partial unique index and the backfill.
-- [ ] Nothing yet rejects a request for lacking a token — this slice enforces nothing.
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] Nothing yet rejects a request for lacking a token — this slice enforces nothing.
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

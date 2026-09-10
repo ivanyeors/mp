@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 4, 27
 
 ## What to build
@@ -41,20 +41,22 @@ customer's own session uploads exactly as before; and a photo write against an a
 
 ## Acceptance criteria
 
-- [ ] `POST /api/mp-config/photos` loads the parent **Result** and refuses with 403 when the caller
+- [x] `POST /api/mp-config/photos` loads the parent **Result** and refuses with 403 when the caller
       is neither **Staff** nor the **Owner**.
-- [ ] A non-**Staff** caller may only write photos to a **Draft Result**; a write against a `held`,
+- [x] A non-**Staff** caller may only write photos to a **Draft Result**; a write against a `held`,
       `assigned` or `captured` **Result** is refused.
-- [ ] **Staff** may write regardless of status, so **Staff assist mode** keeps working in store.
-- [ ] A `responseId` that matches no **Result** is refused rather than silently upserting an orphan
+- [x] **Staff** may write regardless of status, so **Staff assist mode** keeps working in store.
+- [x] A `responseId` that matches no **Result** is refused rather than silently upserting an orphan
       row.
-- [ ] The check reuses `requireResultAccess()` and the slice 03 draft rule; neither is
+- [x] The check reuses `requireResultAccess()` and the slice 03 draft rule; neither is
       re-implemented.
-- [ ] The configurator photo upload sends the stored token and still succeeds end to end.
-- [ ] The Telegram notification still attaches front/side photos.
-- [ ] `GET /api/mp-config/photos` remains deleted.
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [~] The configurator photo upload sends the stored token and still succeeds end to end.
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [~] The Telegram notification still attaches front/side photos.
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [x] `GET /api/mp-config/photos` remains deleted.
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

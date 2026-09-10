@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 13–16
 
 ## What to build
@@ -50,23 +50,25 @@ stuck save indicator.
 
 ## Acceptance criteria
 
-- [ ] The token is stored in `localStorage` under a key scoped by `sessionKeyFor`, alongside the
+- [x] The token is stored in `localStorage` under a key scoped by `sessionKeyFor`, alongside the
       existing id key.
-- [ ] `POST /api/mp-config/responses` requests include the stored token; `GET` requests include it
+- [x] `POST /api/mp-config/responses` requests include the stored token; `GET` requests include it
       as `?token=`.
-- [ ] The token returned by a create is stored; a create that returns no token leaves the slot
+- [x] The token returned by a create is stored; a create that returns no token leaves the slot
       empty without erroring.
-- [ ] The mount check rotates to a fresh id and clears the stored token on a 401 or 403, instead of
+- [x] The mount check rotates to a fresh id and clears the stored token on a 401 or 403, instead of
       keeping the id.
-- [ ] The existing `is_final` rotation behaviour is unchanged.
-- [ ] Hold → cancel at Stripe → return to `/mp-config` produces a new session id and a successful
+- [x] The existing `is_final` rotation behaviour is unchanged.
+- [~] Hold → cancel at Stripe → return to `/mp-config` produces a new session id and a successful
       autosave.
-- [ ] Visiting `/mp-config` and `/mp-basic` in one browser leaves both sessions independently
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [~] Visiting `/mp-config` and `/mp-basic` in one browser leaves both sessions independently
       usable, ids and tokens both.
-- [ ] The non-`crypto.randomUUID` fallback produces a uuid the route accepts.
-- [ ] Nothing yet rejects a request for lacking a token — this slice enforces nothing.
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [x] The non-`crypto.randomUUID` fallback produces a uuid the route accepts.
+- [x] Nothing yet rejects a request for lacking a token — this slice enforces nothing.
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

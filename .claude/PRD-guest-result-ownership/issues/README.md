@@ -4,21 +4,21 @@ Tracer-bullet breakdown of the PRD (`../guest-result-ownership-prd.md`). Each sl
 demoable path through all layers (schema, API, client, tests). Published locally
 (no external issue tracker configured).
 
-**Triage label:** `needs-triage` (each slice)
+**Triage label:** `needs-triage` (slice 10 only; 01–09 are built and the migration is applied)
 
 ## Slices
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| 01 | Domain glossary: Draft Result, Result access token, Owner | AFK | open | none | 1–3 |
-| 02 | Revoke public access to the body-photo table; delete the dead read endpoint | AFK | open | 01 | 4–7 |
-| 03 | Lock writes to Results that are no longer drafts | AFK | open | 01 | 8–11 |
-| 04 | Mint the Result access token at draft creation | AFK | open | 01 | 12, 17 |
-| 05 | Configurator carries the token and starts a fresh session when refused | AFK | open | 04 | 13–16 |
-| 06 | Ownership gate on read and update, and a redacted payload for Owners | AFK | open | 03, 05 | 18–26 |
-| 07 | Photo writes behind the same ownership rule | AFK | open | 02, 06 | 4, 27 |
-| 08 | Close the order-keyed sibling leak | AFK | open | 01 | 28 |
-| 09 | Rate limit the open create path; structural guard against regressions | AFK | open | 06, 07 | 29–33 |
+| 01 | Domain glossary: Draft Result, Result access token, Owner | AFK | **done** | none | 1–3 |
+| 02 | Revoke public access to the body-photo table; delete the dead read endpoint | AFK | **done** | 01 | 4–7 |
+| 03 | Lock writes to Results that are no longer drafts | AFK | **done** | 01 | 8–11 |
+| 04 | Mint the Result access token at draft creation | AFK | **done** | 01 | 12, 17 |
+| 05 | Configurator carries the token and starts a fresh session when refused | AFK | **done** | 04 | 13–16 |
+| 06 | Ownership gate on read and update, and a redacted payload for Owners | AFK | **done** | 03, 05 | 18–26 |
+| 07 | Photo writes behind the same ownership rule | AFK | **done** | 02, 06 | 4, 27 |
+| 08 | Close the order-keyed sibling leak | AFK | **done** | 01 | 28 |
+| 09 | Rate limit the open create path; structural guard against regressions | AFK | **done** | 06, 07 | 29–33 |
 | 10 | Sign-off: the whole guest journey, both locales, second-browser refusal | HITL | open | 02–09 | 34, 35 |
 
 ## Dependency graph

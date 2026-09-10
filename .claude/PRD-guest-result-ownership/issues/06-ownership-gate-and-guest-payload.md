@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 18–26
 
 ## What to build
@@ -52,30 +52,32 @@ the **Admin Panel** **Result** detail page is unchanged.
 
 ## Acceptance criteria
 
-- [ ] `requireResultAccess()` exists in `lib/results/access.ts`, delegates to the existing
+- [x] `requireResultAccess()` exists in `lib/results/access.ts`, delegates to the existing
       `authorizeResultAccess`, and returns `{ mode: "staff" | "owner" }` or a `NextResponse`.
-- [ ] No second ownership checker is introduced anywhere.
-- [ ] `GET /api/mp-config/responses/[id]` returns the current payload unchanged for **Staff**.
-- [ ] The same route returns `toOwnerResultPayload()` for an **Owner** holding a valid token.
-- [ ] The same route returns 403 for a caller with neither.
-- [ ] The Owner payload contains no `customer_email`, `customer_phone`, `authorized_amount`,
+- [x] No second ownership checker is introduced anywhere.
+- [x] `GET /api/mp-config/responses/[id]` returns the current payload unchanged for **Staff**.
+- [x] The same route returns `toOwnerResultPayload()` for an **Owner** holding a valid token.
+- [x] The same route returns 403 for a caller with neither.
+- [x] The Owner payload contains no `customer_email`, `customer_phone`, `authorized_amount`,
       `final_amount`, `payment_intent_id`, `topup_payment_intent_id`, `order_id`, order data,
       `suggestion.bom` or `suggestion.reasons`.
-- [ ] `toOwnerResultPayload()` is a pure allowlist: a unit test adds an unexpected field to the
+- [x] `toOwnerResultPayload()` is a pure allowlist: a unit test adds an unexpected field to the
       input and asserts it does not appear in the output.
-- [ ] The update path of `POST /api/mp-config/responses` requires **Staff** or **Owner**; the
+- [x] The update path of `POST /api/mp-config/responses` requires **Staff** or **Owner**; the
       create path remains open.
-- [ ] A row with null `access_token` and null `status` is still accessible without a token, and no
+- [x] A row with null `access_token` and null `status` is still accessible without a token, and no
       token is bound to it.
-- [ ] The **Admin Panel** **Result** detail server-component page renders unchanged, including the
+- [~] The **Admin Panel** **Result** detail server-component page renders unchanged, including the
       assign preparation that reads `suggestion.recommended.tier`.
-- [ ] The configurator's suggestion display and `/mp-maker` measurement load still work.
-- [ ] Unit tests cover **Staff**, **Owner**, legacy-draft and stranger, using the stub harness from
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [~] The configurator's suggestion display and `/mp-maker` measurement load still work.
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [x] Unit tests cover **Staff**, **Owner**, legacy-draft and stranger, using the stub harness from
       `lib/auth/__tests__/admin-guard.test.ts`.
-- [ ] Route tests import the handlers directly and assert the guard short-circuits before any I/O,
+- [x] Route tests import the handlers directly and assert the guard short-circuits before any I/O,
       in the style of `app/api/appointments/book/__tests__/route.test.ts`.
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

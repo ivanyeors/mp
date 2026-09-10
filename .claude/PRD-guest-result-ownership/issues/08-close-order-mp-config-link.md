@@ -2,7 +2,7 @@
 
 Type: AFK
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: done
 User stories covered: 28
 
 ## What to build
@@ -36,13 +36,15 @@ instead of a customer's measurements, and the **Admin Panel** order detail still
 
 ## Acceptance criteria
 
-- [ ] `GET /api/shop/orders/[id]/mp-config-link` calls `requireAdmin("orders")` before any data
+- [x] `GET /api/shop/orders/[id]/mp-config-link` calls `requireAdmin("orders")` before any data
       access, matching the `POST` and `DELETE` in the same file.
-- [ ] A signed-out request is refused; a **Staff** request returns the current payload unchanged.
-- [ ] The **Admin Panel** order detail still lists linked **Results** and still supports linking
+- [~] A signed-out request is refused; a **Staff** request returns the current payload unchanged.
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [~] The **Admin Panel** order detail still lists linked **Results** and still supports linking
       and unlinking.
-- [ ] `pnpm ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+      (Code path verified by trace and unit test; the runtime pass is slice 10.)
+- [x] `pnpm ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

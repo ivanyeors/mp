@@ -4,20 +4,48 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminContext, requireAdmin } from "@/lib/auth/admin";
 import { recordAdminAction } from "@/lib/auth/audit";
 import { releaseHold } from "@/lib/authorization-hold";
-import { loadMpConfigResponseDetail } from "@/lib/results/admin/response-detail";
+import {
+  loadMpConfigResponseDetail,
+  toOwnerResultPayload,
+} from "@/lib/results/admin/response-detail";
+import { requireResultAccess } from "@/lib/results/access";
 
 export const runtime = "nodejs";
 
 const ParamsSchema = z.object({ id: z.string().uuid() });
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+/**
+ * Dual-audience read: the Admin Panel Result detail and the guest configurator
+ * both call this. Staff get the record unchanged; an Owner gets a redacted
+ * projection; anyone holding only a Result id gets 403.
+ */
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const parsedParams = ParamsSchema.safeParse({ id });
   if (!parsedParams.success) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-  const result = await loadMpConfigResponseDetail(parsedParams.data.id);
+  const admin = supabaseAdmin();
+  // Ownership is settled before the detail load, which runs the Rules Engine and
+  // persists a recommendation record — work a refused caller should never trigger.
+  const { data: authRow, error: authErr } = await admin
+    .from("mp_config_responses")
+    .select("access_token, customer_id, customer_email, status")
+    .eq("id", parsedParams.data.id)
+    .maybeSingle();
+  if (authErr) return NextResponse.json({ error: authErr.message }, { status: 500 });
+  if (!authRow) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json(result.body, { status: result.status });
+  const token = new URL(req.url).searchParams.get("token");
+  const access = await requireResultAccess(authRow, token);
+  if (!access.ok) return access.response;
+
+  const result = await loadMpConfigResponseDetail(parsedParams.data.id);
+  if (result.status !== 200) return NextResponse.json(result.body, { status: result.status });
+
+  return NextResponse.json(
+    access.mode === "staff" ? result.body : toOwnerResultPayload(result.body),
+    { status: 200 },
+  );
 }
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
