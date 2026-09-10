@@ -1,8 +1,9 @@
 # Slice 10 (HITL) — Sign-off: the whole guest journey, both locales, second-browser refusal
 
 Type: HITL
+Tracker: #122 (parent #120) — on the `mp` GitHub Project, status Todo
 Parent: PRD `guest-result-ownership` (`.claude/PRD-guest-result-ownership/guest-result-ownership-prd.md`)
-Triage: needs-triage
+Triage: handed off — tracked on GitHub as #122; this file stays the checklist of record and OPS-SIGNOFF.md the results
 User stories covered: 34, 35
 
 ## What to build
@@ -40,9 +41,11 @@ the order detail still lists linked **Results**.
 **Result** id copied from the first: the measurement read, the measurement write, the photo write
 and the order-linked-**Result** read must all refuse. Record the status codes.
 
-**The row-level-security demonstration** — with the publishable key taken from the deployed browser
-bundle, attempt to select and to delete from the body-photo table. Both must be refused. This is
-the one check that no route test can make.
+**The row-level-security demonstration** — split out as **#121** because it is urgent and takes two
+minutes, where the rest of this slice takes a browser session. With the publishable key from the
+deployed bundle, attempt to select and to delete from the Sizing photo table. Both must be refused.
+This is the one check no route test can make, and as of the hand-off **nobody has run it** — the
+migration is applied but its effect is unconfirmed.
 
 **Recording.** Results go in `../OPS-SIGNOFF.md`, in the house shape: parent link, date, signer,
 environment and surface, a checklist table of criterion / status / evidence, then "Found during

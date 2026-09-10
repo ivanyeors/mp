@@ -19,7 +19,7 @@ demoable path through all layers (schema, API, client, tests). Published locally
 | 07 | Photo writes behind the same ownership rule | AFK | **done** | 02, 06 | 4, 27 |
 | 08 | Close the order-keyed sibling leak | AFK | **done** | 01 | 28 |
 | 09 | Rate limit the open create path; structural guard against regressions | AFK | **done** | 06, 07 | 29–33 |
-| 10 | Sign-off: the whole guest journey, both locales, second-browser refusal | HITL | open | 02–09 | 34, 35 |
+| 10 | Sign-off: the whole guest journey, both locales, second-browser refusal | HITL | **tracked as #122** | 02–09 | 34, 35 |
 
 ## Dependency graph
 
@@ -76,6 +76,22 @@ graph TD
 feature flag. If 06 lands before 05 is live, a customer returning from an abandoned Stripe
 checkout has a configurator that can never save again, and it fails silently as a save indicator
 stuck on "error". Do not reorder 05 and 06.
+
+## Hand-off
+
+Slices 01–09 are merged (#118, plus the Stripe follow-up #119). Everything still outstanding is
+work no agent could do — it needs a real browser, a real Stripe session, production env vars, or
+the passage of time — so it lives on the `mp` GitHub Project rather than in this folder:
+
+| | Issue | What |
+|---|---|---|
+| P0 | #121 | Verify the Sizing photo table is actually closed to the publishable key. The migration is applied; **its effect is unconfirmed**. |
+| P1 | #122 | Slice 10 — the guest journey sign-off, both locales, including Stripe cancel-and-return. |
+| P1 | #123 | Confirm the Shopify sync bearer token is set in production (those routes only gate when it is). |
+| P2 | #124 | Backfill `access_token` onto legacy Draft Results and delete the temporary allowance. |
+
+#120 is the parent tracker. These files stay the source of truth for *what to check*; the issues
+track *that it got checked*.
 
 ## HITL notes
 

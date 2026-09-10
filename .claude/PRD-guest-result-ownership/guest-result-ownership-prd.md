@@ -1,6 +1,6 @@
 # PRD: Guest Result Ownership — the Result id stops being a password
 
-Status: In progress — slices 01–09 built; `pnpm run ci` green (0 lint errors, 1620 tests, build and bundle clean) and the Sizing photo RLS migration applied to production 2026-09-10. Slice 10 (human sign-off) outstanding.
+Status: Code complete — slices 01–09 merged (#118; Stripe follow-up #119), `pnpm run ci` green, Sizing photo RLS migration applied to production 2026-09-10. Remaining work is human-only and tracked on the `mp` GitHub Project under #120 (#121 verification, #122 sign-off, #123 ops, #124 backfill).
 Source: Auth trace of the customisation flow (Sep 2026), started from the question "why can't we just `requireAdmin` these two routes?" — answered by tracing every caller, then falsified by an adversarial pass that found two larger holes than the three the trace started with. All findings confirmed against the committed source, not inferred.
 ADRs: `docs/adr/0002-authorize-then-capture-customised-goods.md` (the **Result** money path this protects — hold, assign, accept, capture), `docs/adr/0014-config-reference-photos.md` (**Customisation session** id is the **Result** id, which is exactly why one leaked id opens several doors), `docs/adr/0010-rules-engine-single-recommendation-authority.md` (the suggestion payload that guests currently receive in full)
 Glossary: `CONTEXT.md` — **Result**, **Customisation session**, **Authorization hold**, **Staff**, **Staff assist mode**, **Admin Panel**; new terms **Draft Result**, **Result access token**, **Owner**
@@ -245,7 +245,9 @@ real Checkout session; and email delivery of the assign link. These are the sign
 
 ## Out of Scope
 
-- **The wider ungated-route surface.** A per-handler sweep flags roughly sixty handlers. Most are
+- **The wider ungated-route surface.** Partly addressed after the fact in #119, which closed the two
+  genuinely unauthenticated Stripe write routes; #123 covers the Shopify pair's env-var condition.
+  A per-handler sweep flags roughly sixty handlers. Most are
   legitimately public — catalogue reads, cart addressed by an httpOnly cookie — or gated inside a
   helper the scan cannot see, such as the cron secret check and webhook signature verification. A
   handful look genuinely wrong: the Stripe sync, payment-link and test-checkout routes, and the
@@ -254,8 +256,8 @@ real Checkout session; and email delivery of the assign link. These are the sign
 - **The shared maker-config store.** Anonymous upsert keyed on a name, but the table holds design
   scratch data with no personal information — considered and explicitly deprioritised during
   drafting.
-- **Backfilling tokens onto pre-existing drafts**, and removing the legacy allowance that goes with
-  them. It is a follow-up for after the client change has been live long enough that no pre-deploy
+- **Backfilling tokens onto pre-existing drafts** (#124), and removing the legacy allowance that
+  goes with them. It is a follow-up for after the client change has been live long enough that no pre-deploy
   tab plausibly remains; doing it now would break exactly the sessions the allowance protects.
 - **Durable, shared-storage rate limiting.** Effective across instances, but it introduces
   infrastructure this repository does not have and a provider choice that should be made
