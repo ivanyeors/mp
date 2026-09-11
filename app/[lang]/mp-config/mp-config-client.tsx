@@ -1835,9 +1835,11 @@ export function MpConfigClient({
               )}
               <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
                 <div
-                  className="relative"
+                  // ponytail: +30% stage only from lg up — below that the column is capped at
+                  // 40vh and the old size already fills the width.
+                  className="relative w-[min(75vmin,500px)] lg:w-[min(97.5vmin,650px)]"
                   // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
-                  style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)", ...xrayColorVars }}
+                  style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
                 >
                   <svg
                     className={cn(
