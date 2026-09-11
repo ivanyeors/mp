@@ -322,3 +322,29 @@ export function sessionTemplateId(
   if (!loaded) return null;
   return placementsExactMatch(loaded.placements, session) ? loaded.id : null;
 }
+
+// --- Saving an edited mix back to the catalog -------------------------------
+
+export type SaveAffordance = {
+  /** The session mix differs from the loaded template, or none is loaded. */
+  dirty: boolean;
+  /** There is a loaded template whose placements can be replaced in place. */
+  canOverwrite: boolean;
+  /** The mix can be published as a new catalog template. */
+  canSaveNew: boolean;
+};
+
+/**
+ * What the staff toolbox may offer for the current mix. A mix that still
+ * exactly matches its loaded template has nothing to save — saving it new
+ * would only duplicate the catalog entry it already matches — and a mix built
+ * from scratch has no template to overwrite, only a new one to create.
+ */
+export function saveAffordance(opts: {
+  placements: AnyPlacement[];
+  loaded: LoadedTemplate | null;
+}): SaveAffordance {
+  const dirty =
+    opts.placements.length > 0 && sessionTemplateId(opts.loaded, opts.placements) === null;
+  return { dirty, canOverwrite: dirty && opts.loaded !== null, canSaveNew: dirty };
+}

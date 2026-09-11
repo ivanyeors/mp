@@ -5,6 +5,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { ADMIN_ROLES, roleHasPermission } from "../auth/permissions";
+
 import {
   addBolsterPiece,
   addPiece,
@@ -17,6 +19,7 @@ import {
   recheckSelectionsForSize,
   removeBolsterPiece,
   removePiece,
+  saveAffordance,
   sessionTemplateId,
   setCellArrangement,
   moveLayer,
@@ -175,10 +178,59 @@ assert.equal(sessionTemplateId(tpl, [...mix].reverse()), 7, "order-insensitive e
 assert.equal(sessionTemplateId(tpl, diverged), null, "diverging edit clears template id");
 assert.equal(sessionTemplateId(null, mix), null, "no loaded template → null");
 
+// --- saveAffordance ---------------------------------------------------------
+// An untouched mix has nothing to save: saving it new would duplicate the very
+// template it matches.
+assert.deepEqual(
+  saveAffordance({ placements: mix, loaded: tpl }),
+  { dirty: false, canOverwrite: false, canSaveNew: false },
+  "mix matching its template offers no save",
+);
+
+// Edited from a template → both paths open.
+assert.deepEqual(
+  saveAffordance({ placements: diverged, loaded: tpl }),
+  { dirty: true, canOverwrite: true, canSaveNew: true },
+  "edited mix can overwrite its template or fork a new one",
+);
+
+// Built from scratch → nothing to overwrite, only a new template to create.
+assert.deepEqual(
+  saveAffordance({ placements: diverged, loaded: null }),
+  { dirty: true, canOverwrite: false, canSaveNew: true },
+  "scratch-built mix can only be saved as new",
+);
+
+// Empty stage is not a saveable mix — it would publish an empty template.
+assert.deepEqual(
+  saveAffordance({ placements: [], loaded: null }),
+  { dirty: false, canOverwrite: false, canSaveNew: false },
+  "empty mix offers no save",
+);
+assert.deepEqual(
+  saveAffordance({ placements: [], loaded: tpl }),
+  { dirty: false, canOverwrite: false, canSaveNew: false },
+  "clearing the stage does not offer to blank the catalog template",
+);
+
 // --- Wiring: gating, guest-renders-nothing, staff-gated endpoints ---
 const page = readFileSync("app/[lang]/mp-config/page.tsx", "utf8");
 assert.match(page, /getAdminContext/, "server page resolves the Staff check");
-assert.match(page, /staffAssist=\{Boolean\(staffCtx\)\}/, "page passes the gate as a boolean prop");
+assert.match(
+  page,
+  /roleHasPermission\(staffCtx\.role, "results"\)/,
+  "assist mode needs the results permission, not mere back-office membership",
+);
+assert.match(
+  page,
+  /staffAssist=\{Boolean\(staffCtx && roleHasPermission\(staffCtx\.role, "results"\)\)\}/,
+  "page passes the gate as a boolean prop",
+);
+assert.match(
+  readFileSync("app/[lang]/mbolster-config/page.tsx", "utf8"),
+  /staffAssist=\{Boolean\(staffCtx && roleHasPermission\(staffCtx\.role, "results"\)\)\}/,
+  "bolster surface gates assist the same way",
+);
 
 assert.match(
   readFileSync("app/[lang]/mp-basic/page.tsx", "utf8"),
@@ -196,7 +248,29 @@ assert.doesNotMatch(client, /fetch\(["'`]\/api\/mp-config\/assist/, "client make
 
 const panel = readFileSync("components/configurator/staff-assist-panel.tsx", "utf8");
 assert.match(panel, /\/api\/mp-config\/assist\?size=/, "panel loads templates/items from the staff-gated endpoint");
-assert.doesNotMatch(panel, /save.{0,10}template|create.{0,10}template|promote/i, "no template create / save-as-template control in assist");
+// Staff may now publish an edited mix back to the catalog (override or save
+// new). The rails that decision rests on, asserted here so they cannot quietly
+// regress into "any staff member can rewrite any template from a session":
+assert.match(panel, /SaveFillingTemplate/, "assist offers the save control");
+assert.match(
+  panel,
+  /affordance\.dirty \? \(\s*<SaveFillingTemplate/,
+  "save appears only for a mix that actually diverges (saveAffordance)",
+);
+assert.match(
+  panel,
+  /overwrite=\{\s*affordance\.canOverwrite/,
+  "overwrite is offered only when a template is loaded to replace",
+);
+
+const saveUi = readFileSync("components/configurator/save-filling-template.tsx", "utf8");
+assert.match(saveUi, /mode: "overwrite"/, "save supports replacing the loaded template");
+assert.match(saveUi, /mode: "new"/, "save supports forking a new catalog template");
+assert.match(
+  saveUi,
+  /setConfirming\(true\)/,
+  "overwriting a curated template goes through a confirm gate",
+);
 assert.doesNotMatch(panel, /Add filling/, "no list editor in the panel — per-piece edits live on the x-ray");
 assert.doesNotMatch(
   readFileSync("components/configurator/staff-assist-bolster-panel.tsx", "utf8"),
@@ -209,8 +283,40 @@ for (const route of [
   "app/api/mp-config/assist/context/route.ts",
 ]) {
   const src = readFileSync(route, "utf8");
-  assert.match(src, /getAdminContext/, `${route} uses the Staff check`);
-  assert.match(src, /status: 401/, `${route} denies guests with 401`);
+  // requireAdmin refuses guests with 401 and under-permissioned staff with 403,
+  // so the endpoint can never be reached by a role the page gate excludes.
+  assert.match(src, /requireAdmin\("results"\)/, `${route} gates on the assist permission`);
+}
+
+// Writing the catalog is a stronger act than reading it into one session: the
+// GET stays open to any Staff, the save requires the inventory permission.
+const assistRoute = readFileSync("app/api/mp-config/assist/route.ts", "utf8");
+assert.match(
+  assistRoute,
+  /export async function POST[\s\S]*?requireAdmin\("inventory"\)/,
+  "POST /assist requires the inventory permission, not just Staff",
+);
+assert.match(
+  assistRoute,
+  /placements: z\.array\(PlacementRowSchema\)\.min\(1\)/,
+  "an empty mix can never be saved — it would publish or blank an empty template",
+);
+assert.match(
+  assistRoute,
+  /tpl\.kind !== scope\.kind \|\| tpl\.key !== scope\.key/,
+  "overwrite refuses a template scoped to another size/length",
+);
+
+// The Save control renders on "mix is dirty" alone — the panel does not know the
+// viewer's role. That is only safe while every role that can ENTER assist mode
+// can also SAVE; otherwise the button renders straight into a 403. Adding a role
+// with `results` but not `inventory` must fail here, not in front of staff.
+for (const role of ADMIN_ROLES) {
+  if (!roleHasPermission(role, "results")) continue;
+  assert.ok(
+    roleHasPermission(role, "inventory"),
+    `role "${role}" can enter assist mode but cannot save a template — either grant it inventory, or hide the Save control behind the permission`,
+  );
 }
 
 console.log("staff-assist self-check ok");

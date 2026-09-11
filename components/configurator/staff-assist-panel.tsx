@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { Gem, LayoutTemplate, Ruler } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,27 +12,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { StaffToolbox, type ToolSpec } from "@/components/configurator/staff-toolbox";
+import { SaveFillingTemplate } from "@/components/configurator/save-filling-template";
 import {
   confirmGate,
   PILLOW_SIZES,
   PILLOW_TIERS,
+  saveAffordance,
   type ConfirmGateState,
   type LoadedTemplate,
   type SizeTier,
 } from "@/lib/configurator/staff-assist";
 import {
+  pillowPlacementsToRows,
   rowsToPillowPlacements,
   type PillowPlacement,
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+
+const TIER_LABEL: Record<(typeof PILLOW_TIERS)[number], string> = {
+  basic: "Basic",
+  premium: "Premium",
+};
 
 export type FillingItem = { id: number; name: string; subtype: string | null; size: string | null };
 type TemplateRow = { id: number; name: string };
@@ -40,11 +42,16 @@ type TemplateRow = { id: number; name: string };
 /**
  * Staff assist mode panel (slice 04, Staff-only): size×tier control with a
  * confirm gate and a size-scoped Filling Template picker. Per-piece filling
- * edits live on the x-ray itself (slices 07/08) — no list editor here. No
- * template create/save-as — catalog stays curated in the Admin Panel.
+ * edits live on the x-ray itself (slices 07/08) — no list editor here.
+ *
+ * An edited mix can be published back to the catalog — overwriting the loaded
+ * template or forking a new one — which the Admin Panel then curates. That
+ * write needs the inventory permission, so Staff without it still get the full
+ * session editor, just no save.
  */
 export function StaffAssistPanel({
   current,
+  placements,
   onPlacementsChange,
   loadedTemplate,
   onLoadTemplate,
@@ -54,6 +61,8 @@ export function StaffAssistPanel({
   onColorOverridesChange,
 }: {
   current: SizeTier;
+  /** Live session mix, edited on the x-ray — the thing a save publishes. */
+  placements: PillowPlacement[];
   onPlacementsChange: (next: PillowPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
@@ -68,6 +77,8 @@ export function StaffAssistPanel({
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  // Bumped after a save so the picker refetches and lists the saved template.
+  const [catalogVersion, setCatalogVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +107,7 @@ export function StaffAssistPanel({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
-  }, [current.size]);
+  }, [current.size, catalogVersion]);
 
   const request = (next: SizeTier) => {
     setGate((g) => confirmGate(g, { type: "request", current, next }).state);
@@ -127,72 +138,72 @@ export function StaffAssistPanel({
     }
   };
 
+  const tools: ToolSpec[] = [
+    {
+      id: "size",
+      label: "Size",
+      icon: Ruler,
+      value: current.size,
+      options: PILLOW_SIZES.map((sz) => ({ value: sz, label: sz })),
+      onSelect: (size) => request({ ...current, size: size as SizeTier["size"] }),
+      disabled: applying,
+    },
+    {
+      id: "tier",
+      label: "Tier",
+      icon: Gem,
+      value: current.tier,
+      options: PILLOW_TIERS.map((t) => ({ value: t, label: TIER_LABEL[t] })),
+      onSelect: (tier) => request({ ...current, tier: tier as SizeTier["tier"] }),
+      disabled: applying,
+    },
+    {
+      id: "template",
+      label: "Filling Template",
+      icon: LayoutTemplate,
+      layout: "list",
+      value: loadedTemplate ? String(loadedTemplate.id) : "",
+      options: templates.map((t) => ({ value: String(t.id), label: t.name })),
+      onSelect: (v) => void loadTemplate(Number(v)),
+      placeholder: templates.length === 0 ? "None for this size" : "Load template…",
+    },
+  ];
+
+  const affordance = saveAffordance({ placements, loaded: loadedTemplate });
+  const loadedName = loadedTemplate
+    ? templates.find((t) => t.id === loadedTemplate.id)?.name ?? "this template"
+    : null;
+
   return (
-    <div className="w-full max-w-md rounded-xl border bg-background/95 p-4 text-left shadow-lg backdrop-blur">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">Staff assist</p>
-        {loadedTemplate ? (
-          <Badge variant="outline" className="text-xs">
-            {sessionFillingTemplateId !== null ? "Matches template" : "Edited from template"}
-          </Badge>
-        ) : null}
-      </div>
-
-      {/* Size × tier control (confirm gate clears fillings, loads default template) */}
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <Select
-          value={current.size}
-          onValueChange={(size) => request({ ...current, size: size as SizeTier["size"] })}
-        >
-          <SelectTrigger aria-label="Size" className="w-full min-w-0" disabled={applying}>
-            <SelectValue placeholder="Size" />
-          </SelectTrigger>
-          <SelectContent>
-            {PILLOW_SIZES.map((s) => (
-              <SelectItem key={s} value={s}>
-                Size {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={current.tier}
-          onValueChange={(tier) => request({ ...current, tier: tier as SizeTier["tier"] })}
-        >
-          <SelectTrigger aria-label="Tier" className="w-full min-w-0 capitalize" disabled={applying}>
-            <SelectValue placeholder="Tier" />
-          </SelectTrigger>
-          <SelectContent>
-            {PILLOW_TIERS.map((t) => (
-              <SelectItem key={t} value={t} className="capitalize">
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Filling Template picker (active, size-scoped); edits happen on the x-ray */}
-      <Select
-        value={loadedTemplate ? String(loadedTemplate.id) : ""}
-        onValueChange={(v) => void loadTemplate(Number(v))}
-      >
-        <SelectTrigger aria-label="Filling Template" className="w-full min-w-0">
-          <SelectValue
-            placeholder={
-              templates.length === 0 ? "No templates for this size" : "Load Filling Template…"
+    <StaffToolbox
+      tools={tools}
+      action={
+        affordance.dirty ? (
+          <SaveFillingTemplate
+            scope={{ size: current.size }}
+            placements={pillowPlacementsToRows(placements)}
+            overwrite={
+              affordance.canOverwrite && loadedTemplate && loadedName
+                ? { id: loadedTemplate.id, name: loadedName }
+                : null
             }
+            onSaved={(templateId) => {
+              // Re-link the session to what was just written: the claim only
+              // survives while the mix matches, so pass the saved mix itself.
+              onLoadTemplate({ id: templateId, placements });
+              setCatalogVersion((v) => v + 1);
+            }}
           />
-        </SelectTrigger>
-        <SelectContent>
-          {templates.map((t) => (
-            <SelectItem key={t.id} value={String(t.id)}>
-              {t.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
+        ) : null
+      }
+      status={
+        loadedTemplate
+          ? sessionFillingTemplateId !== null
+            ? { label: "Matches template", tone: "synced" }
+            : { label: "Edited", tone: "edited" }
+          : null
+      }
+    >
       {/* Confirm gate: without confirm, placements stay untouched */}
       <Dialog open={gate.pending !== null} onOpenChange={(open) => !open && void resolveGate("cancel")}>
         <DialogContent>
@@ -214,6 +225,6 @@ export function StaffAssistPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </StaffToolbox>
   );
 }

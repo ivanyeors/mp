@@ -66,7 +66,10 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
           faqTitle: faq?.title ?? null,
           faqItems: faq?.items ?? [],
         }}
-        staffAssist={Boolean(staffCtx)}
+        // Assist edits a live Result — size, tier, filling mix — so it needs the
+        // `results` permission, not mere back-office membership. `viewer` is the
+        // read-only role and must not reach the editor.
+        staffAssist={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
         canViewResults={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
         partner={
           partner

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminContext } from "@/lib/auth/admin";
+import { requireAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
 import { PILLOW_SIZES, PILLOW_TIERS } from "@/lib/configurator/staff-assist";
@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
  * as the starting mix (template with no placements → empty mix).
  */
 export async function GET(req: NextRequest) {
-  const staff = await getAdminContext();
-  if (!staff) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin("results");
+  if (denied) return denied;
 
   const { searchParams } = new URL(req.url);
   const size = searchParams.get("size")?.toUpperCase() ?? "";
