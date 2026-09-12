@@ -29,6 +29,8 @@ import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
 // ─── Shared Types ────────────────────────────────────────────
 
+import type { PricedComponent } from "@/lib/pricing/composed-price";
+
 export interface RecommendationResponseData {
   ok: boolean;
   product_type?: CustomizationProductType;
@@ -51,6 +53,16 @@ export interface RecommendationResponseData {
     product_id: string;
     price: number;
     currency: string;
+  } | null;
+  /** Costings inputs so the preview prices a build with the same function the money
+   *  path uses. Null when this size x tier has no usable price. */
+  pricing?: {
+    msrp_by_family: Record<string, number>;
+    default_cover: PricedComponent | null;
+    default_case: PricedComponent | null;
+    case_options: PricedComponent[];
+    cover_options: PricedComponent[];
+    shelf_price: number;
   } | null;
   components: {
     covers: ComponentOption[];

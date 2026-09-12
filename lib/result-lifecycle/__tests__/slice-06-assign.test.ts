@@ -65,14 +65,10 @@ describe("slice 06 assign path", () => {
     expect(shortages[0].item_id).toBe(2);
   });
 
-  it("final amount uses composed MSRP + prefs/add-ons + shipping + tax (fillings ignored)", () => {
-    const priced = priceResult({
-      composedSellableMsrp: 100,
-      preferenceLines: [{ msrp: 20, quantity: 1 }],
-      addonLines: [{ msrp: 10, quantity: 2 }],
-      shipping: 5,
-      tax: 3,
-    });
-    expect(priced.total).toBe(100 + 20 + 20 + 5 + 3);
+  it("final amount is the goods subtotal plus shipping and tax (fillings ignored)", () => {
+    // The goods subtotal comes from priceComposedBuild — the Costings row for the
+    // chosen case family, moved only by components differing from it, plus add-ons.
+    const priced = priceResult({ subtotal: 140, shipping: 5, tax: 3 });
+    expect(priced.total).toBe(148);
   });
 });

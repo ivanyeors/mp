@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { priceResult } from "@/lib/result-pricing";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -380,7 +381,7 @@ export async function POST(req: Request) {
     // Both pricing faults look identical to a shopper and must not leak the
     // reason, but they are very different to whoever reads the log: one means
     // nobody set a price, the other that two are set and the code cannot choose.
-    if (composed.code === "no_price" || composed.code === "ambiguous_price") {
+    if (composed.code) {
       console.error(`[results/hold] pricing not usable (${composed.code}): ${composed.error}`);
       return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
     }
@@ -437,40 +438,44 @@ export async function POST(req: Request) {
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  const composedMsrp = composed.sellable.msrp;
-
-  for (const l of input.addonLines) {
-    if (msrpByItem.get(l.item_id) == null) {
-      console.error(`[results/hold] pricing not configured: add-on item ${l.item_id} missing Costings MSRP`);
-      return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
-    }
+  // The quote the shopper is about to authorise. Same function as the final charge
+  // at assign and as the preview total — they disagreed before, showing the shelf
+  // price and charging shelf + cover + case.
+  const { chosenCover, chosenCase } = resolvePreferences(
+    input.preferenceLines,
+    composed.sellable.caseOptions,
+    msrpByItem,
+  );
+  const goods = priceComposedBuild({
+    msrpByFamily: composed.sellable.msrpByFamily,
+    defaultCover: composed.sellable.defaultCover,
+    defaultCase: composed.sellable.defaultCase,
+    caseOptions: composed.sellable.caseOptions,
+    chosenCover,
+    chosenCase,
+    addonLines: input.addonLines.map((l) => ({
+      msrp: msrpByItem.get(l.item_id) ?? null,
+      quantity: l.quantity,
+    })),
+  });
+  if (!goods.ok) {
+    console.error(`[results/hold] pricing not usable (${goods.code}): ${goods.error}`);
+    return NextResponse.json(
+      { error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" },
+      { status: 409 },
+    );
   }
 
-  // ponytail: charge full preference MSRP for hold ballpark (may over-authorize slightly).
-  const preferencePriced = input.preferenceLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id) ?? 0,
-    quantity: l.quantity,
-  }));
-  const addonPriced = input.addonLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id)!,
-    quantity: l.quantity,
-  }));
-
   const shippingMethod = shippingRow as ShippingMethod;
-  const prefSubtotal =
-    preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
-    addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
-  const shippingAmount = calculateShippingRate(shippingMethod, composedMsrp + prefSubtotal);
+  const shippingAmount = calculateShippingRate(shippingMethod, goods.subtotal);
   const taxRule = await resolveTaxRuleForRegion(input.shippingAddress.country);
   const tax = computeTax(
-    { subtotal: composedMsrp + prefSubtotal, shippingAmount, discountAmount: 0 },
+    { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
     taxRule,
   );
 
   const priced = priceResult({
-    composedSellableMsrp: composedMsrp,
-    preferenceLines: preferencePriced,
-    addonLines: addonPriced,
+    subtotal: goods.subtotal,
     shipping: shippingAmount,
     tax: tax.taxAmount,
   });

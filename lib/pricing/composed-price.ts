@@ -145,3 +145,35 @@ export function priceComposedBuild(input: ComposedPriceInput): ComposedPriceResu
     subtotal: base + coverDelta + caseDelta + addons,
   };
 }
+
+const CASE_ROLE_CATEGORIES = new Set(["case", "pillow_case", "bolster_case"]);
+
+/**
+ * Split stored Customer preference lines into the chosen cover and case.
+ *
+ * The case's family is read from `caseOptions` rather than re-queried, so the family
+ * that selects a price row and the family the shopper was offered are the same fact.
+ * A case that is not among the options resolves with no family, which prices through
+ * the unkeyed row or refuses — never silently as another family.
+ */
+export function resolvePreferences(
+  preferenceLines: Array<{ item_id: number; category: string }>,
+  caseOptions: PricedComponent[],
+  msrpByItem: Map<number, number>,
+): { chosenCover: PricedComponent | null; chosenCase: PricedComponent | null } {
+  let chosenCover: PricedComponent | null = null;
+  let chosenCase: PricedComponent | null = null;
+  for (const l of preferenceLines) {
+    if (l.category === "cover") {
+      chosenCover = { item_id: l.item_id, msrp: msrpByItem.get(l.item_id) ?? null };
+    } else if (CASE_ROLE_CATEGORIES.has(l.category)) {
+      const option = caseOptions.find((c) => c.item_id === l.item_id);
+      chosenCase = {
+        item_id: l.item_id,
+        msrp: option?.msrp ?? msrpByItem.get(l.item_id) ?? null,
+        family: option?.family ?? null,
+      };
+    }
+  }
+  return { chosenCover, chosenCase };
+}

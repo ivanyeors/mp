@@ -2,6 +2,7 @@
 
 import { assembleBuild, findStockShortages, type BuildLine } from "@/lib/build-assembly";
 import { priceResult, type PriceResultOutput } from "@/lib/result-pricing";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import {
@@ -184,15 +185,26 @@ export async function loadAssignedBuild(
 
   const shortages = findStockShortages(assembled.lines, onHandByItem, nameByItem);
 
-  const composedMsrp = composed.sellable.msrp;
-  const preferencePriced = preferenceLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id) ?? 0,
-    quantity: l.quantity,
-  }));
-  const addonPriced = addonLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id) ?? 0,
-    quantity: l.quantity,
-  }));
+  // One pricing rule, shared with the hold quote, the status page and the preview:
+  // the Costings row for the chosen case family, moved only by what differs from it.
+  const { chosenCover, chosenCase } = resolvePreferences(
+    preferenceLines,
+    composed.sellable.caseOptions,
+    msrpByItem,
+  );
+  const goods = priceComposedBuild({
+    msrpByFamily: composed.sellable.msrpByFamily,
+    defaultCover: composed.sellable.defaultCover,
+    defaultCase: composed.sellable.defaultCase,
+    caseOptions: composed.sellable.caseOptions,
+    chosenCover,
+    chosenCase,
+    addonLines: addonLines.map((l) => ({
+      msrp: msrpByItem.get(l.item_id) ?? null,
+      quantity: l.quantity,
+    })),
+  });
+  if (!goods.ok) return { ok: false, error: goods.error };
 
   let shippingAmount = 0;
   let taxAmount = 0;
@@ -204,29 +216,17 @@ export async function loadAssignedBuild(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      const prefSubtotal =
-        preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
-        addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
-      shippingAmount = calculateShippingRate(
-        shippingRow as ShippingMethod,
-        composedMsrp + prefSubtotal,
-      );
+      shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       taxAmount = computeTax(
-        {
-          subtotal: composedMsrp + prefSubtotal,
-          shippingAmount,
-          discountAmount: 0,
-        },
+        { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
         taxRule,
       ).taxAmount;
     }
   }
 
   const pricing = priceResult({
-    composedSellableMsrp: composedMsrp,
-    preferenceLines: preferencePriced,
-    addonLines: addonPriced,
+    subtotal: goods.subtotal,
     shipping: shippingAmount,
     tax: taxAmount,
   });
@@ -236,7 +236,7 @@ export async function loadAssignedBuild(
     lines: assembled.lines,
     cogs: assembled.cogs,
     pricing,
-    basePrice: composedMsrp,
+    basePrice: goods.base,
     shortages,
     nameByItem,
     fillingPlacements,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { loadComposedSellable } from "@/lib/results/composed-sellable";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings, getSizeBallparkFromMeasurements, getSizeBallparkFromPreferences } from "@/lib/shop/customization-llm";
@@ -319,6 +320,15 @@ async function handleRecommend(req: Request) {
     // Get available components for this pillow
     const components = await getAvailableComponents(pillowProduct.id);
 
+    // Everything the preview needs to price a build with the SAME function the hold
+    // route and assign use. Before this the preview showed `variant.price` (the shelf
+    // price) while the server charged shelf + cover + case.
+    const composed = await loadComposedSellable(admin, {
+      productType: "pillow",
+      size: recommendation.recommended_size,
+      tier: recommendation.recommended_kind,
+    });
+
     // Get BOM templates as alternatives
     const templates = await getBomTemplates(
       pillowProduct.kind ?? "basic",
@@ -374,6 +384,16 @@ async function handleRecommend(req: Request) {
         price: variant.price,
         currency: variant.currency,
       } : null,
+      pricing: composed.ok
+        ? {
+            msrp_by_family: composed.sellable.msrpByFamily,
+            default_cover: composed.sellable.defaultCover,
+            default_case: composed.sellable.defaultCase,
+            case_options: composed.sellable.caseOptions,
+            cover_options: composed.sellable.coverOptions,
+            shelf_price: composed.sellable.msrp,
+          }
+        : null,
       components,
       templates: templates.map((t) => ({
         id: t.id,

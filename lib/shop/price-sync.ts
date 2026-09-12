@@ -135,12 +135,27 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
     { data: bomLines },
     { data: bolsterLines },
     { data: itemPrices },
+    { data: caseItems },
   ] = await Promise.all([
     admin.from("product_prices").select("key, kind, product_id, variant, msrp, compare_at_price"),
     admin.from("bom_lines").select("product_id, item_id, quantity"),
     admin.from("bolster_bom_lines").select("variant, item_id, quantity"),
     admin.from("item_prices").select("item_id, cost_price, msrp, compare_at_price"),
+    admin.from("items").select("id, price_family").not("price_family", "is", null),
   ]);
+
+  // A premium pillow has one price row per case fabric family. The storefront sells
+  // it as its BOM ships it, so the shelf price is the row matching the BOM's own
+  // default case — NOT whichever of the two rows happens to be read last, which is
+  // how XL came to be listed at its 1000 Fibrecool price while shipping linen.
+  const familyByItem = new Map<number, string>(
+    (caseItems ?? []).map((i) => [Number(i.id), String(i.price_family)]),
+  );
+  const defaultFamilyByPillow = new Map<number, string>();
+  for (const b of bomLines ?? []) {
+    const family = familyByItem.get(Number(b.item_id));
+    if (family) defaultFamilyByPillow.set(Number(b.product_id), family);
+  }
 
   const priceByKey = new Map<string, PriceRow>();
   const priceByPillowProduct = new Map<number, PriceRow>();
@@ -148,7 +163,16 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
   for (const p of productPrices ?? []) {
     const row: PriceRow = { msrp: p.msrp, compare_at_price: p.compare_at_price };
     priceByKey.set(p.key, row);
-    if (p.kind === "pillow" && p.product_id != null) priceByPillowProduct.set(p.product_id, row);
+    if (p.kind === "pillow" && p.product_id != null) {
+      const wanted = defaultFamilyByPillow.get(Number(p.product_id)) ?? null;
+      // An unkeyed row (basic) always wins; a keyed row only when it is the default.
+      // No fallback to "some other row": if the BOM's case has no family, or no row
+      // matches it, the variant reports as unresolvable rather than listing a price
+      // the configurator would refuse to honour.
+      if (p.variant == null || p.variant === wanted) {
+        priceByPillowProduct.set(p.product_id, row);
+      }
+    }
     if (p.kind === "bolster" && p.variant) priceByBolsterVariant.set(p.variant, row);
   }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { priceComposedBuild } from "@/lib/pricing/composed-price";
+
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -1756,10 +1758,39 @@ export function MpConfigClient({
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
     const xrayVisible = staffAssist || guestXray;
     const currency = shopRecommendation?.variant?.currency ?? "SGD";
-    const basePrice = shopRecommendation?.variant?.price ?? 0;
     const addonTotal = addons
       .filter((a) => selectedAddons.has(a.item_id))
       .reduce((s, a) => s + a.msrp, 0);
+    // The number shown here is the number POST /api/results/hold will authorise —
+    // same function, same Costings inputs. It used to show the shelf price while the
+    // server charged shelf + cover + case, a 113 gap on a premium XS.
+    const pricingInputs = shopRecommendation?.pricing ?? null;
+    const quote = pricingInputs
+      ? priceComposedBuild({
+          msrpByFamily: pricingInputs.msrp_by_family,
+          defaultCover: pricingInputs.default_cover,
+          defaultCase: pricingInputs.default_case,
+          caseOptions: pricingInputs.case_options,
+          chosenCover:
+            selectedCover == null
+              ? null
+              : (pricingInputs.cover_options.find((c) => c.item_id === selectedCover) ?? {
+                  item_id: selectedCover,
+                  msrp: null,
+                }),
+          chosenCase:
+            selectedCase == null
+              ? null
+              : (pricingInputs.case_options.find((c) => c.item_id === selectedCase) ?? {
+                  item_id: selectedCase,
+                  msrp: null,
+                }),
+          addonLines: [],
+        })
+      : null;
+    // No usable quote → fall back to the storefront price rather than showing 0; the
+    // submit itself is guarded server-side and will refuse with the same reason.
+    const basePrice = quote?.ok ? quote.subtotal : (shopRecommendation?.variant?.price ?? 0);
     const coverStock = preferenceStockFor(
       selectedCover,
       shopRecommendation?.components.covers ?? [],

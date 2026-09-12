@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
 import { priceResult } from "@/lib/result-pricing";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
@@ -118,83 +120,81 @@ async function buildPublicSummary(row: {
 
     if (row.final_amount != null || row.payment_intent_id != null) {
       const productType = row.product_type ?? "pillow";
-      if (productType === "pillow" && row.assigned_size && row.assigned_tier) {
-        const { data: pillowProduct } = await admin
-          .from("pillow_products")
-          .select("id")
-          .eq("size", row.assigned_size)
-          .eq("kind", row.assigned_tier)
-          .eq("is_active", true)
-          .maybeSingle();
-        if (pillowProduct) {
-          const { data: productPrice } = await admin
-            .from("product_prices")
-            .select("msrp")
-            .eq("kind", "pillow")
-            .eq("product_id", pillowProduct.id)
-            .maybeSingle();
-          const composedMsrp =
-            productPrice?.msrp != null ? Number(productPrice.msrp) : null;
-          if (composedMsrp != null) {
-            const prefAddonIds = [
-              ...preferenceLines.map((l) => l.item_id),
-              ...addonLines.map((l) => l.item_id),
-            ];
-            const { data: prices } = prefAddonIds.length
-              ? await admin
-                  .from("item_prices")
-                  .select("item_id, msrp")
-                  .in("item_id", prefAddonIds)
-              : { data: [] as Array<{ item_id: number; msrp: number | null }> };
-            const msrpByItem = new Map(
-              (prices ?? [])
-                .filter((p) => p.msrp != null)
-                .map((p) => [p.item_id as number, Number(p.msrp)]),
-            );
-            const preferencePriced = preferenceLines.map((l) => ({
-              msrp: msrpByItem.get(l.item_id) ?? 0,
-              quantity: l.quantity,
-            }));
-            const addonPriced = addonLines.map((l) => ({
-              msrp: msrpByItem.get(l.item_id) ?? 0,
-              quantity: l.quantity,
-            }));
-            let shippingAmount = 0;
-            let taxAmount = 0;
-            const address = row.shipping_address as { country?: string } | null;
-            if (row.shipping_method) {
-              const { data: shippingRow } = await admin
-                .from("shipping_methods")
-                .select("*")
-                .eq("slug", row.shipping_method)
-                .maybeSingle();
-              if (shippingRow) {
-                const prefSubtotal =
-                  preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
-                  addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
-                shippingAmount = calculateShippingRate(
-                  shippingRow as ShippingMethod,
-                  composedMsrp + prefSubtotal,
-                );
-                const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
-                taxAmount = computeTax(
-                  {
-                    subtotal: composedMsrp + prefSubtotal,
-                    shippingAmount,
-                    discountAmount: 0,
-                  },
-                  taxRule,
-                ).taxAmount;
-              }
+      const composedKey =
+        productType === "bolster"
+          ? row.assigned_length && isBolsterLength(row.assigned_length)
+            ? ({ productType: "bolster", length: row.assigned_length } as const)
+            : null
+          : row.assigned_size && row.assigned_tier
+            ? ({
+                productType: "pillow",
+                size: row.assigned_size,
+                tier: row.assigned_tier,
+              } as const)
+            : null;
+
+      // This was a fifth hand-rolled copy of the pricing rule, reading
+      // `product_prices` with maybeSingle() — the very call that errors on premium's
+      // two rows. It left the shopper's own status page with no breakdown at all,
+      // and it skipped bolster entirely. Both now go through the shared loader.
+      const composed = composedKey ? await loadComposedSellable(admin, composedKey) : null;
+      if (composed?.ok) {
+        const prefAddonIds = [
+          ...preferenceLines.map((l) => l.item_id),
+          ...addonLines.map((l) => l.item_id),
+        ];
+        const { data: prices } = prefAddonIds.length
+          ? await admin.from("item_prices").select("item_id, msrp").in("item_id", prefAddonIds)
+          : { data: [] as Array<{ item_id: number; msrp: number | null }> };
+        const msrpByItem = new Map(
+          (prices ?? [])
+            .filter((p) => p.msrp != null)
+            .map((p) => [p.item_id as number, Number(p.msrp)]),
+        );
+        const { chosenCover, chosenCase } = resolvePreferences(
+          preferenceLines,
+          composed.sellable.caseOptions,
+          msrpByItem,
+        );
+        const goods = priceComposedBuild({
+          msrpByFamily: composed.sellable.msrpByFamily,
+          defaultCover: composed.sellable.defaultCover,
+          defaultCase: composed.sellable.defaultCase,
+          caseOptions: composed.sellable.caseOptions,
+          chosenCover,
+          chosenCase,
+          addonLines: addonLines.map((l) => ({
+            msrp: msrpByItem.get(l.item_id) ?? null,
+            quantity: l.quantity,
+          })),
+        });
+        if (goods.ok) {
+          let shippingAmount = 0;
+          let taxAmount = 0;
+          const address = row.shipping_address as { country?: string } | null;
+          if (row.shipping_method) {
+            const { data: shippingRow } = await admin
+              .from("shipping_methods")
+              .select("*")
+              .eq("slug", row.shipping_method)
+              .maybeSingle();
+            if (shippingRow) {
+              shippingAmount = calculateShippingRate(
+                shippingRow as ShippingMethod,
+                goods.subtotal,
+              );
+              const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
+              taxAmount = computeTax(
+                { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
+                taxRule,
+              ).taxAmount;
             }
-            pricing = priceResult({
-              composedSellableMsrp: composedMsrp,
-              preferenceLines: preferencePriced,
-              addonLines: addonPriced,
-              shipping: shippingAmount,
-              tax: taxAmount,
-            });
           }
+          pricing = priceResult({
+            subtotal: goods.subtotal,
+            shipping: shippingAmount,
+            tax: taxAmount,
+          });
         }
       }
     }

@@ -1,52 +1,31 @@
 import { describe, it, expect } from "vitest";
 import { priceResult } from "@/lib/result-pricing";
 
+/**
+ * `priceResult` used to own the goods rule as "composed MSRP + every preference
+ * MSRP". That double-charged: a Costings row is the price of a whole configuration,
+ * so adding the chosen cover and case on top billed 473 for a 360 pillow. The goods
+ * rule now lives in `priceComposedBuild` (see lib/pricing/__tests__), and this owns
+ * shipping and tax only.
+ */
 describe("priceResult", () => {
-  it("matches Costings: composed MSRP + preference/add-on MSRPs", () => {
-    const priced = priceResult({
-      composedSellableMsrp: 100,
-      preferenceLines: [
-        { msrp: 20, quantity: 1 },
-        { msrp: 15, quantity: 1 },
-      ],
-      addonLines: [{ msrp: 10, quantity: 2 }],
-    });
-    expect(priced.subtotal).toBe(100 + 20 + 15 + 20);
-    expect(priced.shipping).toBe(0);
-    expect(priced.tax).toBe(0);
-    expect(priced.total).toBe(155);
-  });
-
-  it("includes shipping and tax when provided", () => {
-    const priced = priceResult({
-      composedSellableMsrp: 100,
-      preferenceLines: [],
-      addonLines: [],
-      shipping: 8,
-      tax: 0,
-    });
-    expect(priced.total).toBe(108);
+  it("adds shipping and tax to the goods subtotal", () => {
+    const priced = priceResult({ subtotal: 155, shipping: 8, tax: 12 });
+    expect(priced.subtotal).toBe(155);
     expect(priced.shipping).toBe(8);
-    expect(priced.tax).toBe(0);
+    expect(priced.tax).toBe(12);
+    expect(priced.total).toBe(175);
   });
 
-  it("filling lines do not alter sell total (not in input surface)", () => {
-    // Callers must not pass fillings; same prefs/composed yield same total regardless of COGS.
-    const a = priceResult({
-      composedSellableMsrp: 50,
-      preferenceLines: [{ msrp: 5, quantity: 1 }],
-      addonLines: [],
-      shipping: 3,
-      tax: 1,
-    });
-    const b = priceResult({
-      composedSellableMsrp: 50,
-      preferenceLines: [{ msrp: 5, quantity: 1 }],
-      addonLines: [],
-      shipping: 3,
-      tax: 1,
-    });
-    expect(a.total).toBe(59);
+  it("defaults shipping and tax to zero", () => {
+    const priced = priceResult({ subtotal: 100 });
+    expect(priced).toEqual({ subtotal: 100, shipping: 0, tax: 0, total: 100 });
+  });
+
+  it("is a pure function of its three numbers — fillings cannot reach it", () => {
+    const a = priceResult({ subtotal: 50, shipping: 3, tax: 1 });
+    const b = priceResult({ subtotal: 50, shipping: 3, tax: 1 });
+    expect(a.total).toBe(54);
     expect(a).toEqual(b);
   });
 });
