@@ -216,9 +216,9 @@
     "semantic_hash": "0241f518543e2d4dad8896e5beee49ef"
   },
   "lib/build-assembly/index.ts": {
-    "mtime": 1789216626.346296,
-    "seen": 1789217168.297888,
-    "ast_hash": "0357d37ebb48a4348add10ae21f72e65",
+    "mtime": 1789220179.6406517,
+    "seen": 1789220204.17371,
+    "ast_hash": "3a1a5515cf8615e7b56441708157c78f",
     "semantic_hash": ""
   },
   "lib/configurator/height-draft.check.ts": {
@@ -1068,10 +1068,10 @@
     "semantic_hash": ""
   },
   "lib/result-lifecycle/__tests__/slice-06-assign.test.ts": {
-    "mtime": 1783175834.0907845,
-    "seen": 1789174039.6502101,
-    "ast_hash": "4d136a6914148f2f89178e6fa2402838",
-    "semantic_hash": "4d136a6914148f2f89178e6fa2402838"
+    "mtime": 1789219225.661805,
+    "seen": 1789220204.173902,
+    "ast_hash": "e917e4429fef76478685b2358056e90f",
+    "semantic_hash": ""
   },
   "lib/result-lifecycle/__tests__/slice-07-accept.test.ts": {
     "mtime": 1789182078.8065588,
@@ -1086,16 +1086,16 @@
     "semantic_hash": ""
   },
   "lib/result-pricing/__tests__/result-pricing.test.ts": {
-    "mtime": 1783170648.8557103,
-    "seen": 1789174039.650211,
-    "ast_hash": "b4a20d8370f8b8d166f7966567743aee",
-    "semantic_hash": "b4a20d8370f8b8d166f7966567743aee"
+    "mtime": 1789219225.6486428,
+    "seen": 1789220204.173903,
+    "ast_hash": "fb34314be44af8e40f0469f93e696b89",
+    "semantic_hash": ""
   },
   "lib/result-pricing/index.ts": {
-    "mtime": 1783170648.8567293,
-    "seen": 1789174039.650212,
-    "ast_hash": "2347f9795a32bf100765b5079dfd1aa4",
-    "semantic_hash": "2347f9795a32bf100765b5079dfd1aa4"
+    "mtime": 1789218936.6634703,
+    "seen": 1789220204.173904,
+    "ast_hash": "9c612308c880c8e9b4478c258b256b17",
+    "semantic_hash": ""
   },
   "lib/results/__tests__/addons.test.ts": {
     "mtime": 1783178948.6520245,
@@ -1104,9 +1104,9 @@
     "semantic_hash": "19fc3d894478eeec59bdc18fcaa9c610"
   },
   "lib/results/__tests__/composed-sellable.test.ts": {
-    "mtime": 1789216626.3468363,
-    "seen": 1789217168.29809,
-    "ast_hash": "a6d30c4cf55074dd45fc54d4b2f10a6b",
+    "mtime": 1789219264.6448734,
+    "seen": 1789220204.173905,
+    "ast_hash": "b46036020f0dff8a45c62e408497108d",
     "semantic_hash": ""
   },
   "lib/results/__tests__/legacy-filling-migration.test.ts": {
@@ -1158,15 +1158,15 @@
     "semantic_hash": ""
   },
   "lib/results/assigned-build.ts": {
-    "mtime": 1786030126.0971682,
-    "seen": 1789174039.650223,
-    "ast_hash": "2ac06dfd11158ef0cc70d43cc01c8ff6",
+    "mtime": 1789218965.3061416,
+    "seen": 1789220204.173915,
+    "ast_hash": "1d4d1d81d80335721afb4e67026aef79",
     "semantic_hash": ""
   },
   "lib/results/composed-sellable.ts": {
-    "mtime": 1789216626.3484693,
-    "seen": 1789217168.298101,
-    "ast_hash": "d33d8d4dc978d305de2632f2c6d0ba6a",
+    "mtime": 1789220195.0260673,
+    "seen": 1789220204.1739159,
+    "ast_hash": "01eb3a0cd69d75ac906fa7f8fc45da09",
     "semantic_hash": ""
   },
   "lib/results/instore-ballpark.ts": {
@@ -1380,10 +1380,10 @@
     "semantic_hash": "52fa127655603ad25048a6f9f6483c34"
   },
   "lib/shop/price-sync.ts": {
-    "mtime": 1783156905.0239825,
-    "seen": 1789174039.650267,
-    "ast_hash": "3201692c393a73f676598117a2f4ad16",
-    "semantic_hash": "3201692c393a73f676598117a2f4ad16"
+    "mtime": 1789219103.3284934,
+    "seen": 1789220204.173965,
+    "ast_hash": "57516633dc6230b383da41fa7e8fecdc",
+    "semantic_hash": ""
   },
   "lib/shop/product-specifications.ts": {
     "mtime": 1781973840.039159,
@@ -1818,9 +1818,9 @@
     "semantic_hash": "cb31b31e97cea0ab709ca3c9da921f8e"
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
-    "mtime": 1789217331.8134422,
-    "seen": 1789217483.301058,
-    "ast_hash": "7c77f8e3426ab90503966b53ac0998e1",
+    "mtime": 1789219195.8842947,
+    "seen": 1789220204.173337,
+    "ast_hash": "9c70fd34657558245fe412ef3773af6f",
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/page.tsx": {
@@ -2706,9 +2706,9 @@
     "semantic_hash": ""
   },
   "app/api/results/[id]/assign/route.ts": {
-    "mtime": 1789182078.7834752,
-    "seen": 1789183865.673642,
-    "ast_hash": "f8b1e19b9dda7aa5f37274faa40255c3",
+    "mtime": 1789219044.4482806,
+    "seen": 1789220204.1734788,
+    "ast_hash": "8af529b13776575b62d17b07213046a8",
     "semantic_hash": ""
   },
   "app/api/results/[id]/decline/route.ts": {
@@ -2718,9 +2718,9 @@
     "semantic_hash": "904c83b7d4d6330763c8feead2699f5f"
   },
   "app/api/results/[id]/route.ts": {
-    "mtime": 1784999561.5219507,
-    "seen": 1789174039.649834,
-    "ast_hash": "27ca53dc16466a0bd302a0cdfa4157b4",
+    "mtime": 1789219029.8687904,
+    "seen": 1789220204.173481,
+    "ast_hash": "e8100206a0aa28ffc6f3e51a78a8d409",
     "semantic_hash": ""
   },
   "app/api/results/addons/route.ts": {
@@ -2736,9 +2736,9 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/route.ts": {
-    "mtime": 1789217308.9010022,
-    "seen": 1789217483.3012009,
-    "ast_hash": "0561328f2762c28bfccc6543cc1830db",
+    "mtime": 1789218991.655293,
+    "seen": 1789220204.173482,
+    "ast_hash": "8ba2c2f85f01d312b476eeda6539b624",
     "semantic_hash": ""
   },
   "app/api/results/route.ts": {
@@ -2856,9 +2856,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/customize/route.ts": {
-    "mtime": 1784564578.117254,
-    "seen": 1789174039.6498492,
-    "ast_hash": "44a2b984e718686be5a914b962cc52a2",
+    "mtime": 1789219174.3624055,
+    "seen": 1789220204.1734972,
+    "ast_hash": "ee8ab7064abf0b6e8468768bca925e8c",
     "semantic_hash": ""
   },
   "app/api/shop/exchange-rates/route.ts": {
@@ -4452,9 +4452,9 @@
     "semantic_hash": ""
   },
   "components/shop/customization-steps.tsx": {
-    "mtime": 1784558771.2393258,
-    "seen": 1789174039.6499488,
-    "ast_hash": "c0ee6d5835eade2d902ab4aa708a9c62",
+    "mtime": 1789219174.3629847,
+    "seen": 1789220204.1736052,
+    "ast_hash": "9224af2d88e39e5fa90faaa6c2bf3449",
     "semantic_hash": ""
   },
   "components/shop/pillow-customizer.tsx": {
@@ -6186,9 +6186,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1789216988.1288905,
-    "seen": 1789217168.298198,
-    "ast_hash": "21cc131b677d70a1529a667068e8ead3",
+    "mtime": 1789219379.8617947,
+    "seen": 1789220204.174007,
+    "ast_hash": "d4b79fea41fa7ab45aaab98e9aba5b47",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -11130,9 +11130,99 @@
     "semantic_hash": ""
   },
   ".claude/PRD-in-store-counter-payments/issues/README.md": {
-    "mtime": 1789218629.307893,
-    "seen": 1789218694.952513,
-    "ast_hash": "6b5ca96be617cb30393bd42435226f10",
+    "mtime": 1789218752.1599967,
+    "seen": 1789220204.1741471,
+    "ast_hash": "afc3edae9843429e7b3769a1300d02ee",
+    "semantic_hash": ""
+  },
+  "lib/pricing/__tests__/composed-price.test.ts": {
+    "mtime": 1789218785.4204223,
+    "seen": 1789220204.173887,
+    "ast_hash": "4ef8c0607ffd51f1fad88ae53a274ecf",
+    "semantic_hash": ""
+  },
+  "lib/pricing/composed-price.ts": {
+    "mtime": 1789220195.0101688,
+    "seen": 1789220204.173888,
+    "ast_hash": "7df1007da0407fa048049867bf5938c0",
+    "semantic_hash": ""
+  },
+  "lib/pricing/pricing-surface.check.ts": {
+    "mtime": 1789219341.0630631,
+    "seen": 1789220204.173889,
+    "ast_hash": "bceff72d201042316feeb56568452115",
+    "semantic_hash": ""
+  },
+  "scripts/costings-sync-prices.ts": {
+    "mtime": 1789219371.5066547,
+    "seen": 1789220204.174012,
+    "ast_hash": "3d537186ca206f2b833a04e029afd914",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260913000000_premium_variant_prices.sql": {
+    "mtime": 1789220152.925146,
+    "seen": 1789220204.1741,
+    "ast_hash": "2dc2c02442180f8487945a2ca58d9ffb",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/OPS-SIGNOFF.md": {
+    "mtime": 1789219916.153805,
+    "seen": 1789220204.174211,
+    "ast_hash": "439060961edaae3f2ce07c1ee280cc7e",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/01-glossary-and-adr.md": {
+    "mtime": 1789219739.9984438,
+    "seen": 1789220204.174211,
+    "ast_hash": "ad57cec78ae95d1edb95f3cc7e2893ae",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/02-async-refund-ledger.md": {
+    "mtime": 1789219740.0059605,
+    "seen": 1789220204.174212,
+    "ast_hash": "d31942f27cffa82318bf63b2e5e532fe",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/03-sgd-guard-and-eligibility-check.md": {
+    "mtime": 1789219740.012972,
+    "seen": 1789220204.174212,
+    "ast_hash": "3e67eb15de3ed4b16a1fc5ae7fd7f829",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/04-pay-in-full-at-submit.md": {
+    "mtime": 1789219864.6411645,
+    "seen": 1789220204.1742132,
+    "ast_hash": "3dea7fb576eb535e386158debf51b601",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/05-qr-expiry-and-recovery.md": {
+    "mtime": 1789219864.6430368,
+    "seen": 1789220204.1742132,
+    "ast_hash": "f9053b08658a732088044c344e472b37",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/06-receipts-and-descriptor-honesty.md": {
+    "mtime": 1789219864.6446152,
+    "seen": 1789220204.174214,
+    "ast_hash": "69af3b9c4ace71d7c0f40c27aeb87546",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/07-signoff.md": {
+    "mtime": 1789219864.6461372,
+    "seen": 1789220204.174214,
+    "ast_hash": "e2b754f976bdc6fb19891b161a23e592",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/issues/README.md": {
+    "mtime": 1789220059.5507603,
+    "seen": 1789220204.174214,
+    "ast_hash": "ac6e27cdd7b90ce54ca13b74bf7bc17d",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-paynow-checkout/paynow-checkout-prd.md": {
+    "mtime": 1789219678.0620973,
+    "seen": 1789220204.1742148,
+    "ast_hash": "98102caf12b60aa82142b204ee6a6ac1",
     "semantic_hash": ""
   }
 }
