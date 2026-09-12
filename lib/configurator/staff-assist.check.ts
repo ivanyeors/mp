@@ -238,6 +238,34 @@ assert.match(
   "/mp-basic re-exports the gated mp-config page (same chrome rules)",
 );
 
+// --- Assist link vs assist GATE: orthogonal, and must stay two props ---------
+// A customer holding an Assist link has no admin_users row at all, so
+// getAdminContext() is null for them. Feeding the link into `staffAssist` would
+// hand the x-ray editor to every customer holding one.
+assert.match(
+  page,
+  /assistCode=\{assistStaff\?\.code \?\? null\}/,
+  "the Assist link travels to the client as its own prop",
+);
+assert.doesNotMatch(
+  page,
+  /staffAssist=\{[^}]*assist(Staff|Code)/,
+  "the Assist link never feeds the Staff assist gate",
+);
+// The stamp it produces authorises a no-card submit downstream, so it is a
+// trust boundary: resolved server-side, and written only where the row is born.
+const responsesRoute = readFileSync("app/api/mp-config/responses/route.ts", "utf8");
+assert.match(
+  responsesRoute,
+  /getStaffByAssistCode\(parsed\.data\.assistCode\)/,
+  "the Staff id is re-resolved from the code server-side, never taken from the request",
+);
+assert.match(
+  responsesRoute,
+  /existing == null && parsed\.data\.assistCode/,
+  "the assist stamp is create-only — a later update must not be able to rewrite `source`",
+);
+
 const client = readFileSync("app/[lang]/mp-config/mp-config-client.tsx", "utf8");
 assert.match(client, /staffAssist = false/, "assist defaults off (guest)");
 assert.match(client, /staffAssist && size && tier \? \(\s*<StaffAssistPanel/, "panel renders only for Staff");

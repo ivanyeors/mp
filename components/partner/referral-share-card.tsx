@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { QrSvg } from "@/components/ui/qr-svg";
 import { getClientSiteOrigin } from "@/lib/site-url";
-import { qrMatrix } from "@/lib/qr/qr-matrix";
 
 type Props = {
   /** The approved partner's referral code (e.g. from ensureReferralCode). */
@@ -17,32 +17,6 @@ type Props = {
    */
   siteOrigin?: string;
 };
-
-/** QR of the referral link as an inline SVG — no dependency, no external service. */
-function QrSvg({ text, px = 168 }: { text: string; px?: number }) {
-  const matrix = useMemo(() => qrMatrix(text), [text]);
-  const n = matrix.length;
-  const quiet = 4;
-  const dim = n + quiet * 2;
-  let d = "";
-  for (let r = 0; r < n; r++)
-    for (let c = 0; c < n; c++)
-      if (matrix[r][c]) d += `M${c + quiet} ${r + quiet}h1v1h-1z`;
-  return (
-    <svg
-      width={px}
-      height={px}
-      viewBox={`0 0 ${dim} ${dim}`}
-      shapeRendering="crispEdges"
-      role="img"
-      aria-label="Referral link QR code"
-    >
-      {/* QR needs a fixed light quiet zone + dark modules regardless of theme. */}
-      <rect width={dim} height={dim} fill="#ffffff" />
-      <path d={d} fill="#000000" />
-    </svg>
-  );
-}
 
 export function ReferralShareCard({ code, siteOrigin }: Props) {
   const origin = siteOrigin ?? getClientSiteOrigin();
@@ -87,7 +61,7 @@ export function ReferralShareCard({ code, siteOrigin }: Props) {
 
       <div className="flex flex-col items-center gap-2">
         <div className="rounded-md bg-white p-2">
-          <QrSvg text={link} />
+          <QrSvg text={link} label="Referral link QR code" />
         </div>
         <p className="text-sm text-muted-foreground">Scan to open your link</p>
       </div>

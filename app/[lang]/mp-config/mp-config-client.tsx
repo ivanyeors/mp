@@ -269,6 +269,7 @@ export function MpConfigClient({
   staffAssist = false,
   canViewResults = false,
   partner = null,
+  assistCode = null,
 }: {
   info: MpConfigInfo;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
@@ -287,6 +288,14 @@ export function MpConfigClient({
     logoUrl: string | null;
     description: string | null;
   } | null;
+  /**
+   * Assist link code, already resolved server-side to an active Staff member.
+   * Orthogonal to `staffAssist`: a customer holding a link has no admin_users
+   * row, so it grants NO assist chrome and NO x-ray editor — it is echoed back
+   * on save so the server can re-resolve it and stamp the Draft Result.
+   * Changes nothing about what renders.
+   */
+  assistCode?: string | null;
 }) {
   // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
   const partnerAssisted = Boolean(partner);
@@ -1044,6 +1053,9 @@ export function MpConfigClient({
           data: measurementData,
           ...(readToken(tokenStorageKey) ? { token: readToken(tokenStorageKey) } : {}),
           ...(typeof opts?.isFinal === "boolean" ? { isFinal: opts.isFinal } : {}),
+          // The CODE, never a staff id: the server re-resolves it and stamps
+          // the row on create only (app/api/mp-config/responses/route.ts).
+          ...(assistCode ? { assistCode } : {}),
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -1060,7 +1072,7 @@ export function MpConfigClient({
       setSaveStatus("error");
       return null;
     }
-  }, [responseId, hasAnyInput, measurementData, tokenStorageKey]);
+  }, [responseId, hasAnyInput, measurementData, tokenStorageKey, assistCode]);
 
   const loadSuggestion = async () => {
     if (!responseId) return;
