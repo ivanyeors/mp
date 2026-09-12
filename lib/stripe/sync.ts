@@ -2,6 +2,7 @@ import { getStripe } from "./client";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { ProductVariant } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
+import { loadVariantLabels, withPricingBlock, type VariantLabel } from "./variant-labels";
 
 /**
  * Stripe Product tax code (drives Stripe Tax categorization). Defaults to
@@ -49,6 +50,17 @@ export async function syncProductToStripe(productId: string) {
     .map((img) => img.url)
     .slice(0, 8); // Stripe max 8 images
 
+  const variantsForLabels = (product.product_variants ?? []) as ProductVariant[];
+  // Derived from the BOM in the same pass the price is, so a label cannot claim a
+  // fabric the amount was not computed from.
+  const labels = await loadVariantLabels(admin, variantsForLabels as never);
+  const describedPrice = withPricingBlock(
+    description,
+    variantsForLabels
+      .map((v) => labels.get(v.id))
+      .filter((l): l is VariantLabel => Boolean(l)),
+  );
+
   let stripeProductId = product.stripe_product_id;
 
   if (stripeProductId) {
@@ -56,7 +68,9 @@ export async function syncProductToStripe(productId: string) {
     try {
       await stripe.products.update(stripeProductId, {
         name: title,
-        description: description || undefined,
+        // "" clears; `undefined` would mean "leave as is" and strand a stale block
+        // on a product that no longer qualifies for one.
+        description: describedPrice,
         images: images.length ? images : undefined,
         tax_code: STRIPE_TAX_CODE,
       });
@@ -76,7 +90,7 @@ export async function syncProductToStripe(productId: string) {
     // Create new Stripe product
     const stripeProduct = await stripe.products.create({
       name: title,
-      description: description || undefined,
+      description: describedPrice || undefined,
       images: images.length ? images : undefined,
       tax_code: STRIPE_TAX_CODE,
       metadata: { supabase_product_id: productId },
@@ -95,7 +109,7 @@ export async function syncProductToStripe(productId: string) {
   const variantResults: { id: string; stripe_price_id: string }[] = [];
 
   for (const variant of variants) {
-    const priceId = await syncVariantPrice(stripeProductId, variant);
+    const priceId = await syncVariantPrice(stripeProductId, variant, labels.get(variant.id));
     variantResults.push({ id: variant.id, stripe_price_id: priceId });
 
     // Save stripe_price_id on variant
@@ -138,9 +152,19 @@ export async function syncProductToStripeSafe(
  * Create a new Stripe Price for a variant.
  * Stripe Prices are immutable — if price changes, we create a new one and archive the old.
  */
-async function syncVariantPrice(stripeProductId: string, variant: ProductVariant): Promise<string> {
+async function syncVariantPrice(
+  stripeProductId: string,
+  variant: ProductVariant,
+  label?: VariantLabel,
+): Promise<string> {
   const stripe = getStripe();
   const unitAmount = Math.round(variant.price * 100); // Convert to cents
+  const variantName = variant.title || variant.sku || "Default";
+  const nickname = label?.nickname ?? variantName;
+  const metadata = label?.metadata ?? {
+    supabase_variant_id: variant.id,
+    variant_title: variantName,
+  };
 
   // If variant already has a stripe_price_id, check if price matches
   if (variant.stripe_price_id) {
@@ -151,7 +175,13 @@ async function syncVariantPrice(stripeProductId: string, variant: ProductVariant
         existingPrice.currency === variant.currency.toLowerCase() &&
         existingPrice.tax_behavior === STRIPE_TAX_BEHAVIOR
       ) {
-        return variant.stripe_price_id; // Price unchanged, reuse
+        // The AMOUNT is immutable, but the nickname and metadata are not — so a
+        // label added or corrected later reaches prices that already exist, without
+        // churning a new Price id (which would archive the one carts reference).
+        if (existingPrice.nickname !== nickname) {
+          await stripe.prices.update(variant.stripe_price_id, { nickname, metadata });
+        }
+        return variant.stripe_price_id;
       }
       // Price/tax behavior changed — archive old price
       await stripe.prices.update(variant.stripe_price_id, { active: false });
@@ -161,16 +191,13 @@ async function syncVariantPrice(stripeProductId: string, variant: ProductVariant
   }
 
   // Create new price
-  const variantName = variant.title || variant.sku || "Default";
   const price = await stripe.prices.create({
     product: stripeProductId,
     unit_amount: unitAmount,
     currency: variant.currency.toLowerCase(),
     tax_behavior: STRIPE_TAX_BEHAVIOR,
-    metadata: {
-      supabase_variant_id: variant.id,
-      variant_title: variantName,
-    },
+    nickname,
+    metadata,
   });
 
   return price.id;

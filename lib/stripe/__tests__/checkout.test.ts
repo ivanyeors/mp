@@ -64,26 +64,40 @@ beforeEach(() => {
   createCustomer.mockClear();
 });
 
-describe("createCheckoutSession — customization add-ons", () => {
-  it("adds a per-unit add-on line item alongside the base price", async () => {
+describe("createCheckoutSession — customised units", () => {
+  it("bills a customised unit as one dynamic line at its composed price", async () => {
     await createCheckoutSession({
       ...base,
       lineItems: [{ variant: variant(), quantity: 2, addonAmount: 25, addonLabel: "Pillow — customization" }],
     });
 
+    // One line, not a catalog price plus a surcharge: 89 + 25 = 114.
     const items = lineItemsArg();
-    expect(items[0]).toEqual({ price: "price_v1", quantity: 2 });
-    const addon = items.find((i) => i.price_data);
-    expect(addon).toBeDefined();
-    expect(addon!.quantity).toBe(2);
-    expect(addon!.price_data!.unit_amount).toBe(2500); // dollars -> cents
-    expect(addon!.price_data!.currency).toBe("sgd");
-    expect(addon!.price_data!.product_data.name).toBe("Pillow — customization");
+    expect(items).toHaveLength(1);
+    expect(items[0]!.quantity).toBe(2);
+    expect(items[0]!.price).toBeUndefined();
+    expect(items[0]!.price_data!.unit_amount).toBe(11400);
+    expect(items[0]!.price_data!.currency).toBe("sgd");
+    expect(items[0]!.price_data!.product_data.name).toBe("Pillow — customization");
   });
 
-  it("omits the add-on line item when there is no add-on", async () => {
+  it("charges LESS when the chosen build is cheaper than the shelf price", async () => {
+    // A premium XS shelf price is its Fibrecool build; picking linen is -20. Stripe
+    // has no negative line item, and the old shape skipped `addonAmount <= 0` —
+    // so this shopper was charged the dearer build they had just moved away from.
+    await createCheckoutSession({
+      ...base,
+      lineItems: [{ variant: variant(), quantity: 1, addonAmount: -20 }],
+    });
+
+    const items = lineItemsArg();
+    expect(items).toHaveLength(1);
+    expect(items[0]!.price_data!.unit_amount).toBe(6900); // 89 - 20
+  });
+
+  it("uses the catalog Price when the build is untouched", async () => {
     await createCheckoutSession({ ...base, lineItems: [{ variant: variant(), quantity: 1, addonAmount: 0 }] });
-    expect(lineItemsArg().some((i) => i.price_data)).toBe(false);
+    expect(lineItemsArg()).toEqual([{ price: "price_v1", quantity: 1 }]);
   });
 });
 

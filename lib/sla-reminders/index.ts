@@ -17,6 +17,16 @@ export type SlaSettings = {
    * Default 48: daily Hobby cron (±1h jitter) must still expire before the hold dies.
    */
   authExpiryBufferHours: number;
+  /**
+   * Take a Stripe authorization hold on an online customisation submit.
+   *
+   * Off means the shopper submits with no card at all: the Result still prices
+   * and still enters the build queue, but `authorized_amount` stays null and
+   * the whole total is collected later through the existing top-up Checkout
+   * (ADR 0016's `planCapture` already treats a zero hold as a full top-up).
+   * `source` stays `online_purchase` — this is not an Assisted customisation.
+   */
+  authHoldEnabled: boolean;
 };
 
 export const DEFAULT_SLA_SETTINGS: SlaSettings = {
@@ -27,6 +37,7 @@ export const DEFAULT_SLA_SETTINGS: SlaSettings = {
   opsEmail: null,
   // ponytail: 48h so a once-daily Hobby cron (max ~25h lag) still beats Stripe's 7d auth.
   authExpiryBufferHours: 48,
+  authHoldEnabled: true,
 };
 
 export const SLA_SETTING_KEYS = [
@@ -36,6 +47,7 @@ export const SLA_SETTING_KEYS = [
   "results_sla_remind_email",
   "results_sla_ops_email",
   "results_sla_auth_expiry_buffer_hours",
+  "results_auth_hold_enabled",
 ] as const;
 
 function parseBool(v: string | undefined, fallback: boolean): boolean {
@@ -67,6 +79,7 @@ export function parseSlaSettings(stored: Record<string, string>): SlaSettings {
       stored.results_sla_auth_expiry_buffer_hours,
       d.authExpiryBufferHours,
     ),
+    authHoldEnabled: parseBool(stored.results_auth_hold_enabled, d.authHoldEnabled),
   };
 }
 
@@ -78,6 +91,7 @@ export function slaSettingsToStored(s: SlaSettings): Record<string, string> {
     results_sla_remind_email: s.remindEmail ? "true" : "false",
     results_sla_ops_email: s.opsEmail ?? "",
     results_sla_auth_expiry_buffer_hours: String(s.authExpiryBufferHours),
+    results_auth_hold_enabled: s.authHoldEnabled ? "true" : "false",
   };
 }
 

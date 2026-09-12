@@ -20,6 +20,7 @@ const PutSchema = z.object({
   remindEmail: z.boolean().optional(),
   opsEmail: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
   authExpiryBufferHours: z.number().int().min(1).max(72).optional(),
+  authHoldEnabled: z.boolean().optional(),
 });
 
 /**
@@ -87,6 +88,7 @@ export async function PUT(req: Request) {
         remindTelegram: input.remindTelegram,
         remindEmail: input.remindEmail,
         authExpiryBufferHours: input.authExpiryBufferHours,
+        authHoldEnabled: input.authHoldEnabled,
       }).filter(([, v]) => v !== undefined),
     ),
     opsEmail:

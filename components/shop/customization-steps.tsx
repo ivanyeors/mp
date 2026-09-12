@@ -29,6 +29,13 @@ import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 
 // ─── Shared Types ────────────────────────────────────────────
 
+import type { ComposedPriceResult } from "@/lib/pricing/composed-price";
+import {
+  customizationDelta,
+  priceCustomizedBuild,
+  type CustomizationPricingInputs,
+} from "@/lib/shop/customization-price";
+
 export interface RecommendationResponseData {
   ok: boolean;
   product_type?: CustomizationProductType;
@@ -52,6 +59,9 @@ export interface RecommendationResponseData {
     price: number;
     currency: string;
   } | null;
+  /** Costings inputs so the preview prices a build with the same function the money
+   *  path uses. Null when this size x tier has no usable price. */
+  pricing?: CustomizationPricingInputs | null;
   components: {
     covers: ComponentOption[];
     cases: ComponentOption[];
@@ -177,29 +187,62 @@ export function computeComponentLines(
 }
 
 /**
- * Compute addon price from component lines vs base quantities.
+ * How many of this ROLE the build ships.
+ *
+ * A swapped-in cover or case carries `base_quantity: 0` — it is not in the BOM — so
+ * measuring "extra" against its own base counted the substitution itself as an extra
+ * unit and showed a whole 88 case beside a total that only moved by 23. The role's
+ * quantity comes from whichever option the BOM actually ships.
  */
-export function computeAddonPrice(
+export function roleBaseQuantity(
+  comp: ComponentOption,
+  pool: ComponentOption[]
+): number {
+  if (comp.category !== "cover" && comp.category !== "case") return comp.base_quantity;
+  const shipped = pool.find((c) => c.category === comp.category && c.base_quantity > 0);
+  return shipped?.base_quantity ?? comp.base_quantity;
+}
+
+/**
+ * Quote this build against Costings, with the same function the server charges by.
+ *
+ * Returns null only when the server sent no pricing inputs for this size x tier —
+ * `data.pricing` is null exactly when the build has no usable Costings price, and
+ * the apply route refuses it too.
+ */
+export function quoteCustomization(
   data: RecommendationResponseData | null,
   componentLines: ConfigLine[]
-): number {
-  if (!data) return 0;
-  let total = 0;
+): ComposedPriceResult | null {
+  if (!data?.pricing) return null;
   const allComps = [
     ...data.components.covers,
     ...data.components.cases,
     ...data.components.protectors,
     ...data.components.packaging,
   ];
-  for (const line of componentLines) {
-    const comp = allComps.find((c) => c.item_id === line.item_id);
-    if (!comp) continue;
-    const extra = Math.max(0, line.quantity - comp.base_quantity);
-    if (extra > 0) {
-      total += extra * comp.unit_price;
-    }
-  }
-  return total;
+  return priceCustomizedBuild({
+    pricing: data.pricing,
+    lines: componentLines,
+    baseQuantityByItem: new Map(allComps.map((c) => [c.item_id, c.base_quantity])),
+    msrpByItem: new Map(allComps.map((c) => [c.item_id, c.unit_price])),
+  });
+}
+
+/**
+ * What this build adds to (or takes off) the variant's shelf price.
+ *
+ * Signed, because swapping to a cheaper case is a real reduction. This used to sum
+ * `quantity above BOM x full MSRP`, which read a SWAP as an extra part and quoted a
+ * basic XS with a Fibrecool case at 258 where Costings says 193.
+ */
+export function computeAddonPrice(
+  data: RecommendationResponseData | null,
+  componentLines: ConfigLine[]
+): number {
+  const quote = quoteCustomization(data, componentLines);
+  if (!quote) return 0;
+  return customizationDelta(quote, data?.pricing?.shelf_price ?? null) ?? 0;
 }
 
 /**
@@ -519,7 +562,13 @@ export function CustomizationStepComponents({
                 .map((comp) => {
                   const currentQty =
                     componentQtyOverrides.get(comp.item_id) ?? comp.base_quantity;
-                  const extraQty = Math.max(0, currentQty - comp.base_quantity);
+                  const roleBase = roleBaseQuantity(comp, [
+                    ...components.covers,
+                    ...components.cases,
+                    ...components.protectors,
+                    ...components.packaging,
+                  ]);
+                  const extraQty = Math.max(0, currentQty - roleBase);
                   const extraCost = extraQty * comp.unit_price;
 
                   return (
@@ -688,22 +737,24 @@ export function CustomizationStepSummary({
             {/* Extra quantities */}
             {componentLines
               .filter((cl) => {
-                const comp = [
+                const pool = [
                   ...data.components.covers,
                   ...data.components.cases,
                   ...data.components.protectors,
                   ...data.components.packaging,
-                ].find((c) => c.item_id === cl.item_id);
-                return comp && cl.quantity > comp.base_quantity;
+                ];
+                const comp = pool.find((c) => c.item_id === cl.item_id);
+                return comp && cl.quantity > roleBaseQuantity(comp, pool);
               })
               .map((cl) => {
-                const comp = [
+                const pool = [
                   ...data.components.covers,
                   ...data.components.cases,
                   ...data.components.protectors,
                   ...data.components.packaging,
-                ].find((c) => c.item_id === cl.item_id)!;
-                const extra = cl.quantity - comp.base_quantity;
+                ];
+                const comp = pool.find((c) => c.item_id === cl.item_id)!;
+                const extra = cl.quantity - roleBaseQuantity(comp, pool);
                 return (
                   <div
                     key={cl.item_id}

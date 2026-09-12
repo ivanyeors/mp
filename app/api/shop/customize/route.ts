@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { loadComposedSellable, type ComposedSellableKey } from "@/lib/results/composed-sellable";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings, getSizeBallparkFromMeasurements, getSizeBallparkFromPreferences } from "@/lib/shop/customization-llm";
-import { getAvailableComponents, validateCustomizationConfig, calculateAddonPrice, getBolsterBaseQuantities, fetchOverlayMap } from "@/lib/shop/customization-inventory";
+import { getAvailableComponents, validateCustomizationConfig, fetchOverlayMap } from "@/lib/shop/customization-inventory";
+import { customizationDelta, priceCustomizedBuild } from "@/lib/shop/customization-price";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 import {
   incompleteEngineInputs,
@@ -319,6 +321,15 @@ async function handleRecommend(req: Request) {
     // Get available components for this pillow
     const components = await getAvailableComponents(pillowProduct.id);
 
+    // Everything the preview needs to price a build with the SAME function the hold
+    // route and assign use. Before this the preview showed `variant.price` (the shelf
+    // price) while the server charged shelf + cover + case.
+    const composed = await loadComposedSellable(admin, {
+      productType: "pillow",
+      size: recommendation.recommended_size,
+      tier: recommendation.recommended_kind,
+    });
+
     // Get BOM templates as alternatives
     const templates = await getBomTemplates(
       pillowProduct.kind ?? "basic",
@@ -374,6 +385,16 @@ async function handleRecommend(req: Request) {
         price: variant.price,
         currency: variant.currency,
       } : null,
+      pricing: composed.ok
+        ? {
+            msrp_by_family: composed.sellable.msrpByFamily,
+            default_cover: composed.sellable.defaultCover,
+            default_case: composed.sellable.defaultCase,
+            case_options: composed.sellable.caseOptions,
+            cover_options: composed.sellable.coverOptions,
+            shelf_price: composed.sellable.msrp,
+          }
+        : null,
       components,
       templates: templates.map((t) => ({
         id: t.id,
@@ -460,6 +481,60 @@ function resolveBolsterVariantFromVariant(
   return null;
 }
 
+/**
+ * The Costings price of a customized build, and the signed delta from the shelf
+ * price its storefront variant carries.
+ *
+ * Both apply handlers go through here so neither can grow its own arithmetic again.
+ * The client's `component_quantities[].price_delta` is ignored: it is browser input
+ * on a money path.
+ */
+async function priceApply(
+  admin: ReturnType<typeof supabaseAdmin>,
+  key: ComposedSellableKey,
+  lines: ConfigLine[],
+): Promise<{ ok: true; delta: number; subtotal: number } | { ok: false; error: string }> {
+  const composed = await loadComposedSellable(admin, key);
+  if (!composed.ok) return { ok: false, error: composed.error };
+  const sellable = composed.sellable;
+  if (sellable.msrp == null) {
+    return {
+      ok: false,
+      error: sellable.priceFault?.error ?? "This build has no Costings price",
+    };
+  }
+
+  const ids = [...new Set(lines.map((l) => l.item_id))];
+  const { data: prices } = ids.length
+    ? await admin.from("item_prices").select("item_id, msrp").in("item_id", ids)
+    : { data: [] as Array<{ item_id: number; msrp: number | null }> };
+  // Seeded with null so an item with no `item_prices` row stays unpriced rather than
+  // reading as absent-and-therefore-free.
+  const msrpByItem = new Map<number, number | null>(ids.map((id) => [id, null]));
+  for (const p of prices ?? []) {
+    msrpByItem.set(Number(p.item_id), p.msrp == null ? null : Number(p.msrp));
+  }
+
+  const result = priceCustomizedBuild({
+    pricing: {
+      msrp_by_family: sellable.msrpByFamily,
+      default_cover: sellable.defaultCover,
+      default_case: sellable.defaultCase,
+      case_options: sellable.caseOptions,
+      cover_options: sellable.coverOptions,
+      shelf_price: sellable.msrp,
+    },
+    lines,
+    baseQuantityByItem: new Map(sellable.bomLines.map((l) => [l.item_id, l.quantity])),
+    msrpByItem,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
+
+  const delta = customizationDelta(result, sellable.msrp);
+  if (delta == null) return { ok: false, error: "This build has no Costings price" };
+  return { ok: true, delta, subtotal: result.subtotal };
+}
+
 async function handleApply(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = ApplyRequestSchema.safeParse(body);
@@ -544,17 +619,31 @@ async function handleApply(req: Request) {
     }, { status: 400 });
   }
 
-  // Calculate addon price
-  const { data: bomLines } = await admin
-    .from("bom_lines")
-    .select("item_id, quantity")
-    .eq("product_id", pillow_product_id);
+  // Price from Costings, through the same rule the preview and /mp-config use.
+  const { data: pillowProductRow } = await admin
+    .from("pillow_products")
+    .select("size, kind")
+    .eq("id", pillow_product_id)
+    .maybeSingle();
+  if (!pillowProductRow) {
+    return NextResponse.json({ error: "Unknown pillow product" }, { status: 400 });
+  }
 
-  const baseQuantities = new Map<number, number>(
-    (bomLines ?? []).map((bl: { item_id: number; quantity: number }) => [bl.item_id, bl.quantity])
+  const quote = await priceApply(
+    admin,
+    {
+      productType: "pillow",
+      size: String(pillowProductRow.size),
+      tier: String(pillowProductRow.kind ?? "basic"),
+    },
+    component_quantities as ConfigLine[],
   );
-
-  const totalAddonPrice = calculateAddonPrice(component_quantities as ConfigLine[], baseQuantities);
+  // Refusing beats guessing: a build we cannot price from Costings must not reach
+  // checkout on a stale shelf price.
+  if (!quote.ok) {
+    return NextResponse.json({ error: quote.error }, { status: 400 });
+  }
+  const totalAddonPrice = quote.delta;
 
   const fillingDesc = filling_lines.map((f) => `${f.quantity}× ${f.subtype}`).join(", ");
   const parts: string[] = [];
@@ -665,8 +754,15 @@ async function handleApplyBolster({
     }, { status: 400 });
   }
 
-  const baseQuantities = await getBolsterBaseQuantities(resolvedBolsterVariant);
-  const totalAddonPrice = calculateAddonPrice(component_quantities, baseQuantities);
+  const quote = await priceApply(
+    admin,
+    { productType: "bolster", length: resolvedBolsterVariant },
+    component_quantities,
+  );
+  if (!quote.ok) {
+    return NextResponse.json({ error: quote.error }, { status: 400 });
+  }
+  const totalAddonPrice = quote.delta;
 
   const parts: string[] = [`Bolster: ${resolvedBolsterVariant}`];
   if (cover_variant) parts.push(`Cover: ${cover_variant}`);

@@ -1,4 +1,5 @@
-/** Sell totals for a Result from Costings MSRP. Fillings never affect sell price. */
+/** Sell totals for a Result. Goods are priced by `priceComposedBuild`; this adds
+ *  shipping and tax. Fillings never affect sell price. */
 
 export type PricedLine = {
   msrp: number;
@@ -6,10 +7,8 @@ export type PricedLine = {
 };
 
 export type PriceResultInput = {
-  /** Composed sellable MSRP for assigned size×tier / length (product_prices). */
-  composedSellableMsrp: number;
-  preferenceLines: PricedLine[];
-  addonLines: PricedLine[];
+  /** Goods subtotal from `priceComposedBuild` — Costings row + component deltas + add-ons. */
+  subtotal: number;
   shipping?: number;
   tax?: number;
 };
@@ -21,20 +20,16 @@ export type PriceResultOutput = {
   total: number;
 };
 
-function lineSum(lines: PricedLine[]): number {
-  return lines.reduce((sum, l) => sum + l.msrp * l.quantity, 0);
-}
-
 /**
- * Authorized / final sell total: composed MSRP + preference/add-on MSRPs + shipping + tax.
- * Filling Template lines are intentionally omitted — they affect COGS only.
+ * Authorized / final sell total.
+ *
+ * The subtotal is NOT "composed MSRP + every preference MSRP" any more. A Costings
+ * row is the price of a whole configuration, so adding the chosen cover and case on
+ * top double-charged for components the row already included — 473 for a 360 pillow.
+ * `priceComposedBuild` owns that rule; this owns only shipping and tax.
  */
 export function priceResult(input: PriceResultInput): PriceResultOutput {
-  const subtotal =
-    input.composedSellableMsrp +
-    lineSum(input.preferenceLines) +
-    lineSum(input.addonLines);
   const shipping = input.shipping ?? 0;
   const tax = input.tax ?? 0;
-  return { subtotal, shipping, tax, total: subtotal + shipping + tax };
+  return { subtotal: input.subtotal, shipping, tax, total: input.subtotal + shipping + tax };
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { priceComposedBuild } from "@/lib/pricing/composed-price";
+
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -1609,12 +1611,12 @@ export function MpConfigClient({
       if (!res.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-      // A deferred submit has no Checkout — the customer goes straight to the
-      // status page to wait for Staff to finish the build.
-      const next = assisted ? data.statusUrl : data.checkoutUrl;
-      if (!next) {
-        throw new Error(assisted ? "Missing status URL" : "Missing checkout URL");
-      }
+      // Follow whatever the server returned rather than what this client asked
+      // for. No Checkout comes back for an Assisted submit, and none comes back
+      // when an admin has switched authorization holds off — in both cases the
+      // customer goes straight to the status page to wait for Staff.
+      const next = data.checkoutUrl ?? data.statusUrl;
+      if (!next) throw new Error("Missing checkout URL");
       window.location.href = next as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
@@ -1756,10 +1758,42 @@ export function MpConfigClient({
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
     const xrayVisible = staffAssist || guestXray;
     const currency = shopRecommendation?.variant?.currency ?? "SGD";
-    const basePrice = shopRecommendation?.variant?.price ?? 0;
     const addonTotal = addons
       .filter((a) => selectedAddons.has(a.item_id))
       .reduce((s, a) => s + a.msrp, 0);
+    // The number shown here is the number POST /api/results/hold will authorise —
+    // same function, same Costings inputs. It used to show the shelf price while the
+    // server charged shelf + cover + case, a 113 gap on a premium XS.
+    const pricingInputs = shopRecommendation?.pricing ?? null;
+    const quote = pricingInputs
+      ? priceComposedBuild({
+          msrpByFamily: pricingInputs.msrp_by_family,
+          defaultCover: pricingInputs.default_cover,
+          defaultCase: pricingInputs.default_case,
+          caseOptions: pricingInputs.case_options,
+          chosenCover:
+            selectedCover == null
+              ? null
+              : (pricingInputs.cover_options.find((c) => c.item_id === selectedCover) ?? {
+                  item_id: selectedCover,
+                  msrp: null,
+                }),
+          chosenCase:
+            selectedCase == null
+              ? null
+              : (pricingInputs.case_options.find((c) => c.item_id === selectedCase) ?? {
+                  item_id: selectedCase,
+                  msrp: null,
+                }),
+          addonLines: [],
+        })
+      : null;
+    // A refused quote must NOT fall back to the shelf price. That is how the preview
+    // came to show 170 while the server authorised 245: the fallback looked like a
+    // price, so nothing stopped the shopper submitting. If this build cannot be
+    // priced the CTA is blocked and the amount is withheld.
+    const quoteBlocked = pricingInputs != null && quote?.ok !== true;
+    const basePrice = quote?.ok ? quote.subtotal : (shopRecommendation?.variant?.price ?? 0);
     const coverStock = preferenceStockFor(
       selectedCover,
       shopRecommendation?.components.covers ?? [],
@@ -2311,7 +2345,9 @@ export function MpConfigClient({
                 <div className="mb-3 flex justify-between text-sm">
                   <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
                   <span className="font-medium tabular-nums">
-                    {currency} {(basePrice + addonTotal).toFixed(2)}
+                    {quoteBlocked
+                      ? "Not available"
+                      : `${currency} ${(basePrice + addonTotal).toFixed(2)}`}
                   </span>
                 </div>
                 <div className="flex gap-3">
@@ -2327,6 +2363,7 @@ export function MpConfigClient({
                       holdSubmitting ||
                       shopLoading ||
                       !shopRecommendation ||
+                      quoteBlocked ||
                       flowRouteBlocksHold
                     }
                   >

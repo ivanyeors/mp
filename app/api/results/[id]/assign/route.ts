@@ -19,6 +19,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
@@ -276,7 +277,7 @@ export async function POST(
 
   const [{ data: items }, { data: balances }, { data: itemPrices }] = await Promise.all([
     allItemIds.length
-      ? admin.from("items").select("id, name, subtype, category").in("id", allItemIds)
+      ? admin.from("items").select("id, name, subtype, category, price_family").in("id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ id: number; name: string; subtype: string | null; category: string }> }),
     allItemIds.length
       ? admin.from("inventory_balances").select("item_id, on_hand").in("item_id", allItemIds)
@@ -333,15 +334,32 @@ export async function POST(
   // Final amount, always. A Result with no Authorization hold still has a
   // price — the whole total, owed by Balance payment — and `authorized` falls
   // out null, which is what tells the email which voice to use.
-  const composedMsrp = composed.sellable.msrp;
-  const preferencePriced = preferenceLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id) ?? 0,
-    quantity: l.quantity,
-  }));
-  const addonPriced = addonLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id) ?? 0,
-    quantity: l.quantity,
-  }));
+  const familyByItem = new Map<number, string | null>(
+    (items ?? []).map((i) => [
+      i.id as number,
+      (i as { price_family?: string | null }).price_family ?? null,
+    ]),
+  );
+  const { chosenCover, chosenCase } = resolvePreferences(preferenceLines, msrpByItem, familyByItem);
+  const goods = priceComposedBuild({
+    msrpByFamily: composed.sellable.msrpByFamily,
+    defaultCover: composed.sellable.defaultCover,
+    defaultCase: composed.sellable.defaultCase,
+    caseOptions: composed.sellable.caseOptions,
+    chosenCover,
+    chosenCase,
+    addonLines: addonLines.map((l) => ({
+      msrp: msrpByItem.get(l.item_id) ?? null,
+      quantity: l.quantity,
+    })),
+  });
+  if (!goods.ok) {
+    console.error(`[results/assign] pricing not usable (${goods.code}): ${goods.error}`);
+    return NextResponse.json(
+      { error: "This build cannot be priced yet. Check Costings." },
+      { status: 409 },
+    );
+  }
 
   let shippingAmount = 0;
   let taxAmount = 0;
@@ -353,29 +371,17 @@ export async function POST(
       .eq("slug", row.shipping_method)
       .maybeSingle();
     if (shippingRow) {
-      const prefSubtotal =
-        preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
-        addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
-      shippingAmount = calculateShippingRate(
-        shippingRow as ShippingMethod,
-        composedMsrp + prefSubtotal,
-      );
+      shippingAmount = calculateShippingRate(shippingRow as ShippingMethod, goods.subtotal);
       const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
       taxAmount = computeTax(
-        {
-          subtotal: composedMsrp + prefSubtotal,
-          shippingAmount,
-          discountAmount: 0,
-        },
+        { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
         taxRule,
       ).taxAmount;
     }
   }
 
   const priced = priceResult({
-    composedSellableMsrp: composedMsrp,
-    preferenceLines: preferencePriced,
-    addonLines: addonPriced,
+    subtotal: goods.subtotal,
     shipping: shippingAmount,
     tax: taxAmount,
   });

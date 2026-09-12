@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { priceResult } from "@/lib/result-pricing";
+import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -33,6 +34,8 @@ import {
 import { getPartnerByReferralCode } from "@/lib/referrals";
 import { VISITOR_COOKIE, parseVisitorId } from "@/lib/analytics/journey/identity";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
+import { getSiteSettings } from "@/lib/site-settings";
+import { SLA_SETTING_KEYS, parseSlaSettings } from "@/lib/sla-reminders";
 import {
   loadPreOrderTriggerAtHold,
   preOrderFlagForResult,
@@ -378,7 +381,7 @@ export async function POST(req: Request) {
     // Both pricing faults look identical to a shopper and must not leak the
     // reason, but they are very different to whoever reads the log: one means
     // nobody set a price, the other that two are set and the code cannot choose.
-    if (composed.code === "no_price" || composed.code === "ambiguous_price") {
+    if (composed.code) {
       console.error(`[results/hold] pricing not usable (${composed.code}): ${composed.error}`);
       return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
     }
@@ -387,7 +390,7 @@ export async function POST(req: Request) {
 
   const [{ data: items }, { data: prices }, { data: shippingRow }] = await Promise.all([
     allItemIds.length
-      ? admin.from("items").select("id, category").in("id", allItemIds)
+      ? admin.from("items").select("id, category, price_family").in("id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ id: number; category: string }> }),
     allItemIds.length
       ? admin.from("item_prices").select("item_id, msrp").in("item_id", allItemIds)
@@ -435,43 +438,63 @@ export async function POST(req: Request) {
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
-  const composedMsrp = composed.sellable.msrp;
-
-  for (const l of input.addonLines) {
-    if (msrpByItem.get(l.item_id) == null) {
-      console.error(`[results/hold] pricing not configured: add-on item ${l.item_id} missing Costings MSRP`);
-      return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
-    }
+  // The quote the shopper is about to authorise. Same function as the final charge
+  // at assign and as the preview total — they disagreed before, showing the shelf
+  // price and charging shelf + cover + case.
+  const familyByItem = new Map<number, string | null>(
+    (items ?? []).map((i) => [
+      i.id as number,
+      (i as { price_family?: string | null }).price_family ?? null,
+    ]),
+  );
+  const { chosenCover, chosenCase } = resolvePreferences(input.preferenceLines, msrpByItem, familyByItem);
+  const goods = priceComposedBuild({
+    msrpByFamily: composed.sellable.msrpByFamily,
+    defaultCover: composed.sellable.defaultCover,
+    defaultCase: composed.sellable.defaultCase,
+    caseOptions: composed.sellable.caseOptions,
+    chosenCover,
+    chosenCase,
+    addonLines: input.addonLines.map((l) => ({
+      msrp: msrpByItem.get(l.item_id) ?? null,
+      quantity: l.quantity,
+    })),
+  });
+  if (!goods.ok) {
+    console.error(`[results/hold] pricing not usable (${goods.code}): ${goods.error}`);
+    return NextResponse.json(
+      { error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" },
+      { status: 409 },
+    );
   }
 
-  // ponytail: charge full preference MSRP for hold ballpark (may over-authorize slightly).
-  const preferencePriced = input.preferenceLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id) ?? 0,
-    quantity: l.quantity,
-  }));
-  const addonPriced = input.addonLines.map((l) => ({
-    msrp: msrpByItem.get(l.item_id)!,
-    quantity: l.quantity,
-  }));
-
   const shippingMethod = shippingRow as ShippingMethod;
-  const prefSubtotal =
-    preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
-    addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
-  const shippingAmount = calculateShippingRate(shippingMethod, composedMsrp + prefSubtotal);
+  const shippingAmount = calculateShippingRate(shippingMethod, goods.subtotal);
   const taxRule = await resolveTaxRuleForRegion(input.shippingAddress.country);
   const tax = computeTax(
-    { subtotal: composedMsrp + prefSubtotal, shippingAmount, discountAmount: 0 },
+    { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
     taxRule,
   );
 
   const priced = priceResult({
-    composedSellableMsrp: composedMsrp,
-    preferenceLines: preferencePriced,
-    addonLines: addonPriced,
+    subtotal: goods.subtotal,
     shipping: shippingAmount,
     tax: tax.taxAmount,
   });
+
+  // Whether to take a card now. Two independent reasons not to:
+  //   - `deferred` — an Assisted customisation, authorised by the stored row above.
+  //   - the admin kill switch — holds turned off for ordinary online submits.
+  // They differ in ONE respect and it matters: `deferred` also stamps
+  // `source = 'staff_assisted'`, which the switch must NOT, or every online
+  // submit made while holds are off would look like it came through an Assist
+  // link. `resultStage` keys the queue off `authorized_amount` rather than
+  // `source` precisely so both land in `needs_assign` instead of reading as an
+  // abandoned checkout.
+  const { authHoldEnabled } = parseSlaSettings(
+    await getSiteSettings([...SLA_SETTING_KEYS]),
+  );
+  const takeCard = !input.deferred && authHoldEnabled;
 
   const currency = composed.sellable.currency;
   const accessToken = randomUUID();
@@ -610,7 +633,7 @@ export async function POST(req: Request) {
     // amount. The price is still computed above — an unpriced Composed sellable
     // must refuse here exactly as on the hold path, or Staff inherit a
     // submission they cannot quote.
-    authorized_amount: input.deferred ? null : priced.total,
+    authorized_amount: takeCard ? priced.total : null,
     currency,
     payment_intent_id: null as string | null,
     status: "held",
@@ -681,7 +704,7 @@ export async function POST(req: Request) {
   // Pre-order flag, token rotation and the filling snapshot are identical — this
   // is the same submit with the Stripe step removed (ADR 0016).
   let checkout: { sessionId: string; url: string } | null = null;
-  if (!input.deferred) {
+  if (takeCard) {
     try {
       checkout = await createHoldCheckout({
         amount: priced.total,
@@ -710,7 +733,9 @@ export async function POST(req: Request) {
       "💤 Held Result (online purchase) — review needed",
       suggestLabel,
       `Email: ${input.email}`,
-      `Authorized: ${currency} ${priced.total.toFixed(2)}`,
+      takeCard
+        ? `Authorized: ${currency} ${priced.total.toFixed(2)}`
+        : `No card taken — quoted ${currency} ${priced.total.toFixed(2)}`,
       "",
       `Platform: ${platformLink}`,
     ].join("\n"),
@@ -725,7 +750,7 @@ export async function POST(req: Request) {
     label: suggestLabel,
     // Null swaps the email to its no-card voice: no authorized-amount panel, and
     // a promise of the price by email once Staff finish the build.
-    amount: input.deferred ? null : priced.total,
+    amount: takeCard ? priced.total : null,
     currency,
   });
 
@@ -735,7 +760,7 @@ export async function POST(req: Request) {
     ok: true,
     resultId,
     accessToken,
-    authorizedAmount: input.deferred ? null : priced.total,
+    authorizedAmount: takeCard ? priced.total : null,
     currency,
     // Deferred submits have no Checkout — the client goes straight to the status
     // page, which is where the customer waits for Staff to finish the build.

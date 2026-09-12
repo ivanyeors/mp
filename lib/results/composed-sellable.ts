@@ -5,6 +5,11 @@ import {
   validateDefaultFillingTemplate,
   type FillingTemplateLike,
 } from "@/lib/filling-templates";
+import {
+  UNKEYED,
+  priceComposedBuild,
+  type PricedComponent,
+} from "@/lib/pricing/composed-price";
 
 export const BOLSTER_LENGTHS = ["short", "medium", "long"] as const;
 export type BolsterLength = (typeof BOLSTER_LENGTHS)[number];
@@ -21,7 +26,23 @@ export type ComposedBomLine = {
 
 export type ComposedSellable = {
   bomLines: ComposedBomLine[];
-  msrp: number;
+  /**
+   * Costings MSRP of the DEFAULT build — the shelf price, what the shop shows.
+   * `null` when the default build cannot be priced; `priceFault` says why. NOT an
+   * error: `assign-prep` and the admin assign screen want only `bomLines`, and one
+   * unpriced BOM cover used to take both down.
+   */
+  msrp: number | null;
+  priceFault: { code: "no_price" | "unpriced_component"; error: string } | null;
+  /** Costings MSRPs by `product_prices.variant`; `UNKEYED` holds a single unkeyed row. */
+  msrpByFamily: Record<string, number>;
+  /** Cover and case the composed BOM ships by default, priced. */
+  defaultCover: PricedComponent | null;
+  defaultCase: PricedComponent | null;
+  /** Every case offered at this size — the baseline each family's row was priced with. */
+  caseOptions: PricedComponent[];
+  /** Every cover offered at this size. Unpriced ones keep a null MSRP, never 0. */
+  coverOptions: PricedComponent[];
   currency: string;
 };
 
@@ -44,13 +65,112 @@ async function withCategories(
   }));
 }
 
+const CASE_CATEGORIES = new Set(["case", "pillow_case", "bolster_case"]);
+
+/**
+ * The cover and case a pillow's BOM ships, plus every case offered at that size —
+ * priced, and tagged with the `items.price_family` that selects a Costings row.
+ *
+ * Case options are loaded (not just the BOM's own) because a family's row was priced
+ * with that family's case, and the shopper may pick a family the BOM does not use.
+ */
+async function loadPillowComponents(
+  admin: SupabaseClient,
+  size: string,
+  bomLines: ComposedBomLine[],
+): Promise<{
+  defaultCover: PricedComponent | null;
+  defaultCase: PricedComponent | null;
+  caseOptions: PricedComponent[];
+  coverOptions: PricedComponent[];
+}> {
+  const bomCover = bomLines.find((l) => l.category === "cover") ?? null;
+  const bomCase = bomLines.find((l) => CASE_CATEGORIES.has(l.category)) ?? null;
+  const bomCoverId = bomCover?.item_id ?? null;
+  const bomCaseId = bomCase?.item_id ?? null;
+
+  // Must match what the shopper is actually offered — `getPillowComponents` keeps an
+  // item whose size matches OR is null, and still accepts the legacy `case` category.
+  // A narrower set here meant a cover or case the picker showed was absent from the
+  // pricing inputs, so the preview refused (and silently fell back to the shelf price)
+  // while the server priced it from its real MSRP. Shown 170, authorised 245.
+  // `.or()` takes a raw PostgREST filter string, so `size` is interpolated into a
+  // query language. It arrives from a stored column rather than a request body, but
+  // that is a property of today's callers, not of this function.
+  const safeSize = /^[A-Za-z0-9_-]{1,16}$/.test(size) ? size : null;
+  const { data: optionItems } = safeSize
+    ? await admin
+        .from("items")
+        .select("id, category, price_family, size")
+        .in("category", ["pillow_case", "case", "cover"])
+        .or(`size.eq.${safeSize},size.is.null`)
+        .eq("is_active", true)
+    : { data: [] as Array<{ id: number; category: string; price_family: string | null; size: string | null }> };
+  const caseItems = (optionItems ?? []).filter((i) => CASE_CATEGORIES.has(String(i.category)));
+  const coverItems = (optionItems ?? []).filter((i) => i.category === "cover");
+
+  const ids = [
+    ...new Set([
+      ...(optionItems ?? []).map((i) => i.id as number),
+      ...(bomCoverId == null ? [] : [bomCoverId]),
+      ...(bomCaseId == null ? [] : [bomCaseId]),
+    ]),
+  ];
+  const { data: prices } = ids.length
+    ? await admin.from("item_prices").select("item_id, msrp").in("item_id", ids)
+    : { data: [] as Array<{ item_id: number; msrp: number | null }> };
+  const msrpByItem = new Map<number, number>();
+  for (const p of prices ?? []) {
+    if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
+  }
+  const familyByItem = new Map<number, string | null>(
+    caseItems.map((i) => [i.id as number, (i.price_family as string | null) ?? null]),
+  );
+
+  const caseOptions: PricedComponent[] = caseItems.map((i) => ({
+    item_id: i.id as number,
+    msrp: msrpByItem.get(i.id as number) ?? null,
+    family: (i.price_family as string | null) ?? null,
+  }));
+  const coverOptions: PricedComponent[] = coverItems.map((i) => ({
+    item_id: i.id as number,
+    msrp: msrpByItem.get(i.id as number) ?? null,
+  }));
+
+  return {
+    defaultCover:
+      bomCoverId == null
+        ? null
+        : {
+            item_id: bomCoverId,
+            msrp: msrpByItem.get(bomCoverId) ?? null,
+            quantity: bomCover?.quantity ?? 1,
+          },
+    defaultCase:
+      bomCaseId == null
+        ? null
+        : {
+            item_id: bomCaseId,
+            msrp: msrpByItem.get(bomCaseId) ?? null,
+            family: familyByItem.get(bomCaseId) ?? null,
+            quantity: bomCase?.quantity ?? 1,
+          },
+    caseOptions,
+    coverOptions,
+  };
+}
+
 /** Load BOM lines and Costings MSRP for a composed sellable. */
 export async function loadComposedSellable(
   admin: SupabaseClient,
   key: ComposedSellableKey,
 ): Promise<
   | { ok: true; sellable: ComposedSellable }
-  | { ok: false; error: string; code?: "no_price" | "ambiguous_price" }
+  | {
+      ok: false;
+      error: string;
+      code?: "no_price" | "ambiguous_price" | "unpriced_component";
+    }
 > {
   if (key.productType === "pillow") {
     const { data: pillowProduct } = await admin
@@ -67,38 +187,39 @@ export async function loadComposedSellable(
       };
     }
 
-    // Deliberately NOT maybeSingle(). Costings writes premium as two keyed rows
-    // (`product:pillow:<id>:linen` / `:fibrecool`) while this reads by product_id
-    // alone, so maybeSingle() errored and returned null — which then read as "no
-    // MSRP" and surfaced to the shopper as "not available for purchase yet".
-    // A price that exists twice is an ambiguity, not an absence, and the two say
-    // completely different things to whoever debugs it next.
+    // Premium is priced per case fabric family: `product_prices.variant` is
+    // 'linen' | 'fibrecool', basic and bolster carry one unkeyed row. Two rows are
+    // normal here, so this reads them all rather than maybeSingle() — which errored,
+    // returned null, and surfaced to shoppers as "not available for purchase yet".
     const [{ data: bomLines, error: bomErr }, { data: priceRows }] = await Promise.all([
       admin.from("bom_lines").select("item_id, quantity").eq("product_id", pillowProduct.id),
       admin
         .from("product_prices")
-        .select("key, msrp, currency")
+        .select("key, variant, msrp, currency")
         .eq("kind", "pillow")
         .eq("product_id", pillowProduct.id),
     ]);
     if (bomErr) return { ok: false, error: bomErr.message };
 
     const priced = (priceRows ?? []).filter((r) => r.msrp != null);
-    if (priced.length > 1) {
-      return {
-        ok: false,
-        code: "ambiguous_price",
-        error:
-          `Composed sellable for size ${key.size} tier ${key.tier} has ${priced.length} ` +
-          `Costings MSRPs (${priced.map((r) => r.key).join(", ")}). ` +
-          "Exactly one price per size x tier is expected — cover and case are charged " +
-          "as Customer preferences on top.",
-      };
+    const msrpByFamily: Record<string, number> = {};
+    for (const r of priced) {
+      const family = (r.variant as string | null) ?? UNKEYED;
+      // Two rows for the SAME family is still unresolvable — the original bug, now
+      // narrowed to the case it actually is rather than "more than one row".
+      if (msrpByFamily[family] != null) {
+        return {
+          ok: false,
+          code: "ambiguous_price",
+          error:
+            `Composed sellable for size ${key.size} tier ${key.tier} has two Costings ` +
+            `MSRPs for variant "${family}" (${priced.map((x) => x.key).join(", ")}). ` +
+            "Exactly one row per size x tier x case fabric family is expected.",
+        };
+      }
+      msrpByFamily[family] = Number(r.msrp);
     }
-
-    const productPrice = priced[0];
-    const msrp = productPrice?.msrp != null ? Number(productPrice.msrp) : null;
-    if (msrp == null) {
+    if (Object.keys(msrpByFamily).length === 0) {
       return {
         ok: false,
         code: "no_price",
@@ -106,12 +227,32 @@ export async function loadComposedSellable(
       };
     }
 
+    const composedBom = await withCategories(admin, bomLines ?? []);
+    const components = await loadPillowComponents(admin, key.size, composedBom);
+
+    // The shelf price: this pillow exactly as its BOM ships it. Stored as `msrp` so
+    // every existing reader (storefront variant, display) keeps its meaning.
+    const shelf = priceComposedBuild({
+      msrpByFamily,
+      defaultCover: components.defaultCover,
+      defaultCase: components.defaultCase,
+      caseOptions: components.caseOptions,
+      chosenCover: null,
+      chosenCase: null,
+      addonLines: [],
+    });
     return {
       ok: true,
       sellable: {
-        bomLines: await withCategories(admin, bomLines ?? []),
-        msrp,
-        currency: (productPrice?.currency as string) ?? "SGD",
+        bomLines: composedBom,
+        msrp: shelf.ok ? shelf.subtotal : null,
+        priceFault: shelf.ok ? null : { code: shelf.code, error: shelf.error },
+        msrpByFamily,
+        defaultCover: components.defaultCover,
+        defaultCase: components.defaultCase,
+        caseOptions: components.caseOptions,
+        coverOptions: components.coverOptions,
+        currency: (priced[0]?.currency as string) ?? "SGD",
       },
     };
   }
@@ -137,11 +278,46 @@ export async function loadComposedSellable(
     };
   }
 
+  // A bolster has one price and no fabric-family split, so it prices through the
+  // same unkeyed path basic uses. Its cover and case still come from its own BOM:
+  // every bolster length ships a priced `bolster_case`, and leaving these null made
+  // the baseline of a case swap unknown — which reads as "unpriced component" and
+  // refuses the build outright.
+  const composedBom = await withCategories(admin, bomLines ?? []);
+  const bomCover = composedBom.find((l) => l.category === "cover") ?? null;
+  const bomCase = composedBom.find((l) => CASE_CATEGORIES.has(l.category)) ?? null;
+  const componentIds = [bomCover?.item_id, bomCase?.item_id].filter(
+    (id): id is number => id != null,
+  );
+  const { data: componentPrices } = componentIds.length
+    ? await admin.from("item_prices").select("item_id, msrp").in("item_id", componentIds)
+    : { data: [] as Array<{ item_id: number; msrp: number | null }> };
+  const componentMsrp = new Map<number, number>();
+  for (const p of componentPrices ?? []) {
+    if (p.msrp != null) componentMsrp.set(Number(p.item_id), Number(p.msrp));
+  }
+  const asComponent = (line: ComposedBomLine | null): PricedComponent | null =>
+    line == null
+      ? null
+      : {
+          item_id: line.item_id,
+          msrp: componentMsrp.get(line.item_id) ?? null,
+          quantity: line.quantity,
+        };
+
   return {
     ok: true,
     sellable: {
-      bomLines: await withCategories(admin, bomLines ?? []),
+      bomLines: composedBom,
       msrp,
+      priceFault: null,
+      msrpByFamily: { [UNKEYED]: msrp },
+      defaultCover: asComponent(bomCover),
+      defaultCase: asComponent(bomCase),
+      // No fabric families exist for bolsters, so there is no per-family baseline to
+      // derive: a swap is measured against the BOM's own case.
+      caseOptions: [],
+      coverOptions: [],
       currency: (productPrice?.currency as string) ?? "SGD",
     },
   };
