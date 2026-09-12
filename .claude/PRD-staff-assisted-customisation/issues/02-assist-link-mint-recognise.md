@@ -28,9 +28,11 @@ Demoable outcome: a **Staff** member opens the **Admin Panel**, copies their lin
 
 ## Acceptance criteria
 
-- [~] A migration adds `admin_users.assist_code` as a nullable text column with a partial unique index on the non-null values, applied with `supabase db push`.
-      Written, NOT applied — this session had no database. Push it before any demo:
-      until then, a save carrying `?assist=` 500s on the unknown column.
+- [x] A migration adds `admin_users.assist_code` as a nullable text column with a partial unique index on the non-null values, applied with `supabase db push`.
+      Applied and verified against production 2026-09-12: both columns exist, and
+      `uq_admin_users_assist_code` is `UNIQUE (lower(assist_code)) WHERE assist_code
+      IS NOT NULL` as written. The ledger version `20260912000000` matches the
+      filename, so it was pushed rather than MCP-stamped — no desync.
 - [x] The code is generated on first request, not backfilled, and a collision retries rather than failing.
 - [x] Two concurrent requests for the same **Staff** member's first code return the same code, not two.
 - [x] `getStaffByAssistCode` resolves case-insensitively, refuses an inactive **Staff** row, and returns null — never throws — for an unknown code.

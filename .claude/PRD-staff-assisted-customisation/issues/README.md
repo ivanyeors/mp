@@ -29,12 +29,13 @@ relevant self-checks pass (`staff-assist`, `assisted-cta`, `surface-parity`,
 rather than per slice — the freshness workflow compares the committed graph against
 a rebuild of the final tree, so that satisfies it without seven 40k-line diffs.
 
-**Blocking anything real: the migration is written but NOT applied.**
-`supabase/migrations/20260912000000_admin_assist_code.sql` adds
-`admin_users.assist_code` and `mp_config_responses.assisted_by_admin_id`. Until it
-is pushed, any configurator save carrying `?assist=` 500s on the unknown column.
-Push with `supabase db push` — never the MCP `apply_migration` tool, which stamps
-its own version and desyncs the ledger.
+**Migration applied** (verified against production 2026-09-12).
+`supabase/migrations/20260912000000_admin_assist_code.sql` added
+`admin_users.assist_code` and `mp_config_responses.assisted_by_admin_id`; both
+indexes exist, including the `lower(assist_code)` unique index that makes the
+case-insensitive resolver safe. Ledger version `20260912000000` matches the
+filename, so it went through `supabase db push` and not the MCP `apply_migration`
+tool — no desync to repair.
 
 Two things found during the build that changed the shape of the work, recorded
 because neither is visible in the PRD:
