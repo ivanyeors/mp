@@ -11160,9 +11160,9 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20260913000000_premium_variant_prices.sql": {
-    "mtime": 1789220152.925146,
-    "seen": 1789220204.1741,
-    "ast_hash": "2dc2c02442180f8487945a2ca58d9ffb",
+    "mtime": 1789223768.2724576,
+    "seen": 1789223787.613791,
+    "ast_hash": "4b5cf91deff43110273e41496f7c607d",
     "semantic_hash": ""
   },
   ".claude/PRD-paynow-checkout/OPS-SIGNOFF.md": {

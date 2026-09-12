@@ -2,17 +2,26 @@
 --
 -- 20260912100000 deleted every premium price row on the belief that one
 -- cover/case-EXCLUSIVE base per size would reproduce them. It does not. The nine
--- prices are hand-set and do not decompose: subtracting the cover and case MSRPs
--- from each pair leaves two different cores for the same size --
+-- prices are hand-set and do not decompose. Subtracting the BOM's components from
+-- each pair -- the case once, the cover TWICE, because a premium build ships two --
+-- leaves two different cores for the same size:
 --
---   size  core from linen   core from fibrecool
---   XS    250               247
---   S     302               307
---   M     326               327
---   L     459               456
---   XL    532               -- (fibrecool XL has never been priced)
+--   size  core from linen   core from fibrecool   gap
+--   XS    225               222                    -3
+--   S     276               281                    +5
+--   M     297               298                    +1
+--   L     427               424                    -3
+--   XL    497               --  (fibrecool XL has never been priced)
 --
--- so the two prices per size are real, independent price points. They are
+-- That gap is not a data error, and reverse-calculating a single core per size
+-- would introduce one. The case MSRPs are a disciplined 6.69x-6.78x markup on
+-- `item_prices.cost_price`, holding across every size and both fabrics. The premium
+-- finals are hand-set round steps: +20 on XS, +30 on S/M/L. Two pricing logics, each
+-- internally consistent, meeting at a number that is off by a few dollars. Forcing
+-- one core means moving fibrecool to 85/102/105/119, which throws that markup out to
+-- 6.54x-7.08x and reprices the basic tier's fabric upgrade as a side effect.
+--
+-- So the two prices per size are real, independent price points. They are
 -- restored here, keyed on `variant` rather than parsed out of `key`.
 --
 -- `items.price_family` exists so the money path never sniffs a product name.
