@@ -11,16 +11,27 @@ PayNow is eligible on the cart and top-up Checkouts today. This slice makes that
 eligibility *impossible to lose by accident*, and proves it is real rather than
 assumed.
 
-## Prove it first
+## Already proven — observed 2026-09-12
 
-Before writing anything: create one sandbox Checkout Session against
-`acct_1UEocJFmfnDU9wZa` with an SGD line item and automatic capture, and read back
-`payment_method_types`. `paynow` must be present.
+Measured against MELLOW LIFE sandbox (`acct_1UEocJFmfnDU9wZa`) by creating real
+Checkout Sessions and reading back `payment_method_types`. This is no longer an
+assumption, and these three rows are the whole justification for the slice:
 
-This is a one-command check and it decides whether the rest of the slice is needed.
-The **Stripe CLI is currently authenticated to the retired Mpillow account**
-(`acct_1Q7HmBFq5J2TJixu`) — re-login to MELLOW LIFE first, or the probe answers a
-question about the wrong business. Record the observed list in the slice notes.
+| Session | `payment_method_types` | PayNow |
+|---|---|---|
+| SGD, automatic capture — the cart and top-up shape | `card, link, paynow` | **present** |
+| SGD, `capture_method: "manual"` — the hold shape | `card, link` | **absent** |
+| USD, automatic capture | `card, link` | **absent** |
+
+Two things this pins down that the docs only imply:
+
+- **Stripe drops PayNow silently on manual capture.** Row 2 is the exact shape of
+  `createHoldCheckout`, and the session was created successfully with no error, no
+  warning, and simply one fewer method. So the hold path does not fail loudly when
+  someone hopes PayNow will appear there — it just never does, which is why slice 01
+  writes it down and this check asserts it.
+- **A wrong currency fails the same silent way.** Row 3 is the failure mode the guard
+  below exists for: a non-SGD line item does not error, it removes an instrument.
 
 ## The SGD guard
 

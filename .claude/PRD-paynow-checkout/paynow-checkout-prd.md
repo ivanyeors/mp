@@ -45,9 +45,17 @@ entirely from one parameter:
 | 3 | `createTopUpCheckout` — `lib/authorization-hold/index.ts:152` (settle / pay in full) | automatic | **eligible today** |
 
 None of the three sets `payment_method_types`, so all three use dynamic payment
-methods and Stripe picks per shopper. Sites 1 and 3 should already be offering
-PayNow to a Singapore shopper. Site 2 never will, and no amount of code changes
-that — see below.
+methods and Stripe picks per shopper.
+
+**Measured, not inferred** (MELLOW LIFE sandbox, 2026-09-12): an SGD
+automatic-capture session returns `card, link, paynow`; the same session with
+`capture_method: "manual"` returns `card, link`; a USD automatic-capture session
+returns `card, link`. Sites 1 and 3 are already offering PayNow to a Singapore
+shopper today. Site 2 never will, and no amount of code changes that.
+
+Note what row 2 means in practice: adding manual capture does not error, it
+silently returns one fewer payment method. Nothing about the hold path announces
+that PayNow is missing from it.
 
 The codebase had already reasoned about this correctly once: the comment in
 `app/api/stripe/webhook/route.ts` above the fulfilment gate already names PayNow as

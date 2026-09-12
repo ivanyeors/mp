@@ -98,9 +98,11 @@ instruments.
   else can prove a QR scans or that an async refund lands.
 - **Slice 02 carries a Dashboard step:** subscribe
   `we_1UEpVxCMlMx7bA76xFJYdCCj` to `refund.updated`, 9 events → 10.
-- **The Stripe CLI is authenticated to the retired Mpillow account**
-  (`acct_1Q7HmBFq5J2TJixu`). Any slice that probes or runs `stripe listen` must
-  `stripe login` to MELLOW LIFE first, or it answers a question about the wrong
-  business. This blocks slice 03's verification step.
+- **Stripe CLI is authorized for MELLOW LIFE** as of 2026-09-12, profile `mellow`,
+  both contexts (live `acct_1UEobvCMlMx7bA76`, sandbox `acct_1UEocJFmfnDU9wZa`, the
+  sandbox active). The `default` profile is still the retired Mpillow account
+  `acct_1Q7HmBFq5J2TJixu`, so `stripe listen` and every probe must pass
+  `--project-name mellow` or switch context first. Slice 03's verification is done —
+  its results are recorded in the slice.
 - **Live has no products.** `npm run stripe:sync-all` has only run against sandbox;
   MELLOW LIFE live had 0 products on 2026-09-12. Slice 07's live cart rows need it.
