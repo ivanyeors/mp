@@ -11068,5 +11068,71 @@
     "seen": 1789217483.301693,
     "ast_hash": "65b66d36196b94506b0157aadcfc7fe5",
     "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/OPS-SIGNOFF.md": {
+    "mtime": 1789218663.563116,
+    "seen": 1789218694.9525068,
+    "ast_hash": "5bd7b865d1c36ca999ab068db5a91394",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/in-store-counter-payments-prd.md": {
+    "mtime": 1789218293.8231223,
+    "seen": 1789218694.952509,
+    "ast_hash": "6fefce0a5e48dd3307475ee40c14ff37",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/01-glossary-and-adr.md": {
+    "mtime": 1789218330.8700182,
+    "seen": 1789218694.952509,
+    "ast_hash": "f99c34ba4768955e1b0aabe992c133da",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/02-terminal-location-and-reader-registry.md": {
+    "mtime": 1789218363.3578103,
+    "seen": 1789218694.9525099,
+    "ast_hash": "2a7af6ccf29a91d55dc40a62f05dd077",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/03-charge-at-the-counter.md": {
+    "mtime": 1789218410.6139839,
+    "seen": 1789218694.9525099,
+    "ast_hash": "2e11dce41983630596b414342f2f7eb9",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/04-staff-counter-control.md": {
+    "mtime": 1789218455.1185503,
+    "seen": 1789218694.952511,
+    "ast_hash": "2cf21a412715ba9ec335c0b2c4fabf99",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/05-failure-honesty.md": {
+    "mtime": 1789218493.929812,
+    "seen": 1789218694.952511,
+    "ast_hash": "a3373c271d2f5604abb1589b60ec58c5",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/06-paynow-and-receipts.md": {
+    "mtime": 1789218525.697855,
+    "seen": 1789218694.952512,
+    "ast_hash": "aedf17ca7ff107e6e4eb65a83ef9afff",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/07-ops-kill-switch-and-fleet-health.md": {
+    "mtime": 1789218555.0248897,
+    "seen": 1789218694.952512,
+    "ast_hash": "392a9dc3fea150c286f42d1ac4966813",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/08-signoff.md": {
+    "mtime": 1789218590.4583337,
+    "seen": 1789218694.952513,
+    "ast_hash": "fe0fdbe1d1a0ce060015764a2b79dca8",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-in-store-counter-payments/issues/README.md": {
+    "mtime": 1789218629.307893,
+    "seen": 1789218694.952513,
+    "ast_hash": "6b5ca96be617cb30393bd42435226f10",
+    "semantic_hash": ""
   }
 }
