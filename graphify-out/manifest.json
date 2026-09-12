@@ -1104,9 +1104,9 @@
     "semantic_hash": "19fc3d894478eeec59bdc18fcaa9c610"
   },
   "lib/results/__tests__/composed-sellable.test.ts": {
-    "mtime": 1789219264.6448734,
-    "seen": 1789220204.173905,
-    "ast_hash": "b46036020f0dff8a45c62e408497108d",
+    "mtime": 1789220801.9653733,
+    "seen": 1789220883.919892,
+    "ast_hash": "7399a44bdfd909eed18a59cb51fb50aa",
     "semantic_hash": ""
   },
   "lib/results/__tests__/legacy-filling-migration.test.ts": {
@@ -1158,15 +1158,15 @@
     "semantic_hash": ""
   },
   "lib/results/assigned-build.ts": {
-    "mtime": 1789218965.3061416,
-    "seen": 1789220204.173915,
-    "ast_hash": "1d4d1d81d80335721afb4e67026aef79",
+    "mtime": 1789220350.9405932,
+    "seen": 1789220883.919903,
+    "ast_hash": "14a47fa97df883acff541e8be462bd08",
     "semantic_hash": ""
   },
   "lib/results/composed-sellable.ts": {
-    "mtime": 1789220195.0260673,
-    "seen": 1789220204.1739159,
-    "ast_hash": "01eb3a0cd69d75ac906fa7f8fc45da09",
+    "mtime": 1789220833.820272,
+    "seen": 1789220883.919903,
+    "ast_hash": "e39890547194333cd8df58c81439cea6",
     "semantic_hash": ""
   },
   "lib/results/instore-ballpark.ts": {
@@ -1380,9 +1380,9 @@
     "semantic_hash": "52fa127655603ad25048a6f9f6483c34"
   },
   "lib/shop/price-sync.ts": {
-    "mtime": 1789219103.3284934,
-    "seen": 1789220204.173965,
-    "ast_hash": "57516633dc6230b383da41fa7e8fecdc",
+    "mtime": 1789220443.4796486,
+    "seen": 1789220883.9199512,
+    "ast_hash": "523fb28d48ef341b883655df85cfc2ac",
     "semantic_hash": ""
   },
   "lib/shop/product-specifications.ts": {
@@ -1818,9 +1818,9 @@
     "semantic_hash": "cb31b31e97cea0ab709ca3c9da921f8e"
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
-    "mtime": 1789219195.8842947,
-    "seen": 1789220204.173337,
-    "ast_hash": "9c70fd34657558245fe412ef3773af6f",
+    "mtime": 1789220379.080971,
+    "seen": 1789220883.9193568,
+    "ast_hash": "0246043bae06caf4b63cf3866a70bfc6",
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/page.tsx": {
@@ -2034,15 +2034,15 @@
     "semantic_hash": "d95b95365feea5a33946e4c2652b4437"
   },
   "app/[lang]/settings/costings/page.tsx": {
-    "mtime": 1789216626.2592642,
-    "seen": 1789217168.297504,
-    "ast_hash": "ede9c5fe01ba50bb103b093e008e52b8",
+    "mtime": 1789220740.8014448,
+    "seen": 1789220883.9193869,
+    "ast_hash": "3032fd932b3614d3a124412dc3d91ccb",
     "semantic_hash": ""
   },
   "app/[lang]/settings/costings/save/route.ts": {
-    "mtime": 1784077603.999053,
-    "seen": 1789174039.649743,
-    "ast_hash": "6403c5bbfb5f4f86a823a203745fd1c6",
+    "mtime": 1789220770.1788542,
+    "seen": 1789220883.9193878,
+    "ast_hash": "05c136df3b8fc458dce73aa3671cdf6e",
     "semantic_hash": ""
   },
   "app/[lang]/settings/customers/[id]/page.tsx": {
@@ -2706,9 +2706,9 @@
     "semantic_hash": ""
   },
   "app/api/results/[id]/assign/route.ts": {
-    "mtime": 1789219044.4482806,
-    "seen": 1789220204.1734788,
-    "ast_hash": "8af529b13776575b62d17b07213046a8",
+    "mtime": 1789220350.9399958,
+    "seen": 1789220883.919484,
+    "ast_hash": "d3694ebab260b367977eee3f6b30ca58",
     "semantic_hash": ""
   },
   "app/api/results/[id]/decline/route.ts": {
@@ -2718,9 +2718,9 @@
     "semantic_hash": "904c83b7d4d6330763c8feead2699f5f"
   },
   "app/api/results/[id]/route.ts": {
-    "mtime": 1789219029.8687904,
-    "seen": 1789220204.173481,
-    "ast_hash": "e8100206a0aa28ffc6f3e51a78a8d409",
+    "mtime": 1789220350.9408379,
+    "seen": 1789220883.919487,
+    "ast_hash": "488b68186ebcb4d9bc947e40ddaa77a2",
     "semantic_hash": ""
   },
   "app/api/results/addons/route.ts": {
@@ -2736,9 +2736,9 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/route.ts": {
-    "mtime": 1789218991.655293,
-    "seen": 1789220204.173482,
-    "ast_hash": "8ba2c2f85f01d312b476eeda6539b624",
+    "mtime": 1789220350.939605,
+    "seen": 1789220883.919488,
+    "ast_hash": "c39a32344240209341ba34619ef823ed",
     "semantic_hash": ""
   },
   "app/api/results/route.ts": {
@@ -4452,9 +4452,9 @@
     "semantic_hash": ""
   },
   "components/shop/customization-steps.tsx": {
-    "mtime": 1789219174.3629847,
-    "seen": 1789220204.1736052,
-    "ast_hash": "9224af2d88e39e5fa90faaa6c2bf3449",
+    "mtime": 1789220379.093694,
+    "seen": 1789220883.91961,
+    "ast_hash": "f3cdd4bd463869960987eba08bac3b13",
     "semantic_hash": ""
   },
   "components/shop/pillow-customizer.tsx": {
@@ -11136,27 +11136,27 @@
     "semantic_hash": ""
   },
   "lib/pricing/__tests__/composed-price.test.ts": {
-    "mtime": 1789218785.4204223,
-    "seen": 1789220204.173887,
-    "ast_hash": "4ef8c0607ffd51f1fad88ae53a274ecf",
+    "mtime": 1789220217.8819425,
+    "seen": 1789220883.9198751,
+    "ast_hash": "90c96a561c36d7d2ec6ed48a2fdb9934",
     "semantic_hash": ""
   },
   "lib/pricing/composed-price.ts": {
-    "mtime": 1789220195.0101688,
-    "seen": 1789220204.173888,
-    "ast_hash": "7df1007da0407fa048049867bf5938c0",
+    "mtime": 1789220294.7384624,
+    "seen": 1789220883.919877,
+    "ast_hash": "270cc7f6d44253d66f480054d46d3c23",
     "semantic_hash": ""
   },
   "lib/pricing/pricing-surface.check.ts": {
-    "mtime": 1789219341.0630631,
-    "seen": 1789220204.173889,
-    "ast_hash": "bceff72d201042316feeb56568452115",
+    "mtime": 1789220676.2966068,
+    "seen": 1789220883.919877,
+    "ast_hash": "c81cb3d8ba51e1ead1ff94cdb308322a",
     "semantic_hash": ""
   },
   "scripts/costings-sync-prices.ts": {
-    "mtime": 1789219371.5066547,
-    "seen": 1789220204.174012,
-    "ast_hash": "3d537186ca206f2b833a04e029afd914",
+    "mtime": 1789220480.6744702,
+    "seen": 1789220883.919998,
+    "ast_hash": "19d22fcaf44e66b071a4a3a986742228",
     "semantic_hash": ""
   },
   "supabase/migrations/20260913000000_premium_variant_prices.sql": {
@@ -11223,6 +11223,12 @@
     "mtime": 1789219678.0620973,
     "seen": 1789220204.1742148,
     "ast_hash": "98102caf12b60aa82142b204ee6a6ac1",
+    "semantic_hash": ""
+  },
+  "lib/pricing/__tests__/pricing-surface.test.ts": {
+    "mtime": 1789220676.3014143,
+    "seen": 1789220883.919876,
+    "ast_hash": "48a2055301a88d5f78d5574dbca9893a",
     "semantic_hash": ""
   }
 }
