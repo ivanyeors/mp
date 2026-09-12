@@ -38,6 +38,7 @@ import {
   samplePartnerListing,
   sampleRestock,
   sampleResultAssigned,
+  sampleResultAssignedBalance,
   sampleResultHeld,
   sampleResultHeldNoHold,
   sampleRma,
@@ -133,6 +134,18 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderResultAssignedEmail(sampleResultAssigned(f)),
+  },
+  {
+    // Same renderer, no Authorization hold (Assisted customisation): the whole
+    // total is owed by Balance payment, so the ask is "pay", not "accept".
+    // Registered for the dev preview and contract.test.ts — registry-coverage
+    // only enumerates render*Email FUNCTIONS, so a parameter variant is invisible
+    // to it.
+    id: "results.assigned_balance",
+    label: "Final build ready — payment due",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultAssignedEmail(sampleResultAssignedBalance(f)),
   },
   {
     id: "results.hold_expired",

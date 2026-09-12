@@ -127,6 +127,15 @@ export function sampleResultAssigned(fixture: EmailFixture = "happy") {
   };
 }
 
+/**
+ * Assisted customisation: no Authorization hold, so the whole total is owed by
+ * Balance payment. Spread from the hold fixture so the two cannot drift.
+ */
+export function sampleResultAssignedBalance(fixture: EmailFixture = "happy") {
+  const base = sampleResultAssigned(fixture);
+  return { ...base, pricing: { ...base.pricing, authorized: null } };
+}
+
 export function sampleHoldExpired(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,

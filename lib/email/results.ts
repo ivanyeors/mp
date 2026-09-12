@@ -30,7 +30,15 @@ function productName(productType: string | null): string {
   return productType === "bolster" ? "Mbolster" : "Mpillow";
 }
 
-function statusUrl(origin: string, resultId: string, accessToken: string | null): string {
+/**
+ * The customer's tokenised status page. Exported so Staff-facing routes can hand
+ * the same link out (Request payment) instead of hand-assembling a token URL.
+ */
+export function statusUrl(
+  origin: string,
+  resultId: string,
+  accessToken: string | null,
+): string {
   const base = `${origin}/results/${encodeURIComponent(resultId)}`;
   return accessToken ? `${base}?token=${encodeURIComponent(accessToken)}` : base;
 }
@@ -111,7 +119,8 @@ ${paragraph(closing, { muted: true })}`,
 }
 
 // ------------------------------------------------------------
-// Operator assigned the final build → "ready for review"
+// Operator assigned the final build → "accept or decline" (hold)
+//                                   / "review and pay" (Balance payment)
 // ------------------------------------------------------------
 
 export interface ResultPricing {
@@ -120,6 +129,13 @@ export interface ResultPricing {
   tax: number;
   total: number;
   currency: string;
+  /**
+   * The Authorization hold, or `null` for an Assisted customisation — submitted
+   * with no card, so the whole total is owed by Balance payment. Null is the
+   * same discriminator the DB uses (`authorized_amount IS NULL`), so it also
+   * chooses this email's voice: a separate `hasHold` flag could contradict the
+   * amount, a null amount cannot.
+   */
   authorized: number | null;
 }
 
@@ -138,6 +154,17 @@ export function renderResultAssignedEmail(p: {
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
+  // One renderer, two voices — the spec rows and the pricing block are shared so
+  // they cannot drift; only the ask differs.
+  const hasHold = p.pricing?.authorized != null;
+  const subject = hasHold
+    ? "Your final build is ready"
+    : "Your final build is ready — payment due";
+  const reviewLabel = hasHold ? "Review and accept or decline:" : "Review and pay:";
+  const ctaLabel = hasHold ? "Review your final build" : "Review and pay";
+  const closing = hasHold
+    ? "Accept or decline on the status page. Accept captures payment; Decline releases your hold."
+    : "Review your build on the status page and pay there to confirm your order. Nothing is charged until you do.";
   const sizeLine =
     p.productType === "bolster"
       ? `Length: ${p.length ?? "—"}`
@@ -164,7 +191,7 @@ export function renderResultAssignedEmail(p: {
     `Add-ons: ${p.addons.join(", ") || "—"}`,
     ...priceLines,
     "",
-    "Review and accept or decline:",
+    reviewLabel,
     url,
   ].join("\n");
 
@@ -206,22 +233,21 @@ export function renderResultAssignedEmail(p: {
       : "";
 
   const html = renderEmailShell({
-    title: "Your final build is ready",
-    preheader: `Your final ${name} build is ready for you to accept or decline.`,
+    title: subject,
+    preheader: hasHold
+      ? `Your final ${name} build is ready for you to accept or decline.`
+      : `Your final ${name} build is priced and ready — review it and pay to confirm.`,
     bodyHtml: `${paragraph(`Your final ${name} build is ready for review.`)}
 ${infoList(specRows)}
 ${section("Fillings", p.fillingSummary)}
 ${section("Preferences", p.preferences)}
 ${section("Add-ons", p.addons)}
 ${pricingRows.length > 0 ? infoList(pricingRows) : ""}
-${paragraph(
-      "Accept or decline on the status page. Accept captures payment; Decline releases your hold.",
-      { muted: true },
-    )}`,
-    cta: { href: url, label: "Review your final build" },
+${paragraph(closing, { muted: true })}`,
+    cta: { href: url, label: ctaLabel },
   });
 
-  return { subject: "Your final build is ready", text, html };
+  return { subject, text, html };
 }
 
 // ------------------------------------------------------------

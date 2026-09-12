@@ -114,14 +114,21 @@ const STATUS_COPY: Record<string, { title: string; body: string }> = {
 };
 
 /**
- * `held` with no Authorization hold — an Assisted customisation, submitted with
- * no card. Same status, different truth: nothing was authorized, so there is no
- * hold to mention and no accept/decline to promise yet. Keyed on the missing
- * `payment_intent_id`, never on `source` (ADR 0016).
+ * The same statuses, for a Result with no Authorization hold — an Assisted
+ * customisation, or an in-store measurement. Nothing was authorized, so there is
+ * no hold to mention and no "we'll capture your card" to promise: at `assigned`
+ * the customer pays in full rather than accepting a charge already agreed.
+ * Keyed on the missing `payment_intent_id`, never on `source` (ADR 0016).
  */
-const HELD_NO_HOLD_COPY = {
-  title: "Measurements received",
-  body: "Thanks — your measurements are with our team and we’re making your build now. We’ll email you when it’s ready, with the final price.",
+const NO_HOLD_COPY: Record<string, { title: string; body: string }> = {
+  held: {
+    title: "Measurements received",
+    body: "Thanks — your measurements are with our team and we’re making your build now. We’ll email you when it’s ready, with the final price.",
+  },
+  assigned: {
+    title: "Ready — payment due",
+    body: "Your final build is ready. Review it below and pay to confirm your order. Nothing is charged until you do.",
+  },
 };
 
 function journeyIndex(status: string): number {
@@ -296,9 +303,9 @@ function ResultStatusPage() {
   // `result` is null while loading, so the no-hold voice waits for the row —
   // otherwise every hold customer sees a flash of the wrong copy first.
   const copy =
-    result && status === "held" && !hasPaymentHold
-      ? HELD_NO_HOLD_COPY
-      : STATUS_COPY[status] ?? STATUS_COPY.held;
+    (result && !hasPaymentHold ? NO_HOLD_COPY[status] : undefined) ??
+    STATUS_COPY[status] ??
+    STATUS_COPY.held;
   const size = result?.assigned_size ?? result?.suggested_size;
   const tier = result?.assigned_tier ?? result?.suggested_tier;
   const amount = result?.final_amount ?? result?.authorized_amount;

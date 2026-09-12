@@ -330,76 +330,67 @@ export async function POST(
     );
   }
 
-  // Final amount when a hold exists (online purchase path).
-  let finalAmount: number | null = null;
-  let pricingBreakdown: {
-    subtotal: number;
-    shipping: number;
-    tax: number;
-    total: number;
-    currency: string;
-    authorized: number | null;
-  } | null = null;
+  // Final amount, always. A Result with no Authorization hold still has a
+  // price — the whole total, owed by Balance payment — and `authorized` falls
+  // out null, which is what tells the email which voice to use.
+  const composedMsrp = composed.sellable.msrp;
+  const preferencePriced = preferenceLines.map((l) => ({
+    msrp: msrpByItem.get(l.item_id) ?? 0,
+    quantity: l.quantity,
+  }));
+  const addonPriced = addonLines.map((l) => ({
+    msrp: msrpByItem.get(l.item_id) ?? 0,
+    quantity: l.quantity,
+  }));
 
-  const hasHold = row.payment_intent_id != null || row.authorized_amount != null;
-  if (hasHold) {
-    const composedMsrp = composed.sellable.msrp;
-    const preferencePriced = preferenceLines.map((l) => ({
-      msrp: msrpByItem.get(l.item_id) ?? 0,
-      quantity: l.quantity,
-    }));
-    const addonPriced = addonLines.map((l) => ({
-      msrp: msrpByItem.get(l.item_id) ?? 0,
-      quantity: l.quantity,
-    }));
-
-    let shippingAmount = 0;
-    let taxAmount = 0;
-    const address = row.shipping_address as { country?: string } | null;
-    if (row.shipping_method) {
-      const { data: shippingRow } = await admin
-        .from("shipping_methods")
-        .select("*")
-        .eq("slug", row.shipping_method)
-        .maybeSingle();
-      if (shippingRow) {
-        const prefSubtotal =
-          preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
-          addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
-        shippingAmount = calculateShippingRate(
-          shippingRow as ShippingMethod,
-          composedMsrp + prefSubtotal,
-        );
-        const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
-        taxAmount = computeTax(
-          {
-            subtotal: composedMsrp + prefSubtotal,
-            shippingAmount,
-            discountAmount: 0,
-          },
-          taxRule,
-        ).taxAmount;
-      }
+  let shippingAmount = 0;
+  let taxAmount = 0;
+  const address = row.shipping_address as { country?: string } | null;
+  if (row.shipping_method) {
+    const { data: shippingRow } = await admin
+      .from("shipping_methods")
+      .select("*")
+      .eq("slug", row.shipping_method)
+      .maybeSingle();
+    if (shippingRow) {
+      const prefSubtotal =
+        preferencePriced.reduce((s, l) => s + l.msrp * l.quantity, 0) +
+        addonPriced.reduce((s, l) => s + l.msrp * l.quantity, 0);
+      shippingAmount = calculateShippingRate(
+        shippingRow as ShippingMethod,
+        composedMsrp + prefSubtotal,
+      );
+      const taxRule = await resolveTaxRuleForRegion(address?.country ?? "SG");
+      taxAmount = computeTax(
+        {
+          subtotal: composedMsrp + prefSubtotal,
+          shippingAmount,
+          discountAmount: 0,
+        },
+        taxRule,
+      ).taxAmount;
     }
-
-    const priced = priceResult({
-      composedSellableMsrp: composedMsrp,
-      preferenceLines: preferencePriced,
-      addonLines: addonPriced,
-      shipping: shippingAmount,
-      tax: taxAmount,
-    });
-    finalAmount = priced.total;
-    pricingBreakdown = {
-      subtotal: priced.subtotal,
-      shipping: priced.shipping,
-      tax: priced.tax,
-      total: priced.total,
-      currency: composed.sellable.currency ?? row.currency ?? "SGD",
-      authorized:
-        row.authorized_amount != null ? Number(row.authorized_amount) : null,
-    };
   }
+
+  const priced = priceResult({
+    composedSellableMsrp: composedMsrp,
+    preferenceLines: preferencePriced,
+    addonLines: addonPriced,
+    shipping: shippingAmount,
+    tax: taxAmount,
+  });
+  const finalAmount = priced.total;
+  const pricingBreakdown: ResultPricing = {
+    subtotal: priced.subtotal,
+    shipping: priced.shipping,
+    tax: priced.tax,
+    total: priced.total,
+    currency: composed.sellable.currency ?? row.currency ?? "SGD",
+    // Null with no hold — and that null is what makes the assigned email ask
+    // for a Balance payment instead of an accept/decline.
+    authorized:
+      row.authorized_amount != null ? Number(row.authorized_amount) : null,
+  };
 
   // Divergence rule (PRD): keep filling_template_id only while the snapshot exactly
   // matches the confirmed template's current placements; snapshot rows always persist.
@@ -468,7 +459,7 @@ export async function POST(
   );
 
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
-  if (hasHold && row.customer_email && row.access_token) {
+  if (row.customer_email && row.access_token) {
     emailStatus = await sendAssignedEmail({
       to: row.customer_email,
       resultId: id,
