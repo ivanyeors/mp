@@ -4,19 +4,20 @@ Tracer-bullet breakdown of the PRD (`../in-store-counter-payments-prd.md`). Each
 demoable path through all layers (schema, API, client, tests).
 
 **Triage label:** `needs-triage` (all slices)
+**Tracker:** [#132](https://github.com/ivanyeors/mp/issues/132) is the PRD issue; each slice below links its own.
 
 ## Slices
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| 01 | Domain glossary and ADR 0017: Counter payment, Card reader, Terminal Location | AFK | **not started** | none | underpins all |
-| 02 | A Terminal Location per Location, and a reader list read live from Stripe | AFK | **not started** | 01 | 12–14 |
-| 03 | The charge: a `card_present` PaymentIntent that settles through accept unchanged | AFK | **not started** | 02 | 1–3 |
-| 04 | The counter control: one button, and the async truth rendered honestly | AFK | **not started** | 03 | 3–5, 7, 12 |
-| 05 | Failure honesty: preflight, no double charge, and money with no Order behind it | AFK | **not started** | 04 | 6, 10, 11, 17 |
-| 06 | PayNow at the counter, and a receipt for a sale with no shipping email | AFK | **not started** | 03 | 8, 9 |
-| 07 | Ops: a kill switch, fleet health, and a name against every charge | AFK | **not started** | 05 | 15, 16 |
-| 08 | Sign-off: one real reader, one real card, one real Singapore dollar | HITL | **not started** | 06, 07 | all |
+| [01](https://github.com/ivanyeors/mp/issues/133) | Domain glossary and ADR 0017: Counter payment, Card reader, Terminal Location | AFK | **not started** | none | underpins all |
+| [02](https://github.com/ivanyeors/mp/issues/134) | A Terminal Location per Location, and a reader list read live from Stripe | AFK | **not started** | 01 | 12–14 |
+| [03](https://github.com/ivanyeors/mp/issues/135) | The charge: a `card_present` PaymentIntent that settles through accept unchanged | AFK | **not started** | 02 | 1–3 |
+| [04](https://github.com/ivanyeors/mp/issues/136) | The counter control: one button, and the async truth rendered honestly | AFK | **not started** | 03 | 3–5, 7, 12 |
+| [05](https://github.com/ivanyeors/mp/issues/137) | Failure honesty: preflight, no double charge, and money with no Order behind it | AFK | **not started** | 04 | 6, 10, 11, 17 |
+| [06](https://github.com/ivanyeors/mp/issues/138) | PayNow at the counter, and a receipt for a sale with no shipping email | AFK | **not started** | 03 | 8, 9 |
+| [07](https://github.com/ivanyeors/mp/issues/139) | Ops: a kill switch, fleet health, and a name against every charge | AFK | **not started** | 05 | 15, 16 |
+| [08](https://github.com/ivanyeors/mp/issues/140) | Sign-off: one real reader, one real card, one real Singapore dollar | HITL | **not started** | 06, 07 | all |
 
 ## Dependency graph
 
