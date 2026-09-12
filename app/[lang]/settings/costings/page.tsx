@@ -635,35 +635,30 @@ export default function CostingsPage() {
           const components = bomByProduct.get(product.id) ?? [];
           const costCents = costForComponents(components);
           const pillowKind: PillowKind = String(product.kind) === "premium" ? "premium" : "basic";
-          if (pillowKind === "premium") {
-            // Premium pillows store MSRP per fabric variant via keyed rows:
-            // `product:pillow:<productId>:linen` and `product:pillow:<productId>:fibrecool`.
-            PREMIUM_VARIANTS.forEach((variant) => {
-              const variantKey = premiumPillowKey(product.id, variant);
-              const price = priceByKey.get(variantKey) ?? priceByKey.get(key) ?? priceByProductId.get(product.id);
-              const msrpCents = toCents(price?.msrp ?? null);
-              const compareAtCents = toCents(price?.compare_at_price ?? null);
-              productDraft[variantKey] = {
-                costPrice: formatFromCents(costCents),
-                msrp: formatFromCents(msrpCents),
-                compareAt: formatFromCents(compareAtCents),
-              };
-              productBaseline[variantKey] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
-            });
-            // Keep a stable base key entry for shared rendering; MSRP is variant-scoped.
-            productDraft[key] = { costPrice: formatFromCents(costCents), msrp: "", compareAt: "" };
-            productBaseline[key] = { cost: costCents, msrp: null, compareAt: null };
-          } else {
-            const price = priceByKey.get(key) ?? priceByProductId.get(product.id);
-            const msrpCents = toCents(price?.msrp ?? null);
-            const compareAtCents = toCents(price?.compare_at_price ?? null);
-            productDraft[key] = {
-              costPrice: formatFromCents(costCents),
-              msrp: formatFromCents(msrpCents),
-              compareAt: formatFromCents(compareAtCents),
-            };
-            productBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
-          }
+          // One MSRP per size x tier, premium included. Premium used to store a
+          // price per fabric variant (`…:linen` / `…:fibrecool`), but the sell
+          // price does not vary by fabric: the cover and case are Customer
+          // preferences priced from their own item MSRPs on top of this base.
+          // Two rows for one product also made the Result pricing lookup
+          // ambiguous, which surfaced to shoppers as "not available for purchase".
+          const price =
+            priceByKey.get(key) ??
+            priceByProductId.get(product.id) ??
+            (pillowKind === "premium"
+              ? // Legacy: fall back to a variant row so an un-migrated catalog
+                // still shows a number to correct rather than a blank field.
+                PREMIUM_VARIANTS.map((v) => priceByKey.get(premiumPillowKey(product.id, v))).find(
+                  Boolean,
+                )
+              : undefined);
+          const msrpCents = toCents(price?.msrp ?? null);
+          const compareAtCents = toCents(price?.compare_at_price ?? null);
+          productDraft[key] = {
+            costPrice: formatFromCents(costCents),
+            msrp: formatFromCents(msrpCents),
+            compareAt: formatFromCents(compareAtCents),
+          };
+          productBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
           productRows.push({
             key,
             kind: "pillow",
@@ -1006,22 +1001,7 @@ export default function CostingsPage() {
           </div>
           <div>
             <div className="text-xs text-muted-foreground">MSRP</div>
-            {product.kind === "pillow" && product.pillowKind === "premium" && product.productId ? (
-              <div className="space-y-0.5">
-                {PREMIUM_VARIANTS.map((variant) => {
-                  const key = premiumPillowKey(product.productId!, variant);
-                  const msrp = draft[key]?.msrp ?? "";
-                  return (
-                    <div key={variant} className="flex items-center justify-between gap-2">
-                      <div className="text-xs text-muted-foreground">{PREMIUM_VARIANT_TITLES[variant]}</div>
-                      <div className="font-medium">{formatDraftCurrencyLabel(msrp)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
-            )}
+            <div className="font-medium">{formatDraftCurrencyLabel(current.msrp)}</div>
           </div>
         </div>
         <div className="hidden sm:block">
@@ -1208,16 +1188,6 @@ export default function CostingsPage() {
     if (itemChanged) return true;
     return products.some((product) => {
       const key = product.key;
-      if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
-        return PREMIUM_VARIANTS.some((variant) => {
-          const variantKey = premiumPillowKey(product.productId!, variant);
-          const current = committedDraft[variantKey] ?? { costPrice: "", msrp: "", compareAt: "" };
-          const baselineRow = baseline[variantKey] ?? { cost: product.costCents ?? null, msrp: null, compareAt: null };
-          const msrpCents = parseToCents(current.msrp);
-          const compareAtCents = parseToCents(current.compareAt);
-          return msrpCents !== baselineRow.msrp || compareAtCents !== baselineRow.compareAt;
-        });
-      }
       const current = committedDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
       const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
       const msrpCents = parseToCents(current.msrp);
@@ -1257,24 +1227,6 @@ export default function CostingsPage() {
 
     const productPayload = products
       .flatMap((product) => {
-        if (product.kind === "pillow" && product.pillowKind === "premium" && product.productId) {
-          return PREMIUM_VARIANTS.map((variant) => {
-            const key = premiumPillowKey(product.productId!, variant);
-            const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
-            const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: null, compareAt: null };
-            const msrpCents = parseToCents(current.msrp);
-            const compareAtCents = parseToCents(current.compareAt);
-            if (msrpCents === baselineRow.msrp && compareAtCents === baselineRow.compareAt) return null;
-            const payload: ProductSaveRow = {
-              key,
-              kind: "pillow",
-              productId: product.productId!,
-              msrpCents,
-              compareAtCents,
-            };
-            return payload;
-          }).filter((row): row is ProductSaveRow => row !== null);
-        }
         const key = product.key;
         const current = liveDraft[key] ?? { costPrice: "", msrp: "", compareAt: "" };
         const baselineRow = baseline[key] ?? { cost: product.costCents ?? null, msrp: product.msrpCents ?? null, compareAt: null };
@@ -1670,7 +1622,7 @@ export default function CostingsPage() {
                 <div className="space-y-4">
                   {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
                     <div className="space-y-2">
-                      <div className="text-sm font-medium">MSRP Variant</div>
+                      <div className="text-sm font-medium">Component variant</div>
                       <Select
                         value={premiumVariantSelection}
                         onValueChange={(value) => {
@@ -1715,11 +1667,6 @@ export default function CostingsPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-medium">MSRP</div>
-                        {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
-                          <div className="text-xs text-muted-foreground">
-                            {PREMIUM_VARIANT_TITLES[premiumVariantSelection]}
-                          </div>
-                        ) : null}
                       </div>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -1728,46 +1675,14 @@ export default function CostingsPage() {
                         <Input
                           type="text"
                           inputMode="decimal"
-                          value={
-                            activeProduct.kind === "pillow" &&
-                            activeProduct.pillowKind === "premium" &&
-                            activeProduct.productId
-                              ? (draft[premiumPillowKey(activeProduct.productId, premiumVariantSelection)]?.msrp ?? "")
-                              : (activeProductDraft?.msrp ?? "")
-                          }
+                          value={activeProductDraft?.msrp ?? ""}
                           placeholder="0.00"
-                          onChange={(event) => {
-                            if (
-                              activeProduct.kind === "pillow" &&
-                              activeProduct.pillowKind === "premium" &&
-                              activeProduct.productId
-                            ) {
-                              handleInputChange(
-                                premiumPillowKey(activeProduct.productId, premiumVariantSelection),
-                                "msrp",
-                                event.target.value,
-                              );
-                              return;
-                            }
-                            handleInputChange(activeProduct.key, "msrp", event.target.value);
-                          }}
-                          onBlur={() => {
-                            if (
-                              activeProduct.kind === "pillow" &&
-                              activeProduct.pillowKind === "premium" &&
-                              activeProduct.productId
-                            ) {
-                              handleBlur(premiumPillowKey(activeProduct.productId, premiumVariantSelection), "msrp");
-                              return;
-                            }
-                            handleBlur(activeProduct.key, "msrp");
-                          }}
+                          onChange={(event) =>
+                            handleInputChange(activeProduct.key, "msrp", event.target.value)
+                          }
+                          onBlur={() => handleBlur(activeProduct.key, "msrp")}
                           className="pl-6"
-                          aria-label={`MSRP for ${activeProduct.label}${
-                            activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium"
-                              ? ` (${PREMIUM_VARIANT_TITLES[premiumVariantSelection]})`
-                              : ""
-                          }`}
+                          aria-label={`MSRP for ${activeProduct.label}`}
                         />
                       </div>
                     </div>
@@ -1775,11 +1690,6 @@ export default function CostingsPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-medium">Compare-at</div>
-                        {activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium" ? (
-                          <div className="text-xs text-muted-foreground">
-                            {PREMIUM_VARIANT_TITLES[premiumVariantSelection]}
-                          </div>
-                        ) : null}
                       </div>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -1788,46 +1698,14 @@ export default function CostingsPage() {
                         <Input
                           type="text"
                           inputMode="decimal"
-                          value={
-                            activeProduct.kind === "pillow" &&
-                            activeProduct.pillowKind === "premium" &&
-                            activeProduct.productId
-                              ? (draft[premiumPillowKey(activeProduct.productId, premiumVariantSelection)]?.compareAt ?? "")
-                              : (activeProductDraft?.compareAt ?? "")
-                          }
+                          value={activeProductDraft?.compareAt ?? ""}
                           placeholder="(optional)"
-                          onChange={(event) => {
-                            if (
-                              activeProduct.kind === "pillow" &&
-                              activeProduct.pillowKind === "premium" &&
-                              activeProduct.productId
-                            ) {
-                              handleInputChange(
-                                premiumPillowKey(activeProduct.productId, premiumVariantSelection),
-                                "compareAt",
-                                event.target.value,
-                              );
-                              return;
-                            }
-                            handleInputChange(activeProduct.key, "compareAt", event.target.value);
-                          }}
-                          onBlur={() => {
-                            if (
-                              activeProduct.kind === "pillow" &&
-                              activeProduct.pillowKind === "premium" &&
-                              activeProduct.productId
-                            ) {
-                              handleBlur(premiumPillowKey(activeProduct.productId, premiumVariantSelection), "compareAt");
-                              return;
-                            }
-                            handleBlur(activeProduct.key, "compareAt");
-                          }}
+                          onChange={(event) =>
+                            handleInputChange(activeProduct.key, "compareAt", event.target.value)
+                          }
+                          onBlur={() => handleBlur(activeProduct.key, "compareAt")}
                           className="pl-6"
-                          aria-label={`Compare-at for ${activeProduct.label}${
-                            activeProduct.kind === "pillow" && activeProduct.pillowKind === "premium"
-                              ? ` (${PREMIUM_VARIANT_TITLES[premiumVariantSelection]})`
-                              : ""
-                          }`}
+                          aria-label={`Compare-at for ${activeProduct.label}`}
                         />
                       </div>
                     </div>

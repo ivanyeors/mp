@@ -216,10 +216,10 @@
     "semantic_hash": "0241f518543e2d4dad8896e5beee49ef"
   },
   "lib/build-assembly/index.ts": {
-    "mtime": 1783175834.0906818,
-    "seen": 1789174039.650045,
-    "ast_hash": "52a913cdf94539501f28db10711a6b75",
-    "semantic_hash": "52a913cdf94539501f28db10711a6b75"
+    "mtime": 1789214792.081425,
+    "seen": 1789214924.178954,
+    "ast_hash": "0357d37ebb48a4348add10ae21f72e65",
+    "semantic_hash": ""
   },
   "lib/configurator/height-draft.check.ts": {
     "mtime": 1784463037.122271,
@@ -1104,9 +1104,9 @@
     "semantic_hash": "19fc3d894478eeec59bdc18fcaa9c610"
   },
   "lib/results/__tests__/composed-sellable.test.ts": {
-    "mtime": 1789214426.8380919,
-    "seen": 1789214493.435963,
-    "ast_hash": "ca40568ae82552de49e5053c214aab56",
+    "mtime": 1789214830.4066675,
+    "seen": 1789214924.179169,
+    "ast_hash": "a6d30c4cf55074dd45fc54d4b2f10a6b",
     "semantic_hash": ""
   },
   "lib/results/__tests__/legacy-filling-migration.test.ts": {
@@ -2034,9 +2034,9 @@
     "semantic_hash": "d95b95365feea5a33946e4c2652b4437"
   },
   "app/[lang]/settings/costings/page.tsx": {
-    "mtime": 1788679932.1751833,
-    "seen": 1789174039.6497421,
-    "ast_hash": "7a10cdbda46554d4e3c709225789350f",
+    "mtime": 1789215066.0740304,
+    "seen": 1789215190.478771,
+    "ast_hash": "ede9c5fe01ba50bb103b093e008e52b8",
     "semantic_hash": ""
   },
   "app/[lang]/settings/costings/save/route.ts": {
@@ -9666,9 +9666,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/results/results-client.tsx": {
-    "mtime": 1789182078.7814548,
-    "seen": 1789183865.673585,
-    "ast_hash": "71e7019b138ef6f312d186dffddfabc8",
+    "mtime": 1789214715.5901349,
+    "seen": 1789214924.1786299,
+    "ast_hash": "fb0d2de3a0cc570e98b5c5cc86ea4a9b",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow-geometry.test.ts": {
@@ -10668,15 +10668,15 @@
     "semantic_hash": ""
   },
   "lib/results/__tests__/result-stage.test.ts": {
-    "mtime": 1789182078.8069708,
-    "seen": 1789183865.6740658,
-    "ast_hash": "4f11bd3b49f90f519548b6232377b1a4",
+    "mtime": 1789214790.5203497,
+    "seen": 1789214924.1791732,
+    "ast_hash": "28e41afad08af20283c559b1ac49d45f",
     "semantic_hash": ""
   },
   "lib/results/result-stage.ts": {
-    "mtime": 1789182078.8079674,
-    "seen": 1789183865.674078,
-    "ast_hash": "028b715955910a80768234c654db19dd",
+    "mtime": 1789214702.9818797,
+    "seen": 1789214924.1791859,
+    "ast_hash": "4902263e35a8408e8c61c172d9dbe40e",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/authoring.test.ts": {
@@ -10716,9 +10716,9 @@
     "semantic_hash": ""
   },
   "app/api/results/queue-counts/route.ts": {
-    "mtime": 1789021435.791328,
-    "seen": 1789174039.649836,
-    "ast_hash": "9d8d80dbc6305bfe9a1cf36f9fb61e02",
+    "mtime": 1789214781.4744184,
+    "seen": 1789214924.178705,
+    "ast_hash": "e27a9bfcc285d5bd7ce43c6c33268651",
     "semantic_hash": ""
   },
   "supabase/migrations/20260909200000_filling_placement_layers.sql": {
@@ -11049,6 +11049,18 @@
     "mtime": 1789213570.2101567,
     "seen": 1789214493.43607,
     "ast_hash": "c35937c90c7e1235aec30bdd452acadf",
+    "semantic_hash": ""
+  },
+  "lib/build-assembly/__tests__/preference-substitution.test.ts": {
+    "mtime": 1789214830.4068458,
+    "seen": 1789214924.178953,
+    "ast_hash": "3d0bd39930850a79dd6d71957897ad76",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260912100000_premium_single_msrp.sql": {
+    "mtime": 1789215121.7353885,
+    "seen": 1789215190.479535,
+    "ast_hash": "4ca4a423fc2ad519d17df13ce08b8177",
     "semantic_hash": ""
   }
 }
