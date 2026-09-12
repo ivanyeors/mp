@@ -111,6 +111,7 @@ const MUST_PRICE_THROUGH = [
   "app/api/results/[id]/route.ts",
   "lib/results/assigned-build.ts",
   "app/[lang]/mp-config/mp-config-client.tsx",
+  "lib/shop/customization-price.ts",
 ];
 const callers = grepFiles("priceComposedBuild");
 for (const f of MUST_PRICE_THROUGH) {
@@ -120,7 +121,33 @@ for (const f of MUST_PRICE_THROUGH) {
   );
 }
 
+// The shop customizer and mp-maker reach the rule through one adapter, which only
+// translates ConfigLine[] and returns priceComposedBuild's own result. Both the
+// quote the shopper sees and the amount the apply route stores must come from it,
+// or they drift again — this is the pair that quoted a basic XS Fibrecool at 258.
+const SHOP_SURFACES = [
+  "app/api/shop/customize/route.ts",
+  "components/shop/customization-steps.tsx",
+];
+const shopCallers = grepFiles("priceCustomizedBuild");
+for (const f of SHOP_SURFACES) {
+  assert.ok(
+    shopCallers.includes(f),
+    `${f} must price through priceCustomizedBuild() — it shows or charges a build total.`,
+  );
+}
+
+// The rule it replaced: `quantity above BOM x full item MSRP`, which reads a
+// substitution as an added part and double-charges for a component the Costings row
+// already includes.
+assert.deepEqual(
+  grepFiles("calculateAddonPrice"),
+  [],
+  "`calculateAddonPrice` is gone: swapping a case is not adding one. Price through " +
+    "priceCustomizedBuild(), which charges only the difference.",
+);
+
 console.log(
   `pricing-surface.check: ok — ${readers.length} price-table readers, ` +
-    `${MUST_PRICE_THROUGH.length} surfaces on the shared rule`,
+    `${MUST_PRICE_THROUGH.length + SHOP_SURFACES.length} surfaces on the shared rule`,
 );

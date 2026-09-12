@@ -1164,9 +1164,9 @@
     "semantic_hash": ""
   },
   "lib/results/composed-sellable.ts": {
-    "mtime": 1789220833.820272,
-    "seen": 1789220883.919903,
-    "ast_hash": "e39890547194333cd8df58c81439cea6",
+    "mtime": 1789224876.4913151,
+    "seen": 1789225267.677969,
+    "ast_hash": "296bc7898b1a53d62fc90b9d6714f8c2",
     "semantic_hash": ""
   },
   "lib/results/instore-ballpark.ts": {
@@ -1314,9 +1314,9 @@
     "semantic_hash": "e29b63dbe4dfba0478a49d202ff8f239"
   },
   "lib/shop/__tests__/customization-inventory.test.ts": {
-    "mtime": 1788679932.2250037,
-    "seen": 1789174039.650261,
-    "ast_hash": "28b2384867006d77e36a06f49d72da96",
+    "mtime": 1789224939.2474344,
+    "seen": 1789225267.678019,
+    "ast_hash": "aa267efbbf8432d569e937052a8fc53b",
     "semantic_hash": ""
   },
   "lib/shop/__tests__/price-sync.test.ts": {
@@ -1356,9 +1356,9 @@
     "semantic_hash": "d08d6aba9a1455fcf5739f2f46a1cec1"
   },
   "lib/shop/customization-inventory.ts": {
-    "mtime": 1784452744.27037,
-    "seen": 1789174039.650264,
-    "ast_hash": "1d9427169e07814c4fe7c1f1359f7292",
+    "mtime": 1789224979.448903,
+    "seen": 1789225267.678024,
+    "ast_hash": "f07f55d80788c6a45438ed9992dbba6c",
     "semantic_hash": ""
   },
   "lib/shop/customization-llm.ts": {
@@ -1548,9 +1548,9 @@
     "semantic_hash": ""
   },
   "lib/stripe/__tests__/checkout.test.ts": {
-    "mtime": 1788679932.2259893,
-    "seen": 1789174039.6502972,
-    "ast_hash": "603f9806d5f5a714c7781fa4e9747fb0",
+    "mtime": 1789225043.688117,
+    "seen": 1789225267.678066,
+    "ast_hash": "f5cd3313aa8822fed0af1c2a0953b65c",
     "semantic_hash": ""
   },
   "lib/stripe/__tests__/reconcile.test.ts": {
@@ -1572,10 +1572,10 @@
     "semantic_hash": "a57608003ee49d6074bc187b8e5d0777"
   },
   "lib/stripe/checkout.ts": {
-    "mtime": 1783156905.0259607,
-    "seen": 1789174039.650298,
-    "ast_hash": "486f2475b13763ebac9b1e0ab40f9d1f",
-    "semantic_hash": "486f2475b13763ebac9b1e0ab40f9d1f"
+    "mtime": 1789224916.118305,
+    "seen": 1789225267.6780689,
+    "ast_hash": "6bb5efb24877664401ea325cb9c5eafa",
+    "semantic_hash": ""
   },
   "lib/stripe/client.ts": {
     "mtime": 1783156905.026415,
@@ -2856,9 +2856,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/customize/route.ts": {
-    "mtime": 1789219174.3624055,
-    "seen": 1789220204.1734972,
-    "ast_hash": "ee8ab7064abf0b6e8468768bca925e8c",
+    "mtime": 1789224861.0768125,
+    "seen": 1789225267.6774871,
+    "ast_hash": "ed8dda1711878ed94023efc349cb5141",
     "semantic_hash": ""
   },
   "app/api/shop/exchange-rates/route.ts": {
@@ -4452,9 +4452,9 @@
     "semantic_hash": ""
   },
   "components/shop/customization-steps.tsx": {
-    "mtime": 1789220379.093694,
-    "seen": 1789220883.91961,
-    "ast_hash": "f3cdd4bd463869960987eba08bac3b13",
+    "mtime": 1789225199.8789086,
+    "seen": 1789225267.67761,
+    "ast_hash": "34addeaeff6c4cf2620d63f156fe33db",
     "semantic_hash": ""
   },
   "components/shop/pillow-customizer.tsx": {
@@ -11148,9 +11148,9 @@
     "semantic_hash": ""
   },
   "lib/pricing/pricing-surface.check.ts": {
-    "mtime": 1789220676.2966068,
-    "seen": 1789220883.919877,
-    "ast_hash": "c81cb3d8ba51e1ead1ff94cdb308322a",
+    "mtime": 1789224952.153461,
+    "seen": 1789225267.6779351,
+    "ast_hash": "4f067f2f6b9dffcbe4fcae69d71c2ef1",
     "semantic_hash": ""
   },
   "scripts/costings-sync-prices.ts": {
@@ -11241,6 +11241,18 @@
     "mtime": 1789222864.1719382,
     "seen": 1789222925.439435,
     "ast_hash": "14075826dbbdad0c68facc8767c1ce05",
+    "semantic_hash": ""
+  },
+  "lib/shop/__tests__/customization-price.test.ts": {
+    "mtime": 1789225011.5518968,
+    "seen": 1789225267.67802,
+    "ast_hash": "fffe2b6619dda932f4bc62566771639a",
+    "semantic_hash": ""
+  },
+  "lib/shop/customization-price.ts": {
+    "mtime": 1789224824.4834044,
+    "seen": 1789225267.678026,
+    "ast_hash": "6c3f766cf09326784647fa950396d671",
     "semantic_hash": ""
   }
 }

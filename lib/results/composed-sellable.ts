@@ -279,16 +279,43 @@ export async function loadComposedSellable(
   }
 
   // A bolster has one price and no fabric-family split, so it prices through the
-  // same unkeyed path basic uses.
+  // same unkeyed path basic uses. Its cover and case still come from its own BOM:
+  // every bolster length ships a priced `bolster_case`, and leaving these null made
+  // the baseline of a case swap unknown — which reads as "unpriced component" and
+  // refuses the build outright.
+  const composedBom = await withCategories(admin, bomLines ?? []);
+  const bomCover = composedBom.find((l) => l.category === "cover") ?? null;
+  const bomCase = composedBom.find((l) => CASE_CATEGORIES.has(l.category)) ?? null;
+  const componentIds = [bomCover?.item_id, bomCase?.item_id].filter(
+    (id): id is number => id != null,
+  );
+  const { data: componentPrices } = componentIds.length
+    ? await admin.from("item_prices").select("item_id, msrp").in("item_id", componentIds)
+    : { data: [] as Array<{ item_id: number; msrp: number | null }> };
+  const componentMsrp = new Map<number, number>();
+  for (const p of componentPrices ?? []) {
+    if (p.msrp != null) componentMsrp.set(Number(p.item_id), Number(p.msrp));
+  }
+  const asComponent = (line: ComposedBomLine | null): PricedComponent | null =>
+    line == null
+      ? null
+      : {
+          item_id: line.item_id,
+          msrp: componentMsrp.get(line.item_id) ?? null,
+          quantity: line.quantity,
+        };
+
   return {
     ok: true,
     sellable: {
-      bomLines: await withCategories(admin, bomLines ?? []),
+      bomLines: composedBom,
       msrp,
       priceFault: null,
       msrpByFamily: { [UNKEYED]: msrp },
-      defaultCover: null,
-      defaultCase: null,
+      defaultCover: asComponent(bomCover),
+      defaultCase: asComponent(bomCase),
+      // No fabric families exist for bolsters, so there is no per-family baseline to
+      // derive: a swap is measured against the BOM's own case.
       caseOptions: [],
       coverOptions: [],
       currency: (productPrice?.currency as string) ?? "SGD",

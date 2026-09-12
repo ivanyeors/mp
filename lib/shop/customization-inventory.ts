@@ -527,20 +527,8 @@ export async function validateCustomizationConfig(params: {
   );
 }
 
-/**
- * Calculate the addon price from component quantity changes vs base BOM.
- */
-export function calculateAddonPrice(
-  componentQuantities: ConfigLine[],
-  baseQuantities: Map<number, number>
-): number {
-  let total = 0;
-  for (const comp of componentQuantities) {
-    const baseQty = baseQuantities.get(comp.item_id) ?? 0;
-    const extraQty = Math.max(0, comp.quantity - baseQty);
-    if (extraQty > 0) {
-      total += extraQty * comp.price_delta;
-    }
-  }
-  return total;
-}
+// The old add-on price rule lived here. It summed `quantity above BOM x price_delta`,
+// which counted a SWAP as an extra part and trusted a price the browser sent: a
+// basic XS with a Fibrecool case quoted 258 against Costings' 193. Builds price
+// through `lib/shop/customization-price.ts` now, and pricing-surface.check.ts fails
+// the build if that function reappears anywhere.

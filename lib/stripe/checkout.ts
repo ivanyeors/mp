@@ -6,12 +6,13 @@ interface CheckoutLineItem {
   variant: ProductVariant;
   quantity: number;
   /**
-   * Per-unit customization add-on price (major units, e.g. dollars). Added as a
-   * separate dynamic line item because the variant's Stripe Price is fixed and
-   * cannot carry a per-order surcharge. Omit/0 for non-customized items.
+   * Per-unit customization adjustment (major units, e.g. dollars), SIGNED: negative
+   * when the chosen build is cheaper than the variant's shelf price. Non-zero makes
+   * the line dynamic at `variant.price + addonAmount`, since the variant's Stripe
+   * Price is fixed. Omit/0 for non-customized items.
    */
   addonAmount?: number;
-  /** Display name for the add-on line item; defaults to "Customization add-on". */
+  /** Display name for a customised line item; defaults to the variant title. */
   addonLabel?: string;
 }
 
@@ -86,27 +87,36 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
 
   const currency = opts.lineItems[0]?.variant.currency.toLowerCase() ?? "sgd";
 
+  // An uncustomised unit bills against its catalog Price, which keeps the Stripe
+  // product the shopper sees on the receipt.
+  //
+  // A customised one cannot: the adjustment moves in EITHER direction — a case
+  // cheaper than the one the build ships is a genuine reduction — and Stripe has no
+  // negative line item to express that. The old shape (catalog Price + a surcharge
+  // line, `addonAmount <= 0` skipped) silently dropped every downgrade and charged
+  // the dearer build. So a customised unit is billed as one dynamic line at its
+  // composed price, which is what `order_items.unit_price` records either way.
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = opts.lineItems.map(
-    (item) => ({
-      price: item.variant.stripe_price_id!,
-      quantity: item.quantity,
-    })
+    (item) => {
+      const delta = item.addonAmount ?? 0;
+      if (delta === 0) {
+        return { price: item.variant.stripe_price_id!, quantity: item.quantity };
+      }
+      return {
+        price_data: {
+          currency,
+          unit_amount: Math.round((item.variant.price + delta) * 100),
+          // Matches the catalog Price this line stands in for, so an automatic-tax
+          // checkout treats the two identically.
+          tax_behavior: "exclusive" as const,
+          product_data: {
+            name: item.addonLabel ?? item.variant.title ?? "Custom build",
+          },
+        },
+        quantity: item.quantity,
+      };
+    }
   );
-
-  // Customization add-ons are charged as separate dynamic line items so the
-  // Stripe total matches the order total persisted in our DB. Priced per unit
-  // and multiplied by quantity, mirroring order_items.unit_price.
-  for (const item of opts.lineItems) {
-    if (!item.addonAmount || item.addonAmount <= 0) continue;
-    lineItems.push({
-      price_data: {
-        currency,
-        unit_amount: Math.round(item.addonAmount * 100),
-        product_data: { name: item.addonLabel ?? "Customization add-on" },
-      },
-      quantity: item.quantity,
-    });
-  }
 
   // Exclusive tax is rendered as a dedicated line item so the Stripe-charged
   // total matches the order total persisted in our DB. Skipped when Stripe Tax

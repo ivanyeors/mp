@@ -91,7 +91,6 @@ import {
   validateCustomizationConfig,
   validateBolsterConfig,
   getBolsterBaseQuantities,
-  calculateAddonPrice,
 } from "@/lib/shop/customization-inventory";
 
 const coverLine: ConfigLine = {
@@ -267,18 +266,6 @@ describe("getBolsterBaseQuantities", () => {
     expect(quantities.get(11)).toBe(1);
     expect(quantities.get(12)).toBe(2);
     expect(quantities.has(99)).toBe(false);
-  });
-});
-
-describe("calculateAddonPrice", () => {
-  it("charges only for quantities above the base BOM", () => {
-    const base = new Map<number, number>([[101, 1]]);
-    const price = calculateAddonPrice(
-      [{ ...coverLine, quantity: 3, price_delta: 5 }],
-      base,
-    );
-
-    expect(price).toBe(10);
   });
 });
 
