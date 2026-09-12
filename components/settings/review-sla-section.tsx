@@ -23,6 +23,7 @@ type SlaSettingsForm = {
   remindEmail: boolean;
   opsEmail: string;
   authExpiryBufferHours: number;
+  authHoldEnabled: boolean;
 };
 
 export function ReviewSlaSection() {
@@ -34,6 +35,7 @@ export function ReviewSlaSection() {
     remindEmail: true,
     opsEmail: "",
     authExpiryBufferHours: 48,
+    authHoldEnabled: true,
   });
   const [slaLoading, setSlaLoading] = useState(true);
   const [slaSaving, setSlaSaving] = useState(false);
@@ -55,6 +57,7 @@ export function ReviewSlaSection() {
           remindEmail: s.remindEmail ?? true,
           opsEmail: s.opsEmail ?? "",
           authExpiryBufferHours: s.authExpiryBufferHours ?? 48,
+          authHoldEnabled: s.authHoldEnabled ?? true,
         });
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load SLA settings");
@@ -88,6 +91,7 @@ export function ReviewSlaSection() {
         remindEmail: s.remindEmail ?? sla.remindEmail,
         opsEmail: s.opsEmail ?? "",
         authExpiryBufferHours: s.authExpiryBufferHours ?? sla.authExpiryBufferHours,
+        authHoldEnabled: s.authHoldEnabled ?? sla.authHoldEnabled,
       });
       toast.success("SLA settings saved");
     } catch (e) {
@@ -193,6 +197,21 @@ export function ReviewSlaSection() {
                 />
                 <Label htmlFor="sla-email">Email reminders</Label>
               </div>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3 border-t pt-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="sla-auth-hold"
+                  checked={sla.authHoldEnabled}
+                  onCheckedChange={(v) => setSla((p) => ({ ...p, authHoldEnabled: v }))}
+                />
+                <Label htmlFor="sla-auth-hold">Take a card hold on online submits</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {sla.authHoldEnabled
+                  ? "Shoppers authorize the quoted amount at submit; staff capture it once the build is assigned."
+                  : "Off — shoppers submit with no card. The build still enters the queue and is quoted, and the full amount is collected later from the Result page."}
+              </p>
             </div>
             <div className="sm:col-span-2 lg:col-span-3">
               <Button type="button" size="sm" disabled={slaSaving} onClick={() => void saveSla()}>

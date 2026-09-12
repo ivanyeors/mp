@@ -33,6 +33,8 @@ import {
 import { getPartnerByReferralCode } from "@/lib/referrals";
 import { VISITOR_COOKIE, parseVisitorId } from "@/lib/analytics/journey/identity";
 import { preferenceCategoryAllowed } from "@/lib/configurator/preference-policy";
+import { getSiteSettings } from "@/lib/site-settings";
+import { SLA_SETTING_KEYS, parseSlaSettings } from "@/lib/sla-reminders";
 import {
   loadPreOrderTriggerAtHold,
   preOrderFlagForResult,
@@ -473,6 +475,20 @@ export async function POST(req: Request) {
     tax: tax.taxAmount,
   });
 
+  // Whether to take a card now. Two independent reasons not to:
+  //   - `deferred` — an Assisted customisation, authorised by the stored row above.
+  //   - the admin kill switch — holds turned off for ordinary online submits.
+  // They differ in ONE respect and it matters: `deferred` also stamps
+  // `source = 'staff_assisted'`, which the switch must NOT, or every online
+  // submit made while holds are off would look like it came through an Assist
+  // link. `resultStage` keys the queue off `authorized_amount` rather than
+  // `source` precisely so both land in `needs_assign` instead of reading as an
+  // abandoned checkout.
+  const { authHoldEnabled } = parseSlaSettings(
+    await getSiteSettings([...SLA_SETTING_KEYS]),
+  );
+  const takeCard = !input.deferred && authHoldEnabled;
+
   const currency = composed.sellable.currency;
   const accessToken = randomUUID();
   const resultId = input.responseId ?? randomUUID();
@@ -610,7 +626,7 @@ export async function POST(req: Request) {
     // amount. The price is still computed above — an unpriced Composed sellable
     // must refuse here exactly as on the hold path, or Staff inherit a
     // submission they cannot quote.
-    authorized_amount: input.deferred ? null : priced.total,
+    authorized_amount: takeCard ? priced.total : null,
     currency,
     payment_intent_id: null as string | null,
     status: "held",
@@ -681,7 +697,7 @@ export async function POST(req: Request) {
   // Pre-order flag, token rotation and the filling snapshot are identical — this
   // is the same submit with the Stripe step removed (ADR 0016).
   let checkout: { sessionId: string; url: string } | null = null;
-  if (!input.deferred) {
+  if (takeCard) {
     try {
       checkout = await createHoldCheckout({
         amount: priced.total,
@@ -710,7 +726,9 @@ export async function POST(req: Request) {
       "💤 Held Result (online purchase) — review needed",
       suggestLabel,
       `Email: ${input.email}`,
-      `Authorized: ${currency} ${priced.total.toFixed(2)}`,
+      takeCard
+        ? `Authorized: ${currency} ${priced.total.toFixed(2)}`
+        : `No card taken — quoted ${currency} ${priced.total.toFixed(2)}`,
       "",
       `Platform: ${platformLink}`,
     ].join("\n"),
@@ -725,7 +743,7 @@ export async function POST(req: Request) {
     label: suggestLabel,
     // Null swaps the email to its no-card voice: no authorized-amount panel, and
     // a promise of the price by email once Staff finish the build.
-    amount: input.deferred ? null : priced.total,
+    amount: takeCard ? priced.total : null,
     currency,
   });
 
@@ -735,7 +753,7 @@ export async function POST(req: Request) {
     ok: true,
     resultId,
     accessToken,
-    authorizedAmount: input.deferred ? null : priced.total,
+    authorizedAmount: takeCard ? priced.total : null,
     currency,
     // Deferred submits have no Checkout — the client goes straight to the status
     // page, which is where the customer waits for Staff to finish the build.

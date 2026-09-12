@@ -1609,12 +1609,12 @@ export function MpConfigClient({
       if (!res.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-      // A deferred submit has no Checkout — the customer goes straight to the
-      // status page to wait for Staff to finish the build.
-      const next = assisted ? data.statusUrl : data.checkoutUrl;
-      if (!next) {
-        throw new Error(assisted ? "Missing status URL" : "Missing checkout URL");
-      }
+      // Follow whatever the server returned rather than what this client asked
+      // for. No Checkout comes back for an Assisted submit, and none comes back
+      // when an admin has switched authorization holds off — in both cases the
+      // customer goes straight to the status page to wait for Staff.
+      const next = data.checkoutUrl ?? data.statusUrl;
+      if (!next) throw new Error("Missing checkout URL");
       window.location.href = next as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");

@@ -921,8 +921,11 @@ export function MbolsterConfigClient({
       if (!res.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
-      window.location.href = data.checkoutUrl;
+      // No Checkout comes back when an admin has switched authorization holds
+      // off; the status page is where the customer waits for Staff instead.
+      const next = data.checkoutUrl ?? data.statusUrl;
+      if (!next) throw new Error("Missing checkout URL");
+      window.location.href = next as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
       setHoldSubmitting(false);
