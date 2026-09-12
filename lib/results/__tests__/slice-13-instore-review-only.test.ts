@@ -52,6 +52,16 @@ describe("slice 13 — in-store review-only Results", () => {
     );
   });
 
+  it("never relabels an Assisted customisation as an in-store finalize", () => {
+    // The configurator hides its own no-purchase button in assisted mode, but the
+    // Admin Panel's send-to-Telegram action posts isFinal on a Draft Result too.
+    // Without this, that click rewrites source to "manual", which drops the row
+    // into measurement_residue and makes its Order be born `delivered`.
+    expect(
+      shouldCreateInstoreReviewOnly({ source: "staff_assisted", payment_intent_id: null }),
+    ).toBe(false);
+  });
+
   it("AC2/AC4: legacy ballpark suggests size×tier only — no fillings invented for sale", () => {
     const ballpark = ballparkFromMpConfigData({
       shoulderLength: "48",

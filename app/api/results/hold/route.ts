@@ -130,6 +130,11 @@ const HoldSchema = z
      * it ASSIST priority, outranking a typed code / windowed link stamp.
      */
     partnerAssistCode: z.string().trim().optional(),
+    /**
+     * Submit with no card: an Assisted customisation. Honoured only when the
+     * stored row is already `source = 'staff_assisted'` — see the guard in POST.
+     */
+    deferred: z.boolean().optional(),
     measurements: z.record(z.string(), z.unknown()).optional(),
     productType: z.enum(["pillow", "bolster"]).default("pillow"),
     suggestedSize: z.enum(["XS", "S", "M", "L", "XL"]).optional(),
@@ -232,6 +237,43 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const origin = new URL(req.url).origin;
   const productType = input.productType;
+
+  // Deferred (no-card) submit — the trust boundary of the assisted flow.
+  //
+  // A request cannot ASK to skip payment. The only thing that authorises it is
+  // the row already on disk carrying `source = 'staff_assisted'`, which the
+  // responses route wrote on create after re-resolving a real Assist link code.
+  // Without this, any caller could post `deferred: true` and drop a free build
+  // into the build queue. Checked before pricing, Stripe and every write, so a
+  // refusal costs nothing and leaves nothing behind.
+  if (input.deferred) {
+    if (!input.responseId) {
+      return NextResponse.json(
+        { error: "A deferred submit needs an existing customisation session" },
+        { status: 400 },
+      );
+    }
+    const { data: assisted, error: assistedErr } = await admin
+      .from("mp_config_responses")
+      .select("source, status")
+      .eq("id", input.responseId)
+      .maybeSingle();
+    if (assistedErr) {
+      return NextResponse.json({ error: assistedErr.message }, { status: 500 });
+    }
+    if (!assisted || assisted.source !== "staff_assisted") {
+      return NextResponse.json(
+        { error: "This customisation cannot be submitted without payment" },
+        { status: 403 },
+      );
+    }
+    if (assisted.status != null) {
+      return NextResponse.json(
+        { error: "This Result has already been submitted" },
+        { status: 409 },
+      );
+    }
+  }
 
   const phoneNormalized = normalizePhone(input.phone);
   if (!phoneNormalized) {
@@ -561,7 +603,11 @@ export async function POST(req: Request) {
     addon_lines: addonLines,
     shipping_method: shippingMethod.slug,
     shipping_address: input.shippingAddress,
-    authorized_amount: priced.total,
+    // No card was taken for an Assisted customisation, so there is no authorized
+    // amount. The price is still computed above — an unpriced Composed sellable
+    // must refuse here exactly as on the hold path, or Staff inherit a
+    // submission they cannot quote.
+    authorized_amount: input.deferred ? null : priced.total,
     currency,
     payment_intent_id: null as string | null,
     status: "held",
@@ -575,7 +621,7 @@ export async function POST(req: Request) {
     attribution_source: attribution.source,
     customer_id: customerId,
     access_token: accessToken,
-    source: "online_purchase",
+    source: input.deferred ? "staff_assisted" : "online_purchase",
     is_pre_order,
     ...(recommendation_record ? { recommendation_record } : {}),
     // Only assist holds carry snapshot columns; guest rows stay untouched (null snapshot).
@@ -627,26 +673,32 @@ export async function POST(req: Request) {
       ? `Mbolster ${input.suggestedLength} hold`
       : `Mpillow ${input.suggestedSize} ${input.suggestedTier} hold`;
 
-  let checkout: { sessionId: string; url: string };
-  try {
-    checkout = await createHoldCheckout({
-      amount: priced.total,
-      currency,
-      customerEmail: input.email,
-      resultId,
-      successUrl: `${origin}/results/${resultId}?token=${accessToken}&session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}${cancelPath}?hold_cancelled=1`,
-      description,
-      metadata: { result_id: resultId },
-      idempotencyKey: `result_hold_${resultId}`,
-    });
-  } catch (e) {
-    console.error("Hold checkout failed", e);
-    await admin.from("mp_config_responses").delete().eq("id", resultId);
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Failed to create authorization hold" },
-      { status: 500 },
-    );
+  // An Assisted customisation takes no card, so there is no Checkout to create.
+  // Everything above still ran: pricing, attribution, discovery source, the
+  // Pre-order flag, token rotation and the filling snapshot are identical — this
+  // is the same submit with the Stripe step removed (ADR 0016).
+  let checkout: { sessionId: string; url: string } | null = null;
+  if (!input.deferred) {
+    try {
+      checkout = await createHoldCheckout({
+        amount: priced.total,
+        currency,
+        customerEmail: input.email,
+        resultId,
+        successUrl: `${origin}/results/${resultId}?token=${accessToken}&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${origin}${cancelPath}?hold_cancelled=1`,
+        description,
+        metadata: { result_id: resultId },
+        idempotencyKey: `result_hold_${resultId}`,
+      });
+    } catch (e) {
+      console.error("Hold checkout failed", e);
+      await admin.from("mp_config_responses").delete().eq("id", resultId);
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Failed to create authorization hold" },
+        { status: 500 },
+      );
+    }
   }
 
   const platformLink = `${origin}/settings/results/${resultId}`;
@@ -661,10 +713,6 @@ export async function POST(req: Request) {
     ].join("\n"),
   );
 
-  // ponytail: slice 04 built the no-card voice of this email — pass
-  // `amount: null` and renderResultHeldEmail drops the authorized-amount panel
-  // and promises a price by email instead. There is no deferred (no-card)
-  // submit branch here yet; slice 03 owns building it and wiring this call.
   const emailStatus = await sendHeldEmail({
     to: input.email,
     resultId,
@@ -672,17 +720,24 @@ export async function POST(req: Request) {
     origin,
     productType,
     label: suggestLabel,
-    amount: priced.total,
+    // Null swaps the email to its no-card voice: no authorized-amount panel, and
+    // a promise of the price by email once Staff finish the build.
+    amount: input.deferred ? null : priced.total,
     currency,
   });
+
+  const statusPath = `/results/${resultId}?token=${accessToken}`;
 
   return NextResponse.json({
     ok: true,
     resultId,
     accessToken,
-    authorizedAmount: priced.total,
+    authorizedAmount: input.deferred ? null : priced.total,
     currency,
-    checkoutUrl: checkout.url,
+    // Deferred submits have no Checkout — the client goes straight to the status
+    // page, which is where the customer waits for Staff to finish the build.
+    checkoutUrl: checkout?.url ?? null,
+    statusUrl: `${origin}${statusPath}`,
     telegramStatus,
     emailStatus,
   });

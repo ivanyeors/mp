@@ -19,6 +19,13 @@ export function shouldCreateInstoreReviewOnly(
 ): boolean {
   if (existing?.payment_intent_id) return false;
   if (existing?.source === "online_purchase") return false;
+  // An Assisted customisation already has a Source that authorises its no-card
+  // submit. Treating it as an in-store finalize would overwrite that with
+  // "manual" — dropping it into measurement_residue and, later, making its Order
+  // be born `delivered`. The configurator hides its own no-purchase button in
+  // assisted mode, but the Admin Panel's send-to-Telegram action posts isFinal
+  // too, so the guard belongs here where every caller passes.
+  if (existing?.source === "staff_assisted") return false;
   if (existing?.status === "assigned" || existing?.status === "captured") return false;
   return true;
 }

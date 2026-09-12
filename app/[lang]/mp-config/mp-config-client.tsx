@@ -339,6 +339,11 @@ export function MpConfigClient({
     usesBolster: "",
   });
 
+  /**
+   * An Assist link resolved server-side. Governs the preview's call to action and
+   * nothing else — it is NOT a Staff session and must never gate staff chrome.
+   */
+  const assisted = Boolean(assistCode);
   const [responseId, setResponseId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
@@ -1557,6 +1562,10 @@ export function MpConfigClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           responseId: responseId ?? undefined,
+          // Assisted customisation: no card. The server honours this only if the
+          // row it already stored is `source = 'staff_assisted'`, so the flag is
+          // a request, not a grant.
+          ...(assisted ? { deferred: true } : {}),
           email: holdEmail.trim(),
           phone: holdPhone.trim(),
           discoverySource,
@@ -1600,8 +1609,13 @@ export function MpConfigClient({
       if (!res.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
-      window.location.href = data.checkoutUrl;
+      // A deferred submit has no Checkout — the customer goes straight to the
+      // status page to wait for Staff to finish the build.
+      const next = assisted ? data.statusUrl : data.checkoutUrl;
+      if (!next) {
+        throw new Error(assisted ? "Missing status URL" : "Missing checkout URL");
+      }
+      window.location.href = next as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
       setHoldSubmitting(false);
@@ -1771,7 +1785,9 @@ export function MpConfigClient({
           composedBuildable: shopRecommendation.composed_buildable ?? 0,
         }).isPreOrder
       : false;
-    const holdCta = holdSubmitting ? "Redirecting…" : holdCtaLabel(preOrder);
+    const holdCta = holdSubmitting
+      ? "Redirecting…"
+      : holdCtaLabel(preOrder, assisted);
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
@@ -2203,6 +2219,14 @@ export function MpConfigClient({
                   </div>
                 </div>
 
+                {/*
+                  Not rendered for an Assisted customisation: "Send to our build
+                  team" already IS the no-purchase submit there, and this control
+                  would write a second, conflicting one. The data hazard it used
+                  to carry is fixed at the source in
+                  shouldCreateInstoreReviewOnly() — see lib/results/instore-finalize.
+                */}
+                {!assisted && (
                 <div className="text-center">
                   <Button
                     variant="ghost"
@@ -2268,6 +2292,7 @@ export function MpConfigClient({
                     Save without purchasing
                   </Button>
                 </div>
+                )}
               </div>
 
               {waitingCopy ? (
