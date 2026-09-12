@@ -36,7 +36,8 @@ const ProductPayloadSchema = z
     key: z.string().min(1),
     kind: z.enum(["pillow", "bolster"]),
     productId: z.number().int().positive().optional(),
-    variant: z.enum(["short", "medium", "long"]).optional(),
+    // Bolster length, or a premium pillow's case fabric family.
+    variant: z.enum(["short", "medium", "long", "linen", "fibrecool"]).optional(),
     msrpCents: z.number().int().min(0).nullable(),
     compareAtCents: z.number().int().min(0).nullable().optional(),
   })
@@ -49,19 +50,23 @@ const ProductPayloadSchema = z
           message: "productId is required for pillow products",
         });
       }
-      if (value.variant !== undefined) {
+      // Premium is priced per case fabric family; basic carries one unkeyed row.
+      if (value.variant !== undefined && value.variant !== "linen" && value.variant !== "fibrecool") {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["variant"],
-          message: "variant must be omitted for pillow products",
+          message: "a pillow variant must be a case fabric family (linen | fibrecool)",
         });
       }
     } else if (value.kind === "bolster") {
-      if (value.variant === undefined) {
+      // Widening the enum for pillow families also let a fabric name reach a bolster,
+      // where the DB CHECK only accepts a length. Rejected here so the failure is a
+      // 400 naming the field rather than a constraint violation mid-transaction.
+      if (value.variant !== "short" && value.variant !== "medium" && value.variant !== "long") {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["variant"],
-          message: "variant is required for bolster products",
+          message: "a bolster variant must be a length (short | medium | long)",
         });
       }
       if (value.productId !== undefined) {
@@ -273,7 +278,8 @@ export async function POST(req: Request) {
           key: row.key,
           kind: row.kind,
           product_id: row.kind === "pillow" ? row.productId! : null,
-          variant: row.kind === "bolster" ? row.variant! : null,
+          // Pillows: null for basic's single row, the fabric family for premium.
+          variant: row.variant ?? null,
           msrp: toDecimalString(row.msrpCents),
           compare_at_price: toDecimalString(row.compareAtCents ?? null),
           currency: "SGD",

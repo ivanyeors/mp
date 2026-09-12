@@ -31,8 +31,9 @@ const PREMIUM_DEFAULT_CASE: Record<string, "linen" | "fibrecool"> = {
   XS: "fibrecool", S: "linen", M: "fibrecool", L: "linen", XL: "linen",
 };
 
-const satin = (size: keyof typeof COVER_MSRP): PricedComponent => ({
-  item_id: 1, msrp: COVER_MSRP[size],
+/** Every premium BOM ships TWO covers (prod, verified); basic ships one. */
+const satin = (size: keyof typeof COVER_MSRP, quantity = 2): PricedComponent => ({
+  item_id: 1, msrp: COVER_MSRP[size], quantity,
 });
 const batik = (): PricedComponent => ({ item_id: 29, msrp: 33 });
 
@@ -54,7 +55,7 @@ function premiumInput(size: string, chosen: "linen" | "fibrecool" | null, cover?
   return {
     msrpByFamily: byFamily,
     defaultCover: satin(size as keyof typeof COVER_MSRP),
-    defaultCase,
+    defaultCase: { ...defaultCase, quantity: 1 },
     caseOptions: cases,
     chosenCover: cover ?? null,
     chosenCase: chosen == null ? null : cases.find((c) => c.family === chosen)!,
@@ -99,9 +100,17 @@ describe("priceComposedBuild — the default build costs the shelf price", () =>
 });
 
 describe("priceComposedBuild — only what differs moves the price", () => {
-  it("a dearer cover adds its difference", () => {
+  it("a dearer cover adds its difference ONCE PER COVER THE BOM SHIPS", () => {
+    // Premium ships two covers. Charging one cover's difference undercharged by 8
+    // here, and by up to 8-ish on every size — the same substitution that shipped
+    // one cover for a two-cover product.
     const r = priceComposedBuild(premiumInput("XS", "linen", batik()));
-    expect(r).toMatchObject({ ok: true, coverDelta: 8, subtotal: 348 });
+    expect(r).toMatchObject({ ok: true, coverDelta: 16, subtotal: 356 });
+  });
+
+  it("choosing the cover the BOM already ships changes nothing", () => {
+    const r = priceComposedBuild(premiumInput("XS", "linen", satin("XS")));
+    expect(r).toMatchObject({ ok: true, coverDelta: 0, subtotal: 340 });
   });
 
   it("swapping between two cases of the same family changes nothing", () => {
@@ -125,8 +134,8 @@ describe("priceComposedBuild — basic and bolster reach the same answer unkeyed
   const basicXsCases = casesFor("XS");
   const basicXs = {
     msrpByFamily: { [UNKEYED]: 170 },
-    defaultCover: satin("XS"),
-    defaultCase: basicXsCases[0], // Deep Blue Linen, 65
+    defaultCover: satin("XS", 1),
+    defaultCase: { ...basicXsCases[0], quantity: 1 }, // Deep Blue Linen, 65
     caseOptions: basicXsCases,
     chosenCover: null,
     chosenCase: null,

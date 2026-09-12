@@ -62,7 +62,8 @@ export interface RecommendationResponseData {
     default_case: PricedComponent | null;
     case_options: PricedComponent[];
     cover_options: PricedComponent[];
-    shelf_price: number;
+    /** Null when the default build cannot be priced. */
+    shelf_price: number | null;
   } | null;
   components: {
     covers: ComponentOption[];

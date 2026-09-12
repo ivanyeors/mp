@@ -277,7 +277,7 @@ export async function POST(
 
   const [{ data: items }, { data: balances }, { data: itemPrices }] = await Promise.all([
     allItemIds.length
-      ? admin.from("items").select("id, name, subtype, category").in("id", allItemIds)
+      ? admin.from("items").select("id, name, subtype, category, price_family").in("id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ id: number; name: string; subtype: string | null; category: string }> }),
     allItemIds.length
       ? admin.from("inventory_balances").select("item_id, on_hand").in("item_id", allItemIds)
@@ -334,11 +334,13 @@ export async function POST(
   // Final amount, always. A Result with no Authorization hold still has a
   // price — the whole total, owed by Balance payment — and `authorized` falls
   // out null, which is what tells the email which voice to use.
-  const { chosenCover, chosenCase } = resolvePreferences(
-    preferenceLines,
-    composed.sellable.caseOptions,
-    msrpByItem,
+  const familyByItem = new Map<number, string | null>(
+    (items ?? []).map((i) => [
+      i.id as number,
+      (i as { price_family?: string | null }).price_family ?? null,
+    ]),
   );
+  const { chosenCover, chosenCase } = resolvePreferences(preferenceLines, msrpByItem, familyByItem);
   const goods = priceComposedBuild({
     msrpByFamily: composed.sellable.msrpByFamily,
     defaultCover: composed.sellable.defaultCover,

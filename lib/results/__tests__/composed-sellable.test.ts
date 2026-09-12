@@ -90,6 +90,7 @@ describe("loadComposedSellable — one row per case fabric family", () => {
       eq: self,
       in: self,
       not: self,
+      or: self,
       maybeSingle: async () => ({
         data: Array.isArray(data) ? ((data as unknown[])[0] ?? null) : data,
         error: null,
@@ -102,6 +103,7 @@ describe("loadComposedSellable — one row per case fabric family", () => {
   /** Premium M: BOM ships the Fibrecool case (item 53, MSRP 104). */
   const FIBRECOOL_M = { id: 53, category: "pillow_case", price_family: "fibrecool", size: "M" };
   const LINEN_M = { id: 44, category: "pillow_case", price_family: "linen", size: "M" };
+  const COVER_M = { id: 3, category: "cover", price_family: null, size: "M" };
 
   function stub(
     priceRows: Array<{ key: string; variant?: string | null; msrp: number | null; currency?: string }>,
@@ -113,7 +115,7 @@ describe("loadComposedSellable — one row per case fabric family", () => {
         if (t === "pillow_products") return table({ id: 8 });
         if (t === "bom_lines") return table([{ item_id: bomCaseId, quantity: 1 }]);
         if (t === "product_prices") return table(priceRows);
-        if (t === "items") return table([FIBRECOOL_M, LINEN_M]);
+        if (t === "items") return table([FIBRECOOL_M, LINEN_M, COVER_M]);
         if (t === "item_prices")
           return table([
             { item_id: 53, msrp: 104 },
@@ -191,13 +193,21 @@ describe("loadComposedSellable — one row per case fabric family", () => {
     if (res.ok) expect(res.sellable.msrp).toBe(460);
   });
 
-  it("refuses when the BOM's case family has no row at all", async () => {
+  it("reports an unpriceable shelf build WITHOUT failing the loader", async () => {
     const res = await (await load())(
       stub([{ key: "product:pillow:8:linen", variant: "linen", msrp: 430 }]),
       key,
     );
     // BOM ships Fibrecool; only a linen row exists and there is no unkeyed fallback.
-    expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.code).toBe("no_price");
+    // The loader still succeeds: `assign-prep` and the admin assign screen want only
+    // `bomLines`, and one unpriceable default used to take both down with a 500.
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.sellable.msrp).toBeNull();
+      expect(res.sellable.priceFault?.code).toBe("no_price");
+      expect(res.sellable.bomLines.length).toBeGreaterThan(0);
+      // The family rows are still handed over, so a shopper CHOOSING linen prices.
+      expect(res.sellable.msrpByFamily).toEqual({ linen: 430 });
+    }
   });
 });

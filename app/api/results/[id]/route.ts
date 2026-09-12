@@ -94,7 +94,7 @@ async function buildPublicSummary(row: {
       ]),
     ];
     const { data: items } = allIds.length
-      ? await admin.from("items").select("id, name, subtype").in("id", allIds)
+      ? await admin.from("items").select("id, name, subtype, price_family").in("id", allIds)
       : { data: [] as Array<{ id: number; name: string; subtype: string | null }> };
     const nameByItem = new Map(
       (items ?? []).map((i) => [i.id as number, itemLabel(i.name, i.subtype)]),
@@ -151,11 +151,13 @@ async function buildPublicSummary(row: {
             .filter((p) => p.msrp != null)
             .map((p) => [p.item_id as number, Number(p.msrp)]),
         );
-        const { chosenCover, chosenCase } = resolvePreferences(
-          preferenceLines,
-          composed.sellable.caseOptions,
-          msrpByItem,
-        );
+      const familyByItem = new Map<number, string | null>(
+        (items ?? []).map((i) => [
+          i.id as number,
+          (i as { price_family?: string | null }).price_family ?? null,
+        ]),
+      );
+        const { chosenCover, chosenCase } = resolvePreferences(preferenceLines, msrpByItem, familyByItem);
         const goods = priceComposedBuild({
           msrpByFamily: composed.sellable.msrpByFamily,
           defaultCover: composed.sellable.defaultCover,

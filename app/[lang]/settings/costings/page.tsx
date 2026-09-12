@@ -83,6 +83,8 @@ type ProductRow = {
   productId?: number;
   pillowKind?: PillowKind;
   variant?: BolsterVariant;
+  /** Case fabric family this price row is for — premium pillows only. */
+  premiumVariant?: PremiumVariant;
   costCents: number | null;
   msrpCents: number | null;
   components: ProductComponent[];
@@ -96,7 +98,8 @@ type ProductSaveRow = {
   key: string;
   kind: "pillow" | "bolster";
   productId?: number;
-  variant?: BolsterVariant;
+  /** Bolster length, or a premium pillow's case fabric family. */
+  variant?: BolsterVariant | PremiumVariant;
   msrpCents: number | null;
   compareAtCents?: number | null;
 };
@@ -631,52 +634,57 @@ export default function CostingsPage() {
           return a.size.localeCompare(b.size);
         })
         .forEach((product) => {
-          const key = pillowKey(product.id);
           const components = bomByProduct.get(product.id) ?? [];
           const costCents = costForComponents(components);
           const pillowKind: PillowKind = String(product.kind) === "premium" ? "premium" : "basic";
-          // One MSRP per size x tier, premium included. Premium used to store a
-          // price per fabric variant (`…:linen` / `…:fibrecool`), but the sell
-          // price does not vary by fabric: the cover and case are Customer
-          // preferences priced from their own item MSRPs on top of this base.
-          // Two rows for one product also made the Result pricing lookup
-          // ambiguous, which surfaced to shoppers as "not available for purchase".
-          const price =
-            priceByKey.get(key) ??
-            priceByProductId.get(product.id) ??
-            (pillowKind === "premium"
-              ? // Legacy: fall back to a variant row so an un-migrated catalog
-                // still shows a number to correct rather than a blank field.
-                PREMIUM_VARIANTS.map((v) => priceByKey.get(premiumPillowKey(product.id, v))).find(
-                  Boolean,
-                )
-              : undefined);
-          const msrpCents = toCents(price?.msrp ?? null);
-          const compareAtCents = toCents(price?.compare_at_price ?? null);
-          productDraft[key] = {
-            costPrice: formatFromCents(costCents),
-            msrp: formatFromCents(msrpCents),
-            compareAt: formatFromCents(compareAtCents),
-          };
-          productBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
-          productRows.push({
-            key,
-            kind: "pillow",
-            label: `${pillowKind === "premium" ? "Premium" : "Basic"} Pillow — ${product.size}`,
-            size: product.size as PillowSize,
-            productId: product.id,
-            pillowKind,
-            costCents,
-            msrpCents: pillowKind === "premium" ? null : toCents((priceByKey.get(key) ?? priceByProductId.get(product.id))?.msrp ?? null),
-            components,
-            ...(pillowKind === "premium"
-              ? {
-                  premiumComponentsByVariant: {
-                    linen: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:linen`) ?? components,
-                    fibrecool: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:fibrecool`) ?? components,
-                  },
-                }
-              : {}),
+
+          // Premium is priced PER CASE FABRIC FAMILY and so gets one editable row per
+          // family; basic gets one unkeyed row. #131 collapsed premium to a single
+          // price on the belief the fabric did not change the sell price — it does,
+          // and the two do not share a base (XS 340 vs 360 imply cores of 250 and
+          // 247). Two rows is not a special case here: each is an ordinary row with
+          // its own key, so the draft, dirty check, sheet and save need no branch.
+          const priceRows: Array<{ key: string; variant?: PremiumVariant; label: string }> =
+            pillowKind === "premium"
+              ? PREMIUM_VARIANTS.map((variant) => ({
+                  key: premiumPillowKey(product.id, variant),
+                  variant,
+                  label: `Premium Pillow — ${product.size} (${PREMIUM_VARIANT_TITLES[variant]})`,
+                }))
+              : [{ key: pillowKey(product.id), label: `Basic Pillow — ${product.size}` }];
+
+          priceRows.forEach(({ key, variant, label }) => {
+            const price =
+              priceByKey.get(key) ??
+              (pillowKind === "premium" ? undefined : priceByProductId.get(product.id));
+            const msrpCents = toCents(price?.msrp ?? null);
+            const compareAtCents = toCents(price?.compare_at_price ?? null);
+            productDraft[key] = {
+              costPrice: formatFromCents(costCents),
+              msrp: formatFromCents(msrpCents),
+              compareAt: formatFromCents(compareAtCents),
+            };
+            productBaseline[key] = { cost: costCents, msrp: msrpCents, compareAt: compareAtCents };
+            productRows.push({
+              key,
+              kind: "pillow",
+              label,
+              size: product.size as PillowSize,
+              productId: product.id,
+              pillowKind,
+              premiumVariant: variant,
+              costCents,
+              msrpCents,
+              components,
+              ...(pillowKind === "premium"
+                ? {
+                    premiumComponentsByVariant: {
+                      linen: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:linen`) ?? components,
+                      fibrecool: premiumTemplateComponentsBySizeVariant.get(`${String(product.size)}:fibrecool`) ?? components,
+                    },
+                  }
+                : {}),
+            });
           });
         });
 
@@ -1246,6 +1254,10 @@ export default function CostingsPage() {
             return [];
           }
           payload.productId = product.productId;
+          // Carried through so the row lands on `product_prices.variant` — the column
+          // the pricing loader selects on. Without it every premium save collapsed
+          // back to one unkeyed row.
+          if (product.premiumVariant) payload.variant = product.premiumVariant;
         }
         if (product.kind === "bolster") {
           if (!product.variant) {
@@ -1287,13 +1299,6 @@ export default function CostingsPage() {
             prev.map((product) => {
               const summary = byKey.get(product.key);
               if (!summary) return product;
-              // Premium pillow MSRP is stored per-variant key; ignore product-level msrpCents updates here.
-              if (product.kind === "pillow" && product.pillowKind === "premium") {
-                return {
-                  ...product,
-                  costCents: summary.costCents,
-                };
-              }
               return {
                 ...product,
                 costCents: summary.costCents,

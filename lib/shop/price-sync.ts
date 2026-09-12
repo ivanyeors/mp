@@ -114,22 +114,13 @@ export function resolveVariantCost(
 // ── DB-backed sync ─────────────────────────────────────────────────────────
 
 /**
- * Resolve MSRP + BOM cost + compare-at from costings tables for all variants of a product,
- * write price / cost_price / compare_at_price, then push to Stripe.
+ * Costings, resolved into the maps `resolveVariantPrice` consumes.
  *
- * ponytail: loads full BOM + item_prices tables (small, < 500 rows).
- * Upgrade path: filter by relevant item IDs if tables grow large.
+ * Exported so `scripts/costings-sync-prices.ts` previews exactly what the sync will
+ * write instead of hand-copying this — a copy had already drifted on compare-at and
+ * on which products it enumerated, while claiming to be "the same resolution".
  */
-export async function syncVariantPricesFromCostings(productId: string): Promise<PriceSyncResult> {
-  const admin = supabaseAdmin();
-
-  const { data: variants, error: vErr } = await admin
-    .from("product_variants")
-    .select("id, pillow_product_id, item_id, option1, price_key")
-    .eq("product_id", productId);
-
-  if (vErr || !variants?.length) return { synced: 0, unresolvable: [], stripeSync: false };
-
+export async function loadCostingsPriceMaps(admin: ReturnType<typeof supabaseAdmin>) {
   const [
     { data: productPrices },
     { data: bomLines },
@@ -151,10 +142,15 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
   const familyByItem = new Map<number, string>(
     (caseItems ?? []).map((i) => [Number(i.id), String(i.price_family)]),
   );
+  // Sorted so a BOM carrying two familied lines resolves the same way every run;
+  // `bom_lines` comes back unordered, and last-write-wins over it is the same class
+  // of nondeterminism this guard exists to remove.
   const defaultFamilyByPillow = new Map<number, string>();
-  for (const b of bomLines ?? []) {
+  for (const b of [...(bomLines ?? [])].sort((x, y) => Number(x.item_id) - Number(y.item_id))) {
     const family = familyByItem.get(Number(b.item_id));
-    if (family) defaultFamilyByPillow.set(Number(b.product_id), family);
+    if (family && !defaultFamilyByPillow.has(Number(b.product_id))) {
+      defaultFamilyByPillow.set(Number(b.product_id), family);
+    }
   }
 
   const priceByKey = new Map<string, PriceRow>();
@@ -162,19 +158,67 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
   const priceByBolsterVariant = new Map<string, PriceRow>();
   for (const p of productPrices ?? []) {
     const row: PriceRow = { msrp: p.msrp, compare_at_price: p.compare_at_price };
-    priceByKey.set(p.key, row);
+    const isNonDefaultPillowFamily =
+      p.kind === "pillow" &&
+      p.product_id != null &&
+      p.variant != null &&
+      p.variant !== (defaultFamilyByPillow.get(Number(p.product_id)) ?? null);
+
+    // `price_key` is resolved BEFORE the per-product map, so a variant pinned to a
+    // non-default family key would walk straight past the guard below and list, say,
+    // premium S at its 430 Fibrecool price while the BOM ships a 72 linen case.
+    if (!isNonDefaultPillowFamily) priceByKey.set(p.key, row);
+
     if (p.kind === "pillow" && p.product_id != null) {
-      const wanted = defaultFamilyByPillow.get(Number(p.product_id)) ?? null;
       // An unkeyed row (basic) always wins; a keyed row only when it is the default.
       // No fallback to "some other row": if the BOM's case has no family, or no row
       // matches it, the variant reports as unresolvable rather than listing a price
       // the configurator would refuse to honour.
-      if (p.variant == null || p.variant === wanted) {
-        priceByPillowProduct.set(p.product_id, row);
-      }
+      if (!isNonDefaultPillowFamily) priceByPillowProduct.set(p.product_id, row);
     }
     if (p.kind === "bolster" && p.variant) priceByBolsterVariant.set(p.variant, row);
   }
+
+  const priceByItem = new Map<number, PriceRow>();
+  for (const ip of itemPrices ?? []) {
+    const row: PriceRow = { msrp: ip.msrp, compare_at_price: ip.compare_at_price };
+    priceByItem.set(ip.item_id, row);
+    priceByKey.set(`item:${ip.item_id}`, row);
+  }
+
+  return {
+    priceByKey,
+    priceByPillowProduct,
+    priceByBolsterVariant,
+    priceByItem,
+    bomLines: bomLines ?? [],
+    bolsterLines: bolsterLines ?? [],
+    itemPrices: itemPrices ?? [],
+  };
+}
+
+/**
+ * Resolve MSRP + BOM cost + compare-at from costings tables for all variants of a product,
+ * write price / cost_price / compare_at_price, then push to Stripe.
+ *
+ * ponytail: loads full BOM + item_prices tables (small, < 500 rows).
+ * Upgrade path: filter by relevant item IDs if tables grow large.
+ */
+export async function syncVariantPricesFromCostings(productId: string): Promise<PriceSyncResult> {
+  const admin = supabaseAdmin();
+
+  const { data: variants, error: vErr } = await admin
+    .from("product_variants")
+    .select("id, pillow_product_id, item_id, option1, price_key")
+    .eq("product_id", productId);
+
+  if (vErr || !variants?.length) return { synced: 0, unresolvable: [], stripeSync: false };
+
+  const maps = await loadCostingsPriceMaps(admin);
+  const { priceByKey, priceByPillowProduct, priceByBolsterVariant, priceByItem } = maps;
+  const bomLines = maps.bomLines;
+  const bolsterLines = maps.bolsterLines;
+  const itemPrices = maps.itemPrices;
 
   const bomByPillow = new Map<number, BomLine[]>();
   for (const b of bomLines ?? []) {
@@ -190,14 +234,11 @@ export async function syncVariantPricesFromCostings(productId: string): Promise<
     bomByBolster.set(b.variant, list);
   }
 
+  // priceByItem and the `item:{id}` keys are built by loadCostingsPriceMaps; only
+  // COGS is local to this function.
   const costByItem = new Map<number, number>();
-  const priceByItem = new Map<number, PriceRow>();
   for (const ip of itemPrices ?? []) {
     if (ip.cost_price != null) costByItem.set(ip.item_id, parseFloat(String(ip.cost_price)));
-    const row: PriceRow = { msrp: ip.msrp, compare_at_price: ip.compare_at_price };
-    priceByItem.set(ip.item_id, row);
-    // price_key = 'item:{id}' resolves via the same map as product_prices keys.
-    priceByKey.set(`item:${ip.item_id}`, row);
   }
 
   let synced = 0;

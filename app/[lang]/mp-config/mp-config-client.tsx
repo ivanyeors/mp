@@ -1788,8 +1788,11 @@ export function MpConfigClient({
           addonLines: [],
         })
       : null;
-    // No usable quote → fall back to the storefront price rather than showing 0; the
-    // submit itself is guarded server-side and will refuse with the same reason.
+    // A refused quote must NOT fall back to the shelf price. That is how the preview
+    // came to show 170 while the server authorised 245: the fallback looked like a
+    // price, so nothing stopped the shopper submitting. If this build cannot be
+    // priced the CTA is blocked and the amount is withheld.
+    const quoteBlocked = pricingInputs != null && quote?.ok !== true;
     const basePrice = quote?.ok ? quote.subtotal : (shopRecommendation?.variant?.price ?? 0);
     const coverStock = preferenceStockFor(
       selectedCover,
@@ -2342,7 +2345,9 @@ export function MpConfigClient({
                 <div className="mb-3 flex justify-between text-sm">
                   <span className="text-muted-foreground">Ballpark (before shipping/tax)</span>
                   <span className="font-medium tabular-nums">
-                    {currency} {(basePrice + addonTotal).toFixed(2)}
+                    {quoteBlocked
+                      ? "Not available"
+                      : `${currency} ${(basePrice + addonTotal).toFixed(2)}`}
                   </span>
                 </div>
                 <div className="flex gap-3">
@@ -2358,6 +2363,7 @@ export function MpConfigClient({
                       holdSubmitting ||
                       shopLoading ||
                       !shopRecommendation ||
+                      quoteBlocked ||
                       flowRouteBlocksHold
                     }
                   >

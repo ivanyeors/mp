@@ -26,8 +26,14 @@ export type ComposedBomLine = {
 
 export type ComposedSellable = {
   bomLines: ComposedBomLine[];
-  /** Costings MSRP of the DEFAULT build — the shelf price, what the shop shows. */
-  msrp: number;
+  /**
+   * Costings MSRP of the DEFAULT build — the shelf price, what the shop shows.
+   * `null` when the default build cannot be priced; `priceFault` says why. NOT an
+   * error: `assign-prep` and the admin assign screen want only `bomLines`, and one
+   * unpriced BOM cover used to take both down.
+   */
+  msrp: number | null;
+  priceFault: { code: "no_price" | "unpriced_component"; error: string } | null;
   /** Costings MSRPs by `product_prices.variant`; `UNKEYED` holds a single unkeyed row. */
   msrpByFamily: Record<string, number>;
   /** Cover and case the composed BOM ships by default, priced. */
@@ -78,16 +84,29 @@ async function loadPillowComponents(
   caseOptions: PricedComponent[];
   coverOptions: PricedComponent[];
 }> {
-  const bomCoverId = bomLines.find((l) => l.category === "cover")?.item_id ?? null;
-  const bomCaseId = bomLines.find((l) => CASE_CATEGORIES.has(l.category))?.item_id ?? null;
+  const bomCover = bomLines.find((l) => l.category === "cover") ?? null;
+  const bomCase = bomLines.find((l) => CASE_CATEGORIES.has(l.category)) ?? null;
+  const bomCoverId = bomCover?.item_id ?? null;
+  const bomCaseId = bomCase?.item_id ?? null;
 
-  const { data: optionItems } = await admin
-    .from("items")
-    .select("id, category, price_family")
-    .in("category", ["pillow_case", "cover"])
-    .eq("size", size)
-    .eq("is_active", true);
-  const caseItems = (optionItems ?? []).filter((i) => i.category === "pillow_case");
+  // Must match what the shopper is actually offered — `getPillowComponents` keeps an
+  // item whose size matches OR is null, and still accepts the legacy `case` category.
+  // A narrower set here meant a cover or case the picker showed was absent from the
+  // pricing inputs, so the preview refused (and silently fell back to the shelf price)
+  // while the server priced it from its real MSRP. Shown 170, authorised 245.
+  // `.or()` takes a raw PostgREST filter string, so `size` is interpolated into a
+  // query language. It arrives from a stored column rather than a request body, but
+  // that is a property of today's callers, not of this function.
+  const safeSize = /^[A-Za-z0-9_-]{1,16}$/.test(size) ? size : null;
+  const { data: optionItems } = safeSize
+    ? await admin
+        .from("items")
+        .select("id, category, price_family, size")
+        .in("category", ["pillow_case", "case", "cover"])
+        .or(`size.eq.${safeSize},size.is.null`)
+        .eq("is_active", true)
+    : { data: [] as Array<{ id: number; category: string; price_family: string | null; size: string | null }> };
+  const caseItems = (optionItems ?? []).filter((i) => CASE_CATEGORIES.has(String(i.category)));
   const coverItems = (optionItems ?? []).filter((i) => i.category === "cover");
 
   const ids = [
@@ -122,7 +141,11 @@ async function loadPillowComponents(
     defaultCover:
       bomCoverId == null
         ? null
-        : { item_id: bomCoverId, msrp: msrpByItem.get(bomCoverId) ?? null },
+        : {
+            item_id: bomCoverId,
+            msrp: msrpByItem.get(bomCoverId) ?? null,
+            quantity: bomCover?.quantity ?? 1,
+          },
     defaultCase:
       bomCaseId == null
         ? null
@@ -130,6 +153,7 @@ async function loadPillowComponents(
             item_id: bomCaseId,
             msrp: msrpByItem.get(bomCaseId) ?? null,
             family: familyByItem.get(bomCaseId) ?? null,
+            quantity: bomCase?.quantity ?? 1,
           },
     caseOptions,
     coverOptions,
@@ -217,15 +241,12 @@ export async function loadComposedSellable(
       chosenCase: null,
       addonLines: [],
     });
-    if (!shelf.ok) {
-      return { ok: false, code: shelf.code, error: shelf.error };
-    }
-
     return {
       ok: true,
       sellable: {
         bomLines: composedBom,
-        msrp: shelf.subtotal,
+        msrp: shelf.ok ? shelf.subtotal : null,
+        priceFault: shelf.ok ? null : { code: shelf.code, error: shelf.error },
         msrpByFamily,
         defaultCover: components.defaultCover,
         defaultCase: components.defaultCase,
@@ -264,6 +285,7 @@ export async function loadComposedSellable(
     sellable: {
       bomLines: await withCategories(admin, bomLines ?? []),
       msrp,
+      priceFault: null,
       msrpByFamily: { [UNKEYED]: msrp },
       defaultCover: null,
       defaultCase: null,

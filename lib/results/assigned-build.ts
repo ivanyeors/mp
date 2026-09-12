@@ -130,7 +130,7 @@ export async function loadAssignedBuild(
 
   const [{ data: items }, { data: balances }, { data: itemPrices }] = await Promise.all([
     allItemIds.length
-      ? admin.from("items").select("id, name, subtype, category").in("id", allItemIds)
+      ? admin.from("items").select("id, name, subtype, category, price_family").in("id", allItemIds)
       : Promise.resolve({
           data: [] as Array<{
             id: number;
@@ -187,11 +187,13 @@ export async function loadAssignedBuild(
 
   // One pricing rule, shared with the hold quote, the status page and the preview:
   // the Costings row for the chosen case family, moved only by what differs from it.
-  const { chosenCover, chosenCase } = resolvePreferences(
-    preferenceLines,
-    composed.sellable.caseOptions,
-    msrpByItem,
+  const familyByItem = new Map<number, string | null>(
+    (items ?? []).map((i) => [
+      i.id as number,
+      (i as { price_family?: string | null }).price_family ?? null,
+    ]),
   );
+  const { chosenCover, chosenCase } = resolvePreferences(preferenceLines, msrpByItem, familyByItem);
   const goods = priceComposedBuild({
     msrpByFamily: composed.sellable.msrpByFamily,
     defaultCover: composed.sellable.defaultCover,

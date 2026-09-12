@@ -93,6 +93,19 @@ export function assembleBuild(input: AssembleBuildInput): AssembleBuildResult {
     if (role) replacedRoles.add(role);
   }
 
+  // How many of each role the BOM ships. A preference substitutes AT THE BOM'S
+  // QUANTITY: the shopper is choosing a fabric, not how many covers ship. Every
+  // premium pillow's BOM carries TWO covers while the configurator posts
+  // `quantity: 1`, so honouring the posted number shipped one cover for a
+  // two-cover product — and, once preferences displaced the default, charged for
+  // one as well.
+  const bomQuantityByRole = new Map<"cover" | "case", number>();
+  for (const l of input.composedBomLines) {
+    if (l.category === "filling") continue;
+    const role = preferenceRoleOf(l.category);
+    if (role && !bomQuantityByRole.has(role)) bomQuantityByRole.set(role, l.quantity);
+  }
+
   // Non-filling composed BOM only — live fillings are ignored when a template is supplied.
   for (const l of input.composedBomLines) {
     if (l.category === "filling") continue;
@@ -118,9 +131,11 @@ export function assembleBuild(input: AssembleBuildInput): AssembleBuildResult {
   }
 
   for (const l of input.preferenceLines) {
+    const role = preferenceRoleOf(l.category);
+    const bomQuantity = role ? bomQuantityByRole.get(role) : undefined;
     lines.push({
       item_id: l.item_id,
-      quantity: l.quantity,
+      quantity: bomQuantity ?? l.quantity,
       role: "preference",
       category: l.category,
     });

@@ -19,23 +19,40 @@
 -- `/fibrecool/i` over a name works for today's three cases and fails silently the
 -- first time someone adds a cooling fabric under another name -- it would price as
 -- linen and undercharge by ~25. A column fails loudly instead: an unfamilied case
--- cannot be priced, and `pillow-pricing.check.ts` fails the build if a priced
--- pillow_case has no family.
+-- cannot be priced at all, and `priceComposedBuild` refuses rather than guessing.
 --
 -- Deliberately NOT reusing `items.subtype`: it feeds `itemLabel(name, subtype)` and
 -- would change copy the shopper sees.
+
+-- 0009 constrained a pillow row to `variant IS NULL`, so the historical premium
+-- prices could only ever be told apart by a suffix on `key` — which is why
+-- lib/shopify/pricing.ts and the Costings editor both parse names and keys to find
+-- them. `variant` becomes the one place that fact lives. Pillow variants are left
+-- unconstrained rather than enumerated: a new fabric is a Costings edit, not a
+-- migration, and a typo'd family simply never matches a case and is never selected.
+alter table product_prices drop constraint if exists product_prices_check;
+alter table product_prices add constraint product_prices_check check (
+  (kind = 'pillow' and product_id is not null)
+  or (kind = 'bolster' and product_id is null and variant in ('short', 'medium', 'long'))
+);
 
 alter table items add column if not exists price_family text;
 
 comment on column items.price_family is
   'Case fabric family selecting the Costings MSRP row (product_prices.variant). Pillow cases only.';
 
--- Today every pillow case is either Fibrecool or a linen. New fabrics get an
--- explicit value; they are NOT defaulted to linen, so an unpriced family surfaces.
+-- Only fabrics we actually price are tagged. An `else 'linen'` here would BE the
+-- silent default this column exists to prevent — a future cooling fabric under
+-- another name would price as linen and undercharge by ~25. Anything unmatched stays
+-- NULL, cannot be priced, and refuses loudly at `priceComposedBuild`.
 update items
-   set price_family = case when name ilike '%fibrecool%' then 'fibrecool' else 'linen' end
+   set price_family = case
+         when name ilike '%fibrecool%' then 'fibrecool'
+         when name ilike '%linen%' then 'linen'
+       end
  where category = 'pillow_case'
    and price_family is null
+   and (name ilike '%fibrecool%' or name ilike '%linen%')
    and id in (select item_id from item_prices where msrp is not null);
 
 -- Nine premium price points. Each is the full selling price of that pillow with a

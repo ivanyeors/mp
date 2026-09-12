@@ -32,6 +32,12 @@ export type PricedComponent = {
   msrp: number | null;
   /** Fabric family for a case; `null`/absent for covers. */
   family?: PriceFamily | null;
+  /**
+   * How many ship. Defaults to 1, and only the BOM default's value is used: a
+   * preference substitutes at the BOM's quantity, so a premium pillow that ships
+   * TWO covers moves by two covers' difference when the shopper swaps fabric.
+   */
+  quantity?: number;
 };
 
 export type ComposedPriceInput = {
@@ -124,15 +130,39 @@ export function priceComposedBuild(input: ComposedPriceInput): ComposedPriceResu
   // family's case; the unkeyed row was priced with the BOM's own default.
   const baseline =
     familyBase != null
-      ? baselineCaseMsrpByFamily(input.caseOptions)[wantedFamily!]
+      ? (baselineCaseMsrpByFamily(input.caseOptions)[wantedFamily!] ?? null)
       : (input.defaultCase?.msrp ?? null);
 
+  // A delta has TWO operands and both must be priced. Refusing only the chosen one
+  // made an unpriced BASELINE hand the upgrade away free: an unpriced default case
+  // with a Fibrecool chosen still charged the bare row.
+  if (chosenCase != null && baseline == null) {
+    return {
+      ok: false,
+      code: "unpriced_component",
+      error: wantedFamily
+        ? `No priced case in family "${wantedFamily}" to price this size against`
+        : `The default case (item ${input.defaultCase?.item_id ?? "?"}) has no Costings MSRP`,
+    };
+  }
+  if (cover != null && input.defaultCover != null && input.defaultCover.msrp == null) {
+    return {
+      ok: false,
+      code: "unpriced_component",
+      error: `The default cover (item ${input.defaultCover.item_id}) has no Costings MSRP`,
+    };
+  }
+
+  const caseQuantity = input.defaultCase?.quantity ?? 1;
   const caseDelta =
-    chosenCase == null || baseline == null ? 0 : (chosenCase.msrp ?? 0) - baseline;
+    chosenCase == null || baseline == null
+      ? 0
+      : ((chosenCase.msrp ?? 0) - baseline) * caseQuantity;
+  const coverQuantity = input.defaultCover?.quantity ?? 1;
   const coverDelta =
     cover == null || input.defaultCover?.msrp == null
       ? 0
-      : (cover.msrp ?? 0) - input.defaultCover.msrp;
+      : ((cover.msrp ?? 0) - input.defaultCover.msrp) * coverQuantity;
   const addons = input.addonLines.reduce((s, l) => s + (l.msrp ?? 0) * l.quantity, 0);
 
   return {
@@ -151,15 +181,16 @@ const CASE_ROLE_CATEGORIES = new Set(["case", "pillow_case", "bolster_case"]);
 /**
  * Split stored Customer preference lines into the chosen cover and case.
  *
- * The case's family is read from `caseOptions` rather than re-queried, so the family
- * that selects a price row and the family the shopper was offered are the same fact.
- * A case that is not among the options resolves with no family, which prices through
- * the unkeyed row or refuses — never silently as another family.
+ * Family and MSRP come from the caller's own `items` / `item_prices` lookup, NOT from
+ * membership of the assigned size's option list. Staff re-assigning a size (XS to S)
+ * leaves the stored case foreign to the new size's options; reading the family from
+ * that list turned a legitimate build into "This build cannot be priced yet. Check
+ * Costings" on premium, and into a delta measured against the wrong family on basic.
  */
 export function resolvePreferences(
   preferenceLines: Array<{ item_id: number; category: string }>,
-  caseOptions: PricedComponent[],
   msrpByItem: Map<number, number>,
+  familyByItem: Map<number, string | null>,
 ): { chosenCover: PricedComponent | null; chosenCase: PricedComponent | null } {
   let chosenCover: PricedComponent | null = null;
   let chosenCase: PricedComponent | null = null;
@@ -167,11 +198,10 @@ export function resolvePreferences(
     if (l.category === "cover") {
       chosenCover = { item_id: l.item_id, msrp: msrpByItem.get(l.item_id) ?? null };
     } else if (CASE_ROLE_CATEGORIES.has(l.category)) {
-      const option = caseOptions.find((c) => c.item_id === l.item_id);
       chosenCase = {
         item_id: l.item_id,
-        msrp: option?.msrp ?? msrpByItem.get(l.item_id) ?? null,
-        family: option?.family ?? null,
+        msrp: msrpByItem.get(l.item_id) ?? null,
+        family: familyByItem.get(l.item_id) ?? null,
       };
     }
   }

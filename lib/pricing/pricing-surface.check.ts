@@ -28,7 +28,7 @@ function grepFiles(pattern: string): string[] {
   try {
     const out = execFileSync(
       "grep",
-      ["-rl", pattern, "app", "lib", "components", "scripts"],
+      ["-rlE", pattern, "app", "lib", "components", "scripts"],
       { cwd: ROOT, encoding: "utf8" },
     );
     // This file names every pattern it forbids, so it always matches itself.
@@ -53,9 +53,17 @@ const PRICE_TABLE_READERS: Record<string, string> = {
   "lib/results/composed-sellable.ts": "THE loader — every money path goes through it",
   "lib/shop/price-sync.ts": "projects Costings into product_variants for the storefront",
   "lib/results/__tests__/composed-sellable.test.ts": "tests the loader",
+  "app/[lang]/settings/inventory/actions.ts": "inventory templates and sale lines; reporting",
+  "lib/shopify/pricing.ts":
+    "pushes prices to the Shopify mirror. It still derives the premium family by " +
+    "sniffing a variant TITLE (detectPremiumVariantFromTitle) rather than reading " +
+    "items.price_family — it resolves correctly against today's keys, but it is the " +
+    "last name-sniff on a money path and should move to the column.",
 };
 
-const readers = grepFiles('"product_prices"');
+// Both quote styles. Matching only the double-quoted form hid two real readers, one
+// of which pushes prices to a live Shopify storefront.
+const readers = grepFiles(`["']product_prices["']`);
 const unexpected = readers.filter((f) => !(f in PRICE_TABLE_READERS));
 assert.deepEqual(
   unexpected,

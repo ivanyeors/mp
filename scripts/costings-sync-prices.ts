@@ -16,7 +16,12 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-import { resolveVariantPrice, syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
+import {
+  loadCostingsPriceMaps,
+  resolveVariantCompareAt,
+  resolveVariantPrice,
+  syncVariantPricesFromCostings,
+} from "@/lib/shop/price-sync";
 
 const apply = process.argv.includes("--apply");
 
@@ -28,8 +33,6 @@ function requireEnv(name: string): string {
   }
   return v;
 }
-
-type Row = { msrp: number | null; compare_at_price: number | null };
 
 async function main() {
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
@@ -44,46 +47,15 @@ async function main() {
     .eq("status", "active")
     .order("slug");
 
-  // Same resolution the sync uses, run read-only first so the diff is visible before
-  // anything is written — to the DB or to Stripe.
-  const [{ data: productPrices }, { data: variants }, { data: itemPrices }, { data: bom }, { data: caseItems }] =
-    await Promise.all([
-      admin.from("product_prices").select("key, kind, product_id, variant, msrp, compare_at_price"),
-      admin
-        .from("product_variants")
-        .select("id, product_id, pillow_product_id, item_id, option1, price_key, price"),
-      admin.from("item_prices").select("item_id, msrp, compare_at_price"),
-      admin.from("bom_lines").select("product_id, item_id"),
-      admin.from("items").select("id, price_family").not("price_family", "is", null),
-    ]);
+  const { data: variants } = await admin
+    .from("product_variants")
+    .select(
+      "id, product_id, pillow_product_id, item_id, option1, price_key, price, compare_at_price",
+    );
 
-  const familyByItem = new Map<number, string>(
-    (caseItems ?? []).map((i) => [Number(i.id), String(i.price_family)]),
-  );
-  const defaultFamilyByPillow = new Map<number, string>();
-  for (const b of bom ?? []) {
-    const f = familyByItem.get(Number(b.item_id));
-    if (f) defaultFamilyByPillow.set(Number(b.product_id), f);
-  }
-
-  const priceByKey = new Map<string, Row>();
-  const priceByPillowProduct = new Map<number, Row>();
-  const priceByBolsterVariant = new Map<string, Row>();
-  const priceByItem = new Map<number, Row>();
-  for (const p of productPrices ?? []) {
-    const row: Row = { msrp: p.msrp, compare_at_price: p.compare_at_price };
-    priceByKey.set(p.key, row);
-    if (p.kind === "pillow" && p.product_id != null) {
-      const wanted = defaultFamilyByPillow.get(Number(p.product_id)) ?? null;
-      if (p.variant == null || p.variant === wanted) priceByPillowProduct.set(p.product_id, row);
-    }
-    if (p.kind === "bolster" && p.variant) priceByBolsterVariant.set(p.variant, row);
-  }
-  for (const ip of itemPrices ?? []) {
-    const row: Row = { msrp: ip.msrp, compare_at_price: ip.compare_at_price };
-    priceByItem.set(ip.item_id, row);
-    priceByKey.set(`item:${ip.item_id}`, row);
-  }
+  // The SAME maps the sync writes from — imported, not re-derived. A hand copy had
+  // already drifted on compare-at and on which products it enumerated.
+  const maps = await loadCostingsPriceMaps(admin as never);
 
   const slugById = new Map((products ?? []).map((p) => [p.id as string, p.slug as string]));
   let changed = 0;
@@ -93,21 +65,27 @@ async function main() {
   for (const v of variants ?? []) {
     const slug = slugById.get(v.product_id as string);
     if (!slug) continue; // inactive product
-    const next = resolveVariantPrice(
-      v as never,
-      priceByKey,
-      priceByPillowProduct,
-      priceByBolsterVariant,
-      priceByItem,
-    );
+    const args = [
+      maps.priceByKey,
+      maps.priceByPillowProduct,
+      maps.priceByBolsterVariant,
+      maps.priceByItem,
+    ] as const;
+    const next = resolveVariantPrice(v as never, ...args);
+    const nextCompareAt = resolveVariantCompareAt(v as never, ...args);
     const current = v.price == null ? null : Number(v.price);
+    const currentCompareAt = v.compare_at_price == null ? null : Number(v.compare_at_price);
     const label = `${slug} ${v.option1 ?? "—"}`.padEnd(34);
     if (next === null) {
       unresolved++;
       console.log(`  UNRESOLVED  ${label} keeps stale ${current} — no Costings row matches`);
-    } else if (current !== next) {
+    } else if (current !== next || currentCompareAt !== nextCompareAt) {
       changed++;
-      console.log(`  CHANGE      ${label} ${current} → ${next}`);
+      const compareNote =
+        currentCompareAt === nextCompareAt
+          ? ""
+          : `  (compare-at ${currentCompareAt} → ${nextCompareAt})`;
+      console.log(`  CHANGE      ${label} ${current} → ${next}${compareNote}`);
     } else {
       console.log(`  ok          ${label} ${next}`);
     }

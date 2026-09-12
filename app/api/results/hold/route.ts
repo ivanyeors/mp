@@ -390,7 +390,7 @@ export async function POST(req: Request) {
 
   const [{ data: items }, { data: prices }, { data: shippingRow }] = await Promise.all([
     allItemIds.length
-      ? admin.from("items").select("id, category").in("id", allItemIds)
+      ? admin.from("items").select("id, category, price_family").in("id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ id: number; category: string }> }),
     allItemIds.length
       ? admin.from("item_prices").select("item_id, msrp").in("item_id", allItemIds)
@@ -441,11 +441,13 @@ export async function POST(req: Request) {
   // The quote the shopper is about to authorise. Same function as the final charge
   // at assign and as the preview total — they disagreed before, showing the shelf
   // price and charging shelf + cover + case.
-  const { chosenCover, chosenCase } = resolvePreferences(
-    input.preferenceLines,
-    composed.sellable.caseOptions,
-    msrpByItem,
+  const familyByItem = new Map<number, string | null>(
+    (items ?? []).map((i) => [
+      i.id as number,
+      (i as { price_family?: string | null }).price_family ?? null,
+    ]),
   );
+  const { chosenCover, chosenCase } = resolvePreferences(input.preferenceLines, msrpByItem, familyByItem);
   const goods = priceComposedBuild({
     msrpByFamily: composed.sellable.msrpByFamily,
     defaultCover: composed.sellable.defaultCover,
