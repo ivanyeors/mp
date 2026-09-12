@@ -86,3 +86,27 @@ describe("sla-reminders", () => {
     ).toBe("none");
   });
 });
+
+describe("planHeldTick — a Result with no Authorization hold", () => {
+  const settings = { ...DEFAULT_SLA_SETTINGS, opsEmail: "ops@mpillow.com" };
+  // Far past any expiry deadline: a hold would have been released long ago.
+  const heldAt = new Date("2026-01-01T09:00:00.000Z");
+  const now = new Date("2026-06-01T09:00:00.000Z");
+
+  it("never expires — there is no Stripe clock to beat", () => {
+    expect(planHeldTick({ id: "r1", heldAt, lastReminderAt: null }, settings, now, false))
+      .toBe("remind");
+  });
+
+  it("still expires when a hold is present, unchanged", () => {
+    expect(planHeldTick({ id: "r1", heldAt, lastReminderAt: null }, settings, now, true))
+      .toBe("expire");
+  });
+
+  it("respects the reminder interval rather than nagging every tick", () => {
+    const justReminded = new Date(now.getTime() - 60 * 60 * 1000);
+    expect(
+      planHeldTick({ id: "r1", heldAt, lastReminderAt: justReminded }, settings, now, false),
+    ).toBe("none");
+  });
+});

@@ -251,6 +251,65 @@ ${paragraph(closing, { muted: true })}`,
 }
 
 // ------------------------------------------------------------
+// Build ready, nobody paid → "your build is waiting"
+// ------------------------------------------------------------
+
+/**
+ * Reminder for an assigned Result awaiting a Balance payment (ADR 0016).
+ *
+ * Its own template rather than a re-send of the assigned email: that one is the
+ * full build spec and reads as news, and a customer who already has it does not
+ * need it twice. This is a nudge — what is owed, and the way back.
+ */
+export function renderBalanceDueReminderEmail(p: {
+  origin: string;
+  resultId: string;
+  accessToken: string | null;
+  productType: string | null;
+  amount: number | null;
+  currency: string;
+}): RenderedEmail {
+  const name = productName(p.productType);
+  const url = statusUrl(p.origin, p.resultId, p.accessToken);
+  const total = p.amount == null ? null : money(p.amount, p.currency);
+  const subject = `Your ${name} is built and waiting`;
+
+  const text = [
+    `Your custom ${name} is finished and waiting for payment.`,
+    "",
+    ...(total ? [`Total: ${total}`] : []),
+    "",
+    "Review the build and pay:",
+    url,
+    "",
+    "Nothing has been charged yet.",
+  ].join("\n");
+
+  const html = renderEmailShell({
+    title: subject,
+    preheader: `Your ${name} is ready — it just needs payment to go into production.`,
+    bodyHtml: `${statusPill("Payment due", "warning")}
+${paragraph(`Your custom ${name} is finished and waiting for payment.`, { top: 16 })}
+${
+      total
+        ? amountPanel({
+            label: "Total",
+            amount: total,
+            caption: "Nothing charged yet — payment confirms your order.",
+          })
+        : ""
+    }
+${paragraphHtml(
+      `Review the full build on its ${link({ href: url, label: STATUS_PAGE_LABEL })} and pay there to send it into production.`,
+      { muted: true },
+    )}`,
+    cta: { href: url, label: "Review and pay" },
+  });
+
+  return { subject, text, html };
+}
+
+// ------------------------------------------------------------
 // SLA passed → hold released
 // ------------------------------------------------------------
 

@@ -5,7 +5,10 @@ import { releaseHold } from "@/lib/authorization-hold";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { renderHeldResultReminderEmail } from "@/lib/email/ops";
-import { renderHoldExpiredEmail } from "@/lib/email/results";
+import {
+  renderBalanceDueReminderEmail,
+  renderHoldExpiredEmail,
+} from "@/lib/email/results";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   SLA_SETTING_KEYS,
@@ -92,29 +95,80 @@ export async function GET(req: Request) {
   const { data: rows, error } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type",
+      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency",
     )
-    .eq("status", "held");
+    // `assigned` joins the scan for one reason: a Result with no hold sits there
+    // owing a Balance payment, and nothing else in the system would ever chase it
+    // (ADR 0016). Assigned rows WITH a hold are still skipped below — result-stage
+    // flags those as hold_rotting for a human.
+    .in("status", ["held", "assigned"]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const summary = {
     scanned: rows?.length ?? 0,
     reminded: 0,
+    /** Customers nudged that their finished build is unpaid. */
+    paymentReminded: 0,
     expired: 0,
     errors: [] as string[],
   };
 
   for (const row of rows ?? []) {
-    // Review-only in-store Results have no Stripe hold — SLA expiry does not apply.
-    if (!row.payment_intent_id) continue;
-
+    const hasHold = Boolean(row.payment_intent_id);
+    const assisted = row.source === "staff_assisted";
     const heldAt = new Date(row.created_at);
     const lastReminderAt = row.last_reminder_at ? new Date(row.last_reminder_at) : null;
+
+    // An assigned Result with no hold is waiting on the CUSTOMER, not on us: the
+    // build is finished and priced and nobody has paid for it. Remind them and
+    // move on — there is no hold to expire and no operator action outstanding.
+    // `last_reminder_at` is shared with the operator nudges above, so the first
+    // payment reminder can be up to one interval late. That is the right trade
+    // against a second column for the same cadence.
+    if (row.status === "assigned") {
+      if (hasHold) continue;
+      if (!row.customer_email) continue;
+      if (planHeldTick({ id: row.id, heldAt, lastReminderAt }, settings, now, false) !== "remind") {
+        continue;
+      }
+      try {
+        await getEmailTransport().send({
+          to: row.customer_email,
+          from: getDefaultFromAddress(),
+          ...renderBalanceDueReminderEmail({
+            origin,
+            resultId: row.id,
+            accessToken: row.access_token,
+            productType: row.product_type,
+            amount: row.final_amount != null ? Number(row.final_amount) : null,
+            currency: row.currency ?? "SGD",
+          }),
+        });
+        await admin
+          .from("mp_config_responses")
+          .update({ last_reminder_at: now.toISOString() })
+          .eq("id", row.id);
+        summary.paymentReminded += 1;
+      } catch (e) {
+        summary.errors.push(
+          `${row.id}: balance-due email ${e instanceof Error ? e.message : "failed"}`,
+        );
+      }
+      continue;
+    }
+
+    // Held, no hold. An Assisted customisation belongs in the operator queue and
+    // is chased below; an in-store `manual` measurement is still not chased —
+    // nobody promised that customer anything (result-stage: measurement_residue).
+    if (!hasHold && !assisted) continue;
+
     const action = planHeldTick(
       { id: row.id, heldAt, lastReminderAt },
       settings,
       now,
+      // No hold means no Stripe authorization dying, so nothing to expire before.
+      hasHold,
     );
 
     if (action === "none") continue;

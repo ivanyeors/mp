@@ -20,6 +20,7 @@ import {
   renderReferralEarnedEmail,
 } from "./partner";
 import {
+  renderBalanceDueReminderEmail,
   renderHoldExpiredEmail,
   renderRestockEmail,
   renderResultAssignedEmail,
@@ -36,6 +37,7 @@ import {
   sampleHoldExpired,
   sampleOrder,
   samplePartnerListing,
+  sampleBalanceDue,
   sampleRestock,
   sampleResultAssigned,
   sampleResultAssignedBalance,
@@ -146,6 +148,13 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderResultAssignedEmail(sampleResultAssignedBalance(f)),
+  },
+  {
+    id: "results.balance_due",
+    label: "Build ready — payment due",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderBalanceDueReminderEmail(sampleBalanceDue(f)),
   },
   {
     id: "results.hold_expired",

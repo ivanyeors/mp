@@ -145,6 +145,17 @@ export function sampleHoldExpired(fixture: EmailFixture = "happy") {
   };
 }
 
+export function sampleBalanceDue(fixture: EmailFixture = "happy") {
+  return {
+    origin: ORIGIN,
+    resultId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
+    accessToken: pick(fixture, "tok_preview_9f2b"),
+    productType: "pillow",
+    amount: 428,
+    currency: "SGD",
+  };
+}
+
 export function sampleRestock(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,

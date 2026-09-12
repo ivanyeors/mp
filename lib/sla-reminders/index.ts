@@ -123,8 +123,16 @@ export function planHeldTick(
   row: HeldResultTick,
   settings: SlaSettings,
   now: Date = new Date(),
+  /**
+   * Whether an Authorization hold is what this Result is waiting on. The whole
+   * expiry rule exists because a Stripe authorization dies at
+   * STRIPE_AUTH_HOLD_DAYS; a deferred Result has no such clock (ADR 0016), so it
+   * is reminded indefinitely and closed by a human, never by a timeout. Expiring
+   * one would throw away a build Staff already spent time composing.
+   */
+  hasHold = true,
 ): TickAction {
-  if (now.getTime() >= expiryDeadline(row.heldAt, settings).getTime()) {
+  if (hasHold && now.getTime() >= expiryDeadline(row.heldAt, settings).getTime()) {
     return "expire";
   }
 
