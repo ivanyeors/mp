@@ -50,8 +50,11 @@ describe("slice 09 — mbolster composed sellable", () => {
     });
     expect(assembled.ok).toBe(true);
     if (!assembled.ok) return;
+    // Was [10, 11]. The shopper chose a cover, so the BOM's default cover (10) is
+    // displaced rather than shipped alongside it; the protector (11) fills no
+    // preference role and survives.
     expect(assembled.lines.filter((l) => l.role === "composed").map((l) => l.item_id)).toEqual([
-      10, 11,
+      11,
     ]);
     expect(assembled.lines.filter((l) => l.role === "filling")).toEqual([
       { item_id: 20, quantity: 3, role: "filling", category: "filling" },
