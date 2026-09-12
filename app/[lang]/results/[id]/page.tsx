@@ -305,7 +305,10 @@ function ResultStatusPage() {
   const currency = result?.currency ?? "SGD";
   const build = result?.build;
   const showFinalBuild = status === "assigned" || status === "accepted" || status === "captured";
-  const canDecide = status === "assigned" && hasPaymentHold;
+  // A no-hold Result is decidable too: Accept creates a Balance payment Checkout
+  // for the whole total instead of capturing a hold (ADR 0016). Gating this on a
+  // hold is what used to strand an assigned build with no way to pay for it.
+  const canDecide = status === "assigned";
   const activeStep = journeyIndex(status);
   const progressValue = ((activeStep + 1) / JOURNEY_STEPS.length) * 100;
   const isTerminalFail = status === "declined" || status === "expired";
@@ -443,13 +446,6 @@ function ResultStatusPage() {
         </div>
       )}
 
-      {status === "assigned" && !hasPaymentHold && (
-        <p className="border-t pt-3 text-sm text-muted-foreground">
-          This in-store measurement is for operator review only. Complete the online purchase
-          path when you are ready to authorize payment and accept your final build.
-        </p>
-      )}
-
       {canDecide && (
         <div className="flex flex-wrap gap-2 border-t pt-3" id="decide" data-section="decide">
           <Button
@@ -458,7 +454,13 @@ function ResultStatusPage() {
             disabled={acting}
             onClick={() => void accept()}
           >
-            {acting ? "Working…" : "Accept"}
+            {acting
+              ? "Working…"
+              : hasPaymentHold
+                ? "Accept"
+                : amount != null
+                  ? `Pay ${currency} ${Number(amount).toFixed(2)}`
+                  : "Pay"}
           </Button>
           <Button
             variant="outline"

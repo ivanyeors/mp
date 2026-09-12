@@ -104,11 +104,18 @@ export type CapturePlan =
 
 /**
  * Decide how to settle final vs authorized hold.
- * Never captures above authorized — excess requires a separate top-up payment.
+ * Never captures above authorized — excess requires a separate Balance payment.
+ *
+ * A Result with no Authorization hold passes `authorizedAmount = 0` and takes the
+ * same branch for its whole total: a full payment is a top-up from a hold of zero
+ * (ADR 0016). That keeps one settlement path rather than two.
  */
 export function planCapture(finalAmount: number, authorizedAmount: number): CapturePlan {
-  if (finalAmount <= 0 || authorizedAmount <= 0) {
-    throw new Error("final and authorized amounts must be positive");
+  if (finalAmount <= 0) {
+    throw new Error("final amount must be positive");
+  }
+  if (authorizedAmount <= 0) {
+    return { kind: "top_up", holdCapture: 0, topUp: finalAmount };
   }
   if (finalAmount <= authorizedAmount) {
     return { kind: "capture", amount: finalAmount };
@@ -122,6 +129,12 @@ export function planCapture(finalAmount: number, authorizedAmount: number): Capt
 
 export type CreateTopUpCheckoutInput = {
   amount: number;
+  /**
+   * What is being captured from an Authorization hold alongside this payment.
+   * Zero means there is no hold and this Checkout is the entire price, which
+   * changes only the customer-facing wording — the Stripe call is identical.
+   */
+  holdCapture?: number;
   currency: string;
   customerEmail: string;
   resultId: string;
@@ -147,8 +160,11 @@ export async function createTopUpCheckout(
             currency: input.currency.toLowerCase(),
             unit_amount: toStripeAmountCents(input.amount),
             product_data: {
-              name: "Final build top-up",
-              description: "Additional charge because the final total exceeds your authorization hold.",
+              name: input.holdCapture === 0 ? "Your custom build" : "Final build top-up",
+              description:
+                input.holdCapture === 0
+                  ? "Payment in full for your custom build, as assigned by our team."
+                  : "Additional charge because the final total exceeds your authorization hold.",
             },
           },
         },

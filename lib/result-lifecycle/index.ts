@@ -12,8 +12,17 @@ export type ResultStatus =
 export type ResultState = {
   status: ResultStatus;
   filling_template_id: number | null;
-  /** Null for in-store review-only Results (no authorization hold). */
+  /**
+   * Null when no Authorization hold was taken — an Assisted customisation, or an
+   * in-store measurement. Those Results are not unsellable: they settle by
+   * Balance payment at Accept (ADR 0016).
+   */
   payment_intent_id: string | null;
+  /**
+   * Whether a Balance payment has actually been paid (`topup_paid_at` is set).
+   * Only `capture` reads it, and only when there is no hold to capture.
+   */
+  balance_paid?: boolean;
 };
 
 export type Transition =
@@ -49,12 +58,12 @@ export function transitionResult(
       if (state.status !== "assigned") {
         return { ok: false, error: `Cannot accept from status ${state.status}` };
       }
-      if (!state.payment_intent_id) {
-        return {
-          ok: false,
-          error: "Accept requires a payment intent (review-only Results have no hold)",
-        };
-      }
+      // Deliberately no payment-intent check. It looks symmetrical with the one
+      // in `capture` and is not: `assigned` is reachable only through Staff
+      // assignment with a confirmed Filling Template, so a hold guard here
+      // refuses nothing that assign has not already refused. And for a Result
+      // with no hold, Accept is the step that *creates* the Balance payment
+      // Checkout — it has to run before any money exists (ADR 0016).
       return { ok: true, status: "accepted", releaseHold: false };
     }
     case "decline": {
@@ -81,10 +90,16 @@ export function transitionResult(
       if (state.status !== "accepted") {
         return { ok: false, error: `Cannot capture from status ${state.status}` };
       }
-      if (!state.payment_intent_id) {
+      // The one guard standing between this system and an Order with no money
+      // behind it. Since `accept` dropped its own check, nothing else asserts
+      // that a customer actually paid. Money arrives one of two ways: a captured
+      // Authorization hold, or a paid Balance payment. Requiring one of them is
+      // not a style choice — do not "simplify" it away (ADR 0016).
+      if (!state.payment_intent_id && !state.balance_paid) {
         return {
           ok: false,
-          error: "Capture requires a payment intent (review-only Results have no hold)",
+          error:
+            "Capture requires a captured hold or a paid Balance payment — this Result has neither",
         };
       }
       return { ok: true, status: "captured", releaseHold: false };

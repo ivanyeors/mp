@@ -6,13 +6,39 @@ import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
 /** Slice 07: accept/capture/top-up/release rules (no live Stripe). */
 
 describe("slice 07 accept path", () => {
-  it("rejects accept without payment intent (review-only)", () => {
+  // Was: "rejects accept without payment intent (review-only)". ADR 0016 moved
+  // that guard to `capture`, because for a Result with no hold Accept is the step
+  // that creates the Balance payment Checkout and must run before money exists.
+  it("accepts without a payment intent — a no-hold Result settles by Balance payment", () => {
     const result = transitionResult(
       { status: "assigned", filling_template_id: 1, payment_intent_id: null },
       { action: "accept" },
     );
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/payment intent/i);
+    expect(result).toEqual({ ok: true, status: "accepted", releaseHold: false });
+  });
+
+  it("refuses to capture a no-hold Result until the Balance payment is paid", () => {
+    const unpaid = transitionResult(
+      { status: "accepted", filling_template_id: 1, payment_intent_id: null },
+      { action: "capture" },
+    );
+    expect(unpaid.ok).toBe(false);
+    if (!unpaid.ok) expect(unpaid.error).toMatch(/balance payment/i);
+
+    const paid = transitionResult(
+      {
+        status: "accepted",
+        filling_template_id: 1,
+        payment_intent_id: null,
+        balance_paid: true,
+      },
+      { action: "capture" },
+    );
+    expect(paid).toEqual({ ok: true, status: "captured", releaseHold: false });
+  });
+
+  it("plans the whole total as a Balance payment when there is no hold", () => {
+    expect(planCapture(420, 0)).toEqual({ kind: "top_up", holdCapture: 0, topUp: 420 });
   });
 
   it("accept then capture when hold present", () => {

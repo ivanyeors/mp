@@ -11,6 +11,7 @@ import {
 import { authorizeResultAccess } from "@/lib/results/access";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
+import { settleResult } from "@/lib/results/settlement";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
@@ -95,11 +96,11 @@ export async function POST(
     row.authorized_amount != null ? Number(row.authorized_amount) : null;
   const finalAmount =
     row.final_amount != null ? Number(row.final_amount) : build.pricing.total;
-  if (authorized == null || authorized <= 0) {
-    return NextResponse.json({ error: "Result has no authorized hold amount" }, { status: 400 });
-  }
-
-  const plan = planCapture(finalAmount, authorized);
+  // No Authorization hold is not "unsellable" — it means the whole total is a
+  // Balance payment (ADR 0016). planCapture reads 0 as exactly that and returns a
+  // top_up plan with nothing to capture from a hold, so both kinds of Result take
+  // one settlement path from here down.
+  const plan = planCapture(finalAmount, authorized ?? 0);
   let topUpPaid = 0;
   /** Second PaymentIntent when the final total outgrew the hold. Ledgered separately. */
   let topUpPaymentIntentId: string | null = null;
@@ -131,6 +132,7 @@ export async function POST(
         currency: row.currency ?? "SGD",
         customerEmail: row.customer_email,
         resultId: id,
+        holdCapture: plan.holdCapture,
         successUrl: `${origin}${statusPath}&topup_session_id={CHECKOUT_SESSION_ID}`,
         cancelUrl: `${origin}${statusPath}`,
         idempotencyKey: `result-topup-${id}-${plan.topUp}`,
@@ -176,15 +178,21 @@ export async function POST(
   // 502'd forever. Ask Stripe what actually happened first — a succeeded intent
   // means a previous attempt captured and died downstream, so skip straight to
   // rebuilding the Order. This is what makes the whole route retryable.
-  try {
-    const stripe = getStripe();
-    const intent = await stripe.paymentIntents.retrieve(row.payment_intent_id!);
-    if (intent.status !== "succeeded") {
-      await captureHold(row.payment_intent_id!, holdCaptureAmount);
+  //
+  // A Result with no hold has nothing to capture: the Balance payment above
+  // already charged the card in full. Skip rather than calling Stripe with a null
+  // intent id, which is how this would turn into that same 502 loop.
+  if (holdCaptureAmount > 0 && row.payment_intent_id) {
+    try {
+      const stripe = getStripe();
+      const intent = await stripe.paymentIntents.retrieve(row.payment_intent_id);
+      if (intent.status !== "succeeded") {
+        await captureHold(row.payment_intent_id, holdCaptureAmount);
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Capture failed";
+      return NextResponse.json({ error: message }, { status: 502 });
     }
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Capture failed";
-    return NextResponse.json({ error: message }, { status: 502 });
   }
 
   const captureLife = transitionResult(
@@ -192,12 +200,25 @@ export async function POST(
       status: "accepted",
       filling_template_id: row.filling_template_id,
       payment_intent_id: row.payment_intent_id,
+      // The lifecycle's sole remaining guard against an Order with no money
+      // behind it. For a no-hold Result this is the only thing asserting the
+      // customer actually paid.
+      balance_paid: topUpPaid > 0,
     },
     { action: "capture" },
   );
   if (!captureLife.ok) {
     return NextResponse.json({ error: captureLife.error }, { status: 500 });
   }
+
+  // What actually charged. Pure and unit-tested, because a wrong charge row here
+  // is silent until someone refunds (lib/results/settlement.ts).
+  const settlement = settleResult({
+    holdCaptureAmount,
+    holdIntentId: row.payment_intent_id,
+    topUpPaid,
+    topUpIntentId: topUpPaymentIntentId,
+  });
 
   const productType = row.product_type ?? "pillow";
   const title =
@@ -240,12 +261,12 @@ export async function POST(
       total: finalAmount,
       shipping_address: shippingAddress,
       payment_method: "stripe",
-      payment_reference: row.payment_intent_id,
+      payment_reference: settlement.paymentReference,
       paid_at: now,
       // Only the in-store path has no later "mark delivered" step; a shipped order
       // gets its delivered_at from the Orders fulfilment flow.
       delivered_at: inStoreHandover ? now : null,
-      amount_captured: holdCaptureAmount + topUpPaid,
+      amount_captured: settlement.amountCaptured,
       // Referral attribution carried from the Result (#74). One partner per order.
       partner_id: row.partner_id,
       ref_code: row.ref_code,
@@ -318,14 +339,8 @@ export async function POST(
   // to fully refunded, zeroing amount_captured and voiding partner commissions.
   // A topped-up order charges two intents; both must be ledgered or a full refund
   // asks Stripe for more than the hold intent ever captured.
-  const charges: Array<{ amount: number; stripeObjectId: string | null }> = [
-    { amount: holdCaptureAmount, stripeObjectId: row.payment_intent_id },
-  ];
-  if (topUpPaid > 0) {
-    charges.push({ amount: topUpPaid, stripeObjectId: topUpPaymentIntentId });
-  }
   try {
-    for (const charge of charges) {
+    for (const charge of settlement.charges) {
       await recordLedgerEntry(admin, order.id, {
         type: "charge",
         amount: charge.amount,
