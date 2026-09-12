@@ -1596,9 +1596,9 @@
     "semantic_hash": "64939a65f714c9eae7260052c2a9a016"
   },
   "lib/stripe/sync.ts": {
-    "mtime": 1789216626.3505154,
-    "seen": 1789217168.298191,
-    "ast_hash": "d64cf61f222026577f20339e1aa42c44",
+    "mtime": 1789222813.3907719,
+    "seen": 1789222925.439434,
+    "ast_hash": "40e2b23fcbd90558706655682696e95a",
     "semantic_hash": ""
   },
   "lib/supabase/browser.ts": {
@@ -11229,6 +11229,18 @@
     "mtime": 1789220676.3014143,
     "seen": 1789220883.919876,
     "ast_hash": "48a2055301a88d5f78d5574dbca9893a",
+    "semantic_hash": ""
+  },
+  "lib/stripe/__tests__/variant-labels.test.ts": {
+    "mtime": 1789222864.1722503,
+    "seen": 1789222925.439428,
+    "ast_hash": "bb37c4715ae78c5c9ba626829393c7d9",
+    "semantic_hash": ""
+  },
+  "lib/stripe/variant-labels.ts": {
+    "mtime": 1789222864.1719382,
+    "seen": 1789222925.439435,
+    "ast_hash": "14075826dbbdad0c68facc8767c1ce05",
     "semantic_hash": ""
   }
 }
