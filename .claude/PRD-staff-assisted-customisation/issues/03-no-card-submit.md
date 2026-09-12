@@ -2,7 +2,10 @@
 
 Tracker: not yet filed (published locally)
 Parent: PRD `staff-assisted-customisation` (`.claude/PRD-staff-assisted-customisation/staff-assisted-customisation-prd.md`)
-Status: **Not started.**
+Status: **Built on `feat/staff-assisted-customisation` (ba374ff6), unmerged.**
+Criteria verified against the code, its unit tests and the `.check.ts`
+self-checks. Anything needing live Stripe, a real inbox or a real database is
+marked `[~]` and belongs to slice 08.
 User stories covered: 6, 22
 
 ## What to build
@@ -25,22 +28,22 @@ Demoable outcome: a customer opens an **Assist link**, completes the preview wit
 
 ## Acceptance criteria
 
-- [ ] In assisted mode the preview's primary call to action is *"Send to our build team"* and no card is requested.
-- [ ] In assisted mode *"Save without purchasing"* does not render.
-- [ ] Outside assisted mode both controls are exactly as they are today.
-- [ ] `/api/results/hold` with `deferred` creates a **Result** with `status: "held"`, `payment_intent_id: null` and `authorized_amount: null`, and creates no Stripe object.
-- [ ] The deferred branch is refused when the stored row's **Source** is not `staff_assisted`, and the refusal happens before any Stripe call or any write.
-- [ ] An unpriced **Composed sellable** refuses the deferred submit with the same `pricing_unavailable` response as the hold path.
-- [ ] The deferred submit rotates the **Result access token** and returns the status-page URL.
-- [ ] A **Staff** assist mix supplied on an assisted session is still snapshotted, and still requires a **Staff** session to be honoured.
-- [ ] The deferred submit carries the `templateId` claim from `sessionTemplateId(loaded, session)` unchanged, and no second dirty flag is introduced to decide it.
-- [ ] A diverging edit clears the claim on a deferred submit exactly as it does on a hold submit.
-- [ ] No `ToolSpec` entry is added to the assist tool rail and neither assist panel is modified, so `lib/spatial-fillings/surface-parity.check.ts` needs no bolster counterpart change.
-- [ ] `npx tsx lib/configurator/staff-assist.check.ts` passes before and after the change.
-- [ ] `resultStage()` reads an assisted no-hold `held` row as `needs_assign`; `online_purchase` still reads `abandoned_checkout` and `manual` still reads `measurement_residue`.
-- [ ] A self-check asserts the assisted preview renders exactly one primary call to action and that it is not the hold CTA, and that *"Save without purchasing"* is not mounted in assisted mode.
-- [ ] `npm run ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] In assisted mode the preview's primary call to action is *"Send to our build team"* and no card is requested.
+- [x] In assisted mode *"Save without purchasing"* does not render.
+- [x] Outside assisted mode both controls are exactly as they are today.
+- [x] `/api/results/hold` with `deferred` creates a **Result** with `status: "held"`, `payment_intent_id: null` and `authorized_amount: null`, and creates no Stripe object.
+- [x] The deferred branch is refused when the stored row's **Source** is not `staff_assisted`, and the refusal happens before any Stripe call or any write.
+- [x] An unpriced **Composed sellable** refuses the deferred submit with the same `pricing_unavailable` response as the hold path.
+- [x] The deferred submit rotates the **Result access token** and returns the status-page URL.
+- [x] A **Staff** assist mix supplied on an assisted session is still snapshotted, and still requires a **Staff** session to be honoured.
+- [x] The deferred submit carries the `templateId` claim from `sessionTemplateId(loaded, session)` unchanged, and no second dirty flag is introduced to decide it.
+- [x] A diverging edit clears the claim on a deferred submit exactly as it does on a hold submit.
+- [x] No `ToolSpec` entry is added to the assist tool rail and neither assist panel is modified, so `lib/spatial-fillings/surface-parity.check.ts` needs no bolster counterpart change.
+- [x] `npx tsx lib/configurator/staff-assist.check.ts` passes before and after the change.
+- [x] `resultStage()` reads an assisted no-hold `held` row as `needs_assign`; `online_purchase` still reads `abandoned_checkout` and `manual` still reads `measurement_residue`.
+- [x] A self-check asserts the assisted preview renders exactly one primary call to action and that it is not the hold CTA, and that *"Save without purchasing"* is not mounted in assisted mode.
+- [x] `npm run ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

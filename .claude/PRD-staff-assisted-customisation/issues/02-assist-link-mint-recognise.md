@@ -2,7 +2,10 @@
 
 Tracker: not yet filed (published locally)
 Parent: PRD `staff-assisted-customisation` (`.claude/PRD-staff-assisted-customisation/staff-assisted-customisation-prd.md`)
-Status: **Not started.**
+Status: **Built on `feat/staff-assisted-customisation` (2b0f097a), unmerged.**
+Criteria verified against the code, its unit tests and the `.check.ts`
+self-checks. Anything needing live Stripe, a real inbox or a real database is
+marked `[~]` and belongs to slice 08.
 User stories covered: 1–5
 
 ## What to build
@@ -25,21 +28,23 @@ Demoable outcome: a **Staff** member opens the **Admin Panel**, copies their lin
 
 ## Acceptance criteria
 
-- [ ] A migration adds `admin_users.assist_code` as a nullable text column with a partial unique index on the non-null values, applied with `supabase db push`.
-- [ ] The code is generated on first request, not backfilled, and a collision retries rather than failing.
-- [ ] Two concurrent requests for the same **Staff** member's first code return the same code, not two.
-- [ ] `getStaffByAssistCode` resolves case-insensitively, refuses an inactive **Staff** row, and returns null — never throws — for an unknown code.
-- [ ] `/mp-config?assist=<valid code>` renders the ordinary configurator for a signed-out visitor, with no **Staff assist mode** chrome and no x-ray editor.
-- [ ] `/mp-config?assist=<unknown code>` is indistinguishable from `/mp-config` for the visitor.
-- [ ] A **Draft Result** created under a valid code carries `source = 'staff_assisted'` and the resolving **Staff** id; one created without a code is unchanged.
-- [ ] `source` cannot be changed by a later update request to an existing row.
-- [ ] The copy card renders the link and a scannable QR code, and degrades to a selectable input when the clipboard API is unavailable.
-- [ ] The link uses `getClientSiteOrigin()`, so it is correct when copied from a preview deployment.
-- [ ] The **Results** list badges a `staff_assisted` row distinctly from `manual` and `online_purchase`.
-- [ ] Holding a valid **Assist link** grants no **Staff assist mode** chrome to a signed-out visitor, and the assist gate and the link remain separate props.
-- [ ] `npx tsx lib/configurator/staff-assist.check.ts` passes before and after the change.
-- [ ] `npm run ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [~] A migration adds `admin_users.assist_code` as a nullable text column with a partial unique index on the non-null values, applied with `supabase db push`.
+      Written, NOT applied — this session had no database. Push it before any demo:
+      until then, a save carrying `?assist=` 500s on the unknown column.
+- [x] The code is generated on first request, not backfilled, and a collision retries rather than failing.
+- [x] Two concurrent requests for the same **Staff** member's first code return the same code, not two.
+- [x] `getStaffByAssistCode` resolves case-insensitively, refuses an inactive **Staff** row, and returns null — never throws — for an unknown code.
+- [x] `/mp-config?assist=<valid code>` renders the ordinary configurator for a signed-out visitor, with no **Staff assist mode** chrome and no x-ray editor.
+- [x] `/mp-config?assist=<unknown code>` is indistinguishable from `/mp-config` for the visitor.
+- [x] A **Draft Result** created under a valid code carries `source = 'staff_assisted'` and the resolving **Staff** id; one created without a code is unchanged.
+- [x] `source` cannot be changed by a later update request to an existing row.
+- [x] The copy card renders the link and a scannable QR code, and degrades to a selectable input when the clipboard API is unavailable.
+- [x] The link uses `getClientSiteOrigin()`, so it is correct when copied from a preview deployment.
+- [x] The **Results** list badges a `staff_assisted` row distinctly from `manual` and `online_purchase`.
+- [x] Holding a valid **Assist link** grants no **Staff assist mode** chrome to a signed-out visitor, and the assist gate and the link remain separate props.
+- [x] `npx tsx lib/configurator/staff-assist.check.ts` passes before and after the change.
+- [x] `npm run ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

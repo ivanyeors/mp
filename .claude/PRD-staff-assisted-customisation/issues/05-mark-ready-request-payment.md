@@ -2,7 +2,10 @@
 
 Tracker: not yet filed (published locally)
 Parent: PRD `staff-assisted-customisation` (`.claude/PRD-staff-assisted-customisation/staff-assisted-customisation-prd.md`)
-Status: **Not started.**
+Status: **Built on `feat/staff-assisted-customisation` (b9ce8594), unmerged.**
+Criteria verified against the code, its unit tests and the `.check.ts`
+self-checks. Anything needing live Stripe, a real inbox or a real database is
+marked `[~]` and belongs to slice 08.
 User stories covered: 13–16
 
 ## What to build
@@ -27,17 +30,17 @@ Demoable outcome: **Staff** open an assisted **Result**, compose the filling mix
 
 ## Acceptance criteria
 
-- [ ] Save assignment on a **Result** with no hold sends the assigned email; the `hasHold` term is gone and the email and token conditions remain.
-- [ ] The no-hold variant states the total and asks for payment, and does not mention an authorization or a card already held.
-- [ ] The with-hold variant is unchanged, word for word.
-- [ ] Both variants are registered with fixtures and `registry-coverage.test.ts` passes.
-- [ ] `final_amount` is written by `priceResult()` and there is no way for **Staff** to type or override an amount.
-- [ ] "Request payment" re-sends the priced email and copies the tokenised status URL, built by `statusUrl()`.
-- [ ] Pressing "Request payment" twice re-sends the email and leaves the **Result** unchanged.
-- [ ] No new editing surface is introduced; `npx tsx lib/spatial-fillings/surface-parity.check.ts` passes.
-- [ ] The **Result** detail route stays within the 480 KB gzip settings bundle budget and `pnpm bundle:check` passes.
-- [ ] `npm run ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] Save assignment on a **Result** with no hold sends the assigned email; the `hasHold` term is gone and the email and token conditions remain.
+- [x] The no-hold variant states the total and asks for payment, and does not mention an authorization or a card already held.
+- [x] The with-hold variant is unchanged, word for word.
+- [x] Both variants are registered with fixtures and `registry-coverage.test.ts` passes.
+- [x] `final_amount` is written by `priceResult()` and there is no way for **Staff** to type or override an amount.
+- [x] "Request payment" re-sends the priced email and copies the tokenised status URL, built by `statusUrl()`.
+- [x] Pressing "Request payment" twice re-sends the email and leaves the **Result** unchanged.
+- [x] No new editing surface is introduced; `npx tsx lib/spatial-fillings/surface-parity.check.ts` passes.
+- [x] The **Result** detail route stays within the 480 KB gzip settings bundle budget and `pnpm bundle:check` passes.
+- [x] `npm run ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

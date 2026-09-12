@@ -2,7 +2,10 @@
 
 Tracker: not yet filed (published locally)
 Parent: PRD `staff-assisted-customisation` (`.claude/PRD-staff-assisted-customisation/staff-assisted-customisation-prd.md`)
-Status: **Not started.**
+Status: **Built on `feat/staff-assisted-customisation` (aed1b843), unmerged.**
+Criteria verified against the code, its unit tests and the `.check.ts`
+self-checks. Anything needing live Stripe, a real inbox or a real database is
+marked `[~]` and belongs to slice 08.
 User stories covered: 23–25
 
 ## What to build
@@ -21,15 +24,18 @@ Demoable outcome: an assisted **Result** left unassigned past the reminder windo
 
 ## Acceptance criteria
 
-- [ ] The cron scans assisted `held` rows with no `payment_intent_id` and nudges the operator.
-- [ ] The cron scans `assigned` rows with no hold and reminds the customer, with a tokenised link from `statusUrl()`.
-- [ ] No no-hold **Result** is ever auto-expired, and `expire` remains reachable only from `held` with a hold.
-- [ ] In-store `manual` measurement rows keep their current treatment and produce no customer reminder.
-- [ ] Reminders are idempotent across consecutive runs, driven by `last_reminder_at` and `planHeldTick`.
-- [ ] Terminal statuses and rows with a linked **Order** are skipped.
-- [ ] **Staff** cancel works on a no-hold **Result** from both `held` and `assigned`, attempts no hold release, and records the snapshot.
-- [ ] `npm run ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [~] The cron scans assisted `held` rows with no `payment_intent_id` and nudges the operator.
+      Branch logic and cadence are unit-tested via `planHeldTick`; that the mail
+      actually lands is slice 08.
+- [~] The cron scans `assigned` rows with no hold and reminds the customer, with a tokenised link from `statusUrl()`.
+      Same: renderer and branch are tested, delivery is not.
+- [x] No no-hold **Result** is ever auto-expired, and `expire` remains reachable only from `held` with a hold.
+- [x] In-store `manual` measurement rows keep their current treatment and produce no customer reminder.
+- [x] Reminders are idempotent across consecutive runs, driven by `last_reminder_at` and `planHeldTick`.
+- [x] Terminal statuses and rows with a linked **Order** are skipped.
+- [x] **Staff** cancel works on a no-hold **Result** from both `held` and `assigned`, attempts no hold release, and records the snapshot.
+- [x] `npm run ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

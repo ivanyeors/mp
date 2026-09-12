@@ -2,7 +2,10 @@
 
 Tracker: not yet filed (published locally)
 Parent: PRD `staff-assisted-customisation` (`.claude/PRD-staff-assisted-customisation/staff-assisted-customisation-prd.md`)
-Status: **Not started.**
+Status: **Built on `feat/staff-assisted-customisation` (f6ecc4f2), unmerged.**
+Criteria verified against the code, its unit tests and the `.check.ts`
+self-checks. Anything needing live Stripe, a real inbox or a real database is
+marked `[~]` and belongs to slice 08.
 User stories covered: underpins all
 
 ## Parent
@@ -29,12 +32,12 @@ Demoable outcome: a reader of `CONTEXT.md` can say, without opening any code, ho
 
 ## Acceptance criteria
 
-- [ ] `CONTEXT.md` defines **Assist link**, **Assisted customisation** and **Balance payment**, each with an `_Avoid_` line naming the terms it is most likely to be confused with.
-- [ ] The **Source** entry in `CONTEXT.md` lists `staff_assisted` and says what originates it.
-- [ ] The relationships section records that an **Assisted customisation** takes no **Authorization hold**, and that its **Result** reaches **Order** through a **Balance payment**.
-- [ ] `docs/adr/0016-deferred-payment-for-assisted-builds.md` exists with Context / Decision / Consequences, and names `capture` as the sole remaining guard against an **Order** without money.
-- [ ] ADR 0002 points forward to 0016 rather than being edited to pretend it always said this.
-- [ ] No code change and no schema change in this slice.
+- [x] `CONTEXT.md` defines **Assist link**, **Assisted customisation** and **Balance payment**, each with an `_Avoid_` line naming the terms it is most likely to be confused with.
+- [x] The **Source** entry in `CONTEXT.md` lists `staff_assisted` and says what originates it.
+- [x] The relationships section records that an **Assisted customisation** takes no **Authorization hold**, and that its **Result** reaches **Order** through a **Balance payment**.
+- [x] `docs/adr/0016-deferred-payment-for-assisted-builds.md` exists with Context / Decision / Consequences, and names `capture` as the sole remaining guard against an **Order** without money.
+- [x] ADR 0002 points forward to 0016 rather than being edited to pretend it always said this.
+- [x] No code change and no schema change in this slice.
 
 ## Blocked by
 

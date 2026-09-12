@@ -2,7 +2,10 @@
 
 Tracker: not yet filed (published locally)
 Parent: PRD `staff-assisted-customisation` (`.claude/PRD-staff-assisted-customisation/staff-assisted-customisation-prd.md`)
-Status: **Not started.**
+Status: **Built on `feat/staff-assisted-customisation` (ee021d5e), unmerged.**
+Criteria verified against the code, its unit tests and the `.check.ts`
+self-checks. Anything needing live Stripe, a real inbox or a real database is
+marked `[~]` and belongs to slice 08.
 User stories covered: 11, 12, 17–21
 
 ## What to build
@@ -27,23 +30,30 @@ Demoable outcome: a customer opens the priced email, presses Pay, completes Stri
 
 ## Acceptance criteria
 
-- [ ] `accept` succeeds from `assigned` with no `payment_intent_id`.
-- [ ] `capture` refuses when there is neither a captured hold nor a paid **Balance payment**.
-- [ ] `capture` succeeds on a no-hold **Result** once the balance is paid, and is unchanged for a captured hold.
-- [ ] `planCapture(final, 0)` returns `{ kind: "top_up", holdCapture: 0, topUp: final }`; every positive-hold case is unchanged.
-- [ ] `accept` on a no-hold `assigned` **Result** returns a Checkout URL rather than a 400.
-- [ ] `captureHold` is never called when the hold capture is zero.
-- [ ] The **Order** records exactly one `charge` ledger row, for the balance intent, and `payment_reference` is that intent.
-- [ ] `amount_captured` equals the amount Stripe actually took, and `rollupOrderMoney` reconciles against the order total.
-- [ ] A customer who pays and never returns is settled from the stored intent on the next `accept`, and is not charged twice.
-- [ ] Inventory is deducted once, only after successful payment.
-- [ ] An assisted **Order** is born `confirmed` with a null `delivered_at`; an in-store `manual` **Result** is still born `delivered`.
-- [ ] The status page shows **Pay SGD X** and Decline for a no-hold `assigned` **Result**, and the in-store dead-end paragraph is gone.
-- [ ] Decline on a no-hold **Result** still records the snapshot and attempts no hold release.
-- [ ] The Checkout description for a full payment does not mention an authorization hold.
-- [ ] No change to `app/api/stripe/webhook/route.ts`.
-- [ ] `npm run ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] `accept` succeeds from `assigned` with no `payment_intent_id`.
+- [x] `capture` refuses when there is neither a captured hold nor a paid **Balance payment**.
+- [x] `capture` succeeds on a no-hold **Result** once the balance is paid, and is unchanged for a captured hold.
+- [x] `planCapture(final, 0)` returns `{ kind: "top_up", holdCapture: 0, topUp: final }`; every positive-hold case is unchanged.
+- [x] `accept` on a no-hold `assigned` **Result** returns a Checkout URL rather than a 400.
+- [x] `captureHold` is never called when the hold capture is zero.
+- [x] The **Order** records exactly one `charge` ledger row, for the balance intent, and `payment_reference` is that intent.
+- [~] `amount_captured` equals the amount Stripe actually took, and `rollupOrderMoney` reconciles against the order total.
+      `settleResult` is unit-tested for the amount and the ledger rows; that it
+      matches what Stripe really took needs slice 08.
+- [~] A customer who pays and never returns is settled from the stored intent on the next `accept`, and is not charged twice.
+      Logic unchanged from the existing top-up path and reasoned through, but the
+      webhook and the redirect were not exercised. Slice 08 owns proving it.
+- [x] Inventory is deducted once, only after successful payment.
+- [~] An assisted **Order** is born `confirmed` with a null `delivered_at`; an in-store `manual` **Result** is still born `delivered`.
+      Verified by reading `inStoreHandover` — an assisted Result has neither
+      `source = 'manual'` nor a null address, so it is already correct. No test
+      pins it yet; slice 08 checks the real row.
+- [x] The status page shows **Pay SGD X** and Decline for a no-hold `assigned` **Result**, and the in-store dead-end paragraph is gone.
+- [x] Decline on a no-hold **Result** still records the snapshot and attempts no hold release.
+- [x] The Checkout description for a full payment does not mention an authorization hold.
+- [x] No change to `app/api/stripe/webhook/route.ts`.
+- [x] `npm run ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

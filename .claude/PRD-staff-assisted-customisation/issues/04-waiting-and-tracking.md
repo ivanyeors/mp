@@ -2,7 +2,10 @@
 
 Tracker: not yet filed (published locally)
 Parent: PRD `staff-assisted-customisation` (`.claude/PRD-staff-assisted-customisation/staff-assisted-customisation-prd.md`)
-Status: **Not started.**
+Status: **Built on `feat/staff-assisted-customisation` (2e7fb563), unmerged.**
+Criteria verified against the code, its unit tests and the `.check.ts`
+self-checks. Anything needing live Stripe, a real inbox or a real database is
+marked `[~]` and belongs to slice 08.
 User stories covered: 7–10
 
 ## What to build
@@ -19,14 +22,14 @@ Demoable outcome: a customer submits through an **Assist link**, sees a page say
 
 ## Acceptance criteria
 
-- [ ] A `held` **Result** with no hold shows waiting copy that says the build is being made and that an email is coming, and does not mention an authorization, a hold or a charge.
-- [ ] A `held` **Result** with a hold shows today's copy, unchanged.
-- [ ] The submit confirmation email renders with no amount-authorized panel and no raw URL in the body, and its call to action opens the tokenised status page.
-- [ ] The new email variant is registered with a fixture and `registry-coverage.test.ts` passes.
-- [ ] The guest status page still offers sign-up / sign-in, prefilled with the submitted email, and returns to the same page with its token intact after the round trip.
-- [ ] A **Customer** signing in with the submitted email sees the assisted **Result** in their list without any manual linking.
-- [ ] `npm run ci` passes.
-- [ ] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
+- [x] A `held` **Result** with no hold shows waiting copy that says the build is being made and that an email is coming, and does not mention an authorization, a hold or a charge.
+- [x] A `held` **Result** with a hold shows today's copy, unchanged.
+- [x] The submit confirmation email renders with no amount-authorized panel and no raw URL in the body, and its call to action opens the tokenised status page.
+- [x] The new email variant is registered with a fixture and `registry-coverage.test.ts` passes.
+- [x] The guest status page still offers sign-up / sign-in, prefilled with the submitted email, and returns to the same page with its token intact after the round trip.
+- [x] A **Customer** signing in with the submitted email sees the assisted **Result** in their list without any manual linking.
+- [x] `npm run ci` passes.
+- [x] `./scripts/graphify update .` run and the refreshed graph committed alongside the code.
 
 ## Blocked by
 

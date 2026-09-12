@@ -10,14 +10,51 @@ tracker configured).
 
 | # | Title | Type | Status | Blocked by | User stories |
 |---|-------|------|--------|------------|--------------|
-| 01 | Domain glossary and ADR: Assist link, Assisted customisation, Balance payment | AFK | **not started** | none | underpins all |
-| 02 | The Assist link — generate it, copy it, recognise it | AFK | **not started** | 01 | 1–5 |
-| 03 | Submit without a card, and read as work rather than as stuck | AFK | **not started** | 02 | 6, 22 |
-| 04 | Tell the customer what happens next, and give them a way back | AFK | **not started** | 03 | 7–10 |
-| 05 | Save assignment notifies a cardless customer; Staff can copy the payment link | AFK | **not started** | 03 | 13–16 |
-| 06 | A Result with no hold is payable — Balance payment to Order | AFK | **not started** | 05 | 11, 12, 17–21 |
-| 07 | Reminders for a build nobody has paid for | AFK | **not started** | 06 | 23–25 |
+| 01 | Domain glossary and ADR: Assist link, Assisted customisation, Balance payment | AFK | **done** `f6ecc4f2` | none | underpins all |
+| 02 | The Assist link — generate it, copy it, recognise it | AFK | **done** `2b0f097a` | 01 | 1–5 |
+| 03 | Submit without a card, and read as work rather than as stuck | AFK | **done** `ba374ff6` | 02 | 6, 22 |
+| 04 | Tell the customer what happens next, and give them a way back | AFK | **done** `2e7fb563` | 03 | 7–10 |
+| 05 | Save assignment notifies a cardless customer; Staff can copy the payment link | AFK | **done** `b9ce8594` | 03 | 13–16 |
+| 06 | A Result with no hold is payable — Balance payment to Order | AFK | **done** `ee021d5e` | 05 | 11, 12, 17–21 |
+| 07 | Reminders for a build nobody has paid for | AFK | **done** `aed1b843` | 06 | 23–25 |
 | 08 | Sign-off: one real link, one real card, one real order | HITL | **not started** | 07 | all |
+
+## Build state (2026-09-12)
+
+Slices 01–07 are built on `feat/staff-assisted-customisation`, **unmerged and
+undeployed**. `npm run ci` is green end to end: lint 0 errors, typecheck clean,
+1700 tests, `next build`, and all 80 routes inside the bundle budget. The four
+relevant self-checks pass (`staff-assist`, `assisted-cta`, `surface-parity`,
+`api-contract`). The graph was refreshed once at the end of the branch (`a289a2c8`)
+rather than per slice — the freshness workflow compares the committed graph against
+a rebuild of the final tree, so that satisfies it without seven 40k-line diffs.
+
+**Blocking anything real: the migration is written but NOT applied.**
+`supabase/migrations/20260912000000_admin_assist_code.sql` adds
+`admin_users.assist_code` and `mp_config_responses.assisted_by_admin_id`. Until it
+is pushed, any configurator save carrying `?assist=` 500s on the unknown column.
+Push with `supabase db push` — never the MCP `apply_migration` tool, which stamps
+its own version and desyncs the ledger.
+
+Two things found during the build that changed the shape of the work, recorded
+because neither is visible in the PRD:
+
+- **Pricing was gated on `hasHold`, not just the email** (slice 05). The whole
+  `priceResult()` block sat inside that branch, so `final_amount` stayed null for a
+  Result with no hold. Dropping the gate from the email alone would have sent a
+  priced-looking email with no price and left slice 06 nothing to charge.
+- **Hiding the "Save without purchasing" button was not the fix** (slice 03). The
+  Admin Panel's send-to-Telegram action posts `isFinal` too, and
+  `shouldCreateInstoreReviewOnly()` excluded only `online_purchase` — so that click
+  rewrote an assisted row's Source to `manual`. The guard went into the shared
+  predicate, where every caller passes.
+
+One deliberate live behaviour change beyond assisted Results: any Result reaching
+assign with a customer email and token now gets the "final build ready" email,
+including in-store `manual` ones that previously got none. That is ADR 0016 working
+as intended — assign is a deliberate staff act and those Results are now sellable
+rather than residue — but it is a real change to an existing flow, so QA it in
+slice 08.
 
 ## Dependency graph
 
