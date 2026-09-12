@@ -139,6 +139,39 @@ describe("resultStage — stuck states", () => {
   });
 });
 
+describe("resultStage — Assisted customisation (no hold by design)", () => {
+  const assisted = (over: Partial<StageInput> = {}) =>
+    row({ source: "staff_assisted", payment_intent_id: null, ...over });
+
+  it("is real work awaiting assignment, not stuck", () => {
+    const s = resultStage(assisted(), NOW);
+    expect(s.stage).toBe("needs_assign");
+    expect(s.stuckReason).toBeNull();
+  });
+
+  it("does not become residue with age — nothing is expiring", () => {
+    const s = resultStage(assisted({ created_at: OLD }), NOW);
+    expect(s.stage).toBe("needs_assign");
+    expect(s.stuckReason).toBeNull();
+  });
+
+  it("waits on the customer once assigned, and never reads as a rotting hold", () => {
+    const s = resultStage(assisted({ status: "assigned", created_at: OLD }), NOW);
+    expect(s.stage).toBe("awaiting_customer");
+    expect(s.stuckReason).toBeNull();
+  });
+
+  it("leaves the other two no-hold sources exactly as they were", () => {
+    expect(
+      resultStage(row({ source: "online_purchase", payment_intent_id: null }), NOW)
+        .stuckReason,
+    ).toBe("abandoned_checkout");
+    expect(
+      resultStage(row({ source: "manual", payment_intent_id: null }), NOW).stuckReason,
+    ).toBe("measurement_residue");
+  });
+});
+
 describe("bucketFor", () => {
   it("folds building into to_build and handed_over into closed", () => {
     expect(bucketFor("building")).toBe("to_build");

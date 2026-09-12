@@ -12,6 +12,7 @@ import {
   validateDiscoverySource,
 } from "@/lib/discovery-source";
 import { requireAnyAdmin } from "@/lib/auth/admin";
+import { getStaffByAssistCode } from "@/lib/assist-link";
 import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
@@ -227,6 +228,8 @@ const UpsertSchema = z.object({
   persistContact: z.boolean().optional(),
   /** Result access token — proves the caller owns an existing row. */
   token: z.string().uuid().nullish(),
+  /** Assist link code from `/mp-config?assist=`. Re-resolved server-side. */
+  assistCode: z.string().min(1).max(32).optional(),
 });
 
 export async function GET(req: Request) {
@@ -351,6 +354,22 @@ export async function POST(req: Request) {
   // Rotation at hold is app/api/results/hold/route.ts's job, not ours.
   const accessToken = existing == null ? crypto.randomUUID() : null;
   if (accessToken) row.access_token = accessToken;
+
+  // Assist link stamp (PRD staff-assisted-customisation). On CREATE ONLY, for
+  // the same reason as the token above: `source` is what authorises the no-card
+  // submit downstream, so a later update must never be able to write it — a
+  // caller who reaches an existing row could otherwise relabel a self-serve
+  // Result as staff-assisted and put a free build into the queue.
+  // The client sends the CODE; the Staff id is resolved here and never trusted
+  // from the request. An unknown or deactivated code leaves the row untouched,
+  // so the visitor gets the ordinary flow rather than an error.
+  if (existing == null && parsed.data.assistCode) {
+    const staff = await getStaffByAssistCode(parsed.data.assistCode);
+    if (staff) {
+      row.source = "staff_assisted";
+      row.assisted_by_admin_id = staff.staffId;
+    }
+  }
 
   let wasFinal = false;
   let existingMeasuredByType: string | null = null;

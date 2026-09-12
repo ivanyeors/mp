@@ -4,6 +4,15 @@ Type: AFK
 Parent: PRD `template-linked-customisation` (`.claude/PRD-template-linked-customisation/template-linked-customisation-prd.md`)
 User stories covered: 42, 24, 25, 26, 29, 30
 
+> **Partly superseded by ADR 0016 (2026-09-12).** This slice's rule that a
+> review-only **Result** can be assigned but never accepted is reversed: a
+> **Result** with no **Authorization hold** now settles by **Balance payment** at
+> Accept, so **Staff** can measure a walk-in, build the pillow, and send a link to
+> pay. Everything else here stands — the hold is still not taken at
+> finalization. The guard moved to `capture`, which still refuses without money.
+> See `docs/adr/0016-deferred-payment-for-assisted-builds.md` and
+> `.claude/PRD-staff-assisted-customisation/`.
+
 ## What to build
 
 Walk-in / in-store measurement finalization creates a **Result without a Stripe authorization hold**, unless the customer explicitly continues into the online purchase/checkout path.

@@ -7,6 +7,7 @@ import { getSiteOrigin } from "@/lib/site-url";
 import { getAdminContext } from "@/lib/auth/admin";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
+import { getStaffByAssistCode } from "@/lib/assist-link";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MpConfigClient } from "./mp-config-client";
 
@@ -25,22 +26,24 @@ const INTRO: Record<Locale, { h1: string; lede: string }> = {
 
 type Props = {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ partner?: string }>;
+  searchParams: Promise<{ partner?: string; assist?: string }>;
 };
 
 export default async function MpConfigPage({ params, searchParams }: Props) {
   const { lang } = await params;
-  const { partner: partnerCode } = await searchParams;
+  const { partner: partnerCode, assist: assistCode } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
   // Staff assist gate: existing Staff check (admin_users / bootstrap). Guests get null.
   // Partner-assist (#78) is INDEPENDENT of staff auth — it comes from the ?partner
   // URL code, re-resolved server-side (never a client-supplied id).
-  const [offer, faq, staffCtx, partner] = await Promise.all([
+  // The Assist link (?assist=) is a THIRD, independent axis — see the prop below.
+  const [offer, faq, staffCtx, partner, assistStaff] = await Promise.all([
     getConfiguratorOfferRange("pillow"),
     getPageFaq("mp-config", locale),
     getAdminContext(),
     partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
+    assistCode ? getStaffByAssistCode(assistCode) : Promise.resolve(null),
   ]);
 
   const jsonLd = buildConfiguratorProductJsonLd({
@@ -66,8 +69,19 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
           faqTitle: faq?.title ?? null,
           faqItems: faq?.items ?? [],
         }}
-        staffAssist={Boolean(staffCtx)}
+        // Assist edits a live Result — size, tier, filling mix — so it needs the
+        // `results` permission, not mere back-office membership. `viewer` is the
+        // read-only role and must not reach the editor.
+        staffAssist={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
         canViewResults={Boolean(staffCtx && roleHasPermission(staffCtx.role, "results"))}
+        // Assist link (PRD staff-assisted-customisation). Deliberately NOT merged
+        // into `staffAssist` above: that gate governs the x-ray editor and turns
+        // on a Staff SESSION, while a customer holding a link has no admin_users
+        // row at all (getAdminContext() is null for them). Collapsing the two
+        // would hand the editor to every customer holding a link. This prop only
+        // travels back to the server on save, where the code is re-resolved and
+        // the Draft Result stamped `source = 'staff_assisted'`.
+        assistCode={assistStaff?.code ?? null}
         partner={
           partner
             ? {

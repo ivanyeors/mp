@@ -30,7 +30,15 @@ function productName(productType: string | null): string {
   return productType === "bolster" ? "Mbolster" : "Mpillow";
 }
 
-function statusUrl(origin: string, resultId: string, accessToken: string | null): string {
+/**
+ * The customer's tokenised status page. Exported so Staff-facing routes can hand
+ * the same link out (Request payment) instead of hand-assembling a token URL.
+ */
+export function statusUrl(
+  origin: string,
+  resultId: string,
+  accessToken: string | null,
+): string {
   const base = `${origin}/results/${encodeURIComponent(resultId)}`;
   return accessToken ? `${base}?token=${encodeURIComponent(accessToken)}` : base;
 }
@@ -44,7 +52,7 @@ function statusUrl(origin: string, resultId: string, accessToken: string | null)
 const STATUS_PAGE_LABEL = "status page";
 
 // ------------------------------------------------------------
-// Authorization hold placed → "under review"
+// Submission received → "under review" (hold) / "being made" (assisted)
 // ------------------------------------------------------------
 
 export function renderResultHeldEmail(p: {
@@ -53,49 +61,66 @@ export function renderResultHeldEmail(p: {
   accessToken: string;
   productType: "pillow" | "bolster";
   label: string;
-  amount: number;
+  /**
+   * The Authorization hold, or `null` for an Assisted customisation — submitted
+   * with no card, so there is no authorized amount and nothing true to say
+   * about one. Null is the same discriminator the DB uses (`payment_intent_id
+   * IS NULL`); a separate `hasHold` flag could contradict the amount, a null
+   * amount cannot. One renderer, so the two voices cannot drift apart.
+   */
+  amount: number | null;
   currency: string;
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
-  const amount = money(p.amount, p.currency);
-  const subject = `Your ${name} is under review`;
+  const amount = p.amount == null ? null : money(p.amount, p.currency);
+  const subject = amount
+    ? `Your ${name} is under review`
+    : `We've received your ${name} measurements`;
+  const trackLabel = amount ? "Track your review status" : "Track your build";
+  const closing = amount
+    ? "You will be able to accept or decline once an operator finishes review."
+    : `Our team is making your ${name} now. We'll email you when it's ready, with the final price.`;
 
   const text = [
     `Thanks for submitting your custom ${name}.`,
     "",
     p.label,
-    `Authorized amount: ${amount} (not charged yet)`,
+    ...(amount ? [`Authorized amount: ${amount} (not charged yet)`] : []),
     "",
-    "Track your review status:",
+    `${trackLabel}:`,
     url,
     "",
-    "You will be able to accept or decline once an operator finishes review.",
+    closing,
   ].join("\n");
 
   const html = renderEmailShell({
-    title: `Your ${name} is under review`,
-    preheader: `We've received your custom ${name}. Nothing has been charged yet.`,
-    bodyHtml: `${statusPill("Under review", "warning")}
+    title: subject,
+    preheader: amount
+      ? `We've received your custom ${name}. Nothing has been charged yet.`
+      : `We've received your custom ${name}. There's nothing to pay yet.`,
+    bodyHtml: `${statusPill(amount ? "Under review" : "Being made", "warning")}
 ${paragraph(`Thanks for submitting your custom ${name}.`, { top: 16 })}
 ${infoList([{ label: "Configuration", value: p.label }])}
-${amountPanel({
-      label: "Authorized amount",
-      amount,
-      caption: "Not charged yet — we only capture payment once you accept.",
-    })}
-${paragraph(
-      "You will be able to accept or decline once an operator finishes review.",
-      { muted: true },
-    )}`,
-    cta: { href: url, label: "Track your review status" },
+${
+      amount
+        ? amountPanel({
+            label: "Authorized amount",
+            amount,
+            caption: "Not charged yet — we only capture payment once you accept.",
+          })
+        : ""
+    }
+${paragraph(closing, { muted: true })}`,
+    cta: { href: url, label: trackLabel },
   });
 
   return { subject, text, html };
 }
 
 // ------------------------------------------------------------
-// Operator assigned the final build → "ready for review"
+// Operator assigned the final build → "accept or decline" (hold)
+//                                   / "review and pay" (Balance payment)
 // ------------------------------------------------------------
 
 export interface ResultPricing {
@@ -104,6 +129,13 @@ export interface ResultPricing {
   tax: number;
   total: number;
   currency: string;
+  /**
+   * The Authorization hold, or `null` for an Assisted customisation — submitted
+   * with no card, so the whole total is owed by Balance payment. Null is the
+   * same discriminator the DB uses (`authorized_amount IS NULL`), so it also
+   * chooses this email's voice: a separate `hasHold` flag could contradict the
+   * amount, a null amount cannot.
+   */
   authorized: number | null;
 }
 
@@ -122,6 +154,17 @@ export function renderResultAssignedEmail(p: {
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
+  // One renderer, two voices — the spec rows and the pricing block are shared so
+  // they cannot drift; only the ask differs.
+  const hasHold = p.pricing?.authorized != null;
+  const subject = hasHold
+    ? "Your final build is ready"
+    : "Your final build is ready — payment due";
+  const reviewLabel = hasHold ? "Review and accept or decline:" : "Review and pay:";
+  const ctaLabel = hasHold ? "Review your final build" : "Review and pay";
+  const closing = hasHold
+    ? "Accept or decline on the status page. Accept captures payment; Decline releases your hold."
+    : "Review your build on the status page and pay there to confirm your order. Nothing is charged until you do.";
   const sizeLine =
     p.productType === "bolster"
       ? `Length: ${p.length ?? "—"}`
@@ -148,7 +191,7 @@ export function renderResultAssignedEmail(p: {
     `Add-ons: ${p.addons.join(", ") || "—"}`,
     ...priceLines,
     "",
-    "Review and accept or decline:",
+    reviewLabel,
     url,
   ].join("\n");
 
@@ -190,22 +233,80 @@ export function renderResultAssignedEmail(p: {
       : "";
 
   const html = renderEmailShell({
-    title: "Your final build is ready",
-    preheader: `Your final ${name} build is ready for you to accept or decline.`,
+    title: subject,
+    preheader: hasHold
+      ? `Your final ${name} build is ready for you to accept or decline.`
+      : `Your final ${name} build is priced and ready — review it and pay to confirm.`,
     bodyHtml: `${paragraph(`Your final ${name} build is ready for review.`)}
 ${infoList(specRows)}
 ${section("Fillings", p.fillingSummary)}
 ${section("Preferences", p.preferences)}
 ${section("Add-ons", p.addons)}
 ${pricingRows.length > 0 ? infoList(pricingRows) : ""}
-${paragraph(
-      "Accept or decline on the status page. Accept captures payment; Decline releases your hold.",
-      { muted: true },
-    )}`,
-    cta: { href: url, label: "Review your final build" },
+${paragraph(closing, { muted: true })}`,
+    cta: { href: url, label: ctaLabel },
   });
 
-  return { subject: "Your final build is ready", text, html };
+  return { subject, text, html };
+}
+
+// ------------------------------------------------------------
+// Build ready, nobody paid → "your build is waiting"
+// ------------------------------------------------------------
+
+/**
+ * Reminder for an assigned Result awaiting a Balance payment (ADR 0016).
+ *
+ * Its own template rather than a re-send of the assigned email: that one is the
+ * full build spec and reads as news, and a customer who already has it does not
+ * need it twice. This is a nudge — what is owed, and the way back.
+ */
+export function renderBalanceDueReminderEmail(p: {
+  origin: string;
+  resultId: string;
+  accessToken: string | null;
+  productType: string | null;
+  amount: number | null;
+  currency: string;
+}): RenderedEmail {
+  const name = productName(p.productType);
+  const url = statusUrl(p.origin, p.resultId, p.accessToken);
+  const total = p.amount == null ? null : money(p.amount, p.currency);
+  const subject = `Your ${name} is built and waiting`;
+
+  const text = [
+    `Your custom ${name} is finished and waiting for payment.`,
+    "",
+    ...(total ? [`Total: ${total}`] : []),
+    "",
+    "Review the build and pay:",
+    url,
+    "",
+    "Nothing has been charged yet.",
+  ].join("\n");
+
+  const html = renderEmailShell({
+    title: subject,
+    preheader: `Your ${name} is ready — it just needs payment to go into production.`,
+    bodyHtml: `${statusPill("Payment due", "warning")}
+${paragraph(`Your custom ${name} is finished and waiting for payment.`, { top: 16 })}
+${
+      total
+        ? amountPanel({
+            label: "Total",
+            amount: total,
+            caption: "Nothing charged yet — payment confirms your order.",
+          })
+        : ""
+    }
+${paragraphHtml(
+      `Review the full build on its ${link({ href: url, label: STATUS_PAGE_LABEL })} and pay there to send it into production.`,
+      { muted: true },
+    )}`,
+    cta: { href: url, label: "Review and pay" },
+  });
+
+  return { subject, text, html };
 }
 
 // ------------------------------------------------------------

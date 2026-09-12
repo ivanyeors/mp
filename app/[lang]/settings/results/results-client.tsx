@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { AssistLinkCard } from "@/components/admin/assist-link-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -682,6 +683,11 @@ export default function ResultsPage({
         </div>
       </div>
 
+      {/* Where Staff already work Results: the link produces rows in this very
+          queue, and this page is already requireAdminPage("results")-gated —
+          the same permission the mint route demands. */}
+      <AssistLinkCard />
+
       <div className="flex flex-col gap-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as ResultsTab)}>
           <TabsList className="flex-wrap">
@@ -720,6 +726,7 @@ export default function ResultsPage({
                 <SelectItem value="all">All sources</SelectItem>
                 <SelectItem value="online_purchase">Purchase</SelectItem>
                 <SelectItem value="online_customization">Online</SelectItem>
+                <SelectItem value="staff_assisted">Assisted</SelectItem>
                 <SelectItem value="manual">In-store</SelectItem>
               </SelectContent>
             </Select>
@@ -885,12 +892,21 @@ export default function ResultsPage({
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 ${
+                            row.source === "staff_assisted"
+                              ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+                              : ""
+                          }`}
+                        >
                           {row.source === "online_purchase"
                             ? "Purchase"
                             : row.source === "online_customization"
                               ? "Online"
-                              : "In-store"}
+                              : row.source === "staff_assisted"
+                                ? "Assisted"
+                                : "In-store"}
                         </Badge>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>

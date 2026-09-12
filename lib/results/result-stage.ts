@@ -89,6 +89,10 @@ function stuckReason(input: StageInput, now: Date): StuckReason | null {
     // Customer started Checkout and abandoned it: the row exists but no hold was
     // ever attached. The SLA cron skips PI-less rows, so it never expires.
     if (source === "online_purchase") return "abandoned_checkout";
+    // An Assisted customisation is SUPPOSED to have no hold — the customer was
+    // never asked for a card. It is a queue item waiting on Staff, not residue,
+    // and the happy path below stages it as such.
+    if (source === "staff_assisted") return null;
     // In-store measurement-only Result. Legitimate, but it sits in `held` forever
     // and clutters the queue until someone closes it.
     return "measurement_residue";
@@ -128,9 +132,13 @@ export function resultStage(input: StageInput, now: Date = new Date()): StageRes
   if (status === "assigned") return { stage: "awaiting_customer", stuckReason: null };
 
   if (status === "held") {
-    return payment_intent_id
-      ? { stage: "needs_assign", stuckReason: null }
-      : { stage: "measurement_only", stuckReason: null };
+    // A hold means a shopper is waiting on assignment. So does an Assisted
+    // customisation, which reaches `held` with no card by design — same work,
+    // same queue, so it must not read as "measurement only".
+    if (payment_intent_id || input.source === "staff_assisted") {
+      return { stage: "needs_assign", stuckReason: null };
+    }
+    return { stage: "measurement_only", stuckReason: null };
   }
 
   // Null status = an in-store draft that has not been finalized yet.

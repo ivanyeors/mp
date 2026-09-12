@@ -91,6 +91,14 @@ export function sampleResultHeld(fixture: EmailFixture = "happy") {
   };
 }
 
+/**
+ * Assisted customisation: the customer submitted with no card, so there is no
+ * Authorization hold and no authorized amount to show.
+ */
+export function sampleResultHeldNoHold(fixture: EmailFixture = "happy") {
+  return { ...sampleResultHeld(fixture), amount: null };
+}
+
 export function sampleResultAssigned(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,
@@ -119,12 +127,32 @@ export function sampleResultAssigned(fixture: EmailFixture = "happy") {
   };
 }
 
+/**
+ * Assisted customisation: no Authorization hold, so the whole total is owed by
+ * Balance payment. Spread from the hold fixture so the two cannot drift.
+ */
+export function sampleResultAssignedBalance(fixture: EmailFixture = "happy") {
+  const base = sampleResultAssigned(fixture);
+  return { ...base, pricing: { ...base.pricing, authorized: null } };
+}
+
 export function sampleHoldExpired(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,
     resultId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
     accessToken: pick(fixture, "tok_preview_9f2b"),
     productType: "pillow",
+  };
+}
+
+export function sampleBalanceDue(fixture: EmailFixture = "happy") {
+  return {
+    origin: ORIGIN,
+    resultId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
+    accessToken: pick(fixture, "tok_preview_9f2b"),
+    productType: "pillow",
+    amount: 428,
+    currency: "SGD",
   };
 }
 

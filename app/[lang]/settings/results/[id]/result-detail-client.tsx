@@ -297,6 +297,10 @@ export default function ResultDetailPage({
   const [prepLoading, setPrepLoading] = useState(false);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [requestingPayment, setRequestingPayment] = useState(false);
+  /** Customer's tokenised status URL, returned by the route — never built here. */
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
 
   useSettingsBreadcrumbDetail(draft.name.trim() || orderNumber || null);
 
@@ -598,6 +602,42 @@ export default function ResultDetailPage({
     load,
   ]);
 
+  // Re-send the priced email and fetch the customer's link. The route writes
+  // nothing, so this is safe to press twice — hence no reload afterwards.
+  const requestPayment = useCallback(async () => {
+    if (!id) return;
+    setRequestingPayment(true);
+    try {
+      const res = await fetch(
+        `/api/results/${encodeURIComponent(id)}/request-payment`,
+        { method: "POST" },
+      );
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
+      setPaymentLink((payload?.statusUrl as string | undefined) ?? null);
+      toast.success(
+        payload?.emailStatus === "sent"
+          ? "Payment email sent"
+          : "Link ready — no customer email on file",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to request payment");
+    } finally {
+      setRequestingPayment(false);
+    }
+  }, [id]);
+
+  const copyPaymentLink = async () => {
+    if (!paymentLink) return;
+    try {
+      await navigator.clipboard.writeText(paymentLink);
+      setPaymentLinkCopied(true);
+      setTimeout(() => setPaymentLinkCopied(false), 2000);
+    } catch {
+      /* clipboard blocked — the link stays selectable in the input */
+    }
+  };
+
   useEffect(() => {
     if (skipDetailFetch.current) {
       skipDetailFetch.current = false;
@@ -841,39 +881,69 @@ export default function ResultDetailPage({
           </div>
 
           {row.status === "assigned" ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-              {productType === "bolster" ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                {productType === "bolster" ? (
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Length</div>
+                    <div className="font-medium">{row.assigned_length ?? "—"}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="rounded-md border bg-muted/30 p-3">
+                      <div className="text-xs text-muted-foreground">Size</div>
+                      <div className="font-medium">{row.assigned_size ?? "—"}</div>
+                    </div>
+                    <div className="rounded-md border bg-muted/30 p-3">
+                      <div className="text-xs text-muted-foreground">Tier</div>
+                      <div className="font-medium capitalize">{row.assigned_tier ?? "—"}</div>
+                    </div>
+                  </>
+                )}
                 <div className="rounded-md border bg-muted/30 p-3">
-                  <div className="text-xs text-muted-foreground">Length</div>
-                  <div className="font-medium">{row.assigned_length ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">Filling Template</div>
+                  <div className="font-medium">
+                    {row.filling_template_id != null ? `#${row.filling_template_id}` : "Custom mix"}
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <div className="rounded-md border bg-muted/30 p-3">
-                    <div className="text-xs text-muted-foreground">Size</div>
-                    <div className="font-medium">{row.assigned_size ?? "—"}</div>
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <div className="text-xs text-muted-foreground">Final amount</div>
+                  <div className="font-medium tabular-nums">
+                    {row.final_amount != null
+                      ? `${row.currency ?? "SGD"} ${Number(row.final_amount).toFixed(2)}`
+                      : "—"}
                   </div>
-                  <div className="rounded-md border bg-muted/30 p-3">
-                    <div className="text-xs text-muted-foreground">Tier</div>
-                    <div className="font-medium capitalize">{row.assigned_tier ?? "—"}</div>
-                  </div>
-                </>
-              )}
-              <div className="rounded-md border bg-muted/30 p-3">
-                <div className="text-xs text-muted-foreground">Filling Template</div>
-                <div className="font-medium">
-                  {row.filling_template_id != null ? `#${row.filling_template_id}` : "Custom mix"}
                 </div>
               </div>
-              <div className="rounded-md border bg-muted/30 p-3">
-                <div className="text-xs text-muted-foreground">Final amount</div>
-                <div className="font-medium tabular-nums">
-                  {row.final_amount != null
-                    ? `${row.currency ?? "SGD"} ${Number(row.final_amount).toFixed(2)}`
-                    : "—"}
-                </div>
+
+              <div className="space-y-2 border-t pt-3">
+                <Button
+                  variant="secondary"
+                  onClick={requestPayment}
+                  disabled={requestingPayment}
+                >
+                  {requestingPayment ? "Sending…" : "Request payment"}
+                </Button>
+                {paymentLink && (
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={paymentLink}
+                      onFocus={(e) => e.currentTarget.select()}
+                      className="font-mono text-xs"
+                    />
+                    <Button type="button" variant="outline" onClick={copyPaymentLink}>
+                      {paymentLinkCopied ? "Copied" : "Copy"}
+                    </Button>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Re-sends the priced email and gives you the customer&apos;s link to
+                  paste into WhatsApp. Safe to press twice — it changes nothing on
+                  the Result.
+                </p>
               </div>
-            </div>
+            </>
           ) : (
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -17,7 +17,17 @@ export function isPreOrder(input: PreOrderTriggerInput): { isPreOrder: boolean }
   return { isPreOrder: prefOos || buildOos };
 }
 
-export function holdCtaLabel(preOrder: boolean): "Pre-order" | "Proceed" {
+export type HoldCtaLabel = "Pre-order" | "Proceed" | "Send to our build team";
+
+/**
+ * The preview's primary call to action.
+ *
+ * `assisted` wins over `preOrder`: an Assisted customisation takes no card
+ * either way, so "Pre-order" would promise a checkout that is not coming. The
+ * Pre-order waiting copy still renders beside it when the trigger fires.
+ */
+export function holdCtaLabel(preOrder: boolean, assisted = false): HoldCtaLabel {
+  if (assisted) return "Send to our build team";
   return preOrder ? "Pre-order" : "Proceed";
 }
 

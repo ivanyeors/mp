@@ -269,6 +269,7 @@ export function MpConfigClient({
   staffAssist = false,
   canViewResults = false,
   partner = null,
+  assistCode = null,
 }: {
   info: MpConfigInfo;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
@@ -287,6 +288,14 @@ export function MpConfigClient({
     logoUrl: string | null;
     description: string | null;
   } | null;
+  /**
+   * Assist link code, already resolved server-side to an active Staff member.
+   * Orthogonal to `staffAssist`: a customer holding a link has no admin_users
+   * row, so it grants NO assist chrome and NO x-ray editor — it is echoed back
+   * on save so the server can re-resolve it and stamp the Draft Result.
+   * Changes nothing about what renders.
+   */
+  assistCode?: string | null;
 }) {
   // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
   const partnerAssisted = Boolean(partner);
@@ -330,6 +339,11 @@ export function MpConfigClient({
     usesBolster: "",
   });
 
+  /**
+   * An Assist link resolved server-side. Governs the preview's call to action and
+   * nothing else — it is NOT a Staff session and must never gate staff chrome.
+   */
+  const assisted = Boolean(assistCode);
   const [responseId, setResponseId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
@@ -1044,6 +1058,9 @@ export function MpConfigClient({
           data: measurementData,
           ...(readToken(tokenStorageKey) ? { token: readToken(tokenStorageKey) } : {}),
           ...(typeof opts?.isFinal === "boolean" ? { isFinal: opts.isFinal } : {}),
+          // The CODE, never a staff id: the server re-resolves it and stamps
+          // the row on create only (app/api/mp-config/responses/route.ts).
+          ...(assistCode ? { assistCode } : {}),
         }),
       });
       const payload = await res.json().catch(() => null);
@@ -1060,7 +1077,7 @@ export function MpConfigClient({
       setSaveStatus("error");
       return null;
     }
-  }, [responseId, hasAnyInput, measurementData, tokenStorageKey]);
+  }, [responseId, hasAnyInput, measurementData, tokenStorageKey, assistCode]);
 
   const loadSuggestion = async () => {
     if (!responseId) return;
@@ -1545,6 +1562,10 @@ export function MpConfigClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           responseId: responseId ?? undefined,
+          // Assisted customisation: no card. The server honours this only if the
+          // row it already stored is `source = 'staff_assisted'`, so the flag is
+          // a request, not a grant.
+          ...(assisted ? { deferred: true } : {}),
           email: holdEmail.trim(),
           phone: holdPhone.trim(),
           discoverySource,
@@ -1588,8 +1609,13 @@ export function MpConfigClient({
       if (!res.ok) {
         throw new Error(getApiErrorMessage(data.error, "Failed to start authorization"));
       }
-      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
-      window.location.href = data.checkoutUrl;
+      // A deferred submit has no Checkout — the customer goes straight to the
+      // status page to wait for Staff to finish the build.
+      const next = assisted ? data.statusUrl : data.checkoutUrl;
+      if (!next) {
+        throw new Error(assisted ? "Missing status URL" : "Missing checkout URL");
+      }
+      window.location.href = next as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
       setHoldSubmitting(false);
@@ -1759,7 +1785,9 @@ export function MpConfigClient({
           composedBuildable: shopRecommendation.composed_buildable ?? 0,
         }).isPreOrder
       : false;
-    const holdCta = holdSubmitting ? "Redirecting…" : holdCtaLabel(preOrder);
+    const holdCta = holdSubmitting
+      ? "Redirecting…"
+      : holdCtaLabel(preOrder, assisted);
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
@@ -1955,6 +1983,7 @@ export function MpConfigClient({
                       size: size as SizeTier["size"],
                       tier: tier as SizeTier["tier"],
                     }}
+                    placements={assistPlacements}
                     onPlacementsChange={setAssistPlacements}
                     loadedTemplate={assistLoadedTemplate}
                     onLoadTemplate={setAssistLoadedTemplate}
@@ -2190,6 +2219,14 @@ export function MpConfigClient({
                   </div>
                 </div>
 
+                {/*
+                  Not rendered for an Assisted customisation: "Send to our build
+                  team" already IS the no-purchase submit there, and this control
+                  would write a second, conflicting one. The data hazard it used
+                  to carry is fixed at the source in
+                  shouldCreateInstoreReviewOnly() — see lib/results/instore-finalize.
+                */}
+                {!assisted && (
                 <div className="text-center">
                   <Button
                     variant="ghost"
@@ -2255,6 +2292,7 @@ export function MpConfigClient({
                     Save without purchasing
                   </Button>
                 </div>
+                )}
               </div>
 
               {waitingCopy ? (

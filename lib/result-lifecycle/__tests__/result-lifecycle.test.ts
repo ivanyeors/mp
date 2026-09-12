@@ -61,12 +61,13 @@ describe("transitionResult", () => {
     );
     expect(beforeAccept.ok).toBe(false);
 
+    // Accept no longer checks for a hold (ADR 0016) — `capture` carries that
+    // guard alone now, asserted below and in the dedicated case that follows.
     const acceptNoPi = transitionResult(
       { status: "assigned", filling_template_id: 1, payment_intent_id: null },
       { action: "accept" },
     );
-    expect(acceptNoPi.ok).toBe(false);
-    if (!acceptNoPi.ok) expect(acceptNoPi.error).toMatch(/payment intent/i);
+    expect(acceptNoPi).toEqual({ ok: true, status: "accepted", releaseHold: false });
 
     const accepted = transitionResult(
       { status: "assigned", filling_template_id: 1, payment_intent_id: "pi_abc" },
@@ -74,18 +75,32 @@ describe("transitionResult", () => {
     );
     expect(accepted).toEqual({ ok: true, status: "accepted", releaseHold: false });
 
-    const noPi = transitionResult(
+    const noMoney = transitionResult(
       { status: "accepted", filling_template_id: 1, payment_intent_id: null },
       { action: "capture" },
     );
-    expect(noPi.ok).toBe(false);
-    if (!noPi.ok) expect(noPi.error).toMatch(/payment intent/i);
+    expect(noMoney.ok).toBe(false);
+    if (!noMoney.ok) expect(noMoney.error).toMatch(/balance payment/i);
 
     const captured = transitionResult(
       { status: "accepted", filling_template_id: 1, payment_intent_id: "pi_abc" },
       { action: "capture" },
     );
     expect(captured).toEqual({ ok: true, status: "captured", releaseHold: false });
+  });
+
+  it("captures a Result with no hold once its Balance payment is paid", () => {
+    expect(
+      transitionResult(
+        {
+          status: "accepted",
+          filling_template_id: 1,
+          payment_intent_id: null,
+          balance_paid: true,
+        },
+        { action: "capture" },
+      ),
+    ).toEqual({ ok: true, status: "captured", releaseHold: false });
   });
 
   it("decline and expire release hold when present", () => {

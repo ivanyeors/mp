@@ -2,17 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { LayoutTemplate, Ruler } from "lucide-react";
+import { StaffToolbox, type ToolSpec } from "@/components/configurator/staff-toolbox";
+import { SaveFillingTemplate } from "@/components/configurator/save-filling-template";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import type { LoadedTemplate } from "@/lib/configurator/staff-assist";
+import { saveAffordance, type LoadedTemplate } from "@/lib/configurator/staff-assist";
 import {
+  bolsterPlacementsToRows,
   rowsToBolsterPlacements,
   type BolsterPlacement,
   type BolsterPlacementRow,
@@ -26,11 +22,12 @@ type TemplateRow = { id: number; name: string };
  * pillow panel minus the size×tier confirm gate — the surface models length
  * from the height recommendation, so templates scope to that length
  * (length-based eligibility). Per-piece edits live on the x-ray itself —
- * no list editor here. No template create/save-as — catalog stays curated
- * in the Admin Panel.
+ * no list editor here. An edited mix saves back to the catalog the same way
+ * the pillow panel does (overwrite or fork), gated on inventory.
  */
 export function StaffAssistBolsterPanel({
   length,
+  placements,
   onPlacementsChange,
   loadedTemplate,
   onLoadTemplate,
@@ -40,6 +37,8 @@ export function StaffAssistBolsterPanel({
 }: {
   /** Recommended bolster length (short | medium | long) — scopes the template picker. */
   length: string;
+  /** Live session mix, edited on the x-ray — the thing a save publishes. */
+  placements: BolsterPlacement[];
   onPlacementsChange: (next: BolsterPlacement[]) => void;
   loadedTemplate: LoadedTemplate | null;
   onLoadTemplate: (loaded: LoadedTemplate | null) => void;
@@ -51,6 +50,8 @@ export function StaffAssistBolsterPanel({
   onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
 }) {
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  // Bumped after a save so the picker refetches and lists the saved template.
+  const [catalogVersion, setCatalogVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +80,7 @@ export function StaffAssistBolsterPanel({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
-  }, [length]);
+  }, [length, catalogVersion]);
 
   const loadTemplate = async (templateId: number) => {
     try {
@@ -94,39 +95,61 @@ export function StaffAssistBolsterPanel({
     }
   };
 
-  return (
-    <div className="w-full max-w-md rounded-xl border bg-background/95 p-4 text-left shadow-lg backdrop-blur">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold">
-          Staff assist · <span className="capitalize">{length}</span>
-        </p>
-        {loadedTemplate ? (
-          <Badge variant="outline" className="text-xs">
-            {sessionFillingTemplateId !== null ? "Matches template" : "Edited from template"}
-          </Badge>
-        ) : null}
-      </div>
+  const tools: ToolSpec[] = [
+    // Length is derived from the height recommendation, not a staff pick — it
+    // shows as context because it scopes the template list below.
+    {
+      id: "length",
+      label: "Length",
+      icon: Ruler,
+      readOnly: true,
+      value: length,
+      options: [{ value: length, label: length.charAt(0).toUpperCase() + length.slice(1) }],
+    },
+    {
+      id: "template",
+      label: "Filling Template",
+      icon: LayoutTemplate,
+      layout: "list",
+      value: loadedTemplate ? String(loadedTemplate.id) : "",
+      options: templates.map((t) => ({ value: String(t.id), label: t.name })),
+      onSelect: (v) => void loadTemplate(Number(v)),
+      placeholder: templates.length === 0 ? "None for this length" : "Load template…",
+    },
+  ];
 
-      {/* Filling Template picker (active, length-scoped); edits happen on the x-ray */}
-      <Select
-        value={loadedTemplate ? String(loadedTemplate.id) : ""}
-        onValueChange={(v) => void loadTemplate(Number(v))}
-      >
-        <SelectTrigger aria-label="Filling Template" className="w-full min-w-0">
-          <SelectValue
-            placeholder={
-              templates.length === 0 ? "No templates for this length" : "Load Filling Template…"
+  const affordance = saveAffordance({ placements, loaded: loadedTemplate });
+  const loadedName = loadedTemplate
+    ? templates.find((t) => t.id === loadedTemplate.id)?.name ?? "this template"
+    : null;
+
+  return (
+    <StaffToolbox
+      tools={tools}
+      action={
+        affordance.dirty ? (
+          <SaveFillingTemplate
+            scope={{ length }}
+            placements={bolsterPlacementsToRows(placements)}
+            overwrite={
+              affordance.canOverwrite && loadedTemplate && loadedName
+                ? { id: loadedTemplate.id, name: loadedName }
+                : null
             }
+            onSaved={(templateId) => {
+              onLoadTemplate({ id: templateId, placements });
+              setCatalogVersion((v) => v + 1);
+            }}
           />
-        </SelectTrigger>
-        <SelectContent>
-          {templates.map((t) => (
-            <SelectItem key={t.id} value={String(t.id)}>
-              {t.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+        ) : null
+      }
+      status={
+        loadedTemplate
+          ? sessionFillingTemplateId !== null
+            ? { label: "Matches template", tone: "synced" }
+            : { label: "Edited", tone: "edited" }
+          : null
+      }
+    />
   );
 }

@@ -20,6 +20,7 @@ import {
   renderReferralEarnedEmail,
 } from "./partner";
 import {
+  renderBalanceDueReminderEmail,
   renderHoldExpiredEmail,
   renderRestockEmail,
   renderResultAssignedEmail,
@@ -36,9 +37,12 @@ import {
   sampleHoldExpired,
   sampleOrder,
   samplePartnerListing,
+  sampleBalanceDue,
   sampleRestock,
   sampleResultAssigned,
+  sampleResultAssignedBalance,
   sampleResultHeld,
+  sampleResultHeldNoHold,
   sampleRma,
   type EmailFixture,
 } from "./__fixtures__/samples";
@@ -116,11 +120,41 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderResultHeldEmail(sampleResultHeld(f)),
   },
   {
+    // Same renderer, no Authorization hold (Assisted customisation). Registered
+    // so the parameter variant gets a dev preview and the contract tests —
+    // registry-coverage only enumerates render*Email FUNCTIONS, so it would
+    // otherwise pass unnoticed.
+    id: "results.held_no_hold",
+    label: "Assisted submission received",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultHeldEmail(sampleResultHeldNoHold(f)),
+  },
+  {
     id: "results.assigned",
     label: "Final build ready",
     group: "results",
     audience: "customer",
     render: (f) => renderResultAssignedEmail(sampleResultAssigned(f)),
+  },
+  {
+    // Same renderer, no Authorization hold (Assisted customisation): the whole
+    // total is owed by Balance payment, so the ask is "pay", not "accept".
+    // Registered for the dev preview and contract.test.ts — registry-coverage
+    // only enumerates render*Email FUNCTIONS, so a parameter variant is invisible
+    // to it.
+    id: "results.assigned_balance",
+    label: "Final build ready — payment due",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultAssignedEmail(sampleResultAssignedBalance(f)),
+  },
+  {
+    id: "results.balance_due",
+    label: "Build ready — payment due",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderBalanceDueReminderEmail(sampleBalanceDue(f)),
   },
   {
     id: "results.hold_expired",
