@@ -23,7 +23,9 @@ export async function GET() {
 
   const { data: rows, error } = await admin
     .from("mp_config_responses")
-    .select("id, status, source, payment_intent_id, created_at, order_id, topup_paid_at")
+    .select(
+      "id, status, source, payment_intent_id, created_at, order_id, topup_paid_at, authorized_amount"
+    )
     .in("status", ["held", "assigned"]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -52,6 +54,7 @@ export async function GET() {
         created_at: r.created_at,
         order_id: r.order_id,
         topup_paid_at: r.topup_paid_at,
+        authorized_amount: r.authorized_amount,
         order: r.order_id
           ? {
               status: null,
