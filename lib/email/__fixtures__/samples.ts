@@ -91,6 +91,14 @@ export function sampleResultHeld(fixture: EmailFixture = "happy") {
   };
 }
 
+/**
+ * Assisted customisation: the customer submitted with no card, so there is no
+ * Authorization hold and no authorized amount to show.
+ */
+export function sampleResultHeldNoHold(fixture: EmailFixture = "happy") {
+  return { ...sampleResultHeld(fixture), amount: null };
+}
+
 export function sampleResultAssigned(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,

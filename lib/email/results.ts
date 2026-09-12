@@ -44,7 +44,7 @@ function statusUrl(origin: string, resultId: string, accessToken: string | null)
 const STATUS_PAGE_LABEL = "status page";
 
 // ------------------------------------------------------------
-// Authorization hold placed → "under review"
+// Submission received → "under review" (hold) / "being made" (assisted)
 // ------------------------------------------------------------
 
 export function renderResultHeldEmail(p: {
@@ -53,42 +53,58 @@ export function renderResultHeldEmail(p: {
   accessToken: string;
   productType: "pillow" | "bolster";
   label: string;
-  amount: number;
+  /**
+   * The Authorization hold, or `null` for an Assisted customisation — submitted
+   * with no card, so there is no authorized amount and nothing true to say
+   * about one. Null is the same discriminator the DB uses (`payment_intent_id
+   * IS NULL`); a separate `hasHold` flag could contradict the amount, a null
+   * amount cannot. One renderer, so the two voices cannot drift apart.
+   */
+  amount: number | null;
   currency: string;
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
-  const amount = money(p.amount, p.currency);
-  const subject = `Your ${name} is under review`;
+  const amount = p.amount == null ? null : money(p.amount, p.currency);
+  const subject = amount
+    ? `Your ${name} is under review`
+    : `We've received your ${name} measurements`;
+  const trackLabel = amount ? "Track your review status" : "Track your build";
+  const closing = amount
+    ? "You will be able to accept or decline once an operator finishes review."
+    : `Our team is making your ${name} now. We'll email you when it's ready, with the final price.`;
 
   const text = [
     `Thanks for submitting your custom ${name}.`,
     "",
     p.label,
-    `Authorized amount: ${amount} (not charged yet)`,
+    ...(amount ? [`Authorized amount: ${amount} (not charged yet)`] : []),
     "",
-    "Track your review status:",
+    `${trackLabel}:`,
     url,
     "",
-    "You will be able to accept or decline once an operator finishes review.",
+    closing,
   ].join("\n");
 
   const html = renderEmailShell({
-    title: `Your ${name} is under review`,
-    preheader: `We've received your custom ${name}. Nothing has been charged yet.`,
-    bodyHtml: `${statusPill("Under review", "warning")}
+    title: subject,
+    preheader: amount
+      ? `We've received your custom ${name}. Nothing has been charged yet.`
+      : `We've received your custom ${name}. There's nothing to pay yet.`,
+    bodyHtml: `${statusPill(amount ? "Under review" : "Being made", "warning")}
 ${paragraph(`Thanks for submitting your custom ${name}.`, { top: 16 })}
 ${infoList([{ label: "Configuration", value: p.label }])}
-${amountPanel({
-      label: "Authorized amount",
-      amount,
-      caption: "Not charged yet — we only capture payment once you accept.",
-    })}
-${paragraph(
-      "You will be able to accept or decline once an operator finishes review.",
-      { muted: true },
-    )}`,
-    cta: { href: url, label: "Track your review status" },
+${
+      amount
+        ? amountPanel({
+            label: "Authorized amount",
+            amount,
+            caption: "Not charged yet — we only capture payment once you accept.",
+          })
+        : ""
+    }
+${paragraph(closing, { muted: true })}`,
+    cta: { href: url, label: trackLabel },
   });
 
   return { subject, text, html };

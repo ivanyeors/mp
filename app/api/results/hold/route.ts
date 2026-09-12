@@ -198,7 +198,8 @@ async function sendHeldEmail(opts: {
   origin: string;
   productType: "pillow" | "bolster";
   label: string;
-  amount: number;
+  /** Null for an Assisted customisation — no card, so no authorized amount. */
+  amount: number | null;
   currency: string;
 }) {
   try {
@@ -660,6 +661,10 @@ export async function POST(req: Request) {
     ].join("\n"),
   );
 
+  // ponytail: slice 04 built the no-card voice of this email — pass
+  // `amount: null` and renderResultHeldEmail drops the authorized-amount panel
+  // and promises a price by email instead. There is no deferred (no-card)
+  // submit branch here yet; slice 03 owns building it and wiring this call.
   const emailStatus = await sendHeldEmail({
     to: input.email,
     resultId,

@@ -113,6 +113,17 @@ const STATUS_COPY: Record<string, { title: string; body: string }> = {
   },
 };
 
+/**
+ * `held` with no Authorization hold — an Assisted customisation, submitted with
+ * no card. Same status, different truth: nothing was authorized, so there is no
+ * hold to mention and no accept/decline to promise yet. Keyed on the missing
+ * `payment_intent_id`, never on `source` (ADR 0016).
+ */
+const HELD_NO_HOLD_COPY = {
+  title: "Measurements received",
+  body: "Thanks — your measurements are with our team and we’re making your build now. We’ll email you when it’s ready, with the final price.",
+};
+
 function journeyIndex(status: string): number {
   switch (status) {
     case "held":
@@ -281,14 +292,19 @@ function ResultStatusPage() {
   }, [signedIn]);
 
   const status = result?.status ?? "held";
-  const copy = STATUS_COPY[status] ?? STATUS_COPY.held;
+  const hasPaymentHold = Boolean(result?.payment_intent_id);
+  // `result` is null while loading, so the no-hold voice waits for the row —
+  // otherwise every hold customer sees a flash of the wrong copy first.
+  const copy =
+    result && status === "held" && !hasPaymentHold
+      ? HELD_NO_HOLD_COPY
+      : STATUS_COPY[status] ?? STATUS_COPY.held;
   const size = result?.assigned_size ?? result?.suggested_size;
   const tier = result?.assigned_tier ?? result?.suggested_tier;
   const amount = result?.final_amount ?? result?.authorized_amount;
   const currency = result?.currency ?? "SGD";
   const build = result?.build;
   const showFinalBuild = status === "assigned" || status === "accepted" || status === "captured";
-  const hasPaymentHold = Boolean(result?.payment_intent_id);
   const canDecide = status === "assigned" && hasPaymentHold;
   const activeStep = journeyIndex(status);
   const progressValue = ((activeStep + 1) / JOURNEY_STEPS.length) * 100;

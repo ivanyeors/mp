@@ -39,6 +39,7 @@ import {
   sampleRestock,
   sampleResultAssigned,
   sampleResultHeld,
+  sampleResultHeldNoHold,
   sampleRma,
   type EmailFixture,
 } from "./__fixtures__/samples";
@@ -114,6 +115,17 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderResultHeldEmail(sampleResultHeld(f)),
+  },
+  {
+    // Same renderer, no Authorization hold (Assisted customisation). Registered
+    // so the parameter variant gets a dev preview and the contract tests —
+    // registry-coverage only enumerates render*Email FUNCTIONS, so it would
+    // otherwise pass unnoticed.
+    id: "results.held_no_hold",
+    label: "Assisted submission received",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultHeldEmail(sampleResultHeldNoHold(f)),
   },
   {
     id: "results.assigned",
