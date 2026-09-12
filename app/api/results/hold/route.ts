@@ -375,8 +375,11 @@ export async function POST(req: Request) {
       : { productType: "bolster", length: input.suggestedLength! },
   );
   if (!composed.ok) {
-    if (composed.code === "no_price") {
-      console.error(`[results/hold] pricing not configured: ${composed.error}`);
+    // Both pricing faults look identical to a shopper and must not leak the
+    // reason, but they are very different to whoever reads the log: one means
+    // nobody set a price, the other that two are set and the code cannot choose.
+    if (composed.code === "no_price" || composed.code === "ambiguous_price") {
+      console.error(`[results/hold] pricing not usable (${composed.code}): ${composed.error}`);
       return NextResponse.json({ error: PRICING_UNAVAILABLE_MESSAGE, code: "pricing_unavailable" }, { status: 409 });
     }
     return NextResponse.json({ error: composed.error }, { status: 400 });

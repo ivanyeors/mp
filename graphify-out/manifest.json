@@ -1104,10 +1104,10 @@
     "semantic_hash": "19fc3d894478eeec59bdc18fcaa9c610"
   },
   "lib/results/__tests__/composed-sellable.test.ts": {
-    "mtime": 1783178340.0992126,
-    "seen": 1789174039.650213,
-    "ast_hash": "8cf533aea2afdb052fedf779e65348cb",
-    "semantic_hash": "8cf533aea2afdb052fedf779e65348cb"
+    "mtime": 1789214426.8380919,
+    "seen": 1789214493.435963,
+    "ast_hash": "ca40568ae82552de49e5053c214aab56",
+    "semantic_hash": ""
   },
   "lib/results/__tests__/legacy-filling-migration.test.ts": {
     "mtime": 1783185789.0158324,
@@ -1164,9 +1164,9 @@
     "semantic_hash": ""
   },
   "lib/results/composed-sellable.ts": {
-    "mtime": 1784900448.7386765,
-    "seen": 1789174039.650223,
-    "ast_hash": "f89ebbf7d0e9a789c1fdd307fb41607e",
+    "mtime": 1789214370.187439,
+    "seen": 1789214493.435976,
+    "ast_hash": "d33d8d4dc978d305de2632f2c6d0ba6a",
     "semantic_hash": ""
   },
   "lib/results/instore-ballpark.ts": {
@@ -1596,10 +1596,10 @@
     "semantic_hash": "64939a65f714c9eae7260052c2a9a016"
   },
   "lib/stripe/sync.ts": {
-    "mtime": 1783187545.1038961,
-    "seen": 1789174039.6502998,
-    "ast_hash": "908e9507f29ee2fcde8d4558a50c9db5",
-    "semantic_hash": "908e9507f29ee2fcde8d4558a50c9db5"
+    "mtime": 1789214014.7338471,
+    "seen": 1789214493.436075,
+    "ast_hash": "d64cf61f222026577f20339e1aa42c44",
+    "semantic_hash": ""
   },
   "lib/supabase/browser.ts": {
     "mtime": 1781976597.439921,
@@ -2736,9 +2736,9 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/route.ts": {
-    "mtime": 1789182078.7840123,
-    "seen": 1789183865.673646,
-    "ast_hash": "c52d6ef2d5559af9bd7f2d549364bbc9",
+    "mtime": 1789214397.7186673,
+    "seen": 1789214493.4230862,
+    "ast_hash": "022014b9aea028999f2dfd934539e3ae",
     "semantic_hash": ""
   },
   "app/api/results/route.ts": {
@@ -3102,9 +3102,9 @@
     "semantic_hash": "ee4ef877784ec9f0f8a055c2a898dc3c"
   },
   "app/api/stripe/webhook/route.ts": {
-    "mtime": 1789021435.7935216,
-    "seen": 1789174039.649867,
-    "ast_hash": "c1393562f17ac334bf093e59af3a4849",
+    "mtime": 1789213555.8769844,
+    "seen": 1789214493.423131,
+    "ast_hash": "3d864040604769e1dfd23a25d58b0235",
     "semantic_hash": ""
   },
   "app/api/support/contact/route.ts": {
@@ -6186,9 +6186,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1788859964.348982,
-    "seen": 1789174039.650306,
-    "ast_hash": "e326a110a0808c546f90993aa586bb4b",
+    "mtime": 1789213002.2082765,
+    "seen": 1789214493.436082,
+    "ast_hash": "5e51f4ff6090d21931150342d96a2683",
     "semantic_hash": ""
   },
   "postcss.config.mjs": {
@@ -11034,9 +11034,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-staff-assisted-customisation/OPS-SIGNOFF.md": {
-    "mtime": 1789183674.1913106,
-    "seen": 1789183865.674397,
+    "mtime": 1789184049.693578,
+    "seen": 1789214493.436388,
     "ast_hash": "98f44e12d3c0405570351dc7d8e1c2ea",
+    "semantic_hash": ""
+  },
+  "lib/stripe/fulfilment-gate.check.ts": {
+    "mtime": 1789213582.4173405,
+    "seen": 1789214493.436069,
+    "ast_hash": "44b1c21ddf3fad73b7c3c4fc5d504754",
+    "semantic_hash": ""
+  },
+  "lib/stripe/fulfilment-gate.ts": {
+    "mtime": 1789213570.2101567,
+    "seen": 1789214493.43607,
+    "ast_hash": "c35937c90c7e1235aec30bdd452acadf",
     "semantic_hash": ""
   }
 }

@@ -50,7 +50,7 @@ export async function loadComposedSellable(
   key: ComposedSellableKey,
 ): Promise<
   | { ok: true; sellable: ComposedSellable }
-  | { ok: false; error: string; code?: "no_price" }
+  | { ok: false; error: string; code?: "no_price" | "ambiguous_price" }
 > {
   if (key.productType === "pillow") {
     const { data: pillowProduct } = await admin
@@ -67,17 +67,36 @@ export async function loadComposedSellable(
       };
     }
 
-    const [{ data: bomLines, error: bomErr }, { data: productPrice }] = await Promise.all([
+    // Deliberately NOT maybeSingle(). Costings writes premium as two keyed rows
+    // (`product:pillow:<id>:linen` / `:fibrecool`) while this reads by product_id
+    // alone, so maybeSingle() errored and returned null — which then read as "no
+    // MSRP" and surfaced to the shopper as "not available for purchase yet".
+    // A price that exists twice is an ambiguity, not an absence, and the two say
+    // completely different things to whoever debugs it next.
+    const [{ data: bomLines, error: bomErr }, { data: priceRows }] = await Promise.all([
       admin.from("bom_lines").select("item_id, quantity").eq("product_id", pillowProduct.id),
       admin
         .from("product_prices")
-        .select("msrp, currency")
+        .select("key, msrp, currency")
         .eq("kind", "pillow")
-        .eq("product_id", pillowProduct.id)
-        .maybeSingle(),
+        .eq("product_id", pillowProduct.id),
     ]);
     if (bomErr) return { ok: false, error: bomErr.message };
 
+    const priced = (priceRows ?? []).filter((r) => r.msrp != null);
+    if (priced.length > 1) {
+      return {
+        ok: false,
+        code: "ambiguous_price",
+        error:
+          `Composed sellable for size ${key.size} tier ${key.tier} has ${priced.length} ` +
+          `Costings MSRPs (${priced.map((r) => r.key).join(", ")}). ` +
+          "Exactly one price per size x tier is expected — cover and case are charged " +
+          "as Customer preferences on top.",
+      };
+    }
+
+    const productPrice = priced[0];
     const msrp = productPrice?.msrp != null ? Number(productPrice.msrp) : null;
     if (msrp == null) {
       return {
