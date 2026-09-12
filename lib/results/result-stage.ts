@@ -39,6 +39,16 @@ export interface StageInput {
   created_at: string | null;
   order_id: string | null;
   topup_paid_at?: string | null;
+  /**
+   * The amount a card was authorized for at submit, or null when no hold was
+   * ever taken. This — not `source` — is what says whether a card was EXPECTED,
+   * which is the question the `held` branches below actually need to ask.
+   *
+   * Required, not optional, on purpose: omitting it would silently downgrade an
+   * abandoned checkout to a normal queue item, so the compiler should catch a
+   * caller that forgets rather than the staff noticing a missing Stuck badge.
+   */
+  authorized_amount: number | null;
   /** Linked order, when the Result has one. */
   order?: {
     status: string | null;
@@ -63,6 +73,17 @@ const ASSIGNED_ROT_DAYS = 6;
 
 const TERMINAL = new Set(["declined", "expired", "cancelled"]);
 
+/**
+ * Sources that mean "a customer submitted a customisation and is waiting on
+ * Staff" — regardless of whether a card was taken. `manual` (in-store
+ * measurement) is deliberately absent: that really is measurement-only.
+ *
+ * Both `held` branches below test this rather than spelling out
+ * `source === "staff_assisted"`, so switching the authorization hold off for
+ * online submits does not silently restage them as abandoned or as residue.
+ */
+const QUEUE_SOURCES = new Set(["online_purchase", "staff_assisted"]);
+
 function ageInDays(iso: string | null, now: Date): number {
   if (!iso) return 0;
   const then = new Date(iso).getTime();
@@ -86,13 +107,16 @@ function stuckReason(input: StageInput, now: Date): StuckReason | null {
   if (input.topup_paid_at && status === "assigned") return "topup_unsettled";
 
   if (status === "held" && !payment_intent_id) {
-    // Customer started Checkout and abandoned it: the row exists but no hold was
-    // ever attached. The SLA cron skips PI-less rows, so it never expires.
-    if (source === "online_purchase") return "abandoned_checkout";
-    // An Assisted customisation is SUPPOSED to have no hold — the customer was
-    // never asked for a card. It is a queue item waiting on Staff, not residue,
-    // and the happy path below stages it as such.
-    if (source === "staff_assisted") return null;
+    // A card WAS expected — `authorized_amount` is stamped at submit whenever a
+    // hold is taken — but none ever attached: the shopper abandoned Checkout.
+    // The SLA cron skips PI-less rows, so it never expires on its own.
+    // Keyed on the amount, not on `source`, so an online submit made with the
+    // hold switched off is not mislabelled as abandoned.
+    if (input.authorized_amount != null) return "abandoned_checkout";
+    // No card was ever expected: an Assisted customisation, or an online submit
+    // made while the hold is off. A queue item waiting on Staff, not residue —
+    // the happy path below stages it as such.
+    if (QUEUE_SOURCES.has(source ?? "")) return null;
     // In-store measurement-only Result. Legitimate, but it sits in `held` forever
     // and clutters the queue until someone closes it.
     return "measurement_residue";
@@ -132,10 +156,11 @@ export function resultStage(input: StageInput, now: Date = new Date()): StageRes
   if (status === "assigned") return { stage: "awaiting_customer", stuckReason: null };
 
   if (status === "held") {
-    // A hold means a shopper is waiting on assignment. So does an Assisted
-    // customisation, which reaches `held` with no card by design — same work,
-    // same queue, so it must not read as "measurement only".
-    if (payment_intent_id || input.source === "staff_assisted") {
+    // A hold means a shopper is waiting on assignment. So does any customer
+    // submission that reaches `held` with no card by design — Assisted, or made
+    // while the hold is switched off — same work, same queue, so it must not
+    // read as "measurement only".
+    if (payment_intent_id || QUEUE_SOURCES.has(input.source ?? "")) {
       return { stage: "needs_assign", stuckReason: null };
     }
     return { stage: "measurement_only", stuckReason: null };

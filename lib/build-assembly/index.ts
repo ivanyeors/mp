@@ -30,6 +30,22 @@ export type BuildLine = {
 
 const PREFERENCE_CATEGORIES = new Set(["cover", "case"]);
 
+/**
+ * The preference role a BOM category fills, or null if it fills none.
+ *
+ * Inventory splits case categories (`pillow_case` / `bolster_case`) while
+ * preference lines use the role names — the same mapping as `toComponentRole()`
+ * in `lib/shop/customization-inventory`, deliberately inlined here because that
+ * module imports `supabaseAdmin` and this one is pure.
+ */
+function preferenceRoleOf(category: string): "cover" | "case" | null {
+  if (category === "cover") return "cover";
+  if (category === "case" || category === "pillow_case" || category === "bolster_case") {
+    return "case";
+  }
+  return null;
+}
+
 export type AssembleBuildInput = {
   /** Live composed sellable BOM for assigned size×tier / length. */
   composedBomLines: BomLineInput[];
@@ -65,9 +81,25 @@ export function assembleBuild(input: AssembleBuildInput): AssembleBuildResult {
 
   const lines: BuildLine[] = [];
 
+  // A Customer preference REPLACES the composed BOM's default of the same role.
+  // The BOM's cover and case are defaults the shopper is choosing between, not
+  // extras on top: CONTEXT.md scopes composed BOM lines to "packaging, protector,
+  // and other non-filling defaults". Appending instead of substituting shipped two
+  // covers and two cases, deducted both from stock, and charged for the choice on
+  // top of a base that already bundled a default.
+  const replacedRoles = new Set<"cover" | "case">();
+  for (const l of input.preferenceLines) {
+    const role = preferenceRoleOf(l.category);
+    if (role) replacedRoles.add(role);
+  }
+
   // Non-filling composed BOM only — live fillings are ignored when a template is supplied.
   for (const l of input.composedBomLines) {
     if (l.category === "filling") continue;
+    const role = preferenceRoleOf(l.category);
+    // Only the roles the shopper actually chose are displaced; a default they did
+    // not pick for (no case selected, say) still ships.
+    if (role && replacedRoles.has(role)) continue;
     lines.push({
       item_id: l.item_id,
       quantity: l.quantity,

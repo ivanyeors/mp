@@ -75,6 +75,8 @@ type MpConfigResponseRow = {
   order?: LinkedOrder | null;
   payment_intent_id?: string | null;
   topup_paid_at?: string | null;
+  /** Null when no authorization hold was taken — drives the stage's stuck check. */
+  authorized_amount?: number | null;
   created_at: string;
   updated_at: string;
   status?: string | null;
@@ -418,6 +420,7 @@ export default function ResultsPage({
           created_at: row.created_at,
           order_id: row.order_id ?? null,
           topup_paid_at: row.topup_paid_at ?? null,
+          authorized_amount: row.authorized_amount ?? null,
           order: row.order ?? null,
         },
         now,

@@ -50,8 +50,11 @@ describe("slice 09 — mbolster composed sellable", () => {
     });
     expect(assembled.ok).toBe(true);
     if (!assembled.ok) return;
+    // Was [10, 11]. The shopper chose a cover, so the BOM's default cover (10) is
+    // displaced rather than shipped alongside it; the protector (11) fills no
+    // preference role and survives.
     expect(assembled.lines.filter((l) => l.role === "composed").map((l) => l.item_id)).toEqual([
-      10, 11,
+      11,
     ]);
     expect(assembled.lines.filter((l) => l.role === "filling")).toEqual([
       { item_id: 20, quantity: 3, role: "filling", category: "filling" },
@@ -69,5 +72,80 @@ describe("slice 09 — mbolster composed sellable", () => {
     });
     expect(priced.subtotal).toBe(140);
     expect(priced.total).toBe(160);
+  });
+});
+
+/**
+ * Two Costings MSRPs for one size×tier used to surface to the shopper as
+ * "This configuration isn't available for purchase yet" — an absence, when the
+ * truth was an ambiguity. Costings writes premium as `…:linen` / `…:fibrecool`
+ * while the lookup filters by product_id alone, so `.maybeSingle()` errored and
+ * the null read as "no price".
+ */
+describe("loadComposedSellable — ambiguous vs absent price", () => {
+  /** Minimal chainable Supabase stub: only the two tables this function reads. */
+  function stub(priceRows: Array<{ key: string; msrp: number | null; currency?: string }>) {
+    return {
+      from(table: string) {
+        const chain: Record<string, unknown> = {};
+        const self = () => chain;
+        Object.assign(chain, {
+          select: self,
+          eq: self,
+          maybeSingle: async () =>
+            table === "pillow_products" ? { data: { id: 8 } } : { data: null },
+          then: undefined,
+        });
+        if (table === "bom_lines") {
+          return Object.assign(chain, {
+            select: () => ({ eq: async () => ({ data: [], error: null }) }),
+          });
+        }
+        if (table === "product_prices") {
+          return Object.assign(chain, {
+            select: () => ({
+              eq: () => ({ eq: async () => ({ data: priceRows, error: null }) }),
+            }),
+          });
+        }
+        return chain;
+      },
+    } as never;
+  }
+
+  const key = { productType: "pillow", size: "M", tier: "premium" } as const;
+
+  it("names both keys instead of claiming there is no price", async () => {
+    const { loadComposedSellable } = await import("@/lib/results/composed-sellable");
+    const res = await loadComposedSellable(
+      stub([
+        { key: "product:pillow:8:linen", msrp: 430 },
+        { key: "product:pillow:8:fibrecool", msrp: 460 },
+      ]),
+      key,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe("ambiguous_price");
+      expect(res.error).toContain("product:pillow:8:linen");
+      expect(res.error).toContain("product:pillow:8:fibrecool");
+    }
+  });
+
+  it("still reports a genuine absence as no_price", async () => {
+    const { loadComposedSellable } = await import("@/lib/results/composed-sellable");
+    const res = await loadComposedSellable(stub([{ key: "product:pillow:8", msrp: null }]), key);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe("no_price");
+  });
+
+  it("resolves the single expected price", async () => {
+    const { loadComposedSellable } = await import("@/lib/results/composed-sellable");
+    const res = await loadComposedSellable(
+      stub([{ key: "product:pillow:8", msrp: 460, currency: "SGD" }]),
+      key,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.sellable.msrp).toBe(460);
   });
 });

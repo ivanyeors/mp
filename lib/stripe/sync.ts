@@ -5,9 +5,17 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 
 /**
  * Stripe Product tax code (drives Stripe Tax categorization). Defaults to
- * "General - Tangible Goods"; override per catalog via STRIPE_TAX_CODE.
+ * "Bedding" (txcd_33080301) — "Bedclothes items including ... pillows" — which
+ * is what we sell and what the MELLOW LIFE account's own Tax Settings default
+ * to. The previous default here was the generic txcd_99999999 ("General -
+ * Tangible Goods"), which this sync stamped onto every Product and so silently
+ * overrode the account's deliberate choice. Override via STRIPE_TAX_CODE.
+ *
+ * Taxability is a legal determination: confirm with a tax advisor rather than
+ * treating this default as authoritative.
+ * https://docs.stripe.com/tax/tax-codes
  */
-const STRIPE_TAX_CODE = process.env.STRIPE_TAX_CODE || "txcd_99999999";
+const STRIPE_TAX_CODE = process.env.STRIPE_TAX_CODE || "txcd_33080301";
 
 /**
  * How line-item prices relate to tax. SG GST is added on top (exclusive), so
@@ -45,13 +53,26 @@ export async function syncProductToStripe(productId: string) {
 
   if (stripeProductId) {
     // Update existing Stripe product
-    await stripe.products.update(stripeProductId, {
-      name: title,
-      description: description || undefined,
-      images: images.length ? images : undefined,
-      tax_code: STRIPE_TAX_CODE,
-    });
-  } else {
+    try {
+      await stripe.products.update(stripeProductId, {
+        name: title,
+        description: description || undefined,
+        images: images.length ? images : undefined,
+        tax_code: STRIPE_TAX_CODE,
+      });
+    } catch (err) {
+      // A stored id that this account has never heard of — which is exactly the
+      // state after switching Stripe accounts, since Products don't migrate.
+      // Drop it and create fresh, mirroring how syncVariantPrice already
+      // recovers from a stale price id. Narrowed to resource_missing on purpose:
+      // swallowing an auth or rate-limit error here would create a DUPLICATE
+      // Product instead of retrying.
+      if ((err as { code?: string }).code !== "resource_missing") throw err;
+      stripeProductId = null;
+    }
+  }
+
+  if (!stripeProductId) {
     // Create new Stripe product
     const stripeProduct = await stripe.products.create({
       name: title,

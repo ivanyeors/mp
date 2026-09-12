@@ -77,7 +77,13 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      // Delayed-notification methods (PayNow, EPS, Bancontact — all enabled on
+      // the live account) fire `completed` when the customer AUTHORISES, with
+      // the money not yet settled, then `async_payment_succeeded` when it does.
+      // Both fulfil identically, so they share this block; the payment_status
+      // gate below is what keeps the authorise-only pass from fulfilling early.
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
         const resultId = session.metadata?.result_id;
         const orderId = session.metadata?.order_id;
@@ -120,6 +126,50 @@ export async function POST(req: Request) {
         }
 
         if (!orderId) break;
+
+        // Fulfil only once Stripe says the money is claimed. `unpaid` means a
+        // delayed-notification method is mid-flight: fulfilling now would deduct
+        // inventory, hold commissions and email a receipt for cash that may
+        // never arrive, and stamping paid_at would make the later
+        // async_payment_failed a no-op.
+        //
+        // Defence in depth, not a live path today: this account is SGD-only, and
+        // its presentable methods (card, Apple Pay, Link, PayNow) all confirm in
+        // real time — PayNow is Stripe's "real-time payments" family, NOT delayed
+        // notification. The gate matters the day a delayed method or a second
+        // currency is turned on, and costs nothing before then.
+        //
+        // Test `unpaid` rather than `!== "paid"`: a 100%-discount order settles as
+        // `no_payment_required` and must still fulfil.
+        //
+        // The authorization-hold branch above deliberately does NOT get this
+        // gate — a manual-capture PI reads `unpaid` until capture, by design.
+        if (session.payment_status === "unpaid") {
+          // The session is `complete`, so the cart is spent either way. Leaving it
+          // intact lets the shopper re-checkout (the confirmation page shows
+          // success unconditionally, and /api/shop/checkout has no pending-order
+          // guard) and pay a second time for the same goods.
+          const pendingCartToken = session.metadata?.cart_token;
+          if (pendingCartToken) {
+            await admin.from("carts").delete().eq("token", pendingCartToken);
+          }
+
+          // Flag it: an order sitting `pending` with money in flight is otherwise
+          // indistinguishable from an abandoned cart, and nothing sweeps for it.
+          // If async_payment_succeeded never arrives, this is the only signal.
+          await admin
+            .from("orders")
+            .update({ needs_attention: true })
+            .eq("id", orderId);
+
+          await addOrderTimelineEvent(
+            orderId,
+            "payment_pending",
+            "Delayed payment method authorised — awaiting settlement",
+            { stripe_session_id: session.id }
+          );
+          break;
+        }
 
         // Fetch order with items
         const { data: order } = await admin
@@ -352,6 +402,37 @@ export async function POST(req: Request) {
             console.error(`[stripe/webhook] Order emails failed for ${orderId}:`, err);
           }
         }
+
+        break;
+      }
+
+      // The delayed payment never settled. Without this the order sits `pending`
+      // forever: `expired` never fires for a session that completed, so nothing
+      // else would ever close it out.
+      case "checkout.session.async_payment_failed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        // Keyed on stripe_session_id like the `expired` case below, not on
+        // metadata — the column is stored and indexed, and survives metadata edits.
+        const { data: order } = await admin
+          .from("orders")
+          .select("id, status")
+          .eq("stripe_session_id", session.id)
+          .maybeSingle();
+
+        // Never clobber an order that got paid another way.
+        if (!order || order.status !== "pending") break;
+
+        await admin
+          .from("orders")
+          .update({ status: "payment_failed" })
+          .eq("id", order.id);
+
+        await addOrderTimelineEvent(
+          order.id,
+          "payment_failed",
+          "Delayed payment method failed to settle",
+          { stripe_session_id: session.id }
+        );
 
         break;
       }

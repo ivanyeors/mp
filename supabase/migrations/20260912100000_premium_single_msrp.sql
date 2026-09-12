@@ -1,0 +1,42 @@
+-- One Costings MSRP per pillow size x tier.
+--
+-- Premium pillows stored a price per fabric variant — `product:pillow:<id>:linen`
+-- and `product:pillow:<id>:fibrecool` — while `loadComposedSellable` looks a price
+-- up by product_id alone. Two matching rows made `.maybeSingle()` error and return
+-- null, which read as "no MSRP" and surfaced to shoppers as
+-- "This configuration isn't available for purchase yet". Premium was unbuyable on
+-- every path, not just the assisted one.
+--
+-- The sell price does not vary by fabric: the cover and case are Customer
+-- preferences priced from their own `item_prices` MSRPs on top of this base, and
+-- a preference now REPLACES the BOM default rather than adding to it
+-- (lib/build-assembly). So the base must be cover/case-EXCLUSIVE.
+--
+-- Every premium row is removed rather than one being picked, because the surviving
+-- value would be a bundle price that already includes a cover and a case — right
+-- to within a few dollars, and wrong in a way nobody would notice. Staff set the
+-- base in Costings (Admin Panel -> Costings), which is the source of truth.
+-- Until they do, premium refuses with `no_price` — a clear, correct refusal.
+--
+-- Values as at 2026-09-12, recorded so nothing here is unrecoverable:
+--
+--   product_id  size  key                             msrp
+--   6           XS    product:pillow:6                340.00
+--   6           XS    product:pillow:6:fibrecool      360.00
+--   7           S     product:pillow:7:linen          400.00
+--   7           S     product:pillow:7:fibrecool      430.00
+--   8           M     product:pillow:8:linen          430.00
+--   8           M     product:pillow:8:fibrecool      460.00
+--   9           L     product:pillow:9:linen          580.00
+--   9           L     product:pillow:9:fibrecool      610.00
+--   10          XL    product:pillow:10:linen         680.00
+--   10          XL    product:pillow:10:fibrecool    1000.00   <-- pattern predicts ~715; check this one
+--
+-- Implied cover/case-exclusive base (bundle - case MSRP - cover MSRP):
+--   XS ~247-250 | S ~302-307 | M ~326-327 | L ~456-459 | XL ~532 (XL Fibrecool
+--   case has no MSRP, so only the linen side could be derived).
+-- These are derived, NOT authoritative. Confirm each in Costings.
+
+delete from product_prices
+where kind = 'pillow'
+  and product_id in (select id from pillow_products where kind = 'premium');
