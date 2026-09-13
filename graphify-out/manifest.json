@@ -9768,9 +9768,9 @@
     "semantic_hash": ""
   },
   "scripts/bundle-budget.json": {
-    "mtime": 1789261755.4356961,
-    "seen": 1789262289.504684,
-    "ast_hash": "285a5b17a601c0f869bfdcb40b9e3151",
+    "mtime": 1789270674.4106197,
+    "seen": 1789270708.055844,
+    "ast_hash": "6ffc47588ea82de2422d47f19b58a789",
     "semantic_hash": ""
   },
   "scripts/bundle-budget.mjs": {
