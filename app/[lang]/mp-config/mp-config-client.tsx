@@ -1873,7 +1873,11 @@ export function MpConfigClient({
 
           <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
             {/* Left: product visual (mp-maker style) */}
-            <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
+            {/* Below lg the stage flows at its natural height: a fixed 40vh cap
+                with overflow-hidden clipped the pillow's top and cut the staff
+                toolbox (Size / Tier / Filling Template) clean off on phones, so
+                fillings could not be configured on mobile at all. */}
+            <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:overflow-hidden">
               {!isMobile && (
                 <>
                   <Particles
@@ -1895,11 +1899,12 @@ export function MpConfigClient({
                   />
                 </>
               )}
-              <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
+              <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 p-4 max-md:px-3 md:gap-6">
                 <div
-                  // ponytail: +30% stage only from lg up — below that the column is capped at
-                  // 40vh and the old size already fills the width.
-                  className="relative w-[min(75vmin,500px)] lg:w-[min(97.5vmin,650px)]"
+                  // ponytail: below lg the stage takes the full column width (capped at
+                  // 500px) so the x-ray cells and dive chips are big enough to tap;
+                  // +30% stage only from lg up.
+                  className="relative w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
                   // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
                   style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
                 >

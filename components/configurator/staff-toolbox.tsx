@@ -50,7 +50,9 @@ export function StaffToolbox({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="w-fit max-w-xl">
+    // Full width on phones so the chips share the row evenly and stay tappable;
+    // fits its content from md up.
+    <div className="w-full max-w-xl md:w-fit">
       <div
         className={cn(
           "flex flex-wrap items-stretch gap-1 rounded-2xl p-1.5",
@@ -118,8 +120,9 @@ function ToolChip({ tool }: { tool: ToolSpec }) {
     </>
   );
 
+  // 44px tap floor on phones (max-md:min-h-11), matching the app's button sizes.
   const chipClass =
-    "flex min-w-[6.5rem] flex-1 basis-[7.5rem] items-center gap-2 rounded-xl px-2.5 py-1.5 text-left";
+    "flex min-w-[6.5rem] flex-1 basis-[7.5rem] items-center gap-2 rounded-xl px-2.5 py-1.5 text-left max-md:min-h-11";
 
   if (tool.readOnly) {
     return <span className={chipClass}>{face}</span>;
@@ -164,7 +167,7 @@ function ToolChip({ tool }: { tool: ToolSpec }) {
                   setOpen(false);
                   tool.onSelect?.(o.value);
                 }}
-                className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent"
+                className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent max-md:min-h-11"
               >
                 <span className="min-w-0">
                   <span className="block truncate">{o.label}</span>
@@ -187,7 +190,7 @@ function ToolChip({ tool }: { tool: ToolSpec }) {
                   tool.onSelect?.(o.value);
                 }}
                 className={cn(
-                  "min-w-9 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors",
+                  "min-w-9 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors max-md:min-h-11 max-md:min-w-11",
                   o.value === tool.value
                     ? "bg-foreground text-background"
                     : "hover:bg-accent",
