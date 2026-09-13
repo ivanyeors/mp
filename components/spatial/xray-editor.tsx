@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * X-ray editor frame (CONTEXT.md): mounts XrayPillow in normal document flow.
+ * X-ray editor frame (CONTEXT.md): mounts XrayPillow (or XrayBolster) in normal document flow.
  *
  * XrayPillow renders its SVG at h-full/w-full inside a className-only root and
  * positions its dive overlay `absolute inset-0`, so it needs a positioned
@@ -18,13 +18,52 @@
  * so the three surfaces cannot drift.
  */
 
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
+import { XrayBolster } from "./xray-bolster";
 import { XrayPillow } from "./xray-pillow";
 import { XRAY_VIEW } from "./xray-assets";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import type { PillowPlacement } from "@/lib/spatial-fillings/core";
+import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings/core";
+import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
+
+// The pouch shape and scale come from each Item's subtype and size, exactly as
+// in the configurator — derived here so call sites pass one items array.
+//
+// Memoised on `items`, not rebuilt per render: the x-rays memoise their geometry
+// chain (layout → conformPouchPath polygon scans) on [placements, itemSizes], so
+// a fresh Map identity invalidates all of it. Both host pages keep text inputs in
+// the same component as this editor, so every keystroke would otherwise
+// re-conform every pouch (~7ms at 11 pieces, ~10ms at 17). mp-config memoises
+// these two maps for the same reason.
+function useItemMaps(items: FillingItem[] | undefined) {
+  const itemSubtypes = useMemo(
+    () => new Map((items ?? []).map((i) => [i.id, i.subtype])),
+    [items],
+  );
+  const itemSizes = useMemo(() => new Map((items ?? []).map((i) => [i.id, i.size])), [items]);
+  return { itemSubtypes, itemSizes };
+}
+
+function XrayFrame({
+  colorOverrides,
+  className,
+  children,
+}: {
+  colorOverrides: ColorOverrideRow[];
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={`relative w-full overflow-hidden rounded-lg bg-slate-950 ${className ?? ""}`}
+      style={{ aspectRatio: `${XRAY_VIEW.width} / ${XRAY_VIEW.height}`, ...xrayColorVarStyle(colorOverrides) }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function XrayEditor({
   placements,
@@ -41,26 +80,9 @@ export function XrayEditor({
   colorOverrides?: ColorOverrideRow[];
   className?: string;
 }) {
-  // The pouch shape and scale come from each Item's subtype and size, exactly as
-  // in the configurator — derived here so call sites pass one items array.
-  //
-  // Memoised on `items`, not rebuilt per render: XrayPillow memoises its geometry
-  // chain (layoutPlacements → conformPouchPath polygon scans) on
-  // [placements, itemSizes], so a fresh Map identity invalidates all of it. Both
-  // host pages keep text inputs in the same component as this editor, so every
-  // keystroke would otherwise re-conform every pouch (~7ms at 11 pieces, ~10ms at
-  // 17). mp-config memoises these two maps for the same reason.
-  const itemSubtypes = useMemo(
-    () => new Map((items ?? []).map((i) => [i.id, i.subtype])),
-    [items],
-  );
-  const itemSizes = useMemo(() => new Map((items ?? []).map((i) => [i.id, i.size])), [items]);
-
+  const { itemSubtypes, itemSizes } = useItemMaps(items);
   return (
-    <div
-      className={`relative w-full overflow-hidden rounded-lg bg-slate-950 ${className ?? ""}`}
-      style={{ aspectRatio: `${XRAY_VIEW.width} / ${XRAY_VIEW.height}`, ...xrayColorVarStyle(colorOverrides) }}
-    >
+    <XrayFrame colorOverrides={colorOverrides} className={className}>
       <XrayPillow
         placements={placements}
         itemSubtypes={itemSubtypes}
@@ -69,6 +91,39 @@ export function XrayEditor({
         onPlacementsChange={onPlacementsChange}
         className="absolute inset-0"
       />
-    </div>
+    </XrayFrame>
+  );
+}
+
+/** Same frame for the Mbolster capsule x-ray the /mbolster-config staff assist edits on. */
+export function XrayBolsterEditor({
+  placements,
+  length,
+  onPlacementsChange,
+  items,
+  colorOverrides = [],
+  className,
+}: {
+  placements: BolsterPlacement[];
+  length: BolsterLength;
+  /** Omit together with `items` for a read-only render (no edit affordances). */
+  onPlacementsChange?: (next: BolsterPlacement[]) => void;
+  items?: FillingItem[];
+  colorOverrides?: ColorOverrideRow[];
+  className?: string;
+}) {
+  const { itemSubtypes, itemSizes } = useItemMaps(items);
+  return (
+    <XrayFrame colorOverrides={colorOverrides} className={className}>
+      <XrayBolster
+        placements={placements}
+        length={length}
+        itemSubtypes={itemSubtypes}
+        itemSizes={itemSizes}
+        items={items}
+        onPlacementsChange={onPlacementsChange}
+        className="absolute inset-0"
+      />
+    </XrayFrame>
   );
 }
