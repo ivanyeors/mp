@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const result = await syncProductToStripe(parsed.data.product_id);
     return NextResponse.json({
       ok: true,
-      stripe_product_id: result.stripe_product_id,
+      stripeProductId: result.stripeProductId,
       variant_count: result.variants.length,
     });
   } catch (err) {

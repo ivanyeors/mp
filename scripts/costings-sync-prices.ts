@@ -1,7 +1,8 @@
 // Reproject Costings into storefront variant prices, then push those to Stripe.
 //
-//   npm run costings:sync            # dry run — prints the diff, writes nothing
-//   npm run costings:sync -- --apply # write product_variants + sync Stripe
+//   npm run costings:sync                    # dry run — prints the diff, writes nothing
+//   npm run costings:sync -- --apply         # write product_variants + sync Stripe
+//   npm run costings:sync -- --apply --live  # ...against the LIVE Stripe account
 //
 // `stripe:sync-all` does NOT do this. It re-pushes whatever `product_variants.price`
 // already holds, so a variant whose Costings row changed (or was deleted) keeps its
@@ -13,6 +14,7 @@
 // indistinguishable from a correct one once it reaches Stripe.
 //
 // Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY
+//      STRIPE_SECRET_KEY_LIVE — only for --live
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -24,6 +26,7 @@ import {
 } from "@/lib/shop/price-sync";
 
 const apply = process.argv.includes("--apply");
+const live = process.argv.includes("--live");
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -37,6 +40,17 @@ function requireEnv(name: string): string {
 async function main() {
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  // Swapped in process so a laptop keeps STRIPE_SECRET_KEY on the sandbox. Must
+  // happen before the Stripe client or `stripeMode()` is first read — both are lazy.
+  if (live) {
+    const liveKey = requireEnv("STRIPE_SECRET_KEY_LIVE");
+    if (liveKey.includes("_test_")) {
+      console.error("STRIPE_SECRET_KEY_LIVE is a TEST key. Refusing to mislabel it as live.");
+      process.exit(1);
+    }
+    process.env.STRIPE_SECRET_KEY = liveKey;
+  }
   if (apply) requireEnv("STRIPE_SECRET_KEY");
 
   const admin = createClient(url, key, { auth: { persistSession: false } });
@@ -61,7 +75,11 @@ async function main() {
   let changed = 0;
   let unresolved = 0;
 
-  console.log(`${apply ? "Applying" : "Dry run —"} Costings → product_variants → Stripe\n`);
+  const { stripeMode } = await import("@/lib/stripe/mode");
+  console.log(
+    `${apply ? "Applying" : "Dry run —"} Costings → product_variants → Stripe ` +
+      `(${stripeMode()} mode)\n`,
+  );
   for (const v of variants ?? []) {
     const slug = slugById.get(v.product_id as string);
     if (!slug) continue; // inactive product

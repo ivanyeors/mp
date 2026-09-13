@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
+import { stripePriceIdColumn } from "@/lib/stripe/mode";
 
 export const runtime = "nodejs";
 
@@ -81,8 +82,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ? await syncProductToStripeSafe(id)
       : undefined;
 
-  const freshPriceId = stripe?.result?.variants.find((v) => v.id === data.id)?.stripe_price_id;
-  const responseRow = freshPriceId ? { ...data, stripe_price_id: freshPriceId } : data;
+  const freshPriceId = stripe?.result?.variants.find((v) => v.id === data.id)?.stripePriceId;
+  const responseRow = freshPriceId
+    ? { ...data, [stripePriceIdColumn()]: freshPriceId }
+    : data;
 
   return NextResponse.json({
     ok: true,

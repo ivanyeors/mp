@@ -2,19 +2,31 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Stripe client mock: an existing product is updated (no create/price calls).
 const productsUpdate = vi.fn(async () => ({ id: "prod_x" }));
+const productsCreate = vi.fn(async () => ({ id: "prod_fresh" }));
 vi.mock("../client", () => ({
   getStripe: () => ({
-    products: { update: productsUpdate, create: vi.fn() },
+    products: { update: productsUpdate, create: productsCreate },
     prices: { create: vi.fn(), retrieve: vi.fn(), update: vi.fn() },
   }),
 }));
 
-// Supabase mock: returns a single active product with no variants.
-const product = {
+// Supabase mock: one active product with no variants, linked in BOTH accounts.
+// Tests run with no Stripe key, which resolves to test mode — so `prod_x` (the
+// sandbox id) is what this sync should touch, never the live one beside it.
+const product: {
+  id: string;
+  slug: string;
+  content: Record<string, { title: string }>;
+  stripe_product_id: string | null;
+  stripe_product_id_test: string | null;
+  product_variants: unknown[];
+  product_images: unknown[];
+} = {
   id: "p1",
   slug: "x",
   content: { "en-US": { title: "X" } },
-  stripe_product_id: "prod_x",
+  stripe_product_id: "prod_live_x",
+  stripe_product_id_test: "prod_x",
   product_variants: [],
   product_images: [],
 };
@@ -31,6 +43,8 @@ const { syncProductToStripeSafe } = await import("../sync");
 
 beforeEach(() => {
   productsUpdate.mockClear();
+  productsCreate.mockClear();
+  product.stripe_product_id_test = "prod_x";
   vi.spyOn(console, "error").mockImplementation(() => {});
 });
 
@@ -38,8 +52,24 @@ describe("syncProductToStripeSafe", () => {
   it("returns synced:true with the sync result on success", async () => {
     const out = await syncProductToStripeSafe("p1");
     expect(out.synced).toBe(true);
-    expect(out.result?.stripe_product_id).toBe("prod_x");
+    expect(out.result?.stripeProductId).toBe("prod_x");
     expect(out.result?.variants).toEqual([]);
+  });
+
+  it("touches this account's product, not the one beside it", async () => {
+    await syncProductToStripeSafe("p1");
+    expect(productsUpdate).toHaveBeenCalledWith("prod_x", expect.anything());
+    expect(productsCreate).not.toHaveBeenCalled();
+  });
+
+  it("creates fresh rather than reusing the other account's id", async () => {
+    // Linked in live only. Under a test key that product does not exist, and
+    // reaching for `prod_live_x` would have Stripe reject it as resource_missing.
+    product.stripe_product_id_test = null;
+    const out = await syncProductToStripeSafe("p1");
+    expect(productsUpdate).not.toHaveBeenCalled();
+    expect(productsCreate).toHaveBeenCalled();
+    expect(out.result?.stripeProductId).toBe("prod_fresh");
   });
 
   it("swallows errors and returns synced:false (never throws)", async () => {

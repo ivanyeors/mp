@@ -45,6 +45,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
+import { stripePriceIdOf } from "@/lib/stripe/mode";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,7 @@ type ProductVariant = {
     stock_quantity: number | null;
     stock_available?: number | null;
     stripe_price_id?: string | null;
+    stripe_price_id_test?: string | null;
     item_id?: number | null;
     pillow_product_id?: number | null;
     price_key?: string | null;
@@ -169,7 +171,9 @@ function hasPriceWarning(variants: ProductVariant[]): boolean {
 }
 
 function hasMissingStripe(variants: ProductVariant[]): boolean {
-    return variants.some((v) => !v.stripe_price_id);
+    // Per mode: a product linked in the sandbox is NOT linked in live, and an admin
+    // looking at localhost must not be told live is ready (or the reverse).
+    return variants.some((v) => !stripePriceIdOf(v));
 }
 
 function getThumbnailUrl(images: ProductImage[]): string | null {

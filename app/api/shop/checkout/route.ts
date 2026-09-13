@@ -11,6 +11,7 @@ import { loadSelfPurchaseAllowance } from "@/lib/partner-self-purchase/allowance
 import { calculateShippingRate, resolveShippingContent } from "@/lib/ecommerce/shipping";
 import { computeTax, computeOrderTotal, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { createCheckoutSession } from "@/lib/stripe/checkout";
+import { stripePriceIdOf } from "@/lib/stripe/mode";
 import {
   buildCheckoutCustomizationSnapshot,
   resolveCustomizationProductType,
@@ -342,8 +343,8 @@ export async function POST(req: Request) {
     }
   }
 
-  // 6. Validate all variants have stripe_price_id
-  const missingStripePrice = cart.items.some((item) => !item.variant?.stripe_price_id);
+  // 6. Validate every variant has a Price in the account THIS environment uses
+  const missingStripePrice = cart.items.some((item) => !stripePriceIdOf(item.variant));
   if (missingStripePrice) {
     return NextResponse.json(
       { error: "Some items are not available for online purchase" },

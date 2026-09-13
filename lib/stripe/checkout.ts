@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { getStripe } from "./client";
+import { stripePriceIdOf } from "./mode";
 import type { ProductVariant } from "@/lib/types/ecommerce";
 
 interface CheckoutLineItem {
@@ -73,16 +74,20 @@ interface CreateCheckoutOpts {
 
 /**
  * Create a Stripe Checkout Session from cart items.
- * Each item must have a variant with a valid stripe_price_id.
+ * Each item must have a variant with a Price in the CURRENT Stripe account.
  */
 export async function createCheckoutSession(opts: CreateCheckoutOpts) {
   const stripe = getStripe();
 
-  // Validate all variants have stripe_price_id
+  // A Price id from the other account would be rejected by Stripe as
+  // `resource_missing` mid-checkout, so resolve per mode and refuse up front.
+  const priceIdByVariant = new Map<string, string>();
   for (const item of opts.lineItems) {
-    if (!item.variant.stripe_price_id) {
+    const priceId = stripePriceIdOf(item.variant);
+    if (!priceId) {
       throw new Error(`Variant "${item.variant.title || item.variant.id}" has no Stripe Price ID`);
     }
+    priceIdByVariant.set(item.variant.id, priceId);
   }
 
   const currency = opts.lineItems[0]?.variant.currency.toLowerCase() ?? "sgd";
@@ -100,7 +105,7 @@ export async function createCheckoutSession(opts: CreateCheckoutOpts) {
     (item) => {
       const delta = item.addonAmount ?? 0;
       if (delta === 0) {
-        return { price: item.variant.stripe_price_id!, quantity: item.quantity };
+        return { price: priceIdByVariant.get(item.variant.id)!, quantity: item.quantity };
       }
       return {
         price_data: {

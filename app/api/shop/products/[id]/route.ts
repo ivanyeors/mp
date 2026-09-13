@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAdminProduct } from "@/lib/ecommerce/admin/products";
 import { requireAdmin } from "@/lib/auth/admin";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
+import { stripeProductIdColumn } from "@/lib/stripe/mode";
 
 export const runtime = "nodejs";
 
@@ -70,8 +71,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // active. Drafts stay out of Stripe until published.
   const stripe = data.status === "active" ? await syncProductToStripeSafe(id) : undefined;
 
+  // The sync writes whichever column this environment's key belongs to, so echo it
+  // back under that same key — merging a sandbox id onto `stripe_product_id` would
+  // tell the editor that live is linked when it is not.
   const row = stripe?.result
-    ? { ...data, stripe_product_id: stripe.result.stripe_product_id }
+    ? { ...data, [stripeProductIdColumn()]: stripe.result.stripeProductId }
     : data;
 
   return NextResponse.json({
