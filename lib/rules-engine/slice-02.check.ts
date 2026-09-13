@@ -25,7 +25,7 @@ const flowPage =
   "app/[lang]/settings/product-builder/rules-engine/[flow]/page.tsx";
 const indexPage = "app/[lang]/settings/product-builder/rules-engine/page.tsx";
 const workbench = "components/rules-engine/workbench.tsx";
-const productBuilder = "app/[lang]/settings/product-builder/product-builder-client.tsx";
+const productBuilder = "app/[lang]/settings/products/product-visualize.tsx";
 
 assert.ok(existsSync(join(ROOT, flowPage)), "flow page exists");
 assert.ok(existsSync(join(ROOT, indexPage)), "rules-engine index exists");

@@ -31,21 +31,27 @@ assert.deepEqual(
 assert.ok(OverlayFitSchema.safeParse({ scale: 1.2, x: 30, y: -15 }).success);
 assert.ok(!OverlayFitSchema.safeParse({ scale: 9 }).success, "scale out of bounds rejected");
 
-// --- Product Builder + Rules Engine nested under Store > Products ---
-readFileSync("app/[lang]/settings/product-builder/product-builder-client.tsx", "utf8");
-const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
-const storeGroup = nav.slice(nav.indexOf('"Store"'), nav.indexOf('"Landing Site"'));
-assert.match(storeGroup, /\/settings\/product-builder"/, "Product Builder in Store group");
-assert.match(storeGroup, /Product Builder/, "Product Builder label registered");
+// --- Product Visualize is a tab on Products; Rules Engine stays in the nav ---
+const productsClient = readFileSync("app/[lang]/settings/products/products-client.tsx", "utf8");
+assert.match(productsClient, /<TabsTrigger value="visualize">Product Visualize</, "Product Visualize tab");
+assert.match(productsClient, /<ProductVisualize \/>/, "tab mounts the overlay page");
 assert.match(
-  storeGroup,
-  /\/settings\/product-builder\/rules-engine/,
-  "Rules Engine is a sibling of Product Builder, not its child",
+  readFileSync("app/[lang]/settings/products/page.tsx", "utf8"),
+  /roleHasPermission\(ctx\.role, "page-builder"\)/,
+  "tab keeps the page-builder perm gating",
 );
 assert.match(
+  readFileSync("app/[lang]/settings/product-builder/page.tsx", "utf8"),
+  /redirect\([^)]*\/settings\/products\?tab=visualize/,
+  "old Product Builder URL redirects to the tab",
+);
+const nav = readFileSync("components/settings/settings-sidebar-nav.tsx", "utf8");
+const storeGroup = nav.slice(nav.indexOf('"Store"'), nav.indexOf('"Landing Site"'));
+assert.doesNotMatch(nav, /\/settings\/product-builder"/, "no standalone Product Builder nav entry");
+assert.match(
   storeGroup,
-  /product-builder[^}]*perm: "page-builder"/,
-  "perm gating unchanged by the move",
+  /\/settings\/product-builder\/rules-engine"[^}]*perm: "page-builder"/,
+  "Rules Engine stays under Store > Products, page-builder gated",
 );
 
 // --- Visual workbench: the stage renders what the configurator renders ---
@@ -105,7 +111,7 @@ assert.ok(
 );
 
 const pageSrc = readFileSync(
-  "app/[lang]/settings/product-builder/product-builder-client.tsx",
+  "app/[lang]/settings/products/product-visualize.tsx",
   "utf8",
 );
 assert.match(pageSrc, /<OverlayWorkbench/, "page mounts the workbench");

@@ -27,7 +27,7 @@ for (const [term, mustSay] of TERMS) {
   assert.match(body, /^_Avoid_: /m, `${term} has an _Avoid_ line`);
 }
 
-// Terms live beside Product Builder in ## Marketing, not in an invented section.
+// Terms live beside Product Visualize in ## Marketing, not in an invented section.
 const marketing = ctx.indexOf("\n## Marketing\n");
 const afterMarketing = ctx.indexOf("\n## ", marketing + 1);
 assert.ok(marketing !== -1, "## Marketing section exists");

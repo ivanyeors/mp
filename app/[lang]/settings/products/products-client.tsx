@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Plus, Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
@@ -40,6 +41,20 @@ import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
+
+// Loaded on first open: the overlay workbench would otherwise push the Products
+// list over its first-load JS budget (scripts/bundle-budget.json).
+const ProductVisualize = dynamic(
+    () => import("./product-visualize").then((m) => m.ProductVisualize),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+        ),
+    },
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,7 +191,16 @@ function statusBadgeVariant(status: string): StatusVariant {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function ProductsClient({ initialData }: { initialData?: ProductsInitialData }) {
+export function ProductsClient({
+    initialData,
+    canVisualize = false,
+    initialTab = "products",
+}: {
+    initialData?: ProductsInitialData;
+    /** Staff with the `page-builder` permission get the Product Visualize tab. */
+    canVisualize?: boolean;
+    initialTab?: string;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
@@ -691,10 +715,13 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
                 </p>
             </div>
 
-            <Tabs defaultValue="products">
+            <Tabs defaultValue={initialTab}>
                 <TabsList>
                     <TabsTrigger value="products">Products</TabsTrigger>
                     <TabsTrigger value="categories">Categories</TabsTrigger>
+                    {canVisualize && (
+                        <TabsTrigger value="visualize">Product Visualize</TabsTrigger>
+                    )}
                 </TabsList>
 
                 <TabsContent value="products" className="mt-6 space-y-6">
@@ -773,6 +800,12 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
                 <TabsContent value="categories" className="mt-6">
                     <CategoriesManager />
                 </TabsContent>
+
+                {canVisualize && (
+                    <TabsContent value="visualize" className="mt-6">
+                        <ProductVisualize />
+                    </TabsContent>
+                )}
             </Tabs>
 
         </div>
