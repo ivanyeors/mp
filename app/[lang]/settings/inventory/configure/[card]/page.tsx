@@ -22,8 +22,10 @@ import {
   stickyFirstColumnCellClassName,
   stickyFirstColumnHeadClassName,
 } from "@/components/ui/table-sticky";
-import { Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
@@ -156,6 +158,19 @@ const getFillingDisplayLabel = (item: Item, fallbackSize?: string): string => {
   const sizeLabel = item.size ?? fallbackSize;
   return sizeLabel ? `${variant} ${sizeLabel}` : variant;
 };
+
+/** Desktop: template rail on the left, workbench on the right. Phones stay stacked. */
+const WORKBENCH_GRID =
+  "lg:grid lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start lg:gap-6 xl:grid-cols-[20rem_minmax(0,1fr)]";
+
+const matchesTemplateSearch = (t: { name: string; notes: string | null }, query: string) => {
+  const q = query.trim().toLowerCase();
+  return !q || t.name.toLowerCase().includes(q) || (t.notes ?? "").toLowerCase().includes(q);
+};
+
+// Placements sitting in one Section: the 2026-07-24 backfill, never laid out by a person.
+const isUnauthoredTemplate = (t: FillingTemplateRow) =>
+  !!t.sections && !isSpatiallyAuthoredCoverage(t.sections);
 
 const sizeEquals = (itemSize: string | null | undefined, expected: string): boolean => {
   if (!itemSize) return false;
@@ -667,6 +682,40 @@ export default function ConfigureCardPage() {
     }
   };
 
+  // Shared by the phone Select and the desktop rail: loading a template replaces the editor lines.
+  const selectPillowTemplate = async (next: number | '') => {
+    setPillowSelectedTemplateId(next);
+    if (next === '' || !selectedPillowKind || !selectedSize) return;
+    try {
+      const lines = await loadTemplateLines(next);
+      setBomByKind((prev) => ({
+        ...prev,
+        [selectedPillowKind]: { ...prev[selectedPillowKind], [selectedSize]: lines },
+      }));
+      toast.success('Template loaded into editor');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load template');
+    }
+  };
+
+  const selectBolsterTemplate = async (next: number | '') => {
+    setBolsterSelectedTemplateId(next);
+    if (next === '') return;
+    try {
+      setBolsterLines(await loadTemplateLines(next));
+      toast.success('Template loaded into editor');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load template');
+    }
+  };
+
+  const changePremiumVariant = (value: string) => {
+    if (value === 'linen' || value === 'fibrecool') {
+      setPremiumVariant(value);
+      setPillowSelectedTemplateId('');
+    }
+  };
+
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
@@ -702,23 +751,67 @@ export default function ConfigureCardPage() {
               onValueChange={(v) => setPillowDrawerTab(v as "product" | "filling")}
               className="mt-2"
             >
-              <TabsList className="w-full">
-                <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
-                <TabsTrigger value="filling" className="flex-1">Filling Config</TabsTrigger>
+              <TabsList className="w-full lg:w-auto">
+                <TabsTrigger value="product" className="flex-1 lg:px-6">Product</TabsTrigger>
+                <TabsTrigger value="filling" className="flex-1 lg:px-6">Filling Config</TabsTrigger>
               </TabsList>
-              <TabsContent value="product" className="mt-4 space-y-3 overflow-y-auto">
+              <TabsContent value="product" className="mt-4 overflow-y-auto lg:overflow-visible">
+              <div className={WORKBENCH_GRID}>
+              <WarehouseTemplateRail
+                templates={pillowTemplates}
+                selectedId={pillowSelectedTemplateId}
+                onSelect={(id) => void selectPillowTemplate(id)}
+                scopeFilter={
+                  selectedPillowKind === 'premium' ? (
+                    <Select value={premiumVariant} onValueChange={changePremiumVariant}>
+                      <SelectTrigger className="w-full min-w-0">
+                        <SelectValue placeholder="Variant" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linen">Linen</SelectItem>
+                        <SelectItem value="fibrecool">Fibrecool</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : undefined
+                }
+              />
+              <div className="min-w-0 space-y-3">
+              <WorkbenchHeader
+                title={pillowSelectedTemplate?.name ?? `${productLabel} — ${sizeLabel}`}
+                description={
+                  pillowSelectedTemplate
+                    ? 'Linked template — saving updates the product BOM and this template.'
+                    : 'No template linked — pick one to load its parts, or save these parts as a new template.'
+                }
+                actions={
+                  <>
+                    {pillowSelectedTemplate && (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => setPillowSelectedTemplateId('')}>
+                          Unlink
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={deletingTemplate}
+                          onClick={() => setPillowDeleteOpen(true)}
+                        >
+                          <Trash2 className="size-4" />
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                    <Button size="sm" onClick={() => saveSelected(selectedPillowKind, selectedSize)} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save changes'}
+                    </Button>
+                  </>
+                }
+              />
+              <div className="space-y-3 lg:rounded-xl lg:border lg:p-4">
               {selectedPillowKind === 'premium' && (
-                <div className="space-y-1">
+                <div className="space-y-1 lg:hidden">
                   <div className="text-sm font-medium text-muted-foreground">Premium variant</div>
-                  <Select
-                    value={premiumVariant}
-                    onValueChange={(value) => {
-                      if (value === 'linen' || value === 'fibrecool') {
-                        setPremiumVariant(value);
-                        setPillowSelectedTemplateId('');
-                      }
-                    }}
-                  >
+                  <Select value={premiumVariant} onValueChange={changePremiumVariant}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select variant…" />
                     </SelectTrigger>
@@ -729,26 +822,12 @@ export default function ConfigureCardPage() {
                   </Select>
                 </div>
               )}
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="space-y-1">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="space-y-1 lg:hidden">
                   <div className="text-sm font-medium text-muted-foreground">Template</div>
                   <Select
                     value={pillowSelectedTemplateId === '' ? '' : String(pillowSelectedTemplateId)}
-                    onValueChange={async (value) => {
-                      const next: number | '' = value ? Number(value) : '';
-                      setPillowSelectedTemplateId(next);
-                      if (next === '') return;
-                      try {
-                        const lines = await loadTemplateLines(next);
-                        setBomByKind((prev) => ({
-                          ...prev,
-                          [selectedPillowKind]: { ...prev[selectedPillowKind], [selectedSize]: lines },
-                        }));
-                        toast.success('Template loaded into editor');
-                      } catch (err) {
-                        toast.error(err instanceof Error ? err.message : 'Failed to load template');
-                      }
-                    }}
+                    onValueChange={(value) => void selectPillowTemplate(value ? Number(value) : '')}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select template…" />
@@ -774,6 +853,7 @@ export default function ConfigureCardPage() {
                     <Button
                       variant="destructive"
                       size="icon"
+                      className="lg:hidden"
                       disabled={pillowSelectedTemplateId === '' || deletingTemplate}
                       onClick={() => setPillowDeleteOpen(true)}
                       title={pillowSelectedTemplateId === '' ? 'Select a template to delete' : 'Delete selected template'}
@@ -828,6 +908,7 @@ export default function ConfigureCardPage() {
                 value={pillowTemplateNotes}
                 onChange={(e) => setPillowTemplateNotes(e.target.value)}
               />
+              </div>
               <Dialog open={pillowDeleteOpen} onOpenChange={setPillowDeleteOpen}>
                 <DialogContent>
                   <DialogHeader>
@@ -852,7 +933,7 @@ export default function ConfigureCardPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <Separator />
+              <Separator className="lg:hidden" />
               <DefaultFillingPicker
                 kind="pillow"
                 templateKey={selectedSize}
@@ -867,7 +948,7 @@ export default function ConfigureCardPage() {
                 loadFillingTemplates={loadFillingTemplates}
                 loadTemplateLines={loadTemplateLines}
               />
-              <Separator />
+              <Separator className="lg:hidden" />
               <SizeEditor
                 size={selectedSize}
                 items={items}
@@ -879,6 +960,8 @@ export default function ConfigureCardPage() {
                   }))
                 }}
               />
+              </div>
+              </div>
               </TabsContent>
               <TabsContent value="filling" className="mt-4 overflow-y-auto">
                 <FillingConfigPanel
@@ -893,7 +976,7 @@ export default function ConfigureCardPage() {
               </TabsContent>
             </Tabs>
           {pillowDrawerTab === "product" && (
-            <div className="flex justify-end">
+            <div className="flex justify-end lg:hidden">
               <Button
                 onClick={() => {
                   if (!selectedPillowKind || !selectedSize) return;
@@ -914,28 +997,56 @@ export default function ConfigureCardPage() {
               onValueChange={(v) => setBolsterDrawerTab(v as "product" | "filling")}
               className="mt-2"
             >
-              <TabsList className="w-full">
-                <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
-                <TabsTrigger value="filling" className="flex-1">Filling Config</TabsTrigger>
+              <TabsList className="w-full lg:w-auto">
+                <TabsTrigger value="product" className="flex-1 lg:px-6">Product</TabsTrigger>
+                <TabsTrigger value="filling" className="flex-1 lg:px-6">Filling Config</TabsTrigger>
               </TabsList>
-              <TabsContent value="product" className="mt-4 space-y-3 overflow-y-auto">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="space-y-1">
+              <TabsContent value="product" className="mt-4 overflow-y-auto lg:overflow-visible">
+              <div className={WORKBENCH_GRID}>
+              <WarehouseTemplateRail
+                templates={bolsterTemplates}
+                selectedId={bolsterSelectedTemplateId}
+                onSelect={(id) => void selectBolsterTemplate(id)}
+              />
+              <div className="min-w-0 space-y-3">
+              <WorkbenchHeader
+                title={bolsterSelectedTemplate?.name ?? `${productLabel} — ${sizeLabel}`}
+                description={
+                  bolsterSelectedTemplate
+                    ? 'Linked template — saving updates the bolster BOM and this template.'
+                    : 'No template linked — pick one to load its parts, or save these parts as a new template.'
+                }
+                actions={
+                  <>
+                    {bolsterSelectedTemplate && (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => setBolsterSelectedTemplateId('')}>
+                          Unlink
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={deletingTemplate}
+                          onClick={() => setBolsterDeleteOpen(true)}
+                        >
+                          <Trash2 className="size-4" />
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                    <Button size="sm" onClick={saveBolster} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save'}
+                    </Button>
+                  </>
+                }
+              />
+              <div className="space-y-3 lg:rounded-xl lg:border lg:p-4">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="space-y-1 lg:hidden">
                   <div className="text-sm font-medium text-muted-foreground">Template</div>
                   <Select
                     value={bolsterSelectedTemplateId === '' ? '' : String(bolsterSelectedTemplateId)}
-                    onValueChange={async (value) => {
-                      const next: number | '' = value ? Number(value) : '';
-                      setBolsterSelectedTemplateId(next);
-                      if (next === '') return;
-                      try {
-                        const lines = await loadTemplateLines(next);
-                        setBolsterLines(lines);
-                        toast.success('Template loaded into editor');
-                      } catch (err) {
-                        toast.error(err instanceof Error ? err.message : 'Failed to load template');
-                      }
-                    }}
+                    onValueChange={(value) => void selectBolsterTemplate(value ? Number(value) : '')}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select template…" />
@@ -961,6 +1072,7 @@ export default function ConfigureCardPage() {
                     <Button
                       variant="destructive"
                       size="icon"
+                      className="lg:hidden"
                       disabled={bolsterSelectedTemplateId === '' || deletingTemplate}
                       onClick={() => setBolsterDeleteOpen(true)}
                       title={bolsterSelectedTemplateId === '' ? 'Select a template to delete' : 'Delete selected template'}
@@ -1009,6 +1121,7 @@ export default function ConfigureCardPage() {
                 value={bolsterTemplateNotes}
                 onChange={(e) => setBolsterTemplateNotes(e.target.value)}
               />
+              </div>
               <Dialog open={bolsterDeleteOpen} onOpenChange={setBolsterDeleteOpen}>
                 <DialogContent>
                   <DialogHeader>
@@ -1033,7 +1146,7 @@ export default function ConfigureCardPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <Separator />
+              <Separator className="lg:hidden" />
               <DefaultFillingPicker
                 kind="bolster"
                 templateKey={getBolsterTemplateKey(bolsterVariant)}
@@ -1046,13 +1159,15 @@ export default function ConfigureCardPage() {
                 loadFillingTemplates={loadFillingTemplates}
                 loadTemplateLines={loadTemplateLines}
               />
-              <Separator />
+              <Separator className="lg:hidden" />
               <BolsterEditor
                 items={items}
                 lines={bolsterLines}
                 setLines={setBolsterLines}
                 variant={bolsterVariant}
               />
+              </div>
+              </div>
               </TabsContent>
               <TabsContent value="filling" className="mt-4 overflow-y-auto">
                 <FillingConfigPanel
@@ -1067,7 +1182,7 @@ export default function ConfigureCardPage() {
               </TabsContent>
             </Tabs>
           {bolsterDrawerTab === "product" && (
-            <div className="flex justify-end">
+            <div className="flex justify-end lg:hidden">
               <Button onClick={saveBolster} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
             </div>
           )}
@@ -1143,8 +1258,8 @@ function DefaultFillingPicker({
   }, [selectedId, loadTemplateLines, itemsById, templateKey]);
 
   return (
-    <div className="space-y-2">
-      <div className="text-sm font-medium text-muted-foreground">Default Filling Template</div>
+    <div className="space-y-2 lg:rounded-xl lg:border lg:p-4">
+      <div className="text-sm font-medium text-muted-foreground lg:text-foreground">Default Filling Template</div>
       <Select
         value={selectedId == null ? "" : String(selectedId)}
         onValueChange={(value) => onSelectedIdChange(value ? Number(value) : null)}
@@ -1215,6 +1330,10 @@ function FillingConfigPanel({
   const [promoteTarget, setPromoteTarget] = useState<UnpromotedEntry | null>(null);
   const [promoteName, setPromoteName] = useState("");
   const [promoting, setPromoting] = useState(false);
+  // Desktop rail filters (Products toolbar idiom).
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [authoringFilter, setAuthoringFilter] = useState<"all" | "authored" | "unauthored">("all");
 
   const resetEditor = useCallback(() => {
     setSelectedId("");
@@ -1467,9 +1586,12 @@ function FillingConfigPanel({
   // Derived BOM: same flatten the server runs over placement rows (ADR 0008).
   // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
   // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
-  const unauthoredCount = useMemo(
-    () => templates.filter((t) => t.sections && !isSpatiallyAuthoredCoverage(t.sections)).length,
-    [templates],
+  const unauthoredCount = useMemo(() => templates.filter(isUnauthoredTemplate).length, [templates]);
+  const visibleTemplates = templates.filter(
+    (t) =>
+      matchesTemplateSearch(t, search) &&
+      (statusFilter === "all" || t.is_active === (statusFilter === "active")) &&
+      (authoringFilter === "all" || isUnauthoredTemplate(t) === (authoringFilter === "unauthored")),
   );
   const packList = useMemo(
     () => flattenToPackList(kind === "pillow" ? placements : bolsterMix),
@@ -1498,7 +1620,92 @@ function FillingConfigPanel({
         Filling-only mixes for operator assignment. Scoped to {kind === "pillow" ? "size" : "length"}{" "}
         <strong>{templateKey}</strong>.
       </p>
-      <div className="space-y-1">
+      <div className={WORKBENCH_GRID}>
+      <TemplateRail
+        title="Filling Templates"
+        total={templates.length}
+        search={search}
+        onSearchChange={setSearch}
+        action={
+          <Button size="sm" variant="outline" onClick={resetEditor} disabled={saving}>
+            <Plus className="size-4" />
+            New
+          </Button>
+        }
+        filters={
+          <>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v === "active" || v === "inactive" ? v : "all")}
+            >
+              <SelectTrigger className="w-full min-w-0">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={authoringFilter}
+              onValueChange={(v) => setAuthoringFilter(v === "authored" || v === "unauthored" ? v : "all")}
+            >
+              <SelectTrigger className="w-full min-w-0">
+                <SelectValue placeholder="Layout" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All layouts</SelectItem>
+                <SelectItem value="authored">Spatially authored</SelectItem>
+                <SelectItem value="unauthored">{`Not authored (${unauthoredCount})`}</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
+        items={visibleTemplates.map((t) => (
+          <TemplateRailItem
+            key={t.id}
+            selected={selectedId === t.id}
+            onSelect={() => void selectTemplate(t.id)}
+            title={t.name}
+            meta={
+              !t.is_active || isUnauthoredTemplate(t) ? (
+                <>
+                  {!t.is_active && <Badge variant="secondary">Inactive</Badge>}
+                  {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} />}
+                </>
+              ) : null
+            }
+            trailing={
+              <Switch
+                checked={t.is_active}
+                onCheckedChange={(checked) => void toggleActive(t.id, checked)}
+                aria-label={`${t.name} active`}
+              />
+            }
+          />
+        ))}
+      />
+      <div className="min-w-0 space-y-4">
+      <WorkbenchHeader
+        title={selectedId === "" ? "New Filling Template" : name.trim() || "Untitled Filling Template"}
+        description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey} · ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed`}
+        actions={
+          <>
+            {selectedId !== "" && (
+              <Button variant="outline" size="sm" disabled={saving} onClick={() => void deleteTemplate()}>
+                <Trash2 className="size-4" />
+                Delete
+              </Button>
+            )}
+            <Button size="sm" onClick={() => void saveTemplate()} disabled={saving}>
+              {saving ? "Saving…" : "Save Filling Template"}
+            </Button>
+          </>
+        }
+      />
+      <div className="space-y-3 lg:rounded-xl lg:border lg:p-4">
+      <div className="space-y-1 lg:hidden">
         <div className="text-sm font-medium text-muted-foreground">Template</div>
         <Select
           value={selectedId === "" ? "" : String(selectedId)}
@@ -1527,7 +1734,7 @@ function FillingConfigPanel({
           <Switch checked={active} onCheckedChange={setActive} />
           Active (selectable on assign)
         </label>
-        <div className="flex gap-2">
+        <div className="flex gap-2 lg:hidden">
           <Button variant="secondary" onClick={() => void saveTemplate()} disabled={saving}>
             {saving ? "Saving…" : "Save Filling Template"}
           </Button>
@@ -1539,8 +1746,9 @@ function FillingConfigPanel({
           </Button>
         </div>
       </div>
+      </div>
       {templates.length > 0 && (
-        <div className="rounded-lg border">
+        <div className="rounded-lg border lg:hidden">
           {unauthoredCount > 0 && (
             <p className="border-b px-3 py-2 text-xs text-muted-foreground">
               {unauthoredCount} of {templates.length} Filling Template
@@ -1566,18 +1774,7 @@ function FillingConfigPanel({
                     >
                       {t.name}
                     </button>
-                    {t.sections && !isSpatiallyAuthoredCoverage(t.sections) && (
-                      <span
-                        className="ml-2 rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
-                        title={`${unauthoredReason(t.sections)}${
-                          looksLikeLegacyImport(t.sections)
-                            ? " Placements were auto-generated from a legacy flat recipe and have never been laid out."
-                            : ""
-                        }`}
-                      >
-                        Not spatially authored
-                      </span>
-                    )}
+                    {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} className="ml-2" />}
                   </TableCell>
                   <TableCell>
                     <Switch checked={t.is_active} onCheckedChange={(checked) => void toggleActive(t.id, checked)} />
@@ -1601,6 +1798,8 @@ function FillingConfigPanel({
               </ul>
             </div>
           )}
+          {/* Wide screens: the pack list sits beside the editor that derives it. */}
+          <div className="space-y-3 xl:grid xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-start xl:gap-4 xl:space-y-0">
           {kind === "pillow" ? (
             <Section title="Spatial recipe — click a section to dive in (up to 5 pieces per cell)">
               {placements.length > 0 && !isSpatiallyAuthored(placements) && (
@@ -1646,6 +1845,7 @@ function FillingConfigPanel({
               )}
             </ConfigureTable>
           </Section>
+          </div>
           <Section title="Popular unpromoted mixes">
             {unpromoted.length === 0 ? (
               <p className="text-sm text-muted-foreground">
@@ -1713,6 +1913,8 @@ function FillingConfigPanel({
             </DialogContent>
           </Dialog>
       </div>
+      </div>
+      </div>
     </div>
   );
 }
@@ -1764,7 +1966,7 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-medium">Size {size}</h2>
+      <h2 className="text-xl font-medium lg:hidden">Size {size}</h2>
 
       <DynamicPartSection
         title="Cover"
@@ -1837,16 +2039,198 @@ function SizeEditor({ size, items, bom, setBom }: { size: Product["size"]; items
           remove={remove}
         />
       )}
-      <Separator />
+      <Separator className="lg:hidden" />
     </div>
   );
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      <div className="text-sm font-medium text-muted-foreground">{title}</div>
+    <div className="space-y-2 lg:rounded-xl lg:border lg:p-4">
+      <div className="text-sm font-medium text-muted-foreground lg:text-foreground">{title}</div>
       <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function UnauthoredBadge({ sections, className }: { sections: string[]; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400",
+        className,
+      )}
+      title={`${unauthoredReason(sections)}${
+        looksLikeLegacyImport(sections)
+          ? " Placements were auto-generated from a legacy flat recipe and have never been laid out."
+          : ""
+      }`}
+    >
+      Not spatially authored
+    </span>
+  );
+}
+
+/**
+ * Desktop (lg+) template rail: the Products toolbar (search + Select filters)
+ * stacked over a scrollable list. Phones keep the inline template Select.
+ */
+function TemplateRail({
+  title,
+  total,
+  search,
+  onSearchChange,
+  filters,
+  action,
+  items,
+}: {
+  title: string;
+  total: number;
+  search: string;
+  onSearchChange: (value: string) => void;
+  filters: ReactNode;
+  action?: ReactNode;
+  items: ReactNode[];
+}) {
+  return (
+    <aside className="hidden flex-col rounded-xl border lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100svh-2rem)]">
+      <div className="space-y-3 border-b p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-medium">{title}</div>
+            <div className="text-xs text-muted-foreground">
+              {items.length === total ? `${total} total` : `${items.length} of ${total}`}
+            </div>
+          </div>
+          {action}
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search templates..."
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex gap-2">{filters}</div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        {items.length ? (
+          <ul className="space-y-1">{items}</ul>
+        ) : (
+          <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {total ? "No templates match your filters." : "No templates yet."}
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function TemplateRailItem({
+  selected,
+  onSelect,
+  title,
+  meta,
+  trailing,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  meta?: ReactNode;
+  trailing?: ReactNode;
+}) {
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-2 rounded-lg pr-2 transition-colors",
+        selected ? "bg-muted" : "hover:bg-muted/50",
+      )}
+    >
+      <button
+        type="button"
+        aria-current={selected ? "true" : undefined}
+        onClick={onSelect}
+        className="min-w-0 flex-1 rounded-lg px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="block truncate text-sm font-medium">{title}</span>
+        {meta ? (
+          <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{meta}</span>
+        ) : null}
+      </button>
+      {trailing}
+    </li>
+  );
+}
+
+/** Warehouse (non-filling BOM) templates: search + sort, plus an optional scope filter. */
+function WarehouseTemplateRail({
+  templates,
+  selectedId,
+  onSelect,
+  scopeFilter,
+}: {
+  templates: Array<{ id: number; name: string; notes: string | null }>;
+  selectedId: number | "";
+  onSelect: (id: number) => void;
+  scopeFilter?: ReactNode;
+}) {
+  const [search, setSearch] = useState("");
+  // The templates API already returns most recently updated first.
+  const [sort, setSort] = useState<"recent" | "name">("recent");
+  const matching = templates.filter((t) => matchesTemplateSearch(t, search));
+  const visible = sort === "name" ? [...matching].sort((a, b) => a.name.localeCompare(b.name)) : matching;
+  return (
+    <TemplateRail
+      title="Warehouse templates"
+      total={templates.length}
+      search={search}
+      onSearchChange={setSearch}
+      filters={
+        <>
+          {scopeFilter}
+          <Select value={sort} onValueChange={(v) => setSort(v === "name" ? "name" : "recent")}>
+            <SelectTrigger className="w-full min-w-0">
+              <SelectValue placeholder="Sort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recently updated</SelectItem>
+              <SelectItem value="name">Name A–Z</SelectItem>
+            </SelectContent>
+          </Select>
+        </>
+      }
+      items={visible.map((t) => (
+        <TemplateRailItem
+          key={t.id}
+          selected={selectedId === t.id}
+          onSelect={() => onSelect(t.id)}
+          title={t.name}
+          meta={t.notes ? <span className="block w-full truncate">{t.notes}</span> : null}
+        />
+      ))}
+    />
+  );
+}
+
+/** Desktop (lg+) workbench title bar, pinned so Save stays in reach down a long BOM. */
+function WorkbenchHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description: string;
+  actions: ReactNode;
+}) {
+  return (
+    <div className="sticky top-0 z-20 hidden items-center justify-between gap-4 border-b bg-background/95 py-3 backdrop-blur lg:flex">
+      <div className="min-w-0">
+        <h2 className="truncate text-lg font-medium">{title}</h2>
+        <p className="truncate text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">{actions}</div>
     </div>
   );
 }
@@ -2162,7 +2546,7 @@ function BolsterEditor({
           remove={remove}
         />
       )}
-      <Separator />
+      <Separator className="lg:hidden" />
     </div>
   );
 }
