@@ -25,7 +25,7 @@ export type BolsterListItem = {
  * Mbolster single-compartment mix editor (ADR 0008 amendment): one ordered
  * list, add/remove, NO piece cap, never the pillow Section/sub-section grid.
  * Dumb + controlled: no data fetching; parent owns the placements value.
- * Shared by Configure's Filling Config tab and Admin Result assign. The
+ * Used by Admin Result assign (Configure edits on XrayBolsterEditor). The
  * "Add piece" picker groups fillings by family via the shared SunburstMenu —
  * the same tree the pillow x-ray add-picker uses.
  */

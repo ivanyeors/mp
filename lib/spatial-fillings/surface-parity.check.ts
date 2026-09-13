@@ -58,18 +58,21 @@ assert.ok(
 );
 
 // Mbolster keeps its own spatial model (ADR 0008) — never the 3×3 pillow metaphor.
-for (const [surface, { path }] of Object.entries(EDITING_SURFACES).slice(1)) {
-  const src = readFileSync(path, "utf8");
-  assert.ok(
-    src.includes("BolsterCompartmentList"),
-    `${surface} keeps the bolster compartment list`,
-  );
+// Configure edits it on the configurator's capsule x-ray; Result assign keeps the list.
+const BOLSTER_EDITORS: Record<string, string> = {
+  "Configure → Filling Template": "<XrayBolsterEditor",
+  "Result detail → assign": "BolsterCompartmentList",
+};
+for (const [surface, marker] of Object.entries(BOLSTER_EDITORS)) {
+  const src = readFileSync(EDITING_SURFACES[surface as keyof typeof EDITING_SURFACES].path, "utf8");
+  assert.ok(src.includes(marker), `${surface} edits the bolster with ${marker.replace("<", "")}`);
 }
 
 // The frame supplies the positioned, definite-height box XrayPillow needs; it
 // must stay a wrapper, never a second implementation of the editing behaviour.
 const frame = readFileSync("components/spatial/xray-editor.tsx", "utf8");
 assert.ok(frame.includes("XrayPillow"), "the frame delegates to XrayPillow");
+assert.ok(frame.includes("<XrayBolster"), "the bolster frame delegates to the configurator's XrayBolster");
 assert.ok(frame.includes("aspectRatio"), "the frame gives the x-ray a definite height");
 assert.ok(
   frame.includes("xrayColorVarStyle"),
