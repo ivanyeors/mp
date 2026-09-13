@@ -2,6 +2,9 @@ import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { CartProvider } from "@/lib/shop/cart-context";
+import { CurrencyProvider } from "@/lib/shop/currency-context";
+import { CartShell } from "@/components/shop/cart-shell";
 import { AppDock } from "@/components/ui/app-dock";
 import { HomeHeader } from "@/components/ui/home-header";
 import { MarketingFooter } from "@/components/ui/marketing-footer";
@@ -107,11 +110,22 @@ export default async function RootLayout({
           <JourneyTracker />
           <AnalyticsNoticeBar />
           <TopLoadingBar />
-          <HomeHeader />
-          <RouteScope>{children}</RouteScope>
-          <MarketingFooter />
-          <BookAppointmentOverlay />
-          <AppDock />
+          {/*
+            One cart and one currency for the whole app. They live here, not in
+            the shop layout, because the cart button sits in HomeHeader — and
+            because a second nested CartProvider would be a second cart state
+            racing the first over the same `mp_cart` localStorage key.
+          */}
+          <CurrencyProvider>
+            <CartProvider>
+              <HomeHeader />
+              <RouteScope>{children}</RouteScope>
+              <MarketingFooter />
+              <BookAppointmentOverlay />
+              <AppDock />
+              <CartShell />
+            </CartProvider>
+          </CurrencyProvider>
           <SonnerProvider />
         </ThemeProvider>
         {isProd ? <SpeedInsights /> : null}

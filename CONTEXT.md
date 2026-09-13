@@ -9,8 +9,8 @@ An atomic inventory part (cover, filling, case, packaging, accessory, etc.) with
 _Avoid_: SKU (ambiguous with storefront variant SKU), part (when you mean the sellable finished good)
 
 **Sellable item**:
-An **Item** with an MSRP set in Costings (`item_prices.msrp` not null). Eligible to be published as a single-item storefront product.
-_Avoid_: accessory (category only — sellability is signalled by MSRP, not category)
+An **Item** with an MSRP set in Costings (`item_prices.msrp` not null). MSRP makes it **eligible** to be published as a storefront product — it does not mean it is for sale. Every active Item now carries an MSRP (preferences and add-ons are priced from it), so eligibility no longer discriminates on its own; whether an eligible Item is actually **Listed** is a separate, operator-set fact.
+_Avoid_: accessory (category only — eligibility is signalled by MSRP, not category); reading "has an MSRP" as "is in the shop"
 
 **Composed sellable**:
 A pillow (`pillow_products`, size × **tier**) or bolster (`bolster_bom_lines`, short/medium/long **length**) built from a BOM of **Items**. Finished-good MSRP lives in `product_prices`. Existing DB columns may still be named `kind` / `pillow_kind`; human-facing language uses **tier**.
@@ -23,6 +23,10 @@ _Avoid_: kind
 **Storefront product**:
 A shop listing (`products` + `product_variants`). A projection of inventory: auto-generated from pillows/bolsters or published from a **Sellable item**. When `is_auto_generated`, price/cost/compare-at are Costings-derived and locked.
 _Avoid_: listing, SKU (use **Variant** for the priced unit)
+
+**Listed**:
+Whether a **Sellable item** is actually on sale in the shop. Recorded by its **Storefront product** — `products.status = 'active'` with at least one `product_variants.is_active` — which is exactly what the shop query filters on, so there is nothing else to keep in step. Operators flip it per family under Settings → Products → Accessories; un-listing archives to `draft` and never deletes, so re-listing restores the same product rather than minting a duplicate. Items group into one product per (category, name), with sizes as **Variant**s — one switch covers Cervical Neck Support XS–L.
+_Avoid_: a `sell_as_accessory` column on `items` (a second source of truth the projection already answers); "published" (that is the one-time create, not the on/off state); deleting an un-listed product
 
 **Variant**:
 A priced, stocked unit of a **Storefront product**, linked to inventory via `item_id`, `pillow_product_id`, and/or `price_key`.

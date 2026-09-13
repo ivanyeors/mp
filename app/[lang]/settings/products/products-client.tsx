@@ -10,13 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import {
     Select,
     SelectContent,
     SelectItem,
@@ -46,6 +39,7 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
+import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,16 +72,6 @@ export type ProductRow = {
     product_variants: ProductVariant[];
     product_images: ProductImage[];
     created_at: string;
-};
-
-type SellableItem = {
-    id: number;
-    name: string;
-    category: string;
-    subtype: string | null;
-    size: string | null;
-    msrp: number;
-    compare_at_price: number | null;
 };
 
 function isLegacyProduct(product: ProductRow): boolean {
@@ -231,13 +215,6 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
     const [syncing, setSyncing] = useState(false);
     const [resyncingPrices, setResyncingPrices] = useState(false);
 
-    // Add-from-inventory picker
-    const [pickerOpen, setPickerOpen] = useState(false);
-    const [sellableItems, setSellableItems] = useState<SellableItem[]>([]);
-    const [pickerLoading, setPickerLoading] = useState(false);
-    const [pickerSearch, setPickerSearch] = useState("");
-    const [publishingItemId, setPublishingItemId] = useState<number | null>(null);
-
     // Debounce search
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => {
@@ -348,57 +325,6 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
         }
     };
 
-    const openInventoryPicker = async () => {
-        setPickerOpen(true);
-        setPickerSearch("");
-        setPickerLoading(true);
-        try {
-            const res = await fetch("/api/shop/products/from-inventory");
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error ?? "Failed to load items");
-            setSellableItems(json.rows ?? []);
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to load sellable items");
-            setSellableItems([]);
-        } finally {
-            setPickerLoading(false);
-        }
-    };
-
-    const publishFromInventory = async (itemId: number) => {
-        setPublishingItemId(itemId);
-        try {
-            const res = await fetch("/api/shop/products/from-inventory", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ item_id: itemId }),
-            });
-            const json = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(json.error ?? "Failed to create product");
-            toast.success("Product created from inventory");
-            setPickerOpen(false);
-            if (json.product_id) {
-                router.push(to(`/settings/products/${json.product_id}`));
-            } else {
-                fetchProducts();
-            }
-        } catch (err) {
-            toast.error(err instanceof Error ? err.message : "Failed to create product");
-        } finally {
-            setPublishingItemId(null);
-        }
-    };
-
-    const filteredSellableItems = sellableItems.filter((item) => {
-        if (!pickerSearch.trim()) return true;
-        const q = pickerSearch.toLowerCase();
-        return (
-            item.name.toLowerCase().includes(q) ||
-            item.category.toLowerCase().includes(q) ||
-            (item.subtype ?? "").toLowerCase().includes(q)
-        );
-    });
-
     // ── Selection helpers ──
     const allSelected =
         products.length > 0 && products.every((p) => selected.has(p.id));
@@ -483,12 +409,6 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
                             ? "No pillows or bolsters found. Try syncing from inventory."
                             : "No accessories yet. Add your first accessory to get started."}
                     </p>
-                    {isAccessoriesTab && !debouncedSearch && statusFilter === "all" && categoryFilter === "all" && (
-                        <Button size="sm" className="mt-4" onClick={openInventoryPicker}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add from inventory
-                        </Button>
-                    )}
                 </div>
             );
         }
@@ -810,11 +730,9 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
                                 Resync prices
                             </Button>
                         </div>
-                        <Button size="sm" className="w-full sm:w-auto" onClick={openInventoryPicker}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add from inventory
-                        </Button>
                     </div>
+
+                    {isAccessoriesTab && <ShopListingToggles />}
 
                     {renderToolbar()}
 
@@ -857,64 +775,6 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
                 </TabsContent>
             </Tabs>
 
-            <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-                <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle>Add from inventory</DialogTitle>
-                        <DialogDescription>
-                            Pick a sellable item (has MSRP in Costings). Price, cost, and compare-at are locked to Costings.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Input
-                        placeholder="Search items…"
-                        value={pickerSearch}
-                        onChange={(e) => setPickerSearch(e.target.value)}
-                        className="mb-2"
-                    />
-                    <div className="flex-1 overflow-y-auto min-h-0 border rounded-md">
-                        {pickerLoading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            </div>
-                        ) : filteredSellableItems.length === 0 ? (
-                            <div className="p-6 text-center text-sm text-muted-foreground">
-                                {sellableItems.length === 0
-                                    ? "No unpublished sellable items. Set an MSRP in Costings for an inventory item first."
-                                    : "No items match your search."}
-                            </div>
-                        ) : (
-                            <ul className="divide-y">
-                                {filteredSellableItems.map((item) => (
-                                    <li
-                                        key={item.id}
-                                        className="flex items-center justify-between gap-3 px-3 py-2.5 hover:bg-muted/50"
-                                    >
-                                        <div className="min-w-0">
-                                            <div className="font-medium text-sm truncate">{item.name}</div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {item.category}
-                                                {item.msrp != null && ` · ${formatCurrency(item.msrp)}`}
-                                            </div>
-                                        </div>
-                                        <Button
-                                            size="sm"
-                                            variant="secondary"
-                                            disabled={publishingItemId != null}
-                                            onClick={() => publishFromInventory(item.id)}
-                                        >
-                                            {publishingItemId === item.id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                "Add"
-                                            )}
-                                        </Button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

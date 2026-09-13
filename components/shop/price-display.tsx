@@ -3,8 +3,6 @@
 import { cn } from "@/lib/utils";
 import { BASE_CURRENCY, formatCurrency } from "@/lib/i18n/currencies";
 
-// We import the context directly to avoid a hard dependency — PriceDisplay
-// can work without the CurrencyProvider (falls back to base currency formatting).
 import { useCurrency } from "@/lib/shop/currency-context";
 
 interface PriceDisplayProps {
@@ -21,14 +19,6 @@ function formatAmount(amount: number, currency: string): string {
   return formatCurrency(amount, currency);
 }
 
-function useCurrencySafe() {
-  try {
-    return useCurrency();
-  } catch {
-    return null;
-  }
-}
-
 export function PriceDisplay({
   price,
   compareAtPrice,
@@ -36,12 +26,12 @@ export function PriceDisplay({
   className,
   skipConversion,
 }: PriceDisplayProps) {
-  const ctx = useCurrencySafe();
+  const ctx = useCurrency();
 
   const isOnSale = compareAtPrice != null && compareAtPrice > price;
 
-  // If no currency context or skipConversion, format in the provided currency
-  if (!ctx || skipConversion || ctx.currency === BASE_CURRENCY) {
+  // Nothing to convert: asked not to, or already in the base currency.
+  if (skipConversion || ctx.currency === BASE_CURRENCY) {
     if (isOnSale) {
       return (
         <span className={cn("inline-flex items-center gap-1.5 flex-wrap", className)}>

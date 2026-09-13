@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,16 +10,36 @@ import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ProfileMenu } from "@/components/auth/profile-menu";
+import { useCart } from "@/lib/shop/cart-context";
 import { Globe, MapPin, MessageCircleMore } from "lucide-react";
 import { openBookAppointment } from "@/lib/book-appointment";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/contact";
 import { stripLocale } from "@/lib/i18n/routing";
 import { isMarketingRoute } from "@/lib/routing/is-marketing-route";
 
+// This header is in the root layout, so anything it imports statically lands in
+// every route's shared bundle — including the Admin Panel, which never shows a
+// cart. The popover, its line items and the currency table are worth ~8KB gzip
+// there, enough to blow the settings budget. Split them out: both only ever
+// render on a storefront route, and the cart is client-only anyway.
+const CartButton = dynamic(
+  () => import("@/components/shop/cart-button").then((m) => m.CartButton),
+  { ssr: false },
+);
+const CurrencySelector = dynamic(
+  () => import("@/components/shop/currency-selector").then((m) => m.CurrencySelector),
+  { ssr: false },
+);
+
 export function HomeHeader() {
   const pathname = usePathname() ?? "/";
   const basePathname = stripLocale(pathname);
   const [isCompact, setIsCompact] = React.useState(false);
+  const { itemCount } = useCart();
+
+  // Always reachable while shopping; elsewhere it appears only once there is
+  // something to go back to, so marketing pages keep an empty icon off-screen.
+  const showCart = basePathname.startsWith("/shop") || itemCount > 0;
 
   React.useEffect(() => {
     // Hysteresis so a 1px overscroll or iOS rubber-band cannot flip the header
@@ -112,6 +133,7 @@ export function HomeHeader() {
             >
               <MessageCircleMore className="h-full w-full" />
             </a>
+            {showCart && <CartButton />}
           </div>
         </div>
       </div>
@@ -147,6 +169,8 @@ export function HomeHeader() {
               />
             </div>
             <div className="flex min-w-0 justify-end gap-1 sm:gap-2">
+              {basePathname.startsWith("/shop") && <CurrencySelector />}
+              {showCart && <CartButton />}
               <LanguageToggle />
               <ModeToggle />
             </div>
