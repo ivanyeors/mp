@@ -80,6 +80,30 @@ describe("id resolution", () => {
     expect(m.stripeProductIdOf({ stripe_product_id: null, stripe_product_id_test: "prod_sandbox" })).toBeNull();
   });
 
+  it("falls back to the legacy column when the migration has not run", async () => {
+    // A `select("*")` against a database without 20260913120000 simply omits the
+    // column, so the field is undefined rather than null. That is a deploy ahead of
+    // its migration -- and before it, the legacy column holds the SANDBOX ids test
+    // mode is asking for. Refusing here took shop checkout down for every item.
+    const m = await withKeys("sk_test_abc");
+    expect(m.stripePriceIdOf({ stripe_price_id: "price_sandbox" })).toBe("price_sandbox");
+    expect(m.stripeProductIdOf({ stripe_product_id: "prod_sandbox" })).toBe("prod_sandbox");
+  });
+
+  it("does NOT fall back once the column exists but is empty", async () => {
+    // Column present and null is a real answer: this product is not linked in this
+    // account. Falling through would hand Stripe the other account's id.
+    const m = await withKeys("sk_test_abc");
+    expect(
+      m.stripePriceIdOf({ stripe_price_id: "price_live", stripe_price_id_test: null }),
+    ).toBeNull();
+  });
+
+  it("never falls back in live mode", async () => {
+    const m = await withKeys("sk_live_abc");
+    expect(m.stripePriceIdOf({ stripe_price_id: null, stripe_price_id_test: "price_sandbox" })).toBeNull();
+  });
+
   it("tolerates a missing row", async () => {
     const m = await withKeys("sk_test_abc");
     expect(m.stripePriceIdOf(null)).toBeNull();

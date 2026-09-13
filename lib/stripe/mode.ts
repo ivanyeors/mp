@@ -59,13 +59,32 @@ type PriceIdRow = {
   stripe_price_id_test?: string | null;
 };
 
+/**
+ * `undefined` means the COLUMN is absent, which a database that has not run
+ * `20260913120000_stripe_ids_per_mode.sql` yet reports for a `select("*")`. That is a
+ * deploy that ran ahead of its migration, not an unlinked product.
+ *
+ * Told apart from `null` (column present, nothing linked) on purpose. Before that
+ * migration the legacy column holds SANDBOX ids, which is exactly what test mode
+ * wants, so falling through keeps checkout working instead of refusing every item
+ * with "not available for online purchase". Live mode never needs this — it reads
+ * the legacy column either way.
+ *
+ * Delete once the migration is applied everywhere; it is a bridge, not a design.
+ */
+function preMigration(testColumn: string | null | undefined): boolean {
+  return testColumn === undefined;
+}
+
 /** The Stripe Product id valid in THIS environment's account, or null. */
 export function stripeProductIdOf(
   row: ProductIdRow | null | undefined,
   mode: StripeMode = stripeMode(),
 ): string | null {
   if (!row) return null;
-  return (mode === "test" ? row.stripe_product_id_test : row.stripe_product_id) ?? null;
+  if (mode === "live") return row.stripe_product_id ?? null;
+  if (preMigration(row.stripe_product_id_test)) return row.stripe_product_id ?? null;
+  return row.stripe_product_id_test ?? null;
 }
 
 /** The Stripe Price id valid in THIS environment's account, or null. */
@@ -74,5 +93,7 @@ export function stripePriceIdOf(
   mode: StripeMode = stripeMode(),
 ): string | null {
   if (!row) return null;
-  return (mode === "test" ? row.stripe_price_id_test : row.stripe_price_id) ?? null;
+  if (mode === "live") return row.stripe_price_id ?? null;
+  if (preMigration(row.stripe_price_id_test)) return row.stripe_price_id ?? null;
+  return row.stripe_price_id_test ?? null;
 }
