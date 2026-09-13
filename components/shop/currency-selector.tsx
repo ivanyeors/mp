@@ -25,9 +25,10 @@ export function CurrencySelector() {
       <SelectTrigger
         size="sm"
         aria-label="Currency"
-        // `[&>svg]:hidden` drops the trigger's built-in chevron: the language
-        // pill beside it has none, and the width matters on a phone.
-        className="h-8 w-auto min-w-0 rounded-full px-3 [&>svg]:hidden"
+        // `min-w-0` undoes the trigger's form-field minimum; `[&>svg]:hidden`
+        // drops its built-in chevron, which the language pill beside it lacks
+        // and which costs width on a phone.
+        className="min-w-0 rounded-full [&>svg]:hidden"
       >
         <SelectValue />
       </SelectTrigger>

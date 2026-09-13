@@ -31,18 +31,19 @@ describe("storefront currency selector", () => {
     expect(expanded.indexOf("<CurrencySelector />", currency + 1)).toBe(-1);
   });
 
+  const trigger = selector.slice(
+    selector.indexOf("<SelectTrigger"),
+    selector.indexOf("</SelectTrigger>"),
+  );
+
   it("overrides the shared trigger's 12rem form-field minimum width", () => {
-    const trigger = selector.slice(
-      selector.indexOf("<SelectTrigger"),
-      selector.indexOf("</SelectTrigger>"),
-    );
     expect(trigger).toMatch(/\bmin-w-0\b/);
-    expect(trigger).toMatch(/\bw-auto\b/);
+    // A fixed width cannot beat a min-width, which is how the 90px intent lost.
     expect(trigger).not.toMatch(/\bw-\[\d+px\]/);
   });
 
   it("names the control and its mobile sheet", () => {
-    expect(selector).toMatch(/<SelectTrigger[^>]*aria-label="Currency"/);
+    expect(trigger).toMatch(/aria-label="Currency"/);
     expect(selector).toMatch(/<SelectContent[^>]*sheetTitle="Currency"/);
   });
 
@@ -51,6 +52,18 @@ describe("storefront currency selector", () => {
     // shrinks the row below 44px; only the desktop dropdown may use it.
     expect(selector).not.toMatch(/className="(?:[^"]*\s)?text-xs(?:\s|")/);
     expect(selector).toMatch(/className="(?:[^"]*\s)?md:text-xs(?:\s|")/);
+  });
+});
+
+describe("header right-hand cluster on a phone", () => {
+  it("keeps the language toggle icon-only below sm so the cart clears the logo", () => {
+    // Cart 44 + language 44 + theme 44 + two 4px gaps = 140px, against a
+    // 136-151px column on 360-390px phones. With its label the pill is ~69px
+    // and the cluster overflows leftwards into the logo.
+    const toggle = read("components/ui/language-toggle.tsx");
+    expect(toggle).toMatch(/max-sm:min-w-11/);
+    expect(toggle).toMatch(/<span className="hidden [^"]*sm:inline">\{LOCALE_SHORT_LABELS\[currentLocale\]\}<\/span>/);
+    expect(toggle).not.toMatch(/className="mr-2/);
   });
 });
 
