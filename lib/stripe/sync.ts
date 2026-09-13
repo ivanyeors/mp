@@ -3,6 +3,12 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import type { ProductVariant } from "@/lib/types/ecommerce";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { loadVariantLabels, withPricingBlock, type VariantLabel } from "./variant-labels";
+import {
+  stripePriceIdColumn,
+  stripePriceIdOf,
+  stripeProductIdColumn,
+  stripeProductIdOf,
+} from "./mode";
 
 /**
  * Stripe Product tax code (drives Stripe Tax categorization). Defaults to
@@ -61,7 +67,11 @@ export async function syncProductToStripe(productId: string) {
       .filter((l): l is VariantLabel => Boolean(l)),
   );
 
-  let stripeProductId = product.stripe_product_id;
+  // Read and write the column belonging to whichever account this key points at.
+  // One shared column made the two modes overwrite each other on every switch.
+  const productIdColumn = stripeProductIdColumn();
+  const priceIdColumn = stripePriceIdColumn();
+  let stripeProductId = stripeProductIdOf(product);
 
   if (stripeProductId) {
     // Update existing Stripe product
@@ -97,29 +107,31 @@ export async function syncProductToStripe(productId: string) {
     });
     stripeProductId = stripeProduct.id;
 
-    // Save stripe_product_id
+    // Save the id under this mode's column
     await admin
       .from("products")
-      .update({ stripe_product_id: stripeProductId })
+      .update({ [productIdColumn]: stripeProductId })
       .eq("id", productId);
   }
 
   // Sync variant prices
   const variants = (product.product_variants ?? []) as ProductVariant[];
-  const variantResults: { id: string; stripe_price_id: string }[] = [];
+  // camelCase on purpose: this is what we just pushed to the CURRENT account, not a
+  // database column. Wearing the column's name invited reading it as one.
+  const variantResults: { id: string; stripePriceId: string }[] = [];
 
   for (const variant of variants) {
     const priceId = await syncVariantPrice(stripeProductId, variant, labels.get(variant.id));
-    variantResults.push({ id: variant.id, stripe_price_id: priceId });
+    variantResults.push({ id: variant.id, stripePriceId: priceId });
 
-    // Save stripe_price_id on variant
+    // Save the id under this mode's column
     await admin
       .from("product_variants")
-      .update({ stripe_price_id: priceId })
+      .update({ [priceIdColumn]: priceId })
       .eq("id", variant.id);
   }
 
-  return { stripe_product_id: stripeProductId, variants: variantResults };
+  return { stripeProductId, variants: variantResults };
 }
 
 /**
@@ -166,10 +178,11 @@ async function syncVariantPrice(
     variant_title: variantName,
   };
 
-  // If variant already has a stripe_price_id, check if price matches
-  if (variant.stripe_price_id) {
+  // If the variant already has a Price in THIS account, check if it still matches.
+  const existingPriceId = stripePriceIdOf(variant);
+  if (existingPriceId) {
     try {
-      const existingPrice = await stripe.prices.retrieve(variant.stripe_price_id);
+      const existingPrice = await stripe.prices.retrieve(existingPriceId);
       if (
         existingPrice.unit_amount === unitAmount &&
         existingPrice.currency === variant.currency.toLowerCase() &&
@@ -179,12 +192,12 @@ async function syncVariantPrice(
         // label added or corrected later reaches prices that already exist, without
         // churning a new Price id (which would archive the one carts reference).
         if (existingPrice.nickname !== nickname) {
-          await stripe.prices.update(variant.stripe_price_id, { nickname, metadata });
+          await stripe.prices.update(existingPriceId, { nickname, metadata });
         }
-        return variant.stripe_price_id;
+        return existingPriceId;
       }
       // Price/tax behavior changed — archive old price
-      await stripe.prices.update(variant.stripe_price_id, { active: false });
+      await stripe.prices.update(existingPriceId, { active: false });
     } catch {
       // Price not found, create new
     }
@@ -226,7 +239,8 @@ export async function createPaymentLink(productId: string) {
   if (!variants.length) throw new Error("Product has no active variants");
 
   const defaultVariant = variants[0];
-  if (!defaultVariant.stripe_price_id) {
+  const defaultPriceId = stripePriceIdOf(defaultVariant);
+  if (!defaultPriceId) {
     throw new Error("Default variant has no Stripe Price ID. Sync to Stripe first.");
   }
 
@@ -241,7 +255,7 @@ export async function createPaymentLink(productId: string) {
 
   // Create new payment link
   const paymentLink = await stripe.paymentLinks.create({
-    line_items: [{ price: defaultVariant.stripe_price_id, quantity: 1 }],
+    line_items: [{ price: defaultPriceId, quantity: 1 }],
     metadata: { supabase_product_id: productId },
   });
 

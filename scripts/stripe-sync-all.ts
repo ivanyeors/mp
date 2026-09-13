@@ -4,6 +4,8 @@
 //   npx tsx --env-file=.env.local scripts/stripe-sync-all.ts
 //   # dry run (lists products, touches neither Stripe nor the DB):
 //   npx tsx --env-file=.env.local scripts/stripe-sync-all.ts --dry-run
+//   # populate the LIVE account without putting a live key in STRIPE_SECRET_KEY:
+//   npx tsx --env-file=.env.local scripts/stripe-sync-all.ts --live
 //
 // It lists active products from Supabase, then calls syncProductToStripe() for
 // each — the same function /api/stripe/sync calls, which creates/updates the
@@ -16,11 +18,14 @@
 // calls here") was actually after — with one fewer moving part and no dev server.
 //
 // Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY
+//      STRIPE_SECRET_KEY_LIVE — only for --live
 
 import { createClient } from "@supabase/supabase-js";
 import { syncProductToStripe } from "@/lib/stripe/sync";
+import { stripeMode, stripeProductIdColumn } from "@/lib/stripe/mode";
 
 const dryRun = process.argv.includes("--dry-run");
+const live = process.argv.includes("--live");
 
 function requireEnv(name: string): string {
   const v = process.env[name];
@@ -36,7 +41,28 @@ function requireEnv(name: string): string {
 async function main() {
   requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   requireEnv("SUPABASE_SERVICE_ROLE_KEY");
+
+  // --live swaps the key IN PROCESS rather than asking anyone to edit .env.local,
+  // so a laptop stays pointed at the sandbox for everything else. Everything
+  // downstream — the Stripe client and the column `stripeMode()` resolves — reads
+  // STRIPE_SECRET_KEY, so setting it here keeps the account and the column it
+  // writes to in agreement. Both are lazy, so this must happen before the first use.
+  if (live) {
+    const liveKey = requireEnv("STRIPE_SECRET_KEY_LIVE");
+    if (liveKey.includes("_test_")) {
+      console.error("STRIPE_SECRET_KEY_LIVE is a TEST key. Refusing to mislabel it as live.");
+      process.exit(1);
+    }
+    process.env.STRIPE_SECRET_KEY = liveKey;
+  }
   if (!dryRun) requireEnv("STRIPE_SECRET_KEY");
+
+  const mode = stripeMode();
+  if (live && mode !== "live") {
+    console.error(`--live was passed but the resolved mode is "${mode}". Aborting.`);
+    process.exit(1);
+  }
+  console.log(`Stripe mode: ${mode} (writing products.${stripeProductIdColumn(mode)})`);
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,7 +72,7 @@ async function main() {
 
   const { data: products, error } = await supabase
     .from("products")
-    .select("id, slug, stripe_product_id")
+    .select("id, slug, stripe_product_id, stripe_product_id_test")
     .eq("status", "active")
     .order("created_at", { ascending: true });
 
@@ -64,7 +90,8 @@ async function main() {
 
   if (dryRun) {
     for (const p of products) {
-      console.log(`  - ${p.slug} (${p.id})${p.stripe_product_id ? " [already linked]" : ""}`);
+      const linked = mode === "test" ? p.stripe_product_id_test : p.stripe_product_id;
+      console.log(`  - ${p.slug} (${p.id})${linked ? ` [linked: ${linked}]` : ""}`);
     }
     console.log("Dry run: no changes made.");
     return;
@@ -78,7 +105,7 @@ async function main() {
       const result = await syncProductToStripe(p.id);
       ok += 1;
       console.log(
-        `  OK  ${p.slug} -> ${result.stripe_product_id} (${result.variants.length} price[s])`,
+        `  OK  ${p.slug} -> ${result.stripeProductId} (${result.variants.length} price[s])`,
       );
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);

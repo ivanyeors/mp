@@ -32,10 +32,13 @@ function sessionArg() {
   return createSession.mock.calls.at(-1)![0]!;
 }
 
+// Priced in both accounts. Tests run with no Stripe key, which resolves to test
+// mode, so `price_v1_test` is the id these line items should carry.
 function variant(): ProductVariant {
   return {
     id: "v1",
     stripe_price_id: "price_v1",
+    stripe_price_id_test: "price_v1_test",
     price: 89,
     currency: "SGD",
     title: "Default",
@@ -97,7 +100,19 @@ describe("createCheckoutSession — customised units", () => {
 
   it("uses the catalog Price when the build is untouched", async () => {
     await createCheckoutSession({ ...base, lineItems: [{ variant: variant(), quantity: 1, addonAmount: 0 }] });
-    expect(lineItemsArg()).toEqual([{ price: "price_v1", quantity: 1 }]);
+    expect(lineItemsArg()).toEqual([{ price: "price_v1_test", quantity: 1 }]);
+  });
+});
+
+describe("createCheckoutSession — per-account Price ids", () => {
+  it("refuses a variant priced only in the OTHER account", async () => {
+    // The live account is empty until its first sync. Falling back to the sandbox
+    // Price would hand Stripe an id it cannot see, mid-checkout.
+    const liveOnly = { ...variant(), stripe_price_id_test: null } as ProductVariant;
+    await expect(
+      createCheckoutSession({ ...base, lineItems: [{ variant: liveOnly, quantity: 1 }] }),
+    ).rejects.toThrow(/no Stripe Price ID/);
+    expect(createSession).not.toHaveBeenCalled();
   });
 });
 

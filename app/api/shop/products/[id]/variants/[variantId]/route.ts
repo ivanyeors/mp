@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { syncProductToStripeSafe } from "@/lib/stripe/sync";
+import { stripePriceIdColumn } from "@/lib/stripe/mode";
 
 export const runtime = "nodejs";
 
@@ -63,8 +64,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ? await syncProductToStripeSafe(id)
       : undefined;
 
-  const freshPriceId = stripe?.result?.variants.find((v) => v.id === variantId)?.stripe_price_id;
-  const row = freshPriceId ? { ...data, stripe_price_id: freshPriceId } : data;
+  const freshPriceId = stripe?.result?.variants.find((v) => v.id === variantId)?.stripePriceId;
+  const row = freshPriceId ? { ...data, [stripePriceIdColumn()]: freshPriceId } : data;
 
   return NextResponse.json({
     ok: true,

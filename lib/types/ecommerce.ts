@@ -63,7 +63,10 @@ export interface Product {
   category_id: string | null;
   featured: boolean;
   tags: string[];
+  /** LIVE account. Read through `stripeProductIdOf()` — never off the row. */
   stripe_product_id: string | null;
+  /** TEST/sandbox account. */
+  stripe_product_id_test?: string | null;
   stripe_payment_link: string | null;
   stripe_payment_link_id: string | null;
   is_auto_generated: boolean;
@@ -103,7 +106,10 @@ export interface ProductVariant {
   image_url: string | null;
   is_active: boolean;
   position: number;
+  /** LIVE account. Read through `stripePriceIdOf()` — never off the row. */
   stripe_price_id: string | null;
+  /** TEST/sandbox account. */
+  stripe_price_id_test?: string | null;
   item_id: number | null;
   pillow_product_id: number | null;
   price_key: string | null;
