@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { AnimatePresence } from "motion/react";
 import { useCart } from "@/lib/shop/cart-context";
 import { useCartStock } from "@/lib/shop/use-cart-stock";
-import type { CartMessages } from "@/components/shop/cart/cart-types";
+import { buildCartMessages, type CartDictionary } from "@/lib/shop/cart-messages";
 import type { Locale } from "@/lib/i18n/locales";
 import { withLocale } from "@/lib/i18n/routing";
 import { CartEmptyState } from "@/components/shop/cart/cart-empty-state";
@@ -21,11 +21,17 @@ import {
 import { cn } from "@/lib/utils";
 
 interface CartPageClientProps {
-  messages: CartMessages;
+  /**
+   * Plain strings only. The server page cannot hand over `CartMessages` (it
+   * holds formatter functions, which cannot cross the server → client
+   * boundary), so the formatted shape is built on this side.
+   */
+  dictionary: CartDictionary;
   locale: Locale;
 }
 
-export function CartPageClient({ messages, locale }: CartPageClientProps) {
+export function CartPageClient({ dictionary, locale }: CartPageClientProps) {
+  const messages = useMemo(() => buildCartMessages(dictionary), [dictionary]);
   const {
     items,
     itemCount,
