@@ -110,8 +110,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
+  // Only once there is something in the cart. The provider is mounted app-wide,
+  // and customerEmail is read by coupon validation and checkout only — firing
+  // this on every page load would be a request per visit for nothing. Keyed on
+  // the boolean, not the count, so adding a second item does not refetch.
+  const hasItems = state.items.length > 0;
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !hasItems) return;
     fetch("/api/account/addresses")
       .then((res) => res.json())
       .then((data: { signedIn?: boolean; email?: string | null }) => {
@@ -120,7 +125,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => {});
-  }, [hydrated]);
+  }, [hydrated, hasItems]);
 
   useEffect(() => {
     if (hydrated) saveCartToStorage(state);
