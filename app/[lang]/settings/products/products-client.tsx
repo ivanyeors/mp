@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import { Plus, Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
@@ -38,9 +39,22 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
-import { ProductVisualize } from "./product-visualize";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
+
+// Loaded on first open: the overlay workbench would otherwise push the Products
+// list over its first-load JS budget (scripts/bundle-budget.json).
+const ProductVisualize = dynamic(
+    () => import("./product-visualize").then((m) => m.ProductVisualize),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex justify-center py-16">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+        ),
+    },
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
