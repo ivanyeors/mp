@@ -1,11 +1,13 @@
 "use client";
 
 /**
- * Product Builder (slice 10): map cover/case Items to overlay Media Assets
- * (+ optional fit) so the configurator silhouette shows the real product.
+ * Product Visualize tab on Products (formerly the Product Builder page, slice 10):
+ * map cover/case Items to overlay Media Assets (+ optional fit) so the
+ * configurator silhouette shows the real product. The data routes still live
+ * under /settings/product-builder/.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GitBranch, Loader2, Trash2 } from "lucide-react";
@@ -35,14 +37,9 @@ import { getApiErrorMessage } from "@/lib/utils";
 
 export type OverlayItem = OverlayMappingItem;
 
-/** The mappings payload the page mounts with. */
-export type ProductBuilderInitialData = { ok: true; items: OverlayItem[] };
-
-export default function ProductBuilderPage({
-  initialData,
-}: {
-  initialData?: ProductBuilderInitialData;
-}) {
+// ponytail: fetches on mount — the tab only mounts when opened, so the Products
+// list pays nothing for it.
+export function ProductVisualize() {
   const pathname = usePathname() ?? "/";
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const settingsPath = useCallback(
@@ -50,10 +47,8 @@ export default function ProductBuilderPage({
     [locale],
   );
 
-  const [items, setItems] = useState<OverlayItem[]>(initialData?.items ?? []);
-  const [loading, setLoading] = useState(!initialData);
-  // The server already loaded the mappings; every save and removal reloads.
-  const skipFirstFetch = useRef(initialData != null);
+  const [items, setItems] = useState<OverlayItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,10 +68,6 @@ export default function ProductBuilderPage({
   }, [settingsPath]);
 
   useEffect(() => {
-    if (skipFirstFetch.current) {
-      skipFirstFetch.current = false;
-      return;
-    }
     void load();
   }, [load]);
 
@@ -120,7 +111,7 @@ export default function ProductBuilderPage({
     <div className="space-y-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Product Builder</h1>
+          <h2 className="text-lg font-semibold tracking-tight">Product Visualize</h2>
           <p className="text-muted-foreground text-sm mt-1">
             Map cover and case items to overlay images from the Media Asset Library.
             The configurator preview swaps the overlay when the item is selected;
@@ -135,7 +126,7 @@ export default function ProductBuilderPage({
         </Button>
       </div>
 
-      <h2 className="text-lg font-semibold tracking-tight">Overlay mapping</h2>
+      <h3 className="text-base font-semibold tracking-tight">Overlay mapping</h3>
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -228,7 +219,7 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Filling visuals</h2>
+        <h3 className="text-base font-semibold tracking-tight">Filling visuals</h3>
         <p className="text-muted-foreground text-sm mt-1">
           Each filling subtype renders in the x-ray with a designer-owned fluid shape
           (not editable) and a color. Overriding a color applies to all x-ray views on

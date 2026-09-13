@@ -1,5 +1,6 @@
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { requireAdminPage } from "@/lib/auth/admin";
+import { roleHasPermission } from "@/lib/auth/permissions";
 import { listAdminProducts } from "@/lib/ecommerce/admin/products";
 import { getCategoryTree } from "@/lib/ecommerce/categories";
 import {
@@ -20,13 +21,17 @@ export const runtime = "nodejs";
  */
 export default async function SettingsProductsPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ lang: string }>;
+    searchParams: Promise<{ tab?: string }>;
 }) {
-    const { lang } = await params;
+    const [{ lang }, { tab }] = await Promise.all([params, searchParams]);
     const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
 
-    await requireAdminPage("products", locale);
+    const ctx = await requireAdminPage("products", locale);
+    // Product Visualize keeps the permission its old standalone page had.
+    const canVisualize = roleHasPermission(ctx.role, "page-builder");
 
     // Mirrors the client's default state: no search, "all" status/category/type,
     // page 1, LIMIT 20. Admin list includes composed main products.
@@ -46,5 +51,11 @@ export default async function SettingsProductsPage({
           }
         : undefined;
 
-    return <ProductsClient initialData={initialData} />;
+    return (
+        <ProductsClient
+            initialData={initialData}
+            canVisualize={canVisualize}
+            initialTab={tab === "categories" || (tab === "visualize" && canVisualize) ? tab : "products"}
+        />
+    );
 }

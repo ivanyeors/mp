@@ -149,7 +149,7 @@ Shopper-chosen **Item**s on a customisation preview. **Mpillow** (full/basic): c
 _Avoid_: showing a Cover Style picker on mbolster-config; treating bolster protector as a shopper choice
 
 **Add-on**:
-An accessory (or optional extra) line at item **MSRP**, chosen during customisation. Preview cards use the **Item**’s primary **Media Asset** image (not **Product Builder** overlays).
+An accessory (or optional extra) line at item **MSRP**, chosen during customisation. Preview cards use the **Item**’s primary **Media Asset** image (not **Product Visualize** overlays).
 
 **Authorization hold**:
 An uncaptured Stripe payment for the ballpark total (composed sellable **MSRP** + preference/add-on **MSRP**s + shipping + tax). Card details are taken; charge happens only on Accept (or via top-up if the final total exceeds the hold).
@@ -242,7 +242,7 @@ _Avoid_: dropping unmapped lines from totals; silently understating Shopify sale
 ## Rules Engine (recommendations)
 
 **Rules Engine**:
-The single recommendation authority: a Staff-authored node workbench (entry point inside **Product Builder**) whose published **Rule graphs** derive every measurement → size / tier-suggestion / **Filling Template** recommendation. See ADR `docs/adr/0010-rules-engine-single-recommendation-authority.md`.
+The single recommendation authority: a Staff-authored node workbench (entry point inside the **Product Visualize** tab) whose published **Rule graphs** derive every measurement → size / tier-suggestion / **Filling Template** recommendation. See ADR `docs/adr/0010-rules-engine-single-recommendation-authority.md`.
 _Avoid_: hardcoded sizing rules as a parallel truth; "recommendation engine" for the dormant LLM hooks
 
 **Rule graph**:
@@ -318,8 +318,8 @@ _Avoid_: measuring the window from order/ship date
 - Fillings affect COGS/fulfillment only; sell price is **Costings** **MSRP** for the composed sellable plus preference/add-on item **MSRP**s, plus shipping and tax
 - An accepted **Result** plus successful capture (when an **Authorization hold** exists) becomes an **Order**
 - An **Assisted customisation** takes **no Authorization hold**; its **Result** reaches **Order** through a **Balance payment** for the full price after **Staff** assign the build in the **Admin Panel** — same Accept, same **Order**, no **Referral** and no **Commission** (ADR 0016)
-- A **Media Asset** is the library record; landing slots, blogs, products, slide configs, and **Product Builder** overlays are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
-- **Product Builder** (Landing Site) links cover/case **Items** to overlay **Media Assets** for the configurator silhouette; preview selection reflects that mapping (**C**: thumbnails on **Item**, overlay fit in Product Builder when needed).
+- A **Media Asset** is the library record; landing slots, blogs, products, slide configs, and **Product Visualize** overlays are consumers. **Product slide section config** media stays code-config until adopted onto Assets.
+- **Product Visualize** (tab on Store → Products) links cover/case **Items** to overlay **Media Assets** for the configurator silhouette; preview selection reflects that mapping (**C**: thumbnails on **Item**, overlay fit in Product Visualize when needed).
 - The storefront Menu’s last pill is **Sign in** (guest), **Profile** (**Customer**), the partner portal (**Partner account**), or **Admin Panel** (**Staff**). Pill precedence when one session holds multiple roles: **Staff > Partner > Customer**. Access is additive — the pill routes to the highest surface, it does not ban the lower ones (a Partner who is also a Customer can still open `/account` directly; `/settings` still requires **Staff**; the partner portal requires an approved **Partner account**).
 - **Staff assist mode** appears on the customisation preview only when the session is **Staff**; the shopper operates that shared device. It does not replace **Result** assign in the **Admin Panel**.
 - **Staff assist mode** may load/edit a **Filling configuration** (from a **Filling Template** or scratch) for the live customisation; catalog create/**Promote** of **Filling Templates** stays in the **Admin Panel** only.
@@ -392,7 +392,7 @@ _Avoid_: measuring the window from order/ship date
 > **Domain expert:** "If it’s not offered for that size, clear it and make them re-pick. If it’s offered but stock is 0, keep it and use the normal out-of-stock / **Pre-order** path."
 >
 > **Dev:** "Where do cover overlays get assigned?"
-> **Domain expert:** "**Product Builder** under Landing Site — pick a **Media Asset** per cover/case **Item**. The Your Custom Mpillow preview shows that overlay when the shopper selects the option."
+> **Domain expert:** "**Product Visualize** on the Products page — pick a **Media Asset** per cover/case **Item**. The Your Custom Mpillow preview shows that overlay when the shopper selects the option."
 >
 > **Dev:** "Pre-order waiting — do we show weeks?"
 > **Domain expert:** "No numeric ETA in v1. Fixed copy: we’ll reach out shortly via WhatsApp. Restock automation email is separate."
@@ -545,12 +545,12 @@ Timestamp of the last attach, replace, or save in a consumer that referenced the
 **Media Asset Library**:
 The Settings → Media DAM and shared Asset picker. Separate from **Product slide section config** media props (code-config paths) until those configs are adopted onto Assets.
 
-**Product Builder**:
-Admin Panel page under **Landing Site** where **Staff** map inventory cover/case (and related) **Items** to overlay **Media Assets** (and optional fit) for the customisation preview silhouette (**Your Custom Mpillow** / bolster preview), and view/edit **Filling visual** colors. Card thumbnails come from the **Item**; non-default overlay placement on the SVG is presentation config here. Choosing a cover/case on the preview shows the linked overlay from this page.
-_Avoid_: a parallel upload silo outside **Media Assets**; hard-coding overlay files in the configurator; putting this under Inventory Configure (recipe) instead of Landing Site presentation
+**Product Visualize**:
+Admin Panel tab on Store → Products (formerly the standalone **Product Builder** page, which code identifiers and the `/settings/product-builder/*` routes still name) where **Staff** map inventory cover/case (and related) **Items** to overlay **Media Assets** (and optional fit) for the customisation preview silhouette (**Your Custom Mpillow** / bolster preview), and view/edit **Filling visual** colors. Card thumbnails come from the **Item**; non-default overlay placement on the SVG is presentation config here. Choosing a cover/case on the preview shows the linked overlay from this page.
+_Avoid_: a parallel upload silo outside **Media Assets**; hard-coding overlay files in the configurator; putting this under Inventory Configure (recipe) instead of the Products presentation tab
 
 **Filling visual**:
-The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. Staff can see the mapping and edit the **color** in **Product Builder**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
+The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. Staff can see the mapping and edit the **color** in **Product Visualize**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
 _Avoid_: rect/bounding-box cropping of filling shapes; gooey-merging pieces so the count is unreadable; generating random blob shapes in v1
 
 **Landing section**:
@@ -706,11 +706,11 @@ _Avoid_: changing `components/sections/landing/`, homepage page builder, or `lan
 - Protector is owned on the **Composed sellable** BOM, not a **Customer preference**. Fillings come from **Filling Templates** only.
 - Mbolster “covers” — resolved: inventory/Configure have **Bolster Case** + **Bolster Protector** (plus packaging/etc.); no cover category. **Customer preference** on mbolster-config is case only; customise UI must not show Cover Style or require `selectedCover`.
 - Customise “sold out / low stock / still pay” — resolved: **Pre-order** when a required preference line on-hand is 0 **or** composed sellable buildable is 0. Preview CTA is **live**; **Result** mode is **sticky** at hold create; **automated** restock email to **`held`/`assigned`** Pre-order Results when stock recovers (idempotent; no manual send in v1). Scope: Mpillow + Mbolster. Waiting-time copy: fixed i18n — promise is **WhatsApp reach-out shortly** (not numeric ETA; **Q13b-A**). Restock notice channel stays email unless separately changed. No separate ops queue in v1. Hold CTA: Proceed vs Pre-order (not “Purchase”). Packaged inside **UX polish Jul 2026** PRD (single backlog; Pre-order is vertical slices within it, not a separate PRD). ADR: `docs/adr/0005-pre-order-authorization-hold.md`.
-- Cover/case overlays on configurator — resolved (**C**): **Product Builder** under Landing Site maps **Items** → **Media Asset** overlays (optional fit); **Item** supplies card thumbnails; preview reflects the mapping when cover/case changes.
+- Cover/case overlays on configurator — resolved (**C**): **Product Visualize** on the Products page maps **Items** → **Media Asset** overlays (optional fit); **Item** supplies card thumbnails; preview reflects the mapping when cover/case changes.
 - **Add-on** cards — resolved (**A** + clarify): selection stays on the **right**; left shows image previews of *selected* add-ons under the silhouette (desktop row / mobile stack). **Item** primary **Media Asset** supplies the image.
 - **X-ray filling editor** — resolved as Staff-only left silhouette interaction: hover → 3 **Sections**; click → dive into **sub-sections** / **Placements**. Art direction = x-ray/cutaway of fillings inside the pillow shape.
 - X-ray implementation — resolved (**A** + amendments): layered interactive SVG. Designer-exported silhouette + per-cell boundary paths become `clipPath` regions; each filling type = one fluid path asset tagged by item subtype + color; blobs conform via nested clipping; deterministic 1–5 compressed-but-distinct layout per cell; `framer-motion`/`gsap` (installed) for hover/dive; **`flubber` approved** as the one new dependency (shape morphs), installed when the editor is built. Gooey merge rejected as default (piece count must stay legible). Guardrails ADR: `docs/adr/0009-xray-filling-visuals.md`.
-- Filling-type → shape + color map — resolved (**C** extended): shape defaults in code config now; **Product Builder** surfaces the mapping read/write for **color** (shape stays designer/code). Migrate shape editing into Product Builder only if shapes churn without deploys.
+- Filling-type → shape + color map — resolved (**C** extended): shape defaults in code config now; **Product Visualize** surfaces the mapping read/write for **color** (shape stays designer/code). Migrate shape editing into Product Visualize only if shapes churn without deploys.
 - Marketing app dock scroll — resolved: hide on scroll-down, show on scroll-up / near top, **and** show when near document bottom; configurator post-welcome `dock-hidden` unchanged. Trim excess bottom padding that double-counts dock clearance.
 - Mbolster (i) FAQ dismiss — resolved: **`hideClose` + inline close below the FAQ accordion** (scrolls with content), matching Mpillow FAQ — not a fixed/corner X.
 - Mbolster height “can’t type `.`” — resolved as AFK bug: input round-trips through `parseFloat`/`toDisplayHeight` on every keystroke so intermediate values like `1.` become `1`. Keep a draft display string while typing; normalize/clamp on blur or Continue.

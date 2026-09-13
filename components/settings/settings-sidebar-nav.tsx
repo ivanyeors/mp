@@ -7,7 +7,7 @@ import {
   Boxes, Wrench, Settings2, CircleDollarSign, TrendingUp, Store, ClipboardList,
   Users, Newspaper, Image, LayoutDashboard, ShoppingBag, Handshake,
   ShoppingCart, UserCircle, Tag, Truck, KeyRound, Loader2, RotateCcw,
-  ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput, Shapes,
+  ShieldCheck, ScrollText, HelpCircle, CalendarDays, FormInput,
   GitBranch, ClipboardCheck, Percent,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -108,7 +108,6 @@ const NAV_GROUPS: NavGroup[] = [
         perm: "products",
         items: [
           { href: "/settings/inventory/configure", label: "Configure", tooltip: "Configure BOM", Icon: Wrench, perm: "inventory" },
-          { href: "/settings/product-builder", label: "Product Builder", tooltip: "Configurator overlay mapping", Icon: Shapes, perm: "page-builder" },
           { href: "/settings/product-builder/rules-engine", label: "Rules Engine", tooltip: "Recommendation rule graphs", Icon: GitBranch, perm: "page-builder" },
         ],
       },

@@ -38,6 +38,7 @@ import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { formatCurrency } from "@/lib/i18n/currencies";
 import { CategoriesManager } from "./categories-manager";
+import { ProductVisualize } from "./product-visualize";
 import { stripePriceIdOf } from "@/lib/stripe/mode";
 import { ShopListingToggles } from "@/components/settings/shop-listing-toggles";
 
@@ -176,7 +177,16 @@ function statusBadgeVariant(status: string): StatusVariant {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function ProductsClient({ initialData }: { initialData?: ProductsInitialData }) {
+export function ProductsClient({
+    initialData,
+    canVisualize = false,
+    initialTab = "products",
+}: {
+    initialData?: ProductsInitialData;
+    /** Staff with the `page-builder` permission get the Product Visualize tab. */
+    canVisualize?: boolean;
+    initialTab?: string;
+}) {
     const pathname = usePathname() ?? "/";
     const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
     const to = (href: string) => withLocale(href, locale);
@@ -691,10 +701,13 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
                 </p>
             </div>
 
-            <Tabs defaultValue="products">
+            <Tabs defaultValue={initialTab}>
                 <TabsList>
                     <TabsTrigger value="products">Products</TabsTrigger>
                     <TabsTrigger value="categories">Categories</TabsTrigger>
+                    {canVisualize && (
+                        <TabsTrigger value="visualize">Product Visualize</TabsTrigger>
+                    )}
                 </TabsList>
 
                 <TabsContent value="products" className="mt-6 space-y-6">
@@ -773,6 +786,12 @@ export function ProductsClient({ initialData }: { initialData?: ProductsInitialD
                 <TabsContent value="categories" className="mt-6">
                     <CategoriesManager />
                 </TabsContent>
+
+                {canVisualize && (
+                    <TabsContent value="visualize" className="mt-6">
+                        <ProductVisualize />
+                    </TabsContent>
+                )}
             </Tabs>
 
         </div>
