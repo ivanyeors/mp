@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CheckCircle, Loader2, ShoppingBag } from "lucide-react";
+import { useCart } from "@/lib/shop/cart-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Order } from "@/lib/types/ecommerce";
@@ -18,6 +19,8 @@ export default function OrderConfirmationPage() {
   const searchParams = useSearchParams();
   const orderNumber = searchParams.get("order_number") ?? searchParams.get("order");
   const sessionId = searchParams.get("session_id");
+
+  const { clearCart } = useCart();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,10 +41,17 @@ export default function OrderConfirmationPage() {
         if (!res.ok) throw new Error("Order not found");
         return res.json();
       })
-      .then((data: { ok: boolean; order: Order }) => setOrder(data.order))
+      .then((data: { ok: boolean; order: Order }) => {
+        setOrder(data.order);
+        // Payment went through and the order was confirmed for this Stripe
+        // session, so the local cart is spent. Clearing it here (instead of
+        // before the Stripe redirect) keeps the items available if the shopper
+        // cancels payment or presses back from Stripe.
+        clearCart();
+      })
       .catch(() => setFetchError(true))
       .finally(() => setLoading(false));
-  }, [orderNumber, sessionId]);
+  }, [orderNumber, sessionId, clearCart]);
 
   // ---------------------------------------------------------------------------
   // Render
