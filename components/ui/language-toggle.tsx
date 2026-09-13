@@ -52,14 +52,20 @@ export function LanguageToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
+        {/*
+          Icon-only below `sm`: the header's right cluster (cart, this, theme)
+          has ~136-151px on a 360-390px phone, and with the label it is 165px,
+          which pushes the cart under the logo. As a 44px round button it is
+          140px, like the theme toggle beside it.
+        */}
         <Button
           variant="outline"
           size="sm"
-          className="h-8 rounded-full px-3"
+          className="h-8 rounded-full px-3 max-sm:min-w-11"
           aria-label="Language"
         >
-          <Globe className="mr-2 h-4 w-4" aria-hidden="true" />
-          <span className="text-sm font-medium">{LOCALE_SHORT_LABELS[currentLocale]}</span>
+          <Globe className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+          <span className="hidden text-sm font-medium sm:inline">{LOCALE_SHORT_LABELS[currentLocale]}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
