@@ -78,6 +78,14 @@ export function itemScaleMap(itemSizes: ReadonlyMap<number, string | null>): Map
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 const MORPH_MS = 320;
+
+// Dive-editor control sizing. The chips sit ON the pouches, so on a desktop
+// stage (650px wide) they stay tiny; below md the stage is ~360px wide and
+// there is no hover or precise pointer, so the same chips grow to a readable
+// 11px with ~28px icon buttons — the largest that still fits three per cell.
+const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5";
+const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5";
+const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center";
 const easeOut = (t: number) => t * (2 - t);
 
 /**
@@ -187,15 +195,15 @@ function LayerRow({
   return (
     <div
       ref={ref}
-      className={`pointer-events-auto flex items-center gap-0.5 rounded border bg-background/90 px-1 text-[9px] leading-4 shadow-sm ${isDragging ? "opacity-70 shadow-lg" : ""}`}
+      className={`pointer-events-auto flex items-center gap-0.5 px-1 ${CHIP_CLASS} ${isDragging ? "opacity-70 shadow-lg" : ""}`}
     >
       <button
         ref={handleRef}
         type="button"
-        className="shrink-0 cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        className={`${CHIP_ICON_BUTTON_CLASS} cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing`}
         aria-label={`Drag layer ${depth + 1} to reorder depth`}
       >
-        <GripVertical className="size-2.5" />
+        <GripVertical className={CHIP_ICON_CLASS} />
       </button>
       <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
       {pieces.map((piece) => (
@@ -203,30 +211,30 @@ function LayerRow({
           <span className="max-w-16 truncate">{piece.label}</span>
           <button
             type="button"
-            className="shrink-0 rounded hover:bg-destructive/20"
+            className={`${CHIP_ICON_BUTTON_CLASS} hover:bg-destructive/20`}
             aria-label={`Remove one ${piece.label} from layer ${depth + 1}`}
             onClick={() => onRemovePiece(piece.slot)}
           >
-            <X className="size-2.5" />
+            <X className={CHIP_ICON_CLASS} />
           </button>
         </span>
       ))}
       <button
         type="button"
         disabled={full}
-        className="shrink-0 rounded hover:bg-accent disabled:opacity-40"
+        className={`${CHIP_ICON_BUTTON_CLASS} hover:bg-accent disabled:opacity-40`}
         aria-label={full ? `Layer ${depth + 1} full (max ${MAX_PIECES_PER_LAYER})` : `Add filling to layer ${depth + 1}`}
         onClick={onAdd}
       >
-        <Plus className="size-2.5" />
+        <Plus className={CHIP_ICON_CLASS} />
       </button>
       <button
         type="button"
-        className="shrink-0 rounded text-muted-foreground hover:bg-destructive/20 hover:text-foreground"
+        className={`${CHIP_ICON_BUTTON_CLASS} text-muted-foreground hover:bg-destructive/20 hover:text-foreground`}
         aria-label={`Remove layer ${depth + 1}`}
         onClick={onRemoveLayer}
       >
-        <Trash2 className="size-2.5" />
+        <Trash2 className={CHIP_ICON_CLASS} />
       </button>
     </div>
   );
@@ -353,18 +361,18 @@ export function XrayPillow({
     const label = pieceLabel(itemId);
     const lastSlot = slots[slots.length - 1];
     return (
-      <span className="flex items-center gap-0.5 rounded border bg-background/90 px-1 text-[9px] leading-4 shadow-sm">
+      <span className={`flex items-center gap-0.5 px-1 ${CHIP_CLASS}`}>
         <span className="max-w-24 truncate">
           {label}
           {slots.length > 1 ? ` ×${slots.length}` : ""}
         </span>
         <button
           type="button"
-          className="shrink-0 rounded hover:bg-destructive/20"
+          className={`${CHIP_ICON_BUTTON_CLASS} hover:bg-destructive/20`}
           aria-label={`Remove one ${label} from ${cell.section} ${cell.subSection}`}
           onClick={() => onPlacementsChange?.(removePiece(placements, cell, lastSlot))}
         >
-          <X className="size-2.5" />
+          <X className={CHIP_ICON_CLASS} />
         </button>
       </span>
     );
@@ -638,7 +646,7 @@ export function XrayPillow({
                       readable. Tighten the chips to max-w-16 if it ever bites. */}
                   {cellPcs.length >= 2 && (
                     <div
-                      className="pointer-events-auto flex overflow-hidden rounded border text-[9px] leading-4 shadow-sm"
+                      className="pointer-events-auto flex overflow-hidden rounded border text-[9px] leading-4 shadow-sm max-md:text-[11px] max-md:leading-5"
                       role="group"
                       aria-label={`${cell.section} ${subSection} arrangement`}
                     >
@@ -649,7 +657,7 @@ export function XrayPillow({
                             key={mode}
                             type="button"
                             aria-pressed={on}
-                            className={`px-1.5 py-0.5 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+                            className={`px-1.5 py-0.5 max-md:px-2.5 max-md:py-1 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
                             onClick={() => onPlacementsChange?.(setCellArrangement(placements, cell, mode))}
                           >
                             {mode === "side" ? "Side" : "Stacked"}
@@ -684,17 +692,17 @@ export function XrayPillow({
                   {cellPcs.length > 0 && layers.length < MAX_LAYERS_PER_CELL && (
                     <button
                       type="button"
-                      className="pointer-events-auto flex items-center gap-0.5 rounded border bg-background/90 px-1 text-[9px] leading-4 shadow-sm hover:bg-accent"
+                      className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
                       aria-label={`Add a layer under ${cell.section} ${subSection}`}
                       onClick={() => openPicker(subSection, layers.length)}
                     >
-                      <Layers className="size-2.5" />
+                      <Layers className={CHIP_ICON_CLASS} />
                       Add layer
                     </button>
                   )}
                   {/* Out of flow: appearing on hover must not shove the controls. */}
                   {hinting && (
-                    <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground max-md:text-[11px]">
                       {cellIsFull(subSection)
                         ? `Cell full (max ${MAX_PIECES_PER_CELL})`
                         : "Click to add filling"}
