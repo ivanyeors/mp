@@ -155,8 +155,15 @@ export function HomeHeader() {
           className={`mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 px-2 py-3 sm:gap-2 sm:px-4 ${isCompact ? "invisible" : ""
             }`}
         >
-            <div className="flex min-w-0 justify-start">
+            <div className="flex min-w-0 items-center justify-start gap-1 sm:gap-2">
               <ProfileMenu />
+              {/*
+                Shop routes only. It sits with the account button rather than
+                with the cart, language and theme toggles: the side columns are
+                ~150px each on a phone and the right one is already full, so a
+                fourth control there overflows leftwards under the logo.
+              */}
+              {basePathname.startsWith("/shop") && <CurrencySelector />}
             </div>
             <div className="flex justify-center">
               <Image
@@ -169,7 +176,6 @@ export function HomeHeader() {
               />
             </div>
             <div className="flex min-w-0 justify-end gap-1 sm:gap-2">
-              {basePathname.startsWith("/shop") && <CurrencySelector />}
               {showCart && <CartButton />}
               <LanguageToggle />
               <ModeToggle />

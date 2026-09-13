@@ -10,19 +10,34 @@ import {
 import { useCurrency, SUPPORTED_CURRENCIES, CURRENCY_CONFIG } from "@/lib/shop/currency-context";
 import type { SupportedCurrency } from "@/lib/i18n/currencies";
 
+/**
+ * Display-currency picker in the storefront header, styled as a pill like its
+ * neighbours (`LanguageToggle`, `ModeToggle`). The shared `SelectTrigger` is
+ * sized for a form field (`min-w-[12rem]`); on a phone that is wider than the
+ * header column and slid the pill under the logo, so the trigger hugs its
+ * content here.
+ */
 export function CurrencySelector() {
   const { currency, setCurrency } = useCurrency();
 
   return (
     <Select value={currency} onValueChange={(v) => setCurrency(v as SupportedCurrency)}>
-      <SelectTrigger className="h-8 w-[90px] text-xs gap-1 border-none bg-transparent hover:bg-accent/50 focus:ring-0 focus:ring-offset-0">
+      <SelectTrigger
+        size="sm"
+        aria-label="Currency"
+        // `[&>svg]:hidden` drops the trigger's built-in chevron: the language
+        // pill beside it has none, and the width matters on a phone.
+        className="h-8 w-auto min-w-0 rounded-full px-3 [&>svg]:hidden"
+      >
         <SelectValue />
       </SelectTrigger>
-      <SelectContent align="end">
+      <SelectContent align="start" sheetTitle="Currency">
         {SUPPORTED_CURRENCIES.map((code) => {
           const config = CURRENCY_CONFIG[code];
           return (
-            <SelectItem key={code} value={code} className="text-xs">
+            // Small text only in the desktop dropdown. The mobile sheet keeps
+            // the shared text-base so each row stays a 44px tap target.
+            <SelectItem key={code} value={code} className="md:text-xs">
               {config.flag} {code}
             </SelectItem>
           );

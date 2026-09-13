@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   SELECT_ITEM_MARK,
   collectSelectItemLabels,
@@ -137,12 +137,21 @@ function SelectValue({ placeholder, className }: SelectValueProps) {
   return <span className={cn("block truncate", className)}>{display}</span>;
 }
 
-type SelectContentProps = React.ComponentPropsWithoutRef<typeof DropdownMenuContent>;
+type SelectContentProps = React.ComponentPropsWithoutRef<typeof DropdownMenuContent> & {
+  /**
+   * Heading for the mobile bottom sheet. A select inside a form inherits its
+   * context from the field label on the page; a header control (currency,
+   * say) has none, so its sheet would open as a bare list of options. Also
+   * gives the sheet its accessible name. The desktop dropdown has no header
+   * and ignores it.
+   */
+  sheetTitle?: string;
+};
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuContent>,
   SelectContentProps
->(({ className, children, ...props }, ref) => {
+>(({ className, children, sheetTitle, ...props }, ref) => {
   const { isMobile } = useSelectContext();
 
   if (isMobile) {
@@ -160,6 +169,11 @@ const SelectContent = React.forwardRef<
         className={cn(className, "inset-x-0 w-full min-w-0 max-w-none px-0 pt-0")}
         {...sheetProps}
       >
+        {sheetTitle && (
+          <SheetHeader className="px-4 py-0">
+            <SheetTitle>{sheetTitle}</SheetTitle>
+          </SheetHeader>
+        )}
         <div className="max-h-[70svh] overflow-auto px-2 pb-14 pt-2">
           {children}
         </div>
