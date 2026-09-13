@@ -89,7 +89,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const lang = (params?.lang as string) ?? "en";
 
-  const { items, subtotal, couponCode, couponDiscount, couponFreeShipping, clearCart } = useCart();
+  const { items, subtotal, couponCode, couponDiscount, couponFreeShipping } = useCart();
   const { isConverted } = useCurrency();
 
   // Form state
@@ -362,7 +362,10 @@ export default function CheckoutPage() {
       const data = await res.json();
 
       if (data.checkout_url || data.url) {
-        clearCart();
+        // Do NOT clear the cart here. The shopper has not paid yet: Stripe's
+        // cancel_url and the browser back button both land on this page, and
+        // the cart must still be there so they can review it or retry. The
+        // confirmation page clears it once the paid order is confirmed.
         window.location.href = data.checkout_url ?? data.url;
       } else {
         throw new Error("No checkout URL returned from server.");
