@@ -17,6 +17,7 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 
 import { SunburstMenu } from "@/components/ui/sunburst-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { fillingItemsToSunburst, fillingLabel } from "@/lib/spatial-fillings/filling-groups";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import {
@@ -200,7 +201,8 @@ function LayerRow({
       <button
         ref={handleRef}
         type="button"
-        className={`${CHIP_ICON_BUTTON_CLASS} cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing`}
+        // touch-none: a long-press drag on a phone must not scroll the page instead.
+        className={`${CHIP_ICON_BUTTON_CLASS} touch-none cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing`}
         aria-label={`Drag layer ${depth + 1} to reorder depth`}
       >
         <GripVertical className={CHIP_ICON_CLASS} />
@@ -272,6 +274,11 @@ export function XrayPillow({
   const [openLayer, setOpenLayer] = useState<number | null>(null);
   const [hoverSub, setHoverSub] = useState<SubSection | null>(null);
   const editable = Boolean(items && onPlacementsChange);
+  // Phones: a cell is ~65px tall on a 360px stage, so controls parked ON the
+  // cells collide with their neighbours at any font size. Below md the dive
+  // keeps the on-pillow cell highlight + tap-to-add, and the chips, toggle,
+  // layer rows and add-layer move into a dock right under the pillow.
+  const isMobile = useIsMobile();
   // Ring 1 = filling family (3D/6D/6D+), leaves = deduped inventory items.
   const fillingTree = useMemo(() => fillingItemsToSunburst(items ?? []), [items]);
 
@@ -392,6 +399,44 @@ export function XrayPillow({
       top: `${(((ROW_Y[b] + ROW_Y[b + 1]) / 2) / XRAY_VIEW.height) * 100}%`,
     };
   };
+
+  /** Side ↔ Stacked arrangement toggle for a cell with 2+ pieces (overlay + dock). */
+  const arrangementToggle = (cell: Cell, subSection: SubSection, stacked: boolean) => (
+    <div
+      className="pointer-events-auto flex overflow-hidden rounded border text-[9px] leading-4 shadow-sm max-md:text-[11px] max-md:leading-5"
+      role="group"
+      aria-label={`${cell.section} ${subSection} arrangement`}
+    >
+      {(["side", "stacked"] as const).map((mode) => {
+        const on = (mode === "stacked") === stacked;
+        return (
+          <button
+            key={mode}
+            type="button"
+            aria-pressed={on}
+            className={`px-1.5 py-0.5 max-md:px-2.5 max-md:py-1 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
+            onClick={() => onPlacementsChange?.(setCellArrangement(placements, cell, mode))}
+          >
+            {mode === "side" ? "Side" : "Stacked"}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  /** Adding a layer IS adding a piece at a new depth, so an empty layer is
+      never created and never has to be persisted. */
+  const addLayerButton = (cell: Cell, subSection: SubSection, layers: readonly unknown[]) => (
+    <button
+      type="button"
+      className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
+      aria-label={`Add a layer under ${cell.section} ${subSection}`}
+      onClick={() => openPicker(subSection, layers.length)}
+    >
+      <Layers className={CHIP_ICON_CLASS} />
+      Add layer
+    </button>
+  );
 
   const rectByKey = new Map(pieces.map((pl) => [pl.key, pl] as const));
 
@@ -604,7 +649,7 @@ export function XrayPillow({
       {dived && editable && (
         <div className="absolute inset-0" style={{ pointerEvents: "none" }} data-xray-dive>
           {/* Side-by-side cells: centroid chips over their pouch group. */}
-          {sideChips.map((fc) => (
+          {!isMobile && sideChips.map((fc) => (
             <div
               key={`${fc.subSection}-${fc.itemId}`}
               className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
@@ -625,7 +670,7 @@ export function XrayPillow({
               Mounted on piece count, never on hover: focusin/focusout are
               DISCRETE in React and flush synchronously, so a focus-gated panel
               would unmount under the very Tab that reaches it. */}
-          <DragDropProvider onDragEnd={onLayerDragEnd}>
+          {!isMobile && <DragDropProvider onDragEnd={onLayerDragEnd}>
             {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
               const hinting = hoverSub === subSection;
               // The bloom is centred on this same point while it is open, so the
@@ -644,28 +689,7 @@ export function XrayPillow({
                   {/* ponytail: a side cell's centroid chips share this band; the
                       panel's opaque background and z-20 keep the toggle
                       readable. Tighten the chips to max-w-16 if it ever bites. */}
-                  {cellPcs.length >= 2 && (
-                    <div
-                      className="pointer-events-auto flex overflow-hidden rounded border text-[9px] leading-4 shadow-sm max-md:text-[11px] max-md:leading-5"
-                      role="group"
-                      aria-label={`${cell.section} ${subSection} arrangement`}
-                    >
-                      {(["side", "stacked"] as const).map((mode) => {
-                        const on = (mode === "stacked") === stacked;
-                        return (
-                          <button
-                            key={mode}
-                            type="button"
-                            aria-pressed={on}
-                            className={`px-1.5 py-0.5 max-md:px-2.5 max-md:py-1 ${on ? "bg-primary text-primary-foreground" : "bg-background hover:bg-accent"}`}
-                            onClick={() => onPlacementsChange?.(setCellArrangement(placements, cell, mode))}
-                          >
-                            {mode === "side" ? "Side" : "Stacked"}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
                   {/* One layer needs no row of its own — its pieces are the
                       centroid chips on the pouches. Rows appear from two up. */}
                   {stacked &&
@@ -687,19 +711,9 @@ export function XrayPillow({
                         />
                       );
                     })}
-                  {/* Adding a layer IS adding a piece at a new depth, so an empty
-                      layer is never created and never has to be persisted. */}
-                  {cellPcs.length > 0 && layers.length < MAX_LAYERS_PER_CELL && (
-                    <button
-                      type="button"
-                      className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
-                      aria-label={`Add a layer under ${cell.section} ${subSection}`}
-                      onClick={() => openPicker(subSection, layers.length)}
-                    >
-                      <Layers className={CHIP_ICON_CLASS} />
-                      Add layer
-                    </button>
-                  )}
+                  {cellPcs.length > 0 &&
+                    layers.length < MAX_LAYERS_PER_CELL &&
+                    addLayerButton(cell, subSection, layers)}
                   {/* Out of flow: appearing on hover must not shove the controls. */}
                   {hinting && (
                     <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap rounded border bg-background/85 px-1.5 py-0.5 text-[10px] text-muted-foreground max-md:text-[11px]">
@@ -711,15 +725,17 @@ export function XrayPillow({
                 </div>
               );
             })}
-          </DragDropProvider>
+          </DragDropProvider>}
 
           {/* Add-filling picker blooms from the centre of the cell you clicked —
-              the whole cell is the trigger, so the menu has none of its own. */}
+              the whole cell is the trigger, so the menu has none of its own.
+              Phones: centred on the stage instead, so an outer column's bloom
+              cannot run off the screen edge. */}
           {openSub && (
             <div
-              className="absolute z-30 -translate-x-1/2 -translate-y-1/2"
+              className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
               style={{
-                ...cellCenter(openSub),
+                ...(isMobile ? { left: "50%", top: "50%" } : cellCenter(openSub)),
                 width: `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
                 pointerEvents: "auto",
               }}
@@ -728,7 +744,7 @@ export function XrayPillow({
                 open
                 root={fillingTree}
                 display="text"
-                size={220}
+                size={isMobile ? 240 : 220}
                 ringWidth={40}
                 holeRadius={18}
                 centerIcon={Plus}
@@ -746,6 +762,104 @@ export function XrayPillow({
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Phones have no hover cue that the sections are tappable: say so, in the
+          gap under the pillow, until a section is dived. */}
+      {editable && isMobile && !dived && (
+        <p
+          className="pointer-events-none absolute inset-x-0 top-full text-center text-[11px] leading-4 text-white/70"
+          aria-hidden
+        >
+          Tap a section to edit its fillings
+        </p>
+      )}
+
+      {/* Phone dock: the dived section's controls, one group per cell, under the
+          pillow. Inside the root so a tap here never counts as "outside" and
+          ends the dive; Done does that explicitly (no Escape on a phone). */}
+      {dived && editable && isMobile && (
+        <div
+          className="absolute inset-x-0 top-full z-30 mt-2"
+          style={{ pointerEvents: "auto" }}
+          data-xray-dive-dock
+        >
+          <div className="rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl">
+            <div className="mb-1 flex items-center justify-between px-1">
+              <span className="text-xs font-semibold capitalize">{dived} section</span>
+              <button
+                type="button"
+                className="min-h-9 rounded-lg px-3 text-xs font-medium hover:bg-accent"
+                onClick={endDive}
+              >
+                Done
+              </button>
+            </div>
+            <DragDropProvider onDragEnd={onLayerDragEnd}>
+              {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
+                const full = cellIsFull(subSection);
+                return (
+                  <div
+                    key={subSection}
+                    className="flex flex-col gap-1 border-t border-border/60 px-1 py-1.5 first:border-t-0"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                        {subSection}
+                      </span>
+                      {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
+                      <button
+                        type="button"
+                        disabled={full}
+                        className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
+                        aria-label={
+                          full
+                            ? `${dived} ${subSection} cell full (max ${MAX_PIECES_PER_CELL})`
+                            : `Add filling to ${dived} ${subSection}`
+                        }
+                        onClick={() => !full && openPicker(subSection, null)}
+                      >
+                        <Plus className={CHIP_ICON_CLASS} />
+                        {full ? "Full" : "Add filling"}
+                      </button>
+                    </div>
+                    {!stacked && cellPcs.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {sideChips
+                          .filter((fc) => fc.subSection === subSection)
+                          .map((fc) => (
+                            <span key={fc.itemId}>{pieceChip(fc.cell, fc.itemId, fc.slots)}</span>
+                          ))}
+                      </div>
+                    )}
+                    {stacked &&
+                      layers.map((layer, depth) => {
+                        const key = `${cell.section}/${cell.subSection}/L${depth}`;
+                        return (
+                          <LayerRow
+                            key={key}
+                            id={key}
+                            index={layerKeys.indexOf(key)}
+                            depth={depth}
+                            full={layer.length >= MAX_PIECES_PER_LAYER}
+                            pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
+                            onAdd={() => openPicker(subSection, depth)}
+                            onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
+                            onRemovePiece={(slot) =>
+                              onPlacementsChange?.(removePiece(placements, cell, slot))
+                            }
+                          />
+                        );
+                      })}
+                    {cellPcs.length > 0 &&
+                      layers.length < MAX_LAYERS_PER_CELL &&
+                      addLayerButton(cell, subSection, layers)}
+                  </div>
+                );
+              })}
+            </DragDropProvider>
+          </div>
         </div>
       )}
     </div>

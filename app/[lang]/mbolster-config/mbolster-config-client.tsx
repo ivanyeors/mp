@@ -1027,7 +1027,9 @@ export function MbolsterConfigClient({
 
         <div className="grid min-h-[calc(100dvh-56px)] grid-cols-1 lg:grid-cols-[1fr_460px]">
           {/* Left: product visual */}
-          <div className="relative max-h-[40vh] overflow-hidden lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:max-h-none">
+          {/* Below lg the stage flows at its natural height (same fix as mp-config):
+              a 40vh cap with overflow-hidden clipped the staff toolbox on phones. */}
+          <div className="relative lg:sticky lg:top-[56px] lg:h-[calc(100vh-56px)] lg:overflow-hidden">
             {!isMobile && (
               <>
                 <Particles
@@ -1049,11 +1051,12 @@ export function MbolsterConfigClient({
                 />
               </>
             )}
-            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-6 p-4 max-md:px-3">
+            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 p-4 max-md:px-3 md:gap-6">
               <div
-                className="relative"
+                // Full column width (max 500px) below lg so the x-ray is tappable on phones.
+                className="relative w-full max-w-[500px] lg:w-[min(75vmin,500px)]"
                 // xrayColorVars: Product Builder color overrides reach the x-ray here (slice 11)
-                style={{ aspectRatio: "664 / 374", width: "min(75vmin, 500px)", ...xrayColorVars }}
+                style={{ aspectRatio: "664 / 374", ...xrayColorVars }}
               >
                 {(() => {
                   // Long-pill silhouette; length follows the recommended Mbolster length.
