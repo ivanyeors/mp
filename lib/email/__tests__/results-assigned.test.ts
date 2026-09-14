@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import {
   sampleResultAssigned,
   sampleResultAssignedBalance,
+  sampleResultAssignedFinish,
 } from "../__fixtures__/samples";
 import { renderResultAssignedEmail } from "../results";
 
@@ -63,9 +64,25 @@ describe("renderResultAssignedEmail", () => {
     );
   });
 
+  it("asks an assisted customer to choose their finish, not to pay a total", () => {
+    const finish = renderResultAssignedEmail(sampleResultAssignedFinish());
+    expect(finish.subject).toBe("Your build is ready — choose your finish");
+    expect(finish.text).toContain("Choose your cover, case and shipping:");
+    expect(finish.html).toContain("Choose your finish");
+    expect(finish.html).toContain("From (before shipping)");
+    expect(finish.html).toContain("6D Small");
+    for (const body of [finish.subject, finish.text, finish.html]) {
+      expect(body).not.toMatch(/hold/i);
+      expect(body).not.toMatch(/Total/);
+    }
+    // A hold always wins: needsFinish cannot turn a held Result's ask into "choose".
+    const held = renderResultAssignedEmail({ ...sampleResultAssigned(), needsFinish: true });
+    expect(held.subject).toBe("Your final build is ready");
+  });
+
   it("links the tokenised status page and never a bare result URL", () => {
     const token = sampleResultAssigned().accessToken;
-    for (const rendered of [hold, balance]) {
+    for (const rendered of [hold, balance, renderResultAssignedEmail(sampleResultAssignedFinish())]) {
       expect(rendered.text).toContain(`token=${token}`);
       expect(rendered.html).toContain(`token=${token}`);
     }

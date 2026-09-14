@@ -10,6 +10,7 @@ import {
 } from "@/lib/authorization-hold";
 import { authorizeResultAccess } from "@/lib/results/access";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
+import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { settleResult } from "@/lib/results/settlement";
 import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
@@ -64,6 +65,16 @@ export async function POST(
   // Idempotent: already captured.
   if (row.status === "captured") {
     return NextResponse.json({ ok: true, status: "captured", orderId: row.order_id });
+  }
+
+  // Not payable until the customer has picked cover, case and shipping (ADR 0017).
+  // Beyond the wrong price, a null address below would make the Order be born
+  // `delivered`, as if it had been handed over at the counter.
+  if (needsCustomerFinish(row)) {
+    return NextResponse.json(
+      { error: "Choose your cover, case and shipping first", code: "needs_finish" },
+      { status: 409 },
+    );
   }
 
   const acceptLife = transitionResult(

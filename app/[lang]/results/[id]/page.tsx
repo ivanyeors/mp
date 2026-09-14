@@ -61,6 +61,8 @@ type ResultPublic = {
   payment_intent_id: string | null;
   customer_email: string | null;
   is_pre_order?: boolean | null;
+  /** Assisted: fillings built, cover/case/shipping still to choose (ADR 0017). */
+  needs_finish?: boolean;
   build: BuildSummary | null;
   referenceImages?: { id: string; hostedUrl: string }[];
 };
@@ -129,6 +131,12 @@ const NO_HOLD_COPY: Record<string, { title: string; body: string }> = {
     title: "Ready — payment due",
     body: "Your final build is ready. Review it below and pay to confirm your order. Nothing is charged until you do.",
   },
+};
+
+/** Assisted customisation, fillings built, finish not chosen yet (ADR 0017). */
+const NEEDS_FINISH_COPY = {
+  title: "Ready — choose your finish",
+  body: "Our team has built your fillings. Choose your cover, case and shipping to see your final price. Nothing is charged until you pay.",
 };
 
 function journeyIndex(status: string): number {
@@ -302,7 +310,9 @@ function ResultStatusPage() {
   const hasPaymentHold = Boolean(result?.payment_intent_id);
   // `result` is null while loading, so the no-hold voice waits for the row —
   // otherwise every hold customer sees a flash of the wrong copy first.
+  const needsFinish = status === "assigned" && Boolean(result?.needs_finish);
   const copy =
+    (needsFinish ? NEEDS_FINISH_COPY : undefined) ??
     (result && !hasPaymentHold ? NO_HOLD_COPY[status] : undefined) ??
     STATUS_COPY[status] ??
     STATUS_COPY.held;
@@ -397,23 +407,28 @@ function ResultStatusPage() {
               ))}
             </ul>
           </div>
-          <div>
-            <div className="text-muted-foreground">Preferences</div>
-            <ul className="mt-1 list-disc pl-4">
-              {(build.preferences.length ? build.preferences : ["—"]).map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <div className="text-muted-foreground">Add-ons</div>
-            <ul className="mt-1 list-disc pl-4">
-              {(build.addons.length ? build.addons : ["—"]).map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-          {build.pricing && (
+          {/* Not chosen yet: the stored lines are empty and the price is a placeholder. */}
+          {!needsFinish && (
+            <>
+              <div>
+                <div className="text-muted-foreground">Preferences</div>
+                <ul className="mt-1 list-disc pl-4">
+                  {(build.preferences.length ? build.preferences : ["—"]).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Add-ons</div>
+                <ul className="mt-1 list-disc pl-4">
+                  {(build.addons.length ? build.addons : ["—"]).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+          {build.pricing && !needsFinish && (
             <div className="space-y-1 border-t pt-2">
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">Subtotal</span>
@@ -453,7 +468,30 @@ function ResultStatusPage() {
         </div>
       )}
 
-      {canDecide && (
+      {canDecide && needsFinish && (
+        <div className="flex flex-wrap gap-2 border-t pt-3" id="decide" data-section="decide">
+          <Button asChild size="sm">
+            <a
+              href={withLocale(
+                `/mp-config?result=${encodeURIComponent(id)}${token ? `&token=${encodeURIComponent(token)}` : ""}`,
+                locale,
+              )}
+            >
+              Choose your finish
+            </a>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={acting}
+            onClick={() => setDeclineOpen(true)}
+          >
+            Decline
+          </Button>
+        </div>
+      )}
+
+      {canDecide && !needsFinish && (
         <div className="flex flex-wrap gap-2 border-t pt-3" id="decide" data-section="decide">
           <Button
             variant="default"

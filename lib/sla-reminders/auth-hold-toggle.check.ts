@@ -71,12 +71,14 @@ assert.match(
 );
 assert.match(route, /authorized_amount: takeCard \? priced\.total : null/);
 assert.match(route, /if \(takeCard\) \{/, "Checkout creation must be gated on takeCard");
-// Every money/messaging site reads takeCard, not input.deferred. Exactly three
+// Every money/messaging site reads takeCard, not input.deferred. Exactly four
 // legitimate reads remain: the trust-boundary guard, takeCard's own definition,
-// and the source stamp. A fourth means a money or email site was missed.
+// the source stamp, and the customer link (an assisted submit is made on a
+// Staff device, so the session user is not the buyer). A fifth means a money or
+// email site was missed.
 assert.equal(
   (route.match(/input\.deferred/g) ?? []).length,
-  3,
+  4,
   "a money/messaging site still reads input.deferred instead of takeCard",
 );
 

@@ -21,6 +21,11 @@ import {
   loadComposedSellable,
 } from "@/lib/results/composed-sellable";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
+import {
+  AddonLineSchema,
+  AddressSchema,
+  PreferenceLineSchema,
+} from "@/lib/results/finish-schemas";
 import { normalizePhone } from "@/lib/appointments/phone";
 import {
   getDiscoverySourceCatalog,
@@ -76,17 +81,6 @@ const MP_CONFIG_TELEGRAM_CHAT_ID = -1001279910218;
 const PRICING_UNAVAILABLE_MESSAGE =
   "This configuration isn’t available for purchase yet. Please contact us to complete your order.";
 
-const PreferenceLineSchema = z.object({
-  item_id: z.number().int().positive(),
-  quantity: z.number().positive().default(1),
-  category: z.enum(["cover", "case"]),
-});
-
-const AddonLineSchema = z.object({
-  item_id: z.number().int().positive(),
-  quantity: z.number().positive().default(1),
-});
-
 /** Staff assist spatial mix (slices 05/13). Shape gate — the per-kind lib validation
  * does the rest (bolster rows carry no cell address; pillow validation rejects ""). */
 const AssistFillingSchema = z.object({
@@ -106,16 +100,6 @@ const AssistFillingSchema = z.object({
     .min(1),
   /** Client's still-matching template claim — re-verified server-side, never trusted alone. */
   templateId: z.number().int().positive().nullable().optional(),
-});
-
-const AddressSchema = z.object({
-  recipient: z.string().min(1),
-  line1: z.string().min(1),
-  line2: z.string().optional().nullable(),
-  city: z.string().min(1),
-  state: z.string().optional().nullable(),
-  postal_code: z.string().min(1),
-  country: z.string().length(2).default("SG"),
 });
 
 const HoldSchema = z
@@ -145,10 +129,11 @@ const HoldSchema = z
     suggestedTier: z.enum(["basic", "premium"]).optional(),
     /** Bolster length key (short | medium | long). */
     suggestedLength: z.enum(BOLSTER_LENGTHS).optional(),
-    preferenceLines: z.array(PreferenceLineSchema).min(1),
+    /** Cover/case and shipping: required, except on a deferred submit (see superRefine). */
+    preferenceLines: z.array(PreferenceLineSchema).default([]),
     addonLines: z.array(AddonLineSchema).default([]),
-    shippingMethodId: z.string().uuid(),
-    shippingAddress: AddressSchema,
+    shippingMethodId: z.string().uuid().optional(),
+    shippingAddress: AddressSchema.optional(),
     /** Present only for Staff assist holds; guests send nothing. */
     assistFilling: AssistFillingSchema.optional(),
     /** Locale-less return path when Stripe checkout is cancelled (default: /mp-config or /mbolster-config). */
@@ -169,6 +154,27 @@ const HoldSchema = z
         code: "custom",
         message: "suggestedLength required for bolster",
         path: ["suggestedLength"],
+      });
+    }
+    // Only an Assisted customisation may leave the finish for later: it is sent
+    // from the questionnaire, and the customer picks cover, case and shipping
+    // after Staff assign the fillings (ADR 0017). Everyone else finishes now.
+    if (!v.deferred) {
+      if (v.preferenceLines.length === 0) {
+        ctx.addIssue({ code: "custom", message: "Choose a cover and case", path: ["preferenceLines"] });
+      }
+      if (!v.shippingMethodId) {
+        ctx.addIssue({ code: "custom", message: "Choose a shipping method", path: ["shippingMethodId"] });
+      }
+      if (!v.shippingAddress) {
+        ctx.addIssue({ code: "custom", message: "Shipping address required", path: ["shippingAddress"] });
+      }
+    }
+    if (Boolean(v.shippingMethodId) !== Boolean(v.shippingAddress)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Shipping method and address go together",
+        path: ["shippingAddress"],
       });
     }
     v.preferenceLines.forEach((line, index) => {
@@ -249,20 +255,31 @@ export async function POST(req: Request) {
   // Without this, any caller could post `deferred: true` and drop a free build
   // into the build queue. Checked before pricing, Stripe and every write, so a
   // refusal costs nothing and leaves nothing behind.
+  const { data: assisted, error: assistedErr } = input.responseId
+    ? await admin
+        .from("mp_config_responses")
+        .select("source, status")
+        .eq("id", input.responseId)
+        .maybeSingle()
+    : { data: null, error: null };
+  if (assistedErr) {
+    return NextResponse.json({ error: assistedErr.message }, { status: 500 });
+  }
+  // Nothing Staff have assigned, or a customer has paid for, is resubmittable.
+  // The upsert below would otherwise reset it to a fresh `held` row with a new
+  // token. A stale configurator tab could do that with the same session id.
+  if (assisted?.status && ["assigned", "accepted", "captured"].includes(assisted.status)) {
+    return NextResponse.json(
+      { error: "This Result has already been submitted" },
+      { status: 409 },
+    );
+  }
   if (input.deferred) {
     if (!input.responseId) {
       return NextResponse.json(
         { error: "A deferred submit needs an existing customisation session" },
         { status: 400 },
       );
-    }
-    const { data: assisted, error: assistedErr } = await admin
-      .from("mp_config_responses")
-      .select("source, status")
-      .eq("id", input.responseId)
-      .maybeSingle();
-    if (assistedErr) {
-      return NextResponse.json({ error: assistedErr.message }, { status: 500 });
     }
     if (!assisted || assisted.source !== "staff_assisted") {
       return NextResponse.json(
@@ -395,15 +412,17 @@ export async function POST(req: Request) {
     allItemIds.length
       ? admin.from("item_prices").select("item_id, msrp").in("item_id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ item_id: number; msrp: number | null }> }),
-    admin
-      .from("shipping_methods")
-      .select("*")
-      .eq("id", input.shippingMethodId)
-      .eq("is_active", true)
-      .maybeSingle(),
+    input.shippingMethodId
+      ? admin
+          .from("shipping_methods")
+          .select("*")
+          .eq("id", input.shippingMethodId)
+          .eq("is_active", true)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
-  if (!shippingRow) {
+  if (input.shippingMethodId && !shippingRow) {
     return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
   }
 
@@ -468,9 +487,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const shippingMethod = shippingRow as ShippingMethod;
-  const shippingAmount = calculateShippingRate(shippingMethod, goods.subtotal);
-  const taxRule = await resolveTaxRuleForRegion(input.shippingAddress.country);
+  // No shipping yet on an Assisted submit sent from the questionnaire. The quote
+  // is goods-only, the same as assign prices it until the customer finishes.
+  const shippingMethod = shippingRow as ShippingMethod | null;
+  const shippingAmount = shippingMethod ? calculateShippingRate(shippingMethod, goods.subtotal) : 0;
+  const taxRule = await resolveTaxRuleForRegion(input.shippingAddress?.country ?? "SG");
   const tax = computeTax(
     { subtotal: goods.subtotal, shippingAmount, discountAmount: 0 },
     taxRule,
@@ -627,8 +648,10 @@ export async function POST(req: Request) {
     suggested_length: productType === "bolster" ? input.suggestedLength! : null,
     preference_lines: preferenceLines,
     addon_lines: addonLines,
-    shipping_method: shippingMethod.slug,
-    shipping_address: input.shippingAddress,
+    // Null on an Assisted submit from the questionnaire — needsCustomerFinish()
+    // reads exactly that until the customer picks their finish.
+    shipping_method: shippingMethod?.slug ?? null,
+    shipping_address: input.shippingAddress ?? null,
     // No card was taken for an Assisted customisation, so there is no authorized
     // amount. The price is still computed above — an unpriced Composed sellable
     // must refuse here exactly as on the hold path, or Staff inherit a
@@ -645,7 +668,10 @@ export async function POST(req: Request) {
     ref_code: attributedRefCode,
     // How it attributed (assist>typed>link) — #80 reads this for PDPA masking.
     attribution_source: attribution.source,
-    customer_id: customerId,
+    // An Assisted submit is usually made on a Staff member's signed-in device, so
+    // the session user is not the buyer. Link nothing. The customer still finds
+    // the Result by `customer_email` when they sign in.
+    customer_id: input.deferred ? null : customerId,
     access_token: accessToken,
     source: input.deferred ? "staff_assisted" : "online_purchase",
     is_pre_order,

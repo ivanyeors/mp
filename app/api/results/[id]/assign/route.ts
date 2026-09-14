@@ -3,7 +3,8 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { lookupItemCategories } from "@/lib/bom-sanitizer";
-import { assembleBuild, findStockShortages } from "@/lib/build-assembly";
+import { assembleBuild, findStockShortages, preferenceRoleOf } from "@/lib/build-assembly";
+import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
 import { transitionResult } from "@/lib/result-lifecycle";
 import { decideFillingAssign } from "@/lib/results/filling-assign";
@@ -84,6 +85,7 @@ async function sendAssignedEmail(opts: {
   preferences: string[];
   addons: string[];
   pricing: ResultPricing | null;
+  needsFinish: boolean;
 }) {
   try {
     await getEmailTransport().send({
@@ -120,7 +122,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token",
+      "id, status, source, product_type, suggested_size, suggested_tier, suggested_length, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, payment_intent_id, filling_template_id, customer_email, access_token",
     )
     .eq("id", id)
     .maybeSingle();
@@ -320,7 +322,17 @@ export async function POST(
     return NextResponse.json({ error: assembled.error }, { status: 400 });
   }
 
-  const shortages = findStockShortages(assembled.lines, onHandByItem, nameByItem);
+  // Customer still to pick cover and case (ADR 0017): the BOM's defaults are
+  // placeholders, so their stock must not block assignment. The finish route
+  // and accept both re-check stock against what the customer actually chose.
+  const finishLater = needsCustomerFinish(row);
+  const shortages = findStockShortages(
+    finishLater
+      ? assembled.lines.filter((l) => !(l.role === "composed" && preferenceRoleOf(l.category ?? "")))
+      : assembled.lines,
+    onHandByItem,
+    nameByItem,
+  );
   if (shortages.length > 0) {
     const detail = shortages
       .map((s) => `${s.name}: need ${s.needed}, have ${s.available}`)
@@ -479,6 +491,7 @@ export async function POST(
       preferences: preferenceLabels,
       addons: addonLabels,
       pricing: pricingBreakdown,
+      needsFinish: finishLater,
     });
   }
 

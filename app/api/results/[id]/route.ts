@@ -7,6 +7,7 @@ import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-se
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { authorizeResultAccess } from "@/lib/results/access";
+import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { derivePackList } from "@/lib/spatial-fillings";
 import { listConfigUploads } from "@/lib/config-upload";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
@@ -235,7 +236,7 @@ export async function GET(
   const admin = supabaseAdmin();
   const { data: row, error } = await admin
     .from("mp_config_responses")
-    .select(`${PUBLIC_FIELDS}, access_token, customer_id`)
+    .select(`${PUBLIC_FIELDS}, access_token, customer_id, source`)
     .eq("id", id)
     .maybeSingle();
 
@@ -272,10 +273,13 @@ export async function GET(
   }
 
   const build = await buildPublicSummary(row);
+  // Read before the address is stripped: the page needs the answer, not the address.
+  const needs_finish = needsCustomerFinish(row);
   const publicRow = { ...row };
   delete (publicRow as { access_token?: string }).access_token;
   delete (publicRow as { customer_id?: string }).customer_id;
   delete (publicRow as { shipping_address?: unknown }).shipping_address;
+  delete (publicRow as { source?: string | null }).source;
   const referenceImages = await listConfigUploads(id).catch(() => []); // ponytail: tolerate empty/error
-  return NextResponse.json({ result: { ...publicRow, build, referenceImages } });
+  return NextResponse.json({ result: { ...publicRow, needs_finish, build, referenceImages } });
 }
