@@ -4,6 +4,7 @@ import { getEmailTransport } from "@/lib/email";
 import { renderResultAssignedEmail, statusUrl } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
+import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -33,7 +34,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, customer_email, access_token",
+      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, currency, customer_email, access_token",
     )
     .eq("id", id)
     .maybeSingle();
@@ -95,6 +96,7 @@ export async function POST(
             authorized:
               row.authorized_amount != null ? Number(row.authorized_amount) : null,
           },
+          needsFinish: needsCustomerFinish(row),
         }),
       });
       emailStatus = "sent";

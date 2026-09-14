@@ -49,6 +49,17 @@ const MeasurementRecommendRequestSchema = z.object({
       uses_bolster: z.boolean(),
     }),
   }),
+  /**
+   * Finishing an assigned build (ADR 0017): offer and price the size×tier Staff
+   * assigned, not the engine's ballpark. Catalog data only — nothing is written,
+   * and the price is re-derived server-side at finish.
+   */
+  assigned: z
+    .object({
+      size: z.enum(["XS", "S", "M", "L", "XL"]),
+      tier: z.enum(["basic", "premium"]),
+    })
+    .optional(),
 });
 
 const BolsterRecommendRequestSchema = z.object({
@@ -287,13 +298,21 @@ async function handleRecommend(req: Request) {
         ? measurementParsed.data.purpose === "ballpark"
         : simpleParsed.data!.purpose === "ballpark";
 
-    const recommendation = measurementParsed.success
+    const engineRecommendation = measurementParsed.success
       ? ballpark
         ? await getSizeBallparkFromMeasurements(measurementParsed.data.measurement_preferences)
         : await getRecommendationFromMeasurements(measurementParsed.data.measurement_preferences)
       : ballpark
         ? getSizeBallparkFromPreferences(simpleParsed.data!.preferences)
         : await getFillingRecommendation(simpleParsed.data!.preferences);
+    const assigned = measurementParsed.success ? measurementParsed.data.assigned : undefined;
+    const recommendation = assigned
+      ? {
+          ...engineRecommendation,
+          recommended_size: assigned.size,
+          recommended_kind: assigned.tier,
+        }
+      : engineRecommendation;
 
     // Resolve the pillow_product_id for the recommended size/tier (Premium flow → premium)
     const { data: pillowProduct } = await admin
@@ -370,8 +389,10 @@ async function handleRecommend(req: Request) {
       recommendation,
       graph_version_id:
         "graph_version_id" in recommendation ? recommendation.graph_version_id ?? null : null,
+      // An assigned build is past the engine: its record would describe a size
+      // Staff may have overridden and re-open a Flow route decision already made.
       recommendation_record:
-        "recommendation_record" in recommendation
+        !assigned && "recommendation_record" in recommendation
           ? (recommendation as { recommendation_record?: unknown }).recommendation_record ?? null
           : null,
       pillow_product: {

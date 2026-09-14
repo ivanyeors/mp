@@ -2,7 +2,15 @@
 
 import { priceComposedBuild } from "@/lib/pricing/composed-price";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { cn, getApiErrorMessage } from "@/lib/utils";
@@ -165,6 +173,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+import type { ResumeFinish } from "@/lib/results/resume-finish";
 
 type MeasureKey = "shoulderLength" | "neckToBack" | "headToBack" | "neckLength";
 
@@ -185,6 +194,10 @@ function pickDefaultComponent(
   const inStock = options.find((c) => c.stock_available > 0);
   return (inStock ?? options[0]).item_id;
 }
+
+/** Stable no-op setters: the account prefill is skipped on Staff devices (see its call). */
+const KEEP_EMAIL: Dispatch<SetStateAction<string>> = () => {};
+const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
 
 // Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline).
 const PILLOW_PATH = SILHOUETTE_PATH;
@@ -272,6 +285,7 @@ export function MpConfigClient({
   canViewResults = false,
   partner = null,
   assistCode = null,
+  resumeFinish = null,
 }: {
   info: MpConfigInfo;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
@@ -298,6 +312,13 @@ export function MpConfigClient({
    * Changes nothing about what renders.
    */
   assistCode?: string | null;
+  /**
+   * An assigned Assisted customisation reopened from its finish link (ADR 0017).
+   * Opens straight on the preview with the Staff-composed fillings read-only;
+   * the customer picks cover, case, add-ons and shipping, then pays. Never
+   * autosaves a Draft and never submits a hold.
+   */
+  resumeFinish?: ResumeFinish | null;
 }) {
   // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
   const partnerAssisted = Boolean(partner);
@@ -316,7 +337,7 @@ export function MpConfigClient({
   const to = (href: string) => withLocale(href, locale);
 
   const isMobile = useIsMobile();
-  const [currentStep, setCurrentStep] = useState<Step>("welcome");
+  const [currentStep, setCurrentStep] = useState<Step>(resumeFinish ? "preview" : "welcome");
   const [restoringHoldCancel, setRestoringHoldCancel] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
@@ -324,7 +345,7 @@ export function MpConfigClient({
   const [measurementUnit, setMeasurementUnit] = useState<MeasurementUnit>("in");
   const [measurementDrafts, setMeasurementDrafts] =
     useState<Record<MeasureKey, string>>(EMPTY_MEASURE_DRAFTS);
-  const [measurementData, setMeasurementData] = useState<MeasurementData>({
+  const [measurementData, setMeasurementData] = useState<MeasurementData>(() => ({
     name: "",
     gender: "",
     ageGroup: "",
@@ -339,7 +360,9 @@ export function MpConfigClient({
     sleepPainAreas: [],
     sleepPositionType: [],
     usesBolster: "",
-  });
+    // The submitted answers, so the recommendation fetch below has real inputs.
+    ...(resumeFinish?.measurements as Partial<MeasurementData> | undefined),
+  }));
 
   /**
    * An Assist link resolved server-side. Governs the preview's call to action and
@@ -398,10 +421,12 @@ export function MpConfigClient({
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
-  const [holdEmail, setHoldEmail] = useState("");
-  const [holdPhone, setHoldPhone] = useState("");
-  const [discoverySource, setDiscoverySource] = useState("");
-  const [discoverySourceOther, setDiscoverySourceOther] = useState("");
+  const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? "");
+  const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? "");
+  const [discoverySource, setDiscoverySource] = useState(resumeFinish?.discoverySource ?? "");
+  const [discoverySourceOther, setDiscoverySourceOther] = useState(
+    resumeFinish?.discoverySourceOther ?? "",
+  );
   const [referralCode, setReferralCode] = useState("");
   const [holdNotes, setHoldNotes] = useState("");
   const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>({
@@ -417,7 +442,13 @@ export function MpConfigClient({
     savedAddresses,
     selectedAddressId,
     handleSelectAddress,
-  } = useSavedShippingPrefill(setHoldEmail, setHoldAddress);
+  } = useSavedShippingPrefill(
+    // An Assist link is filled in on a Staff member's signed-in device, and so
+    // is a Staff assist session: the signed-in account is not the buyer, and
+    // prefilling it put the Staff email on the customer's build.
+    assisted || staffAssist ? KEEP_EMAIL : setHoldEmail,
+    assisted || staffAssist ? KEEP_ADDRESS : setHoldAddress,
+  );
   const [shippingMethods, setShippingMethods] = useState<
     { id: string; slug: string; base_rate: number; free_above: number | null; content: Record<string, { name?: string }> }[]
   >([]);
@@ -873,6 +904,8 @@ export function MpConfigClient({
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (currentStep !== "preview") return;
+    // Not a hold session: nothing to restore after a Stripe cancel.
+    if (resumeFinish) return;
     writeHoldCancelDraft(window.localStorage, {
       v: 1,
       surface: holdSurface,
@@ -909,6 +942,7 @@ export function MpConfigClient({
     discoverySourceOther,
     holdNotes,
     holdAddress,
+    resumeFinish,
   ]);
 
   useEffect(() => {
@@ -1020,6 +1054,11 @@ export function MpConfigClient({
 
   /** Mobile → centered Dialog; desktop → toast (unchanged). */
   const requestExit = () => {
+    // A finish link has no session to clear — leaving returns to its status page.
+    if (resumeStatusPath) {
+      window.location.href = resumeStatusPath;
+      return;
+    }
     if (isMobile) setExitDialogOpen(true);
     else confirmExit();
   };
@@ -1044,7 +1083,9 @@ export function MpConfigClient({
   const upsertToDb = useCallback(async (
     opts?: { isFinal?: boolean },
   ): Promise<{ id: string; telegramStatus?: "sent" | "skipped" | "failed" } | null> => {
-    if (!responseId) return null;
+    // A reopened finish holds someone's submitted answers. Autosaving them into
+    // this device's own Draft session would copy them onto an unrelated row.
+    if (!responseId || resumeFinish) return null;
     if (!hasAnyInput) return { id: responseId };
 
     const snapshot = JSON.stringify({ responseId, measurementData, isFinal: opts?.isFinal ?? null });
@@ -1079,7 +1120,7 @@ export function MpConfigClient({
       setSaveStatus("error");
       return null;
     }
-  }, [responseId, hasAnyInput, measurementData, tokenStorageKey, assistCode]);
+  }, [responseId, hasAnyInput, measurementData, tokenStorageKey, assistCode, resumeFinish]);
 
   const loadSuggestion = async () => {
     if (!responseId) return;
@@ -1167,7 +1208,11 @@ export function MpConfigClient({
       : Math.round((currentStepIndex / (stepOrder.length - 1)) * 100);
 
   // Fetch shop recommendation from customize API (full mp-config path)
-  const fetchShopRecommendation = useCallback(async (opts?: { preserveSelections?: boolean }): Promise<RecommendationResponseData | null> => {
+  const fetchShopRecommendation = useCallback(async (opts?: {
+    preserveSelections?: boolean;
+    /** Price and offer the size×tier Staff assigned (finish link, ADR 0017). */
+    assigned?: { size: string; tier: string };
+  }): Promise<RecommendationResponseData | null> => {
     const missing = incompleteEngineInputs(
       "premium-mpillow",
       wizardToEngineInputs(measurementData),
@@ -1210,6 +1255,7 @@ export function MpConfigClient({
               uses_bolster: measurementData.usesBolster === "yes",
             },
           },
+          ...(opts?.assigned ? { assigned: opts.assigned } : {}),
         }),
       });
 
@@ -1372,6 +1418,15 @@ export function MpConfigClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoringHoldCancel, currentStep]);
 
+  // Finish link: load the ASSIGNED size's cover/case options and pricing, once.
+  useEffect(() => {
+    if (!resumeFinish) return;
+    void fetchShopRecommendation({
+      assigned: { size: resumeFinish.size, tier: resumeFinish.tier },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; the answers never change here
+  }, []);
+
   // Load size-scoped add-ons + shipping when entering purchase preview.
   useEffect(() => {
     if (currentStep !== "preview") return;
@@ -1520,6 +1575,152 @@ export function MpConfigClient({
     }
     setCurrentStep("preview");
   }, [fetchShopRecommendation, patchRecommendationRecord]);
+
+  /** Where a finish link returns to — its status page — instead of the questionnaire. */
+  const resumeStatusPath = resumeFinish
+    ? to(
+        `/results/${resumeFinish.id}${
+          resumeFinish.token ? `?token=${encodeURIComponent(resumeFinish.token)}` : ""
+        }`,
+      )
+    : null;
+
+  const contactValues = {
+    email: holdEmail,
+    phone: holdPhone,
+    discoverySource,
+    discoverySourceOther,
+    notes: holdNotes,
+    referralCode,
+  };
+
+  /**
+   * Assisted customisation: sent to the build team straight from the
+   * questionnaire (ADR 0017). No cover, case or shipping yet — the customer picks
+   * those after Staff assign the fillings. The deferred hold is authorised by
+   * the stored row's `source`, never by this flag.
+   */
+  const handleSendToBuildTeam = () =>
+    tryAdvance([...customizeFields, ...previewContactFieldChecks(contactValues)], async () => {
+      setHoldSubmitting(true);
+      try {
+        const saved = await upsertToDb();
+        if (!saved) throw new Error("Could not save your answers. Please try again.");
+        const rec = await fetchRecommendation();
+        if (!rec) {
+          setHoldSubmitting(false);
+          return;
+        }
+        const size = rec.pillow_product?.size;
+        const tier = soldAsPremium
+          ? "premium"
+          : isBasic
+            ? "basic"
+            : (rec.pillow_product?.kind as "basic" | "premium" | undefined);
+        // Staff choose size and tier at assignment, so an unresolved Flow route
+        // is kept as-is rather than asked of the customer here.
+        const parsedRecord = parseRecommendationRecord(rec.recommendation_record ?? null);
+        const record =
+          parsedRecord && isFlowRoutePending(parsedRecord)
+            ? withJourneyOnDecline(parsedRecord)
+            : parsedRecord;
+        const res = await fetch("/api/results/hold", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            responseId: responseId ?? undefined,
+            deferred: true,
+            email: holdEmail.trim(),
+            phone: holdPhone.trim(),
+            discoverySource,
+            discoverySourceOther:
+              discoverySource === "other" ? discoverySourceOther.trim() : undefined,
+            referralCode: referralCode.trim() || undefined,
+            measurements: {
+              ...measurementData,
+              ...(holdNotes.trim() ? { notes: holdNotes.trim() } : {}),
+            },
+            suggestedSize: size,
+            suggestedTier: tier,
+            cancelPath: configPath,
+            ...(record ? { recommendationRecord: record } : {}),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(getApiErrorMessage(data.error, "Could not send to our build team"));
+        }
+        // Shared in-store device: the next customer must not inherit this session.
+        try {
+          window.localStorage.removeItem(sessionStorageKey);
+          clearHoldCancelDraft(window.localStorage, holdSurface);
+        } catch {
+          // private mode — nothing was stored
+        }
+        writeToken(tokenStorageKey, null);
+        // Staff on the device go straight to the Result to confirm the fillings.
+        // A customer on their own phone waits on the status page.
+        const staffDest = canViewResults ? to(`/settings/results/${data.resultId}#assignment`) : null;
+        window.location.href = staffDest ?? ((data.checkoutUrl ?? data.statusUrl) as string);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Could not send to our build team");
+        setHoldSubmitting(false);
+      }
+    });
+
+  /** Finish link: save cover/case/add-ons/shipping, then pay through the existing accept. */
+  const handleFinishAndPay = async () => {
+    if (!resumeFinish) return;
+    const contactKeys = new Set(["email", "phone", "discoverySource", "discoverySourceOther"]);
+    const errors = buildFieldErrorMap(holdFields.filter((f) => !contactKeys.has(f.key)));
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+    const { id, token } = resumeFinish;
+    const statusPath = resumeStatusPath!;
+    setHoldSubmitting(true);
+    try {
+      const finish = await fetch(`/api/results/${id}/finish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          preferenceLines: [
+            { item_id: selectedCover, quantity: 1, category: "cover" },
+            { item_id: selectedCase, quantity: 1, category: "case" },
+          ],
+          addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          shippingMethodId: selectedShippingId,
+          shippingAddress: {
+            ...holdAddress,
+            recipient: holdAddress.recipient || measurementData.name,
+          },
+        }),
+      });
+      const finishData = await finish.json().catch(() => ({}));
+      // Already finished (an earlier attempt, another tab): the status page has
+      // the stored price and its own Pay button.
+      if (finish.status === 409) {
+        window.location.href = statusPath;
+        return;
+      }
+      if (!finish.ok) {
+        throw new Error(getApiErrorMessage(finishData.error, "Could not save your finish"));
+      }
+      const accept = await fetch(`/api/results/${id}/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(token ? { token } : {}),
+      });
+      const acceptData = await accept.json().catch(() => ({}));
+      window.location.href =
+        accept.ok && acceptData.checkoutUrl ? (acceptData.checkoutUrl as string) : statusPath;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save your finish");
+      setHoldSubmitting(false);
+    }
+  };
 
   const handleAuthorizeHold = useCallback(async () => {
     const size =
@@ -1723,7 +1924,10 @@ export function MpConfigClient({
     const guestFillings = shopRecommendation?.available_fillings ?? [];
     return {
       tpl,
-      guestPlacements: rowsToPillowPlacements(tpl?.placements ?? []),
+      // A finish link shows what Staff actually built, not the engine's template.
+      guestPlacements: resumeFinish
+        ? rowsToPillowPlacements(resumeFinish.placements)
+        : rowsToPillowPlacements(tpl?.placements ?? []),
       guestItemSubtypes: new Map(
         guestFillings.map((f) => [f.item_id, f.subtype || null] as const),
       ),
@@ -1731,7 +1935,7 @@ export function MpConfigClient({
         guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
       ),
     };
-  }, [shopRecommendation]);
+  }, [shopRecommendation, resumeFinish]);
 
   // Hold preview uses mp-maker split layout (cover/case card pickers, no fillings/protector).
   if (currentStep === "preview") {
@@ -1821,7 +2025,14 @@ export function MpConfigClient({
       : false;
     const holdCta = holdSubmitting
       ? "Redirecting…"
-      : holdCtaLabel(preOrder, assisted);
+      : resumeFinish
+        ? "Continue to payment"
+        : holdCtaLabel(preOrder, assisted);
+    const backFromPreview = resumeStatusPath
+      ? () => {
+          window.location.href = resumeStatusPath;
+        }
+      : goToPreviousStep;
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
@@ -1849,7 +2060,7 @@ export function MpConfigClient({
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                onClick={goToPreviousStep}
+                onClick={backFromPreview}
                 aria-label="Back"
               >
                 <ArrowLeft className="size-4" />
@@ -2046,8 +2257,9 @@ export function MpConfigClient({
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
                   <p className="text-sm text-muted-foreground">
-                    Choose cover and case, optional add-ons, then authorize payment.
-                    You are not charged until you accept the final build.
+                    {resumeFinish
+                      ? "Our team has built your fillings. Choose cover and case, optional add-ons and shipping, then pay to confirm your order."
+                      : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
                   </p>
                 </div>
 
@@ -2069,8 +2281,8 @@ export function MpConfigClient({
                       currency={currency}
                       basePrice={basePrice}
                       addonPrice={addonTotal}
-                      onBack={goToPreviousStep}
-                      onContinue={() => void handleAuthorizeHold()}
+                      onBack={backFromPreview}
+                      onContinue={() => void (resumeFinish ? handleFinishAndPay() : handleAuthorizeHold())}
                       preferencesOnly
                       hideNav
                     />
@@ -2120,17 +2332,12 @@ export function MpConfigClient({
                   />
                 ) : null}
 
+                {/* A finish link already has contact from the questionnaire submit. */}
+                {!resumeFinish && (
                 <PreviewContactFields
                     locale={locale}
                     fieldErrors={fieldErrors}
-                    values={{
-                      email: holdEmail,
-                      phone: holdPhone,
-                      discoverySource,
-                      discoverySourceOther,
-                      notes: holdNotes,
-                      referralCode,
-                    }}
+                    values={contactValues}
                     onChange={(patch) => {
                       if (patch.email !== undefined) setHoldEmail(patch.email);
                       if (patch.phone !== undefined) setHoldPhone(patch.phone);
@@ -2146,11 +2353,14 @@ export function MpConfigClient({
                       }
                     }}
                   />
+                )}
 
                 <div className="space-y-3">
                   <Label className="text-base font-semibold">Shipping</Label>
                   <SavedAddressSelect
-                    signedIn={shippingSignedIn}
+                    // Hidden where the account prefill is off: those are the
+                    // Staff member's own addresses, not the customer's.
+                    signedIn={shippingSignedIn && !(assisted || staffAssist)}
                     addresses={savedAddresses}
                     value={selectedAddressId}
                     onValueChange={handleSelectAddress}
@@ -2264,8 +2474,9 @@ export function MpConfigClient({
                   would write a second, conflicting one. The data hazard it used
                   to carry is fixed at the source in
                   shouldCreateInstoreReviewOnly() — see lib/results/instore-finalize.
+                  Nor for a finish link: that Result is already submitted and assigned.
                 */}
-                {!assisted && (
+                {!assisted && !resumeFinish && (
                 <div className="text-center">
                   <Button
                     variant="ghost"
@@ -2356,14 +2567,14 @@ export function MpConfigClient({
                   </span>
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={goToPreviousStep} className="flex-1">
+                  <Button variant="outline" onClick={backFromPreview} className="flex-1">
                     <ArrowLeft className="size-4" />
                     Back
                   </Button>
                   <Button
                     className="flex-[2]"
                     size="lg"
-                    onClick={() => void handleAuthorizeHold()}
+                    onClick={() => void (resumeFinish ? handleFinishAndPay() : handleAuthorizeHold())}
                     disabled={
                       holdSubmitting ||
                       shopLoading ||
@@ -3398,6 +3609,40 @@ export function MpConfigClient({
                 </div>
               </div>
 
+              {/*
+                Assisted customisation (ADR 0017): the questionnaire IS the submit.
+                Contact is taken here so the build team can send the finished
+                fillings back; cover, case and shipping come after that.
+              */}
+              {assisted && (
+                <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-lg">Your contact details</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Our build team will send your finished fillings here. You choose your cover,
+                    case and shipping after that — nothing is charged now.
+                  </p>
+                  <PreviewContactFields
+                    locale={locale}
+                    fieldErrors={fieldErrors}
+                    values={contactValues}
+                    onChange={(patch) => {
+                      if (patch.email !== undefined) setHoldEmail(patch.email);
+                      if (patch.phone !== undefined) setHoldPhone(patch.phone);
+                      if (patch.discoverySource !== undefined) {
+                        setDiscoverySource(patch.discoverySource);
+                      }
+                      if (patch.discoverySourceOther !== undefined) {
+                        setDiscoverySourceOther(patch.discoverySourceOther);
+                      }
+                      if (patch.notes !== undefined) setHoldNotes(patch.notes);
+                      if (patch.referralCode !== undefined) {
+                        setReferralCode(patch.referralCode);
+                      }
+                    }}
+                  />
+                </div>
+              )}
+
               <div className="pt-4">
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={goToPreviousStep}>
@@ -3406,28 +3651,35 @@ export function MpConfigClient({
                   </Button>
                   <Button
                     onClick={() =>
-                      tryAdvance(customizeFields, async () => {
-                        await upsertToDb();
-                        if (isBasic) {
-                          const rec = shopRecommendation ?? (await fetchBasicRecommendation());
-                          if (!rec) return;
-                        } else {
-                          await Promise.all([loadSuggestion(), fetchShopRecommendation()]);
-                        }
-                        goToNextStep();
-                      })
+                      assisted
+                        ? handleSendToBuildTeam()
+                        : tryAdvance(customizeFields, async () => {
+                            await upsertToDb();
+                            if (isBasic) {
+                              const rec = shopRecommendation ?? (await fetchBasicRecommendation());
+                              if (!rec) return;
+                            } else {
+                              await Promise.all([loadSuggestion(), fetchShopRecommendation()]);
+                            }
+                            goToNextStep();
+                          })
                     }
                     disabled={
                       !hybridCtaEnabled(customizeFields) ||
                       photoUploading.front ||
                       photoUploading.side ||
-                      shopLoading
+                      shopLoading ||
+                      holdSubmitting
                     }
                     size="lg"
                     className="group"
                   >
                     <Sparkles className="mr-2 h-5 w-5" />
-                    {isBasic ? "Continue" : "Customise"}
+                    {holdSubmitting
+                      ? "Sending…"
+                      : assisted
+                        ? holdCtaLabel(false, assisted)
+                        : isBasic ? "Continue" : "Customise"}
                     <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                   </Button>
                 </div>

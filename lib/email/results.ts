@@ -151,26 +151,46 @@ export function renderResultAssignedEmail(p: {
   preferences: string[];
   addons: string[];
   pricing: ResultPricing | null;
+  /**
+   * Assisted customisation sent from the questionnaire (ADR 0017): Staff have
+   * composed the fillings, but the customer has not chosen cover, case or
+   * shipping yet. The price is a floor, not a total, so the email shows
+   * "from" and asks the customer to choose rather than to pay.
+   */
+  needsFinish?: boolean;
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
-  // One renderer, two voices — the spec rows and the pricing block are shared so
-  // they cannot drift; only the ask differs.
+  // One renderer, three voices — the spec rows are shared so they cannot drift;
+  // only the ask and how much of the price is known differ.
   const hasHold = p.pricing?.authorized != null;
+  const finish = Boolean(p.needsFinish) && !hasHold;
   const subject = hasHold
     ? "Your final build is ready"
-    : "Your final build is ready — payment due";
-  const reviewLabel = hasHold ? "Review and accept or decline:" : "Review and pay:";
-  const ctaLabel = hasHold ? "Review your final build" : "Review and pay";
+    : finish
+      ? "Your build is ready — choose your finish"
+      : "Your final build is ready — payment due";
+  const reviewLabel = hasHold
+    ? "Review and accept or decline:"
+    : finish
+      ? "Choose your cover, case and shipping:"
+      : "Review and pay:";
+  const ctaLabel = hasHold ? "Review your final build" : finish ? "Choose your finish" : "Review and pay";
   const closing = hasHold
     ? "Accept or decline on the status page. Accept captures payment; Decline releases your hold."
-    : "Review your build on the status page and pay there to confirm your order. Nothing is charged until you do.";
+    : finish
+      ? "Our team has built your fillings. Choose your cover, case and shipping to see your final price, then pay to confirm your order. Nothing is charged until you do."
+      : "Review your build on the status page and pay there to confirm your order. Nothing is charged until you do.";
   const sizeLine =
     p.productType === "bolster"
       ? `Length: ${p.length ?? "—"}`
       : `Size: ${p.size ?? "—"} · Tier: ${p.tier ?? "—"}`;
 
-  const priceLines = p.pricing
+  const priceLines = finish
+    ? p.pricing
+      ? [`From: ${money(p.pricing.subtotal, p.pricing.currency)} (before shipping)`]
+      : []
+    : p.pricing
     ? [
         `Subtotal: ${money(p.pricing.subtotal, p.pricing.currency)}`,
         `Shipping: ${money(p.pricing.shipping, p.pricing.currency)}`,
@@ -187,8 +207,12 @@ export function renderResultAssignedEmail(p: {
     "",
     sizeLine,
     `Fillings: ${p.fillingSummary.join(", ") || "—"}`,
-    `Preferences: ${p.preferences.join(", ") || "—"}`,
-    `Add-ons: ${p.addons.join(", ") || "—"}`,
+    ...(finish
+      ? []
+      : [
+          `Preferences: ${p.preferences.join(", ") || "—"}`,
+          `Add-ons: ${p.addons.join(", ") || "—"}`,
+        ]),
     ...priceLines,
     "",
     reviewLabel,
@@ -207,7 +231,11 @@ export function renderResultAssignedEmail(p: {
         ]),
   ];
 
-  const pricingRows = p.pricing
+  const pricingRows = finish
+    ? p.pricing
+      ? [{ label: "From (before shipping)", value: money(p.pricing.subtotal, p.pricing.currency), strong: true }]
+      : []
+    : p.pricing
     ? [
         { label: "Subtotal", value: money(p.pricing.subtotal, p.pricing.currency) },
         { label: "Shipping", value: money(p.pricing.shipping, p.pricing.currency) },
@@ -236,7 +264,9 @@ export function renderResultAssignedEmail(p: {
     title: subject,
     preheader: hasHold
       ? `Your final ${name} build is ready for you to accept or decline.`
-      : `Your final ${name} build is priced and ready — review it and pay to confirm.`,
+      : finish
+        ? `Your ${name} fillings are built — choose your cover, case and shipping.`
+        : `Your final ${name} build is priced and ready — review it and pay to confirm.`,
     bodyHtml: `${paragraph(`Your final ${name} build is ready for review.`)}
 ${infoList(specRows)}
 ${section("Fillings", p.fillingSummary)}
@@ -268,11 +298,37 @@ export function renderBalanceDueReminderEmail(p: {
   productType: string | null;
   amount: number | null;
   currency: string;
+  /** Cover, case and shipping still to choose (ADR 0017): nudge to finish, not to pay. */
+  needsFinish?: boolean;
 }): RenderedEmail {
   const name = productName(p.productType);
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
-  const total = p.amount == null ? null : money(p.amount, p.currency);
   const subject = `Your ${name} is built and waiting`;
+
+  if (p.needsFinish) {
+    const text = [
+      `Your custom ${name} fillings are built and waiting for you.`,
+      "",
+      "Choose your cover, case and shipping:",
+      url,
+      "",
+      "Nothing has been charged yet.",
+    ].join("\n");
+    const html = renderEmailShell({
+      title: subject,
+      preheader: `Your ${name} is ready — choose your finish to see the final price.`,
+      bodyHtml: `${statusPill("Choose your finish", "warning")}
+${paragraph(`Your custom ${name} fillings are built and waiting for you.`, { top: 16 })}
+${paragraphHtml(
+        `Choose your cover, case and shipping on its ${link({ href: url, label: STATUS_PAGE_LABEL })} to see your final price. Nothing is charged until you pay.`,
+        { muted: true },
+      )}`,
+      cta: { href: url, label: "Choose your finish" },
+    });
+    return { subject, text, html };
+  }
+
+  const total = p.amount == null ? null : money(p.amount, p.currency);
 
   const text = [
     `Your custom ${name} is finished and waiting for payment.`,

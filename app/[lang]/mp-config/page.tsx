@@ -8,6 +8,7 @@ import { getAdminContext } from "@/lib/auth/admin";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
+import { loadResumeFinish } from "@/lib/results/resume-finish";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MpConfigClient } from "./mp-config-client";
 
@@ -26,25 +27,39 @@ const INTRO: Record<Locale, { h1: string; lede: string }> = {
 
 type Props = {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ partner?: string; assist?: string }>;
+  searchParams: Promise<{ partner?: string; assist?: string; result?: string; token?: string }>;
 };
 
 export default async function MpConfigPage({ params, searchParams }: Props) {
   const { lang } = await params;
-  const { partner: partnerCode, assist: assistCode } = await searchParams;
+  const {
+    partner: partnerCode,
+    assist: assistCode,
+    result: resultId,
+    token: resultToken,
+  } = await searchParams;
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
   // Staff assist gate: existing Staff check (admin_users / bootstrap). Guests get null.
   // Partner-assist (#78) is INDEPENDENT of staff auth — it comes from the ?partner
   // URL code, re-resolved server-side (never a client-supplied id).
   // The Assist link (?assist=) is a THIRD, independent axis — see the prop below.
-  const [offer, faq, staffCtx, partner, assistStaff] = await Promise.all([
+  const [offer, faq, staffCtx, partner, assistStaff, resumeFinish] = await Promise.all([
     getConfiguratorOfferRange("pillow"),
     getPageFaq("mp-config", locale),
     getAdminContext(),
     partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
     assistCode ? getStaffByAssistCode(assistCode) : Promise.resolve(null),
+    // Finish link from the "choose your finish" email (ADR 0017). Null for
+    // anything not openable, which falls through to the ordinary configurator.
+    resultId ? loadResumeFinish(resultId, resultToken) : Promise.resolve(null),
   ]);
+  const info = {
+    h1: intro.h1,
+    lede: intro.lede,
+    faqTitle: faq?.title ?? null,
+    faqItems: faq?.items ?? [],
+  };
 
   const jsonLd = buildConfiguratorProductJsonLd({
     lang: locale,
@@ -62,13 +77,14 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         <ConfiguratorSeoIntro h1={intro.h1} answerLede={intro.lede} jsonLd={jsonLd} />
         <PageFaqSection surfaceKey="mp-config" locale={locale} />
       </div>
+      {resumeFinish ? (
+        // The customer's finish, not a new session: no assist chrome, no Assist
+        // link, no partner. Even on a Staff device the fillings stay read-only —
+        // Staff change them on the Result, not here.
+        <MpConfigClient info={info} resumeFinish={resumeFinish} />
+      ) : (
       <MpConfigClient
-        info={{
-          h1: intro.h1,
-          lede: intro.lede,
-          faqTitle: faq?.title ?? null,
-          faqItems: faq?.items ?? [],
-        }}
+        info={info}
         // Assist edits a live Result — size, tier, filling mix — so it needs the
         // `results` permission, not mere back-office membership. `viewer` is the
         // read-only role and must not reach the editor.
@@ -93,6 +109,7 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
             : null
         }
       />
+      )}
     </>
   );
 }

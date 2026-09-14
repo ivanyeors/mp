@@ -38,7 +38,7 @@ const PREFERENCE_CATEGORIES = new Set(["cover", "case"]);
  * in `lib/shop/customization-inventory`, deliberately inlined here because that
  * module imports `supabaseAdmin` and this one is pure.
  */
-function preferenceRoleOf(category: string): "cover" | "case" | null {
+export function preferenceRoleOf(category: string): "cover" | "case" | null {
   if (category === "cover") return "cover";
   if (category === "case" || category === "pillow_case" || category === "bolster_case") {
     return "case";

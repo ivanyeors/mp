@@ -457,6 +457,8 @@ export default function ResultDetailPage({
       return;
     }
     setFillingTemplateId("");
+    // The old size's hint must not re-seed the mix before the new prep lands.
+    setAssignPrep(null);
     setPlacements([]);
     setBolsterMix([]);
     setTemplateHadPlacements(true);
@@ -549,6 +551,18 @@ export default function ResultDetailPage({
     },
     [productType, to],
   );
+
+  // Open the Filling mix pre-filled: load the recommended (engine or size-default)
+  // template straight into the x-ray, so Staff confirm or adjust a real mix
+  // instead of starting from a hidden editor. Re-seeds after a size/tier change,
+  // which clears the pick and reloads the prep.
+  useEffect(() => {
+    const hint = assignPrep?.defaultFillingTemplate;
+    if (!canAssign || fillingTemplateId || !hint) return;
+    const next = String(hint.id);
+    setFillingTemplateId(next);
+    void loadSelectedFillingPreview(next);
+  }, [canAssign, fillingTemplateId, assignPrep, loadSelectedFillingPreview]);
 
   const assign = useCallback(async () => {
     if (!id) return;
@@ -870,7 +884,8 @@ export default function ResultDetailPage({
 
       {/* Purchase-path assignment (held Results) */}
       {(row.status === "held" || row.status === "assigned") && (
-        <Card className="p-4 space-y-4">
+        // `#assignment`: the configurator sends Staff here after an Assist submit.
+        <Card id="assignment" className="p-4 space-y-4 scroll-mt-20">
           <div>
             <div className="text-sm font-medium">Assignment</div>
             <p className="text-sm text-muted-foreground">

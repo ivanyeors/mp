@@ -38,9 +38,11 @@ import {
   sampleOrder,
   samplePartnerListing,
   sampleBalanceDue,
+  sampleBalanceDueFinish,
   sampleRestock,
   sampleResultAssigned,
   sampleResultAssignedBalance,
+  sampleResultAssignedFinish,
   sampleResultHeld,
   sampleResultHeldNoHold,
   sampleRma,
@@ -150,11 +152,27 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     render: (f) => renderResultAssignedEmail(sampleResultAssignedBalance(f)),
   },
   {
+    // Assisted customisation sent from the questionnaire (ADR 0017): fillings
+    // built, the customer still chooses cover, case and shipping.
+    id: "results.assigned_finish",
+    label: "Build ready — choose your finish",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultAssignedEmail(sampleResultAssignedFinish(f)),
+  },
+  {
     id: "results.balance_due",
     label: "Build ready — payment due",
     group: "results",
     audience: "customer",
     render: (f) => renderBalanceDueReminderEmail(sampleBalanceDue(f)),
+  },
+  {
+    id: "results.balance_due_finish",
+    label: "Build ready — finish reminder",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderBalanceDueReminderEmail(sampleBalanceDueFinish(f)),
   },
   {
     id: "results.hold_expired",

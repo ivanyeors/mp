@@ -136,6 +136,21 @@ export function sampleResultAssignedBalance(fixture: EmailFixture = "happy") {
   return { ...base, pricing: { ...base.pricing, authorized: null } };
 }
 
+/**
+ * Assisted customisation sent from the questionnaire (ADR 0017): fillings are
+ * built, cover/case/shipping not chosen yet, so the price is a floor.
+ */
+export function sampleResultAssignedFinish(fixture: EmailFixture = "happy") {
+  const base = sampleResultAssignedBalance(fixture);
+  return {
+    ...base,
+    preferences: [],
+    addons: [],
+    pricing: { ...base.pricing, shipping: 0, tax: 0, total: base.pricing.subtotal },
+    needsFinish: true,
+  };
+}
+
 export function sampleHoldExpired(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,
@@ -154,6 +169,10 @@ export function sampleBalanceDue(fixture: EmailFixture = "happy") {
     amount: 428,
     currency: "SGD",
   };
+}
+
+export function sampleBalanceDueFinish(fixture: EmailFixture = "happy") {
+  return { ...sampleBalanceDue(fixture), needsFinish: true };
 }
 
 export function sampleRestock(fixture: EmailFixture = "happy") {

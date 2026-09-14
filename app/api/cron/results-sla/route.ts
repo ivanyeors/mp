@@ -10,6 +10,7 @@ import {
   renderHoldExpiredEmail,
 } from "@/lib/email/results";
 import { getSiteSettings } from "@/lib/site-settings";
+import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import {
   SLA_SETTING_KEYS,
   parseSlaSettings,
@@ -95,7 +96,7 @@ export async function GET(req: Request) {
   const { data: rows, error } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency",
+      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address",
     )
     // `assigned` joins the scan for one reason: a Result with no hold sits there
     // owing a Balance payment, and nothing else in the system would ever chase it
@@ -143,6 +144,7 @@ export async function GET(req: Request) {
             productType: row.product_type,
             amount: row.final_amount != null ? Number(row.final_amount) : null,
             currency: row.currency ?? "SGD",
+            needsFinish: needsCustomerFinish(row),
           }),
         });
         await admin
