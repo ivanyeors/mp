@@ -23,6 +23,13 @@ export type PillowPlacement = {
   slot: number;
   itemId: number;
   row?: number;
+  /**
+   * Insert order (CONTEXT.md): the 1-based step at which this piece goes into
+   * its Section when the pillow is assembled; sub-sections and layers ignored.
+   * undefined = not authored, which sorts last. Assembly only: out of the pack
+   * list and the fingerprint, like `row`.
+   */
+  insertOrder?: number;
 };
 
 /** One Mbolster piece: single compartment, slot ≥ 1, no cap in v1. */
@@ -38,6 +45,7 @@ export type PillowPlacementRow = {
   slot: number;
   item_id: number;
   row_index?: number | null;
+  insert_order?: number | null;
 };
 
 /** Snake_case API/DB row shape for bolster placements. */
@@ -70,6 +78,7 @@ export function rowsToPillowPlacements(rows: PillowPlacementRow[]): PillowPlacem
     slot: r.slot,
     itemId: r.item_id,
     ...(r.row_index == null ? {} : { row: r.row_index }),
+    ...(r.insert_order == null ? {} : { insertOrder: r.insert_order }),
   }));
 }
 
@@ -81,6 +90,7 @@ export function pillowPlacementsToRows(placements: PillowPlacement[]): PillowPla
     slot: p.slot,
     item_id: p.itemId,
     row_index: p.row ?? null,
+    insert_order: p.insertOrder ?? null,
   }));
 }
 
@@ -150,6 +160,9 @@ export function validatePillowPlacements(
     }
     if (p.row !== undefined && (!Number.isInteger(p.row) || p.row < 0 || p.row > MAX_LAYERS_PER_CELL - 1)) {
       return { ok: false, error: `Layer must be an integer 0–${MAX_LAYERS_PER_CELL - 1} (got ${p.row})` };
+    }
+    if (p.insertOrder !== undefined && (!Number.isInteger(p.insertOrder) || p.insertOrder < 1)) {
+      return { ok: false, error: `Insert order must be an integer ≥ 1 (got ${p.insertOrder})` };
     }
     // `row: undefined` and `row: 0` are the same layer — count them together.
     const layerKey = `${p.section}/${p.subSection}/${p.row ?? 0}`;
