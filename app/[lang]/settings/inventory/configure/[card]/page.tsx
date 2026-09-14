@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -31,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
 import { XrayBolsterEditor, XrayEditor } from "@/components/spatial/xray-editor";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import {
   isSpatiallyAuthored,
@@ -1722,10 +1724,7 @@ function FillingConfigPanel({
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Input placeholder="Filling Template name" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
-      </div>
+      <Input placeholder="Filling Template name" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={active} onCheckedChange={setActive} />
@@ -1832,6 +1831,7 @@ function FillingConfigPanel({
               />
             </Section>
           )}
+          <div className="space-y-3">
           <Section title="Derived pack list">
             {kind === "pillow" ? (
               <XrayPackList placements={placements} onPlacementsChange={setPlacements} items={gridItems} />
@@ -1839,6 +1839,22 @@ function FillingConfigPanel({
               <XrayPackList placements={bolsterMix} onPlacementsChange={setBolsterMix} items={gridItems} />
             )}
           </Section>
+          {/* Assembly: the per-Section insert order beside the pack list it sequences, and
+              the template's notes for the nuances a sequence cannot carry. Mbolster is
+              already an ordered compartment list, so it only gets the notes. */}
+          <Section title={kind === "pillow" ? "Insert order" : "Assembly notes"}>
+            {kind === "pillow" && (
+              <InsertOrderList placements={placements} onPlacementsChange={setPlacements} items={gridItems} />
+            )}
+            <Textarea
+              placeholder="Assembly notes (optional) — how the fillings go together"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              maxLength={2000}
+              rows={3}
+            />
+          </Section>
+          </div>
           </div>
           <Section title="Popular unpromoted mixes">
             {unpromoted.length === 0 ? (

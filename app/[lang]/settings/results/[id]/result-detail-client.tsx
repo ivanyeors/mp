@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { XrayEditor } from "@/components/spatial/xray-editor";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
 import {
   isSpatiallyAuthored,
@@ -286,6 +287,7 @@ export default function ResultDetailPage({
   const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
   const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>([]);
   const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
+  const [templateNotes, setTemplateNotes] = useState("");
   const [fillingItems, setFillingItems] = useState<BolsterListItem[]>(seed.fillingItems);
 
   // The server already delivered the row, the assignment preview and the
@@ -516,6 +518,7 @@ export default function ResultDetailPage({
         setBolsterMix([]);
         setTemplateHadPlacements(true);
         setTemplateLegacyLines([]);
+        setTemplateNotes("");
         return;
       }
       try {
@@ -542,6 +545,7 @@ export default function ResultDetailPage({
           setTemplateHadPlacements(placementRows.length > 0);
         }
         setTemplateLegacyLines(lines);
+        setTemplateNotes(String(payload?.template?.notes ?? ""));
         // Product Builder colours for the x-ray — same server route as Configure,
         // because filling_color_overrides is service-role-only under RLS.
         setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
@@ -1190,6 +1194,18 @@ export default function ResultDetailPage({
                           <XrayPackList placements={bolsterMix} onPlacementsChange={setBolsterMix} items={fillingItems} />
                         )}
                       </div>
+                      {productType === "pillow" && (
+                        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                          <div className="text-xs text-muted-foreground mb-1">Insert order</div>
+                          <InsertOrderList placements={placements} onPlacementsChange={setPlacements} items={fillingItems} />
+                        </div>
+                      )}
+                      {templateNotes && (
+                        <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                          <div className="text-xs text-muted-foreground mb-1">Assembly notes</div>
+                          <p className="whitespace-pre-wrap">{templateNotes}</p>
+                        </div>
+                      )}
                     </div>
                   )}
 

@@ -253,6 +253,41 @@ export function moveLayer(
   return applyLayerOrder(placements, cell, order);
 }
 
+// --- Insert order (per Section; sub-sections and layers ignored) --------------
+
+/**
+ * A Section's pieces in assembly order: authored `insertOrder` first, then the
+ * unordered ones (never dragged, or added after ordering) in reading order —
+ * front→back, top layer first, then slot — so the list is stable before anyone
+ * authors it and a new piece lands as the next step.
+ */
+export function sectionInsertOrder(placements: PillowPlacement[], section: Section): PillowPlacement[] {
+  const rank = (p: PillowPlacement) => p.insertOrder ?? Number.MAX_SAFE_INTEGER;
+  return placements
+    .filter((p) => p.section === section)
+    .sort(
+      (a, b) =>
+        rank(a) - rank(b) ||
+        SUB_SECTIONS.indexOf(a.subSection) - SUB_SECTIONS.indexOf(b.subSection) ||
+        layerOf(a) - layerOf(b) ||
+        a.slot - b.slot,
+    );
+}
+
+/** Write a Section's `insertOrder` as 1..n from `ordered` (its pieces, e.g. a drag result). */
+export function setSectionInsertOrder(
+  placements: PillowPlacement[],
+  section: Section,
+  ordered: PillowPlacement[],
+): PillowPlacement[] {
+  const step = new Map(ordered.map((p, i) => [`${p.subSection}/${p.slot}`, i + 1]));
+  return placements.map((p) =>
+    p.section === section
+      ? { ...p, insertOrder: step.get(`${p.subSection}/${p.slot}`) ?? p.insertOrder }
+      : p,
+  );
+}
+
 // --- X-ray arrangement (one layer side-by-side vs several stacked in depth) ---
 
 export type CellArrangement = "side" | "stacked";

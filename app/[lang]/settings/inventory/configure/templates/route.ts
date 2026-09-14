@@ -33,7 +33,7 @@ const CreateSchema = z.object({
   pillowKind: PillowKindSchema.optional(),
   pillowVariant: PillowVariantSchema.optional(),
   name: z.string().trim().min(1).max(120),
-  notes: z.string().trim().max(500).optional(),
+  notes: z.string().trim().max(2000).optional(),
   role: RoleSchema.default('warehouse'),
   is_active: z.boolean().optional(),
   lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })).default([]),

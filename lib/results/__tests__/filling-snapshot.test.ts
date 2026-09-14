@@ -28,9 +28,9 @@ describe("buildFillingSnapshot", () => {
       templatePlacements: null,
     });
     expect(snap.rows).toEqual([
-      { section: "left", sub_section: "front", slot: 1, item_id: 11, row_index: null },
-      { section: "center", sub_section: "middle", slot: 1, item_id: 12, row_index: null },
-      { section: "center", sub_section: "middle", slot: 2, item_id: 12, row_index: null },
+      { section: "left", sub_section: "front", slot: 1, item_id: 11, row_index: null, insert_order: null },
+      { section: "center", sub_section: "middle", slot: 1, item_id: 12, row_index: null, insert_order: null },
+      { section: "center", sub_section: "middle", slot: 2, item_id: 12, row_index: null, insert_order: null },
     ]);
     expect(snap.fingerprint).toBe(fingerprintPlacements(mix));
     expect(snap.fillingTemplateId).toBeNull();

@@ -59,6 +59,7 @@ const AssignSchema = z.object({
         // validatePillowPlacements — NOT from the per-cell piece cap, which is
         // five times larger now that a layer holds several pieces.
         row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
+        insert_order: z.number().int().min(1).nullable().optional(),
       }),
     )
     .optional(),
@@ -202,7 +203,7 @@ export async function POST(
       ? rowsToBolsterPlacements(rows.map((r) => ({ slot: r.slot, item_id: r.item_id })))
       : rowsToPillowPlacements(rows as PillowPlacementRow[]);
 
-  let placementRows: Array<{ section: string; sub_section: string; slot: number; item_id: number; row_index?: number | null }> | null =
+  let placementRows: Array<{ section: string; sub_section: string; slot: number; item_id: number; row_index?: number | null; insert_order?: number | null }> | null =
     input.placements ?? null;
   let tplPlacementRows: Array<PillowPlacementRow | BolsterPlacementRow> = [];
   if (placementRows) {
@@ -462,6 +463,7 @@ export async function POST(
               slot: r.slot,
               item_id: r.item_id,
               row_index: r.row_index ?? null,
+              insert_order: r.insert_order ?? null,
             },
       ),
     );

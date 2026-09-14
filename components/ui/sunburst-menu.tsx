@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useMotionValue, useMotionValueEvent, animate } from "motion/react";
 import { Menu, X, ChevronLeft } from "lucide-react";
 
@@ -137,6 +138,32 @@ export function SunburstMenu({
   const [focusId, setFocusId] = React.useState<string | null>(null);
   const [internalSelected, setInternalSelected] = React.useState<string | undefined>();
   const rootRef = React.useRef<HTMLDivElement>(null);
+  // The bloom is portaled to <body> at the trigger's viewport centre: rendered
+  // inline it was clipped by overflow-hidden frames (XrayFrame, the configurator
+  // stage) and painted under later page sections by ancestor stacking contexts.
+  // ponytail: tracks scroll/resize only; a trigger that moves by layout reflow
+  // while open keeps the old point until the next scroll.
+  const [anchor, setAnchor] = React.useState<{ x: number; y: number } | null>(null);
+  React.useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = rootRef.current?.getBoundingClientRect();
+      if (r) setAnchor({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, size]);
+  // Portaled wedges sit outside every ancestor's DOM subtree, so a document-level
+  // click-away (this menu's, the x-ray dive's) would fire before the wedge's
+  // click. A native listener stops pointerdown at the bloom, before document.
+  const bloomRef = React.useCallback((el: SVGSVGElement | null) => {
+    el?.addEventListener("pointerdown", (e) => e.stopPropagation());
+  }, []);
   const gradId = React.useId(); // unique per instance for the blue-edge gradient
 
   const activeSelected = selectedId ?? internalSelected;
@@ -281,10 +308,13 @@ export function SunburstMenu({
       {/* Bloom overlay: centered on the trigger, escapes the closed footprint.
           pointer-events-none so an empty (closed) menu never blocks the canvas —
           the interactive wedges opt back in below. */}
+      {anchor && createPortal(
       <svg
+        ref={bloomRef}
+        data-sunburst-bloom
         viewBox={`0 0 ${size} ${size}`}
-        className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
-        style={{ width: size, height: size }}
+        className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+        style={{ left: anchor.x, top: anchor.y, width: size, height: size }}
       >
         <defs>
           {/* brand blue gradient — matches the top-loading bar (blue-500 → blue-400) */}
@@ -371,7 +401,9 @@ export function SunburstMenu({
               );
             })}
         </AnimatePresence>
-      </svg>
+      </svg>,
+      document.body,
+      )}
 
       <motion.button
         type="button"

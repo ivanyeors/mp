@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
     // (shop/customize, mp-basic/recommend) renders it stacked. See
     // spatial-fillings/api-contract.check.ts for the render-path reader list.
     const cols =
-      tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index";
+      tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index,insert_order";
     const { data: placements, error: pErr } = await admin
       .from(table)
       .select(cols)
@@ -145,6 +145,7 @@ const PlacementRowSchema = z.object({
     .max(MAX_LAYERS_PER_CELL - 1)
     .nullable()
     .optional(),
+  insert_order: z.number().int().min(1).nullable().optional(),
 });
 
 const SaveSchema = z
@@ -269,6 +270,7 @@ export async function POST(req: NextRequest) {
           slot: r.slot,
           item_id: r.item_id,
           row_index: r.row_index ?? null,
+          insert_order: r.insert_order ?? null,
         },
   );
   const { error: delErr } = await admin.from(table).delete().eq("template_id", templateId);

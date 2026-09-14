@@ -97,6 +97,7 @@ const AssistFillingSchema = z.object({
         // every layered cell the configurator built persists to
         // result_filling_placements with depth NULL.
         row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
+        insert_order: z.number().int().min(1).nullable().optional(),
       }),
     )
     .min(1),
