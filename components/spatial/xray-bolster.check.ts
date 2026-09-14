@@ -28,7 +28,7 @@ assert.doesNotMatch(renderer, /<rect/, "no box crops (guardrail 1)");
 assert.match(renderer, /clipPath=\{`url\(#\$\{uid\}-capsule\)`\}/, "shell art clips to the capsule");
 assert.match(
   renderer,
-  /conformPouchPath\(p, \[SHELL_REGIONS\[length\]\]\)/,
+  /conformPouchPath\(p, \[SHELL_REGIONS\[length\]\], 2, visual\.shape\)/,
   "pouch geometry deforms to the capsule (rounded, no cut corners)",
 );
 assert.match(renderer, /bolsterShellPolygon\(/, "capsule sampled for conform geometry");

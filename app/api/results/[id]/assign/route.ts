@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
-import { lookupItemCategories } from "@/lib/bom-sanitizer";
+import { lookupPlacementKinds } from "@/lib/bom-sanitizer";
 import { assembleBuild, findStockShortages, preferenceRoleOf } from "@/lib/build-assembly";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
@@ -20,7 +20,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings";
 import { priceResult } from "@/lib/result-pricing";
-import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
@@ -223,11 +223,11 @@ export async function POST(
       // Legacy flat template with an untouched empty grid: assign it as-is (flat path).
       placementRows = null;
     } else {
-      const cats = await lookupItemCategories(admin, placementRows.map((r) => r.item_id));
+      const cats = await lookupPlacementKinds(admin, placementRows.map((r) => r.item_id));
       if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 });
       const valid = isBolster
         ? validateBolsterPlacements(rowsToBolsterPlacements(placementRows), cats.byId)
-        : validatePillowPlacements(rowsToPillowPlacements(placementRows), cats.byId);
+        : validatePillowPlacements(rowsToPillowPlacements(placementRows), cats.byId, { tier: assignedTier });
       if (!valid.ok) return NextResponse.json({ error: valid.error }, { status: 400 });
     }
   }
@@ -285,8 +285,8 @@ export async function POST(
       ? admin.from("inventory_balances").select("item_id, on_hand").in("item_id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ item_id: number; on_hand: number }> }),
     allItemIds.length
-      ? admin.from("item_prices").select("item_id, msrp, cost").in("item_id", allItemIds)
-      : Promise.resolve({ data: [] as Array<{ item_id: number; msrp: number | null; cost: number | null }> }),
+      ? admin.from("item_prices").select("item_id, msrp, cost_price").in("item_id", allItemIds)
+      : Promise.resolve({ data: [] as Array<{ item_id: number; msrp: number | null; cost_price: number | null }> }),
   ]);
 
   const itemById = new Map(
@@ -301,7 +301,7 @@ export async function POST(
   const costByItem = new Map<number, number>();
   const msrpByItem = new Map<number, number>();
   for (const p of itemPrices ?? []) {
-    if (p.cost != null) costByItem.set(p.item_id, Number(p.cost));
+    if (p.cost_price != null) costByItem.set(p.item_id, Number(p.cost_price));
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
@@ -360,10 +360,13 @@ export async function POST(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    addonLines: addonLines.map((l) => ({
-      msrp: msrpByItem.get(l.item_id) ?? null,
-      quantity: l.quantity,
-    })),
+    addonLines: [
+      ...addonLines.map((l) => ({
+        msrp: msrpByItem.get(l.item_id) ?? null,
+        quantity: l.quantity,
+      })),
+      ...placedChargeLines(fillPack, itemById, msrpByItem),
+    ],
   });
   if (!goods.ok) {
     console.error(`[results/assign] pricing not usable (${goods.code}): ${goods.error}`);

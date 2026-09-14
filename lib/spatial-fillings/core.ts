@@ -3,6 +3,8 @@
  * Pure + browser-safe — no I/O, no node builtins (fingerprinting lives in index.ts).
  */
 
+import { isNeckSupportItem } from "./filling-groups";
+
 export type Section = "left" | "center" | "right";
 export type SubSection = "front" | "middle" | "back";
 
@@ -92,28 +94,48 @@ export function bolsterPlacementsToRows(placements: BolsterPlacement[]): Bolster
   return placements.map((p) => ({ slot: p.slot, item_id: p.itemId }));
 }
 
+/**
+ * What an Item is to the validators below: "filling", "neck_support" for a
+ * Cervical Neck Support accessory (placeable, and charged), else its category.
+ */
+export function placementKind(item: { category: string; name: string }): string {
+  return isNeckSupportItem(item) ? "neck_support" : item.category;
+}
+
+/**
+ * A neck support is for premium pillows only: never a bolster, never a basic
+ * pillow. `tier` is omitted where it is not known yet (a Filling Template is
+ * scoped by size alone), and the Result that uses it re-checks with its tier.
+ */
 function assertFillingItem(
   itemId: number,
   itemCategories: ReadonlyMap<number, string>,
+  neckSupport: { allowed: boolean },
 ): string | null {
-  const category = itemCategories.get(itemId);
-  if (category === undefined) return `Unknown item_id: ${itemId}`;
-  if (category !== "filling") {
-    return `Placements may only use filling items (rejected item_id: ${itemId})`;
+  const kind = itemCategories.get(itemId);
+  if (kind === undefined) return `Unknown item_id: ${itemId}`;
+  if (kind === "neck_support" && !neckSupport.allowed) {
+    return "A Cervical Neck Support is for premium pillows only";
+  }
+  if (kind !== "filling" && kind !== "neck_support") {
+    return `Placements may only use filling items or a neck support (rejected item_id: ${itemId})`;
   }
   return null;
 }
 
 /**
  * Validate cell addresses, slot range, unique (section, subSection, slot),
- * layer range, the per-layer piece cap, and filling items only. The per-cell cap
+ * layer range, the per-layer piece cap, and placeable items only (`itemCategories`
+ * holds placementKind values). The per-cell cap
  * follows from the slot range plus slot uniqueness; the per-layer cap has to be
  * counted, because a layer is a group of slots rather than a slot of its own.
  */
 export function validatePillowPlacements(
   placements: PillowPlacement[],
   itemCategories: ReadonlyMap<number, string>,
+  opts: { tier?: string | null } = {},
 ): Validation {
+  const neckSupport = { allowed: opts.tier == null || opts.tier === "premium" };
   const seen = new Set<string>();
   const perLayer = new Map<string, number>();
   for (const p of placements) {
@@ -142,7 +164,7 @@ export function validatePillowPlacements(
     const slotKey = `${p.section}/${p.subSection}/${p.slot}`;
     if (seen.has(slotKey)) return { ok: false, error: `Duplicate placement at ${slotKey}` };
     seen.add(slotKey);
-    const itemError = assertFillingItem(p.itemId, itemCategories);
+    const itemError = assertFillingItem(p.itemId, itemCategories, neckSupport);
     if (itemError) return { ok: false, error: itemError };
   }
   return { ok: true };
@@ -160,7 +182,7 @@ export function validateBolsterPlacements(
     }
     if (seen.has(p.slot)) return { ok: false, error: `Duplicate slot ${p.slot}` };
     seen.add(p.slot);
-    const itemError = assertFillingItem(p.itemId, itemCategories);
+    const itemError = assertFillingItem(p.itemId, itemCategories, { allowed: false });
     if (itemError) return { ok: false, error: itemError };
   }
   return { ok: true };

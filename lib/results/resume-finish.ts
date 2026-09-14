@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
+import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 
 /** Everything the finish page needs to reopen an assigned build (ADR 0017). */
 export type ResumeFinish = {
@@ -17,6 +18,8 @@ export type ResumeFinish = {
   discoverySourceOther: string;
   /** The Staff-composed fillings, shown read-only in the x-ray. */
   placements: PillowPlacementRow[];
+  /** The placed Items — the shop's filling list has no neck support to label, color or charge. */
+  items: FillingItem[];
 };
 
 /**
@@ -51,6 +54,14 @@ export async function loadResumeFinish(
     .eq("result_id", id)
     .order("slot");
 
+  const placedIds = [...new Set((placements ?? []).map((p) => p.item_id as number))];
+  const { data: items } = placedIds.length
+    ? await admin
+        .from("items")
+        .select("id, name, subtype, size, category, item_prices(msrp)")
+        .in("id", placedIds)
+    : { data: [] };
+
   return {
     id: row.id,
     token: token && token === row.access_token ? token : null,
@@ -62,5 +73,9 @@ export async function loadResumeFinish(
     discoverySource: row.discovery_source ?? "",
     discoverySourceOther: row.discovery_source_other ?? "",
     placements: (placements ?? []) as PillowPlacementRow[],
+    items: (items ?? []).map(({ item_prices, ...item }) => ({
+      ...item,
+      msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
+    })),
   };
 }

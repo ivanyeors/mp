@@ -307,6 +307,21 @@ export function removeBolsterPiece(
   return placements.filter((p) => p.slot !== slot);
 }
 
+/**
+ * Remove every piece of one filling from a mix — the pack list's remove. A
+ * pillow cell that loses a whole layer closes the gap, exactly as removing the
+ * pieces one by one on the x-ray would.
+ */
+export function removeFilling<T extends AnyPlacement>(placements: T[], itemId: number): T[] {
+  let next = placements.filter((p) => p.itemId !== itemId);
+  for (const p of placements) {
+    if (p.itemId === itemId && "section" in p) {
+      next = compactLayers(next as PillowPlacement[], p) as T[];
+    }
+  }
+  return next;
+}
+
 // --- Loaded-template tracking (for slice 05's snapshot) ----------------------
 
 export type LoadedTemplate = { id: number; placements: AnyPlacement[] };

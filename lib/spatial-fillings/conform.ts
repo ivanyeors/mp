@@ -14,6 +14,7 @@ import {
   type BolsterLength,
   type PieceRect,
 } from "./xray-layout";
+import type { ShapeId } from "./visuals";
 
 export type Pt = [number, number];
 
@@ -145,12 +146,25 @@ const densify = (pts: Pt[], maxSeg = 8): Pt[] => {
  * pouch rounds into a capsule instead of squashing its corners sharp — a
  * stretched normalized shape would scale the radii down with the narrow axis.
  */
-export function pouchOutline(rect: PieceRect, arcSamples = 5): Pt[] {
+export function pouchOutline(rect: PieceRect, arcSamples = 5, shape: ShapeId = "pouch"): Pt[] {
+  if (shape === "pill") {
+    // Flexible pill: runs the tract's full length, but never fatter than
+    // ~2.2:1, so it still reads as a pill in a square tract. Centered, and
+    // sampled finer so its big round ends stay smooth.
+    const long = Math.max(rect.w, rect.h);
+    const thick = Math.min(rect.w, rect.h, long / 2.2);
+    rect =
+      rect.w >= rect.h
+        ? { ...rect, y: rect.y + (rect.h - thick) / 2, h: thick }
+        : { ...rect, x: rect.x + (rect.w - thick) / 2, w: thick };
+    arcSamples = Math.max(arcSamples, 10);
+  }
   const { x, y, w, h } = rect;
   const short = Math.min(w, h);
   const aspect = Math.max(w, h) / (short || 1);
-  // relaxed pouch ≈ 28% radius; full capsule from ~3:1 compression onward
-  const t = Math.min(Math.max((aspect - 1) / 2, 0), 1);
+  // relaxed pouch ≈ 28% radius; full capsule from ~3:1 compression onward.
+  // A pill is always the full capsule — it stretches, its ends stay round.
+  const t = shape === "pill" ? 1 : Math.min(Math.max((aspect - 1) / 2, 0), 1);
   const r = (short / 2) * (0.55 + 0.45 * t);
   const centers: Pt[] = [
     [x + w - r, y + r],
@@ -184,8 +198,9 @@ export function conformPouchPath(
   rect: PieceRect,
   regions: ConformRegion[],
   smoothing = 2,
+  shape: ShapeId = "pouch",
 ): string {
-  let pts = pouchOutline(rect);
+  let pts = pouchOutline(rect, 5, shape);
   // Two passes: a pull inside one region may cross another near shared corners.
   for (let pass = 0; pass < 2; pass++) {
     for (const { poly, seam, sign } of regions) {

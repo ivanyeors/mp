@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { LayoutTemplate, Ruler } from "lucide-react";
 import { StaffToolbox, type ToolSpec } from "@/components/configurator/staff-toolbox";
 import { SaveFillingTemplate } from "@/components/configurator/save-filling-template";
+import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import { saveAffordance, type LoadedTemplate } from "@/lib/configurator/staff-assist";
 import {
@@ -50,6 +51,7 @@ export function StaffAssistBolsterPanel({
   onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
 }) {
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [items, setItems] = useState<FillingItem[]>([]);
   // Bumped after a save so the picker refetches and lists the saved template.
   const [catalogVersion, setCatalogVersion] = useState(0);
 
@@ -65,6 +67,7 @@ export function StaffAssistBolsterPanel({
         }) => {
           if (cancelled) return;
           setTemplates(d.templates ?? []);
+          setItems(d.items ?? []);
           onItemsChange?.(d.items ?? []);
           onColorOverridesChange?.(d.colorOverrides ?? []);
         },
@@ -72,6 +75,7 @@ export function StaffAssistBolsterPanel({
       .catch(() => {
         if (!cancelled) {
           setTemplates([]);
+          setItems([]);
           onItemsChange?.([]);
           onColorOverridesChange?.([]);
         }
@@ -150,6 +154,12 @@ export function StaffAssistBolsterPanel({
             : { label: "Edited", tone: "edited" }
           : null
       }
-    />
+    >
+      {placements.length > 0 && (
+        <div className="mt-1.5 rounded-2xl border border-border/60 bg-background/70 px-2 shadow-xl backdrop-blur-xl">
+          <XrayPackList placements={placements} onPlacementsChange={onPlacementsChange} items={items} />
+        </div>
+      )}
+    </StaffToolbox>
   );
 }

@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { XrayEditor } from "@/components/spatial/xray-editor";
+import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
 import {
   isSpatiallyAuthored,
   looksLikeLegacyImport,
@@ -20,7 +22,6 @@ import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
   bolsterPlacementsToRows,
-  flattenToPackList,
   pillowPlacementsToRows,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
@@ -487,14 +488,14 @@ export default function ResultDetailPage({
       const { data } = await supabaseClient
         .from("items")
         .select("id,name,subtype,size")
-        .eq("category", "filling")
+        .or(PLACEABLE_ITEMS_OR)
         .eq("is_active", true)
         .order("name");
       if (!cancelled) {
         setFillingItems(
           (data ?? []).map((i) => ({
             id: Number(i.id),
-            label: i.subtype ? `${i.name} (${i.subtype})` : i.name,
+            label: fillingLabel(i),
             // name/subtype/size feed the bolster picker's family grouping.
             name: i.name,
             subtype: i.subtype ?? null,
@@ -660,14 +661,17 @@ export default function ResultDetailPage({
     load();
   }, [load]);
 
-  // Derived flat pack list — same flatten the server persists (ADR 0008).
-  const packList = useMemo(
-    () => flattenToPackList(productType === "bolster" ? bolsterMix : placements),
-    [productType, bolsterMix, placements],
-  );
   const fillingLabelById = useMemo(
     () => new Map(fillingItems.map((i) => [i.id, i.label])),
     [fillingItems],
+  );
+  // A neck support is for premium pillows only — never offered on basic or a bolster.
+  const pickerItems = useMemo(
+    () =>
+      productType === "pillow" && assignTier === "premium"
+        ? fillingItems
+        : fillingItems.filter((i) => !NECK_SUPPORT.test(i.name)),
+    [fillingItems, productType, assignTier],
   );
 
   const refreshSuggestion = useCallback(async () => {
@@ -1166,7 +1170,7 @@ export default function ResultDetailPage({
                           <XrayEditor
                             placements={placements}
                             onPlacementsChange={setPlacements}
-                            items={fillingItems}
+                            items={pickerItems}
                             colorOverrides={colorOverrides}
                           />
                         </>
@@ -1175,21 +1179,15 @@ export default function ResultDetailPage({
                         <BolsterCompartmentList
                           value={bolsterMix}
                           onChange={setBolsterMix}
-                          items={fillingItems}
+                          items={pickerItems}
                         />
                       )}
                       <div className="rounded-md border bg-muted/30 p-3 text-sm">
                         <div className="text-xs text-muted-foreground mb-1">Derived pack list</div>
-                        {packList.length > 0 ? (
-                          <ul className="space-y-0.5">
-                            {packList.map((line) => (
-                              <li key={line.item_id}>
-                                {fillingLabelById.get(line.item_id) ?? `Item #${line.item_id}`} ×{line.count}
-                              </li>
-                            ))}
-                          </ul>
+                        {productType === "pillow" ? (
+                          <XrayPackList placements={placements} onPlacementsChange={setPlacements} items={fillingItems} />
                         ) : (
-                          <p className="text-muted-foreground">No pieces placed yet.</p>
+                          <XrayPackList placements={bolsterMix} onPlacementsChange={setBolsterMix} items={fillingItems} />
                         )}
                       </div>
                     </div>
