@@ -3644,7 +3644,7 @@ export function MpConfigClient({
               )}
 
               <div className="pt-4">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <Button variant="outline" onClick={goToPreviousStep}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
@@ -3672,9 +3672,15 @@ export function MpConfigClient({
                       holdSubmitting
                     }
                     size="lg"
-                    className="group"
+                    // The assisted label is long: on phones it wraps inside the
+                    // button instead of pushing it off the right edge.
+                    className={cn(
+                      "group",
+                      assisted &&
+                        "max-md:h-auto max-md:min-w-0 max-md:shrink max-md:whitespace-normal max-md:py-2 max-md:text-left",
+                    )}
                   >
-                    <Sparkles className="mr-2 h-5 w-5" />
+                    <Sparkles className={cn("mr-2 h-5 w-5", assisted && "max-md:hidden")} />
                     {holdSubmitting
                       ? "Sending…"
                       : assisted

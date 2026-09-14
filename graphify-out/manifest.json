@@ -1818,9 +1818,9 @@
     "semantic_hash": "cb31b31e97cea0ab709ca3c9da921f8e"
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
-    "mtime": 1789351534.051693,
-    "seen": 1789351580.124272,
-    "ast_hash": "124ab7619f1456570680a99675020705",
+    "mtime": 1789354709.7025845,
+    "seen": 1789354764.567932,
+    "ast_hash": "ec3253874256e82d5d61cd5e2fd74cc8",
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/page.tsx": {
