@@ -1,10 +1,32 @@
 /** Strip or reject filling lines on composed sellable and warehouse BOM writes (ADR 0003). */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { placementKind } from "@/lib/spatial-fillings/core";
 
 export type BomLineInput = { item_id: number; quantity: number };
 
 export type LineWithCategory = { item_id: number; quantity: number; category: string };
+
+/**
+ * placementKind per Item for the x-ray validators — a category lookup that also
+ * tells a neck support apart from every other accessory.
+ */
+export async function lookupPlacementKinds(
+  admin: SupabaseClient,
+  itemIds: number[],
+): Promise<{ ok: true; byId: Map<number, string> } | { ok: false; error: string }> {
+  if (itemIds.length === 0) return { ok: true, byId: new Map() };
+  const { data, error } = await admin.from("items").select("id,category,name").in("id", itemIds);
+  if (error) return { ok: false, error: error.message };
+  const byId = new Map(
+    (data ?? []).map((r) => [Number(r.id), placementKind({ category: String(r.category), name: String(r.name) })]),
+  );
+  const missing = itemIds.filter((id) => !byId.has(id));
+  if (missing.length) {
+    return { ok: false, error: `Unknown item_id: ${missing.join(", ")}` };
+  }
+  return { ok: true, byId };
+}
 
 /** Resolve item categories for BOM lines. */
 export async function lookupItemCategories(

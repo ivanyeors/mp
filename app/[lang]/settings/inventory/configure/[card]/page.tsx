@@ -30,6 +30,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
 import { XrayBolsterEditor, XrayEditor } from "@/components/spatial/xray-editor";
+import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import {
   isSpatiallyAuthored,
   isSpatiallyAuthoredCoverage,
@@ -39,7 +41,6 @@ import {
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import {
   bolsterPlacementsToRows,
-  flattenToPackList,
   pillowPlacementsToRows,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
@@ -1572,7 +1573,8 @@ function FillingConfigPanel({
   const gridItems = useMemo(
     () =>
       items
-        .filter((i) => i.category === "filling")
+        // Neck supports are pillow-only; a basic Result refuses one at assign.
+        .filter((i) => i.category === "filling" || (kind === "pillow" && isNeckSupportItem(i)))
         .map((i) => ({
           id: i.id,
           label: getFillingDisplayLabel(i, templateKey),
@@ -1581,9 +1583,8 @@ function FillingConfigPanel({
           subtype: i.subtype,
           size: i.size,
         })),
-    [items, templateKey],
+    [items, templateKey, kind],
   );
-  // Derived BOM: same flatten the server runs over placement rows (ADR 0008).
   // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
   // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
   const unauthoredCount = useMemo(() => templates.filter(isUnauthoredTemplate).length, [templates]);
@@ -1592,10 +1593,6 @@ function FillingConfigPanel({
       matchesTemplateSearch(t, search) &&
       (statusFilter === "all" || t.is_active === (statusFilter === "active")) &&
       (authoringFilter === "all" || isUnauthoredTemplate(t) === (authoringFilter === "unauthored")),
-  );
-  const packList = useMemo(
-    () => flattenToPackList(kind === "pillow" ? placements : bolsterMix),
-    [kind, placements, bolsterMix],
   );
   const isLegacyFlat = selectedId !== "" && !hadPlacements && lines.length > 0;
   const itemLabel = (itemId: number) => {
@@ -1836,21 +1833,11 @@ function FillingConfigPanel({
             </Section>
           )}
           <Section title="Derived pack list">
-            <ConfigureTable headers={["Filling", "Count"]}>
-              {packList.map((line) => (
-                <TableRow key={line.item_id}>
-                  <TableCell className="font-medium">{itemLabel(line.item_id)}</TableCell>
-                  <TableCell>{line.count}</TableCell>
-                </TableRow>
-              ))}
-              {packList.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={2} className="text-sm text-muted-foreground">
-                    No pieces placed yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </ConfigureTable>
+            {kind === "pillow" ? (
+              <XrayPackList placements={placements} onPlacementsChange={setPlacements} items={gridItems} />
+            ) : (
+              <XrayPackList placements={bolsterMix} onPlacementsChange={setBolsterMix} items={gridItems} />
+            )}
           </Section>
           </div>
           <Section title="Popular unpromoted mixes">

@@ -18,7 +18,7 @@ import { useSortable } from "@dnd-kit/react/sortable";
 
 import { SunburstMenu } from "@/components/ui/sunburst-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { fillingItemsToSunburst, fillingLabel } from "@/lib/spatial-fillings/filling-groups";
+import { fillingItemsToSunburst, fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import {
   addPiece,
@@ -48,7 +48,7 @@ import {
 } from "@/lib/spatial-fillings/conform";
 import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
 import { fillingVisual, sizeScale, type FillingVisual } from "@/lib/spatial-fillings/visuals";
-import { COL_X, GAP, layoutPlacements, ROW_Y } from "@/lib/spatial-fillings/xray-layout";
+import { COL_X, GAP, layoutPlacements, ROW_Y, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import {
   CELL_CLIP_PATHS,
   CELL_POLYGONS,
@@ -80,6 +80,13 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
 
 const MORPH_MS = 320;
 
+// Shell paint, themeable: the configurator's stage is dark in both themes, so
+// the defaults are the dark values; XrayEditor's frame redefines the variables
+// for light mode (and back for dark).
+export const XRAY_SHELL = "var(--xray-shell, rgba(255,255,255,0.9))";
+export const XRAY_INTERIOR = "var(--xray-interior, rgba(15,23,42,0.5))";
+const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
+
 // Dive-editor control sizing. The chips sit ON the pouches, so on a desktop
 // stage (650px wide) they stay tiny; below md the stage is ~360px wide and
 // there is no hover or precise pointer, so the same chips grow to a readable
@@ -96,8 +103,9 @@ const easeOut = (t: number) => t * (2 - t);
  * prepared flubber interpolator animates path `d`; degenerate pairs crossfade
  * an old-shape ghost instead — attribute writes only, no re-layout.
  * ponytail: swap morphs interpolate the normalized asset shapes, not the
- * conformed outline — rebase them through conformPouchPath when a second
- * ShapeId exists; today there is only the pouch, so no swap ever runs.
+ * conformed outline, so callers key a piece by its shape and a pouch↔pill swap
+ * remounts instead of morphing. Rebase the morphs through conformPouchPath
+ * before animating a swap.
  */
 export function MorphPiece({
   subtype,
@@ -165,6 +173,48 @@ export function MorphPiece({
       {ghost && <path ref={ghostRef} d={d} {...paint} />}
       <path ref={ref} d={d} {...paint} />
     </>
+  );
+}
+
+/**
+ * A piece's type + size, written inside it: white with a dark halo so it reads
+ * on every family color. Sized to the piece, and dropped when the piece is too
+ * small to hold a legible label — the chips and the pack list still name it.
+ */
+export function PieceLabel({ rect, lines }: { rect: PieceRect; lines: string[] }) {
+  // The x-ray scales with its box, so a phone stage (~360px for 664 view units)
+  // needs bigger view-unit text to land at the same ~10px as a desktop card.
+  const isMobile = useIsMobile();
+  if (lines.length === 0) return null;
+  const longest = Math.max(...lines.map((l) => l.length));
+  const size = Math.min(
+    isMobile ? 20 : 13,
+    (rect.w - 6) / (longest * 0.62),
+    (rect.h - 4) / (lines.length * 1.15),
+  );
+  if (size < 7) return null;
+  const cx = rect.x + rect.w / 2;
+  const top = rect.y + rect.h / 2 - ((lines.length - 1) * size * 1.1) / 2;
+  return (
+    <text
+      textAnchor="middle"
+      dominantBaseline="central"
+      fontSize={size}
+      fontWeight={600}
+      fill="white"
+      stroke="rgba(2,6,23,0.8)"
+      strokeWidth={size * 0.2}
+      strokeLinejoin="round"
+      paintOrder="stroke"
+      className="select-none"
+      style={{ pointerEvents: "none" }}
+    >
+      {lines.map((line, i) => (
+        <tspan key={i} x={cx} y={top + i * size * 1.1}>
+          {line}
+        </tspan>
+      ))}
+    </text>
   );
 }
 
@@ -338,10 +388,13 @@ export function XrayPillow({
     const paths = new Map<string, string>();
     for (const [key, cellPieceList] of piecesByCell) {
       const regions = [SIL_REGION, CELL_REGIONS[key]];
-      for (const p of cellPieceList) paths.set(p.key, conformPouchPath(p, regions));
+      for (const p of cellPieceList) {
+        const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
+        paths.set(p.key, conformPouchPath(p, regions, 2, shape));
+      }
     }
     return paths;
-  }, [piecesByCell]);
+  }, [piecesByCell, itemSubtypes]);
   const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
   // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
@@ -527,7 +580,7 @@ export function XrayPillow({
         <g>
           {/* x-ray art direction: shell interior darkens so fillings read inside */}
           <g clipPath={`url(#${clipId("sil")})`}>
-            <path d={SILHOUETTE_PATH} fill="rgba(15,23,42,0.5)" />
+            <path d={SILHOUETTE_PATH} fill={XRAY_INTERIOR} />
 
             {/* nested clipping: silhouette ∩ cell — belt only; the pouch
                 geometry itself deforms to stay a seam inside both regions.
@@ -537,10 +590,11 @@ export function XrayPillow({
               <g key={key} clipPath={`url(#${clipId(key)})`}>
                 {(piecesByCell.get(key) ?? []).map((p) => {
                   const subtype = itemSubtypes.get(p.itemId) ?? null;
+                  const visual = fillingVisual(subtype);
                   const d = conformedPaths.get(p.key)!;
                   return (
                     <g key={p.key}>
-                      <MorphPiece subtype={subtype} visual={fillingVisual(subtype)} d={d} />
+                      <MorphPiece key={visual.shape} subtype={subtype} visual={visual} d={d} />
                       {p.depth > 0 && (
                         <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
                       )}
@@ -550,6 +604,18 @@ export function XrayPillow({
               </g>
             ))}
 
+            {/* Front-layer labels. A dived Section on a desktop already names its
+                pieces with the chips sitting on them, so it drops these. */}
+            {pieces.map((p) =>
+              p.depth === 0 && !(editable && !isMobile && p.section === dived) ? (
+                <PieceLabel
+                  key={`label-${p.key}`}
+                  rect={p}
+                  lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
+                />
+              ) : null,
+            )}
+
             {hovered && hovered !== dived && (
               <path d={SECTION_HIT_PATHS[hovered]} fill="white" fillOpacity={0.15} />
             )}
@@ -557,7 +623,7 @@ export function XrayPillow({
             {/* Dive focus: neighbor Sections dim (static veil, silhouette-clipped) */}
             {dived &&
               SECTIONS.filter((s) => s !== dived).map((s) => (
-                <path key={s} d={SECTION_HIT_PATHS[s]} fill="rgb(2,6,23)" fillOpacity={0.55} />
+                <path key={s} d={SECTION_HIT_PATHS[s]} fill={XRAY_VEIL} fillOpacity={0.55} />
               ))}
 
             {/* The add target is a whole cell, and its highlight IS the cell
@@ -575,7 +641,7 @@ export function XrayPillow({
           <path
             d={SILHOUETTE_PATH}
             fill="none"
-            stroke="rgba(255,255,255,0.9)"
+            stroke={XRAY_SHELL}
             strokeWidth={3}
             vectorEffect="non-scaling-stroke"
           />

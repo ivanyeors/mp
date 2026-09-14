@@ -24,11 +24,12 @@ import { XrayBolster } from "./xray-bolster";
 import { XrayPillow } from "./xray-pillow";
 import { XRAY_VIEW } from "./xray-assets";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings/core";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 
-// The pouch shape and scale come from each Item's subtype and size, exactly as
+// The pouch color and scale come from each Item's type and size, exactly as
 // in the configurator — derived here so call sites pass one items array.
 //
 // Memoised on `items`, not rebuilt per render: the x-rays memoise their geometry
@@ -39,12 +40,19 @@ import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 // these two maps for the same reason.
 function useItemMaps(items: FillingItem[] | undefined) {
   const itemSubtypes = useMemo(
-    () => new Map((items ?? []).map((i) => [i.id, i.subtype])),
+    () => new Map((items ?? []).map((i) => [i.id, fillingDescriptor(i)])),
     [items],
   );
   const itemSizes = useMemo(() => new Map((items ?? []).map((i) => [i.id, i.size])), [items]);
   return { itemSubtypes, itemSizes };
 }
+
+// Light ground in light mode, dark in dark mode; the shell paint follows via
+// the variables XrayPillow/XrayBolster read. Pieces keep their family colors.
+const XRAY_THEME = [
+  "border bg-slate-100 [--xray-shell:#64748b] [--xray-interior:rgba(255,255,255,0.75)] [--xray-veil:#f1f5f9]",
+  "dark:border-transparent dark:bg-slate-950 dark:[--xray-shell:rgba(255,255,255,0.9)] dark:[--xray-interior:rgba(15,23,42,0.5)] dark:[--xray-veil:rgb(2,6,23)]",
+].join(" ");
 
 function XrayFrame({
   colorOverrides,
@@ -59,7 +67,7 @@ function XrayFrame({
     <div
       // Phones: the dive picker blooms wider than the x-ray is tall (and the
       // dive dock sits under it), so the frame must not clip below md.
-      className={`relative w-full overflow-hidden rounded-lg bg-slate-950 max-md:overflow-visible ${className ?? ""}`}
+      className={`relative w-full overflow-hidden rounded-lg max-md:overflow-visible ${XRAY_THEME} ${className ?? ""}`}
       style={{ aspectRatio: `${XRAY_VIEW.width} / ${XRAY_VIEW.height}`, ...xrayColorVarStyle(colorOverrides) }}
     >
       {children}

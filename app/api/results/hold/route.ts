@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { priceResult } from "@/lib/result-pricing";
-import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -47,7 +47,9 @@ import {
 } from "@/lib/configurator/pre-order-persist";
 import { getAdminContext } from "@/lib/auth/admin";
 import {
+  derivePackList,
   MAX_LAYERS_PER_CELL,
+  placementKind,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -336,10 +338,13 @@ export async function POST(req: Request) {
     const placementItemIds = [...new Set(input.assistFilling.placements.map((p) => p.item_id))];
     const { data: fillingItems } = await admin
       .from("items")
-      .select("id, category")
+      .select("id, category, name")
       .in("id", placementItemIds);
     const itemCategories = new Map(
-      (fillingItems ?? []).map((i) => [i.id as number, String(i.category)]),
+      (fillingItems ?? []).map((i) => [
+        i.id as number,
+        placementKind({ category: String(i.category), name: String(i.name) }),
+      ]),
     );
     const claimedTemplateId = input.assistFilling.templateId ?? null;
 
@@ -364,7 +369,7 @@ export async function POST(req: Request) {
       });
     } else {
       const placements = rowsToPillowPlacements(input.assistFilling.placements);
-      const valid = validatePillowPlacements(placements, itemCategories);
+      const valid = validatePillowPlacements(placements, itemCategories, { tier: input.suggestedTier });
       if (!valid.ok) {
         return NextResponse.json({ error: valid.error }, { status: 400 });
       }
@@ -382,7 +387,9 @@ export async function POST(req: Request) {
 
   const prefIds = input.preferenceLines.map((l) => l.item_id);
   const addonIds = input.addonLines.map((l) => l.item_id);
-  const allItemIds = [...new Set([...prefIds, ...addonIds])];
+  // A neck support staff placed is charged, so its price is looked up with the rest.
+  const placedPack = derivePackList(input.assistFilling?.placements ?? [], []);
+  const allItemIds = [...new Set([...prefIds, ...addonIds, ...placedPack.map((l) => l.item_id)])];
 
   const composed = await loadComposedSellable(
     admin,
@@ -407,8 +414,8 @@ export async function POST(req: Request) {
 
   const [{ data: items }, { data: prices }, { data: shippingRow }] = await Promise.all([
     allItemIds.length
-      ? admin.from("items").select("id, category, price_family").in("id", allItemIds)
-      : Promise.resolve({ data: [] as Array<{ id: number; category: string }> }),
+      ? admin.from("items").select("id, category, name, price_family").in("id", allItemIds)
+      : Promise.resolve({ data: [] as Array<{ id: number; category: string; name: string }> }),
     allItemIds.length
       ? admin.from("item_prices").select("item_id, msrp").in("item_id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ item_id: number; msrp: number | null }> }),
@@ -474,10 +481,13 @@ export async function POST(req: Request) {
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    addonLines: input.addonLines.map((l) => ({
-      msrp: msrpByItem.get(l.item_id) ?? null,
-      quantity: l.quantity,
-    })),
+    addonLines: [
+      ...input.addonLines.map((l) => ({
+        msrp: msrpByItem.get(l.item_id) ?? null,
+        quantity: l.quantity,
+      })),
+      ...placedChargeLines(placedPack, itemById, msrpByItem),
+    ],
   });
   if (!goods.ok) {
     console.error(`[results/hold] pricing not usable (${goods.code}): ${goods.error}`);

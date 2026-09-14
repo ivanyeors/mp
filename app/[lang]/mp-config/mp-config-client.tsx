@@ -1,6 +1,6 @@
 "use client";
 
-import { priceComposedBuild } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild } from "@/lib/pricing/composed-price";
 
 import {
   useEffect,
@@ -165,8 +165,10 @@ import {
 } from "@/lib/configurator/staff-assist";
 import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
+import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { SILHOUETTE_PATH } from "@/components/spatial/xray-assets";
 import {
+  flattenToPackList,
   pillowPlacementsToRows,
   rowsToPillowPlacements,
   type PillowPlacement,
@@ -395,7 +397,7 @@ export function MpConfigClient({
   // Filling items surfaced from the assist panel; the x-ray resolves shapes/colors by subtype.
   const [assistItems, setAssistItems] = useState<FillingItem[]>([]);
   const assistItemSubtypes = useMemo(
-    () => new Map(assistItems.map((i) => [i.id, i.subtype])),
+    () => new Map(assistItems.map((i) => [i.id, fillingDescriptor(i)])),
     [assistItems],
   );
   // Item size → pouch render scale (bigger fillings draw bigger in the x-ray).
@@ -1928,12 +1930,16 @@ export function MpConfigClient({
       guestPlacements: resumeFinish
         ? rowsToPillowPlacements(resumeFinish.placements)
         : rowsToPillowPlacements(tpl?.placements ?? []),
-      guestItemSubtypes: new Map(
-        guestFillings.map((f) => [f.item_id, f.subtype || null] as const),
-      ),
-      guestItemSizes: new Map(
-        guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
-      ),
+      // A finish link also brings its placed Items: a neck support is not in the
+      // shop's filling list, and would otherwise render unlabelled and grey.
+      guestItemSubtypes: new Map([
+        ...guestFillings.map((f) => [f.item_id, fillingDescriptor(f) || null] as const),
+        ...(resumeFinish?.items ?? []).map((i) => [i.id, fillingDescriptor(i) || null] as const),
+      ]),
+      guestItemSizes: new Map([
+        ...guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
+        ...(resumeFinish?.items ?? []).map((i) => [i.id, i.size] as const),
+      ]),
     };
   }, [shopRecommendation, resumeFinish]);
 
@@ -1969,6 +1975,17 @@ export function MpConfigClient({
     // same function, same Costings inputs. It used to show the shelf price while the
     // server charged shelf + cover + case, a 113 gap on a premium XS.
     const pricingInputs = shopRecommendation?.pricing ?? null;
+    // Placed neck supports are charged on top (the server adds the same lines).
+    const [placed, placedItems] = staffAssist
+      ? [assistPlacements, assistItems]
+      : resumeFinish
+        ? [guestPlacements, resumeFinish.items]
+        : [[], []];
+    const placedCharges = placedChargeLines(
+      flattenToPackList(placed),
+      new Map(placedItems.map((i) => [i.id, i])),
+      new Map(placedItems.flatMap((i) => (i.msrp == null ? [] : [[i.id, Number(i.msrp)] as const]))),
+    );
     const quote = pricingInputs
       ? priceComposedBuild({
           msrpByFamily: pricingInputs.msrp_by_family,
@@ -1989,7 +2006,7 @@ export function MpConfigClient({
                   item_id: selectedCase,
                   msrp: null,
                 }),
-          addonLines: [],
+          addonLines: placedCharges,
         })
       : null;
     // A refused quote must NOT fall back to the shelf price. That is how the preview

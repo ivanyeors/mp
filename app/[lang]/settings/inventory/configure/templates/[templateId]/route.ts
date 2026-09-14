@@ -3,7 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/admin'
 import { z } from 'zod'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
-import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
+import { lookupItemCategories, lookupPlacementKinds, rejectFillingLines } from '@/lib/bom-sanitizer'
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
@@ -186,7 +186,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
       )
     }
     const rows = parsed.data.placements
-    const cats = await lookupItemCategories(admin, rows.map((r) => r.item_id))
+    const cats = await lookupPlacementKinds(admin, rows.map((r) => r.item_id))
     if (!cats.ok) return NextResponse.json({ error: cats.error }, { status: 400 })
 
     const isBolster = tpl.kind === 'bolster'

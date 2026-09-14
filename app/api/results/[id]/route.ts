@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
 import { priceResult } from "@/lib/result-pricing";
-import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
@@ -95,7 +95,7 @@ async function buildPublicSummary(row: {
       ]),
     ];
     const { data: items } = allIds.length
-      ? await admin.from("items").select("id, name, subtype, price_family").in("id", allIds)
+      ? await admin.from("items").select("id, name, subtype, category, price_family").in("id", allIds)
       : { data: [] as Array<{ id: number; name: string; subtype: string | null }> };
     const nameByItem = new Map(
       (items ?? []).map((i) => [i.id as number, itemLabel(i.name, i.subtype)]),
@@ -143,6 +143,7 @@ async function buildPublicSummary(row: {
         const prefAddonIds = [
           ...preferenceLines.map((l) => l.item_id),
           ...addonLines.map((l) => l.item_id),
+          ...fillIds,
         ];
         const { data: prices } = prefAddonIds.length
           ? await admin.from("item_prices").select("item_id, msrp").in("item_id", prefAddonIds)
@@ -166,10 +167,17 @@ async function buildPublicSummary(row: {
           caseOptions: composed.sellable.caseOptions,
           chosenCover,
           chosenCase,
-          addonLines: addonLines.map((l) => ({
-            msrp: msrpByItem.get(l.item_id) ?? null,
-            quantity: l.quantity,
-          })),
+          addonLines: [
+            ...addonLines.map((l) => ({
+              msrp: msrpByItem.get(l.item_id) ?? null,
+              quantity: l.quantity,
+            })),
+            ...placedChargeLines(
+              fillLines.map((l) => ({ item_id: l.item_id, count: l.quantity })),
+              new Map((items ?? []).map((i) => [i.id as number, i as { category?: string; name: string }])),
+              msrpByItem,
+            ),
+          ],
         });
         if (goods.ok) {
           let shippingAmount = 0;

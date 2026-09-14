@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { StaffToolbox, type ToolSpec } from "@/components/configurator/staff-toolbox";
 import { SaveFillingTemplate } from "@/components/configurator/save-filling-template";
+import { XrayPackList } from "@/components/spatial/xray-pack-list";
+import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import {
   confirmGate,
   PILLOW_SIZES,
@@ -36,13 +38,21 @@ const TIER_LABEL: Record<(typeof PILLOW_TIERS)[number], string> = {
   premium: "Premium",
 };
 
-export type FillingItem = { id: number; name: string; subtype: string | null; size: string | null };
+export type FillingItem = {
+  id: number;
+  name: string;
+  subtype: string | null;
+  size: string | null;
+  /** Set by the assist route: a neck support ("accessories") is charged at its MSRP. */
+  category?: string;
+  msrp?: number | null;
+};
 type TemplateRow = { id: number; name: string };
 
 /**
  * Staff assist mode panel (slice 04, Staff-only): size×tier control with a
  * confirm gate and a size-scoped Filling Template picker. Per-piece filling
- * edits live on the x-ray itself (slices 07/08) — no list editor here.
+ * edits live on the x-ray itself (slices 07/08); the pack list under the rail removes a filling outright.
  *
  * An edited mix can be published back to the catalog — overwriting the loaded
  * template or forking a new one — which the Admin Panel then curates. That
@@ -77,6 +87,7 @@ export function StaffAssistPanel({
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [items, setItems] = useState<FillingItem[]>([]);
   // Bumped after a save so the picker refetches and lists the saved template.
   const [catalogVersion, setCatalogVersion] = useState(0);
 
@@ -91,14 +102,20 @@ export function StaffAssistPanel({
           colorOverrides?: ColorOverrideRow[];
         }) => {
           if (cancelled) return;
+          // A neck support is for premium pillows only — basic never offers it.
+          const offered = (d.items ?? []).filter(
+            (i) => current.tier === "premium" || !isNeckSupportItem({ category: i.category, name: i.name }),
+          );
           setTemplates(d.templates ?? []);
-          onItemsChange?.(d.items ?? []);
+          setItems(offered);
+          onItemsChange?.(offered);
           onColorOverridesChange?.(d.colorOverrides ?? []);
         },
       )
       .catch(() => {
         if (!cancelled) {
           setTemplates([]);
+          setItems([]);
           onItemsChange?.([]);
           onColorOverridesChange?.([]);
         }
@@ -107,7 +124,7 @@ export function StaffAssistPanel({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onItemsChange is a setState setter
-  }, [current.size, catalogVersion]);
+  }, [current.size, current.tier, catalogVersion]);
 
   const request = (next: SizeTier) => {
     setGate((g) => confirmGate(g, { type: "request", current, next }).state);
@@ -204,6 +221,11 @@ export function StaffAssistPanel({
           : null
       }
     >
+      {placements.length > 0 && (
+        <div className="mt-1.5 rounded-2xl border border-border/60 bg-background/70 px-2 shadow-xl backdrop-blur-xl">
+          <XrayPackList placements={placements} onPlacementsChange={onPlacementsChange} items={items} />
+        </div>
+      )}
       {/* Confirm gate: without confirm, placements stay untouched */}
       <Dialog open={gate.pending !== null} onOpenChange={(open) => !open && void resolveGate("cancel")}>
         <DialogContent>
