@@ -29,7 +29,8 @@ import {
   conformPouchPath,
   makeRegion,
 } from "@/lib/spatial-fillings/conform";
-import { itemScaleMap, MorphPiece } from "./xray-pillow";
+import { itemScaleMap, MorphPiece, PieceLabel, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
+import { pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath, SHELL_SEAM, XRAY_VIEW } from "./xray-assets";
 
 // Pouches deform to stay a seam inside the capsule (see conform.ts).
@@ -104,25 +105,34 @@ export function XrayBolster({
             The capsule clip is belt only; pouch geometry deforms to stay a
             seam inside the shell. */}
         <g clipPath={`url(#${uid}-capsule)`}>
-          <path d={capsule} fill="rgba(15,23,42,0.5)" />
+          <path d={capsule} fill={XRAY_INTERIOR} />
           {pieces.map((p) => {
             const subtype = itemSubtypes.get(p.itemId) ?? null;
+            const visual = fillingVisual(subtype);
             return (
               <MorphPiece
-                key={p.key}
+                // Keyed by shape too: a pouch↔pill swap remounts (see MorphPiece).
+                key={`${p.key}-${visual.shape}`}
                 subtype={subtype}
-                visual={fillingVisual(subtype)}
-                d={conformPouchPath(p, [SHELL_REGIONS[length]])}
+                visual={visual}
+                d={conformPouchPath(p, [SHELL_REGIONS[length]], 2, visual.shape)}
               />
             );
           })}
+          {pieces.map((p) => (
+            <PieceLabel
+              key={`label-${p.key}`}
+              rect={p}
+              lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
+            />
+          ))}
           {hovered && editable && <path d={capsule} fill="white" fillOpacity={0.15} />}
         </g>
 
         <path
           d={capsule}
           fill="none"
-          stroke="rgba(255,255,255,0.9)"
+          stroke={XRAY_SHELL}
           strokeWidth={3}
           vectorEffect="non-scaling-stroke"
           style={{ pointerEvents: "auto" }}

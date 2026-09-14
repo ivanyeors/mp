@@ -139,7 +139,12 @@ _Avoid_: treating it as a stored flag, a **triage** state, or something **Staff*
 
 **X-ray editor** (pillow fillings):
 The editable **Placement** surface: the pillow silhouette with dive-into-a-**Section**, the radial filling picker, add/remove/drag-to-reorder **Layers**, and per-piece removal. One component, three surfaces — the configurator under **Staff assist mode**, Configure → **Filling Template**, and **Result** detail assign — so **Staff** learn the interaction once. Renders read-only (no edit affordances) when given no filling **Items** and no change handler, which is how the shopper's completed-preview x-ray uses the same renderer. Visual guardrails are ADR 0009; **Mbolster** uses its ordered compartment list instead and never the 3×3 pillow metaphor.
+Every surface shows the **Derived pack list** beside it, and removing a filling there removes all of its pieces.
 _Avoid_: calling the shopper's read-only preview x-ray an **X-ray editor**; the retired 3×3 **cell** grid of dropdowns (deleted — it was a second, divergent filling editor); assuming "editor" implies a separate component from the preview renderer
+
+**Neck support** (Cervical Neck Support):
+An **Accessories** **Item** that **Staff** may also place inside a **premium** pillow on the **X-ray editor**, drawn as a pill. Unlike a filling it is not part of the Costings row: each placed piece is charged at its own MSRP, like an add-on, and comes out of its own stock. Never on a basic pillow or an **Mbolster**; a **Filling Template** (scoped by size only) may hold one, and a basic **Result** refuses it at assign.
+_Avoid_: re-categorising it as a filling (it is still sold as an accessory); placing it free of charge
 
 **Default Filling Template**:
 The baseline filling mix for one Configure product card (e.g. Basic Size S, Premium Size M, Bolster medium). Stored on that **Composed sellable**, not on a warehouse preset name. Shown as a hint at assignment; the operator must actively confirm or override. Changing assigned size×tier (or length) on a **Result** clears any filling selection and reloads the hint for the new product card.
@@ -550,7 +555,7 @@ Admin Panel tab on Store → Products (formerly the standalone **Product Builder
 _Avoid_: a parallel upload silo outside **Media Assets**; hard-coding overlay files in the configurator; putting this under Inventory Configure (recipe) instead of the Products presentation tab
 
 **Filling visual**:
-The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. Staff can see the mapping and edit the **color** in **Product Visualize**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
+The x-ray rendering identity of one filling **Item** type: a designer-authored fluid SVG shape (default mapped in code config) plus a color. The default color is per filling **family** (3D, 6D, 6D+), so every size and variant of a family ("6D Fold", "6D Round") shares it; the family is read from whichever of `subtype`/`name` carries the density, because live inventory leaves `subtype` empty. Each front piece carries its type + size written inside it. Staff can see the mapping and edit the **color** in **Product Visualize**; shape changes are a designer/code update. Multiple pieces in a **cell** render compressed but individually distinct (two pouches read as two). Guardrails: ADR `docs/adr/0009-xray-filling-visuals.md`.
 _Avoid_: rect/bounding-box cropping of filling shapes; gooey-merging pieces so the count is unreadable; generating random blob shapes in v1
 
 **Landing section**:

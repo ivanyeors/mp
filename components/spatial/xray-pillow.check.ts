@@ -21,8 +21,10 @@ import { fillingVisual, sizeScale, subtypeSlug } from "@/lib/spatial-fillings/vi
 assert.equal(Object.keys(CELL_CLIP_PATHS).length, 9, "nine cell boundary paths");
 assert.equal(Object.keys(SECTION_HIT_PATHS).length, 3, "three Section regions");
 // ponytail: one rounded-square pouch for every filling type until the designer
-// fluid shapes land; color (subtype) + scale (Item size) differentiate.
-assert.equal(Object.keys(FILLING_SHAPE_PATHS).length, 1, "single pouch shape");
+// fluid shapes land; color (family) + scale (Item size) differentiate. The
+// neck support pill is the one non-filling shape.
+assert.deepEqual(Object.keys(FILLING_SHAPE_PATHS), ["pouch", "pill"], "pouch + neck support pill");
+assert.equal(fillingVisual("Cervical Neck Support").shape, "pill");
 assert.match(FILLING_SHAPE_PATHS.pouch, /^M.*Z$/, "pouch is a closed path");
 assert.ok(SILHOUETTE_POLYGON.length > 50, "silhouette sampled densely for conform geometry");
 assert.equal(Object.keys(CELL_POLYGONS).length, 9, "cell polygons mirror the clip paths");
@@ -60,7 +62,7 @@ assert.match(
 );
 assert.match(
   renderer,
-  /paths\.set\(p\.key, conformPouchPath\(p, regions\)\)/,
+  /paths\.set\(p\.key, conformPouchPath\(p, regions, 2, shape\)\)/,
   "conform runs once per piece per geometry change, not once per render",
 );
 assert.match(

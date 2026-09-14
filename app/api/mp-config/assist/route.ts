@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { PILLOW_SIZES } from "@/lib/configurator/staff-assist";
 import { isBolsterLength } from "@/lib/results/composed-sellable";
-import { lookupItemCategories } from "@/lib/bom-sanitizer";
+import { lookupPlacementKinds } from "@/lib/bom-sanitizer";
 import {
   MAX_LAYERS_PER_CELL,
   rowsToBolsterPlacements,
@@ -12,6 +12,7 @@ import {
   validateBolsterPlacements,
   validatePillowPlacements,
 } from "@/lib/spatial-fillings";
+import { PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
 
 type Scope = { kind: "pillow" | "bolster"; key: string };
 
@@ -103,8 +104,9 @@ export async function GET(req: NextRequest) {
       .order("name"),
     admin
       .from("items")
-      .select("id,name,subtype,size")
-      .eq("category", "filling")
+      .select("id,name,subtype,size,category,item_prices(msrp)")
+      // Neck supports are pillow-only (premium; the panel hides them on basic).
+      .or(scope.kind === "bolster" ? "category.eq.filling" : PLACEABLE_ITEMS_OR)
       .eq("is_active", true)
       .order("name"),
     // Slice 11: Product Builder color overrides for the x-ray CSS-variable pipeline.
@@ -117,7 +119,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     templates: templates ?? [],
-    items: items ?? [],
+    // Flattened MSRP: a placed neck support is charged, and the staff preview
+    // quotes the same number the hold authorises.
+    items: (items ?? []).map(({ item_prices, ...item }) => ({
+      ...item,
+      msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
+    })),
     colorOverrides: colorOverrides ?? [],
   });
 }
@@ -188,7 +195,7 @@ export async function POST(req: NextRequest) {
   // Same gate the Admin Panel applies: fillings only, and within the per-cell
   // layer/piece caps. A mix the x-ray let staff build can still be invalid here
   // if an item was retired mid-session.
-  const cats = await lookupItemCategories(
+  const cats = await lookupPlacementKinds(
     admin,
     rows.map((r) => r.item_id),
   );

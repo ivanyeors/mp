@@ -97,6 +97,7 @@ import {
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath } from "@/components/spatial/xray-assets";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import {
@@ -333,7 +334,7 @@ export function MbolsterConfigClient({
   const [assistItems, setAssistItems] = React.useState<FillingItem[]>([]);
   const [assistColorOverrides, setAssistColorOverrides] = React.useState<ColorOverrideRow[]>([]);
   const assistItemSubtypes = React.useMemo(
-    () => new Map(assistItems.map((i) => [i.id, i.subtype])),
+    () => new Map(assistItems.map((i) => [i.id, fillingDescriptor(i)])),
     [assistItems],
   );
   const assistItemSizes = React.useMemo(
@@ -377,7 +378,7 @@ export function MbolsterConfigClient({
   );
   const guestPlacements = rowsToBolsterPlacements(recommendedTemplate?.placements ?? []);
   const guestItemSubtypes = new Map(
-    (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.subtype]),
+    (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, fillingDescriptor(f) || null]),
   );
   const guestItemSizes = new Map(
     (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.size ?? null]),

@@ -144,6 +144,9 @@ export const FILLING_SHAPE_PATHS: Record<ShapeId, string> = {
   pouch:
     "M50 2 C73 2 93 8 93 28 C93 43 95 57 93 72 C93 92 73 98 50 98 " +
     "C27 98 7 92 7 72 C5 57 5 43 7 28 C7 8 27 2 50 2 Z",
+  // Neck support: a stadium, round ends on the short axis (thumbnail only — the
+  // x-ray builds the stretched outline in conform.ts).
+  pill: "M30 20 L70 20 C87 20 98 34 98 50 C98 66 87 80 70 80 L30 80 C13 80 2 66 2 50 C2 34 13 20 30 20 Z",
 };
 
 /**

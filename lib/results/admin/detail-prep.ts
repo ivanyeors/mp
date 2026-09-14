@@ -1,4 +1,5 @@
 import { loadAssignPrep, type AssignPrep } from "@/lib/results/assign-prep";
+import { fillingLabel, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
 import {
   BOLSTER_LENGTHS,
   type ComposedSellableKey,
@@ -132,13 +133,13 @@ export async function loadFillingItems(): Promise<FillingItemOption[]> {
   const { data } = await admin
     .from("items")
     .select("id,name,subtype,size")
-    .eq("category", "filling")
+    .or(PLACEABLE_ITEMS_OR)
     .eq("is_active", true)
     .order("name");
 
   return (data ?? []).map((i) => ({
     id: Number(i.id),
-    label: i.subtype ? `${i.name} (${i.subtype})` : i.name,
+    label: fillingLabel(i),
     // name/subtype/size feed the bolster picker's family grouping.
     name: i.name,
     subtype: i.subtype ?? null,

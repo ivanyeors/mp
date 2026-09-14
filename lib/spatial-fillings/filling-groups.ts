@@ -20,9 +20,25 @@ export type FillingItemLike = {
 /** Leading density token + an optional immediate premium "+", case-insensitive. */
 const DENSITY = /^\s*(\d+D)(\+)?/i;
 
+/**
+ * A Cervical Neck Support: an Accessories Item staff may also place inside a
+ * pillow, charged at its own MSRP (unlike fillings). Matched by type name —
+ * inventory has no category of its own for it.
+ */
+export const NECK_SUPPORT = /cervical|neck support/i;
+
+export function isNeckSupportItem(item: { category?: string | null; name: string }): boolean {
+  return item.category === "accessories" && NECK_SUPPORT.test(item.name);
+}
+
+/** PostgREST `.or()` filter for every Item the x-ray may place: fillings plus neck supports. */
+export const PLACEABLE_ITEMS_OR =
+  "category.eq.filling,and(category.eq.accessories,or(name.ilike.*cervical*,name.ilike.*neck support*))";
+
 /** Filling family from a descriptor like "6D+ (Folded)" or "3D-S" → 3D / 6D / 6D+. */
 export function fillingFamily(descriptor: string | null): { key: string; label: string } {
   const s = descriptor?.trim() ?? "";
+  if (NECK_SUPPORT.test(s)) return { key: "neck", label: "Neck support" };
   const m = s.match(DENSITY);
   if (!m) return { key: "other", label: "Other" };
   const density = m[1].toUpperCase(); // "6D"
@@ -31,17 +47,40 @@ export function fillingFamily(descriptor: string | null): { key: string; label: 
   return { key: label.toLowerCase(), label };
 }
 
-/** The type descriptor for an item: prefer whichever of subtype/name carries a density. */
-function descriptorOf(item: FillingItemLike): string {
+/**
+ * The type descriptor for an item: prefer whichever of subtype/name carries a
+ * density. Live inventory leaves `subtype` null and names the type ("6D Fold"),
+ * so anything keyed on subtype alone sees every filling as the same thing.
+ */
+export function fillingDescriptor(item: Pick<FillingItemLike, "name" | "subtype">): string {
   for (const c of [item.subtype, item.name]) {
     if (c && DENSITY.test(c)) return c.trim();
   }
   return (item.name || item.subtype || "").trim();
 }
 
-/** Clean type label for a placed piece chip, e.g. "6D (L)" — not "filling (6D (L))". */
+/**
+ * A piece's label as lines: the type, then the size when the type does not
+ * already say it — ["6D Fold", "S"], ["6D (L)"]. Empty when the type is unknown.
+ */
+export function fillingLabelLines(descriptor: string | null, size: string | null): string[] {
+  const type = descriptor?.trim() ?? "";
+  const sz = size?.trim() ?? "";
+  if (!type) return [];
+  const tokens = type.toUpperCase().split(/[\s()-]+/);
+  return sz && !tokens.includes(sz.toUpperCase()) ? [type, sz] : [type];
+}
+
+/** Lines written inside a piece: as fillingLabelLines, with a neck support shortened to "Neck". */
+export function pieceLabelLines(descriptor: string | null, size: string | null): string[] {
+  return NECK_SUPPORT.test(descriptor ?? "")
+    ? fillingLabelLines("Neck", size)
+    : fillingLabelLines(descriptor, size);
+}
+
+/** Clean label for a placed piece, e.g. "6D (L)" or "6D Fold S" — not "filling (6D (L))". */
 export function fillingLabel(item: FillingItemLike): string {
-  return descriptorOf(item) || item.name.trim() || `Item #${item.id}`;
+  return fillingLabelLines(fillingDescriptor(item), item.size).join(" ") || `Item #${item.id}`;
 }
 
 /** Variant within a family: the parenthetical, else the descriptor minus its density. */
@@ -52,9 +91,10 @@ function variantLabel(descriptor: string): string {
   return stripped || descriptor.trim();
 }
 
-/** Sort rank: 3D < 6D < 6D+ < Other. */
+/** Sort rank: 3D < 6D < 6D+ < Neck support < Other. */
 function familyRank(key: string): number {
   if (key === "other") return Infinity;
+  if (key === "neck") return 1000;
   const density = Number(key.match(/^(\d+)d/)?.[1] ?? 0);
   return density + (key.endsWith("+") ? 0.5 : 0);
 }
@@ -62,7 +102,7 @@ function familyRank(key: string): number {
 export function fillingItemsToSunburst(items: FillingItemLike[]): SunburstNode[] {
   const groups = new Map<string, { label: string; items: FillingItemLike[] }>();
   for (const item of items) {
-    const fam = fillingFamily(descriptorOf(item));
+    const fam = fillingFamily(fillingDescriptor(item));
     const g = groups.get(fam.key) ?? { label: fam.label, items: [] };
     g.items.push(item);
     groups.set(fam.key, g);
@@ -82,8 +122,13 @@ export function fillingItemsToSunburst(items: FillingItemLike[]): SunburstNode[]
     const isOther = key === "other";
     const usedLabels = new Set<string>();
     const leaves: SunburstNode[] = sorted.map((item) => {
-      // Real family → show the variant (S/M/L/Folded…); Other → the item name.
-      let label = isOther ? item.name.trim() : variantLabel(descriptorOf(item));
+      // Real family → show the variant (S/M/L/Folded…); Other → the item name;
+      // neck supports differ only by size.
+      let label = isOther
+        ? item.name.trim()
+        : key === "neck"
+          ? (item.size?.trim() ?? "")
+          : variantLabel(fillingDescriptor(item));
       if (!label) label = item.name.trim() || `Item #${item.id}`;
       if (usedLabels.has(label)) label = `${label}${item.size ? ` (${item.size})` : ` #${item.id}`}`;
       usedLabels.add(label);

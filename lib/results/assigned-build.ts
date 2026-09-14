@@ -2,7 +2,7 @@
 
 import { assembleBuild, findStockShortages, type BuildLine } from "@/lib/build-assembly";
 import { priceResult, type PriceResultOutput } from "@/lib/result-pricing";
-import { priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
+import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import {
@@ -143,9 +143,9 @@ export async function loadAssignedBuild(
       ? admin.from("inventory_balances").select("item_id, on_hand").in("item_id", allItemIds)
       : Promise.resolve({ data: [] as Array<{ item_id: number; on_hand: number }> }),
     allItemIds.length
-      ? admin.from("item_prices").select("item_id, msrp, cost").in("item_id", allItemIds)
+      ? admin.from("item_prices").select("item_id, msrp, cost_price").in("item_id", allItemIds)
       : Promise.resolve({
-          data: [] as Array<{ item_id: number; msrp: number | null; cost: number | null }>,
+          data: [] as Array<{ item_id: number; msrp: number | null; cost_price: number | null }>,
         }),
   ]);
 
@@ -164,7 +164,7 @@ export async function loadAssignedBuild(
   const costByItem = new Map<number, number>();
   const msrpByItem = new Map<number, number>();
   for (const p of itemPrices ?? []) {
-    if (p.cost != null) costByItem.set(p.item_id, Number(p.cost));
+    if (p.cost_price != null) costByItem.set(p.item_id, Number(p.cost_price));
     if (p.msrp != null) msrpByItem.set(p.item_id, Number(p.msrp));
   }
 
@@ -201,10 +201,13 @@ export async function loadAssignedBuild(
     caseOptions: composed.sellable.caseOptions,
     chosenCover,
     chosenCase,
-    addonLines: addonLines.map((l) => ({
-      msrp: msrpByItem.get(l.item_id) ?? null,
-      quantity: l.quantity,
-    })),
+    addonLines: [
+      ...addonLines.map((l) => ({
+        msrp: msrpByItem.get(l.item_id) ?? null,
+        quantity: l.quantity,
+      })),
+      ...placedChargeLines(fillPack, itemById, msrpByItem),
+    ],
   });
   if (!goods.ok) return { ok: false, error: goods.error };
 
