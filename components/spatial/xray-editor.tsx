@@ -57,7 +57,9 @@ function XrayFrame({
 }) {
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-lg bg-slate-950 ${className ?? ""}`}
+      // Phones: the dive picker blooms wider than the x-ray is tall (and the
+      // dive dock sits under it), so the frame must not clip below md.
+      className={`relative w-full overflow-hidden rounded-lg bg-slate-950 max-md:overflow-visible ${className ?? ""}`}
       style={{ aspectRatio: `${XRAY_VIEW.width} / ${XRAY_VIEW.height}`, ...xrayColorVarStyle(colorOverrides) }}
     >
       {children}

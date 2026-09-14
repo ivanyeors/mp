@@ -1,6 +1,8 @@
 /**
  * Issue #63 (ADR 0009): sunburst sizes responsively to its container so the
- * bloom fits the narrow x-ray dive column on phones (token asserts).
+ * bloom fits the narrow x-ray dive column on phones, and steps UP on phones
+ * (thicker rings, 12px labels, 44px centre trigger) so it is thumb-sized
+ * (token asserts).
  * Run: npx tsx components/ui/sunburst-responsive.check.ts
  */
 import assert from "node:assert/strict";
@@ -26,10 +28,33 @@ assert.match(sunburst, /const scale = size \/ sizeProp/);
 assert.match(sunburst, /ringWidthProp \* scale/);
 assert.match(sunburst, /holeRadiusProp \* scale/);
 
-// Callers still pass their fixed desktop max (unchanged).
+// Phones: the centre trigger never drops below the 44px touch minimum (the hole
+// is floored to fit it), labels/glyphs step up a size, and the label-hug
+// geometry is told about the wider 12px glyph.
+assert.match(sunburst, /const TOUCH_TARGET = 44;/, "mobile tap minimum must be 44px");
+assert.match(sunburst, /const isMobile = useIsMobile\(\);/, "must read the shared mobile hook");
+assert.match(
+  sunburst,
+  /Math\.max\(minHoleRadius, holeRadiusProp \* scale\)/,
+  "hole radius must be floored for the mobile trigger",
+);
+assert.match(sunburst, /isMobile \? "text-xs" : "text-\[10px\]"/, "wedge labels step up on phones");
+assert.match(sunburst, /isMobile \? "size-5" : "size-4"/, "wedge icons step up on phones");
+assert.match(sunburst, /labelCharW = isMobile \? MOBILE_LABEL_CHAR_W/, "hug width follows the phone font");
+const layout = read("components/ui/sunburst-menu-layout.ts");
+assert.match(layout, /labelCharW\?: number;/, "layout must accept the glyph width");
+
+// Callers keep their desktop geometry and pass a larger phone preset: the
+// x-ray bloom is centred on and sized to the whole stage on phones (not the
+// narrow dive column), with thicker rings and a 26px hole (= 44px trigger).
 const xray = read("components/spatial/xray-pillow.tsx");
 const bolster = read("components/spatial/bolster-compartment-list.tsx");
-assert.match(xray, /size=\{220\}/);
-assert.match(bolster, /size=\{200\}/);
+assert.match(xray, /size=\{isMobile \? 280 : 220\}/);
+assert.match(xray, /ringWidth=\{isMobile \? 48 : 40\}/);
+assert.match(xray, /holeRadius=\{isMobile \? 26 : 18\}/);
+assert.match(xray, /width: isMobile\s*\?\s*"100%"/, "phone bloom container must be the stage width");
+assert.match(bolster, /size=\{isMobile \? 280 : 200\}/);
+assert.match(bolster, /ringWidth=\{isMobile \? 48 : 40\}/);
+assert.match(bolster, /holeRadius=\{isMobile \? 26 : 18\}/);
 
 console.log("sunburst-responsive.check.ts: ok");

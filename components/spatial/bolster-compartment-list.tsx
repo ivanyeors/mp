@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SunburstMenu } from "@/components/ui/sunburst-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { fillingItemsToSunburst } from "@/lib/spatial-fillings/filling-groups";
 import { addBolsterPiece, removeBolsterPiece } from "@/lib/configurator/staff-assist";
 import type { BolsterPlacement } from "@/lib/spatial-fillings/core";
@@ -39,6 +40,8 @@ export function BolsterCompartmentList({
   items: BolsterListItem[];
 }) {
   const pieces = [...value].sort((a, b) => a.slot - b.slot);
+  // Phones: thicker rings + a 44px centre trigger (same preset as the pillow x-ray picker).
+  const isMobile = useIsMobile();
   const label = (itemId: number) =>
     items.find((i) => i.id === itemId)?.label ?? `Item #${itemId}`;
   const tree = useMemo(() => fillingItemsToSunburst(items), [items]);
@@ -71,9 +74,9 @@ export function BolsterCompartmentList({
           <SunburstMenu
             root={tree}
             display="text"
-            size={200}
-            ringWidth={40}
-            holeRadius={18}
+            size={isMobile ? 280 : 200}
+            ringWidth={isMobile ? 48 : 40}
+            holeRadius={isMobile ? 26 : 18}
             centerIcon={Plus}
             ariaLabel="Add piece"
             onSelect={(leaf) => onChange(addBolsterPiece(value, Number(leaf.id)))}

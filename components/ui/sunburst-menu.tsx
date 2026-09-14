@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useMotionValueEvent, animate }
 import { Menu, X, ChevronLeft } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   arcCentroid,
   arcPath,
@@ -45,6 +46,11 @@ export type SunburstMenuProps = {
   className?: string;
 };
 
+/** Mobile minimum tap size in px (PRD mobile-ux: ≥44px on max-md). */
+const TOUCH_TARGET = 44;
+/** Phones render 12px wedge labels; the hug geometry needs the wider glyph. */
+const MOBILE_LABEL_CHAR_W = 7;
+
 /** Fill/stroke per interaction state — mirrors the token variants in button.tsx. */
 function segmentClass(state: "default" | "hover" | "selected" | "disabled"): string {
   const base = "cursor-pointer transition-colors duration-150";
@@ -82,6 +88,10 @@ export function SunburstMenu({
   // their proportions inside the smaller viewBox — visuals unchanged, just smaller.
   const measureRef = React.useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = React.useState<number | null>(null);
+  // Phones get bigger type, bigger glyphs and a tappable centre trigger; the
+  // wedge geometry itself is the caller's (they pass a larger size/ringWidth
+  // for the same `isMobile`), so the component only floors what a thumb needs.
+  const isMobile = useIsMobile();
   React.useEffect(() => {
     const el = measureRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -93,9 +103,7 @@ export function SunburstMenu({
   // ponytail: floor the diameter so a very narrow x-ray dive column can't shrink
   // the closed center trigger (buttonSize below) down to an untappable few px.
   // The open bloom may then overflow a sub-140px column slightly (it's a
-  // transient overlay, overflow-visible). HITL(#63/#69): the trigger tap-target
-  // is only ~28px even at full size — enlarging it independent of the bloom is a
-  // visual-design decision deferred to the sunburst sign-off.
+  // transient overlay, overflow-visible).
   const MIN_DIAMETER = Math.min(140, sizeProp);
   const size =
     containerW && containerW > 0
@@ -103,7 +111,12 @@ export function SunburstMenu({
       : sizeProp;
   const scale = size / sizeProp;
   const ringWidth = ringWidthProp * scale;
-  const holeRadius = holeRadiusProp * scale;
+  // On phones the hole never shrinks below what a 44px centre trigger needs
+  // (buttonSize = hole − 8), whatever the caller passed or the clamp did —
+  // the rings scale, the tap target does not.
+  const minHoleRadius = isMobile ? (TOUCH_TARGET + 8) / 2 : 0;
+  const holeRadius = Math.max(minHoleRadius, holeRadiusProp * scale);
+  const labelCharW = isMobile ? MOBILE_LABEL_CHAR_W : undefined;
   // Controlled when `openProp` is given, self-owned otherwise. onOpenChange is
   // notified from setOpen (not an effect on `open`) so a controlled parent hears
   // an internal close — an effect would never fire, the prop having not moved.
@@ -132,8 +145,8 @@ export function SunburstMenu({
   const buttonSize = holeRadius * 2 - 8; // closed footprint = just the center trigger
 
   const targetArcs = React.useMemo(
-    () => buildArcs(root, expansionPath, { cx, cy, holeRadius, ringWidth }),
-    [root, expansionPath, cx, cy, holeRadius, ringWidth],
+    () => buildArcs(root, expansionPath, { cx, cy, holeRadius, ringWidth, labelCharW }),
+    [root, expansionPath, cx, cy, holeRadius, ringWidth, labelCharW],
   );
 
   // Drilling reflows ring-1 spans (equal → weighted). Animate a single 0→1
@@ -249,6 +262,7 @@ export function SunburstMenu({
   const showText = display !== "icon";
   const showIcon = display !== "text";
   const centerState = !open ? "closed" : expansionPath.length > 0 ? "back" : "close";
+  const centerIconClass = isMobile ? "size-6" : "size-5";
 
   return (
     <div ref={measureRef} className="flex w-full justify-center">
@@ -343,8 +357,14 @@ export function SunburstMenu({
                         arc.node.disabled && "text-muted-foreground",
                       )}
                     >
-                      {showIcon && Icon ? <Icon className="size-4 shrink-0" /> : null}
-                      {showText ? <span className="text-[10px] font-medium">{arc.node.label}</span> : null}
+                      {showIcon && Icon ? (
+                        <Icon className={cn("shrink-0", isMobile ? "size-5" : "size-4")} />
+                      ) : null}
+                      {showText ? (
+                        <span className={cn("font-medium", isMobile ? "text-xs" : "text-[10px]")}>
+                          {arc.node.label}
+                        </span>
+                      ) : null}
                     </div>
                   </foreignObject>
                 </motion.g>
@@ -369,11 +389,11 @@ export function SunburstMenu({
         style={{ width: buttonSize, height: buttonSize }}
       >
         {centerState === "closed" ? (
-          <CenterIcon className="size-5" />
+          <CenterIcon className={centerIconClass} />
         ) : centerState === "back" ? (
-          <ChevronLeft className="size-5" />
+          <ChevronLeft className={centerIconClass} />
         ) : (
-          <X className="size-5" />
+          <X className={centerIconClass} />
         )}
       </motion.button>
     </div>
