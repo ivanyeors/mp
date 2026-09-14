@@ -29,8 +29,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
-import { XrayEditor } from "@/components/spatial/xray-editor";
-import { BolsterCompartmentList } from "@/components/spatial/bolster-compartment-list";
+import { XrayBolsterEditor, XrayEditor } from "@/components/spatial/xray-editor";
 import {
   isSpatiallyAuthored,
   isSpatiallyAuthoredCoverage,
@@ -99,6 +98,7 @@ type Product = {
 };
 
 type BolsterLength = "short" | "medium" | "long";
+const BOLSTER_LENGTHS: BolsterLength[] = ["short", "medium", "long"];
 
 type BomLine = { item_id: number; quantity: number };
 
@@ -1823,9 +1823,16 @@ function FillingConfigPanel({
               />
             </Section>
           ) : (
-            // Mbolster: one long compartment — ordered list, no piece cap, never the 3×3 grid.
+            // Mbolster: one long compartment, no piece cap, never the 3×3 grid — edited on
+            // the same capsule x-ray the /mbolster-config staff assist uses.
             <Section title="Single compartment (ordered mix — no piece cap)">
-              <BolsterCompartmentList value={bolsterMix} onChange={setBolsterMix} items={gridItems} />
+              <XrayBolsterEditor
+                placements={bolsterMix}
+                length={BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium"}
+                onPlacementsChange={setBolsterMix}
+                items={gridItems}
+                colorOverrides={colorOverrides}
+              />
             </Section>
           )}
           <Section title="Derived pack list">
@@ -2113,7 +2120,8 @@ function TemplateRail({
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">{filters}</div>
+        {/* Stacked: the rail is too narrow for two triggers side by side. */}
+        <div className="grid gap-2">{filters}</div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
         {items.length ? (
