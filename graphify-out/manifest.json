@@ -2112,9 +2112,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/actions.ts": {
-    "mtime": 1788679932.1783812,
-    "seen": 1789406225.34218,
-    "ast_hash": "a193a7d99690a8721b990deb2ae0700b",
+    "mtime": 1789407300.7785325,
+    "seen": 1789407326.665035,
+    "ast_hash": "7cdfa5ac8a6f84480042fd94260dcfe6",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/page.tsx": {
@@ -2130,8 +2130,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts": {
-    "mtime": 1789401960.9427783,
-    "seen": 1789406225.3421829,
+    "mtime": 1789406677.458432,
+    "seen": 1789406926.2636302,
     "ast_hash": "3e03c6a747250b737cd98c8bbb56e1f7",
     "semantic_hash": ""
   },
@@ -2142,8 +2142,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/templates/route.ts": {
-    "mtime": 1789401960.9429035,
-    "seen": 1789406225.3421838,
+    "mtime": 1789406677.4585571,
+    "seen": 1789406926.263631,
     "ast_hash": "f3bbbceca14ae5f78ebb2d7c1d62876a",
     "semantic_hash": ""
   },
@@ -2154,9 +2154,9 @@
     "semantic_hash": "a08c52a2518628885c4f03043a48cb8c"
   },
   "app/[lang]/settings/inventory/page.tsx": {
-    "mtime": 1788929043.9905696,
-    "seen": 1789406225.342185,
-    "ast_hash": "5a8e8e057e7d1f2ad149faa0f9d46e57",
+    "mtime": 1789407233.936268,
+    "seen": 1789407255.699946,
+    "ast_hash": "9fa71e9d4ad07cc8d203bc6a38d07d9d",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/shopify/page.tsx": {
@@ -2706,8 +2706,8 @@
     "semantic_hash": ""
   },
   "app/api/results/[id]/assign/route.ts": {
-    "mtime": 1789401960.9437048,
-    "seen": 1789406225.342266,
+    "mtime": 1789406677.4592555,
+    "seen": 1789406926.2637188,
     "ast_hash": "a212aff9cf87fc0224c017399bd6715f",
     "semantic_hash": ""
   },
@@ -2736,8 +2736,8 @@
     "semantic_hash": ""
   },
   "app/api/results/hold/route.ts": {
-    "mtime": 1789401960.9438465,
-    "seen": 1789406225.34227,
+    "mtime": 1789406677.4594026,
+    "seen": 1789406926.263723,
     "ast_hash": "d2719d85268db765c4f90caa7a48512e",
     "semantic_hash": ""
   },
@@ -3264,8 +3264,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/[card]/page.tsx": {
-    "mtime": 1789401960.942108,
-    "seen": 1789406225.3421812,
+    "mtime": 1789406677.4581509,
+    "seen": 1789406926.263628,
     "ast_hash": "68fd1d4bf548ed5b32509722581cd7d9",
     "semantic_hash": ""
   },
@@ -3276,8 +3276,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/unpromoted/route.ts": {
-    "mtime": 1789401960.943025,
-    "seen": 1789406225.3421838,
+    "mtime": 1789406677.458678,
+    "seen": 1789406926.2636318,
     "ast_hash": "163a077e534fe34441a2bab49678e078",
     "semantic_hash": ""
   },
@@ -3480,14 +3480,14 @@
     "semantic_hash": ""
   },
   "app/api/mp-config/assist/context/route.ts": {
-    "mtime": 1789401960.9434686,
-    "seen": 1789406225.342252,
+    "mtime": 1789406677.4590113,
+    "seen": 1789406926.263707,
     "ast_hash": "24e5ddc074ac2ea6638cfda05721b481",
     "semantic_hash": ""
   },
   "app/api/mp-config/assist/route.ts": {
-    "mtime": 1789401960.943577,
-    "seen": 1789406225.342253,
+    "mtime": 1789406677.459115,
+    "seen": 1789406926.2637079,
     "ast_hash": "6fd25e5451e51a870a52a1955efd5d91",
     "semantic_hash": ""
   },
@@ -4578,8 +4578,8 @@
     "semantic_hash": ""
   },
   "components/spatial/bolster-compartment-list.tsx": {
-    "mtime": 1789406207.8908796,
-    "seen": 1789406225.342413,
+    "mtime": 1789406677.4595306,
+    "seen": 1789406926.263861,
     "ast_hash": "0ce9ae17ae742bb5da09efc1019e7923",
     "semantic_hash": ""
   },
@@ -4614,8 +4614,8 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1789406207.8918908,
-    "seen": 1789406225.342419,
+    "mtime": 1789406677.4598198,
+    "seen": 1789406926.2638662,
     "ast_hash": "45232c2dfe5a831e256ff31d03aaccff",
     "semantic_hash": ""
   },
@@ -4968,20 +4968,20 @@
     "semantic_hash": ""
   },
   "components/ui/sunburst-menu-layout.ts": {
-    "mtime": 1789406207.8924022,
-    "seen": 1789406225.3424551,
+    "mtime": 1789406677.4599485,
+    "seen": 1789406926.2638972,
     "ast_hash": "6575dd97e4beddb5679964356cd00332",
     "semantic_hash": ""
   },
   "components/ui/sunburst-menu.tsx": {
-    "mtime": 1789406207.8927445,
-    "seen": 1789406225.342456,
+    "mtime": 1789406677.4601722,
+    "seen": 1789406926.2638972,
     "ast_hash": "a7fb1478c1092c5266b52ced10fa9850",
     "semantic_hash": ""
   },
   "components/ui/sunburst-responsive.check.ts": {
-    "mtime": 1789406207.8939166,
-    "seen": 1789406225.342456,
+    "mtime": 1789406677.46034,
+    "seen": 1789406926.2638981,
     "ast_hash": "cb4535e927e48f5a0fb1d55ddac2e81f",
     "semantic_hash": ""
   },
@@ -5442,8 +5442,8 @@
     "semantic_hash": ""
   },
   "lib/configurator/staff-assist.ts": {
-    "mtime": 1789401960.944108,
-    "seen": 1789406225.3425379,
+    "mtime": 1789406677.4789152,
+    "seen": 1789406926.263975,
     "ast_hash": "30610f775da9738bf5297fa2e39027d3",
     "semantic_hash": ""
   },
@@ -5652,8 +5652,8 @@
     "semantic_hash": ""
   },
   "lib/results/__tests__/filling-snapshot.test.ts": {
-    "mtime": 1789401960.9442213,
-    "seen": 1789406225.342717,
+    "mtime": 1789406677.4790642,
+    "seen": 1789406926.264161,
     "ast_hash": "3f169078cb77f69e5b28d7406c349c1b",
     "semantic_hash": ""
   },
@@ -6108,8 +6108,8 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/core.ts": {
-    "mtime": 1789401960.944331,
-    "seen": 1789406225.342797,
+    "mtime": 1789406677.479276,
+    "seen": 1789406926.264255,
     "ast_hash": "92272d541332e11785a61d43a6ee9cc9",
     "semantic_hash": ""
   },
@@ -8220,8 +8220,8 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1789401960.9418569,
-    "seen": 1789406225.343116,
+    "mtime": 1789406677.4576685,
+    "seen": 1789406926.264578,
     "ast_hash": "d97f765ffa47baa3644b6e129b099c64",
     "semantic_hash": ""
   },
@@ -9768,9 +9768,9 @@
     "semantic_hash": ""
   },
   "scripts/bundle-budget.json": {
-    "mtime": 1789284139.4502218,
-    "seen": 1789406225.342817,
-    "ast_hash": "6ffc47588ea82de2422d47f19b58a789",
+    "mtime": 1789406677.4794908,
+    "seen": 1789406926.264278,
+    "ast_hash": "d8d04fa9f86023bf9a9c3536ffab238c",
     "semantic_hash": ""
   },
   "scripts/bundle-budget.mjs": {
@@ -9846,8 +9846,8 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/results/[id]/result-detail-client.tsx": {
-    "mtime": 1789401960.943207,
-    "seen": 1789406225.3422039,
+    "mtime": 1789406677.458869,
+    "seen": 1789406926.263654,
     "ast_hash": "b5eb2e59dcbc3d2726465221d7205459",
     "semantic_hash": ""
   },
@@ -10644,8 +10644,8 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-editor.tsx": {
-    "mtime": 1789406207.89139,
-    "seen": 1789406225.342417,
+    "mtime": 1789406677.459694,
+    "seen": 1789406926.263864,
     "ast_hash": "e770bbe422ece9a44f193bbf4ad9d5d2",
     "semantic_hash": ""
   },
@@ -11364,21 +11364,33 @@
     "semantic_hash": ""
   },
   "components/spatial/insert-order-list.tsx": {
-    "mtime": 1789401844.9810467,
-    "seen": 1789406225.3424141,
+    "mtime": 1789406677.4596016,
+    "seen": 1789406926.263861,
     "ast_hash": "cd06a0a5bc840a5610e2bcbabeb6b1df",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/insert-order.test.ts": {
-    "mtime": 1789401854.5045712,
-    "seen": 1789406225.3427908,
+    "mtime": 1789406677.4791558,
+    "seen": 1789406926.264249,
     "ast_hash": "0de2f5e51e07ae647a2b18e73d428872",
     "semantic_hash": ""
   },
   "supabase/migrations/20260915000000_filling_placement_insert_order.sql": {
-    "mtime": 1789401831.6981833,
-    "seen": 1789406225.3429089,
+    "mtime": 1789406677.479574,
+    "seen": 1789406926.26437,
     "ast_hash": "09bbeca733934ece48b03f01b959a91d",
+    "semantic_hash": ""
+  },
+  "lib/inventory/__tests__/alteration-stock.test.ts": {
+    "mtime": 1789407156.2354317,
+    "seen": 1789407255.700403,
+    "ast_hash": "d126f336a370bf0c4058a89090313e32",
+    "semantic_hash": ""
+  },
+  "lib/inventory/alteration-stock.ts": {
+    "mtime": 1789407180.799032,
+    "seen": 1789407255.700404,
+    "ast_hash": "8ba52c8ac6068549b9c4d4858301bc44",
     "semantic_hash": ""
   }
 }

@@ -10,6 +10,7 @@ import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
 import { shopifyListPaidOrders } from '@/lib/shopify/orders'
 import { resolveShopifyQueueLineItemId } from '@/lib/shopify/queue-line-item-id'
 import { aggregateSignedQuantities, combineTemplateSaleLines } from '@/lib/inventory/template-sale-lines'
+import { alterationBaseId, assertConvertible, stockInRows, type StockItem } from '@/lib/inventory/alteration-stock'
 import { reResolveShopifyLineCosts } from '@/lib/shopify/order-mirror-ingest'
 
 function scheduleMirrorReResolve(variantIds: number[]) {
@@ -152,33 +153,6 @@ const LinkBolsterMappingSchema = z.object({
   templateId: z.number().int().positive().nullable().optional(),
 })
 
-async function resolveEffectiveStockItemIds(admin: ReturnType<typeof supabaseAdmin>, itemIds: number[]) {
-  const unique = Array.from(new Set(itemIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0)))
-  const out = new Map<number, number>()
-  if (!unique.length) return out
-
-  const { data, error } = await admin
-    .from('items')
-    .select('id,category,alteration_of_item_id')
-    .in('id', unique)
-  if (error) throw new Error(error.message)
-
-  ;(data ?? []).forEach((r: { id: number | string; category: string | null; alteration_of_item_id?: number | string | null }) => {
-    const id = Number(r.id)
-    if (!Number.isFinite(id) || id <= 0) return
-    const cat = String(r.category ?? '').trim().toLowerCase()
-    const baseRaw = r.alteration_of_item_id === null || r.alteration_of_item_id === undefined ? null : Number(r.alteration_of_item_id)
-    if (cat === 'filling' && baseRaw && Number.isFinite(baseRaw) && baseRaw > 0) out.set(id, baseRaw)
-    else out.set(id, id)
-  })
-
-  // Defensive default: identity mapping.
-  unique.forEach((id) => {
-    if (!out.has(id)) out.set(id, id)
-  })
-  return out
-}
-
 type ShopifyCommitMeta = {
   shopify_queue_id: number
   shopify_order_id?: number
@@ -207,10 +181,8 @@ async function sellPartForShopifyCommit(
 ) {
   if (await hasShopifyQueueInventoryDeduction(admin, input.shopify_queue_id)) return { skipped: true as const }
 
-  const effectiveById = await resolveEffectiveStockItemIds(admin, [input.itemId])
-  const effectiveId = effectiveById.get(input.itemId) ?? input.itemId
   const { error } = await admin.from('inventory_transactions').insert({
-    item_id: effectiveId,
+    item_id: input.itemId,
     quantity_signed: -input.quantity,
     reason: 'sale',
     metadata: shopifyCommitMetadata(input),
@@ -240,14 +212,11 @@ async function sellFromTemplateForShopifyCommit(
   if (lErr) throw new Error(lErr.message)
   if (!lines?.length) throw new Error('Template has no lines')
 
-  const ids = lines.map((l: { item_id: number | string }) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
-  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
   const aggregated = aggregateSignedQuantities(
-    lines.map((l: { item_id: number | string; quantity: number | string }) => {
-      const originalId = Number(l.item_id)
-      const effectiveId = effectiveById.get(originalId) ?? originalId
-      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * input.quantity }
-    }),
+    lines.map((l: { item_id: number | string; quantity: number | string }) => ({
+      item_id: Number(l.item_id),
+      quantity_signed: -1 * Number(l.quantity) * input.quantity,
+    })),
   )
   const txns = aggregated.map((t) => ({
     ...t,
@@ -272,14 +241,8 @@ async function sellFromReplaceLinesForShopifyCommit(
   if (await hasShopifyQueueInventoryDeduction(admin, input.shopify_queue_id)) return { skipped: true as const }
   if (!input.lines.length) throw new Error('Replace lines required')
 
-  const ids = input.lines.map((l) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
-  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
   const aggregated = aggregateSignedQuantities(
-    input.lines.map((l) => {
-      const originalId = Number(l.item_id)
-      const effectiveId = effectiveById.get(originalId) ?? originalId
-      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * input.quantity }
-    }),
+    input.lines.map((l) => ({ item_id: Number(l.item_id), quantity_signed: -1 * Number(l.quantity) * input.quantity })),
   )
   const txns = aggregated.map((t) => ({
     ...t,
@@ -308,14 +271,11 @@ export async function sellPillow(input: z.infer<typeof SellPillowSchema>) {
 
   if (!lines?.length) throw new Error('No BOM configured for product')
 
-  const ids = lines.map((l: { item_id: number | string }) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
-  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
   const aggregated = aggregateSignedQuantities(
-    lines.map((l: { item_id: number | string; quantity: number | string }) => {
-      const originalId = Number(l.item_id)
-      const effectiveId = effectiveById.get(originalId) ?? originalId
-      return { item_id: effectiveId, quantity_signed: -1 * Number(l.quantity) * parsed.quantity }
-    }),
+    lines.map((l: { item_id: number | string; quantity: number | string }) => ({
+      item_id: Number(l.item_id),
+      quantity_signed: -1 * Number(l.quantity) * parsed.quantity,
+    })),
   )
   const txns = aggregated.map((t) => ({ ...t, reason: 'sale' as const }))
   const { error: insErr } = await admin.from('inventory_transactions').insert(txns)
@@ -327,10 +287,8 @@ export async function sellPart(input: z.infer<typeof ItemQtySchema>) {
   await assertAdmin('inventory')
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
-  const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
-  const effectiveId = effectiveById.get(parsed.itemId) ?? parsed.itemId
   const { error } = await admin.from('inventory_transactions').insert({
-    item_id: effectiveId,
+    item_id: parsed.itemId,
     quantity_signed: -parsed.quantity,
     reason: 'sale',
   })
@@ -342,16 +300,36 @@ export async function receiveStock(input: z.infer<typeof ItemQtySchema>) {
   await assertAdmin('inventory')
   const parsed = ItemQtySchema.parse(input)
   const admin = supabaseAdmin()
-  const effectiveById = await resolveEffectiveStockItemIds(admin, [parsed.itemId])
-  const effectiveId = effectiveById.get(parsed.itemId) ?? parsed.itemId
+  const { data: item, error: itemErr } = await admin
+    .from('items')
+    .select('id,category,alteration_of_item_id')
+    .eq('id', parsed.itemId)
+    .maybeSingle()
+  if (itemErr) throw new Error(itemErr.message)
+  if (!item) throw new Error('Item not found')
 
-  const { error } = await admin.from('inventory_transactions').insert({
-    item_id: effectiveId,
-    quantity_signed: parsed.quantity,
-    reason: 'receive',
-  })
-  if (error) throw new Error(error.message)
+  await insertStockIn(admin, item, parsed.quantity)
   return { ok: true }
+}
+
+async function onHandOf(admin: ReturnType<typeof supabaseAdmin>, itemId: number) {
+  const { data, error } = await admin.from('inventory_balances').select('on_hand').eq('item_id', itemId).maybeSingle()
+  if (error) throw new Error(error.message)
+  return Number(data?.on_hand ?? 0)
+}
+
+/**
+ * Receiving an altered filling converts it out of its base filling, refusing to
+ * take the base below zero.
+ * ponytail: read-then-insert, so two conversions from the same base at the same
+ * instant can both pass and overdraw it. Move into a Postgres function holding
+ * pg_advisory_xact_lock(base id) if concurrent staff conversions ever happen.
+ */
+async function insertStockIn(admin: ReturnType<typeof supabaseAdmin>, item: StockItem, quantity: number) {
+  const baseId = alterationBaseId(item)
+  const baseOnHand = baseId === null ? 0 : await onHandOf(admin, baseId)
+  const { error } = await admin.from('inventory_transactions').insert(stockInRows(item, quantity, baseOnHand))
+  if (error) throw new Error(error.message)
 }
 
 export async function setThreshold(itemId: number, minLevel: number) {
@@ -386,14 +364,8 @@ export async function sellBolster(input: z.infer<typeof SellBolsterSchema>) {
     effectiveLines = prelim.map((r) => ({ item_id: r.id, quantity: 1 }))
   }
 
-  const ids = effectiveLines.map((l) => Number(l.item_id)).filter((id) => Number.isFinite(id) && id > 0)
-  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
   const aggregated = aggregateSignedQuantities(
-    effectiveLines.map((l) => {
-      const originalId = Number(l.item_id)
-      const effectiveId = effectiveById.get(originalId) ?? originalId
-      return { item_id: effectiveId, quantity_signed: -1 * parsed.quantity * Number(l.quantity) }
-    }),
+    effectiveLines.map((l) => ({ item_id: Number(l.item_id), quantity_signed: -1 * parsed.quantity * Number(l.quantity) })),
   )
   const txns = aggregated.map((t) => ({ ...t, reason: 'sale' as const }))
 
@@ -449,15 +421,7 @@ export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSch
     parsed.quantity,
   )
 
-  const ids = combined.map((l) => l.item_id).filter((id) => Number.isFinite(id) && id > 0)
-  const effectiveById = await resolveEffectiveStockItemIds(admin, ids)
-  const aggregated = aggregateSignedQuantities(
-    combined.map((l) => ({
-      item_id: effectiveById.get(l.item_id) ?? l.item_id,
-      quantity_signed: l.quantity_signed,
-    })),
-  )
-  const txns = aggregated.map((t) => ({
+  const txns = combined.map((t) => ({
     ...t,
     reason: 'sale' as const,
     metadata: {
@@ -829,16 +793,6 @@ export async function commitShopifySales(input: z.infer<typeof CommitShopifySale
     })
   }
 
-  // Altered fillings stock out from their base item — include both ids for BOM/part matching.
-  const depletedRaw = Array.from(depletedItemIds)
-  if (depletedRaw.length) {
-    const effectiveById = await resolveEffectiveStockItemIds(admin, depletedRaw)
-    for (const [original, effective] of effectiveById) {
-      depletedItemIds.add(original)
-      depletedItemIds.add(effective)
-    }
-  }
-
   // Supabase is source of truth — return immediately. Shopify is a background mirror.
   const depleted = Array.from(depletedItemIds)
   const variants = Array.from(alwaysIncludeVariantIds)
@@ -963,6 +917,12 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
     if (!baseSize || !desiredSize || baseSize !== desiredSize) {
       throw new Error('Alteration base must have the same size')
     }
+
+    // Initial stock converts out of the base — check before creating the item so a
+    // refusal doesn't leave a stockless item behind.
+    if (parsed.initialStock > 0) {
+      assertConvertible(parsed.initialStock, await onHandOf(admin, parsed.alterationOfItemId))
+    }
   }
 
   const toCurrencyString = (value: number | undefined) => {
@@ -1028,12 +988,11 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
         }
 
         if (parsed.initialStock > 0) {
-          const { error: stockErr } = await admin.from('inventory_transactions').insert({
-            item_id: revived.id,
-            quantity_signed: parsed.initialStock,
-            reason: 'receive',
-          })
-          if (stockErr) throw new Error(stockErr.message)
+          await insertStockIn(
+            admin,
+            { id: Number(revived.id), category: parsed.category, alteration_of_item_id: parsed.alterationOfItemId ?? null },
+            parsed.initialStock,
+          )
         }
 
         return { ok: true, item: revived }
@@ -1056,12 +1015,11 @@ export async function addInventoryItem(input: z.infer<typeof AddItemSchema>) {
   }
 
   if (parsed.initialStock > 0) {
-    const { error: stockErr } = await admin.from('inventory_transactions').insert({
-      item_id: item.id,
-      quantity_signed: parsed.initialStock,
-      reason: 'receive',
-    })
-    if (stockErr) throw new Error(stockErr.message)
+    await insertStockIn(
+      admin,
+      { id: Number(item.id), category: parsed.category, alteration_of_item_id: parsed.alterationOfItemId ?? null },
+      parsed.initialStock,
+    )
   }
 
   return { ok: true, item }
