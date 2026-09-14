@@ -183,17 +183,8 @@ export default function InventoryPage() {
     const nextProducts = (productsData ?? []) as Product[];
     setProducts(nextProducts);
 
-    // Recompute buildable counts in-app so they match the *effective* stock rules:
-    // altered filling items stock out from their base filling item.
-    const itemById = new Map<number, Item>();
-    nextItems.forEach((it) => itemById.set(Number(it.id), it));
-    const getEffectiveOnHand = (itemId: number) => {
-      const it = itemById.get(Number(itemId));
-      if (it?.category === "filling" && it.alteration_of_item_id) {
-        return Number(nextBalances[Number(it.alteration_of_item_id)] ?? 0);
-      }
-      return Number(nextBalances[Number(itemId)] ?? 0);
-    };
+    // Altered fillings hold their own stock (converted from the base on receive).
+    const getEffectiveOnHand = (itemId: number) => Number(nextBalances[Number(itemId)] ?? 0);
 
     type BomRow = { product_id: number | string; item_id: number | string; quantity: number | string };
     const linesByProduct = new Map<number, Array<{ item_id: number; quantity: number }>>();
@@ -329,13 +320,7 @@ export default function InventoryPage() {
     return map;
   }, [items]);
 
-  const getEffectiveOnHand = useCallback((itemId: number) => {
-    const it = itemsById.get(Number(itemId));
-    if (it?.category === "filling" && it.alteration_of_item_id) {
-      return Number(balances[Number(it.alteration_of_item_id)] ?? 0);
-    }
-    return Number(balances[Number(itemId)] ?? 0);
-  }, [balances, itemsById]);
+  const getEffectiveOnHand = useCallback((itemId: number) => Number(balances[Number(itemId)] ?? 0), [balances]);
 
   const computeBuildableFromLines = useCallback((lines: Array<{ item_id: number; quantity: number }>) => {
     if (!lines.length) return 0;
@@ -2429,6 +2414,8 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
       setQtyByItem({});
       setOutQtyByItem({});
       onOpenChange(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save stock");
     } finally {
       setSaving(false);
     }
@@ -2437,6 +2424,16 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
   const hasPositive =
     Object.values(qtyByItem).some(v => (parseInt((v || '0'), 10) > 0)) ||
     Object.values(outQtyByItem).some(v => (parseInt((v || '0'), 10) > 0));
+
+  // Stock in on alterations converts out of the base, so sibling alterations
+  // (6D Round + 6D Fold) draw on the same base and are summed here.
+  const convertingByBase = new Map<number, number>();
+  (group?.items ?? []).forEach((it) => {
+    const qty = parseInt(qtyByItem[it.id] || "0", 10);
+    if (it.category !== "filling" || !it.alteration_of_item_id || !(qty > 0)) return;
+    convertingByBase.set(it.alteration_of_item_id, (convertingByBase.get(it.alteration_of_item_id) ?? 0) + qty);
+  });
+  const overdrawsBase = Array.from(convertingByBase).some(([baseId, qty]) => qty > (balances[baseId] ?? 0));
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -2476,11 +2473,19 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                       const labelParts = getInventoryItemLabelParts(variant);
                       const description = getInventoryItemDisplayLabel(variant);
                       const defaultRenameValue = variant.name?.trim() ? variant.name.trim() : labelParts.variant;
-                      const balanceId =
-                        variant.category === "filling" && variant.alteration_of_item_id
-                          ? variant.alteration_of_item_id
-                          : variant.id;
-                      const onHand = balances[balanceId] ?? 0;
+                      const onHand = balances[variant.id] ?? 0;
+                      const baseId =
+                        variant.category === "filling" && variant.alteration_of_item_id ? variant.alteration_of_item_id : null;
+                      const baseItem = baseId ? group?.items.find((it) => it.id === baseId) : undefined;
+                      const baseName = baseItem ? getInventoryItemDisplayLabel(baseItem) : "the base filling";
+                      const baseOnHand = baseId ? (balances[baseId] ?? 0) : 0;
+                      const converting = baseId ? (convertingByBase.get(baseId) ?? 0) : 0;
+                      const baseShort = converting > baseOnHand;
+                      const baseHint = baseShort
+                        ? `Only ${Math.max(0, baseOnHand)} of ${baseName} on hand — can't convert ${converting}.`
+                        : converting > 0
+                          ? `Takes ${converting} out of ${baseName} (${baseOnHand} → ${baseOnHand - converting}).`
+                          : `Made from ${baseName} (${baseOnHand} on hand). Stock in converts from it.`;
                       const isRenaming = renamingId === variant.id;
                       return (
                         <div key={variant.id} className="group relative rounded border p-3">
@@ -2572,30 +2577,34 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
                               )}
                             </div>
                           </div>
-                          {variant.category === "filling" && variant.alteration_of_item_id ? (
-                            <div className="mt-3 text-xs text-muted-foreground">
-                              Stock is tracked on the base filling variant.
+                          <div className="mt-3 flex items-center gap-3 pr-12">
+                            <Input
+                              type="number"
+                              placeholder="In"
+                              aria-label={`Stock in for ${description}`}
+                              min={0}
+                              value={qtyByItem[variant.id] ?? ''}
+                              onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                              className="min-w-0 flex-1 sm:w-28 sm:flex-none"
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Out"
+                              aria-label={`Stock out for ${description}`}
+                              min={0}
+                              value={outQtyByItem[variant.id] ?? ''}
+                              onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
+                              className="min-w-0 flex-1 sm:w-28 sm:flex-none"
+                            />
+                          </div>
+                          {baseId ? (
+                            <div
+                              role={baseShort ? "alert" : undefined}
+                              className={`mt-2 pr-12 text-xs ${baseShort ? "text-destructive" : "text-muted-foreground"}`}
+                            >
+                              {baseHint}
                             </div>
-                          ) : (
-                            <div className="mt-3 flex items-center gap-3 pr-12">
-                              <Input
-                                type="number"
-                                placeholder="In"
-                                min={0}
-                                value={qtyByItem[variant.id] ?? ''}
-                                onChange={(e) => setQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                                className="min-w-0 flex-1 sm:w-28 sm:flex-none"
-                              />
-                              <Input
-                                type="number"
-                                placeholder="Out"
-                                min={0}
-                                value={outQtyByItem[variant.id] ?? ''}
-                                onChange={(e) => setOutQtyByItem(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                                className="min-w-0 flex-1 sm:w-28 sm:flex-none"
-                              />
-                            </div>
-                          )}
+                          ) : null}
                           <button
                             type="button"
                             className="absolute bottom-3 right-3 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-background/90 p-1 text-muted-foreground shadow-sm transition hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
@@ -2627,7 +2636,7 @@ function PartDrawer({ open, onOpenChange, group, balances, onReceive, onSell, on
         </div>
         <SheetFooter className="max-md:sticky max-md:bottom-0 max-md:z-10 max-md:border-t max-md:bg-background/95 max-md:backdrop-blur">
           <div className="flex w-full gap-2">
-            <Button onClick={onSaveAll} disabled={!hasPositive || saving} className="flex-1">
+            <Button onClick={onSaveAll} disabled={!hasPositive || overdrawsBase || saving} className="flex-1">
               {saving ? 'Saving…' : 'Save'}
             </Button>
           </div>
