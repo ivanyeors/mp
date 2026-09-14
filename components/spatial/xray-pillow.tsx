@@ -796,13 +796,17 @@ export function XrayPillow({
           {/* Add-filling picker blooms from the centre of the cell you clicked —
               the whole cell is the trigger, so the menu has none of its own.
               Phones: centred on the stage instead, so an outer column's bloom
-              cannot run off the screen edge. */}
+              cannot run off the screen edge — and sized to the whole stage,
+              not the dive column, with thicker rings and a 44px centre
+              trigger so the wedges are thumb-sized. */}
           {openSub && (
             <div
               className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
               style={{
                 ...(isMobile ? { left: "50%", top: "50%" } : cellCenter(openSub)),
-                width: `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
+                width: isMobile
+                  ? "100%"
+                  : `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
                 pointerEvents: "auto",
               }}
             >
@@ -810,9 +814,9 @@ export function XrayPillow({
                 open
                 root={fillingTree}
                 display="text"
-                size={isMobile ? 240 : 220}
-                ringWidth={40}
-                holeRadius={18}
+                size={isMobile ? 280 : 220}
+                ringWidth={isMobile ? 48 : 40}
+                holeRadius={isMobile ? 26 : 18}
                 centerIcon={Plus}
                 ariaLabel={
                   openLayer === null

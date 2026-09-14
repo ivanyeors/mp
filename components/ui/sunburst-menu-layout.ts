@@ -29,12 +29,15 @@ export type LayoutOpts = {
   cy: number;
   holeRadius: number; // center gap (trigger button lives here)
   ringWidth: number;
+  /** px per label character; defaults to the 10px desktop font. Phones render
+   *  12px labels, so they pass a wider glyph to keep hugged siblings readable. */
+  labelCharW?: number;
 };
 
 const TAU = Math.PI * 2;
 const EPS = 1e-6;
 
-const CHAR_W = 6; // px per character at the 10px label font
+const CHAR_W = 6; // px per character at the 10px label font (default)
 const LABEL_PAD = 6; // px breathing room each side of a label
 const MIN_CONTENT_W = 20; // px floor so an icon-only / 1-char wedge stays tappable
 const MAX_HUG = TAU / 4; // a hugged sibling never claims more than a quarter turn
@@ -46,8 +49,8 @@ function polar(cx: number, cy: number, r: number, a: number): [number, number] {
 }
 
 /** Angular width (radians) a collapsed sibling needs to just hug its label at radius `midR`. */
-function hugSpan(label: string, midR: number): number {
-  const w = Math.max(MIN_CONTENT_W, label.length * CHAR_W) + 2 * LABEL_PAD;
+function hugSpan(label: string, midR: number, charW: number): number {
+  const w = Math.max(MIN_CONTENT_W, label.length * charW) + 2 * LABEL_PAD;
   return Math.min(MAX_HUG, w / midR);
 }
 
@@ -135,6 +138,7 @@ export function buildArcs(
   opts: LayoutOpts,
 ): ArcSpec[] {
   const out: ArcSpec[] = [];
+  const charW = opts.labelCharW ?? CHAR_W;
 
   const walk = (
     nodes: SunburstNode[],
@@ -161,7 +165,7 @@ export function buildArcs(
       let sumHug = 0;
       nodes.forEach((nd, i) => {
         if (i === expandedIdx) return;
-        spans[i] = hugSpan(nd.label, midR);
+        spans[i] = hugSpan(nd.label, midR, charW);
         sumHug += spans[i]!;
       });
       const maxSiblings = total * (1 - MIN_EXPANDED_FRAC);
