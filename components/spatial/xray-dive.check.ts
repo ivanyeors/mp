@@ -43,13 +43,84 @@ assert.equal(ringSelfIntersects([[0, 0], [10, 0], [10, 10], [0, 10]]), false, "s
 
 // --- Renderer wiring: dive edits reuse the session-mix functions --------------
 const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray-pillow.tsx"), "utf8");
+const LAYER_ICON_BUTTON = renderer.match(/const LAYER_ICON_BUTTON_CLASS =\s*\n?\s*"([^"]*)"/)?.[1] ?? "";
 assert.match(renderer, /from "@\/lib\/configurator\/staff-assist"/, "edits go through the shared lib");
 assert.match(renderer, /addPiece\(placements, cell, itemId, layer\)/, "add uses addPiece (layer + cap + slot rules)");
 assert.match(renderer, /removePiece\(placements, cell, lastSlot\)/, "remove uses removePiece (collated chip → last slot)");
 assert.match(renderer, /setCellArrangement\(placements, cell, mode\)/, "arrangement toggle writes through the shared lib");
 assert.match(renderer, /moveLayer\(placements, cell, from, to\)/, "drag reorders layers through the lib");
 assert.match(renderer, /removeLayer\(placements, cell, depth\)/, "layer delete goes through the lib");
-assert.match(renderer, /<DragDropProvider onDragEnd=\{onLayerDragEnd\}>/, "layer rows are drag-sortable");
+assert.match(renderer, /onDragEnd=\{layerDragEnd\(cell, layers\)\}/, "layer rows are drag-sortable");
+// Escape belongs to an in-flight drag (dnd-kit cancels it); ending the dive
+// under one tears the sortable tree down mid-commit.
+assert.match(renderer, /onDragStart=\{\(\) => \(draggingRef\.current = true\)\}/, "the drag window is tracked");
+assert.match(renderer, /e\.key === "Escape" && !draggingRef\.current/, "Escape cancels the drag, not the dive");
+assert.match(renderer, /window\.addEventListener\("keydown", onKey, true\)/, "the Escape guard runs before dnd-kit clears the drag flag");
+// This editor's own toasts are portalled out of the root, so a click on one
+// (Mirror's Undo) must not read as "outside" and end the dive.
+assert.match(renderer, /closest\("\[data-sonner-toaster\]"\)/, "a click on our own toast does not end the dive");
+// --- Layer drag: the three ways this reorder silently broke the panel --------
+// 1. The destination is the PROJECTED index, not `operation.target`. dnd-kit
+//    calls setDropTarget(source.id) for exactly the drags that moved a row, so a
+//    handler reading `target` and bailing on source === target wrote nothing on
+//    every real reorder — the rows had already slid, the pouches had not.
+assert.match(renderer, /layerDragDestination\(layers, event\)/, "drop lands via the pure, tested adapter");
+assert.doesNotMatch(renderer, /src === tgt/, "the target-is-the-destination trap is gone, not just unused");
+const layerDrag = readFileSync(join(process.cwd(), "lib", "dnd", "layer-drag.ts"), "utf8");
+assert.match(layerDrag, /sortableMove\(layers, event, layerSortableId\)/, "the adapter delegates to the shared sortableMove");
+// 2. One provider per CELL. `source.index` is an index within the provider's
+//    group, so a provider spanning front/middle/back hands sortableMove an index
+//    from the wrong list — and lets a row be dragged where it cannot move.
+assert.equal(renderer.match(/<DragDropProvider/g)?.length, 2, "one provider per cell (desktop panel + phone dock), never one per section");
+assert.doesNotMatch(renderer, /layerKeys/, "the flat cross-cell index list is gone");
+// 3. Identity ids, not positional ones: a `L{depth}` id keeps the same index
+//    after the write, so dnd-kit animates every successful drop back to the slot
+//    it came from. The layer's lowest slot travels with it instead.
+assert.match(
+  layerDrag,
+  /export const layerSortableId = \(layer: readonly PillowPlacement\[\]\) => `L\$\{layer\[0\]\?\.slot \?\? 0\}`/,
+  "the sortable id is the layer's identity (lowest slot), not its depth",
+);
+assert.match(renderer, /id=\{layerSortableId\(layer\)\}/, "rows carry the identity id");
+
+// --- Drag affordance: last in the row, and big enough to grab ----------------
+// The grip is the only control here that is dragged rather than tapped, and a
+// grab that misses scrolls the page — so it sits at the row's thumb end and gets
+// its own larger scale (44px on a phone) instead of the read-mostly chip sizing.
+const layerRow = renderer.slice(renderer.indexOf("function LayerRow"), renderer.indexOf("export function XrayPillow"));
+assert.ok(
+  layerRow.indexOf("GripVertical") > layerRow.indexOf("Trash2"),
+  "the grip is the LAST control in a layer row",
+);
+assert.match(LAYER_ICON_BUTTON, /max-md:size-11/, "phone layer buttons hit the 44px minimum target");
+assert.doesNotMatch(layerRow, /CHIP_ICON_BUTTON_CLASS|CHIP_CLASS/, "layer rows use their own larger scale, not the chip one");
+assert.match(layerRow, /touch-none/, "a drag on the grip must not scroll the page instead");
+// The panel is an abspos box in a fixed aspect-ratio, overflow-hidden frame: a
+// wrapping row grows it vertically until its top controls are clipped off the
+// frame (3 layers x 2 pieces, well under every cap). Desktop truncates instead.
+assert.match(layerRow, /max-md:flex-wrap/, "only the phone dock wraps a layer row");
+assert.doesNotMatch(layerRow, /(?<!max-md:)flex-wrap/, "no unconditional flex-wrap on a layer row");
+assert.match(renderer, /width: divedColumnWidth/, "the panel gets a definite width, not the gap to the frame edge");
+assert.match(renderer, /if \(b === 0\) return \{ style: \{ \.\.\.base, top: "1%" \}/, "the front panel grows down, not off the frame");
+assert.match(renderer, /bottom: "1%"/, "the back panel grows up, not off the frame");
+// --- Mirror: a left ↔ right CTA, never offered on center ---------------------
+// Mirroring is across the sagittal plane and `center` sits ON it, so the CTA is
+// absent there rather than disabled — there is nothing staff could do to it.
+assert.match(renderer, /mirrorSection\(before, section\)/, "mirror writes through the shared lib");
+assert.match(renderer, /const to = mirrorTarget\(section\);\s*\n\s*if \(to === null\) return null;/, "center is offered no Mirror CTA at all");
+assert.match(renderer, /`Mirror to \$\{to\}`/, "the direction is IN the label — it replaces the whole far side");
+assert.match(renderer, /label: "Undo"/, "a bulk overwrite carries an Undo");
+assert.match(renderer, /if \(empty\) return;/, "an empty source cannot silently clear the far side");
+// `disabled` drops the button from the tab order, taking the aria-label that
+// explains WHY it does nothing with it.
+assert.match(renderer, /aria-disabled=\{empty\}/, "the disabled reason stays keyboard-reachable");
+// The toast outlives the click, so Undo must be an inverse, not a snapshot.
+assert.match(renderer, /if \(placementsRef\.current !== next\)/, "Undo no-ops once the mix changed after the mirror");
+// Every cell panel is in the DIVED column, so the section bar parks elsewhere.
+assert.match(renderer, /COL_X\[mirrorIdx\]/, "the section bar parks off the dived column, where no panel can reach it");
+// Both surfaces, one builder: desktop (compact, on-canvas) + phone dock header.
+assert.equal(renderer.match(/mirrorButton\(dived, (true|false)\)/g)?.length, 2, "mirror CTA mounted on desktop AND the phone dock");
+assert.match(renderer, /data-xray-dive-section-bar/, "desktop gets section-level chrome for it, inside the framed box");
 assert.doesNotMatch(renderer, /setPieceRow|ChevronUp|ChevronDown/, "chevrons gone — drag replaces the move buttons");
 assert.match(renderer, /toast\.error\(result\.error\)/, "cap/inventory errors surface on-canvas");
 assert.match(renderer, /Cell full \(max \$\{MAX_PIECES_PER_CELL\}\)/, "cap state visible on-canvas, sourced from the constant");
@@ -89,7 +160,7 @@ assert.doesNotMatch(
   /externalSide|connectors|labelRefs|assignRef/,
   "gutter + leader-line + label-measurement machinery deleted, not just unused",
 );
-assert.match(renderer, /\.\.\.cellCenter\(subSection\)/, "the control panel is anchored to the cell centre");
+assert.match(renderer, /\.\.\.cellAnchor\(subSection\)\.style/, "the control panel is anchored to its own cell");
 // Mounted on piece count, NOT hover/focus: focusin/focusout are discrete in
 // React and flush synchronously, so a focus-gated panel would unmount under the
 // very Tab that reaches it and the toggle would be keyboard-unreachable.
