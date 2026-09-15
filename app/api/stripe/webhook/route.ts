@@ -110,7 +110,9 @@ export async function POST(req: Request) {
                   topup_paid_at: new Date().toISOString(),
                 })
                 .eq("id", resultId)
-                .eq("status", "assigned");
+                // `accepted` too: accept holds that status while it settles, and a
+                // stamp dropped there is lost if that attempt fails and hands back.
+                .in("status", ["assigned", "accepted"]);
             }
             break;
           }
