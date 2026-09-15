@@ -233,6 +233,7 @@ export async function POST(req: Request) {
     }
 
     const variantByCustomization = new Map<string, string>();
+    const reservedComponents = new Map<number, number>();
     for (const item of customizedItems) {
       const cfg = customizationMap.get(item.customization_id!);
       if (!cfg) {
@@ -248,7 +249,6 @@ export async function POST(req: Request) {
       // must be that sellable's. Otherwise a cheap accessory variant_id carries a
       // full build through checkout. One Variant per customisation, too, since the
       // recomputed price below is stored per customisation.
-      const boundVariant = variantByCustomization.get(item.customization_id!);
       const matchesBuild =
         productType === "pillow"
           ? cfg.pillow_product_id != null &&
@@ -257,7 +257,41 @@ export async function POST(req: Request) {
           : item.product?.product_type === "bolster" &&
             cfg.ecom_product_id != null &&
             item.variant.product_id === cfg.ecom_product_id;
-      if (!matchesBuild || (boundVariant && boundVariant !== item.variant_id)) {
+      if (!matchesBuild) {
+        return NextResponse.json(
+          { error: "Customization does not match this item" },
+          { status: 400 }
+        );
+      }
+
+      // A bolster product carries one Variant per length (`option1`, as the
+      // variant_stock view and inventory deduction read it). The config's length is
+      // what gets priced and built, so the line takes that Variant whatever length
+      // was posted — its title and SKU are what fulfilment reads.
+      if (
+        productType === "bolster" &&
+        item.variant.option1?.toLowerCase() !== cfg.bolster_variant
+      ) {
+        const { data: siblings } = await admin
+          .from("product_variants")
+          .select("*")
+          .eq("product_id", cfg.ecom_product_id)
+          .eq("is_active", true);
+        const lengthVariant = ((siblings ?? []) as ProductVariant[]).find(
+          (v) => v.option1?.toLowerCase() === cfg.bolster_variant
+        );
+        if (!lengthVariant) {
+          return NextResponse.json(
+            { error: "This bolster length is no longer available" },
+            { status: 400 }
+          );
+        }
+        item.variant = lengthVariant;
+        item.variant_id = lengthVariant.id;
+      }
+
+      const boundVariant = variantByCustomization.get(item.customization_id!);
+      if (boundVariant && boundVariant !== item.variant_id) {
         return NextResponse.json(
           { error: "Customization does not match this item" },
           { status: 400 }
@@ -287,7 +321,12 @@ export async function POST(req: Request) {
           : null;
       }
       const quote = key
-        ? await quoteCustomization(admin, key, cfg.config_lines as ConfigLine[])
+        ? await quoteCustomization(
+            admin,
+            key,
+            cfg.config_lines as ConfigLine[],
+            cfg.filling_lines as FillingLine[]
+          )
         : ({ ok: false, error: "Unknown customised product" } as const);
       if (!quote.ok) {
         return NextResponse.json({ error: quote.error }, { status: 400 });
@@ -296,8 +335,12 @@ export async function POST(req: Request) {
       // adds this to `variant.price`, so it is re-based on the Variant: the line then
       // charges exactly the composed subtotal, and Stripe's catalog-Price shortcut
       // (delta 0) fires only when the composed build really costs the shelf price.
+      // The lines are the quote's too, so the order snapshot Staff build from and
+      // inventory deduct from is the build that was priced.
       customizationMap.set(item.customization_id!, {
         ...cfg,
+        config_lines: quote.lines,
+        filling_lines: quote.fillingLines,
         total_addon_price: Number((quote.subtotal - Number(item.variant.price)).toFixed(2)),
       });
 
@@ -305,9 +348,10 @@ export async function POST(req: Request) {
         product_type: productType,
         pillow_product_id: cfg.pillow_product_id ?? undefined,
         bolster_variant: cfg.bolster_variant ?? undefined,
-        filling_lines: cfg.filling_lines as FillingLine[],
-        component_quantities: cfg.config_lines as ConfigLine[],
+        filling_lines: quote.fillingLines,
+        component_quantities: quote.lines,
         orderQuantity: item.quantity,
+        reserved: reservedComponents,
       });
 
       if (!result.valid) {
@@ -316,6 +360,10 @@ export async function POST(req: Request) {
           { error: `Insufficient component stock for customized item: ${shortageNames}` },
           { status: 400 }
         );
+      }
+      // Per item across every customised line, as standard lines are per Variant.
+      for (const [itemId, qty] of result.needed) {
+        reservedComponents.set(itemId, (reservedComponents.get(itemId) ?? 0) + qty);
       }
     }
   }

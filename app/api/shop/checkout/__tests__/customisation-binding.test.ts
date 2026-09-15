@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * A customised checkout line is bound to its build (#170).
  *
  * Real checkout handler, real pricing (`quoteCustomization` → `priceCustomizedBuild`
- * → `priceComposedBuild`) and real Stripe line construction. Only I/O is faked: the
+ * → `priceComposedBuild`), real component stock check and real Stripe line
+ * construction. Only I/O is faked: the
  * Supabase tables, the Costings loader and the Stripe client, so the assertions read
  * the exact `line_items` Stripe would have been sent.
  */
@@ -20,15 +21,28 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined })
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from(table: string) {
-      const result = () => ({ data: h.tables[table] ?? null, error: null });
+      // `in` / `eq` filter list tables on columns the rows carry; single-row tables
+      // (plain objects) are returned as they are.
+      const filters: Array<(row: Record<string, unknown>) => boolean> = [];
+      const filter = (col: string, ok: (v: unknown) => boolean) => {
+        filters.push((row) => !(col in row) || ok(row[col]));
+        return b;
+      };
+      const result = () => {
+        const data = h.tables[table] ?? null;
+        return {
+          data: Array.isArray(data) ? data.filter((r) => filters.every((f) => f(r))) : data,
+          error: null,
+        };
+      };
       const one = () => {
         const { data } = result();
         return Promise.resolve({ data: Array.isArray(data) ? (data[0] ?? null) : data, error: null });
       };
       const b: Record<string, unknown> = {
         select: () => b,
-        in: () => b,
-        eq: () => b,
+        in: (col: string, vals: unknown[]) => filter(col, (v) => vals.map(String).includes(String(v))),
+        eq: (col: string, val: unknown) => filter(col, (v) => String(v) === String(val)),
         ilike: () => b,
         or: () => b,
         order: () => b,
@@ -47,9 +61,6 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 vi.mock("@/lib/results/composed-sellable", () => ({ loadComposedSellable: h.loadComposedSellable }));
-vi.mock("@/lib/shop/customization-inventory", () => ({
-  validateCustomizationConfig: async () => ({ valid: true, shortages: [] }),
-}));
 vi.mock("@/lib/ecommerce/customers", () => ({
   findOrCreateCustomer: async () => ({ id: "cust-1" }),
   findCustomerByEmail: async () => null,
@@ -76,6 +87,7 @@ const PILLOW_VARIANT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1";
 const OTHER_PILLOW_VARIANT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2";
 const ACCESSORY_VARIANT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3";
 const BOLSTER_VARIANT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4";
+const BOLSTER_SHORT_VARIANT = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5";
 const CONFIG = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const SHIPPING = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 
@@ -115,10 +127,41 @@ const variants = [
   }),
   variant(BOLSTER_VARIANT, {
     product_id: BOLSTER_PRODUCT,
+    title: "Long",
+    sku: "MBOLSTER-LONG",
     option1: "long",
     price: 90,
     products: { id: BOLSTER_PRODUCT, slug: "mbolster", product_type: "bolster", content: {} },
   }),
+  variant(BOLSTER_SHORT_VARIANT, {
+    product_id: BOLSTER_PRODUCT,
+    title: "Short",
+    sku: "MBOLSTER-SHORT",
+    option1: "Short",
+    price: 70,
+    products: { id: BOLSTER_PRODUCT, slug: "mbolster", product_type: "bolster", content: {} },
+  }),
+];
+
+const item = (id: number, category: string, name: string, over: Record<string, unknown> = {}) => ({
+  id,
+  category,
+  name,
+  subtype: null,
+  size: "XS",
+  is_active: true,
+  ...over,
+});
+
+/** The catalogue as the database knows it. 7 is a real cover, just not offered at XS. */
+const items = [
+  item(1, "cover", "Satin Cover"),
+  item(42, "pillow_case", "Linen Case"),
+  item(32, "pillow_case", "Fibrecool Case"),
+  item(7, "cover", "Clearance Cover", { size: "XL" }),
+  item(8, "accessory", "Linen Spray", { size: null }),
+  item(5, "filling", "3D Fibre", { subtype: "3D-S" }),
+  item(6, "filling", "6D Fibre (retired)", { subtype: "6D-L", is_active: false }),
 ];
 
 /** Basic XS from Costings: row 170, satin cover 25, linen case 65; Fibrecool case 88. */
@@ -185,9 +228,14 @@ beforeEach(() => {
     variant_stock: [{ variant_id: ACCESSORY_VARIANT, stock_available: 5 }],
     customization_configs: [pillowConfig()],
     pillow_products: { size: "XS", kind: "basic" },
+    items,
+    inventory_balances: items.map((i) => ({ item_id: i.id, on_hand: 100 })),
     item_prices: [
       { item_id: 1, msrp: 25, cost_price: 5 },
+      { item_id: 42, msrp: 65, cost_price: 15 },
       { item_id: 32, msrp: 88, cost_price: 20 },
+      { item_id: 7, msrp: 1, cost_price: 1 },
+      { item_id: 8, msrp: 1, cost_price: 1 },
     ],
     bom_lines: [],
     bolster_bom_lines: [],
@@ -299,6 +347,127 @@ describe("POST /api/shop/checkout — standard stock is checked per Variant", ()
       { variant_id: ACCESSORY_VARIANT, quantity: 2 },
     ]);
     expect(res.status).toBe(200);
+  });
+});
+
+const bolsterConfig = (length: string) =>
+  pillowConfig({
+    product_type: "bolster",
+    pillow_product_id: null,
+    ecom_product_id: BOLSTER_PRODUCT,
+    bolster_variant: length,
+  });
+
+const apply = (body: Record<string, unknown>) =>
+  customize(
+    new Request("https://x.test/api/shop/customize?action=apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ variant_id: PILLOW_VARIANT, pillow_product_id: 7, ...body }),
+    }),
+  );
+
+/** Premium-looking names on a 1-dollar "cover" and a 1-dollar spray posing as the case. */
+const cheapRoleLines = [
+  { item_id: 7, category: "cover", name: "Satin Cover", quantity: 1, is_addon: false, price_delta: 0 },
+  { item_id: 8, category: "case", name: "Linen Case", quantity: 1, is_addon: false, price_delta: 0 },
+];
+
+describe("a customised bolster line takes the Variant of the length that is built", () => {
+  it("records the config's length on the order, whatever length was posted", async () => {
+    h.tables.customization_configs = [bolsterConfig("short")];
+    const res = await post([{ variant_id: BOLSTER_VARIANT, quantity: 1, customization_id: CONFIG }]);
+    expect(res.status).toBe(200);
+    expect(h.loadComposedSellable).toHaveBeenCalledWith(expect.anything(), {
+      productType: "bolster",
+      length: "short",
+    });
+    const [orderItem] = h.inserts.find((i) => i.table === "order_items")!.row as Array<
+      Record<string, unknown>
+    >;
+    expect(orderItem).toMatchObject({
+      variant_id: BOLSTER_SHORT_VARIANT,
+      variant_title: "Short",
+      sku: "MBOLSTER-SHORT",
+      unit_price: COMPOSED,
+    });
+    expect(stripeLines()[0].price_data.unit_amount).toBe(COMPOSED * 100);
+  });
+});
+
+describe("what is priced is what is built", () => {
+  it("apply refuses a cover or case the size does not offer, before saving anything", async () => {
+    const res = await apply({ component_quantities: cheapRoleLines });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/not offered/);
+    expect(h.inserts.filter((i) => i.table === "customization_configs")).toHaveLength(0);
+  });
+
+  it("checkout refuses a stored config whose lines are not a real build", async () => {
+    h.tables.customization_configs = [pillowConfig({ config_lines: cheapRoleLines, total_addon_price: -88 })];
+    const res = await post([{ variant_id: PILLOW_VARIANT, quantity: 1, customization_id: CONFIG }]);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/not offered/);
+    expect(ordersInserted()).toHaveLength(0);
+    expect(h.sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("takes each line's role and name from the database, not the browser", async () => {
+    const res = await apply({
+      component_quantities: [
+        { ...fibrecoolLines[0], name: "Anything" },
+        // The Fibrecool case sent as a "protector" used to price as an 88 add-on.
+        { ...fibrecoolLines[1], category: "protector", name: "Free upgrade" },
+      ],
+      filling_lines: [{ item_id: 5, subtype: "made-up", name: "Gold", quantity: 2 }],
+    });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { total_addon_price: number }).total_addon_price).toBe(COMPOSED - 170);
+    const stored = h.inserts.find((i) => i.table === "customization_configs")!.row as {
+      config_lines: Array<{ name: string; category: string }>;
+      filling_lines: Array<{ name: string; subtype: string }>;
+      summary: string;
+    };
+    expect(stored.config_lines.map((l) => [l.name, l.category])).toEqual([
+      ["Satin Cover", "cover"],
+      ["Fibrecool Case", "case"],
+    ]);
+    expect(stored.filling_lines).toEqual([{ item_id: 5, subtype: "3D-S", name: "3D Fibre", quantity: 2 }]);
+    expect(stored.summary).toBe("2× 3D-S | Cover: Satin Cover | Case: Fibrecool Case");
+  });
+
+  it("apply refuses a filling that is no longer offered", async () => {
+    const retired = await apply({
+      component_quantities: fibrecoolLines,
+      filling_lines: [{ item_id: 6, subtype: "6D-L", name: "6D", quantity: 1 }],
+    });
+    expect(retired.status).toBe(400);
+    expect(((await retired.json()) as { error: string }).error).toMatch(/only fillings/);
+    expect(h.inserts.filter((i) => i.table === "customization_configs")).toHaveLength(0);
+  });
+
+  it("apply refuses more filling than a pillow holds, even when it is in stock", async () => {
+    h.tables.inventory_balances = items.map((i) => ({ item_id: i.id, on_hand: 1000 }));
+    const overfilled = await apply({
+      component_quantities: fibrecoolLines,
+      filling_lines: [{ item_id: 5, subtype: "3D-S", name: "3D", quantity: 226 }],
+    });
+    expect(overfilled.status).toBe(400);
+    expect(((await overfilled.json()) as { error: string }).error).toMatch(/at most 225 filling pieces/);
+    expect(h.inserts.filter((i) => i.table === "customization_configs")).toHaveLength(0);
+  });
+});
+
+describe("customised component stock is checked across lines", () => {
+  it("refuses two customised lines that together need more of a component than stock", async () => {
+    h.tables.inventory_balances = items.map((i) => ({ item_id: i.id, on_hand: i.id === 32 ? 5 : 100 }));
+    const res = await post([
+      { variant_id: PILLOW_VARIANT, quantity: 3, customization_id: CONFIG },
+      { variant_id: PILLOW_VARIANT, quantity: 3, customization_id: CONFIG },
+    ]);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/Insufficient component stock.*Fibrecool/);
+    expect(ordersInserted()).toHaveLength(0);
   });
 });
 
