@@ -8,36 +8,53 @@ export type RuleNodeData = {
   fired?: boolean;
 };
 
+/**
+ * Structure only. Publish errors and the Simulate path are an overlay applied
+ * at render time (`withOverlay`), never baked into editor state — rebuilding
+ * the nodes to show them dropped the selection and left stale highlights.
+ */
 export function graphToRf(
   graph: RuleGraphJson,
-  errors: ValidationError[] = [],
-  firedIds: ReadonlySet<string> = new Set(),
 ): { nodes: Node<RuleNodeData>[]; edges: Edge[] } {
-  const errBy = new Map(
-    errors.filter((e) => e.nodeId).map((e) => [e.nodeId!, e.message]),
-  );
   const nodes: Node<RuleNodeData>[] = graph.nodes.map((rule, i) => ({
     id: rule.id,
     type: rule.type,
     position: rule.position ?? { x: (i % 5) * 240, y: Math.floor(i / 5) * 160 },
-    data: {
-      rule,
-      error: errBy.get(rule.id),
-      fired: firedIds.has(rule.id),
-    },
+    data: { rule },
   }));
-  const edges: Edge[] = graph.edges.map((e) => {
-    const onPath = firedIds.has(e.source) && firedIds.has(e.target);
-    return {
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      sourceHandle: e.handle,
-      animated: onPath,
-      style: onPath ? { stroke: "#16a34a", strokeWidth: 2.5 } : undefined,
-    };
-  });
+  const edges: Edge[] = graph.edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.handle,
+  }));
   return { nodes, edges };
+}
+
+const FIRED_EDGE_STYLE = { stroke: "#16a34a", strokeWidth: 2.5 };
+
+/** Paints publish errors + the fired path; untouched nodes/edges keep identity. */
+export function withOverlay(
+  nodes: Node<RuleNodeData>[],
+  edges: Edge[],
+  errors: ValidationError[],
+  firedIds: ReadonlySet<string>,
+): { nodes: Node<RuleNodeData>[]; edges: Edge[] } {
+  const errBy = new Map(
+    errors.filter((e) => e.nodeId).map((e) => [e.nodeId!, e.message]),
+  );
+  return {
+    nodes: nodes.map((n) => {
+      const error = errBy.get(n.id);
+      const fired = firedIds.has(n.id);
+      return error || fired ? { ...n, data: { ...n.data, error, fired } } : n;
+    }),
+    edges: edges.map((e) =>
+      firedIds.has(e.source) && firedIds.has(e.target)
+        ? { ...e, animated: true, style: FIRED_EDGE_STYLE }
+        : e,
+    ),
+  };
 }
 
 export function rfToGraph(

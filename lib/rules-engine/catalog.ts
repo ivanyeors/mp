@@ -1,4 +1,5 @@
-import type { InputDef, RuleFlow, RuleGraphJson } from "./types";
+import type { EngineInputs, InputDef, RuleFlow, RuleGraphJson } from "./types";
+import { inchesToCm, roundCm } from "./units";
 
 /** Shared customize-step answers collected by Premium + Basic. */
 const CUSTOMIZE_INPUTS: readonly InputDef[] = [
@@ -74,6 +75,22 @@ export function catalogKeys(flow: RuleFlow): ReadonlySet<string> {
 
 export function catalogDef(flow: RuleFlow, key: string): InputDef | undefined {
   return inputCatalog(flow).find((d) => d.key === key);
+}
+
+/**
+ * Workbench Simulate drafts → engine inputs. Measurements are typed in inches,
+ * like Range bands and the configurator, and converted to canonical cm the same
+ * way the configurator does (roundCm) so a simulated band edge matches a real one.
+ */
+export function simulationInputs(flow: RuleFlow, drafts: EngineInputs): EngineInputs {
+  const inputs: EngineInputs = { ...drafts };
+  for (const def of inputCatalog(flow)) {
+    if (def.valueType !== "number") continue;
+    const raw = drafts[def.key];
+    const n = raw === "" || raw == null ? NaN : Number(raw);
+    inputs[def.key] = Number.isFinite(n) ? roundCm(inchesToCm(n)) : raw;
+  }
+  return inputs;
 }
 
 /** Input keys referenced by Input / Range / Match nodes in a graph. */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Background,
@@ -20,10 +20,12 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./workbench.css";
-import { Loader2, PanelLeftClose, PanelRightClose, SlidersHorizontal, X } from "lucide-react";
+import { Loader2, Play, Plus, SlidersHorizontal, X } from "lucide-react";
 import { toast } from "sonner";
 
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
+import { useDockActions, type DockAction } from "@/components/ui/app-dock-actions";
 import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
@@ -40,7 +42,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Menubar,
-  MenubarCheckboxItem,
   MenubarContent,
   MenubarItem,
   MenubarLabel,
@@ -51,10 +52,10 @@ import {
   MenubarShortcut,
   MenubarTrigger,
 } from "@/components/ui/menubar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   catalogDef,
   inputCatalog,
+  simulationInputs,
 } from "@/lib/rules-engine/catalog";
 import { evaluate } from "@/lib/rules-engine/evaluate";
 import { FLOW_LABELS, FLOW_OPTIONS } from "@/lib/rules-engine/flow-labels";
@@ -62,6 +63,7 @@ import {
   graphToRf,
   newNodeId,
   rfToGraph,
+  withOverlay,
   type RuleNodeData,
 } from "@/lib/rules-engine/graph-rf";
 import { layoutRuleGraph } from "@/lib/rules-engine/layout";
@@ -71,7 +73,7 @@ import {
   PILLOW_SIZES,
   RULE_FLOWS,
   type EngineInputs,
-  type EvaluateResult,
+  type InputDef,
   type RangeBand,
   type RuleFlow,
   type RuleGraphJson,
@@ -118,7 +120,27 @@ const PALETTE_GROUPS: {
   },
 ];
 
-const PALETTE_DOCK_KEY = "rules-engine-palette-dock";
+const PANEL_TITLES = { add: "Add node", node: "Node", simulate: "Simulate" } as const;
+
+const NODE_TYPE_LABELS = Object.fromEntries(
+  PALETTE_GROUPS.flatMap((g) => g.items.map((i) => [i.type, i.label])),
+) as Record<RuleNode["type"], string>;
+
+type Simulation = {
+  /** simulationKey() at run time — a mismatch means the result is out of date. */
+  key: string;
+  result: ReturnType<typeof evaluate>;
+};
+
+// ponytail: re-stringifies on every node change (drag frames too); fine at tens of
+// nodes, swap for a revision counter bumped by rule/edge edits if graphs get huge.
+function simulationKey(inputs: EngineInputs, nodes: Node<RuleNodeData>[], edges: Edge[]) {
+  return JSON.stringify([
+    inputs,
+    nodes.map((n) => n.data.rule),
+    edges.map((e) => [e.source, e.target, e.sourceHandle ?? null]),
+  ]);
+}
 
 function defaultRule(type: RuleNode["type"], flow: RuleFlow): RuleNode {
   const id = newNodeId(type);
@@ -176,37 +198,23 @@ export function RulesEngineWorkbench({ flow }: { flow: RuleFlow }) {
 
 function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const locale = getLocaleFromPathname(pathname) ?? DEFAULT_LOCALE;
   const to = useCallback((p: string) => withLocale(p, locale), [locale]);
   const { resolvedTheme } = useTheme();
   const colorMode = resolvedTheme === "dark" ? "dark" : "light";
   const { fitView, screenToFlowPosition } = useReactFlow();
   useSettingsBreadcrumbDetail(FLOW_LABELS[flow]);
+  const isMobile = useIsMobile();
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<RuleNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // max-md only: inspector is a collapsible drawer; desktop keeps it docked.
-  const [inspectorOpen, setInspectorOpen] = useState(false);
-  const [paletteDocked, setPaletteDocked] = useState(false);
+  // Dock tool card popped up above the Admin Panel dock; null = canvas only.
+  const [panel, setPanel] = useState<keyof typeof PANEL_TITLES | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const dropPosRef = useRef<XYPosition>({ x: 120, y: 120 });
 
-  useEffect(() => {
-    try {
-      setPaletteDocked(localStorage.getItem(PALETTE_DOCK_KEY) === "1");
-    } catch {
-      /* ponytail: private mode / blocked storage */
-    }
-  }, []);
-
-  const setDocked = (next: boolean) => {
-    setPaletteDocked(next);
-    try {
-      localStorage.setItem(PALETTE_DOCK_KEY, next ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  };
   const [readOnly, setReadOnly] = useState(false);
   const [viewingVersion, setViewingVersion] = useState<RuleGraphRow | null>(null);
   const [versions, setVersions] = useState<RuleGraphSummary[]>([]);
@@ -215,8 +223,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const [publishErrors, setPublishErrors] = useState<ValidationError[]>([]);
   const [loading, setLoading] = useState(true);
   const [testInputs, setTestInputs] = useState<EngineInputs>({});
-  const [testResult, setTestResult] = useState<EvaluateResult | null>(null);
-  const [testError, setTestError] = useState<string | null>(null);
+  const [simulation, setSimulation] = useState<Simulation | null>(null);
   const draftGraphRef = useRef<RuleGraphJson>({ nodes: [], edges: [] });
   const skipAutosave = useRef(true);
   const nodeTypes = useMemo(() => makeNodeTypes(flow), [flow]);
@@ -273,8 +280,8 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
       setViewingVersion(null);
       setReadOnly(false);
       setPublishErrors([]);
-      setTestResult(null);
-      // Seed test panel with catalog defaults (numeric empty / first enum)
+      setSimulation(null);
+      // Seed Simulate with catalog defaults (numeric empty / first enum)
       const seed: EngineInputs = {};
       for (const def of inputCatalog(flow)) {
         if (def.valueType === "number") seed[def.key] = "";
@@ -297,6 +304,39 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     () => rfToGraph(nodes, edges),
     [nodes, edges],
   );
+
+  // The Simulate path is derived, not written into nodes: it goes stale the
+  // moment inputs or the graph change, and simulating never touches the draft.
+  const simKey = useMemo(
+    () => simulationKey(testInputs, nodes, edges),
+    [testInputs, nodes, edges],
+  );
+  const simFresh = simulation?.key === simKey;
+  const firedIds = useMemo(
+    () =>
+      new Set(
+        simFresh && simulation && !("error" in simulation.result)
+          ? simulation.result.trace.map((t) => t.nodeId)
+          : [],
+      ),
+    [simFresh, simulation],
+  );
+  const view = useMemo(
+    () => withOverlay(nodes, edges, publishErrors, firedIds),
+    [nodes, edges, publishErrors, firedIds],
+  );
+
+  const simStale = !!simulation && !simFresh;
+  const dockTools = useMemo<DockAction[]>(() => {
+    const toggle = (id: keyof typeof PANEL_TITLES) => () =>
+      setPanel((p) => (p === id ? null : id));
+    return [
+      { id: "add", title: "Add node", icon: Plus, onClick: toggle("add"), active: panel === "add" },
+      { id: "node", title: "Node", icon: SlidersHorizontal, onClick: toggle("node"), active: panel === "node" },
+      { id: "simulate", title: "Simulate", icon: Play, onClick: toggle("simulate"), active: panel === "simulate", badge: simStale },
+    ];
+  }, [panel, simStale]);
+  useDockActions("/settings/product-builder/rules-engine", dockTools);
 
   // Autosave draft (debounced)
   useEffect(() => {
@@ -341,7 +381,10 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     ({ nodes: sel }: { nodes: Node<RuleNodeData>[] }) => {
       const id = sel[0]?.id ?? null;
       setSelectedId(id);
-      if (id) setInspectorOpen(true); // max-md: reveal drawer on select
+      // Selecting opens the Node panel; clearing the selection closes it so an
+      // empty editor never sits on the canvas. Simulate stays open until closed.
+      if (id) setPanel("node");
+      else setPanel((p) => (p === "node" ? null : p));
     },
     [],
   );
@@ -398,19 +441,19 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     (type: RuleNode["type"], at?: XYPosition) => {
       if (readOnly) return;
       const rule = defaultRule(type, flow);
+      const box = canvasRef.current?.getBoundingClientRect();
       const position =
         at ??
-        ({
-          x: 80 + nodes.length * 24,
-          y: 80 + nodes.length * 16,
-        } satisfies XYPosition);
+        (box
+          ? screenToFlowPosition({ x: box.left + box.width / 2, y: box.top + box.height / 3 })
+          : { x: 80, y: 80 });
+      // Selected, so onSelectionChange opens the Node card for the new node.
       setNodes((ns) => [
-        ...ns,
-        { id: rule.id, type, position, data: { rule } },
+        ...ns.map((n) => (n.selected ? { ...n, selected: false } : n)),
+        { id: rule.id, type, position, data: { rule }, selected: true },
       ]);
-      setSelectedId(rule.id);
     },
-    [flow, nodes.length, readOnly, setNodes],
+    [flow, readOnly, screenToFlowPosition, setNodes],
   );
 
   const deleteSelected = useCallback(() => {
@@ -429,20 +472,21 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     const rule = structuredClone(src.data.rule);
     rule.id = newNodeId(rule.type);
     setNodes((ns) => [
-      ...ns,
+      ...ns.map((n) => (n.selected ? { ...n, selected: false } : n)),
       {
         id: rule.id,
         type: rule.type,
         position: { x: src.position.x + 40, y: src.position.y + 40 },
         data: { rule },
+        selected: true,
       },
     ]);
-    setSelectedId(rule.id);
   }, [nodes, readOnly, selectedId, setNodes]);
 
   const goToFlow = (next: RuleFlow) => {
     if (next === flow) return;
-    window.location.href = to(`/settings/product-builder/rules-engine/${next}`);
+    // Client navigation keeps the app shell (and the dock's tools) mounted.
+    router.push(to(`/settings/product-builder/rules-engine/${next}`));
   };
 
   const captureDropPos = (clientX: number, clientY: number) => {
@@ -469,9 +513,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     const localErrs = validateForPublish(flow, graph);
     if (localErrs.length) {
       setPublishErrors(localErrs);
-      const rf = graphToRf(graph, localErrs, new Set());
-      setNodes(rf.nodes);
-      setEdges(rf.edges);
       toast.error(`Publish blocked: ${localErrs.length} error(s)`);
       return;
     }
@@ -490,9 +531,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     if (!res.ok || !data.ok) {
       const errs: ValidationError[] = data.errors ?? [];
       setPublishErrors(errs);
-      const rf = graphToRf(graph, errs, new Set());
-      setNodes(rf.nodes);
-      setEdges(rf.edges);
       toast.error(getApiErrorMessage(data.error, "Publish failed"));
       return;
     }
@@ -503,7 +541,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
 
   const viewVersion = async (v: RuleGraphSummary | null) => {
     if (!v) {
-      const rf = graphToRf(draftGraphRef.current, publishErrors);
+      const rf = graphToRf(draftGraphRef.current);
       setNodes(rf.nodes);
       setEdges(rf.edges);
       setViewingVersion(null);
@@ -523,7 +561,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     setEdges(rf.edges);
     setViewingVersion(full);
     setReadOnly(true);
-    setTestResult(null);
   };
 
   const restore = async (id: string) => {
@@ -539,31 +576,11 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
     await loadDraft();
   };
 
-  const runTest = () => {
+  const simulate = (e: React.FormEvent) => {
+    e.preventDefault();
     const graph = currentGraph();
-    // Coerce numeric strings → numbers for evaluate
-    const inputs: EngineInputs = { ...testInputs };
-    for (const def of inputCatalog(flow)) {
-      if (def.valueType === "number") {
-        const n = Number(inputs[def.key]);
-        inputs[def.key] = Number.isFinite(n) ? n : inputs[def.key];
-      }
-    }
-    const result = evaluate(flow, graph, inputs);
-    if ("error" in result) {
-      setTestError(result.error);
-      setTestResult(null);
-      setNodes((ns) =>
-        ns.map((n) => ({ ...n, data: { ...n.data, fired: false, error: n.data.error } })),
-      );
-      return;
-    }
-    setTestError(null);
-    setTestResult(result);
-    const fired = new Set(result.trace.map((t) => t.nodeId));
-    const rf = graphToRf(graph, publishErrors, fired);
-    setNodes(rf.nodes);
-    setEdges(rf.edges);
+    const inputs = simulationInputs(flow, testInputs);
+    setSimulation({ key: simKey, result: evaluate(flow, graph, inputs) });
   };
 
   const selected = nodes.find((n) => n.id === selectedId);
@@ -614,13 +631,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           <MenubarMenu>
             <MenubarTrigger>Palette</MenubarTrigger>
             <MenubarContent className="min-w-56">
-              <MenubarCheckboxItem
-                checked={paletteDocked}
-                onCheckedChange={(v) => setDocked(v === true)}
-              >
-                Dock palette
-              </MenubarCheckboxItem>
-              <MenubarSeparator />
               {PALETTE_GROUPS.map((group, gi) => (
                 <div key={group.label}>
                   {gi > 0 ? <MenubarSeparator /> : null}
@@ -720,18 +730,6 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           {saveLabel}
         </span>
         <div className="flex-1" />
-        {/* max-md: toggle the inspector drawer (hidden on desktop, always docked there) */}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="hidden max-md:inline-flex"
-          aria-pressed={inspectorOpen}
-          onClick={() => setInspectorOpen((v) => !v)}
-        >
-          <SlidersHorizontal className="size-4" />
-          Inspector
-        </Button>
         {viewingVersion ? (
           <Button
             type="button"
@@ -753,71 +751,21 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-0 border-t bg-muted/30 max-md:flex-col">
-        {/* Docked palette — off by default; toggle from Palette → Dock palette */}
-        {paletteDocked ? (
-          <aside className="flex w-52 shrink-0 flex-col border-r bg-background max-md:w-full max-md:max-h-40 max-md:border-r-0 max-md:border-b">
-            <div className="flex items-center justify-between gap-1 border-b px-2 py-1.5">
-              <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Palette
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-7 cursor-pointer"
-                title="Undock palette"
-                onClick={() => setDocked(false)}
-              >
-                <PanelLeftClose className="size-3.5" />
-              </Button>
-            </div>
-            <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-3 px-2 py-2 pb-3">
-                {PALETTE_GROUPS.map((group) => (
-                  <div key={group.label} className="space-y-1">
-                    <div className="px-0.5 text-[10px] font-medium text-muted-foreground">
-                      {group.label}
-                    </div>
-                    {group.items.map((p) => (
-                      <Button
-                        key={p.type}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={readOnly}
-                        title={p.hint}
-                        onClick={() => addNode(p.type)}
-                        className="h-auto w-full cursor-pointer justify-start px-2 py-1.5 text-left font-normal"
-                      >
-                        <span className="flex min-w-0 flex-col gap-0.5">
-                          <span className="text-xs font-medium">{p.label}</span>
-                          <span className="text-[10px] leading-snug text-muted-foreground whitespace-normal">
-                            {p.hint}
-                          </span>
-                        </span>
-                      </Button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </aside>
-        ) : null}
-
+      <div className="flex min-h-0 flex-1 border-t bg-muted/30">
         {/* Canvas + right-click menu */}
+        <div ref={canvasRef} className="relative min-h-0 min-w-0 flex-1 max-md:min-h-[60dvh]">
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div
-              className="min-h-0 min-w-0 flex-1 max-md:min-h-[60dvh]"
+              className="h-full w-full"
               onContextMenu={(e) => captureDropPos(e.clientX, e.clientY)}
             >
               <TemplateNamesContext.Provider value={templateNames}>
               <ReactFlow
                 className="rules-engine-flow"
                 colorMode={colorMode}
-                nodes={nodes}
-                edges={edges}
+                nodes={view.nodes}
+                edges={view.edges}
                 onNodesChange={readOnly ? undefined : onNodesChange}
                 onEdgesChange={readOnly ? undefined : onEdgesChange}
                 onConnect={onConnect}
@@ -832,8 +780,12 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 elementsSelectable
               >
                 <Background />
-                <Controls />
-                <MiniMap pannable zoomable />
+                {/* Phones: the dock owns the bottom edge, so controls move up and the minimap goes */}
+                <Controls
+                  position={isMobile ? "top-left" : "bottom-left"}
+                  orientation={isMobile ? "horizontal" : "vertical"}
+                />
+                {isMobile ? null : <MiniMap pannable zoomable />}
               </ReactFlow>
               </TemplateNamesContext.Provider>
             </div>
@@ -896,30 +848,59 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
           </ContextMenuContent>
         </ContextMenu>
 
-        {/* Editor + test — desktop: docked column; max-md: collapsible bottom drawer */}
-        <aside
-          className={`flex w-72 shrink-0 flex-col overflow-hidden border-l text-sm max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-30 max-md:h-[70dvh] max-md:w-full max-md:border-l-0 max-md:border-t max-md:bg-background max-md:shadow-2xl ${inspectorOpen ? "" : "max-md:hidden"}`}
-        >
-          <div className="hidden shrink-0 items-center justify-between border-b px-3 py-2 max-md:flex">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Inspector
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="Close inspector"
-              onClick={() => setInspectorOpen(false)}
-            >
-              <PanelRightClose className="size-4" />
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
-            <div>
-              <div className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">
-                Node editor
+        {/* Dock tool card: pops up just above the dock it was opened from. Phones get
+            a full-width sheet; md+ a centred card. Both clear the measured dock. */}
+        {panel ? (
+          <section
+            aria-label={PANEL_TITLES[panel]}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setPanel(null);
+            }}
+            className="fixed inset-x-2 bottom-[calc(var(--mobile-dock-height)+var(--mobile-dock-offset)+var(--safe-bottom)+0.75rem)] z-40 flex max-h-[60dvh] flex-col overflow-hidden rounded-xl border bg-background text-sm shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 md:inset-x-auto md:left-1/2 md:max-h-[min(36rem,calc(100dvh-12rem))] md:w-[22rem] md:-translate-x-1/2"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b py-1.5 pl-3 pr-1.5">
+              <span className="text-xs font-medium">
+                {panel === "node" && selected
+                  ? `Node · ${NODE_TYPE_LABELS[selected.data.rule.type]}`
+                  : PANEL_TITLES[panel]}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label="Close panel"
+                onClick={() => setPanel(null)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            {panel === "add" ? (
+              <div className="min-h-0 space-y-3 overflow-y-auto p-3">
+                {PALETTE_GROUPS.map((group) => (
+                  <div key={group.label} className="space-y-1.5">
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {group.label}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {group.items.map((p) => (
+                        <button
+                          key={p.type}
+                          type="button"
+                          disabled={readOnly}
+                          onClick={() => addNode(p.type)}
+                          className="flex flex-col items-start gap-0.5 rounded-md border bg-card px-2 py-1.5 text-left hover:bg-accent disabled:opacity-50"
+                        >
+                          <span className="text-xs font-medium">{p.label}</span>
+                          <span className="text-[10px] leading-snug text-muted-foreground">{p.hint}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : panel === "node" ? (
+              <div className="min-h-0 overflow-y-auto p-3">
               {selected ? (
                 <NodeEditor
                   flow={flow}
@@ -930,118 +911,56 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 />
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Select a node to edit.
+                  Select a node on the canvas to edit it.
                 </p>
               )}
-            </div>
+              </div>
+            ) : (
+              <form onSubmit={simulate} className="flex min-h-0 flex-1 flex-col">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Try sample answers against this graph. Nothing here is saved.
+                  </p>
+                  {(
+                    [
+                      ["Measurements · inches", (d: InputDef) => d.valueType === "number"],
+                      ["Answers", (d: InputDef) => d.valueType !== "number"],
+                    ] as const
+                  ).map(([title, keep]) => (
+                    <fieldset key={title} className="space-y-2">
+                      <legend className="mb-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        {title}
+                      </legend>
+                      {inputCatalog(flow)
+                        .filter(keep)
+                        .map((def) => (
+                          <SimulateField
+                            key={def.key}
+                            def={def}
+                            value={testInputs[def.key]}
+                            onChange={(v) => setTestInputs((s) => ({ ...s, [def.key]: v }))}
+                          />
+                        ))}
+                    </fieldset>
+                  ))}
+                </div>
 
-            <div className="border-t pt-3">
-              <div className="mb-2 text-[10px] font-medium uppercase text-muted-foreground">
-                Test panel
-              </div>
-              <div className="space-y-2">
-                {inputCatalog(flow).map((def) => (
-                  <div key={def.key} className="space-y-0.5">
-                    <Label className="text-[10px]">{def.key}</Label>
-                    {def.valueType === "number" ? (
-                      <Input
-                        type="number"
-                        step="any"
-                        className="h-8"
-                        value={String(testInputs[def.key] ?? "")}
-                        onChange={(e) =>
-                          setTestInputs((s) => ({
-                            ...s,
-                            [def.key]: e.target.value,
-                          }))
-                        }
-                      />
-                    ) : def.valueType === "string[]" ? (
-                      <select
-                        className="h-8 w-full rounded-md border bg-card px-2 text-xs max-md:text-base"
-                        value={String(
-                          Array.isArray(testInputs[def.key])
-                            ? (testInputs[def.key] as string[])[0]
-                            : "",
-                        )}
-                        onChange={(e) =>
-                          setTestInputs((s) => ({
-                            ...s,
-                            [def.key]: [e.target.value],
-                          }))
-                        }
-                      >
-                        {(def.values ?? []).map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <select
-                        className="h-8 w-full rounded-md border bg-card px-2 text-xs max-md:text-base"
-                        value={String(testInputs[def.key] ?? "")}
-                        onChange={(e) => {
-                          const v =
-                            def.valueType === "boolean"
-                              ? e.target.value === "true"
-                              : e.target.value;
-                          setTestInputs((s) => ({ ...s, [def.key]: v }));
-                        }}
-                      >
-                        {(def.values ?? []).map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                ))}
-              </div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="mt-2 w-full"
-              onClick={runTest}
-            >
-              Evaluate
-            </Button>
-            {testError ? (
-              <p className="mt-2 text-xs text-destructive">{testError}</p>
-            ) : null}
-            {testResult ? (
-              <dl className="mt-2 space-y-1 text-xs">
-                <div>
-                  <dt className="text-muted-foreground">Size</dt>
-                  <dd className="font-medium">{testResult.size ?? "—"}</dd>
+                <div className="shrink-0 space-y-2 border-t p-3">
+                  <Button type="submit" size="sm" className="w-full">
+                    <Play className="size-3.5" />
+                    Simulate
+                  </Button>
+                  <SimulationResult
+                    simulation={simulation}
+                    fresh={simFresh}
+                    templateNames={templateNames}
+                  />
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">Template</dt>
-                  <dd className="font-medium break-all">
-                    {testResult.templateId
-                      ? (templateNames[testResult.templateId] ?? testResult.templateId)
-                      : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Tier</dt>
-                  <dd className="font-medium">{testResult.tierSuggestion ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Flow route</dt>
-                  <dd className="font-medium">
-                    {testResult.flowRoute
-                      ? `${testResult.flowRoute.targetFlow}: ${testResult.flowRoute.reason}`
-                      : "—"}
-                  </dd>
-                </div>
-              </dl>
-            ) : null}
-            </div>
-          </div>
-        </aside>
+              </form>
+            )}
+          </section>
+        ) : null}
+        </div>
       </div>
     </div>
   );
@@ -1216,6 +1135,123 @@ function NodeEditor({
   }
 
   return <p className="text-xs text-muted-foreground">No fields for this node.</p>;
+}
+
+function SimulateField({
+  def,
+  value,
+  onChange,
+}: {
+  def: InputDef;
+  value: EngineInputs[string];
+  onChange: (v: EngineInputs[string]) => void;
+}) {
+  const id = `simulate-${def.key}`;
+  const selectClass =
+    "h-8 w-full rounded-md border bg-card px-2 text-xs max-md:text-base";
+  return (
+    <div className="space-y-0.5">
+      <Label htmlFor={id} className="text-[11px]">
+        {prettyKey(def.key)}
+      </Label>
+      {def.valueType === "number" ? (
+        <div className="relative">
+          <Input
+            id={id}
+            type="number"
+            step="any"
+            min={0}
+            inputMode="decimal"
+            className="h-8 pr-8"
+            value={String(value ?? "")}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[10px] text-muted-foreground">
+            in
+          </span>
+        </div>
+      ) : (
+        <select
+          id={id}
+          className={selectClass}
+          value={String(Array.isArray(value) ? (value[0] ?? "") : (value ?? ""))}
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange(
+              def.valueType === "string[]" ? [v] : def.valueType === "boolean" ? v === "true" : v,
+            );
+          }}
+        >
+          {(def.values ?? []).map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
+function SimulationResult({
+  simulation,
+  fresh,
+  templateNames,
+}: {
+  simulation: Simulation | null;
+  fresh: boolean;
+  templateNames: Record<string, string>;
+}) {
+  if (!simulation) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Simulate to light up the path these answers take.
+      </p>
+    );
+  }
+  const r = simulation.result;
+  return (
+    <div className="space-y-1.5" aria-live="polite">
+      {!fresh ? (
+        <p className="text-[11px] text-amber-600 dark:text-amber-500">
+          Answers or graph changed — simulate again.
+        </p>
+      ) : null}
+      <div className={fresh ? undefined : "opacity-50"}>
+        {"error" in r ? (
+          <p className="text-xs text-destructive">
+            Missing: {r.missing.map(prettyKey).join(", ")}
+          </p>
+        ) : (
+          <>
+            {r.firedTerminals.length === 0 ? (
+              <p className="mb-1 text-xs text-destructive">No output fired for these answers.</p>
+            ) : r.usedFallback ? (
+              <p className="mb-1 text-xs text-amber-600 dark:text-amber-500">
+                No rule matched — the Fallback answered.
+              </p>
+            ) : null}
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+              <dt className="text-muted-foreground">Size</dt>
+              <dd className="font-medium">{r.size ?? "—"}</dd>
+              <dt className="text-muted-foreground">Template</dt>
+              <dd className="font-medium break-all">
+                {r.templateId ? (templateNames[r.templateId] ?? r.templateId) : "—"}
+              </dd>
+              <dt className="text-muted-foreground">Tier</dt>
+              <dd className="font-medium">{r.tierSuggestion ?? "—"}</dd>
+              <dt className="text-muted-foreground">Flow route</dt>
+              <dd className="font-medium">
+                {r.flowRoute
+                  ? `${FLOW_LABELS[r.flowRoute.targetFlow]}${r.flowRoute.reason ? ` · ${r.flowRoute.reason}` : ""}`
+                  : "—"}
+              </dd>
+            </dl>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function BandsEditor({
