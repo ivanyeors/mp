@@ -6,6 +6,7 @@ import { lookupPlacementKinds } from "@/lib/bom-sanitizer";
 import { assembleBuild, findStockShortages, preferenceRoleOf } from "@/lib/build-assembly";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
+import { loadTemplateKeys } from "@/lib/filling-templates/membership";
 import { transitionResult } from "@/lib/result-lifecycle";
 import { decideFillingAssign } from "@/lib/results/filling-assign";
 import {
@@ -173,10 +174,12 @@ export async function POST(
     return NextResponse.json({ error: "Filling Template not found" }, { status: 400 });
   }
 
-  const selectable = filterSelectableFillingTemplates([template], {
-    productType,
-    size: sizeKey,
-  });
+  const tplKeys = await loadTemplateKeys(admin, [Number(template.id)]);
+  if (!tplKeys.ok) return NextResponse.json({ error: tplKeys.error }, { status: 500 });
+  const selectable = filterSelectableFillingTemplates(
+    [{ ...template, keys: tplKeys.byId.get(Number(template.id)) ?? [template.key] }],
+    { productType, size: sizeKey },
+  );
   if (selectable.length === 0) {
     return NextResponse.json(
       {

@@ -13,6 +13,7 @@ import {
   validatePillowPlacements,
 } from "@/lib/spatial-fillings";
 import { PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
+import { loadTemplateKeys, setTemplateKeys, templateIdsForKey } from "@/lib/filling-templates/membership";
 
 type Scope = { kind: "pillow" | "bolster"; key: string };
 
@@ -89,19 +90,26 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: lengthParam ? "Invalid length" : "Invalid size" }, { status: 400 });
   }
 
+  // Membership, not `key`: assist offers every recipe that serves this size.
+  const members = await templateIdsForKey(admin, scope.key);
+  if (!members.ok) return NextResponse.json({ error: members.error }, { status: 500 });
+  const memberIds = members.ids;
+
   const [
     { data: templates, error: listErr },
     { data: items, error: itemsErr },
     { data: colorOverrides, error: colorsErr },
   ] = await Promise.all([
-    admin
-      .from("bom_templates")
-      .select("id,name")
-      .eq("kind", scope.kind)
-      .eq("key", scope.key)
-      .eq("role", "filling")
-      .eq("is_active", true)
-      .order("name"),
+    memberIds.length
+      ? admin
+          .from("bom_templates")
+          .select("id,name")
+          .eq("kind", scope.kind)
+          .eq("role", "filling")
+          .eq("is_active", true)
+          .in("id", memberIds)
+          .order("name")
+      : Promise.resolve({ data: [], error: null }),
     admin
       .from("items")
       .select("id,name,subtype,size,category,item_prices(msrp)")
@@ -220,10 +228,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Filling Template not found" }, { status: 404 });
     }
     // Without this a Size M mix could be written onto a Size L template, which
-    // the size-scoped reader would then hand to the wrong product card.
-    if (tpl.kind !== scope.kind || tpl.key !== scope.key) {
+    // the size-scoped reader would then hand to the wrong product card. A shared
+    // template passes when this size is one it serves — and overwriting it
+    // changes the recipe for every other size too, which is why assist only
+    // reaches templates the operator already picked from this size's list.
+    const tplKeys = await loadTemplateKeys(admin, [Number(tpl.id)]);
+    if (!tplKeys.ok) return NextResponse.json({ error: tplKeys.error }, { status: 500 });
+    const served = tplKeys.byId.get(Number(tpl.id)) ?? [tpl.key];
+    if (tpl.kind !== scope.kind || !served.includes(scope.key)) {
       return NextResponse.json(
-        { error: `That template is scoped to ${tpl.kind} ${tpl.key}, not ${scope.kind} ${scope.key}` },
+        {
+          error: `That template applies to ${tpl.kind} ${served.join(", ")}, not ${scope.kind} ${scope.key}`,
+        },
         { status: 400 },
       );
     }
@@ -236,7 +252,7 @@ export async function POST(req: NextRequest) {
       .insert({
         kind: scope.kind,
         key: scope.key,
-        // Filling Templates are size-scoped only — no tier, no variant.
+        // Filling Templates carry no tier and no variant — only sizes (ADR 0003).
         pillow_kind: null,
         pillow_variant: null,
         name,
@@ -253,6 +269,14 @@ export async function POST(req: NextRequest) {
       );
     }
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+    // A template born here serves the size it was authored at; an operator
+    // widens it from Configure, never from assist.
+    const membership = await setTemplateKeys(admin, {
+      templateId: created.id,
+      kind: scope.kind,
+      keys: [scope.key],
+    });
+    if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 });
     templateId = created.id;
     name = created.name;
   }

@@ -395,9 +395,18 @@ export function ShopifySalesSection() {
           supabaseClient.from("pillow_products").select("id,size,kind").eq("is_active", true),
           supabaseClient.from("product_prices").select("key,msrp"),
           supabaseClient.from("item_prices").select("item_id,msrp"),
+          // Warehouse templates only. Committing a Shopify sale deducts a
+          // template's flat `bom_template_lines`, which a Filling Template does
+          // not have — its recipe is Placement rows (ADR 0008). Picking one
+          // either fails with "Template has no lines", or, for a legacy
+          // pre-spatial template that still carries flat lines, deducts
+          // fillings against a Shopify sale, which ADR 0003 forbids. They also
+          // carry no pillow_kind, so they landed in the basic bucket of every
+          // size and, since sharing, only under their primary size (ADR 0018).
           supabaseClient
             .from("bom_templates")
             .select("id,name,kind,key,pillow_kind,pillow_variant")
+            .eq("role", "warehouse")
             .order("updated_at", { ascending: false }),
         ]);
       if (cancelled) return;

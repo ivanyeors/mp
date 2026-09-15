@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
 import { PILLOW_SIZES, PILLOW_TIERS } from "@/lib/configurator/staff-assist";
+import { loadTemplateKeys } from "@/lib/filling-templates/membership";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,16 +63,23 @@ export async function GET(req: NextRequest) {
   let default_template: { id: number; name: string; placements: unknown[] } | null = null;
   if (product.default_filling_template_id) {
     const templateId = product.default_filling_template_id;
-    const [{ data: tpl }, { data: placements, error: pErr }] = await Promise.all([
-      admin.from("bom_templates").select("id,name").eq("id", templateId).maybeSingle(),
-      admin
-        .from("filling_template_placements")
-        .select("section,sub_section,slot,item_id,row_index,insert_order")
-        .eq("template_id", templateId)
-        .order("slot"),
-    ]);
-    if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
-    if (tpl) default_template = { id: tpl.id, name: tpl.name, placements: placements ?? [] };
+    // A stored default can outlive the membership that justified it (a template
+    // rescoped or forked away from this size). Serving it anyway would propose
+    // another size's recipe for this pillow, so check before reading it.
+    const served = await loadTemplateKeys(admin, [Number(templateId)]);
+    if (!served.ok) return NextResponse.json({ error: served.error }, { status: 500 });
+    if ((served.byId.get(Number(templateId)) ?? []).includes(size)) {
+      const [{ data: tpl }, { data: placements, error: pErr }] = await Promise.all([
+        admin.from("bom_templates").select("id,name").eq("id", templateId).maybeSingle(),
+        admin
+          .from("filling_template_placements")
+          .select("section,sub_section,slot,item_id,row_index,insert_order")
+          .eq("template_id", templateId)
+          .order("slot"),
+      ]);
+      if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
+      if (tpl) default_template = { id: tpl.id, name: tpl.name, placements: placements ?? [] };
+    }
   }
 
   return NextResponse.json({

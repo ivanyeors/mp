@@ -23,16 +23,14 @@ import {
   stickyFirstColumnCellClassName,
   stickyFirstColumnHeadClassName,
 } from "@/components/ui/table-sticky";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
-import { XrayBolsterEditor, XrayEditor } from "@/components/spatial/xray-editor";
-import { XrayPackList } from "@/components/spatial/xray-pack-list";
-import { InsertOrderList } from "@/components/spatial/insert-order-list";
+import dynamic from "next/dynamic";
 import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import {
   isSpatiallyAuthored,
@@ -54,6 +52,59 @@ import {
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { useSettingsBreadcrumbDetail } from "@/components/settings/settings-breadcrumb-context";
+import {
+  FillingTemplateTable,
+  TemplateNameEditor,
+  UnauthoredBadge,
+} from "@/components/settings/filling-template-list";
+import {
+  SharedTemplateNotice,
+  TemplateScopeChips,
+  TemplateScopeField,
+} from "@/components/settings/filling-template-scope";
+import {
+  formatTemplateKeys,
+  normalizeTemplateKeys,
+  templateKeyLabel,
+} from "@/lib/filling-templates/keys";
+
+/**
+ * The spatial editors load on demand.
+ *
+ * They are the heaviest things on this route — the x-ray drags in @dnd-kit and
+ * the sunburst filling picker, the insert-order list drags in @dnd-kit again —
+ * and none of them is reachable from the Product tab, which is where this page
+ * opens. Importing them statically put that weight in the first load of a card
+ * whether or not the operator ever touched Filling Config, and pushed the route
+ * past its bundle budget. `ssr: false` because every one of them is an
+ * interactive client editor with nothing to render on the server.
+ */
+const XrayEditor = dynamic(
+  () => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor),
+  { ssr: false, loading: () => <EditorSkeleton className="aspect-[4/3]" /> },
+);
+const XrayBolsterEditor = dynamic(
+  () => import("@/components/spatial/xray-editor").then((m) => m.XrayBolsterEditor),
+  { ssr: false, loading: () => <EditorSkeleton className="aspect-[4/3]" /> },
+);
+const XrayPackList = dynamic(
+  () => import("@/components/spatial/xray-pack-list").then((m) => m.XrayPackList),
+  { ssr: false, loading: () => <EditorSkeleton className="h-24" /> },
+) as typeof import("@/components/spatial/xray-pack-list").XrayPackList;
+const InsertOrderList = dynamic(
+  () => import("@/components/spatial/insert-order-list").then((m) => m.InsertOrderList),
+  { ssr: false, loading: () => <EditorSkeleton className="h-24" /> },
+);
+
+/** Placeholder that holds the editor's box so the card does not jump on load. */
+function EditorSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("w-full animate-pulse rounded-lg bg-muted/50", className)}
+      aria-hidden="true"
+    />
+  );
+}
 
 type FillingTemplateRow = {
   id: number;
@@ -62,6 +113,8 @@ type FillingTemplateRow = {
   is_active: boolean;
   /** Sections holding at least one Placement; pillow filling templates only. */
   sections?: string[];
+  /** Every size this template serves — the authority for scope, not `key`. */
+  keys?: string[];
 };
 
 /** Ranked unpromoted mix (slices 09/13): fingerprint-grouped Result snapshots for this scope.
@@ -172,7 +225,7 @@ const matchesTemplateSearch = (t: { name: string; notes: string | null }, query:
 };
 
 // Placements sitting in one Section: the 2026-07-24 backfill, never laid out by a person.
-const isUnauthoredTemplate = (t: FillingTemplateRow) =>
+const isUnauthoredTemplate = (t: { sections?: string[] }) =>
   !!t.sections && !isSpatiallyAuthoredCoverage(t.sections);
 
 const sizeEquals = (itemSize: string | null | undefined, expected: string): boolean => {
@@ -522,10 +575,15 @@ export default function ConfigureCardPage() {
     if (payload?.colorOverrides) {
       setCardColorOverrides(payload.colorOverrides as ColorOverrideRow[]);
     }
-    // Fold Section coverage onto each row so the eight call sites keep the same
-    // shape and only the badge has to know about it.
+    // Fold Section coverage and size membership onto each row so the call sites
+    // keep the same shape and only the badge and the scope strip know about them.
     const coverage = payload?.sectionCoverage as Record<number, string[]> | undefined;
-    return coverage ? rows.map((t) => ({ ...t, sections: coverage[t.id] ?? [] })) : rows;
+    const membership = payload?.templateKeys as Record<number, string[]> | undefined;
+    return rows.map((t) => ({
+      ...t,
+      ...(coverage ? { sections: coverage[t.id] ?? [] } : {}),
+      ...(membership ? { keys: membership[t.id] ?? [key] } : {}),
+    }));
   }, [settingsPath]);
 
   const loadTemplateLines = async (templateId: number) => {
@@ -1337,9 +1395,19 @@ function FillingConfigPanel({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [authoringFilter, setAuthoringFilter] = useState<"all" | "authored" | "unauthored">("all");
+  // Inline rename in the template list: the row being edited, and its in-flight PUT.
+  const [renamingId, setRenamingId] = useState<number | "">("");
+  const [renaming, setRenaming] = useState(false);
+  // Sizes the open template applies to. Always includes templateKey for a new one.
+  const [scopeKeys, setScopeKeys] = useState<string[]>([templateKey]);
+  const [forking, setForking] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   const resetEditor = useCallback(() => {
     setSelectedId("");
+    setRenamingId("");
+    setScopeKeys([templateKey]);
+    setDeleteConfirm(false);
     setName("");
     setNotes("");
     setActive(true);
@@ -1347,7 +1415,7 @@ function FillingConfigPanel({
     setPlacements([]);
     setBolsterMix([]);
     setHadPlacements(false);
-  }, []);
+  }, [templateKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1435,6 +1503,7 @@ function FillingConfigPanel({
       setName("");
       setNotes("");
       setActive(true);
+      setScopeKeys([templateKey]);
       setLines([]);
       setPlacements([]);
       setBolsterMix([]);
@@ -1445,6 +1514,8 @@ function FillingConfigPanel({
     setName(meta?.name ?? "");
     setNotes(meta?.notes ?? "");
     setActive(meta?.is_active ?? true);
+    setScopeKeys(meta?.keys?.length ? meta.keys : [templateKey]);
+    setDeleteConfirm(false);
     try {
       const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), { method: "GET" });
       const payload = await res.json().catch(() => null);
@@ -1452,6 +1523,8 @@ function FillingConfigPanel({
         const message = payload?.error ?? "Failed to load template";
         throw new Error(typeof message === "string" ? message : "Failed to load template");
       }
+      const served = (payload?.keys ?? []) as string[];
+      if (served.length) setScopeKeys(served);
       type LineRow = { item_id: number | string; quantity: number | string };
       setLines(((payload?.lines ?? []) as LineRow[]).map((l) => ({ item_id: Number(l.item_id), quantity: Number(l.quantity) })));
       // Per-kind spatial rows: bolster rows are slot-only (never pillow enums).
@@ -1474,18 +1547,25 @@ function FillingConfigPanel({
     kind === "pillow" ? pillowPlacementsToRows(placements) : bolsterPlacementsToRows(bolsterMix);
   const spatialCount = kind === "pillow" ? placements.length : bolsterMix.length;
 
-  const putTemplatePlacements = async (templateId: number) => {
+  const putTemplatePlacements = async (templateId: number, nextName?: string) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        ...(nextName ? { name: nextName } : {}),
         notes: notes.trim() || undefined,
         is_active: active,
+        // Scope rides the same PUT as the recipe: an operator who widens a
+        // template and edits its cells in one pass gets one save, not two.
+        keys: scopeKeys,
         placements: spatialRows(),
       }),
     });
     const payload = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(payload?.error ?? "Failed to save placements");
+    if (!res.ok) {
+      const message = payload?.error ?? "Failed to save placements";
+      throw new Error(typeof message === "string" ? message : "Failed to save placements");
+    }
   };
 
   const saveTemplate = async () => {
@@ -1494,17 +1574,41 @@ function FillingConfigPanel({
       toast.message("Enter a Filling Template name");
       return;
     }
+    const scope = normalizeTemplateKeys(kind, scopeKeys);
+    if (!scope.ok) {
+      toast.error(scope.error);
+      return;
+    }
+    // A new template must land where it was authored, or it would be saved
+    // straight out of the list the operator is looking at.
+    if (selectedId === "" && !scope.keys.includes(templateKey)) {
+      toast.error(`A new Filling Template must apply to ${templateKeyLabel(kind, templateKey)}`);
+      return;
+    }
     setSaving(true);
+    setDeleteConfirm(false);
     try {
-      // Spatial save of an existing template: PUT placements only — legacy
-      // flat lines stay untouched server-side as the pre-spatial record (ADR 0008).
-      const existing = templates.find((t) => t.name === trimmed);
-      if (existing) {
-        await putTemplatePlacements(existing.id);
+      // Spatial save of the OPEN template: PUT placements (plus the name, which
+      // renames it in place) — legacy flat lines stay untouched server-side as
+      // the pre-spatial record (ADR 0008). Never resolve the target by name: the
+      // typed name may belong to a different template, and writing to that one
+      // would overwrite a recipe — and its size membership — nobody opened.
+      if (selectedId !== "") {
+        await putTemplatePlacements(selectedId, trimmed);
         setTemplates(await loadFillingTemplates(kind, templateKey));
-        setSelectedId(existing.id);
+        if (!scope.keys.includes(templateKey)) {
+          resetEditor();
+          toast.success(
+            `${trimmed} now applies to ${formatTemplateKeys(kind, scope.keys)} — open one of those cards to edit it`,
+          );
+          return;
+        }
         setHadPlacements(true);
-        toast.success("Filling Template updated");
+        toast.success(
+          scope.keys.length > 1
+            ? `Filling Template updated for ${formatTemplateKeys(kind, scope.keys)}`
+            : "Filling Template updated",
+        );
         return;
       }
       const res = await fetch(settingsPath("/settings/inventory/configure/templates"), {
@@ -1513,6 +1617,7 @@ function FillingConfigPanel({
         body: JSON.stringify({
           kind,
           key: templateKey,
+          keys: scopeKeys,
           name: trimmed,
           notes: notes.trim() || undefined,
           role: "filling",
@@ -1521,7 +1626,10 @@ function FillingConfigPanel({
         }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to save Filling Template");
+      if (!res.ok) {
+        const message = payload?.error ?? "Failed to save Filling Template";
+        throw new Error(typeof message === "string" ? message : "Failed to save Filling Template");
+      }
       const savedId = payload?.template?.id as number | undefined;
       if (savedId) {
         await putTemplatePlacements(savedId);
@@ -1535,6 +1643,93 @@ function FillingConfigPanel({
       toast.error(e instanceof Error ? e.message : "Failed to save Filling Template");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** Rename in place from the list. A name must be free at every size the
+   * template serves; the DB unique covers only the primary key, so the server
+   * re-checks the whole membership and answers 409 (the check below is a fast
+   * local pre-filter and only sees this size's list). Keeps the editor's name
+   * field in step when the renamed row is the open one. Order snapshots keep
+   * the name they were built with, so past Results are untouched. */
+  const renameTemplate = async (id: number, nextName: string) => {
+    const trimmed = nextName.trim();
+    const current = templates.find((t) => t.id === id);
+    if (!current) return;
+    if (!trimmed) {
+      toast.message("Enter a Filling Template name");
+      return;
+    }
+    if (trimmed === current.name) {
+      setRenamingId("");
+      return;
+    }
+    if (templates.some((t) => t.id !== id && t.name === trimmed)) {
+      toast.error("Another Filling Template in this scope already uses that name");
+      return;
+    }
+    setRenaming(true);
+    try {
+      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error ?? "Failed to rename Filling Template";
+        throw new Error(typeof message === "string" ? message : "Failed to rename Filling Template");
+      }
+      setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, name: trimmed } : t)));
+      if (selectedId === id) setName(trimmed);
+      setRenamingId("");
+      toast.success("Filling Template renamed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to rename Filling Template");
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  /** Take this size out of a shared template and give it its own copy of the
+   * recipe. Without this, sharing would be a one-way door: the moment one size
+   * needed to differ the operator would have to rebuild the mix by hand. */
+  const forkForThisKey = async () => {
+    if (selectedId === "") return;
+    const base = name.trim() || "Filling Template";
+    const label = templateKeyLabel(kind, templateKey);
+    let copyName = `${base} (${label})`;
+    for (let n = 2; templates.some((t) => t.name === copyName); n += 1) {
+      copyName = `${base} (${label} ${n})`;
+    }
+    setForking(true);
+    try {
+      const res = await fetch(
+        settingsPath(`/settings/inventory/configure/templates/${selectedId}/fork`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          // The editor's current recipe, not the stored one: the operator forks
+          // mid-edit precisely to keep these changes off the other sizes.
+          body: JSON.stringify({ key: templateKey, name: copyName, placements: spatialRows() }),
+        },
+      );
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error ?? "Failed to copy Filling Template";
+        throw new Error(typeof message === "string" ? message : "Failed to copy Filling Template");
+      }
+      const list = await loadFillingTemplates(kind, templateKey);
+      setTemplates(list);
+      const createdId = payload?.template?.id as number | undefined;
+      if (createdId) await selectTemplate(createdId);
+      toast.success(
+        `${copyName} applies to ${label} only — ${name.trim() || "the original"} no longer does`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to copy Filling Template");
+    } finally {
+      setForking(false);
     }
   };
 
@@ -1557,6 +1752,12 @@ function FillingConfigPanel({
 
   const deleteTemplate = async () => {
     if (selectedId === "") return;
+    // Delete is not scoped to the size on screen: it removes the recipe from
+    // every size it serves, so a shared template asks first.
+    if (scopeKeys.length > 1 && !deleteConfirm) {
+      setDeleteConfirm(true);
+      return;
+    }
     setSaving(true);
     try {
       await deleteTemplateById(selectedId);
@@ -1616,8 +1817,9 @@ function FillingConfigPanel({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Filling-only mixes for operator assignment. Scoped to {kind === "pillow" ? "size" : "length"}{" "}
-        <strong>{templateKey}</strong>.
+        Filling-only mixes for operator assignment. Showing every recipe that applies to{" "}
+        {kind === "pillow" ? "size" : "length"} <strong>{templateKey}</strong> — one recipe can
+        serve several.
       </p>
       <div className={WORKBENCH_GRID}>
       <TemplateRail
@@ -1667,13 +1869,27 @@ function FillingConfigPanel({
             selected={selectedId === t.id}
             onSelect={() => void selectTemplate(t.id)}
             title={t.name}
-            meta={
-              !t.is_active || isUnauthoredTemplate(t) ? (
-                <>
-                  {!t.is_active && <Badge variant="secondary">Inactive</Badge>}
-                  {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} />}
-                </>
+            onRename={() => setRenamingId(t.id)}
+            editing={
+              renamingId === t.id ? (
+                <TemplateNameEditor
+                  value={t.name}
+                  busy={renaming}
+                  onCancel={() => setRenamingId("")}
+                  onSubmit={(next) => void renameTemplate(t.id, next)}
+                />
               ) : null
+            }
+            meta={
+              <>
+                {!t.is_active && <Badge variant="secondary">Inactive</Badge>}
+                {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} />}
+                <TemplateScopeChips
+                  kind={kind}
+                  keys={t.keys ?? [templateKey]}
+                  currentKey={templateKey}
+                />
+              </>
             }
             trailing={
               <Switch
@@ -1689,12 +1905,21 @@ function FillingConfigPanel({
       <WorkbenchHeader
         title={selectedId === "" ? "New Filling Template" : name.trim() || "Untitled Filling Template"}
         description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey} · ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed`}
+        // Save is pinned here while the shared-recipe notice scrolls away with
+        // the meta block, so the warning rides alongside the button it is about.
+        warning={
+          scopeKeys.length > 1
+            ? `Shared — saving rewrites ${formatTemplateKeys(kind, scopeKeys)}`
+            : null
+        }
         actions={
           <>
             {selectedId !== "" && (
               <Button variant="outline" size="sm" disabled={saving} onClick={() => void deleteTemplate()}>
                 <Trash2 className="size-4" />
-                Delete
+                {deleteConfirm
+            ? `Delete from all ${scopeKeys.length} ${kind === "bolster" ? "lengths" : "sizes"}`
+            : "Delete"}
               </Button>
             )}
             <Button size="sm" onClick={() => void saveTemplate()} disabled={saving}>
@@ -1724,63 +1949,77 @@ function FillingConfigPanel({
           </SelectContent>
         </Select>
       </div>
-      <Input placeholder="Filling Template name" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input
+        placeholder="Filling Template name"
+        value={name}
+        maxLength={120}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <TemplateScopeField
+        kind={kind}
+        keys={scopeKeys}
+        currentKey={templateKey}
+        disabled={saving}
+        onChange={(next) => {
+          // An armed delete counts the sizes it would remove, so changing them
+          // must disarm it rather than leave a stale count on a live button.
+          setDeleteConfirm(false);
+          setScopeKeys(next);
+        }}
+      />
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm">
           <Switch checked={active} onCheckedChange={setActive} />
           Active (selectable on assign)
         </label>
-        <div className="flex gap-2 lg:hidden">
+        <div className="flex flex-wrap gap-2 lg:hidden">
           <Button variant="secondary" onClick={() => void saveTemplate()} disabled={saving}>
             {saving ? "Saving…" : "Save Filling Template"}
           </Button>
-          <Button variant="destructive" disabled={selectedId === "" || saving} onClick={() => void deleteTemplate()}>
-            Delete
+          <Button
+            variant="destructive"
+            disabled={selectedId === "" || saving}
+            onClick={() => void deleteTemplate()}
+          >
+            {deleteConfirm ? `Delete ×${scopeKeys.length}` : "Delete"}
           </Button>
           <Button variant="outline" onClick={resetEditor} disabled={saving}>
             Clear
           </Button>
         </div>
       </div>
-      </div>
-      {templates.length > 0 && (
-        <div className="rounded-lg border lg:hidden">
-          {unauthoredCount > 0 && (
-            <p className="border-b px-3 py-2 text-xs text-muted-foreground">
-              {unauthoredCount} of {templates.length} Filling Template
-              {templates.length === 1 ? "" : "s"} not yet spatially authored — pieces are not laid
-              out across the left, center and right sections.
-            </p>
-          )}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Active</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {templates.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>
-                    <button
-                      type="button"
-                      className="text-left font-medium hover:underline"
-                      onClick={() => void selectTemplate(t.id)}
-                    >
-                      {t.name}
-                    </button>
-                    {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} className="ml-2" />}
-                  </TableCell>
-                  <TableCell>
-                    <Switch checked={t.is_active} onCheckedChange={(checked) => void toggleActive(t.id, checked)} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+      {deleteConfirm && (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          This recipe also applies to {formatTemplateKeys(kind, scopeKeys.filter((k) => k !== templateKey))}.
+          Deleting removes it from all of them — to drop only{" "}
+          {templateKeyLabel(kind, templateKey)}, switch that {kind === "bolster" ? "length" : "size"} off
+          above and save instead.
+        </p>
       )}
+      {selectedId !== "" && (
+        <SharedTemplateNotice
+          kind={kind}
+          keys={scopeKeys}
+          currentKey={templateKey}
+          forking={forking}
+          onFork={() => void forkForThisKey()}
+        />
+      )}
+      </div>
+      <FillingTemplateTable
+        kind={kind}
+        currentKey={templateKey}
+        templates={templates}
+        unauthoredCount={unauthoredCount}
+        renamingId={renamingId}
+        renaming={renaming}
+        isUnauthored={isUnauthoredTemplate}
+        onSelect={(id) => void selectTemplate(id)}
+        onStartRename={setRenamingId}
+        onCancelRename={() => setRenamingId("")}
+        onRename={(id, next) => void renameTemplate(id, next)}
+        onToggleActive={(id, checked) => void toggleActive(id, checked)}
+      />
       <div className="space-y-3">
           {isLegacyFlat && (
             <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
@@ -2063,24 +2302,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function UnauthoredBadge({ sections, className }: { sections: string[]; className?: string }) {
-  return (
-    <span
-      className={cn(
-        "rounded border border-amber-500/50 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400",
-        className,
-      )}
-      title={`${unauthoredReason(sections)}${
-        looksLikeLegacyImport(sections)
-          ? " Placements were auto-generated from a legacy flat recipe and have never been laid out."
-          : ""
-      }`}
-    >
-      Not spatially authored
-    </span>
-  );
-}
-
 /**
  * Desktop (lg+) template rail: the Products toolbar (search + Select filters)
  * stacked over a scrollable list. Phones keep the inline template Select.
@@ -2145,13 +2366,26 @@ function TemplateRailItem({
   title,
   meta,
   trailing,
+  onRename,
+  editing,
 }: {
   selected: boolean;
   onSelect: () => void;
   title: string;
   meta?: ReactNode;
   trailing?: ReactNode;
+  /** Opens the inline rename field; omit on lists that cannot be renamed. */
+  onRename?: () => void;
+  /** The rename field itself, rendered in place of the row while it is open. */
+  editing?: ReactNode;
 }) {
+  if (editing) {
+    return (
+      <li className={cn("flex items-center gap-2 rounded-lg px-2 py-1", selected ? "bg-muted" : null)}>
+        {editing}
+      </li>
+    );
+  }
   return (
     <li
       className={cn(
@@ -2170,6 +2404,18 @@ function TemplateRailItem({
           <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{meta}</span>
         ) : null}
       </button>
+      {onRename && (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="shrink-0"
+          onClick={onRename}
+          aria-label={`Rename ${title}`}
+        >
+          <Pencil className="size-4" />
+        </Button>
+      )}
       {trailing}
     </li>
   );
@@ -2230,10 +2476,13 @@ function WorkbenchHeader({
   title,
   description,
   actions,
+  warning,
 }: {
   title: string;
   description: string;
   actions: ReactNode;
+  /** Rides with the pinned actions, for what the operator must know before using them. */
+  warning?: string | null;
 }) {
   return (
     <div className="sticky top-0 z-20 hidden items-center justify-between gap-4 border-b bg-background/95 py-3 backdrop-blur lg:flex">
@@ -2241,7 +2490,14 @@ function WorkbenchHeader({
         <h2 className="truncate text-lg font-medium">{title}</h2>
         <p className="truncate text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      <div className="flex shrink-0 items-center gap-2">
+        {warning ? (
+          <span className="max-w-72 truncate rounded border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+            {warning}
+          </span>
+        ) : null}
+        {actions}
+      </div>
     </div>
   );
 }

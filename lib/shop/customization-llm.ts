@@ -71,6 +71,15 @@ export async function getAvailableFillings(): Promise<FillingItem[]> {
 
 /**
  * Get BOM templates for a given pillow kind and size.
+ *
+ * KNOWN ISSUE — see `docs/known-issues.md`. `pillow_kind` is always null on a
+ * Filling Template (they carry no Tier), so the filter below can never match
+ * one and this returns warehouse templates. Both callers then read
+ * `filling_template_placements` for the ids, which exist only for
+ * `role = 'filling'`, so the shopper's pillow x-ray renders empty. Deliberately
+ * left alone: whether this is dead code or the pillow twin of the bolster
+ * reader is a product call. If it is meant to read Filling Templates it also
+ * needs ADR 0018 membership scoping — `key` is only the primary size.
  */
 export async function getBomTemplates(kind: string, size: string): Promise<BomTemplate[]> {
   const admin = supabaseAdmin();

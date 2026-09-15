@@ -329,10 +329,14 @@ assert.match(
   /placements: z\.array\(PlacementRowSchema\)\.min\(1\)/,
   "an empty mix can never be saved — it would publish or blank an empty template",
 );
+// Size membership, not `key` (ADR 0018): a shared template legitimately serves
+// this size even when its primary names another, so the guard reads the
+// membership it was loaded with — but it must still refuse a size the template
+// does not serve at all.
 assert.match(
   assistRoute,
-  /tpl\.kind !== scope\.kind \|\| tpl\.key !== scope\.key/,
-  "overwrite refuses a template scoped to another size/length",
+  /tpl\.kind !== scope\.kind \|\| !served\.includes\(scope\.key\)/,
+  "overwrite refuses a template that does not serve this size/length",
 );
 
 // The Save control renders on "mix is dirty" alone — the panel does not know the

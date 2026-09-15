@@ -3,6 +3,9 @@ import {
   validateFillingOnlyLines,
   filterSelectableFillingTemplates,
   validateDefaultFillingTemplate,
+  normalizeTemplateKeys,
+  primaryTemplateKey,
+  templateServesKey,
 } from "@/lib/filling-templates";
 
 describe("validateFillingOnlyLines", () => {
@@ -101,12 +104,64 @@ describe("validateDefaultFillingTemplate", () => {
     if (!result.ok) expect(result.error).toContain("kind");
   });
 
-  it("rejects key mismatch (wrong size or length)", () => {
+  it("rejects a size the template does not apply to", () => {
     const result = validateDefaultFillingTemplate(
-      { ...valid, key: "L" },
+      { ...valid, key: "L", keys: ["L"] },
       { productType: "pillow", size: "M", tier: "basic" },
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain("key");
+    if (!result.ok) expect(result.error).toContain("applies to L");
+  });
+
+  it("accepts a shared template whose primary key is another size", () => {
+    expect(
+      validateDefaultFillingTemplate(
+        { ...valid, key: "L", keys: ["L", "M"] },
+        { productType: "pillow", size: "M", tier: "basic" },
+      ),
+    ).toEqual({ ok: true });
+  });
+});
+
+describe("size membership", () => {
+  it("normalizes to the canonical order and rejects unknown or empty sets", () => {
+    expect(normalizeTemplateKeys("pillow", ["L", "XS", "L"])).toEqual({ ok: true, keys: ["XS", "L"] });
+    expect(normalizeTemplateKeys("bolster", ["long", "short"])).toEqual({
+      ok: true,
+      keys: ["short", "long"],
+    });
+    expect(normalizeTemplateKeys("pillow", ["XXL"]).ok).toBe(false);
+    expect(normalizeTemplateKeys("pillow", []).ok).toBe(false);
+  });
+
+  it("keeps the primary key inside the membership it is derived from", () => {
+    expect(primaryTemplateKey("pillow", ["L", "S"])).toBe("S");
+    expect(primaryTemplateKey("bolster", ["long", "medium"])).toBe("medium");
+  });
+
+  it("falls back to the primary key only when membership is absent", () => {
+    expect(templateServesKey({ key: "M" }, "M")).toBe(true);
+    expect(templateServesKey({ key: "M", keys: ["L", "XL"] }, "M")).toBe(false);
+    expect(templateServesKey({ key: "M", keys: ["L", "XL"] }, "XL")).toBe(true);
+  });
+
+  it("lists a shared template at every size it serves", () => {
+    const shared = {
+      id: 9,
+      kind: "pillow",
+      key: "S",
+      keys: ["S", "M"],
+      role: "filling",
+      is_active: true,
+      name: "Type-9a",
+    };
+    for (const size of ["S", "M"]) {
+      expect(
+        filterSelectableFillingTemplates([shared], { productType: "pillow", size }).map((t) => t.id),
+      ).toEqual([9]);
+    }
+    expect(filterSelectableFillingTemplates([shared], { productType: "pillow", size: "L" })).toEqual(
+      [],
+    );
   });
 });

@@ -6,6 +6,7 @@ import { getFillingRecommendation, getRecommendationFromMeasurements, getBolster
 import { getAvailableComponents, validateCustomizationConfig, fetchOverlayMap } from "@/lib/shop/customization-inventory";
 import { customizationDelta, priceCustomizedBuild } from "@/lib/shop/customization-price";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
+import { templateIdsForKey } from "@/lib/filling-templates/membership";
 import {
   incompleteEngineInputs,
   measurementPrefsToEngineInputs,
@@ -223,14 +224,20 @@ async function handleRecommend(req: Request) {
 
       // RE slice 07: length-scoped Filling Templates + spatial placements +
       // color overrides so the completed preview can render the read-only x-ray.
-      const { data: fillingTemplates } = await admin
-        .from("bom_templates")
-        .select("id, name")
-        .eq("kind", "bolster")
-        .eq("key", bolsterVariant)
-        .eq("role", "filling")
-        .eq("is_active", true)
-        .order("name");
+      // Membership, not `key`: a recipe serving short AND medium carries
+      // primary `short`, and filtering on that would hide it from a medium
+      // shopper while the Admin Panel still offers it (ADR 0018).
+      const templateMembers = await templateIdsForKey(admin, bolsterVariant);
+      const { data: fillingTemplates } = templateMembers.ok && templateMembers.ids.length
+        ? await admin
+            .from("bom_templates")
+            .select("id, name")
+            .eq("kind", "bolster")
+            .eq("role", "filling")
+            .eq("is_active", true)
+            .in("id", templateMembers.ids)
+            .order("name")
+        : { data: [] as Array<{ id: number; name: string }> };
       const { data: tplPlacements } = await admin
         .from("bolster_template_placements")
         .select("template_id, slot, item_id")

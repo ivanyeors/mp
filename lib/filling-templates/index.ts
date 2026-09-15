@@ -1,10 +1,17 @@
-/** Filling Templates: filling-only Configure BOM templates, size-scoped. */
+/** Filling Templates: filling-only Configure BOM templates, scoped to one or more sizes. */
+
+import { formatTemplateKeys, templateServesKey, type FillingKind } from "./keys";
+
+export * from "./keys";
 
 export type FillingProductType = "pillow" | "bolster";
 
 export type FillingTemplateLike = {
   kind: string;
+  /** Primary size key — kept in step with the first member, never the authority. */
   key: string;
+  /** Every size this template serves. The authority for scope. */
+  keys?: string[];
   role: string;
   is_active: boolean;
 };
@@ -49,10 +56,11 @@ export function validateDefaultFillingTemplate(
       error: `Template kind "${template.kind}" does not match product type "${expectedKind}"`,
     };
   }
-  if (template.key !== expectedKey) {
+  if (!templateServesKey(template, expectedKey)) {
+    const served = formatTemplateKeys(expectedKind as FillingKind, template.keys ?? [template.key]);
     return {
       ok: false,
-      error: `Template key "${template.key}" does not match product card scope "${expectedKey}"`,
+      error: `Template applies to ${served}, not the product card scope "${expectedKey}"`,
     };
   }
   return { ok: true };
@@ -68,6 +76,6 @@ export function filterSelectableFillingTemplates<T extends FillingTemplateLike>(
       t.role === "filling" &&
       t.is_active &&
       t.kind === opts.productType &&
-      t.key === opts.size,
+      templateServesKey(t, opts.size),
   );
 }

@@ -5,7 +5,7 @@
   "/[lang]/settings": 425,
   "/[lang]": 525,
   "/[lang]/page-builder-preview": 525,
-  "/[lang]/settings/**": 490,
+  "/[lang]/settings/**": 495,
   "/[lang]/**": 475,
   "**": 410
 }
