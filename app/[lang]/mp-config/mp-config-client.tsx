@@ -813,10 +813,12 @@ export function MpConfigClient({
         const token = readToken(tokenStorageKey);
         const qs = token ? `?token=${encodeURIComponent(token)}` : "";
         const res = await fetch(`/api/mp-config/responses/${encodeURIComponent(id!)}${qs}`, { method: "GET", cache: "no-store" });
-        // Refused: this id is no longer ours. It happens after a hold — the token
-        // rotates server-side — and the stored id then points at a `held` Result
-        // every later write would be refused for. Rotating here is what keeps a
-        // customer who cancelled at Stripe able to save again; treating a refusal
+        // Refused: this id is no longer ours. It happens when this device lost the
+        // token (or never stored one) for a `held` Result, and the stored id then
+        // points at a Result every later write would be refused for (one this
+        // device does own reads fine and rotates below on `is_final`). Rotating
+        // here is what keeps a customer who cancelled at Stripe able to save
+        // again; treating a refusal
         // as "keep the id" strands them on a save indicator stuck at "error".
         if (res.status === 401 || res.status === 403) {
           rotate();
@@ -1631,6 +1633,8 @@ export function MpConfigClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             responseId: responseId ?? undefined,
+            // Proves this device owns the Draft Result it is submitting.
+            token: readToken(tokenStorageKey),
             deferred: true,
             email: holdEmail.trim(),
             phone: holdPhone.trim(),
@@ -1767,6 +1771,8 @@ export function MpConfigClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           responseId: responseId ?? undefined,
+          // Re-submitting an existing Result needs its access token (ownership).
+          token: readToken(tokenStorageKey),
           // Assisted customisation: no card. The server honours this only if the
           // row it already stored is `source = 'staff_assisted'`, so the flag is
           // a request, not a grant.
@@ -1850,6 +1856,7 @@ export function MpConfigClient({
     assistPlacements,
     sessionFillingTemplateId,
     partner,
+    tokenStorageKey,
   ]);
 
   const saveLabel:

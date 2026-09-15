@@ -351,7 +351,7 @@ export async function POST(req: Request) {
   // requests. Deliberately never minted on update — a legacy draft carrying a
   // null token has to stay writable by the pre-deploy browser tab that owns it,
   // and binding a token here would lock out the very session it just let through.
-  // Rotation at hold is app/api/results/hold/route.ts's job, not ours.
+  // The hold route keeps this same token (app/api/results/hold/route.ts).
   const accessToken = existing == null ? crypto.randomUUID() : null;
   if (accessToken) row.access_token = accessToken;
 
