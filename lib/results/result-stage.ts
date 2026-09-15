@@ -30,7 +30,8 @@ export type StuckReason =
   | "hold_rotting"
   | "topup_unsettled"
   | "order_mismatch"
-  | "needs_attention";
+  | "needs_attention"
+  | "accept_interrupted";
 
 export interface StageInput {
   status: string | null;
@@ -102,6 +103,12 @@ function stuckReason(input: StageInput, now: Date): StuckReason | null {
   // `mp-config-link` can attach an order_id to a Result that never went through
   // capture — a combination the lifecycle table has no concept of.
   if (order_id && status !== "captured") return "order_mismatch";
+
+  // Accept claims the Result by moving it to `accepted` and stamps `order_id`
+  // last. A request that died in between leaves it here: retry, cancel and
+  // decline all refuse `accepted`, so only a human can settle it.
+  // ponytail: a live accept also matches for its few seconds, which is harmless.
+  if (status === "accepted" && !order_id) return "accept_interrupted";
 
   // Paid a top-up, never returned to finish accepting. Money taken, no Order.
   if (input.topup_paid_at && status === "assigned") return "topup_unsettled";
@@ -189,6 +196,7 @@ export const STUCK_REASON_LABELS: Record<StuckReason, string> = {
   topup_unsettled: "Top-up paid — not settled into an Order",
   order_mismatch: "Linked to an Order without capture",
   needs_attention: "Order needs attention",
+  accept_interrupted: "Accept interrupted — check Stripe and Orders",
 };
 
 /** The queue buckets staff actually work from, in workflow order. */

@@ -128,6 +128,11 @@ describe("resultStage — stuck states", () => {
     expect(s.stuckReason).toBe("topup_unsettled");
   });
 
+  it("accept claimed but never stamped an Order", () => {
+    const s = resultStage(row({ status: "accepted", order_id: null }), NOW);
+    expect(s.stuckReason).toBe("accept_interrupted");
+  });
+
   it("order linked without capture", () => {
     const s = resultStage(row({ status: "held", order_id: "o1" }), NOW);
     expect(s.stuckReason).toBe("order_mismatch");

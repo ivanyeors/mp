@@ -387,8 +387,10 @@ export async function POST(
     .single();
 
   if (itemErr || !orderItem) {
-    await admin.from("orders").delete().eq("id", order.id);
-    await releaseClaim();
+    const { error: rollbackErr } = await admin.from("orders").delete().eq("id", order.id);
+    // An Order we could not delete must not be joined by a second one on retry:
+    // keep the claim so the Result shows as accept_interrupted for a human.
+    if (!rollbackErr) await releaseClaim();
     return NextResponse.json({ error: itemErr?.message ?? "Failed to create order item" }, { status: 500 });
   }
 
