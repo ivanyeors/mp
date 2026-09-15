@@ -71,6 +71,14 @@ describe("getAdminContext email fallback", () => {
     expect(h.db.admin_users[0].auth_user_id).toBeNull();
   });
 
+  it("does not let `*` (PostgREST's other wildcard) adopt another unbound row", async () => {
+    h.db.admin_users = [staffRow({ email: "alice@mpillow.com" })];
+    h.identity = { id: "auth-evil", email: "*@mpillow.com" };
+
+    expect(await getAdminContext()).toBeNull();
+    expect(h.db.admin_users[0].auth_user_id).toBeNull();
+  });
+
   it("leaves the bootstrap allowlist path unchanged", async () => {
     h.identity = { id: "auth-sg", email: "sg@mpillow.com" };
 

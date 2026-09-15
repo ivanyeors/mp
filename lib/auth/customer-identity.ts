@@ -22,9 +22,14 @@ export type CustomerLinkDecision =
  * local part, e.g. `john_doe@x.com`) or `%` would be treated as a wildcard and
  * could match unrelated rows — which would wrongly link guest orders that don't
  * actually belong to the customer (#33).
+ *
+ * PostgREST also rewrites every `*` in a like/ilike value to `%`, so `*` needs
+ * escaping too. `\*` arrives in Postgres as `\%`, a literal percent sign.
+ * ponytail: there is no way to send a literal `*`, so an address containing one
+ * never matches its own row; such addresses are vanishingly rare.
  */
 export function escapeLikePattern(value: string): string {
-  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+  return value.replace(/[\\%_*]/g, (ch) => `\\${ch}`);
 }
 
 /**

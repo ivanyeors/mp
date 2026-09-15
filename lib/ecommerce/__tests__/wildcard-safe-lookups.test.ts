@@ -92,6 +92,11 @@ describe("checkout customer lookup matches the email exactly", () => {
     expect(await findCustomerByEmail("%@x.com")).toBeNull();
   });
 
+  it("findCustomerByEmail: `a*b@x.com` does not match `axyzb@x.com`", async () => {
+    h.db.customers = [{ id: "cust-axyzb", email: "axyzb@x.com" }];
+    expect(await findCustomerByEmail("a*b@x.com")).toBeNull();
+  });
+
   it("findCustomerByEmail: finds the real customer case-insensitively", async () => {
     h.db.customers = [{ id: "cust-ab", email: "a_b@x.com" }];
     expect((await findCustomerByEmail(" A_B@X.com "))?.id).toBe("cust-ab");

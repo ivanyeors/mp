@@ -74,11 +74,15 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
     if (byEmail?.auth_user_id && byEmail.auth_user_id !== user.id) return null;
     row = byEmail;
     if (row && !row.auth_user_id) {
-      await admin
+      const { data: bound } = await admin
         .from("admin_users")
         .update({ auth_user_id: user.id })
         .eq("id", row.id)
-        .is("auth_user_id", null);
+        .is("auth_user_id", null)
+        .select("id")
+        .maybeSingle();
+      // Another sign-in bound the row between the read and this write.
+      if (!bound) return null;
     }
   }
 
