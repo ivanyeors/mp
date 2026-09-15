@@ -756,10 +756,10 @@
     "semantic_hash": "24828f0ae2e0ffe65e7ca969fe68c416"
   },
   "lib/inventory/shopify-templates-by-key.check.ts": {
-    "mtime": 1788879278.0577,
-    "seen": 1789439873.1926386,
-    "ast_hash": "894ae9bd6725c60cf2b43c8abef91027",
-    "semantic_hash": "894ae9bd6725c60cf2b43c8abef91027"
+    "mtime": 1789450798.5281632,
+    "seen": 1789451286.422602,
+    "ast_hash": "69c89f00069d771830ab526c6e91ef96",
+    "semantic_hash": ""
   },
   "lib/inventory/shopify-templates-by-key.ts": {
     "mtime": 1788879278.0577,
@@ -1362,9 +1362,9 @@
     "semantic_hash": ""
   },
   "lib/shop/customization-llm.ts": {
-    "mtime": 1788879278.1049101,
-    "seen": 1789439873.1929152,
-    "ast_hash": "4476e5b17e105f2aa35779512a2d1d57",
+    "mtime": 1789450788.606899,
+    "seen": 1789451286.4228666,
+    "ast_hash": "81473cd4561bc3ae129b464c53265135",
     "semantic_hash": ""
   },
   "lib/shop/customize-apply-payload.ts": {
@@ -2112,9 +2112,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/actions.ts": {
-    "mtime": 1789448160.0610187,
-    "seen": 1789449220.4156237,
-    "ast_hash": "c31809cf9172c2e7a2e5145353d8cba3",
+    "mtime": 1789450751.1809137,
+    "seen": 1789451286.421383,
+    "ast_hash": "7e71092d829a7afa84c76cc2cbc0ec76",
     "semantic_hash": ""
   },
   "app/[lang]/settings/inventory/configure/page.tsx": {
@@ -4356,9 +4356,9 @@
     "semantic_hash": ""
   },
   "components/settings/shopify-sales-section.tsx": {
-    "mtime": 1788879277.4312606,
-    "seen": 1789439873.192111,
-    "ast_hash": "8295bde04323713b150b007160bf904b",
+    "mtime": 1789450738.4672909,
+    "seen": 1789451286.4219623,
+    "ast_hash": "a2c71f7dcb67c1544312cd4387e1c959",
     "semantic_hash": ""
   },
   "components/shop/cart-button.tsx": {
@@ -11451,6 +11451,12 @@
     "mtime": 1789450310.760526,
     "seen": 1789450421.0359411,
     "ast_hash": "12a54e92922e62b362d0f39c34e581f2",
+    "semantic_hash": ""
+  },
+  "docs/known-issues.md": {
+    "mtime": 1789450788.5952454,
+    "seen": 1789451286.4237888,
+    "ast_hash": "73ea2e86e51156c9431906b921b6c8c8",
     "semantic_hash": ""
   }
 }

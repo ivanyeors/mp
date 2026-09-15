@@ -200,11 +200,19 @@ async function sellFromTemplateForShopifyCommit(
 
   const { data: template, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,kind,key,name')
+    .select('id,kind,key,name,role')
     .eq('id', input.templateId)
     .maybeSingle()
   if (tErr) throw new Error(tErr.message)
   if (!template) throw new Error('Template not found')
+  // A Shopify sale deducts flat `bom_template_lines`. A Filling Template's
+  // recipe is Placement rows (ADR 0008), and a legacy one that still carries
+  // flat lines would deduct fillings against a Shopify sale — which ADR 0003
+  // forbids. The picker only offers warehouse templates; this refuses the rest
+  // whatever a stale client posts.
+  if (template.role !== 'warehouse') {
+    throw new Error('Shopify sales commit from warehouse templates only')
+  }
 
   const { data: lines, error: lErr } = await admin
     .from('bom_template_lines')
