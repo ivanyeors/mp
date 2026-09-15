@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { filterSelectableFillingTemplates } from "@/lib/filling-templates";
+import { templateIdsForKey } from "@/lib/filling-templates/membership";
 import { formatFillingPreview, type FillingItemMeta } from "@/lib/filling-preview";
 import { derivePackList } from "@/lib/spatial-fillings";
 import {
@@ -97,18 +98,28 @@ export async function loadAssignPrep(
 
   const sizeKey = key.productType === "pillow" ? key.size : key.length;
 
+  // Scope by membership, not by `key`: a recipe shared in from another size is
+  // as assignable here as one authored here (CONTEXT.md, Filling Template).
+  const members = await templateIdsForKey(admin, sizeKey);
+  if (!members.ok) return members;
+
   const [{ data: templates, error: tplErr }, defaultId] = await Promise.all([
-    admin
-      .from("bom_templates")
-      .select("id, kind, key, role, is_active, name")
-      .eq("kind", key.productType)
-      .eq("key", sizeKey)
-      .eq("role", "filling"),
+    members.ids.length
+      ? admin
+          .from("bom_templates")
+          .select("id, kind, key, role, is_active, name")
+          .eq("kind", key.productType)
+          .eq("role", "filling")
+          .in("id", members.ids)
+      : Promise.resolve({ data: [], error: null }),
     getDefaultFillingTemplateId(admin, key),
   ]);
   if (tplErr) return { ok: false, error: tplErr.message };
 
-  const selectable = filterSelectableFillingTemplates(templates ?? [], {
+  // Every row came back through the membership filter, so `keys` carries this
+  // size for all of them — the pure filter then only re-checks kind and active.
+  const withKeys = (templates ?? []).map((t) => ({ ...t, keys: [sizeKey] }));
+  const selectable = filterSelectableFillingTemplates(withKeys, {
     productType: key.productType,
     size: sizeKey,
   });

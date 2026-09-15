@@ -5,6 +5,7 @@ import {
   validateDefaultFillingTemplate,
   type FillingTemplateLike,
 } from "@/lib/filling-templates";
+import { loadTemplateKeys } from "@/lib/filling-templates/membership";
 import {
   UNKEYED,
   priceComposedBuild,
@@ -363,7 +364,14 @@ export async function setDefaultFillingTemplateId(
       .maybeSingle();
     if (tplErr) return { ok: false, error: tplErr.message };
     if (!template) return { ok: false, error: "Filling Template not found" };
-    const valid = validateDefaultFillingTemplate(template as FillingTemplateLike, key);
+    // Membership decides scope: a recipe shared into this size is a legitimate
+    // default for it, even though its primary `key` names a different size.
+    const served = await loadTemplateKeys(admin, [templateId]);
+    if (!served.ok) return served;
+    const valid = validateDefaultFillingTemplate(
+      { ...(template as FillingTemplateLike), keys: served.byId.get(templateId) },
+      key,
+    );
     if (!valid.ok) return valid;
   }
 

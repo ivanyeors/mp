@@ -3,6 +3,13 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/admin'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
+import { normalizeTemplateKeys, templateKeysForKind } from '@/lib/filling-templates/keys'
+import {
+  assertTemplateNameFree,
+  loadTemplateKeys,
+  setTemplateKeys,
+  templateIdsForKey,
+} from '@/lib/filling-templates/membership'
 import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
 
 export const runtime = 'nodejs'
@@ -34,6 +41,8 @@ const CreateSchema = z.object({
   pillowVariant: PillowVariantSchema.optional(),
   name: z.string().trim().min(1).max(120),
   notes: z.string().trim().max(2000).optional(),
+  // Filling Templates may serve several sizes; defaults to the creating scope.
+  keys: z.array(z.string().min(1).max(40)).optional(),
   role: RoleSchema.default('warehouse'),
   is_active: z.boolean().optional(),
   lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })).default([]),
@@ -95,26 +104,49 @@ export async function GET(req: NextRequest) {
     .from('bom_templates')
     .select(TEMPLATE_SELECT)
     .eq('kind', parsed.data.kind)
-    .eq('key', parsed.data.key)
     .eq('role', role)
     .order('updated_at', { ascending: false })
 
+  // Filling Templates are scoped by MEMBERSHIP, not by `key` — that column only
+  // carries the primary, so filtering on it would hide every template shared in
+  // from another size. Warehouse templates keep the size×tier key scope.
+  let memberIds: number[] | null = null
   if (role === 'filling') {
+    const members = await templateIdsForKey(admin, parsed.data.key)
+    if (!members.ok) return NextResponse.json({ error: members.error }, { status: 500 })
+    memberIds = members.ids
+    if (memberIds.length) q = q.in('id', memberIds)
     if (parsed.data.activeOnly) q = q.eq('is_active', true)
-  } else if (parsed.data.kind === 'pillow') {
-    const pillowKind = parsed.data.pillowKind ?? 'basic'
-    q = q.eq('pillow_kind', pillowKind)
-    if (pillowKind === 'premium' && parsed.data.pillowVariant) {
-      q = q.eq('pillow_variant', parsed.data.pillowVariant)
-    }
   } else {
-    q = q.is('pillow_kind', null)
+    q = q.eq('key', parsed.data.key)
+    if (parsed.data.kind === 'pillow') {
+      const pillowKind = parsed.data.pillowKind ?? 'basic'
+      q = q.eq('pillow_kind', pillowKind)
+      if (pillowKind === 'premium' && parsed.data.pillowVariant) {
+        q = q.eq('pillow_variant', parsed.data.pillowVariant)
+      }
+    } else {
+      q = q.is('pillow_kind', null)
+    }
   }
 
-  const { data, error } = await q
+  // No template serves this size yet: skip the list query (an empty `in` is not
+  // a filter PostgREST can express) but still ship the colours below, which a
+  // brand-new template needs before it has been saved once.
+  const { data, error } = memberIds && !memberIds.length ? { data: [], error: null } : await q
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const templates = data ?? []
+
+  // Every size each listed template serves, so the list can show what a save or
+  // a delete would reach beyond the size being viewed.
+  let templateKeys: Record<number, string[]> | undefined
+  if (role === 'filling') {
+    const ids = templates.map((t: { id: number }) => Number(t.id))
+    const loaded = await loadTemplateKeys(admin, ids)
+    if (!loaded.ok) return NextResponse.json({ error: loaded.error }, { status: 500 })
+    templateKeys = Object.fromEntries(ids.map((id) => [id, loaded.byId.get(id) ?? []]))
+  }
 
   // Section coverage per pillow Filling Template, so the list can badge the ones
   // that are not Spatially authored (CONTEXT.md) without fetching every placement
@@ -154,6 +186,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     templates,
+    ...(templateKeys ? { templateKeys } : {}),
     ...(sectionCoverage ? { sectionCoverage } : {}),
     ...(colorOverrides ? { colorOverrides } : {}),
   })
@@ -170,6 +203,20 @@ export async function POST(req: NextRequest) {
   const admin = supabaseAdmin()
   const { kind, key, name, notes, lines, role } = parsed.data
   const isActive = parsed.data.is_active ?? true
+  // Sizes this Filling Template will serve. Defaults to the creating scope, so
+  // a caller that knows nothing about membership still gets today's behaviour.
+  let fillingKeys: string[] = []
+  if (role === 'filling') {
+    const normalized = normalizeTemplateKeys(kind, parsed.data.keys ?? [key])
+    if (!normalized.ok) return NextResponse.json({ error: normalized.error }, { status: 400 })
+    if (!normalized.keys.includes(key)) {
+      return NextResponse.json(
+        { error: `A template created at ${key} must also apply to ${key}` },
+        { status: 400 },
+      )
+    }
+    fillingKeys = normalized.keys
+  }
   // Filling templates are size-scoped only (no tier).
   const pillowKind = role === 'filling' ? null : kind === 'pillow' ? (parsed.data.pillowKind ?? 'basic') : null
   const pillowVariant =
@@ -199,9 +246,20 @@ export async function POST(req: NextRequest) {
     .from('bom_templates')
     .select(TEMPLATE_SELECT)
     .eq('kind', kind)
-    .eq('key', key)
     .eq('name', name)
     .eq('role', role)
+
+  if (role === 'filling') {
+    // Same name already serving this size = the same template, whatever its
+    // primary key says. Matching on `key` would fork a duplicate the moment a
+    // shared template's primary moved to a smaller size.
+    const members = await templateIdsForKey(admin, key)
+    if (!members.ok) return NextResponse.json({ error: members.error }, { status: 500 })
+    if (!members.ids.length) existingQuery = existingQuery.eq('id', -1)
+    else existingQuery = existingQuery.in('id', members.ids)
+  } else {
+    existingQuery = existingQuery.eq('key', key)
+  }
 
   if (role === 'warehouse' && kind === 'pillow') {
     existingQuery = existingQuery.eq('pillow_kind', pillowKind)
@@ -213,6 +271,16 @@ export async function POST(req: NextRequest) {
 
   const { data: existing, error: exErr } = await existingQuery.maybeSingle()
   if (exErr) return NextResponse.json({ error: exErr.message }, { status: 500 })
+
+  if (role === 'filling') {
+    const free = await assertTemplateNameFree(admin, {
+      kind,
+      keys: fillingKeys,
+      name,
+      excludeId: existing?.id ? Number(existing.id) : undefined,
+    })
+    if (!free.ok) return NextResponse.json({ error: free.error }, { status: 409 })
+  }
 
   const templateId = existing?.id
   if (templateId) {
@@ -230,6 +298,12 @@ export async function POST(req: NextRequest) {
       const payload = safeLines.map((l) => ({ template_id: templateId, item_id: l.item_id, quantity: l.quantity }))
       const { error: linesErr } = await admin.from('bom_template_lines').upsert(payload, { onConflict: 'template_id,item_id' })
       if (linesErr) return NextResponse.json({ error: linesErr.message }, { status: 500 })
+    }
+
+    if (role === 'filling') {
+      const membership = await setTemplateKeys(admin, { templateId, kind, keys: fillingKeys })
+      if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
+      return NextResponse.json({ ok: true, template: updated, keys: membership.keys, updatedExisting: true })
     }
 
     return NextResponse.json({ ok: true, template: updated, updatedExisting: true })
@@ -255,6 +329,12 @@ export async function POST(req: NextRequest) {
     const payload = safeLines.map((l) => ({ template_id: created.id, item_id: l.item_id, quantity: l.quantity }))
     const { error: linesErr } = await admin.from('bom_template_lines').upsert(payload, { onConflict: 'template_id,item_id' })
     if (linesErr) return NextResponse.json({ error: linesErr.message }, { status: 500 })
+  }
+
+  if (role === 'filling') {
+    const membership = await setTemplateKeys(admin, { templateId: created.id, kind, keys: fillingKeys })
+    if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
+    return NextResponse.json({ ok: true, template: created, keys: membership.keys, updatedExisting: false })
   }
 
   return NextResponse.json({ ok: true, template: created, updatedExisting: false })

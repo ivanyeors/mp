@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/admin'
 import { z } from 'zod'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
+import { normalizeTemplateKeys } from '@/lib/filling-templates/keys'
+import { assertTemplateNameFree, loadTemplateKeys, setTemplateKeys } from '@/lib/filling-templates/membership'
 import { lookupItemCategories, lookupPlacementKinds, rejectFillingLines } from '@/lib/bom-sanitizer'
 import {
   derivePackList,
@@ -79,6 +81,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
   // Pack list is derived: placements when present, legacy flat lines otherwise (ADR 0008)
   const packList = derivePackList(placements, lines ?? [])
 
+  // Sizes this recipe serves — the editor warns before a save reaches the others.
+  let keys: string[] = []
+  if (tpl.role === 'filling') {
+    const loaded = await loadTemplateKeys(admin, [id])
+    if (!loaded.ok) return NextResponse.json({ error: loaded.error }, { status: 500 })
+    keys = loaded.byId.get(id) ?? []
+  }
+
   // Product Builder per-subtype colours for the x-ray CSS-variable pipeline. The
   // table is service-role-only under RLS, so the Admin Panel must receive them
   // from here — the browser client cannot query it (and must not be granted a
@@ -92,6 +102,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
   return NextResponse.json({
     ok: true,
     template: tpl,
+    keys,
     lines: lines ?? [],
     placements,
     packList,
@@ -121,6 +132,8 @@ const UpdateSchema = z.object({
   // there. Order snapshots keep the name they were built with (ADR 0008), so a
   // rename never rewrites a Result's history.
   name: z.string().trim().min(1).max(120).optional(),
+  // Sizes this Filling Template serves. Replaces the set wholesale; at least one.
+  keys: z.array(z.string().min(1).max(40)).optional(),
   notes: z.string().trim().max(2000).optional(),
   is_active: z.boolean().optional(),
   lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })).optional(),
@@ -143,7 +156,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
 
   const { data: tpl, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,kind,name,notes,role,is_active')
+    .select('id,kind,key,name,notes,role,is_active')
     .eq('id', id)
     .maybeSingle()
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
@@ -152,6 +165,34 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
   const nextNotes = parsed.data.notes !== undefined ? parsed.data.notes : (tpl.notes ?? null)
   const nextActive = parsed.data.is_active !== undefined ? parsed.data.is_active : tpl.is_active
   const nextName = parsed.data.name !== undefined ? parsed.data.name : tpl.name
+
+  // Rescope before the name lands, so a rename that also widens the template is
+  // checked against every size it is about to appear in, not just today's.
+  const kind = tpl.kind === 'bolster' ? 'bolster' : 'pillow'
+  let nextKeys: string[] | null = null
+  if (parsed.data.keys !== undefined) {
+    if (tpl.role !== 'filling') {
+      return NextResponse.json(
+        { error: 'Only Filling Templates apply to more than one size' },
+        { status: 400 },
+      )
+    }
+    const normalized = normalizeTemplateKeys(kind, parsed.data.keys)
+    if (!normalized.ok) return NextResponse.json({ error: normalized.error }, { status: 400 })
+    nextKeys = normalized.keys
+  }
+
+  if (tpl.role === 'filling' && (nextKeys || parsed.data.name !== undefined)) {
+    const loaded = await loadTemplateKeys(admin, [id])
+    if (!loaded.ok) return NextResponse.json({ error: loaded.error }, { status: 500 })
+    const free = await assertTemplateNameFree(admin, {
+      kind,
+      keys: nextKeys ?? loaded.byId.get(id) ?? [tpl.key],
+      name: nextName,
+      excludeId: id,
+    })
+    if (!free.ok) return NextResponse.json({ error: free.error }, { status: 409 })
+  }
 
   const { error: upErr } = await admin
     .from('bom_templates')
@@ -166,6 +207,12 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
       )
     }
     return NextResponse.json({ error: upErr.message }, { status: 500 })
+  }
+
+  // After the row update: a rejected rename must not leave the template rescoped.
+  if (nextKeys) {
+    const membership = await setTemplateKeys(admin, { templateId: id, kind, keys: nextKeys })
+    if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
   }
 
   if (parsed.data.lines !== undefined) {
@@ -227,5 +274,5 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
     }
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, ...(nextKeys ? { keys: nextKeys } : {}) })
 }

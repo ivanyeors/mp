@@ -4,6 +4,7 @@ import { after } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { assertAdmin } from '@/lib/auth/admin'
+import { loadTemplateKeys, templateIdsForKey } from '@/lib/filling-templates/membership'
 import { syncShopifyInventoryFromBuildable, syncShopifyInventoryForDepletedItems } from '@/lib/shopify/sync'
 import { syncShopifyPricingFromSupabase } from '@/lib/shopify/pricing'
 import { shopifyListActiveProductsWithVariants } from '@/lib/shopify/products'
@@ -396,7 +397,10 @@ export async function sellFromTemplate(input: z.infer<typeof SellFromTemplateSch
   if (fErr) throw new Error(fErr.message)
   if (!fillingTemplate) throw new Error('Filling template not found')
   if (fillingTemplate.role !== 'filling') throw new Error('Filling template must have role=filling')
-  if (fillingTemplate.kind !== template.kind || fillingTemplate.key !== template.key) {
+  const served = await loadTemplateKeys(admin, [Number(fillingTemplate.id)])
+  if (!served.ok) throw new Error(served.error)
+  const keys = served.byId.get(Number(fillingTemplate.id)) ?? [fillingTemplate.key]
+  if (fillingTemplate.kind !== template.kind || !keys.includes(template.key)) {
     throw new Error('Filling template does not match product size/length')
   }
 
@@ -635,13 +639,18 @@ export async function listTemplates(kind: 'pillow' | 'bolster', key: string, pil
 export async function listFillingTemplates(kind: 'pillow' | 'bolster', key: string) {
   await assertAdmin('inventory')
   const admin = supabaseAdmin()
+  // Membership, not `key`: the Default picker must offer recipes shared in from
+  // another size, or a shared template could never be made a card's default.
+  const members = await templateIdsForKey(admin, key)
+  if (!members.ok) throw new Error(members.error)
+  if (!members.ids.length) return { ok: true, templates: [] }
   const { data, error } = await admin
     .from('bom_templates')
     .select('id,name,kind,key')
     .eq('kind', kind)
-    .eq('key', key)
     .eq('role', 'filling')
     .eq('is_active', true)
+    .in('id', members.ids)
     .order('updated_at', { ascending: false })
   if (error) throw new Error(error.message)
   return { ok: true, templates: data ?? [] }
