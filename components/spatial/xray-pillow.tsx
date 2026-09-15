@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
+import { FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 
@@ -27,6 +27,8 @@ import {
   cellArrangement,
   cellLayers,
   cellPieces,
+  mirrorSection,
+  mirrorTarget,
   moveLayer,
   removeLayer,
   removePiece,
@@ -503,6 +505,50 @@ export function XrayPillow({
     </div>
   );
 
+  /**
+   * Mirror the dived side onto the other one (CONTEXT.md: side-sleep support is
+   * the paired thing; back-sleep support sits in center). Center is ON the
+   * mirror plane and has no opposite, so it gets no CTA at all rather than a
+   * disabled one — there is nothing staff could do to make it apply.
+   *
+   * The direction is IN the label, not implied by where you tapped: this
+   * replaces the whole far side in one click, and "Mirror" alone does not say
+   * which side loses its pieces. Undo rides on the toast for the same reason.
+   */
+  const mirrorButton = (section: Section, compact: boolean) => {
+    const to = mirrorTarget(section);
+    if (to === null) return null;
+    const empty = placements.every((p) => p.section !== section);
+    return (
+      <button
+        type="button"
+        disabled={empty}
+        className={
+          compact
+            ? `pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 ${CHIP_CLASS}`
+            : "flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium hover:bg-accent disabled:opacity-40"
+        }
+        aria-label={
+          empty
+            ? `Nothing in the ${section} section to mirror`
+            : `Mirror the ${section} section onto the ${to} section, replacing it`
+        }
+        onClick={() => {
+          const before = placements;
+          const next = mirrorSection(before, section);
+          if (next === before) return;
+          onPlacementsChange?.(next);
+          toast.success(`Mirrored ${section} onto ${to}`, {
+            action: { label: "Undo", onClick: () => onPlacementsChange?.(before) },
+          });
+        }}
+      >
+        <FlipHorizontal2 className={compact ? CHIP_ICON_CLASS : "size-4"} />
+        {empty ? "Nothing to mirror" : `Mirror to ${to}`}
+      </button>
+    );
+  };
+
   /** Adding a layer IS adding a piece at a new depth, so an empty layer is
       never created and never has to be persisted. */
   const addLayerButton = (cell: Cell, subSection: SubSection, layers: readonly unknown[]) => (
@@ -734,6 +780,24 @@ export function XrayPillow({
           leader lines and nothing to clip. (view coords → HTML %, linear map) */}
       {dived && editable && (
         <div className="absolute inset-0" style={{ pointerEvents: "none" }} data-xray-dive>
+          {/* Section-level chrome, above the dived column's top cell. The cell
+              panels are centred at 16.7% (the front cell's mid-line), so this
+              band clears them; inside the frame, so it is never the clipped
+              gutter the per-cell controls had to move out of. */}
+          {!isMobile && (
+            <div
+              className="absolute z-30 flex -translate-x-1/2 justify-center"
+              style={{
+                left: `${(((COL_X[divedIdx] + COL_X[divedIdx + 1]) / 2) / XRAY_VIEW.width) * 100}%`,
+                top: "1.5%",
+                pointerEvents: "none",
+              }}
+              data-xray-dive-section-bar
+            >
+              {mirrorButton(dived, true)}
+            </div>
+          )}
+
           {/* Side-by-side cells: centroid chips over their pouch group. */}
           {!isMobile && sideChips.map((fc) => (
             <div
@@ -879,15 +943,18 @@ export function XrayPillow({
               small phone, and the dock is out of flow so the page cannot scroll
               to reach the bottom of it. The header stays put while the cells scroll. */}
           <div className="flex max-h-[70vh] flex-col rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl">
-            <div className="mb-1 flex shrink-0 items-center justify-between px-1">
+            <div className="mb-1 flex shrink-0 flex-wrap items-center gap-2 px-1">
               <span className="text-xs font-semibold capitalize">{dived} section</span>
-              <button
-                type="button"
-                className="min-h-9 rounded-lg px-3 text-xs font-medium hover:bg-accent"
-                onClick={endDive}
-              >
-                Done
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                {mirrorButton(dived, false)}
+                <button
+                  type="button"
+                  className="min-h-9 rounded-lg px-3 text-xs font-medium hover:bg-accent"
+                  onClick={endDive}
+                >
+                  Done
+                </button>
+              </div>
             </div>
             {/* Its own element, not a sibling of the header: `first:border-t-0`
                 below only reaches the first cell when the cells are the first

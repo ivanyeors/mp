@@ -4602,9 +4602,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-dive.check.ts": {
-    "mtime": 1789439682.3200366,
-    "seen": 1789439873.1921544,
-    "ast_hash": "c49ce8441a1cb78cdab83fef0001fe8d",
+    "mtime": 1789440150.2287683,
+    "seen": 1789440582.7997818,
+    "ast_hash": "3667cba4bf2463d8f75e5d1c52204714",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
@@ -4614,9 +4614,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1789439739.6477683,
-    "seen": 1789439873.1921606,
-    "ast_hash": "ecfc272b5b6760bbf0245df25e7b1895",
+    "mtime": 1789440032.4571428,
+    "seen": 1789440582.799789,
+    "ast_hash": "2a78dbe782c64ac229fb02dfcda5b0f9",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -5442,9 +5442,9 @@
     "semantic_hash": ""
   },
   "lib/configurator/staff-assist.ts": {
-    "mtime": 1789439173.5661712,
-    "seen": 1789439873.192393,
-    "ast_hash": "30610f775da9738bf5297fa2e39027d3",
+    "mtime": 1789439986.9649038,
+    "seen": 1789440582.8000202,
+    "ast_hash": "da51134a3d5b52d2d97fc59b656c1d95",
     "semantic_hash": ""
   },
   "lib/costings/on-hand-value-kpis.check.ts": {
@@ -11397,6 +11397,12 @@
     "mtime": 1789439640.3248832,
     "seen": 1789439873.1924908,
     "ast_hash": "f8b53813f72163c681e0d0fe4239451f",
+    "semantic_hash": ""
+  },
+  "lib/configurator/__tests__/mirror-section.test.ts": {
+    "mtime": 1789440137.4359405,
+    "seen": 1789440582.800002,
+    "ast_hash": "88e3268b74cb8e9ed763a9b252924831",
     "semantic_hash": ""
   }
 }

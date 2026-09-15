@@ -321,6 +321,37 @@ export function cellStack(placements: PillowPlacement[], cell: Cell): PillowPlac
   return cellLayers(placements, cell).flat();
 }
 
+// --- Mirror (left ↔ right; CONTEXT.md: side-sleep support is the paired one) --
+
+/** The Section a mirror writes into, or null for one that has no pair. */
+export function mirrorTarget(from: Section): Section | null {
+  return from === "left" ? "right" : from === "right" ? "left" : null;
+}
+
+/**
+ * Copy one side's whole configuration onto the other, REPLACING it.
+ *
+ * Only left ↔ right. Mirroring is across the pillow's sagittal plane, and
+ * `center` is on that plane — it has no opposite side to be the same as, so a
+ * "mirror the center" would have to invent a meaning. Passing it is a no-op.
+ *
+ * Sub-sections are NOT flipped: front/middle/back run head→foot, perpendicular
+ * to the axis being mirrored, so front stays front. Slots, layers (`row`) and
+ * `insertOrder` all carry over as-is — the slot namespace is per cell, so the
+ * copy cannot collide with anything, and the mirrored side is meant to be
+ * assembled the same way it is filled.
+ */
+export function mirrorSection(placements: PillowPlacement[], from: Section): PillowPlacement[] {
+  const to = mirrorTarget(from);
+  if (to === null) return placements;
+  const source = placements.filter((p) => p.section === from);
+  if (source.length === 0) return placements; // an empty source would silently CLEAR the other side
+  return [
+    ...placements.filter((p) => p.section !== to),
+    ...source.map((p) => ({ ...p, section: to })),
+  ];
+}
+
 // --- Mbolster session mix (single compartment, no cap in v1 — ADR 0008) ------
 
 /** Add one piece into the lowest free slot — no piece cap for Mbolster in v1. */

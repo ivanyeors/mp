@@ -91,6 +91,17 @@ assert.ok(
 assert.match(LAYER_ICON_BUTTON, /max-md:size-11/, "phone layer buttons hit the 44px minimum target");
 assert.doesNotMatch(layerRow, /CHIP_ICON_BUTTON_CLASS|CHIP_CLASS/, "layer rows use their own larger scale, not the chip one");
 assert.match(layerRow, /touch-none/, "a drag on the grip must not scroll the page instead");
+// --- Mirror: a left ↔ right CTA, never offered on center ---------------------
+// Mirroring is across the sagittal plane and `center` sits ON it, so the CTA is
+// absent there rather than disabled — there is nothing staff could do to it.
+assert.match(renderer, /mirrorSection\(before, section\)/, "mirror writes through the shared lib");
+assert.match(renderer, /const to = mirrorTarget\(section\);\s*\n\s*if \(to === null\) return null;/, "center is offered no Mirror CTA at all");
+assert.match(renderer, /`Mirror to \$\{to\}`/, "the direction is IN the label — it replaces the whole far side");
+assert.match(renderer, /action: \{ label: "Undo", onClick: \(\) => onPlacementsChange\?\.\(before\) \}/, "a bulk overwrite carries an Undo");
+assert.match(renderer, /disabled=\{empty\}/, "an empty source cannot silently clear the far side");
+// Both surfaces, one builder: desktop (compact, on-canvas) + phone dock header.
+assert.equal(renderer.match(/mirrorButton\(dived, (true|false)\)/g)?.length, 2, "mirror CTA mounted on desktop AND the phone dock");
+assert.match(renderer, /data-xray-dive-section-bar/, "desktop gets section-level chrome for it, inside the framed box");
 assert.doesNotMatch(renderer, /setPieceRow|ChevronUp|ChevronDown/, "chevrons gone — drag replaces the move buttons");
 assert.match(renderer, /toast\.error\(result\.error\)/, "cap/inventory errors surface on-canvas");
 assert.match(renderer, /Cell full \(max \$\{MAX_PIECES_PER_CELL\}\)/, "cap state visible on-canvas, sourced from the constant");
