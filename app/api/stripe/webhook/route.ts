@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
-import { attachHoldPaymentIntent } from "@/lib/authorization-hold";
+import { attachHoldPaymentIntent, releaseHold } from "@/lib/authorization-hold";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { deductInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
@@ -124,6 +124,15 @@ export async function POST(req: Request) {
           if (!attached.ok && attached.mismatch) {
             console.error(`[stripe/webhook] ${attached.mismatch}`);
             await recordWebhookFailure(admin, event, attached.mismatch);
+            // The refused card is attached to nothing, so no cron would ever
+            // release it: free the customer's funds now instead of in 7 days.
+            const refusedIntent =
+              typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+            if (refusedIntent) {
+              await releaseHold(refusedIntent).catch((err) =>
+                console.error(`[stripe/webhook] release of refused hold ${refusedIntent} failed`, err),
+              );
+            }
           }
           break;
         }

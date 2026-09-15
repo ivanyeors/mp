@@ -12,10 +12,11 @@ const h = vi.hoisted(() => ({
   rows: new Map<string, Record<string, unknown>>(),
   failures: [] as Array<Record<string, unknown>>,
   event: null as unknown,
+  cancel: vi.fn(),
 }));
 
 vi.mock("@/lib/stripe/client", () => ({
-  getStripe: () => ({ webhooks: { constructEvent: () => h.event } }),
+  getStripe: () => ({ webhooks: { constructEvent: () => h.event }, paymentIntents: { cancel: h.cancel } }),
 }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
@@ -91,6 +92,7 @@ const completed = (amountTotal: number, currency = "sgd") => {
 beforeEach(() => {
   process.env.STRIPE_WEBHOOK_SECRET = "whsec";
   h.failures.length = 0;
+  h.cancel.mockReset().mockResolvedValue({});
   h.rows.clear();
   h.rows.set(ID, {
     id: ID,
@@ -107,6 +109,7 @@ describe("Stripe webhook — Result authorization hold", () => {
     expect(res.status).toBe(200);
     expect(h.rows.get(ID)?.payment_intent_id).toBe("pi_1");
     expect(h.failures).toEqual([]);
+    expect(h.cancel).not.toHaveBeenCalled();
   });
 
   it("does not attach a session for a different amount, and records it", async () => {
@@ -114,12 +117,15 @@ describe("Stripe webhook — Result authorization hold", () => {
     expect(res.status).toBe(200);
     expect(h.rows.get(ID)?.payment_intent_id).toBeNull();
     expect(h.failures).toHaveLength(1);
+    // Attached to nothing, so nothing else would ever release it.
+    expect(h.cancel).toHaveBeenCalledWith("pi_1");
   });
 
   it("never replaces a card already attached (the status page may have synced it first)", async () => {
     h.rows.set(ID, { ...h.rows.get(ID), payment_intent_id: "pi_first" });
     await completed(20000);
     expect(h.rows.get(ID)?.payment_intent_id).toBe("pi_first");
+    expect(h.cancel).not.toHaveBeenCalled();
   });
 
   it("does not attach a session in a different currency", async () => {
