@@ -50,7 +50,10 @@ vi.mock("@/lib/results/composed-sellable", () => ({ loadComposedSellable: h.load
 vi.mock("@/lib/shop/customization-inventory", () => ({
   validateCustomizationConfig: async () => ({ valid: true, shortages: [] }),
 }));
-vi.mock("@/lib/ecommerce/customers", () => ({ findOrCreateCustomer: async () => ({ id: "cust-1" }) }));
+vi.mock("@/lib/ecommerce/customers", () => ({
+  findOrCreateCustomer: async () => ({ id: "cust-1" }),
+  findCustomerByEmail: async () => null,
+}));
 vi.mock("@/lib/ecommerce/discounts", () => ({ validateCoupon: vi.fn() }));
 vi.mock("@/lib/referrals", () => ({ getPartnerByReferralCode: async () => null }));
 vi.mock("@/lib/auth/partner", () => ({ getPartnerContext: async () => null, isPartnerActive: () => false }));
