@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import type { Coupon } from "@/lib/types/ecommerce";
 
 export interface CouponValidationResult {
@@ -152,7 +153,7 @@ async function fetchCustomerCouponUseCount(
   if (options.customerId) {
     query = query.eq("customer_id", options.customerId);
   } else if (options.customerEmail) {
-    query = query.ilike("email", options.customerEmail.toLowerCase().trim());
+    query = query.ilike("email", escapeLikePattern(options.customerEmail.toLowerCase().trim()));
   }
 
   const { count } = await query;
@@ -169,11 +170,13 @@ export async function validateCoupon(
   const admin = supabaseAdmin();
   const normalized = code.toUpperCase().trim();
 
+  // Exact match: every write (POST/PATCH /api/shop/coupons) stores the code
+  // upper-cased. `ilike` would read `%`/`_` in the input as wildcards.
   const { data, error } = await admin
     .from("coupons")
     .select("*")
     .eq("is_active", true)
-    .ilike("code", normalized)
+    .eq("code", normalized)
     .single();
 
   if (error || !data) {

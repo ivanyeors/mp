@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
+import { findCustomerByEmail, findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
 import { getPartnerByReferralCode } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
@@ -368,11 +368,7 @@ export async function POST(req: Request) {
   let isFreeShipping = false;
 
   const normalizedEmail = email.toLowerCase().trim();
-  const { data: existingCustomer } = await admin
-    .from("customers")
-    .select("id")
-    .ilike("email", normalizedEmail)
-    .maybeSingle();
+  const existingCustomer = await findCustomerByEmail(normalizedEmail);
 
   if (coupon_code) {
     const productIds = cart.items.map((item) => item.product?.id).filter(Boolean) as string[];
