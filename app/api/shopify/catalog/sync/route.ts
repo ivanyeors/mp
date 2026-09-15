@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getShopifyEnv } from '@/lib/shopify/env'
+import { requireSyncTokenOrAdmin } from '@/lib/shopify/route-auth'
 import { shopifyUpsertCanonicalProduct } from '@/lib/shopify/products'
 
 export const runtime = 'nodejs'
-
-function unauthorized() {
-  return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
-}
 
 function bolsterSizeToInternalVariant(size: 'S' | 'M' | 'L'): 'short' | 'medium' | 'long' {
   if (size === 'S') return 'short'
@@ -16,13 +12,8 @@ function bolsterSizeToInternalVariant(size: 'S' | 'M' | 'L'): 'short' | 'medium'
 
 export async function POST(req: NextRequest) {
   try {
-    const env = getShopifyEnv()
-    // Reuse SHOPIFY_SYNC_TOKEN to protect catalog changes (optional).
-    if (env.syncToken) {
-      const auth = req.headers.get('authorization') || ''
-      const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length).trim() : ''
-      if (!token || token !== env.syncToken) return unauthorized()
-    }
+    const denied = await requireSyncTokenOrAdmin(req)
+    if (denied) return denied
 
     // Canonical products:
     // - Pillows: XS,S,M,L,XL

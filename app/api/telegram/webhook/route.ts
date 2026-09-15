@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { secretMatches } from '@/lib/auth/secret'
 import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/[lang]/settings/inventory/actions'
 
 export const runtime = 'nodejs'
@@ -597,17 +598,22 @@ async function handleCallback(update: TelegramUpdate) {
 }
 
 export async function GET() {
-  const allowed = parseAllowedChats()
-  return NextResponse.json({
-    ok: true,
-    hasBotToken: Boolean(process.env.TELEGRAM_BOT_TOKEN),
-    hasWebhookSecret: Boolean(process.env.TELEGRAM_WEBHOOK_SECRET),
-    allowedChatsCount: allowed.size,
-  })
+  return NextResponse.json({ ok: true })
 }
 
 export async function POST(req: NextRequest) {
   try {
+    // Telegram echoes the setWebhook secret in this header. Fail closed in
+    // production; open only in dev when the secret is unset.
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET
+    if (secret || process.env.NODE_ENV === 'production') {
+      if (!secretMatches(secret, req.headers.get('x-telegram-bot-api-secret-token'))) {
+        // A rejected delivery shows in Telegram's getWebhookInfo last_error_message.
+        console.warn('Telegram webhook rejected: missing or invalid secret token header')
+        return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+      }
+    }
+
     const allowed = parseAllowedChats()
     const update = (await req.json()) as TelegramUpdate
     const msgChatId = update?.message?.chat?.id
@@ -620,32 +626,6 @@ export async function POST(req: NextRequest) {
     if (allowed.size > 0 && !allowed.has(effectiveChatId)) {
       console.warn('Telegram webhook rejected: chat not in TELEGRAM_ALLOWED_CHATS', effectiveChatId)
       return NextResponse.json({ ok: true }, { status: 200 })
-    }
-
-    const secret = process.env.TELEGRAM_WEBHOOK_SECRET
-    const header = req.headers.get('x-telegram-bot-api-secret-token')
-    if (secret) {
-      if (!header || header !== secret) {
-        // Always 200 to avoid Telegram retries.
-        // If the chat is allowlisted, proactively message it so the failure is visible.
-        console.warn('Telegram webhook rejected: invalid secret token header')
-        if (allowed.size > 0 && allowed.has(effectiveChatId)) {
-          try {
-            await sendTelegramMessage(
-              effectiveChatId,
-              `Webhook auth failed (secret token mismatch).\n` +
-                `Fix: re-set the Telegram webhook with the same secret as TELEGRAM_WEBHOOK_SECRET.\n` +
-                `Chat ID: ${effectiveChatId}`
-            )
-          } catch (e) {
-            console.error('Failed to send webhook auth failure diagnostic', e)
-          }
-        }
-        return NextResponse.json({ ok: true }, { status: 200 })
-      }
-    } else if (!secret && header) {
-      // If a header is being sent but we don't have a configured secret, log it to help setup.
-      console.warn('Telegram webhook: secret header received but TELEGRAM_WEBHOOK_SECRET is not set')
     }
 
     if (update.callback_query?.data) {

@@ -14,7 +14,7 @@ Set these in **Vercel** (and optionally in `.env.local` for local dev):
 - `SHOPIFY_WEBHOOK_SECRET` (webhook signing secret)
 - `SHOPIFY_API_VERSION` (optional, default `2025-07`)
 - `SHOPIFY_LOCATION_ID` (optional; if omitted we auto-pick the first active location)
-- `SHOPIFY_SYNC_TOKEN` (optional; if set, `/api/shopify/sync` requires `Authorization: Bearer <token>`)
+- `SHOPIFY_SYNC_TOKEN` (for automation: the `POST /api/shopify/*` admin routes accept `Authorization: Bearer <token>` or an `inventory` Staff session; with it unset only the session works. The `GET` helpers need the session.)
 
 ### Webhook
 
@@ -43,7 +43,7 @@ Trigger a sync (buildable → Shopify inventory):
   - `POST /api/shopify/catalog/sync`
 - Suggest mappings for multi-option products (e.g. **Size × Case Type**) and return mapping SQL:
   - `GET /api/shopify/mapping/suggest`
-- Apply mappings directly (optional; protected by `SHOPIFY_SYNC_TOKEN` if set):
+- Apply mappings directly:
   - `POST /api/shopify/mapping/apply`
 
 ## Getting Started

@@ -4,7 +4,6 @@ export type ShopifyEnv = {
   webhookSecret?: string
   apiVersion: string
   locationId?: string
-  syncToken?: string
 }
 
 function requireEnv(name: string): string {
@@ -20,7 +19,6 @@ export function getShopifyEnv(): ShopifyEnv {
     webhookSecret: process.env.SHOPIFY_WEBHOOK_SECRET,
     apiVersion: process.env.SHOPIFY_API_VERSION || '2025-07',
     locationId: process.env.SHOPIFY_LOCATION_ID,
-    syncToken: process.env.SHOPIFY_SYNC_TOKEN,
   }
 }
 

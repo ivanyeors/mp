@@ -1,4 +1,5 @@
-import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
+import { secretMatches } from "@/lib/auth/secret";
 
 // Self-issued backup-email OTP helpers. Pure/deterministic (except code+salt
 // generation) so the #83 test slice can lock the identity rules. We do NOT use
@@ -46,7 +47,5 @@ export function verifyOtpCode(
   if (!storedHash || isOtpExpired(expiresAt, now)) return false;
   const salt = storedHash.split(":")[0] ?? "";
   const expected = hashOtp(input.trim(), salt);
-  const a = Buffer.from(expected);
-  const b = Buffer.from(storedHash);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return secretMatches(storedHash, expected);
 }

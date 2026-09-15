@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secretMatches } from "@/lib/auth/secret";
 import { getAdminContext } from "@/lib/auth/admin";
 import { roleHasPermission } from "@/lib/auth/permissions";
 import { getSiteSettings } from "@/lib/site-settings";
@@ -20,8 +21,7 @@ function authorizeCron(req: Request): boolean {
     // ponytail: open in dev when CRON_SECRET unset; set CRON_SECRET in prod.
     return process.env.NODE_ENV !== "production";
   }
-  const header = req.headers.get("authorization");
-  return header === `Bearer ${secret}`;
+  return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
 /** Cron secret (Vercel / curl) or a signed-in staff session (browser backfill). */
