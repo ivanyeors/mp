@@ -94,14 +94,14 @@ async function main() {
       if (hasStock) pass("05", "stock_available column present");
       else fail("05", "stock_available column");
     }
-    const { status, body } = await http("/api/shop/products?limit=3");
-    if (status === 200 && body?.rows?.length) {
-      const withStock = body.rows.some((p) =>
-        (p.product_variants ?? p.variants)?.some((v) => v.stock_available != null)
-      );
-      if (withStock) pass("05", "product API exposes stock_available");
-      else fail("05", "product API stock_available", "missing on variants");
-    } else fail("05", "product API", `HTTP ${status}`);
+    // /api/shop/products is staff-only (#173); the storefront's public availability source is /api/shop/stock.
+    const ids = (data ?? []).slice(0, 3).map((r) => r.variant_id).join(",");
+    const { status, body } = await http(`/api/shop/stock?ids=${ids}`);
+    if (status === 200 && body?.stock) {
+      const values = Object.values(body.stock);
+      if (values.length && values.every((n) => typeof n === "number")) pass("05", "stock API exposes stock_available");
+      else fail("05", "stock API stock_available", `${values.length} variants returned`);
+    } else fail("05", "stock API", `HTTP ${status}`);
   }
 
   // ── Slice 06: Shipping + coupon validate endpoints ──

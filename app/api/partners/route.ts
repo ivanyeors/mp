@@ -24,6 +24,9 @@ const CreateSchema = z.object({
 });
 
 export async function GET() {
+  const denied = await requireAdmin("page-builder");
+  if (denied) return denied;
+
   // Returns all locations (own + partner); the /our-partners projection filters own out.
   try {
     return NextResponse.json({ ok: true, partners: await listAdminLocationRows() });

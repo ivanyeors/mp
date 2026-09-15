@@ -14,20 +14,6 @@ const CreateImageSchema = z.object({
   position: z.number().int().optional(),
 });
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const admin = supabaseAdmin();
-
-  const { data, error } = await admin
-    .from("product_images")
-    .select("*")
-    .eq("product_id", id)
-    .order("position", { ascending: true });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, rows: data ?? [] });
-}
-
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin("products");
   if (denied) return denied;
