@@ -169,7 +169,10 @@ export function computeComponentLines(
       isOther
     ) {
       const overrideQty = componentQtyOverrides.get(comp.item_id);
-      const qty = overrideQty ?? comp.base_quantity;
+      // A swapped-in cover or case is not in the BOM (base 0), but it replaces the
+      // one that is, so it ships that role's quantity — not zero, which priced and
+      // built the default instead and which the apply route refuses.
+      const qty = overrideQty ?? roleBaseQuantity(comp, allComponents);
       lines.push({
         item_id: comp.item_id,
         category: comp.category,
@@ -560,14 +563,14 @@ export function CustomizationStepComponents({
                   return comp.base_quantity > 0;
                 })
                 .map((comp) => {
-                  const currentQty =
-                    componentQtyOverrides.get(comp.item_id) ?? comp.base_quantity;
                   const roleBase = roleBaseQuantity(comp, [
                     ...components.covers,
                     ...components.cases,
                     ...components.protectors,
                     ...components.packaging,
                   ]);
+                  // Same default as computeComponentLines: a swap ships the role's count.
+                  const currentQty = componentQtyOverrides.get(comp.item_id) ?? roleBase;
                   const extraQty = Math.max(0, currentQty - roleBase);
                   const extraCost = extraQty * comp.unit_price;
 

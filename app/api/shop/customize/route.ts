@@ -3,7 +3,7 @@ import { loadComposedSellable } from "@/lib/results/composed-sellable";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings, getSizeBallparkFromMeasurements, getSizeBallparkFromPreferences } from "@/lib/shop/customization-llm";
-import { getAvailableComponents, validateCustomizationConfig, fetchOverlayMap } from "@/lib/shop/customization-inventory";
+import { getAvailableComponents, validateCustomizationConfig, fetchOverlayMap, isBolsterCaseForLength } from "@/lib/shop/customization-inventory";
 import { quoteCustomization } from "@/lib/shop/customization-quote";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 import { templateIdsForKey } from "@/lib/filling-templates/membership";
@@ -207,7 +207,15 @@ async function handleRecommend(req: Request) {
 
       const components = {
         covers: relevantItems.filter((i: { category: string }) => i.category === "cover").map(toOption),
-        cases: relevantItems.filter((i: { category: string }) => i.category === "bolster_case" || i.category === "case").map(toOption),
+        // Only cases cut for this length (plus whatever the BOM ships): the apply
+        // route refuses any other, since cases are priced per length.
+        cases: relevantItems
+          .filter(
+            (i: { id: number; category: string; size: string | null }) =>
+              (i.category === "bolster_case" || i.category === "case") &&
+              (bomMap.has(i.id) || isBolsterCaseForLength(i, bolsterVariant as BolsterVariant)),
+          )
+          .map(toOption),
         protectors: relevantItems.filter((i: { category: string }) => i.category === "bolster_protector" || i.category === "protector").map(toOption),
         packaging: relevantItems.filter((i: { category: string }) => i.category === "packaging").map(toOption),
       };

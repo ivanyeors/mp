@@ -61,6 +61,21 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 vi.mock("@/lib/results/composed-sellable", () => ({ loadComposedSellable: h.loadComposedSellable }));
+vi.mock("@/lib/shop/customization-llm", () => ({
+  getFillingRecommendation: async () => ({
+    recommended_size: "XS",
+    recommended_kind: (h.tables.pillow_products as { kind: string }).kind,
+    filling_lines: [{ item_id: 5, subtype: "3D-S", name: "3D Fibre", quantity: 1 }],
+    summary: "",
+    explanation: "",
+  }),
+  getBolsterRecommendation: async () => ({ recommended_size: "L", recommendation_record: { size: "long" } }),
+  getBomTemplates: async () => [],
+  getAvailableFillings: async () => [],
+  getRecommendationFromMeasurements: vi.fn(),
+  getSizeBallparkFromMeasurements: vi.fn(),
+  getSizeBallparkFromPreferences: vi.fn(),
+}));
 vi.mock("@/lib/ecommerce/customers", () => ({
   findOrCreateCustomer: async () => ({ id: "cust-1" }),
   findCustomerByEmail: async () => null,
@@ -79,6 +94,11 @@ vi.mock("@/lib/stripe/client", () => ({
 
 const { POST: checkout } = await import("@/app/api/shop/checkout/route");
 const { POST: customize } = await import("@/app/api/shop/customize/route");
+const { computeAddonPrice, computeComponentLines, computeFillingLines } = await import(
+  "@/components/shop/customization-steps"
+);
+const { buildCustomizeApplyPayload } = await import("@/lib/shop/customize-apply-payload");
+type RecommendationResponseData = import("@/components/shop/customization-steps").RecommendationResponseData;
 
 const PILLOW_PRODUCT = "11111111-1111-4111-8111-111111111111";
 const ACCESSORY_PRODUCT = "22222222-2222-4222-8222-222222222222";
@@ -130,7 +150,7 @@ const variants = [
     title: "Long",
     sku: "MBOLSTER-LONG",
     option1: "long",
-    price: 90,
+    price: 230,
     products: { id: BOLSTER_PRODUCT, slug: "mbolster", product_type: "bolster", content: {} },
   }),
   variant(BOLSTER_SHORT_VARIANT, {
@@ -138,7 +158,7 @@ const variants = [
     title: "Short",
     sku: "MBOLSTER-SHORT",
     option1: "Short",
-    price: 70,
+    price: 200,
     products: { id: BOLSTER_PRODUCT, slug: "mbolster", product_type: "bolster", content: {} },
   }),
 ];
@@ -160,8 +180,17 @@ const items = [
   item(32, "pillow_case", "Fibrecool Case"),
   item(7, "cover", "Clearance Cover", { size: "XL" }),
   item(8, "accessory", "Linen Spray", { size: null }),
+  item(21, "packaging", "Gift Box", { size: "S" }),
+  item(23, "packaging", "Dust Bag", { size: "S" }),
+  item(64, "bolster_case", "Camel Case", { size: "S" }),
+  item(86, "bolster_case", "Camel Case", { size: "L" }),
   item(5, "filling", "3D Fibre", { subtype: "3D-S" }),
   item(6, "filling", "6D Fibre (retired)", { subtype: "6D-L", is_active: false }),
+];
+
+const packagingBom = [
+  { item_id: 21, quantity: 1, category: "packaging" },
+  { item_id: 23, quantity: 1, category: "packaging" },
 ];
 
 /** Basic XS from Costings: row 170, satin cover 25, linen case 65; Fibrecool case 88. */
@@ -169,10 +198,11 @@ const basicXs = {
   bomLines: [
     { item_id: 1, quantity: 1, category: "cover" },
     { item_id: 42, quantity: 1, category: "pillow_case" },
+    ...packagingBom,
   ],
   msrp: 170,
   priceFault: null,
-  msrpByFamily: { "": 170 },
+  msrpByFamily: { "": 170 } as Record<string, number>,
   defaultCover: { item_id: 1, msrp: 25, quantity: 1 },
   defaultCase: { item_id: 42, msrp: 65, family: "linen", quantity: 1 },
   caseOptions: [
@@ -183,6 +213,50 @@ const basicXs = {
   currency: "SGD",
 };
 
+/** Premium XS: two satin covers, ships Fibrecool; rows linen 340 / fibrecool 360. */
+const premiumXs = {
+  ...basicXs,
+  bomLines: [
+    { item_id: 1, quantity: 2, category: "cover" },
+    { item_id: 32, quantity: 1, category: "pillow_case" },
+    ...packagingBom,
+  ],
+  msrp: 360,
+  msrpByFamily: { linen: 340, fibrecool: 360 },
+  defaultCover: { item_id: 1, msrp: 25, quantity: 2 },
+  defaultCase: { item_id: 32, msrp: 88, family: "fibrecool", quantity: 1 },
+};
+
+/** Mbolster per length, with the case cut for it: short 200 (case 25), long 230 (case 37). */
+const bolster = (length: string) => {
+  const [caseId, caseMsrp, msrp] = length === "short" ? [64, 25, 200] : [86, 37, 230];
+  return {
+    bomLines: [{ item_id: caseId, quantity: 1, category: "bolster_case" }],
+    msrp,
+    priceFault: null,
+    msrpByFamily: { "": msrp },
+    defaultCover: null,
+    defaultCase: { item_id: caseId, msrp: caseMsrp, quantity: 1 },
+    caseOptions: [],
+    coverOptions: [],
+    currency: "SGD",
+  };
+};
+
+const caseLine = (item_id: number) => ({
+  item_id,
+  category: "case",
+  name: "Camel Case",
+  quantity: 1,
+  is_addon: false,
+  price_delta: 0,
+});
+
+const bomRows = (product_id: number, lines: Array<{ item_id: number; quantity: number }>) =>
+  lines.map((l) => ({ product_id, item_id: l.item_id, quantity: l.quantity }));
+
+let pillowSellable: typeof basicXs = basicXs;
+
 /** Satin cover + Fibrecool case: 170 + (88 − 65) = 193. */
 const fibrecoolLines = [
   { item_id: 1, category: "cover", name: "Satin", quantity: 1, is_addon: false, price_delta: 0 },
@@ -190,7 +264,18 @@ const fibrecoolLines = [
 ];
 const COMPOSED = 193;
 
-const pillowConfig = (over: Record<string, unknown> = {}) => ({
+const bolsterConfig = (length: string, over: Record<string, unknown> = {}) =>
+  pillowConfig({
+    product_type: "bolster",
+    pillow_product_id: null,
+    ecom_product_id: BOLSTER_PRODUCT,
+    bolster_variant: length,
+    config_lines: [caseLine(length === "short" ? 64 : 86)],
+    ...over,
+  });
+
+function pillowConfig(over: Record<string, unknown> = {}) {
+  return {
   id: CONFIG,
   product_type: "pillow",
   pillow_product_id: 7,
@@ -201,7 +286,8 @@ const pillowConfig = (over: Record<string, unknown> = {}) => ({
   total_addon_price: COMPOSED - 170,
   summary: "Case: Fibrecool",
   ...over,
-});
+  };
+}
 
 const post = (items: Array<Record<string, unknown>>) =>
   checkout(
@@ -227,7 +313,8 @@ beforeEach(() => {
     product_variants: variants,
     variant_stock: [{ variant_id: ACCESSORY_VARIANT, stock_available: 5 }],
     customization_configs: [pillowConfig()],
-    pillow_products: { size: "XS", kind: "basic" },
+    pillow_products: { id: 7, size: "XS", kind: "basic" },
+    products: [{ id: BOLSTER_PRODUCT, slug: "mbolster", product_type: "bolster", status: "active" }],
     items,
     inventory_balances: items.map((i) => ({ item_id: i.id, on_hand: 100 })),
     item_prices: [
@@ -236,14 +323,25 @@ beforeEach(() => {
       { item_id: 32, msrp: 88, cost_price: 20 },
       { item_id: 7, msrp: 1, cost_price: 1 },
       { item_id: 8, msrp: 1, cost_price: 1 },
+      { item_id: 21, msrp: 5, cost_price: 1 },
+      { item_id: 23, msrp: 5, cost_price: 1 },
+      { item_id: 64, msrp: 25, cost_price: 5 },
+      { item_id: 86, msrp: 37, cost_price: 8 },
     ],
-    bom_lines: [],
-    bolster_bom_lines: [],
+    bom_lines: bomRows(7, basicXs.bomLines),
+    bolster_bom_lines: [
+      { variant: "short", item_id: 64, quantity: 1 },
+      { variant: "long", item_id: 86, quantity: 1 },
+    ],
     customers: null,
     shipping_methods: { id: SHIPPING, slug: "std", base_rate: 0, free_above: null, content: {} },
     orders: { id: "order-1", order_number: "MP-1" },
   };
-  h.loadComposedSellable.mockResolvedValue({ ok: true, sellable: basicXs });
+  pillowSellable = basicXs;
+  h.loadComposedSellable.mockImplementation(async (_admin: unknown, key: { productType: string; length?: string }) => ({
+    ok: true,
+    sellable: key.productType === "bolster" ? bolster(key.length!) : pillowSellable,
+  }));
   h.sessionsCreate.mockResolvedValue({ id: "cs_1", url: "https://stripe.test/cs_1" });
 });
 
@@ -299,32 +397,20 @@ describe("POST /api/shop/checkout — a customised line is bound to its build", 
   });
 
   it("binds a bolster customisation to its product and prices its length from Costings", async () => {
-    h.tables.customization_configs = [
-      pillowConfig({
-        product_type: "bolster",
-        pillow_product_id: null,
-        ecom_product_id: BOLSTER_PRODUCT,
-        bolster_variant: "long",
-      }),
-    ];
+    h.tables.customization_configs = [bolsterConfig("long")];
+    // A stale shelf price on the Variant: the charge still comes from Costings.
+    h.tables.product_variants = variants.map((v) => (v.id === BOLSTER_VARIANT ? { ...v, price: 90 } : v));
     const res = await post([{ variant_id: BOLSTER_VARIANT, quantity: 1, customization_id: CONFIG }]);
     expect(res.status).toBe(200);
     expect(h.loadComposedSellable).toHaveBeenCalledWith(expect.anything(), {
       productType: "bolster",
       length: "long",
     });
-    expect(stripeLines()[0].price_data.unit_amount).toBe(COMPOSED * 100);
+    expect(stripeLines()[0].price_data.unit_amount).toBe(23000);
   });
 
   it("refuses a bolster customisation posted with a variant of another product", async () => {
-    h.tables.customization_configs = [
-      pillowConfig({
-        product_type: "bolster",
-        pillow_product_id: null,
-        ecom_product_id: BOLSTER_PRODUCT,
-        bolster_variant: "long",
-      }),
-    ];
+    h.tables.customization_configs = [bolsterConfig("long")];
     const res = await post([{ variant_id: PILLOW_VARIANT, quantity: 1, customization_id: CONFIG }]);
     expect(res.status).toBe(400);
     expect(h.sessionsCreate).not.toHaveBeenCalled();
@@ -350,13 +436,6 @@ describe("POST /api/shop/checkout — standard stock is checked per Variant", ()
   });
 });
 
-const bolsterConfig = (length: string) =>
-  pillowConfig({
-    product_type: "bolster",
-    pillow_product_id: null,
-    ecom_product_id: BOLSTER_PRODUCT,
-    bolster_variant: length,
-  });
 
 const apply = (body: Record<string, unknown>) =>
   customize(
@@ -389,9 +468,9 @@ describe("a customised bolster line takes the Variant of the length that is buil
       variant_id: BOLSTER_SHORT_VARIANT,
       variant_title: "Short",
       sku: "MBOLSTER-SHORT",
-      unit_price: COMPOSED,
+      unit_price: 200,
     });
-    expect(stripeLines()[0].price_data.unit_amount).toBe(COMPOSED * 100);
+    expect(stripeLines()).toEqual([{ price: `price_${BOLSTER_SHORT_VARIANT}`, quantity: 1 }]);
   });
 });
 
@@ -471,29 +550,122 @@ describe("customised component stock is checked across lines", () => {
   });
 });
 
-describe("honest path — Stripe charges what the configurator showed", () => {
-  it("customise → cart (variant.price + total_addon_price) → checkout agree to the cent", async () => {
-    const applyRes = await customize(
-      new Request("https://x.test/api/shop/customize?action=apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          variant_id: PILLOW_VARIANT,
-          pillow_product_id: 7,
-          component_quantities: fibrecoolLines,
-        }),
-      }),
-    );
-    expect(applyRes.status).toBe(200);
-    const applied = (await applyRes.json()) as { total_addon_price: number };
-    const stored = h.inserts.find((i) => i.table === "customization_configs")!.row as Record<string, unknown>;
-    // What the cart shows: the variant's price plus the apply response's add-on.
-    const shown = 170 + applied.total_addon_price;
+describe("a bolster only takes a case cut for its length", () => {
+  const longWithShortCase = {
+    product_type: "bolster",
+    variant_id: BOLSTER_VARIANT,
+    ecom_product_id: BOLSTER_PRODUCT,
+    bolster_variant: "long",
+    component_quantities: [caseLine(64)],
+  };
 
-    h.tables.customization_configs = [{ id: CONFIG, ecom_product_id: null, ...stored }];
-    const res = await post([{ variant_id: PILLOW_VARIANT, quantity: 1, customization_id: CONFIG }]);
-    expect(res.status).toBe(200);
-    expect(stripeLines()[0].price_data.unit_amount).toBe(Math.round(shown * 100));
-    expect(shown).toBe(COMPOSED);
+  it("the configurator is only offered cases for the recommended length", async () => {
+    const res = await recommend({ bolster_preferences: { height_cm: 185, sleep_position: "side" } });
+    const data = (await res.json()) as RecommendationResponseData;
+    expect(data.components.cases.map((c) => c.item_id)).toEqual([86]);
+  });
+
+  it("apply refuses a long bolster with the short case", async () => {
+    const res = await apply(longWithShortCase);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { error: string }).error).toMatch(/not offered/);
+    expect(h.inserts.filter((i) => i.table === "customization_configs")).toHaveLength(0);
+  });
+
+  it("checkout refuses a stored long bolster config with the short case", async () => {
+    h.tables.customization_configs = [bolsterConfig("long", { config_lines: [caseLine(64)] })];
+    const res = await post([{ variant_id: BOLSTER_VARIANT, quantity: 1, customization_id: CONFIG }]);
+    expect(res.status).toBe(400);
+    expect(h.sessionsCreate).not.toHaveBeenCalled();
+  });
+});
+
+function recommend(body: Record<string, unknown>) {
+  return customize(
+    new Request("https://x.test/api/shop/customize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+}
+
+/**
+ * The storefront's own path, end to end: the recommend response, the REAL
+ * `computeComponentLines` the configurator posts, the preview price, the cart line
+ * (variant price + apply's add-on) and what Stripe is finally asked for.
+ */
+async function honestRoundTrip(
+  productType: "pillow" | "bolster",
+  pick: { cover?: number; case?: number } = {},
+) {
+  const rec = await recommend(
+    productType === "bolster"
+      ? { bolster_preferences: { height_cm: 185, sleep_position: "side" } }
+      : { preferences: { sleep_position: "side", body_type: "average", firmness: "medium" } },
+  );
+  expect(rec.status).toBe(200);
+  const data = (await rec.json()) as RecommendationResponseData;
+  const selectedCover = pick.cover ?? null;
+  const selectedCase = pick.case ?? null;
+  const componentLines = computeComponentLines(data, selectedCover, selectedCase, new Map());
+
+  const payload = buildCustomizeApplyPayload({
+    productType,
+    recommendation: data,
+    fillingLines: computeFillingLines(data, null),
+    componentLines,
+    selectedCover,
+    selectedCase,
+    selectedUpsells: new Set(),
+    selectedTemplateId: null,
+    llmMetadata: {},
+  });
+  const applied = await customize(
+    new Request("https://x.test/api/shop/customize?action=apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+  const appliedBody = (await applied.json()) as { total_addon_price: number; error?: unknown };
+  expect(appliedBody.error).toBeUndefined();
+  expect(applied.status).toBe(200);
+
+  const stored = h.inserts.find((i) => i.table === "customization_configs")!.row as Record<string, unknown>;
+  h.tables.customization_configs = [{ id: CONFIG, ...stored }];
+  const res = await post([{ variant_id: data.variant!.id, quantity: 1, customization_id: CONFIG }]);
+  expect(res.status).toBe(200);
+  const [line] = stripeLines();
+  const charged = line.price_data
+    ? line.price_data.unit_amount / 100
+    : (h.tables.product_variants as typeof variants).find((v) => `price_${v.id}` === line.price)!.price;
+
+  return {
+    preview: data.variant!.price + computeAddonPrice(data, componentLines),
+    cart: data.variant!.price + appliedBody.total_addon_price,
+    charged,
+  };
+}
+
+describe("honest path — Stripe charges what the configurator showed", () => {
+  const usePremium = () => {
+    pillowSellable = premiumXs;
+    h.tables.pillow_products = { id: 7, size: "XS", kind: "premium" };
+    h.tables.bom_lines = bomRows(7, premiumXs.bomLines);
+    h.tables.product_variants = variants.map((v) => (v.id === PILLOW_VARIANT ? { ...v, price: 360 } : v));
+  };
+  const asShipped = () => {};
+
+  it.each([
+    { name: "basic, as it ships", setup: asShipped, type: "pillow" as const, pick: {}, total: 170 },
+    { name: "basic, Fibrecool case", setup: asShipped, type: "pillow" as const, pick: { case: 32 }, total: 193 },
+    { name: "premium, as it ships", setup: usePremium, type: "pillow" as const, pick: {}, total: 360 },
+    { name: "premium, linen case", setup: usePremium, type: "pillow" as const, pick: { case: 42 }, total: 340 },
+    { name: "bolster, as it ships", setup: asShipped, type: "bolster" as const, pick: {}, total: 230 },
+  ])("$name: preview, cart and Stripe all read $total", async ({ setup, type, pick, total }) => {
+    setup();
+    const { preview, cart, charged } = await honestRoundTrip(type, pick);
+    expect({ preview, cart, charged }).toEqual({ preview: total, cart: total, charged: total });
   });
 });

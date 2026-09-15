@@ -6,7 +6,7 @@
 
 import { loadComposedSellable, type ComposedSellableKey } from "@/lib/results/composed-sellable";
 import { customizationDelta, priceCustomizedBuild } from "@/lib/shop/customization-price";
-import { toComponentRole } from "@/lib/shop/customization-inventory";
+import { isBolsterCaseForLength, toComponentRole } from "@/lib/shop/customization-inventory";
 import { MAX_PIECES_PER_CELL, SECTIONS, SUB_SECTIONS } from "@/lib/spatial-fillings/core";
 import type { supabaseAdmin } from "@/lib/supabase/server";
 import type { ConfigLine, FillingLine } from "@/lib/types/customization";
@@ -80,9 +80,12 @@ export async function quoteCustomization(
   };
   const isOffered = (role: "cover" | "case", item: ItemRow) =>
     offered[role].has(item.id) ||
-    // A bolster has no per-size case list: the configurator offers every active
-    // bolster case, and `loadComposedSellable` leaves its options empty.
-    (role === "case" && key.productType === "bolster" && item.category === "bolster_case" && !!item.is_active);
+    // A bolster has no Costings case list (`loadComposedSellable` leaves it empty):
+    // the configurator offers the active cases cut for this length.
+    (role === "case" &&
+      key.productType === "bolster" &&
+      !!item.is_active &&
+      isBolsterCaseForLength(item, key.length));
 
   const canonicalLines: ConfigLine[] = [];
   const seen = new Set<number>();

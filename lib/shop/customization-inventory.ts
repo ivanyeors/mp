@@ -48,6 +48,25 @@ export function isProtectorInventoryCategory(category: string): boolean {
   );
 }
 
+/** `items.size` of a bolster case cut for each length (as the Staff BOM editor maps them). */
+const BOLSTER_CASE_SIZE: Record<BolsterVariant, string> = { short: "S", medium: "M", long: "L" };
+
+/**
+ * True when a bolster case fits this length. Cases are cut and priced per length, so
+ * offering (or accepting) any bolster case let a long bolster take the short one's
+ * price. Legacy single-size `BOLSTER` cases fit nothing here; the BOM default stays
+ * offered through its own path.
+ */
+export function isBolsterCaseForLength(
+  item: { category: string; size: string | null },
+  length: BolsterVariant,
+): boolean {
+  return (
+    item.category === "bolster_case" &&
+    item.size?.trim().toUpperCase() === BOLSTER_CASE_SIZE[length]
+  );
+}
+
 /** True when a DB item may be used as the given customer preference role. */
 export function itemMatchesPreferenceRole(
   itemCategory: string,
