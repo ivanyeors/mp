@@ -18,6 +18,14 @@ const CreateReviewSchema = z.object({
   body: z.string().trim().max(5000).nullable().optional().default(null),
 });
 
+/** Public byline from the Customer record ("Jane D."), so a review can't borrow someone else's name. */
+function bylineFor(customer: { first_name: string | null; last_name: string | null }): string | null {
+  const first = customer.first_name?.trim();
+  if (!first) return null;
+  const initial = customer.last_name?.trim()[0];
+  return (initial ? `${first} ${initial}.` : first).slice(0, 200);
+}
+
 /** Approved reviews for one product. `?status=` is ignored: only approved rows are public. */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -25,7 +33,8 @@ export async function GET(req: Request) {
   if (!product_id.success) {
     return NextResponse.json({ error: "product_id is required" }, { status: 400 });
   }
-  const page = Math.max(parseInt(searchParams.get("page") ?? "1", 10) || 1, 1);
+  // ponytail: 1000 pages of approved reviews is far past any real product; it keeps the offset sane.
+  const page = Math.min(Math.max(parseInt(searchParams.get("page") ?? "1", 10) || 1, 1), 1000);
   const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "20", 10) || 20, 1), 100);
   const from = (page - 1) * limit;
 
@@ -37,7 +46,10 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: false })
     .range(from, from + limit - 1);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[shop/reviews] list failed", error.message);
+    return NextResponse.json({ error: "Failed to load reviews" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, rows: data ?? [], total: count ?? 0, page, limit });
 }
 
@@ -47,6 +59,10 @@ export async function POST(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Sign in to write a review" }, { status: 401 });
   }
+  // A Customer is linked by email; a phone-only account has none to link.
+  if (!user.email) {
+    return NextResponse.json({ error: "Add an email to your account to write a review" }, { status: 400 });
+  }
 
   const body = await req.json().catch(() => null);
   const parsed = CreateReviewSchema.safeParse(body);
@@ -54,7 +70,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const customer = await linkCustomerToAuthUser(user);
+  const customer = await linkCustomerToAuthUser(user).catch(() => null);
+  if (!customer) {
+    return NextResponse.json({ error: "Failed to submit review" }, { status: 500 });
+  }
   const admin = supabaseAdmin();
 
   if (parsed.data.order_id) {
@@ -73,9 +92,12 @@ export async function POST(req: Request) {
 
   const { data, error } = await admin
     .from("product_reviews")
-    .insert({ ...parsed.data, customer_id: customer.id, status: "pending" })
+    .insert({ ...parsed.data, author_name: bylineFor(customer) ?? parsed.data.author_name, customer_id: customer.id, status: "pending" })
     .select(PUBLIC_COLUMNS)
     .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[shop/reviews] insert failed", error.message);
+    return NextResponse.json({ error: "Failed to submit review" }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, row: data }, { status: 201 });
 }

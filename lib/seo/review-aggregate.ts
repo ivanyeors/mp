@@ -16,7 +16,7 @@ const EMPTY: ReviewAggregate = { average: 0, count: 0 };
 export async function getReviewAggregate(productId: string): Promise<ReviewAggregate> {
   const admin = supabaseAdmin();
   const { data, error } = await admin
-    .from("reviews")
+    .from("product_reviews")
     .select("rating")
     .eq("product_id", productId)
     .eq("status", "approved");
@@ -36,7 +36,7 @@ export async function getReviewAggregates(
 
   const admin = supabaseAdmin();
   const { data, error } = await admin
-    .from("reviews")
+    .from("product_reviews")
     .select("product_id, rating")
     .in("product_id", productIds)
     .eq("status", "approved");

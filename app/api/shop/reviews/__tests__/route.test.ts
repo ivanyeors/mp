@@ -16,14 +16,16 @@ type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
   getAuthUser: vi.fn(),
+  link: vi.fn(),
+  requireAdmin: vi.fn(),
   tables: {} as Record<string, Row[]>,
   inserted: [] as Row[],
+  writes: [] as { op: string; table: string }[],
 }));
 
 vi.mock("@/lib/auth/user", () => ({ getAuthUser: h.getAuthUser }));
-vi.mock("@/lib/auth/customer-identity", () => ({
-  linkCustomerToAuthUser: vi.fn(async () => ({ id: CUSTOMER })),
-}));
+vi.mock("@/lib/auth/customer-identity", () => ({ linkCustomerToAuthUser: h.link }));
+vi.mock("@/lib/auth/admin", () => ({ requireAdmin: h.requireAdmin }));
 vi.mock("@/lib/supabase/server", () => ({
   supabaseAdmin: () => ({
     from(table: string) {
@@ -41,6 +43,10 @@ vi.mock("@/lib/supabase/server", () => ({
       const b = {
         select: (c: string) => ((cols = c), b),
         eq: (k: string, v: unknown) => ((rows = rows.filter((r) => r[k] === v)), b),
+        in: (k: string, vs: unknown[]) => ((rows = rows.filter((r) => vs.includes(r[k]))), b),
+        then: (resolve: (v: unknown) => void) => resolve(result()),
+        update: () => (h.writes.push({ op: "update", table }), b),
+        delete: () => (h.writes.push({ op: "delete", table }), b),
         order: () => b,
         range: async () => result(),
         maybeSingle: async () => ({ ...result(), data: result().data?.[0] ?? null }),
@@ -63,6 +69,8 @@ const MY_ORDER = "11111111-1111-4111-8111-111111111111";
 const THEIR_ORDER = "22222222-2222-4222-8222-222222222222";
 
 const { GET, POST } = await import("@/app/api/shop/reviews/route");
+const moderation = await import("@/app/api/shop/reviews/[id]/route");
+const { getReviewAggregate, getReviewAggregates } = await import("@/lib/seo/review-aggregate");
 
 const review = (status: string, extra: Row = {}): Row => ({
   id: `r-${status}`,
@@ -90,7 +98,10 @@ const post = (body: unknown) =>
 beforeEach(() => {
   vi.clearAllMocks();
   h.inserted = [];
+  h.writes = [];
   h.getAuthUser.mockResolvedValue(null);
+  h.link.mockResolvedValue({ id: CUSTOMER, first_name: null, last_name: null });
+  h.requireAdmin.mockResolvedValue(null);
   h.tables = {
     product_reviews: [review("approved"), review("pending"), review("rejected")],
     orders: [
@@ -164,5 +175,64 @@ describe("POST /api/shop/reviews", () => {
     h.getAuthUser.mockResolvedValue({ id: "auth-1", email: "me@x.test" });
     const res = await post({ product_id: PRODUCT, author_name: "Ada", rating: 5, body: "x".repeat(5001) });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("reviews edge cases", () => {
+  it("clamps a huge page instead of sending an unsafe offset", async () => {
+    const res = await GET(
+      new Request(`http://x/api/shop/reviews?product_id=${PRODUCT}&page=100000000000000000000`),
+    );
+    expect((await res.json()).page).toBe(1000);
+  });
+
+  it("does not echo database error text", async () => {
+    delete h.tables.product_reviews;
+    const res = await GET(new Request(`http://x/api/shop/reviews?product_id=${PRODUCT}`));
+    expect(res.status).toBe(500);
+    expect(JSON.stringify(await res.json())).not.toContain("relation");
+  });
+
+  it("answers 400, not a thrown 500, for a signed-in user with no email", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-2", email: undefined });
+    h.link.mockRejectedValue(new Error("Cannot link a customer for an auth user without an email"));
+    const res = await post({ product_id: PRODUCT, author_name: "Ada", rating: 5 });
+    expect(res.status).toBe(400);
+    expect(h.inserted).toHaveLength(0);
+  });
+
+  it("bylines the review from the Customer record, not the client", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-1", email: "me@x.test" });
+    h.link.mockResolvedValue({ id: CUSTOMER, first_name: "Jane", last_name: "Doe" });
+    const res = await post({ product_id: PRODUCT, author_name: "Someone Famous", rating: 5 });
+    expect(res.status).toBe(201);
+    expect(h.inserted[0]).toMatchObject({ author_name: "Jane D." });
+  });
+});
+
+describe("siblings read product_reviews, not the missing reviews table", () => {
+  const params = { params: Promise.resolve({ id: "r-pending" }) };
+
+  it("moderation PATCH and DELETE are admin-gated and hit product_reviews", async () => {
+    const patch = await moderation.PATCH(
+      new Request("http://x/api/shop/reviews/r-pending", {
+        method: "PATCH",
+        body: JSON.stringify({ status: "approved" }),
+      }),
+      params,
+    );
+    const del = await moderation.DELETE(new Request("http://x/api/shop/reviews/r-pending"), params);
+    expect(h.requireAdmin).toHaveBeenCalledWith("products");
+    expect([patch.status, del.status]).toEqual([200, 200]);
+    expect(h.writes).toEqual([
+      { op: "update", table: "product_reviews" },
+      { op: "delete", table: "product_reviews" },
+    ]);
+  });
+
+  it("the SEO aggregate counts approved reviews only", async () => {
+    h.tables.product_reviews.push(review("approved", { id: "r-2", rating: 3 }));
+    expect(await getReviewAggregate(PRODUCT)).toEqual({ average: 4, count: 2 });
+    expect((await getReviewAggregates([PRODUCT]))[PRODUCT]).toEqual({ average: 4, count: 2 });
   });
 });
