@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Cart, CartItem, ProductVariant, Product } from "@/lib/types/ecommerce";
+import { PUBLIC_PRODUCT_COLUMNS, PUBLIC_VARIANT_COLUMNS } from "@/lib/ecommerce/products";
 
 function generateToken(): string {
   return crypto.randomUUID().replace(/-/g, "") + Date.now().toString(36);
@@ -44,7 +45,7 @@ export async function getCartWithItems(token: string): Promise<Cart & { items: (
 
   const { data: items } = await admin
     .from("cart_items")
-    .select("*, product_variants(*, products(*))")
+    .select(`*, product_variants(${PUBLIC_VARIANT_COLUMNS}, products(${PUBLIC_PRODUCT_COLUMNS}))`)
     .eq("cart_id", cart.id);
 
   const enrichedItems = (items ?? []).map((item: CartItem & { product_variants: ProductVariant & { products: Product } }) => ({
