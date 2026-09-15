@@ -25,7 +25,8 @@ export async function validateCouponCode(
   return {
     valid: true as const,
     discount_amount: result.discount_amount,
-    coupon: result.coupon,
+    // Public action: never hand back the coupon row.
+    free_shipping: result.coupon?.discount_type === "free_shipping",
   };
 }
 

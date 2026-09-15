@@ -1,34 +1,20 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import type { LandingSection } from "@/lib/types/landing-sections";
 import type { FeaturedProductsContent } from "@/lib/types/landing-sections";
 import { ProductCard } from "@/components/shop/product-card";
-import type { Product, ProductVariant } from "@/lib/types/ecommerce";
-
-type ProductWithDetails = Product & {
-  variants?: ProductVariant[];
-  images?: { url: string; alt_text?: string | null }[];
-};
+import { getFeaturedProducts } from "@/lib/ecommerce/products";
 
 interface FeaturedProductsSectionProps {
   section: LandingSection;
   locale: string;
 }
 
-export function FeaturedProductsSection({ section, locale }: FeaturedProductsSectionProps) {
+/**
+ * Read on the server: the admin `GET /api/shop/products` is staff-only, and this
+ * section renders on the public landing page.
+ */
+export async function FeaturedProductsSection({ section, locale }: FeaturedProductsSectionProps) {
   const content = section.content as FeaturedProductsContent;
-  const limit = content.limit ?? 4;
-  const [products, setProducts] = useState<ProductWithDetails[]>([]);
-
-  useEffect(() => {
-    fetch(`/api/shop/products?status=active&featured=true&limit=${limit}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.ok) setProducts(d.rows ?? []);
-      })
-      .catch(() => {});
-  }, [limit]);
+  const products = await getFeaturedProducts(content.limit ?? 4);
 
   if (products.length === 0) return null;
 

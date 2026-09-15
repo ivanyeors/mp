@@ -126,7 +126,7 @@ for (const f of MUST_PRICE_THROUGH) {
 // quote the shopper sees and the amount the apply route stores must come from it,
 // or they drift again — this is the pair that quoted a basic XS Fibrecool at 258.
 const SHOP_SURFACES = [
-  "app/api/shop/customize/route.ts",
+  "lib/shop/customization-quote.ts",
   "components/shop/customization-steps.tsx",
 ];
 const shopCallers = grepFiles("priceCustomizedBuild");
@@ -134,6 +134,18 @@ for (const f of SHOP_SURFACES) {
   assert.ok(
     shopCallers.includes(f),
     `${f} must price through priceCustomizedBuild() — it shows or charges a build total.`,
+  );
+}
+
+// The apply route stores the amount and checkout charges it, both through that one
+// server quote. Checkout once charged the stored snapshot instead, so a cheap
+// variant_id could carry a full build (#170).
+const SHOP_MONEY_PATHS = ["app/api/shop/customize/route.ts", "app/api/shop/checkout/route.ts"];
+const quoteCallers = grepFiles("quoteCustomization");
+for (const f of SHOP_MONEY_PATHS) {
+  assert.ok(
+    quoteCallers.includes(f),
+    `${f} must price through quoteCustomization() — it stores or charges a build total.`,
   );
 }
 
@@ -149,5 +161,5 @@ assert.deepEqual(
 
 console.log(
   `pricing-surface.check: ok — ${readers.length} price-table readers, ` +
-    `${MUST_PRICE_THROUGH.length + SHOP_SURFACES.length} surfaces on the shared rule`,
+    `${MUST_PRICE_THROUGH.length + SHOP_SURFACES.length + SHOP_MONEY_PATHS.length} surfaces on the shared rule`,
 );

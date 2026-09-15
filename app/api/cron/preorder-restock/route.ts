@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secretMatches } from "@/lib/auth/secret";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 
@@ -13,7 +14,7 @@ function authorizeCron(req: Request): boolean {
     // ponytail: open in dev when CRON_SECRET unset; set CRON_SECRET in prod.
     return process.env.NODE_ENV !== "production";
   }
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
 export async function GET(req: Request) {

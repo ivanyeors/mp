@@ -71,6 +71,7 @@ export async function POST(req: Request) {
     ok: true,
     valid: true,
     discount_amount: result.discount_amount,
-    coupon: result.coupon,
+    // Public endpoint: never hand back the coupon row (limits, scope, other codes).
+    free_shipping: result.coupon?.discount_type === "free_shipping",
   });
 }

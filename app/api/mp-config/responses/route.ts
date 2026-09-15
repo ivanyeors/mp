@@ -313,7 +313,7 @@ export async function POST(req: Request) {
   const { data: existing, error: existingErr } = await admin
     .from("mp_config_responses")
     .select(
-      "is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status,access_token,customer_id,customer_email",
+      "is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status,access_token,customer_id,customer_email,order_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -323,9 +323,11 @@ export async function POST(req: Request) {
   // saves from the first keystroke. Updating one does not.
   if (existing) {
     // draftOnly: Staff keep editing measured-by / location / is_final on `held`
-    // rows from the Admin Panel; everyone else may write drafts only.
+    // rows from the Admin Panel; everyone else may write drafts only. Staff means
+    // `results` here — a viewer carries `orders` and would skip draftOnly.
     const access = await requireResultAccess(existing, parsed.data.token ?? null, {
       draftOnly: true,
+      staffPermissions: ["results"],
     });
     if (!access.ok) return access.response;
   } else if (
@@ -351,7 +353,7 @@ export async function POST(req: Request) {
   // requests. Deliberately never minted on update — a legacy draft carrying a
   // null token has to stay writable by the pre-deploy browser tab that owns it,
   // and binding a token here would lock out the very session it just let through.
-  // Rotation at hold is app/api/results/hold/route.ts's job, not ours.
+  // The hold route keeps this same token (app/api/results/hold/route.ts).
   const accessToken = existing == null ? crypto.randomUUID() : null;
   if (accessToken) row.access_token = accessToken;
 

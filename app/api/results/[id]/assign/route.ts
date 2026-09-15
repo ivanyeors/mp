@@ -431,7 +431,7 @@ export async function POST(
     fingerprint = decision.fillingFingerprint;
   }
 
-  const { error: updateErr } = await admin
+  const { data: updatedRows, error: updateErr } = await admin
     .from("mp_config_responses")
     .update({
       assigned_size: assignedSize,
@@ -443,10 +443,17 @@ export async function POST(
       // Only touched when a spatial save happened; hold-create snapshots stay otherwise.
       ...(fingerprint !== undefined ? { filling_fingerprint: fingerprint } : {}),
     })
-    .eq("id", id);
+    .eq("id", id)
+    // Check-and-set on the status read above: a concurrent assign that already
+    // moved it on must not re-open accept's claim.
+    .eq("status", "held")
+    .select("id");
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  }
+  if (!updatedRows?.length) {
+    return NextResponse.json({ error: "This Result has already moved on" }, { status: 409 });
   }
 
   // Result snapshot: replace-insert (first write for guest Results). Bolster

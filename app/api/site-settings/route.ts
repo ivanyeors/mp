@@ -32,8 +32,13 @@ const readSiteSettings = unstable_cache(
 /**
  * GET /api/site-settings
  * Optionally accepts ?keys=key1,key2 to filter.
+ * Staff only: rows include ops emails and appointment settings. Public pages read
+ * lib/site-settings on the server.
  */
 export async function GET(req: Request) {
+  const denied = await requireAdmin("page-builder");
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const keysParam = searchParams.get("keys");
   // Normalise before the cached read: the key list is part of the cache key,

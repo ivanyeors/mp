@@ -292,7 +292,7 @@ export function MbolsterConfigClient({
   const [holdSubmitting, setHoldSubmitting] = React.useState(false);
   const [routeBusy, setRouteBusy] = React.useState(false);
   // Reference-photo session id (slice 04): bolster has no response record, so mint a UUID
-  // lazily, persist it (survives reload + Stripe cancel), reuse it as the hold's responseId
+  // lazily, persist it (survives reload; Stripe cancel via the hold-cancel draft), reuse it as the hold's responseId
   // so the resulting Result id equals the session id (gallery finds photos with no extra column).
   const [configSessionId, setConfigSessionId] = React.useState<string | null>(null);
   React.useEffect(() => {
@@ -449,6 +449,17 @@ export function MbolsterConfigClient({
         if (sel.discoverySourceOther) setDiscoverySourceOther(sel.discoverySourceOther);
         if (sel.notes) setHoldNotes(sel.notes);
         setHoldAddress(sel.holdAddress);
+        // Back from a cancelled Checkout: the session id (and the reference photos
+        // on it) is still this customer's. Never on a plain revisit — after a
+        // completed hold that id is the previous customer's Result.
+        if (holdCancelled && draft.responseId) {
+          try {
+            window.localStorage.setItem(CONFIG_SESSION_KEY, draft.responseId);
+          } catch {
+            // private mode — state alone carries it for this visit
+          }
+          setConfigSessionId(draft.responseId);
+        }
       } else {
         setState((s) => ({ ...s, step: "preview" }));
       }
@@ -483,6 +494,7 @@ export function MbolsterConfigClient({
         v: 1,
         surface: "mbolster",
         step: "preview",
+        responseId: configSessionId,
         heightUnit: state.heightUnit,
         heightCm: state.heightCm,
         sleepPosition: state.sleepPosition,
@@ -516,6 +528,7 @@ export function MbolsterConfigClient({
     discoverySourceOther,
     holdNotes,
     holdAddress,
+    configSessionId,
   ]);
 
   React.useEffect(() => {
@@ -926,6 +939,16 @@ export function MbolsterConfigClient({
       // off; the status page is where the customer waits for Staff instead.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
+      // Shared in-store device: the session id is now this customer's Result id.
+      // Kept, the next customer's hold would be submitted onto it. It survives a
+      // cancelled Checkout through the hold-cancel draft instead (restored only on
+      // `hold_cancelled`). State is left alone: clearing it would re-run the draft
+      // effect and erase the id from the draft before the page unloads.
+      try {
+        window.localStorage.removeItem(CONFIG_SESSION_KEY);
+      } catch {
+        // private mode — nothing was stored
+      }
       window.location.href = next as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
@@ -951,6 +974,7 @@ export function MbolsterConfigClient({
     assistPlacements,
     sessionFillingTemplateId,
     partner,
+    configSessionId,
   ]);
 
   const flowRouteBlocksHold = (() => {

@@ -36,7 +36,7 @@ describe("guards keyed on it", () => {
 
   it("finish writes only while the Result is still assigned and unfinished", () => {
     const src = readFileSync("app/api/results/[id]/finish/route.ts", "utf8");
-    expect(src).toMatch(/requireResultAccess\(row, input\.token \?\? null\)/);
+    expect(src).toMatch(/requireResultAccess\(row, input\.token \?\? null[,)]/);
     expect(src).toMatch(/row\.status !== "assigned" \|\| !needsCustomerFinish\(row\)/);
     // The write itself is conditional, so two tabs cannot both finish.
     expect(src).toMatch(/\.eq\("status", "assigned"\)\s*\.is\("shipping_address", null\)/);

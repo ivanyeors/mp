@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { secretMatches } from '@/lib/auth/secret'
 import { runShopifyOrderMirrorCatchup } from '@/lib/shopify/order-mirror-catchup'
 
 export const runtime = 'nodejs'
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic'
 function authorizeCron(req: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim()
   if (!secret) return process.env.NODE_ENV !== 'production'
-  return req.headers.get('authorization') === `Bearer ${secret}`
+  return secretMatches(`Bearer ${secret}`, req.headers.get('authorization'))
 }
 
 export async function GET(req: Request) {

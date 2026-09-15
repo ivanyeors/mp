@@ -91,6 +91,7 @@ describe("escapeLikePattern", () => {
     expect(escapeLikePattern("john_doe@x.com")).toBe("john\\_doe@x.com");
     expect(escapeLikePattern("a%b@x.com")).toBe("a\\%b@x.com");
     expect(escapeLikePattern("a\\b@x.com")).toBe("a\\\\b@x.com");
+    expect(escapeLikePattern("a*b@x.com")).toBe("a\\*b@x.com");
   });
 
   it("leaves emails without wildcards untouched", () => {

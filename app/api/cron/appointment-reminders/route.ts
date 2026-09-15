@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secretMatches } from "@/lib/auth/secret";
 import { getSiteSettings } from "@/lib/site-settings";
 import {
   APPOINTMENT_SETTING_KEYS,
@@ -29,8 +30,7 @@ function authorizeCron(req: Request): boolean {
     // ponytail: open in dev when CRON_SECRET unset; set CRON_SECRET in prod.
     return process.env.NODE_ENV !== "production";
   }
-  const header = req.headers.get("authorization");
-  return header === `Bearer ${secret}`;
+  return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
 /** Daily 09:00 SGT: tomorrow day-before + today morning-of for silent guests. */

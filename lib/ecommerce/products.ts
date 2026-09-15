@@ -35,6 +35,18 @@ export async function attachStockAvailable<
   return products;
 }
 
+/**
+ * Columns the storefront may see. The public getters below feed client
+ * components, so whatever they select is serialized into the RSC payload:
+ * never cost_price, Stripe/Shopify ids or inventory links. Admin reads live in
+ * lib/ecommerce/admin/products.ts.
+ */
+export const PUBLIC_PRODUCT_COLUMNS =
+  "id, slug, product_type, status, content, category_id, featured, tags, published_at, created_at, updated_at";
+export const PUBLIC_VARIANT_COLUMNS =
+  "id, product_id, sku, title, option1, option2, option3, price, compare_at_price, currency, track_inventory, weight_grams, image_url, is_active, position";
+const PUBLIC_PRODUCT_SELECT = `${PUBLIC_PRODUCT_COLUMNS}, product_variants(${PUBLIC_VARIANT_COLUMNS}), product_images(id, product_id, variant_id, url, alt_text, position)`;
+
 /** Composed main products — buyable only via customisation, not the shop catalog. */
 export const CUSTOM_COMPOSED_PRODUCT_TYPES = ["pillow", "bolster"] as const;
 
@@ -64,7 +76,7 @@ export async function getProducts(opts: GetProductsOpts = {}) {
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
-  let query = admin.from("products").select("*, product_variants(*), product_images(*)", { count: "exact" });
+  let query = admin.from("products").select(PUBLIC_PRODUCT_SELECT, { count: "exact" });
 
   if (opts.status) query = query.eq("status", opts.status);
   if (opts.category_id) query = query.eq("category_id", opts.category_id);
@@ -127,7 +139,7 @@ export async function getProductBySlug(slug: string) {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("products")
-    .select("*, product_variants(*), product_images(*), product_options(*)")
+    .select(`${PUBLIC_PRODUCT_SELECT}, product_options(*)`)
     .eq("slug", slug)
     .single();
 
@@ -148,34 +160,11 @@ export async function getProductBySlug(slug: string) {
   };
 }
 
-export async function getProductById(id: string) {
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("products")
-    .select("*, product_variants(*), product_images(*), product_options(*)")
-    .eq("id", id)
-    .single();
-
-  if (error) return null;
-  const row = data as Product & {
-    product_variants: ProductVariant[];
-    product_images: ProductImage[];
-    product_options: ProductOption[];
-  };
-  await attachStockAvailable([row]);
-  return {
-    ...row,
-    variants: (row.product_variants ?? []).sort((a, b) => a.position - b.position),
-    images: (row.product_images ?? []).sort((a, b) => a.position - b.position),
-    options: (row.product_options ?? []).sort((a, b) => a.position - b.position),
-  };
-}
-
 export async function getFeaturedProducts(limit = 8) {
   const admin = supabaseAdmin();
   const { data, error } = await admin
     .from("products")
-    .select("*, product_variants(*), product_images(*)")
+    .select(PUBLIC_PRODUCT_SELECT)
     .eq("status", "active")
     .eq("featured", true)
     .not("product_type", "in", `(${CUSTOM_COMPOSED_PRODUCT_TYPES.join(",")})`)

@@ -23,6 +23,9 @@ const CreateCategorySchema = z.object({
 });
 
 export async function GET() {
+  const denied = await requireAdmin("page-builder");
+  if (denied) return denied;
+
   const rows = await getAllFaqCategoriesAdmin();
   return NextResponse.json({ ok: true, rows });
 }

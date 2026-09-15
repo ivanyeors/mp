@@ -54,16 +54,19 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, access_token, customer_id, customer_email",
+      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, access_token, customer_id, customer_email, order_id",
     )
     .eq("id", id)
     .maybeSingle();
   if (loadErr) return NextResponse.json({ error: loadErr.message }, { status: 500 });
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Owner (token or signed-in match) or Staff. No draftOnly: this row is
-  // `assigned` by design, and needsCustomerFinish below is what bounds the write.
-  const access = await requireResultAccess(row, input.token ?? null);
+  // Owner (token or signed-in match) or Staff with `results` (not a viewer). No
+  // draftOnly: this row is `assigned` by design, and needsCustomerFinish below is
+  // what bounds the write.
+  const access = await requireResultAccess(row, input.token ?? null, {
+    staffPermissions: ["results"],
+  });
   if (!access.ok) return access.response;
 
   // Once finished, the address is set and this closes itself. A second finish

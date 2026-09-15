@@ -11,7 +11,10 @@ import type { Order } from "@/lib/types/ecommerce";
  * remains the single source of truth for access control.
  */
 
-const ORDER_WITH_ITEMS = "*, items:order_items(*)";
+// order_items columns are listed, not `*`: the authenticated role is not granted
+// the unit_cost / total_cost snapshots (20260915170000_hide_variant_cost_price.sql).
+const ORDER_WITH_ITEMS =
+  "*, items:order_items(id, order_id, variant_id, sku, product_title, variant_title, image_url, quantity, returned_quantity, unit_price, total_price, customization_id, customization_snapshot, created_at)";
 
 /** All of the signed-in customer's orders, most recent first. */
 export async function getCustomerOrders(): Promise<Order[]> {

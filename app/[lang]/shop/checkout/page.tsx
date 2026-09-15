@@ -239,7 +239,7 @@ export default function CheckoutPage() {
           return;
         }
         setCheckoutDiscount(json.discount_amount ?? 0);
-        setCheckoutFreeShipping(json.coupon?.discount_type === "free_shipping");
+        setCheckoutFreeShipping(json.free_shipping === true);
         setCouponPreviewError(null);
       })
       .catch(() => {

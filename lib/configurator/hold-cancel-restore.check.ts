@@ -115,6 +115,17 @@ assert.match(flowVariant, /\/mp-config/);
 assert.match(bolster, /cancelPath:\s*"\/mbolster-config"/);
 assert.match(bolster, /stayOnStep:\s*true/);
 
+// Mbolster session id (= the Result its reference photos hang off): dropped from
+// storage at hold so the next customer on a shared device starts fresh, but kept
+// in the hold-cancel draft and restored ONLY on a cancelled Checkout. Restoring
+// on a plain revisit would hand the next customer the previous Result's id.
+assert.match(bolster, /surface: "mbolster",\s*step: "preview",\s*responseId: configSessionId,/);
+assert.match(bolster, /if \(holdCancelled && draft\.responseId\)/);
+assert.match(bolster, /removeItem\(CONFIG_SESSION_KEY\)/);
+// Clearing state before the redirect would re-run the draft effect and erase
+// the id from the draft before the page unloads.
+assert.doesNotMatch(bolster, /setConfigSessionId\(null\)/);
+
 // Server cancel URL already appends hold_cancelled=1
 assert.match(holdRoute, /cancelUrl:\s*`\$\{origin\}\$\{cancelPath\}\?hold_cancelled=1`/);
 

@@ -27,6 +27,9 @@ const CreateItemSchema = z.object({
 });
 
 export async function GET(req: Request) {
+  const denied = await requireAdmin("page-builder");
+  if (denied) return denied;
+
   const { searchParams } = new URL(req.url);
   const categoryId = searchParams.get("category_id");
 

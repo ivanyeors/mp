@@ -1,9 +1,70 @@
 /** Stripe authorization hold: manual-capture PaymentIntent create / capture / release. */
 
+import type Stripe from "stripe";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe } from "@/lib/stripe/client";
 
 export function toStripeAmountCents(amountMajor: number): number {
   return Math.round(amountMajor * 100);
+}
+
+/**
+ * Attach a completed hold Checkout's payment intent to its Result. The ONE
+ * writer for both the Stripe webhook and the status page's return-from-Stripe
+ * sync, so neither can skip a check the other makes.
+ *
+ * A re-submitted build opens a new Checkout without expiring the old one, so an
+ * Owner can still pay the OLD session. Its card must not land on a Result now
+ * quoting a different amount: capture would fail or under-charge. Written only
+ * onto a `held` Result with no intent yet, so a card already attached — or a
+ * Result that moved on — is never replaced.
+ *
+ * `mismatch` explains a refusal worth recording; `null` means nothing to attach.
+ */
+export async function attachHoldPaymentIntent(
+  admin: SupabaseClient,
+  session: Stripe.Checkout.Session,
+): Promise<{ ok: true; paymentIntentId: string } | { ok: false; mismatch: string | null }> {
+  const resultId = session.metadata?.result_id;
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null;
+  // `complete`, not `payment_status`: a manual-capture hold reads `unpaid` until capture.
+  if (!resultId || !paymentIntentId || session.status !== "complete") {
+    return { ok: false, mismatch: null };
+  }
+
+  const { data: held } = await admin
+    .from("mp_config_responses")
+    .select("authorized_amount, currency")
+    .eq("id", resultId)
+    .eq("status", "held")
+    .is("payment_intent_id", null)
+    .maybeSingle();
+  if (!held) return { ok: false, mismatch: null };
+  if (
+    held.authorized_amount == null ||
+    toStripeAmountCents(Number(held.authorized_amount)) !== session.amount_total ||
+    String(held.currency).toLowerCase() !== session.currency?.toLowerCase()
+  ) {
+    return {
+      ok: false,
+      mismatch:
+        `Result ${resultId} hold session ${session.id} authorised ${session.currency} ` +
+        `${session.amount_total}, but the Result quotes ${held.currency} ` +
+        `${held.authorized_amount}. Card not attached.`,
+    };
+  }
+
+  const { data: written } = await admin
+    .from("mp_config_responses")
+    .update({ payment_intent_id: paymentIntentId })
+    .eq("id", resultId)
+    .eq("status", "held")
+    .is("payment_intent_id", null)
+    .select("id");
+  return written?.length ? { ok: true, paymentIntentId } : { ok: false, mismatch: null };
 }
 
 export type CreateHoldInput = {

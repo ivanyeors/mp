@@ -40,15 +40,17 @@ export async function POST(req: Request) {
   // theatre, because the table was reachable without going through this route.
   const { data: authRow, error: authErr } = await admin
     .from("mp_config_responses")
-    .select("access_token, customer_id, customer_email, status")
+    .select("access_token, customer_id, customer_email, status, order_id")
     .eq("id", responseId)
     .maybeSingle();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 500 });
   // No parent Result: refuse rather than upsert a photo row nothing will ever read.
   if (!authRow) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Staff means `results`: a viewer carries `orders` and would skip draftOnly.
   const access = await requireResultAccess(authRow, parsed.data.token ?? null, {
     draftOnly: true,
+    staffPermissions: ["results"],
   });
   if (!access.ok) return access.response;
 

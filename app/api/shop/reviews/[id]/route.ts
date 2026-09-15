@@ -27,7 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const admin = supabaseAdmin();
 
   const { data, error } = await admin
-    .from("reviews")
+    .from("product_reviews")
     .update(parsed.data)
     .eq("id", id)
     .select("*")
@@ -43,7 +43,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const admin = supabaseAdmin();
-  const { error } = await admin.from("reviews").delete().eq("id", id);
+  const { error } = await admin.from("product_reviews").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

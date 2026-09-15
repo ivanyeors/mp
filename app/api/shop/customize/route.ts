@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { loadComposedSellable, type ComposedSellableKey } from "@/lib/results/composed-sellable";
+import { loadComposedSellable } from "@/lib/results/composed-sellable";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getFillingRecommendation, getRecommendationFromMeasurements, getBolsterRecommendation, getBomTemplates, getAvailableFillings, getSizeBallparkFromMeasurements, getSizeBallparkFromPreferences } from "@/lib/shop/customization-llm";
-import { getAvailableComponents, validateCustomizationConfig, fetchOverlayMap } from "@/lib/shop/customization-inventory";
-import { customizationDelta, priceCustomizedBuild } from "@/lib/shop/customization-price";
+import { getAvailableComponents, validateCustomizationConfig, fetchOverlayMap, isBolsterCaseForLength } from "@/lib/shop/customization-inventory";
+import { quoteCustomization } from "@/lib/shop/customization-quote";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 import { templateIdsForKey } from "@/lib/filling-templates/membership";
 import {
@@ -207,7 +207,15 @@ async function handleRecommend(req: Request) {
 
       const components = {
         covers: relevantItems.filter((i: { category: string }) => i.category === "cover").map(toOption),
-        cases: relevantItems.filter((i: { category: string }) => i.category === "bolster_case" || i.category === "case").map(toOption),
+        // Only cases cut for this length (plus whatever the BOM ships): the apply
+        // route refuses any other, since cases are priced per length.
+        cases: relevantItems
+          .filter(
+            (i: { id: number; category: string; size: string | null }) =>
+              (i.category === "bolster_case" || i.category === "case") &&
+              (bomMap.has(i.id) || isBolsterCaseForLength(i, bolsterVariant as BolsterVariant)),
+          )
+          .map(toOption),
         protectors: relevantItems.filter((i: { category: string }) => i.category === "bolster_protector" || i.category === "protector").map(toOption),
         packaging: relevantItems.filter((i: { category: string }) => i.category === "packaging").map(toOption),
       };
@@ -509,60 +517,6 @@ function resolveBolsterVariantFromVariant(
   return null;
 }
 
-/**
- * The Costings price of a customized build, and the signed delta from the shelf
- * price its storefront variant carries.
- *
- * Both apply handlers go through here so neither can grow its own arithmetic again.
- * The client's `component_quantities[].price_delta` is ignored: it is browser input
- * on a money path.
- */
-async function priceApply(
-  admin: ReturnType<typeof supabaseAdmin>,
-  key: ComposedSellableKey,
-  lines: ConfigLine[],
-): Promise<{ ok: true; delta: number; subtotal: number } | { ok: false; error: string }> {
-  const composed = await loadComposedSellable(admin, key);
-  if (!composed.ok) return { ok: false, error: composed.error };
-  const sellable = composed.sellable;
-  if (sellable.msrp == null) {
-    return {
-      ok: false,
-      error: sellable.priceFault?.error ?? "This build has no Costings price",
-    };
-  }
-
-  const ids = [...new Set(lines.map((l) => l.item_id))];
-  const { data: prices } = ids.length
-    ? await admin.from("item_prices").select("item_id, msrp").in("item_id", ids)
-    : { data: [] as Array<{ item_id: number; msrp: number | null }> };
-  // Seeded with null so an item with no `item_prices` row stays unpriced rather than
-  // reading as absent-and-therefore-free.
-  const msrpByItem = new Map<number, number | null>(ids.map((id) => [id, null]));
-  for (const p of prices ?? []) {
-    msrpByItem.set(Number(p.item_id), p.msrp == null ? null : Number(p.msrp));
-  }
-
-  const result = priceCustomizedBuild({
-    pricing: {
-      msrp_by_family: sellable.msrpByFamily,
-      default_cover: sellable.defaultCover,
-      default_case: sellable.defaultCase,
-      case_options: sellable.caseOptions,
-      cover_options: sellable.coverOptions,
-      shelf_price: sellable.msrp,
-    },
-    lines,
-    baseQuantityByItem: new Map(sellable.bomLines.map((l) => [l.item_id, l.quantity])),
-    msrpByItem,
-  });
-  if (!result.ok) return { ok: false, error: result.error };
-
-  const delta = customizationDelta(result, sellable.msrp);
-  if (delta == null) return { ok: false, error: "This build has no Costings price" };
-  return { ok: true, delta, subtotal: result.subtotal };
-}
-
 async function handleApply(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = ApplyRequestSchema.safeParse(body);
@@ -578,8 +532,6 @@ async function handleApply(req: Request) {
     bolster_variant,
     ecom_product_id,
     filling_lines,
-    cover_variant,
-    case_variant,
     component_quantities,
     bom_template_id,
     llm_metadata,
@@ -594,8 +546,6 @@ async function handleApply(req: Request) {
       bolster_variant,
       ecom_product_id,
       filling_lines,
-      cover_variant: cover_variant ?? undefined,
-      case_variant: case_variant ?? undefined,
       component_quantities,
       bom_template_id,
       llm_metadata,
@@ -617,26 +567,41 @@ async function handleApply(req: Request) {
     return NextResponse.json({ error: "Invalid variant or pillow product mismatch" }, { status: 400 });
   }
 
-  // Validate filling items are actual filling items
-  const fillingItemIds = filling_lines.map((fl) => fl.item_id);
-  if (fillingItemIds.length > 0) {
-    const { data: fillingItems } = await admin
-      .from("items")
-      .select("id, category")
-      .in("id", fillingItemIds);
-
-    const nonFillings = (fillingItems ?? []).filter((i: { category: string }) => i.category !== "filling");
-    if (nonFillings.length > 0) {
-      return NextResponse.json({ error: "Invalid items in filling lines — only fillings allowed" }, { status: 400 });
-    }
+  // Price from Costings, through the same rule the preview and /mp-config use. The
+  // quote also rebuilds every line from the database, so what is stored — and later
+  // built, deducted and shown to Staff — is exactly what was priced.
+  const { data: pillowProductRow } = await admin
+    .from("pillow_products")
+    .select("size, kind")
+    .eq("id", pillow_product_id)
+    .maybeSingle();
+  if (!pillowProductRow) {
+    return NextResponse.json({ error: "Unknown pillow product" }, { status: 400 });
   }
+
+  const quote = await quoteCustomization(
+    admin,
+    {
+      productType: "pillow",
+      size: String(pillowProductRow.size),
+      tier: String(pillowProductRow.kind ?? "basic"),
+    },
+    component_quantities as ConfigLine[],
+    filling_lines as FillingLine[],
+  );
+  // Refusing beats guessing: a build we cannot price from Costings must not reach
+  // checkout on a stale shelf price.
+  if (!quote.ok) {
+    return NextResponse.json({ error: quote.error }, { status: 400 });
+  }
+  const totalAddonPrice = quote.delta;
 
   // Validate inventory availability
   const validation = await validateCustomizationConfig({
     product_type: "pillow",
     pillow_product_id,
-    filling_lines: filling_lines as FillingLine[],
-    component_quantities: component_quantities as ConfigLine[],
+    filling_lines: quote.fillingLines,
+    component_quantities: quote.lines,
     orderQuantity: 1,
   });
 
@@ -647,37 +612,13 @@ async function handleApply(req: Request) {
     }, { status: 400 });
   }
 
-  // Price from Costings, through the same rule the preview and /mp-config use.
-  const { data: pillowProductRow } = await admin
-    .from("pillow_products")
-    .select("size, kind")
-    .eq("id", pillow_product_id)
-    .maybeSingle();
-  if (!pillowProductRow) {
-    return NextResponse.json({ error: "Unknown pillow product" }, { status: 400 });
-  }
-
-  const quote = await priceApply(
-    admin,
-    {
-      productType: "pillow",
-      size: String(pillowProductRow.size),
-      tier: String(pillowProductRow.kind ?? "basic"),
-    },
-    component_quantities as ConfigLine[],
-  );
-  // Refusing beats guessing: a build we cannot price from Costings must not reach
-  // checkout on a stale shelf price.
-  if (!quote.ok) {
-    return NextResponse.json({ error: quote.error }, { status: 400 });
-  }
-  const totalAddonPrice = quote.delta;
-
-  const fillingDesc = filling_lines.map((f) => `${f.quantity}× ${f.subtype}`).join(", ");
+  const coverName = quote.lines.find((l) => l.category === "cover")?.name ?? null;
+  const caseName = quote.lines.find((l) => l.category === "case")?.name ?? null;
+  const fillingDesc = quote.fillingLines.map((f) => `${f.quantity}× ${f.subtype}`).join(", ");
   const parts: string[] = [];
   if (fillingDesc) parts.push(fillingDesc);
-  if (cover_variant) parts.push(`Cover: ${cover_variant}`);
-  if (case_variant) parts.push(`Case: ${case_variant}`);
+  if (coverName) parts.push(`Cover: ${coverName}`);
+  if (caseName) parts.push(`Case: ${caseName}`);
   const summary = parts.join(" | ");
 
   const { data: config, error: configError } = await admin
@@ -688,10 +629,10 @@ async function handleApply(req: Request) {
       bolster_variant: null,
       ecom_product_id: null,
       bom_template_id: bom_template_id ?? null,
-      config_lines: component_quantities,
-      filling_lines,
-      cover_variant: cover_variant ?? null,
-      case_variant: case_variant ?? null,
+      config_lines: quote.lines,
+      filling_lines: quote.fillingLines,
+      cover_variant: coverName,
+      case_variant: caseName,
       llm_metadata: llm_metadata ?? {},
       summary,
       total_addon_price: totalAddonPrice,
@@ -717,8 +658,6 @@ async function handleApplyBolster({
   bolster_variant,
   ecom_product_id,
   filling_lines,
-  cover_variant,
-  case_variant,
   component_quantities,
   bom_template_id,
   llm_metadata,
@@ -728,8 +667,6 @@ async function handleApplyBolster({
   bolster_variant?: BolsterVariant;
   ecom_product_id?: string;
   filling_lines: { item_id: number; subtype: string; name: string; quantity: number }[];
-  cover_variant?: string;
-  case_variant?: string;
   component_quantities: ConfigLine[];
   bom_template_id?: number;
   llm_metadata?: Record<string, unknown>;
@@ -767,11 +704,22 @@ async function handleApplyBolster({
     return NextResponse.json({ error: "Bolster customizations do not support filling lines" }, { status: 400 });
   }
 
+  const quote = await quoteCustomization(
+    admin,
+    { productType: "bolster", length: resolvedBolsterVariant },
+    component_quantities,
+    [],
+  );
+  if (!quote.ok) {
+    return NextResponse.json({ error: quote.error }, { status: 400 });
+  }
+  const totalAddonPrice = quote.delta;
+
   const validation = await validateCustomizationConfig({
     product_type: "bolster",
     bolster_variant: resolvedBolsterVariant,
     filling_lines: [],
-    component_quantities,
+    component_quantities: quote.lines,
     orderQuantity: 1,
   });
 
@@ -782,19 +730,11 @@ async function handleApplyBolster({
     }, { status: 400 });
   }
 
-  const quote = await priceApply(
-    admin,
-    { productType: "bolster", length: resolvedBolsterVariant },
-    component_quantities,
-  );
-  if (!quote.ok) {
-    return NextResponse.json({ error: quote.error }, { status: 400 });
-  }
-  const totalAddonPrice = quote.delta;
-
+  const coverName = quote.lines.find((l) => l.category === "cover")?.name ?? null;
+  const caseName = quote.lines.find((l) => l.category === "case")?.name ?? null;
   const parts: string[] = [`Bolster: ${resolvedBolsterVariant}`];
-  if (cover_variant) parts.push(`Cover: ${cover_variant}`);
-  if (case_variant) parts.push(`Case: ${case_variant}`);
+  if (coverName) parts.push(`Cover: ${coverName}`);
+  if (caseName) parts.push(`Case: ${caseName}`);
   const summary = parts.join(" | ");
 
   const { data: config, error: configError } = await admin
@@ -805,10 +745,10 @@ async function handleApplyBolster({
       bolster_variant: resolvedBolsterVariant,
       ecom_product_id,
       bom_template_id: bom_template_id ?? null,
-      config_lines: component_quantities,
+      config_lines: quote.lines,
       filling_lines: [],
-      cover_variant: cover_variant ?? null,
-      case_variant: case_variant ?? null,
+      cover_variant: coverName,
+      case_variant: caseName,
       llm_metadata: llm_metadata ?? {},
       summary,
       total_addon_price: totalAddonPrice,

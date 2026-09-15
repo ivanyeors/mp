@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthIdentity } from "@/lib/auth/user";
+import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import { withLocale } from "@/lib/i18n/routing";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import {
@@ -41,6 +42,7 @@ function bootstrapEmails(): string[] {
  * Resolution order:
  *  1. `admin_users` row matched by auth user id.
  *  2. `admin_users` row matched by email (links the auth id on first match).
+ *     A row already bound to a different auth user is refused, never shared.
  *  3. First-admin bootstrap: an allowlisted email auto-provisions an owner row.
  *
  * Memoised per request with React `cache()` so the settings layout gate, an
@@ -66,11 +68,21 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
     const { data: byEmail } = await admin
       .from("admin_users")
       .select("id, role, is_active, auth_user_id")
-      .ilike("email", email)
+      .ilike("email", escapeLikePattern(email))
       .maybeSingle();
+    // A matching email is not ownership once the row is bound to another user.
+    if (byEmail?.auth_user_id && byEmail.auth_user_id !== user.id) return null;
     row = byEmail;
     if (row && !row.auth_user_id) {
-      await admin.from("admin_users").update({ auth_user_id: user.id }).eq("id", row.id);
+      const { data: bound } = await admin
+        .from("admin_users")
+        .update({ auth_user_id: user.id })
+        .eq("id", row.id)
+        .is("auth_user_id", null)
+        .select("id")
+        .maybeSingle();
+      // Another sign-in bound the row between the read and this write.
+      if (!bound) return null;
     }
   }
 

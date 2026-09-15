@@ -51,7 +51,7 @@ A **Result** that has not entered the money path: `mp_config_responses.status` i
 _Avoid_: "unsaved" (a Draft Result is persisted); "unfinalised" (`is_final` records that the Telegram message was sent, not a lifecycle state); cart
 
 **Result access token**:
-The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created, and rotated at every **Authorization hold**; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`).
+The `access_token` uuid on a **Result** — a bearer capability proving "I am this Result's customer" without a **Customer** sign-in. Minted when the **Draft Result** is created (or at hold, for a Result that has none) and kept across re-submits, so an **Owner**'s retry never locks them out; travels in the status-page link of the held, assigned, SLA-reminder and restock emails. Verified by `authorizeResultAccess` (`lib/results/access.ts`).
 _Avoid_: Stripe checkout `session_id`; the **Result** id itself (an identifier, never a credential)
 
 **Owner**:

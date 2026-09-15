@@ -55,16 +55,17 @@ export async function POST(
   const allowed = await authorizeResultAccess(row, token);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  // Idempotent: already captured. Checked before the order_id guard, which used to
+  // shadow it, so a repeat accept gets the Order it already made rather than a 400.
+  if (row.status === "captured") {
+    return NextResponse.json({ ok: true, status: "captured", orderId: row.order_id });
+  }
+
   if (row.order_id) {
     return NextResponse.json(
       { error: "Result already has an Order", orderId: row.order_id },
       { status: 400 },
     );
-  }
-
-  // Idempotent: already captured.
-  if (row.status === "captured") {
-    return NextResponse.json({ ok: true, status: "captured", orderId: row.order_id });
   }
 
   // Not payable until the customer has picked cover, case and shipping (ADR 0017).
@@ -182,6 +183,49 @@ export async function POST(
     }
   }
 
+  // Claim the Result before anything moves money or writes an Order. Every check
+  // above read the row and then acted, so a double click or two racing requests
+  // both passed and each made an Order, a commission and a stock deduction. Only
+  // the request whose conditional update flips `assigned` → `accepted` goes on.
+  // `accepted` is the lifecycle's own in-between state, already refused by decline
+  // and cancel and skipped by the SLA cron, so no new status or column is needed.
+  const { data: claimed, error: claimErr } = await admin
+    .from("mp_config_responses")
+    .update({ status: acceptLife.status })
+    .eq("id", id)
+    .eq("status", "assigned")
+    .is("order_id", null)
+    .select("id");
+  if (claimErr) return NextResponse.json({ error: claimErr.message }, { status: 500 });
+  if (!claimed?.length) {
+    const { data: current } = await admin
+      .from("mp_config_responses")
+      .select("status, order_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (current?.order_id) {
+      return NextResponse.json({ ok: true, status: current.status, orderId: current.order_id });
+    }
+    return NextResponse.json(
+      { error: "This Result is already being accepted or has changed. Reload and try again." },
+      { status: 409 },
+    );
+  }
+  // Hand the claim back when this attempt fails before an Order exists, so accept
+  // can be retried. ponytail: no staleness takeover. A request that dies outright
+  // keeps the claim, because a takeover cannot tell "died before the Order insert"
+  // from "died after it" and would bring the duplicate Order straight back. That
+  // Result stays `accepted` with no order_id and needs a human.
+  const releaseClaim = async () => {
+    const { error } = await admin
+      .from("mp_config_responses")
+      .update({ status: "assigned" })
+      .eq("id", id)
+      .eq("status", "accepted")
+      .is("order_id", null);
+    if (error) console.error("Failed to release accept claim", id, error);
+  };
+
   const holdCaptureAmount = plan.kind === "capture" ? plan.amount : plan.holdCapture;
 
   // Capture is not the last write in this route, so a failure after it used to
@@ -201,6 +245,7 @@ export async function POST(
         await captureHold(row.payment_intent_id, holdCaptureAmount);
       }
     } catch (e) {
+      await releaseClaim();
       const message = e instanceof Error ? e.message : "Capture failed";
       return NextResponse.json({ error: message }, { status: 502 });
     }
@@ -219,6 +264,7 @@ export async function POST(
     { action: "capture" },
   );
   if (!captureLife.ok) {
+    await releaseClaim();
     return NextResponse.json({ error: captureLife.error }, { status: 500 });
   }
 
@@ -288,6 +334,7 @@ export async function POST(
     .single();
 
   if (orderErr || !order) {
+    await releaseClaim();
     return NextResponse.json(
       { error: orderErr?.message ?? "Failed to create Order" },
       { status: 500 },
@@ -340,7 +387,10 @@ export async function POST(
     .single();
 
   if (itemErr || !orderItem) {
-    await admin.from("orders").delete().eq("id", order.id);
+    const { error: rollbackErr } = await admin.from("orders").delete().eq("id", order.id);
+    // An Order we could not delete must not be joined by a second one on retry:
+    // keep the claim so the Result shows as accept_interrupted for a human.
+    if (!rollbackErr) await releaseClaim();
     return NextResponse.json({ error: itemErr?.message ?? "Failed to create order item" }, { status: 500 });
   }
 
@@ -442,7 +492,8 @@ export async function POST(
       order_id: order.id,
       final_amount: finalAmount,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .is("order_id", null);
 
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });

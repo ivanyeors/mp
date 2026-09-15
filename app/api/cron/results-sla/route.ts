@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { secretMatches } from "@/lib/auth/secret";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { transitionResult } from "@/lib/result-lifecycle";
 import { releaseHold } from "@/lib/authorization-hold";
@@ -31,8 +32,7 @@ function authorizeCron(req: Request): boolean {
     // ponytail: open in dev when CRON_SECRET unset; set CRON_SECRET in prod.
     return process.env.NODE_ENV !== "production";
   }
-  const header = req.headers.get("authorization");
-  return header === `Bearer ${secret}`;
+  return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
 async function sendTelegram(text: string): Promise<"sent" | "skipped" | "failed"> {

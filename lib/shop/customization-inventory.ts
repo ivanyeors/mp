@@ -48,6 +48,25 @@ export function isProtectorInventoryCategory(category: string): boolean {
   );
 }
 
+/** `items.size` of a bolster case cut for each length (as the Staff BOM editor maps them). */
+const BOLSTER_CASE_SIZE: Record<BolsterVariant, string> = { short: "S", medium: "M", long: "L" };
+
+/**
+ * True when a bolster case fits this length. Cases are cut and priced per length, so
+ * offering (or accepting) any bolster case let a long bolster take the short one's
+ * price. Legacy single-size `BOLSTER` cases fit nothing here; the BOM default stays
+ * offered through its own path.
+ */
+export function isBolsterCaseForLength(
+  item: { category: string; size: string | null },
+  length: BolsterVariant,
+): boolean {
+  return (
+    item.category === "bolster_case" &&
+    item.size?.trim().toUpperCase() === BOLSTER_CASE_SIZE[length]
+  );
+}
+
 /** True when a DB item may be used as the given customer preference role. */
 export function itemMatchesPreferenceRole(
   itemCategory: string,
@@ -287,6 +306,13 @@ export async function getAvailableBolsterComponents(bolsterProductId: number): P
   };
 }
 
+type ConfigValidation = {
+  valid: boolean;
+  shortages: { item_id: number; name: string; needed: number; available: number }[];
+  /** What this config needs, item_id -> quantity (excluding `reserved`). */
+  needed: Map<number, number>;
+};
+
 /**
  * Validate a full customization config against current inventory.
  * Checks ALL components (fillings + covers + cases + etc) can be fulfilled.
@@ -295,11 +321,9 @@ export async function validateFullConfig(
   pillowProductId: number,
   fillingLines: FillingLine[],
   componentQuantities: ConfigLine[],
-  orderQuantity: number
-): Promise<{
-  valid: boolean;
-  shortages: { item_id: number; name: string; needed: number; available: number }[];
-}> {
+  orderQuantity: number,
+  reserved: ReadonlyMap<number, number> = new Map()
+): Promise<ConfigValidation> {
   const admin = supabaseAdmin();
 
   // Build a map of all items needed: item_id → total quantity
@@ -362,17 +386,18 @@ export async function validateFullConfig(
 
   for (const [itemId, qty] of needed) {
     const available = stockMap.get(itemId) ?? 0;
-    if (available < qty) {
+    const total = qty + (reserved.get(itemId) ?? 0);
+    if (available < total) {
       shortages.push({
         item_id: itemId,
         name: nameMap.get(itemId) ?? `Item #${itemId}`,
-        needed: qty,
+        needed: total,
         available,
       });
     }
   }
 
-  return { valid: shortages.length === 0, shortages };
+  return { valid: shortages.length === 0, shortages, needed };
 }
 
 /**
@@ -400,11 +425,9 @@ export async function getBolsterBaseQuantities(
 export async function validateBolsterConfig(
   bolsterVariant: BolsterVariant,
   componentQuantities: ConfigLine[],
-  orderQuantity: number
-): Promise<{
-  valid: boolean;
-  shortages: { item_id: number; name: string; needed: number; available: number }[];
-}> {
+  orderQuantity: number,
+  reserved: ReadonlyMap<number, number> = new Map()
+): Promise<ConfigValidation> {
   const admin = supabaseAdmin();
 
   const needed = new Map<number, number>();
@@ -433,7 +456,7 @@ export async function validateBolsterConfig(
 
   const itemIds = [...needed.keys()];
   if (itemIds.length === 0) {
-    return { valid: true, shortages: [] };
+    return { valid: true, shortages: [], needed };
   }
 
   const { data: balances } = await admin
@@ -461,17 +484,18 @@ export async function validateBolsterConfig(
 
   for (const [itemId, qty] of needed) {
     const available = stockMap.get(itemId) ?? 0;
-    if (available < qty) {
+    const total = qty + (reserved.get(itemId) ?? 0);
+    if (available < total) {
       shortages.push({
         item_id: itemId,
         name: nameMap.get(itemId) ?? `Item #${itemId}`,
-        needed: qty,
+        needed: total,
         available,
       });
     }
   }
 
-  return { valid: shortages.length === 0, shortages };
+  return { valid: shortages.length === 0, shortages, needed };
 }
 
 /**
@@ -484,10 +508,12 @@ export async function validateCustomizationConfig(params: {
   filling_lines: FillingLine[];
   component_quantities: ConfigLine[];
   orderQuantity: number;
-}): Promise<{
-  valid: boolean;
-  shortages: { item_id: number; name: string; needed: number; available: number }[];
-}> {
+  /**
+   * Quantities other lines of the same order already need, so two lines that each
+   * fit in stock cannot together oversell it. Add each result's `needed` to it.
+   */
+  reserved?: ReadonlyMap<number, number>;
+}): Promise<ConfigValidation> {
   if (params.product_type === "bolster") {
     if (!params.bolster_variant) {
       return {
@@ -498,12 +524,14 @@ export async function validateCustomizationConfig(params: {
           needed: 0,
           available: 0,
         }],
+        needed: new Map(),
       };
     }
     return validateBolsterConfig(
       params.bolster_variant,
       params.component_quantities,
-      params.orderQuantity
+      params.orderQuantity,
+      params.reserved
     );
   }
 
@@ -516,6 +544,7 @@ export async function validateCustomizationConfig(params: {
         needed: 0,
         available: 0,
       }],
+      needed: new Map(),
     };
   }
 
@@ -523,7 +552,8 @@ export async function validateCustomizationConfig(params: {
     params.pillow_product_id,
     params.filling_lines,
     params.component_quantities,
-    params.orderQuantity
+    params.orderQuantity,
+    params.reserved
   );
 }
 

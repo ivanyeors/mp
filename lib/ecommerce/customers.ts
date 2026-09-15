@@ -1,18 +1,23 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { escapeLikePattern } from "@/lib/auth/customer-identity";
 import type { Customer } from "@/lib/types/ecommerce";
+
+/** Exact, case-insensitive email match: `_` and `%` in the address are literal. */
+export async function findCustomerByEmail(email: string): Promise<Customer | null> {
+  const { data } = await supabaseAdmin()
+    .from("customers")
+    .select("*")
+    .ilike("email", escapeLikePattern(email.toLowerCase().trim()))
+    .maybeSingle();
+  return (data as Customer | null) ?? null;
+}
 
 export async function findOrCreateCustomer(email: string, extra?: { first_name?: string; last_name?: string; phone?: string; locale?: string }): Promise<Customer> {
   const admin = supabaseAdmin();
   const normalized = email.toLowerCase().trim();
 
-  // Try to find existing
-  const { data: existing } = await admin
-    .from("customers")
-    .select("*")
-    .ilike("email", normalized)
-    .single();
-
-  if (existing) return existing as Customer;
+  const existing = await findCustomerByEmail(normalized);
+  if (existing) return existing;
 
   // Create new
   const { data: created, error } = await admin

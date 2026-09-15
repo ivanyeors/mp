@@ -26,7 +26,7 @@ export async function GET() {
     .select(
       "id, status, source, payment_intent_id, created_at, order_id, topup_paid_at, authorized_amount"
     )
-    .in("status", ["held", "assigned"]);
+    .in("status", ["held", "assigned", "accepted"]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

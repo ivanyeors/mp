@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/auth/admin'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { getShopifyEnv } from '@/lib/shopify/env'
 import { shopifyGetPrimaryLocationId } from '@/lib/shopify/client'
@@ -9,6 +10,8 @@ type BuildableRow = { kind: string; size: string; buildable: number | string }
 
 export async function GET() {
   try {
+    const denied = await requireAdmin('inventory')
+    if (denied) return denied
     const env = getShopifyEnv()
     const admin = supabaseAdmin()
 

@@ -87,7 +87,7 @@ async function validateCouponClient(
   return {
     valid: true,
     discount: json.discount_amount ?? 0,
-    freeShipping: json.coupon?.discount_type === "free_shipping",
+    freeShipping: json.free_shipping === true,
   };
 }
 

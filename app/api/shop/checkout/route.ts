@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { findOrCreateCustomer } from "@/lib/ecommerce/customers";
+import { findCustomerByEmail, findOrCreateCustomer } from "@/lib/ecommerce/customers";
 import { validateCoupon } from "@/lib/ecommerce/discounts";
 import { getPartnerByReferralCode } from "@/lib/referrals";
 import { getPartnerContext, isPartnerActive } from "@/lib/auth/partner";
@@ -18,6 +18,8 @@ import {
 } from "@/lib/ecommerce/customization-product-type";
 import { resolveOrderItemUnitCost } from "@/lib/ecommerce/order-cost";
 import { validateCustomizationConfig } from "@/lib/shop/customization-inventory";
+import { quoteCustomization } from "@/lib/shop/customization-quote";
+import type { ComposedSellableKey } from "@/lib/results/composed-sellable";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME } from "@/lib/i18n/locales";
 import type { BolsterVariant, ConfigLine, CustomizationProductType, FillingLine } from "@/lib/types/customization";
 import type { Product, ProductVariant, ShippingMethod } from "@/lib/types/ecommerce";
@@ -28,6 +30,7 @@ type CustomizationConfigRow = {
   total_addon_price: number;
   summary: string | null;
   pillow_product_id: number | null;
+  ecom_product_id: string | null;
   product_type: CustomizationProductType | null;
   bolster_variant: BolsterVariant | null;
 };
@@ -187,9 +190,19 @@ export async function POST(req: Request) {
       ])
     );
 
+    // Per Variant, not per line: the same variant_id on two lines, each within
+    // stock, would otherwise oversell.
+    const requestedByVariant = new Map<string, number>();
+    for (const item of standardItems) {
+      requestedByVariant.set(
+        item.variant_id,
+        (requestedByVariant.get(item.variant_id) ?? 0) + item.quantity
+      );
+    }
+
     for (const item of standardItems) {
       const available = stockMap.get(item.variant_id) ?? 0;
-      if (available < item.quantity) {
+      if (available < requestedByVariant.get(item.variant_id)!) {
         const title = item.variant?.title ?? item.variant_id;
         return NextResponse.json(
           { error: `Insufficient stock for "${title}". Only ${available} available.` },
@@ -207,7 +220,7 @@ export async function POST(req: Request) {
     const { data: configs, error: configError } = await admin
       .from("customization_configs")
       .select(
-        "id, pillow_product_id, product_type, bolster_variant, config_lines, filling_lines, total_addon_price, summary"
+        "id, pillow_product_id, ecom_product_id, product_type, bolster_variant, config_lines, filling_lines, total_addon_price, summary"
       )
       .in("id", customizationIds);
 
@@ -219,6 +232,8 @@ export async function POST(req: Request) {
       customizationMap.set(cfg.id, cfg);
     }
 
+    const variantByCustomization = new Map<string, string>();
+    const reservedComponents = new Map<number, number>();
     for (const item of customizedItems) {
       const cfg = customizationMap.get(item.customization_id!);
       if (!cfg) {
@@ -230,13 +245,113 @@ export async function POST(req: Request) {
 
       const productType = resolveCustomizationProductType(cfg);
 
+      // The config prices and builds ONE composed sellable, so the line's Variant
+      // must be that sellable's. Otherwise a cheap accessory variant_id carries a
+      // full build through checkout. One Variant per customisation, too, since the
+      // recomputed price below is stored per customisation.
+      const matchesBuild =
+        productType === "pillow"
+          ? cfg.pillow_product_id != null &&
+            item.variant.pillow_product_id != null &&
+            Number(item.variant.pillow_product_id) === Number(cfg.pillow_product_id)
+          : item.product?.product_type === "bolster" &&
+            cfg.ecom_product_id != null &&
+            item.variant.product_id === cfg.ecom_product_id;
+      if (!matchesBuild) {
+        return NextResponse.json(
+          { error: "Customization does not match this item" },
+          { status: 400 }
+        );
+      }
+
+      // A bolster product carries one Variant per length (`option1`, as the
+      // variant_stock view and inventory deduction read it). The config's length is
+      // what gets priced and built, so the line takes that Variant whatever length
+      // was posted — its title and SKU are what fulfilment reads.
+      if (
+        productType === "bolster" &&
+        item.variant.option1?.toLowerCase() !== cfg.bolster_variant
+      ) {
+        const { data: siblings } = await admin
+          .from("product_variants")
+          .select("*")
+          .eq("product_id", cfg.ecom_product_id)
+          .eq("is_active", true);
+        const lengthVariant = ((siblings ?? []) as ProductVariant[]).find(
+          (v) => v.option1?.toLowerCase() === cfg.bolster_variant
+        );
+        if (!lengthVariant) {
+          return NextResponse.json(
+            { error: "This bolster length is no longer available" },
+            { status: 400 }
+          );
+        }
+        item.variant = lengthVariant;
+        item.variant_id = lengthVariant.id;
+      }
+
+      const boundVariant = variantByCustomization.get(item.customization_id!);
+      if (boundVariant && boundVariant !== item.variant_id) {
+        return NextResponse.json(
+          { error: "Customization does not match this item" },
+          { status: 400 }
+        );
+      }
+      variantByCustomization.set(item.customization_id!, item.variant_id);
+
+      // Price the build now, from Costings, through the same quote the customise
+      // route used. `total_addon_price` on the row is a display snapshot and is
+      // never charged: a Costings change since customising is legitimate, and a
+      // tampered row must not name its own price.
+      let key: ComposedSellableKey | null = null;
+      if (productType === "bolster") {
+        key = cfg.bolster_variant ? { productType: "bolster", length: cfg.bolster_variant } : null;
+      } else {
+        const { data: pillowProductRow } = await admin
+          .from("pillow_products")
+          .select("size, kind")
+          .eq("id", cfg.pillow_product_id)
+          .maybeSingle();
+        key = pillowProductRow
+          ? {
+              productType: "pillow",
+              size: String(pillowProductRow.size),
+              tier: String(pillowProductRow.kind ?? "basic"),
+            }
+          : null;
+      }
+      const quote = key
+        ? await quoteCustomization(
+            admin,
+            key,
+            cfg.config_lines as ConfigLine[],
+            cfg.filling_lines as FillingLine[]
+          )
+        : ({ ok: false, error: "Unknown customised product" } as const);
+      if (!quote.ok) {
+        return NextResponse.json({ error: quote.error }, { status: 400 });
+      }
+      // Every downstream reader (subtotal, coupon, order_items, the Stripe line)
+      // adds this to `variant.price`, so it is re-based on the Variant: the line then
+      // charges exactly the composed subtotal, and Stripe's catalog-Price shortcut
+      // (delta 0) fires only when the composed build really costs the shelf price.
+      // The lines are the quote's too, so the order snapshot Staff build from and
+      // inventory deduct from is the build that was priced.
+      customizationMap.set(item.customization_id!, {
+        ...cfg,
+        config_lines: quote.lines,
+        filling_lines: quote.fillingLines,
+        total_addon_price: Number((quote.subtotal - Number(item.variant.price)).toFixed(2)),
+      });
+
       const result = await validateCustomizationConfig({
         product_type: productType,
         pillow_product_id: cfg.pillow_product_id ?? undefined,
         bolster_variant: cfg.bolster_variant ?? undefined,
-        filling_lines: cfg.filling_lines as FillingLine[],
-        component_quantities: cfg.config_lines as ConfigLine[],
+        filling_lines: quote.fillingLines,
+        component_quantities: quote.lines,
         orderQuantity: item.quantity,
+        reserved: reservedComponents,
       });
 
       if (!result.valid) {
@@ -245,6 +360,10 @@ export async function POST(req: Request) {
           { error: `Insufficient component stock for customized item: ${shortageNames}` },
           { status: 400 }
         );
+      }
+      // Per item across every customised line, as standard lines are per Variant.
+      for (const [itemId, qty] of result.needed) {
+        reservedComponents.set(itemId, (reservedComponents.get(itemId) ?? 0) + qty);
       }
     }
   }
@@ -368,11 +487,7 @@ export async function POST(req: Request) {
   let isFreeShipping = false;
 
   const normalizedEmail = email.toLowerCase().trim();
-  const { data: existingCustomer } = await admin
-    .from("customers")
-    .select("id")
-    .ilike("email", normalizedEmail)
-    .maybeSingle();
+  const existingCustomer = await findCustomerByEmail(normalizedEmail);
 
   if (coupon_code) {
     const productIds = cart.items.map((item) => item.product?.id).filter(Boolean) as string[];

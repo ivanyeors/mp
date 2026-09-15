@@ -25,7 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { lang, slug } = await params;
   const product = await getProductBySlug(slug);
 
-  if (!product) {
+  // Same gate as page.tsx: a draft or archived slug 404s, so it must not leak metadata either.
+  if (!product || product.status !== "active") {
     return { title: "Product Not Found" };
   }
 
@@ -52,7 +53,7 @@ export default async function ProductLayout({ params, children }: Props) {
   const { lang, slug } = await params;
   const product = await getProductBySlug(slug);
 
-  if (!product) {
+  if (!product || product.status !== "active") {
     return <>{children}</>;
   }
 

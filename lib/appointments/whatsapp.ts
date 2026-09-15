@@ -1,4 +1,5 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
+import { secretMatches } from "@/lib/auth/secret";
 import { formatSlotLabelSgt, type SlotOffer } from "./slots";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
@@ -227,8 +228,7 @@ export function verifyWebhookChallenge(params: {
   challenge: string | null;
 }): string | null {
   const verify = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
-  if (!verify) return null;
-  if (params.mode === "subscribe" && params.token === verify) {
+  if (params.mode === "subscribe" && secretMatches(verify, params.token)) {
     return params.challenge;
   }
   return null;
@@ -247,11 +247,7 @@ export function verifyWhatsAppSignature(
   if (!signatureHeader?.startsWith("sha256=")) return false;
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
   const got = signatureHeader.slice("sha256=".length);
-  try {
-    return timingSafeEqual(Buffer.from(expected), Buffer.from(got));
-  } catch {
-    return false;
-  }
+  return secretMatches(expected, got);
 }
 
 export type InboundWaAction =

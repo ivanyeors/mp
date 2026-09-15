@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
+import { attachHoldPaymentIntent, releaseHold } from "@/lib/authorization-hold";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { deductInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
@@ -110,17 +111,28 @@ export async function POST(req: Request) {
                   topup_paid_at: new Date().toISOString(),
                 })
                 .eq("id", resultId)
-                .eq("status", "assigned");
+                // `accepted` too: accept holds that status while it settles, and a
+                // stamp dropped there is lost if that attempt fails and hands back.
+                .in("status", ["assigned", "accepted"]);
             }
             break;
           }
 
-          if (paymentIntent) {
-            await admin
-              .from("mp_config_responses")
-              .update({ payment_intent_id: paymentIntent })
-              .eq("id", resultId)
-              .eq("status", "held");
+          // Amount, currency and state checks live in the shared writer, which the
+          // status page's return-from-Stripe sync also uses.
+          const attached = await attachHoldPaymentIntent(admin, session);
+          if (!attached.ok && attached.mismatch) {
+            console.error(`[stripe/webhook] ${attached.mismatch}`);
+            await recordWebhookFailure(admin, event, attached.mismatch);
+            // The refused card is attached to nothing, so no cron would ever
+            // release it: free the customer's funds now instead of in 7 days.
+            const refusedIntent =
+              typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+            if (refusedIntent) {
+              await releaseHold(refusedIntent).catch((err) =>
+                console.error(`[stripe/webhook] release of refused hold ${refusedIntent} failed`, err),
+              );
+            }
           }
           break;
         }

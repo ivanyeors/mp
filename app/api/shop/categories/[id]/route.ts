@@ -23,28 +23,6 @@ const UpdateCategorySchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  const admin = supabaseAdmin();
-  const { data, error } = await admin
-    .from("categories")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.code === "PGRST116" ? "Category not found" : error.message },
-      { status: error.code === "PGRST116" ? 404 : 500 }
-    );
-  }
-
-  return NextResponse.json({ ok: true, row: data });
-}
-
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }

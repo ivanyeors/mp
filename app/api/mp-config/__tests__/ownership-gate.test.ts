@@ -43,6 +43,15 @@ vi.mock("@/lib/results/admin/response-detail", async (orig) => ({
 
 const { GET } = await import("@/app/api/mp-config/responses/[id]/route");
 const { POST: photosPost } = await import("@/app/api/mp-config/photos/route");
+const { POST: responsesPost } = await import("@/app/api/mp-config/responses/route");
+
+/** A viewer: signed in as an admin whose role carries `orders` but not `results`. */
+const signInViewer = () =>
+  h.requireAnyAdmin.mockImplementation(async (wanted: string[]) =>
+    wanted.some((p) => ["orders", "analytics"].includes(p))
+      ? null
+      : NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+  );
 
 const ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const TOKEN = "11111111-1111-4111-8111-111111111111";
@@ -167,10 +176,32 @@ describe("POST /api/mp-config/photos", () => {
     expect(h.upsert).toHaveBeenCalledOnce();
   });
 
+  it("does not treat a viewer as Staff on a Result that has left draft", async () => {
+    signInViewer();
+    const res = await photosPost(new Request("https://x.test/api/mp-config/photos", body()));
+    expect(res.status).toBe(403);
+    expect(h.upsert).not.toHaveBeenCalled();
+  });
+
   it("refuses a photo for a Result that does not exist", async () => {
     h.maybeSingle.mockResolvedValue({ data: null, error: null });
     const res = await photosPost(new Request("https://x.test/api/mp-config/photos", body()));
     expect(res.status).toBe(404);
+    expect(h.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/mp-config/responses", () => {
+  it("does not treat a viewer as Staff: a held Result's measurements stay Staff-only", async () => {
+    signInViewer();
+    const res = await responsesPost(
+      new Request("https://x.test/api/mp-config/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: ID, data: { name: "Eve" } }),
+      }),
+    );
+    expect(res.status).toBe(403);
     expect(h.upsert).not.toHaveBeenCalled();
   });
 });

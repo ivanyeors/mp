@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
+import { secretMatches } from "@/lib/auth/secret";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
+import { requireResultAccess } from "@/lib/results/access";
 import { priceResult } from "@/lib/result-pricing";
+import { round2 } from "@/lib/commissions";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
@@ -108,6 +111,8 @@ const AssistFillingSchema = z.object({
 const HoldSchema = z
   .object({
     responseId: z.string().uuid().optional(),
+    /** Result access token — proves the caller owns an existing `responseId` row. */
+    token: z.string().uuid().nullish(),
     email: z.string().email(),
     phone: z.string().min(1),
     discoverySource: z.string().min(1),
@@ -261,17 +266,35 @@ export async function POST(req: Request) {
   const { data: assisted, error: assistedErr } = input.responseId
     ? await admin
         .from("mp_config_responses")
-        .select("source, status")
+        .select("source, status, access_token, customer_id, customer_email, order_id, payment_intent_id")
         .eq("id", input.responseId)
         .maybeSingle()
     : { data: null, error: null };
   if (assistedErr) {
     return NextResponse.json({ error: assistedErr.message }, { status: 500 });
   }
+  // Creating a Result stays open. Re-submitting one does not: the write below
+  // rewrites its email and payment fields, so knowing the id alone would let a
+  // stranger take the Result over and orphan the owner's Authorization hold.
+  // Same gate as every other write to an existing Result (lib/results/access.ts),
+  // with Staff narrowed to `results`: a viewer carries `orders` and must not
+  // rewrite a customer's Result.
+  if (assisted) {
+    const access = await requireResultAccess(assisted, input.token ?? null, {
+      staffPermissions: ["results"],
+    });
+    if (!access.ok) return access.response;
+  }
   // Nothing Staff have assigned, or a customer has paid for, is resubmittable.
-  // The upsert below would otherwise reset it to a fresh `held` row with a new
-  // token. A stale configurator tab could do that with the same session id.
-  if (assisted?.status && ["assigned", "accepted", "captured"].includes(assisted.status)) {
+  // The write below would otherwise reset it to a fresh `held` row. A stale
+  // configurator tab could do that with the same session id. A `held` row with
+  // a payment intent is paid for too: re-submitting would null the intent and
+  // orphan the card hold, and the same params replay an already-completed
+  // Checkout whose webhook never fires again.
+  if (
+    (assisted?.status && ["assigned", "accepted", "captured"].includes(assisted.status)) ||
+    (assisted?.status === "held" && assisted.payment_intent_id)
+  ) {
     return NextResponse.json(
       { error: "This Result has already been submitted" },
       { status: 409 },
@@ -513,6 +536,9 @@ export async function POST(req: Request) {
     shipping: shippingAmount,
     tax: tax.taxAmount,
   });
+  // Cents, once: the row's numeric(12,2) would round a float-dust total on store,
+  // and the hold webhook compares that stored amount against what Checkout charged.
+  priced.total = round2(priced.total);
 
   // Whether to take a card now. Two independent reasons not to:
   //   - `deferred` — an Assisted customisation, authorised by the stored row above.
@@ -529,7 +555,14 @@ export async function POST(req: Request) {
   const takeCard = !input.deferred && authHoldEnabled;
 
   const currency = composed.sellable.currency;
-  const accessToken = randomUUID();
+  // Kept only when this request presented it: a fresh token would change the
+  // Checkout success URL, so the Owner's honest retry would no longer match its
+  // own idempotency key. Anyone else who passed the gate (Staff, a signed-in
+  // Customer, a legacy Draft) gets a new one — otherwise Staff re-submitting on a
+  // shared device would email the next customer the previous customer's token.
+  // Same plain comparison as authorizeResultAccess: a random per-row uuid.
+  const accessToken =
+    input.token && secretMatches(assisted?.access_token ?? undefined, input.token) ? input.token : randomUUID();
   const resultId = input.responseId ?? randomUUID();
 
   const user = await getAuthUser();
@@ -696,11 +729,81 @@ export async function POST(req: Request) {
       : {}),
   };
 
-  const { error: upsertErr } = await admin.from("mp_config_responses").upsert(row, {
-    onConflict: "id",
-  });
-  if (upsertErr) {
-    return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+  const cancelPath =
+    input.cancelPath ??
+    (productType === "bolster" ? "/mbolster-config" : "/mp-config");
+  const suggestLabel =
+    productType === "bolster"
+      ? `Length (suggested): ${input.suggestedLength}`
+      : `Size×tier (suggested): ${input.suggestedSize} × ${input.suggestedTier}`;
+  const description =
+    productType === "bolster"
+      ? `Mbolster ${input.suggestedLength} hold`
+      : `Mpillow ${input.suggestedSize} ${input.suggestedTier} hold`;
+
+  // An Assisted customisation takes no card, so there is no Checkout to create.
+  // Everything else still runs: pricing, attribution, discovery source, the
+  // Pre-order flag, the token and the filling snapshot are identical — this is
+  // the same submit with the Stripe step removed (ADR 0016).
+  //
+  // Checkout is created BEFORE the row is written, so a Stripe failure leaves
+  // nothing behind to clean up. The old order wrote first and deleted on failure,
+  // which destroyed the Owner's existing Result on an ordinary retry. A session
+  // whose write then fails is never handed out and expires unpaid.
+  let checkout: { sessionId: string; url: string } | null = null;
+  if (takeCard) {
+    try {
+      const hold = {
+        amount: priced.total,
+        currency,
+        customerEmail: input.email,
+        resultId,
+        successUrl: `${origin}/results/${resultId}?token=${accessToken}&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${origin}${cancelPath}?hold_cancelled=1`,
+        description,
+        metadata: { result_id: resultId },
+      };
+      // Stripe rejects a reused key sent with different parameters, so the key
+      // hashes exactly what is sent: an honest retry replays the same session, a
+      // changed build gets a new one.
+      const paramsHash = createHash("sha256").update(JSON.stringify(hold)).digest("hex");
+      checkout = await createHoldCheckout({
+        ...hold,
+        idempotencyKey: `result_hold_${resultId}_${paramsHash}`,
+      });
+    } catch (e) {
+      console.error("Hold checkout failed", e);
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "Failed to create authorization hold" },
+        { status: 500 },
+      );
+    }
+  }
+
+  // An existing row is written only if it is still what the checks above saw.
+  // The Stripe call sits between them, and in that window Staff can assign the
+  // Result or the webhook can attach a card; overwriting either would reset a
+  // live Result to a fresh `held` one. A brand-new Result is a plain insert.
+  let write;
+  if (assisted) {
+    let update = admin.from("mp_config_responses").update(row).eq("id", resultId);
+    update = assisted.status == null ? update.is("status", null) : update.eq("status", assisted.status);
+    update =
+      assisted.payment_intent_id == null
+        ? update.is("payment_intent_id", null)
+        : update.eq("payment_intent_id", assisted.payment_intent_id);
+    write = await update.select("id");
+  } else {
+    write = await admin.from("mp_config_responses").insert(row).select("id");
+  }
+  if (write.error) {
+    return NextResponse.json({ error: write.error.message }, { status: 500 });
+  }
+  if (!write.data?.length) {
+    return NextResponse.json(
+      { error: "This Result changed while it was being submitted. Please refresh and try again." },
+      { status: 409 },
+    );
   }
 
   if (fillingSnapshot) {
@@ -723,46 +826,6 @@ export async function POST(req: Request) {
   }
 
   // No inventory reserve or deduct on hold (US36).
-
-  const cancelPath =
-    input.cancelPath ??
-    (productType === "bolster" ? "/mbolster-config" : "/mp-config");
-  const suggestLabel =
-    productType === "bolster"
-      ? `Length (suggested): ${input.suggestedLength}`
-      : `Size×tier (suggested): ${input.suggestedSize} × ${input.suggestedTier}`;
-  const description =
-    productType === "bolster"
-      ? `Mbolster ${input.suggestedLength} hold`
-      : `Mpillow ${input.suggestedSize} ${input.suggestedTier} hold`;
-
-  // An Assisted customisation takes no card, so there is no Checkout to create.
-  // Everything above still ran: pricing, attribution, discovery source, the
-  // Pre-order flag, token rotation and the filling snapshot are identical — this
-  // is the same submit with the Stripe step removed (ADR 0016).
-  let checkout: { sessionId: string; url: string } | null = null;
-  if (takeCard) {
-    try {
-      checkout = await createHoldCheckout({
-        amount: priced.total,
-        currency,
-        customerEmail: input.email,
-        resultId,
-        successUrl: `${origin}/results/${resultId}?token=${accessToken}&session_id={CHECKOUT_SESSION_ID}`,
-        cancelUrl: `${origin}${cancelPath}?hold_cancelled=1`,
-        description,
-        metadata: { result_id: resultId },
-        idempotencyKey: `result_hold_${resultId}`,
-      });
-    } catch (e) {
-      console.error("Hold checkout failed", e);
-      await admin.from("mp_config_responses").delete().eq("id", resultId);
-      return NextResponse.json(
-        { error: e instanceof Error ? e.message : "Failed to create authorization hold" },
-        { status: 500 },
-      );
-    }
-  }
 
   const platformLink = `${origin}/settings/results/${resultId}`;
   const telegramStatus = await sendTelegram(

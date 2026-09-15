@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   // persists a recommendation record — work a refused caller should never trigger.
   const { data: authRow, error: authErr } = await admin
     .from("mp_config_responses")
-    .select("access_token, customer_id, customer_email, status")
+    .select("access_token, customer_id, customer_email, status, order_id")
     .eq("id", parsedParams.data.id)
     .maybeSingle();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 500 });

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
+import { secretMatches } from "@/lib/auth/secret";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
@@ -37,7 +38,7 @@ export async function loadResumeFinish(
   const { data: row } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, shipping_address, data, assigned_size, assigned_tier, customer_email, customer_phone, discovery_source, discovery_source_other, access_token, customer_id",
+      "id, status, source, product_type, shipping_address, data, assigned_size, assigned_tier, customer_email, customer_phone, discovery_source, discovery_source_other, access_token, customer_id, order_id",
     )
     .eq("id", id)
     .maybeSingle();
@@ -64,7 +65,7 @@ export async function loadResumeFinish(
 
   return {
     id: row.id,
-    token: token && token === row.access_token ? token : null,
+    token: token && secretMatches(row.access_token ?? undefined, token) ? token : null,
     measurements: (row.data ?? {}) as Record<string, unknown>,
     size: row.assigned_size as ResumeFinish["size"],
     tier: row.assigned_tier as ResumeFinish["tier"],
