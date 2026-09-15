@@ -15,6 +15,54 @@
   cursor: grabbing;
 }
 
+/* Canvas chrome on the app's tokens (card surface, border, accent hover) instead
+   of xyflow's own greys, so it follows light/dark like every other surface. */
+.rules-engine-flow.react-flow {
+  --xy-background-pattern-dots-color-default: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  --xy-controls-box-shadow: none;
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--accent);
+  --xy-controls-button-color: var(--muted-foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-minimap-background-color: var(--card);
+  --xy-minimap-mask-background-color: color-mix(in oklab, var(--background) 60%, transparent);
+  --xy-minimap-node-background-color: var(--muted);
+}
+
+.rules-engine-flow .react-flow__controls,
+.rules-engine-flow .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 0.625rem);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.rules-engine-flow .react-flow__controls-button {
+  width: 32px;
+  height: 32px;
+  padding: 8px;
+  transition: background-color 150ms, color 150ms;
+}
+
+.rules-engine-flow .react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+.rules-engine-flow .react-flow__controls.horizontal .react-flow__controls-button {
+  border-bottom: none;
+  border-right: 1px solid var(--border);
+}
+
+.rules-engine-flow .react-flow__controls.horizontal .react-flow__controls-button:last-child {
+  border-right: none;
+}
+
+.rules-engine-flow .react-flow__controls-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
 /* Node editor / test panel / palette — pointer on anything clickable */
 .rules-engine-workbench select:not(:disabled),
 .rules-engine-workbench button:not(:disabled) {

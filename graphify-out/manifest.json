@@ -4038,8 +4038,8 @@
     "semantic_hash": ""
   },
   "components/rules-engine/rule-nodes.tsx": {
-    "mtime": 1789482958.6483064,
-    "seen": 1789483014.12959,
+    "mtime": 1789483431.8905063,
+    "seen": 1789483713.8781068,
     "ast_hash": "79441d9d43013a35521cb13eabe48aa5",
     "semantic_hash": ""
   },
@@ -4056,15 +4056,15 @@
     "semantic_hash": ""
   },
   "components/rules-engine/workbench-mobile.check.ts": {
-    "mtime": 1785042865.7372415,
-    "seen": 1789479724.219641,
-    "ast_hash": "158f76264a6b10c2d8f43f1443246aec",
+    "mtime": 1789484243.458052,
+    "seen": 1789484318.653527,
+    "ast_hash": "deae2af5bd4132635c58834d31254e4d",
     "semantic_hash": ""
   },
   "components/rules-engine/workbench.tsx": {
-    "mtime": 1789482970.1100926,
-    "seen": 1789483014.1295922,
-    "ast_hash": "5c00b24bd1e5befa09b8a993e4befe6e",
+    "mtime": 1789484590.4193892,
+    "seen": 1789484697.243236,
+    "ast_hash": "4426779562a1829cbab2c838fc24e40f",
     "semantic_hash": ""
   },
   "components/sections/landing/credibility-section.tsx": {
@@ -4596,9 +4596,9 @@
     "semantic_hash": ""
   },
   "components/ui/app-dock.tsx": {
-    "mtime": 1788929043.9979508,
-    "seen": 1789479724.219688,
-    "ast_hash": "dc88377bba59b9a68243fdbec9f668fd",
+    "mtime": 1789484630.6082728,
+    "seen": 1789484697.243307,
+    "ast_hash": "09e48b8f3723d970cd94601ba06f27ce",
     "semantic_hash": ""
   },
   "components/ui/apple-cards-carousel.check.ts": {
@@ -5778,9 +5778,9 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/catalog.ts": {
-    "mtime": 1784463037.221629,
-    "seen": 1789479724.2199712,
-    "ast_hash": "aa687ace7163438614483936466a3fe1",
+    "mtime": 1789483721.8892734,
+    "seen": 1789483862.810625,
+    "ast_hash": "34a0c40ba5dcaa1ddb05541b39be294a",
     "semantic_hash": ""
   },
   "lib/rules-engine/evaluate.ts": {
@@ -5802,9 +5802,9 @@
     "semantic_hash": ""
   },
   "lib/rules-engine/graph-rf.ts": {
-    "mtime": 1784463043.0125585,
-    "seen": 1789479724.219973,
-    "ast_hash": "89064c2840fcf2b6bbd166248b9c26c1",
+    "mtime": 1789483721.8895164,
+    "seen": 1789483862.810627,
+    "ast_hash": "1b843405f3a0914d4bdcce9b4e01c8d1",
     "semantic_hash": ""
   },
   "lib/rules-engine/index.ts": {
@@ -11667,6 +11667,24 @@
     "mtime": 1789480115.9122353,
     "seen": 1789483014.130242,
     "ast_hash": "e0780c44fedd36f62d7d83b09f7d0447",
+    "semantic_hash": ""
+  },
+  "lib/rules-engine/__tests__/simulation-inputs.test.ts": {
+    "mtime": 1789483508.2165008,
+    "seen": 1789483713.87856,
+    "ast_hash": "6c62c69163407f67d5aede77b6bcc019",
+    "semantic_hash": ""
+  },
+  "components/ui/app-dock-actions.ts": {
+    "mtime": 1789484567.2613153,
+    "seen": 1789484697.243305,
+    "ast_hash": "7ad80c7faf74f9806856583b473035d3",
+    "semantic_hash": ""
+  },
+  "components/ui/app-dock-actions.test.ts": {
+    "mtime": 1789484630.6116636,
+    "seen": 1789484697.243304,
+    "ast_hash": "3536691a175ca73472c911e684b4fb62",
     "semantic_hash": ""
   }
 }

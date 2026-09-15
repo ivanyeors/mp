@@ -26,6 +26,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, stripLocale, withLocale } from "@/lib/i18n/routing";
 import { isNearDocumentBottom } from "@/components/ui/app-dock-visibility";
+import { toolsFor, useDockTools } from "@/components/ui/app-dock-actions";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 const BubbleMenu = dynamic(
   () => import("@/components/ui/bubble-menu").then((m) => m.BubbleMenu),
@@ -80,6 +82,16 @@ const dockItems = [
 
 const ROTATIONS = [-8, 8, 8, -8, 8, -8, 8, -8];
 
+// Page tools grow in from zero width, so the pill itself stretches/shrinks and its
+// neighbours glide. marginLeft cancels the Dock's gap-4 while collapsed; no
+// overflow clipping, so hover labels stay visible (scale keeps the icon inside).
+const dockToolMotion = {
+  initial: { width: 0, marginLeft: -16, opacity: 0, scale: 0.5 },
+  animate: { width: "auto", marginLeft: 0, opacity: 1, scale: 1 },
+  exit: { width: 0, marginLeft: -16, opacity: 0, scale: 0.5 },
+  transition: { type: "spring", stiffness: 380, damping: 32, mass: 0.8 },
+} as const;
+
 // Issue #59: give each dock item a ≥44px tap target on mobile via the wrapper.
 // DockLabel + magnify stay desktop-only enhancements (mouse-hover, unchanged).
 const dockTouchWrapClassName =
@@ -92,6 +104,8 @@ export function AppDock() {
   const to = (href: string) => withLocale(href, locale);
   const adminDock = isAdminPanelDockPath(basePathname);
   const isMobile = useIsMobile();
+  const pageActions = toolsFor(useDockTools(), basePathname);
+  const toolTransition = useReducedMotion() ? { duration: 0 } : dockToolMotion.transition;
 
   const [isHidden, setIsHidden] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -284,6 +298,56 @@ export function AppDock() {
                   </DockItem>
                 </button>
               )}
+              {/* Page tools (e.g. Rules Engine Add / Node / Simulate), fenced by dividers */}
+              <AnimatePresence initial={false}>
+                {pageActions.length > 0 ? (
+                  <motion.div
+                    key="tools-start"
+                    {...dockToolMotion}
+                    transition={toolTransition}
+                    aria-hidden
+                    className="h-7 w-px shrink-0 self-center bg-white/25 dark:bg-white/20"
+                  />
+                ) : null}
+                {pageActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <motion.div key={action.id} {...dockToolMotion}
+                    transition={toolTransition} className="flex shrink-0 justify-center">
+                      <button
+                        type="button"
+                        onClick={action.onClick}
+                        aria-label={action.title}
+                        aria-pressed={action.active}
+                        className={`relative border-none bg-transparent p-0 ${dockTouchWrapClassName}`}
+                      >
+                        <DockItem
+                          className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm"
+                          isActive={action.active}
+                        >
+                          <DockLabel>{action.title}</DockLabel>
+                          <DockIcon>
+                            <Icon className={`h-full w-full ${action.active ? "text-white" : "text-gray-200 dark:text-neutral-300"}`} />
+                          </DockIcon>
+                        </DockItem>
+                        {/* Outside DockItem: it clones its direct children with motion props */}
+                        {action.badge ? (
+                          <span aria-hidden className="absolute right-0 top-0 size-2.5 rounded-full bg-amber-400 ring-2 ring-slate-200 dark:ring-blue-950" />
+                        ) : null}
+                      </button>
+                    </motion.div>
+                  );
+                })}
+                {pageActions.length > 0 ? (
+                  <motion.div
+                    key="tools-end"
+                    {...dockToolMotion}
+                    transition={toolTransition}
+                    aria-hidden
+                    className="h-7 w-px shrink-0 self-center bg-white/25 dark:bg-white/20"
+                  />
+                ) : null}
+              </AnimatePresence>
               <form action={signOutAction} method="post">
                 <button type="submit" className={`border-none bg-transparent p-0 ${dockTouchWrapClassName}`} aria-label="Logout">
                   <DockItem className="aspect-square rounded-full bg-gray-800/30 dark:bg-neutral-800/50 backdrop-blur-sm">

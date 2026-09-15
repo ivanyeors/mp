@@ -12,24 +12,23 @@ const src = readFileSync(
   "utf8",
 );
 
-// Panels stack vertically on mobile so the canvas gets full width.
-assert.match(src, /max-md:flex-col/, "expected max-md:flex-col stacking");
-
-// Canvas keeps a usable height when stacked.
+// Canvas keeps a usable height on phones.
 assert.match(src, /max-md:min-h-\[60dvh\]/, "expected mobile canvas height");
 
-// Inspector is collapsible on mobile (toggle state + drawer, not always-on).
-assert.match(src, /inspectorOpen/, "expected inspectorOpen state");
-assert.match(src, /setInspectorOpen/, "expected inspector toggle setter");
+// Tools live in the Admin Panel dock; nothing is docked beside the canvas.
+assert.match(src, /useDockActions\(/, "expected tools registered in the app dock");
+assert.doesNotMatch(src, /<aside/, "expected no side panel eating canvas width");
+
+// Cards open on demand, sit above the measured dock, and span the phone width.
+assert.match(src, /\{panel \? \(/, "expected the card to render only when open");
+assert.match(src, /setPanel\(null\)/, "expected cards to close");
 assert.match(
   src,
-  /max-md:hidden/,
-  "expected inspector hidden on mobile when collapsed",
+  /fixed inset-x-2 bottom-\[calc\(var\(--mobile-dock-height\)/,
+  "expected the card to clear the dock as a full-width sheet on phones",
 );
-assert.match(
-  src,
-  /max-md:fixed[\s\S]*max-md:bottom-0/,
-  "expected inspector to render as a bottom drawer overlay on mobile",
-);
+
+// The dock covers the canvas bottom on phones: controls move up, minimap goes.
+assert.match(src, /position=\{isMobile \? "top-left"/, "expected mobile controls at top");
 
 console.log("workbench-mobile.check.ts: ok");
