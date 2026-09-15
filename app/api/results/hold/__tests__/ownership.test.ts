@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
   getAuthUser: vi.fn(),
   createHoldCheckout: vi.fn(),
   sendEmail: vi.fn(),
+  total: 200,
   fetch: vi.fn(),
 }));
 
@@ -104,7 +105,7 @@ vi.mock("@/lib/ecommerce/tax", () => ({
   resolveTaxRuleForRegion: vi.fn().mockResolvedValue(null),
   computeTax: () => ({ taxAmount: 0 }),
 }));
-vi.mock("@/lib/result-pricing", () => ({ priceResult: () => ({ total: 200 }) }));
+vi.mock("@/lib/result-pricing", () => ({ priceResult: () => ({ total: h.total }) }));
 vi.mock("@/lib/site-settings", () => ({ getSiteSettings: vi.fn().mockResolvedValue({}) }));
 vi.mock("@/lib/sla-reminders", () => ({
   SLA_SETTING_KEYS: [],
@@ -177,6 +178,7 @@ const post = (extra: Record<string, unknown> = {}) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  h.total = 200;
   h.rows.clear();
   h.rows.set(ID, { ...heldRow });
   h.getAuthUser.mockResolvedValue(null);
@@ -301,6 +303,15 @@ describe("POST /api/results/hold — re-submitting an existing Result", () => {
     const res = await post({ token: TOKEN });
     expect(res.status).toBe(409);
     expect(h.rows.get(ID)?.payment_intent_id).toBe("pi_raced");
+  });
+
+  // numeric(12,2) rounds on store; the webhook compares that stored amount in
+  // cents against what Checkout charged, so both must be the same 2dp number.
+  it("stores and charges the same total, rounded to cents", async () => {
+    h.total = 123.456;
+    await post({ token: TOKEN });
+    expect(h.createHoldCheckout.mock.calls[0][0].amount).toBe(123.46);
+    expect(h.rows.get(ID)?.authorized_amount).toBe(123.46);
   });
 });
 

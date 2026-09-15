@@ -61,9 +61,12 @@ export async function POST(
   if (loadErr) return NextResponse.json({ error: loadErr.message }, { status: 500 });
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Owner (token or signed-in match) or Staff. No draftOnly: this row is
-  // `assigned` by design, and needsCustomerFinish below is what bounds the write.
-  const access = await requireResultAccess(row, input.token ?? null);
+  // Owner (token or signed-in match) or Staff with `results` (not a viewer). No
+  // draftOnly: this row is `assigned` by design, and needsCustomerFinish below is
+  // what bounds the write.
+  const access = await requireResultAccess(row, input.token ?? null, {
+    staffPermissions: ["results"],
+  });
   if (!access.ok) return access.response;
 
   // Once finished, the address is set and this closes itself. A second finish

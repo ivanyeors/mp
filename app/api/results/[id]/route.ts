@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/client";
+import { attachHoldPaymentIntent } from "@/lib/authorization-hold";
 import { priceResult } from "@/lib/result-pricing";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { isBolsterLength, loadComposedSellable } from "@/lib/results/composed-sellable";
@@ -256,24 +257,16 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Sync payment_intent_id from Checkout session when returning from Stripe.
+  // Sync payment_intent_id from Checkout session when returning from Stripe, so
+  // the page shows the hold before the webhook lands. Same writer as the webhook;
+  // a refused session writes nothing here and the webhook records it.
   if (sessionId && !row.payment_intent_id) {
     try {
       const stripe = getStripe();
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      const metaId = session.metadata?.result_id;
-      if (metaId === id) {
-        const pi =
-          typeof session.payment_intent === "string"
-            ? session.payment_intent
-            : session.payment_intent?.id ?? null;
-        if (pi) {
-          await admin
-            .from("mp_config_responses")
-            .update({ payment_intent_id: pi })
-            .eq("id", id);
-          row.payment_intent_id = pi;
-        }
+      if (session.metadata?.result_id === id) {
+        const attached = await attachHoldPaymentIntent(admin, session);
+        if (attached.ok) row.payment_intent_id = attached.paymentIntentId;
       }
     } catch (e) {
       console.error("Failed to sync payment intent from session", e);

@@ -58,11 +58,18 @@ assert.ok(
 );
 
 // --- The hold branch must stay ungated (manual capture reads `unpaid` by design) ---
-const holdStamp = webhook.indexOf('.update({ payment_intent_id: paymentIntent })');
+const holdStamp = webhook.indexOf("attachHoldPaymentIntent(admin, session)");
 const gate = webhook.indexOf('session.payment_status === "unpaid"');
 assert.ok(
   holdStamp > 0 && holdStamp < gate,
   "authorization-hold stamp must precede the gate, or holds stop recording their PaymentIntent",
+);
+// The shared writer keys on session.status, never payment_status.
+const holdWriter = read("lib/authorization-hold/index.ts");
+assert.ok(
+  holdWriter.includes(".update({ payment_intent_id: paymentIntentId })") &&
+    !holdWriter.includes("session.payment_status"),
+  "the hold writer must not gate on payment_status — a manual-capture hold reads `unpaid`",
 );
 
 console.log("fulfilment-gate.check.ts OK");

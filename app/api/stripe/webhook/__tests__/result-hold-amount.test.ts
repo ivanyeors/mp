@@ -27,6 +27,7 @@ vi.mock("@/lib/supabase/server", () => ({
       const b = {
         select: () => b,
         eq: (c: string, v: unknown) => (filters.push([c, v]), b),
+        is: (c: string, v: unknown) => (filters.push([c, v]), b),
         update: (p: Record<string, unknown>) => ((patch = p), b),
         upsert: async (row: Record<string, unknown>) => {
           if (table === "stripe_webhook_failures") h.failures.push(row);
@@ -69,6 +70,7 @@ const completed = (amountTotal: number, currency = "sgd") => {
     data: {
       object: {
         id: "cs_old",
+        status: "complete",
         metadata: { result_id: ID },
         payment_intent: "pi_1",
         payment_status: "unpaid",
@@ -112,6 +114,12 @@ describe("Stripe webhook — Result authorization hold", () => {
     expect(res.status).toBe(200);
     expect(h.rows.get(ID)?.payment_intent_id).toBeNull();
     expect(h.failures).toHaveLength(1);
+  });
+
+  it("never replaces a card already attached (the status page may have synced it first)", async () => {
+    h.rows.set(ID, { ...h.rows.get(ID), payment_intent_id: "pi_first" });
+    await completed(20000);
+    expect(h.rows.get(ID)?.payment_intent_id).toBe("pi_first");
   });
 
   it("does not attach a session in a different currency", async () => {

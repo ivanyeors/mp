@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { requireResultAccess } from "@/lib/results/access";
 import { priceResult } from "@/lib/result-pricing";
+import { round2 } from "@/lib/commissions";
 import { placedChargeLines, priceComposedBuild, resolvePreferences } from "@/lib/pricing/composed-price";
 import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
@@ -535,6 +536,9 @@ export async function POST(req: Request) {
     shipping: shippingAmount,
     tax: tax.taxAmount,
   });
+  // Cents, once: the row's numeric(12,2) would round a float-dust total on store,
+  // and the hold webhook compares that stored amount against what Checkout charged.
+  priced.total = round2(priced.total);
 
   // Whether to take a card now. Two independent reasons not to:
   //   - `deferred` — an Assisted customisation, authorised by the stored row above.
