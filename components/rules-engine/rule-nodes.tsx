@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { catalogDef } from "@/lib/rules-engine/catalog";
 import type { RuleFlow, RuleNode } from "@/lib/rules-engine/types";
@@ -55,6 +55,9 @@ function Target({ hidden }: { hidden?: boolean }) {
 }
 
 type Props = NodeProps<Node<RuleNodeData>> & { flow: RuleFlow };
+
+// Filling Template id → name, so a Template node reads "Type-3" not "69".
+export const TemplateNamesContext = createContext<Record<string, string>>({});
 
 function ruleTitle(rule: RuleNode): string {
   return rule.label ?? rule.type;
@@ -194,12 +197,14 @@ function SizeOutView({ data, selected }: Props) {
 }
 
 function TemplateOutView({ data, selected }: Props) {
+  const names = useContext(TemplateNamesContext);
   const rule = data.rule;
   if (rule.type !== "template-output") return null;
+  const template = rule.templateId ? (names[rule.templateId] ?? rule.templateId) : "—";
   return (
     <Shell
       title="Template"
-      subtitle={`${rule.size} · ${rule.templateId || "—"}`}
+      subtitle={`${rule.size} · ${template}`}
       error={data.error}
       fired={data.fired}
       selected={selected}

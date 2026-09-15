@@ -86,7 +86,7 @@ import { validateForPublish } from "@/lib/rules-engine/validate";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { getApiErrorMessage } from "@/lib/utils";
-import { makeNodeTypes } from "./rule-nodes";
+import { TemplateNamesContext, makeNodeTypes } from "./rule-nodes";
 
 const PALETTE_GROUPS: {
   label: string;
@@ -220,6 +220,36 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
   const draftGraphRef = useRef<RuleGraphJson>({ nodes: [], edges: [] });
   const skipAutosave = useRef(true);
   const nodeTypes = useMemo(() => makeNodeTypes(flow), [flow]);
+  const [templateNames, setTemplateNames] = useState<Record<string, string>>({});
+
+  // Filling Templates are listed per size, so load every size in the flow once.
+  // Inactive ones are included so a node pointing at one still shows its name.
+  useEffect(() => {
+    const kind = flow === "mbolster" ? "bolster" : "pillow";
+    const sizes = flow === "mbolster" ? BOLSTER_LENGTHS : PILLOW_SIZES;
+    let cancelled = false;
+    void Promise.all(
+      sizes.map((key) =>
+        fetch(
+          withLocale(
+            `/settings/inventory/configure/templates?${new URLSearchParams({ kind, key, role: "filling" })}`,
+            locale,
+          ),
+        )
+          .then((r) => r.json())
+          .then((d) => (d.templates ?? []) as { id: number; name: string }[])
+          .catch(() => []),
+      ),
+    ).then((lists) => {
+      if (cancelled) return;
+      setTemplateNames(
+        Object.fromEntries(lists.flat().map((t) => [String(t.id), t.name])),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [flow, locale]);
 
   const loadDraft = useCallback(async () => {
     setLoading(true);
@@ -782,6 +812,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
               className="min-h-0 min-w-0 flex-1 max-md:min-h-[60dvh]"
               onContextMenu={(e) => captureDropPos(e.clientX, e.clientY)}
             >
+              <TemplateNamesContext.Provider value={templateNames}>
               <ReactFlow
                 className="rules-engine-flow"
                 colorMode={colorMode}
@@ -804,6 +835,7 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 <Controls />
                 <MiniMap pannable zoomable />
               </ReactFlow>
+              </TemplateNamesContext.Provider>
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent className="min-w-48">
@@ -988,7 +1020,9 @@ function WorkbenchInner({ flow }: { flow: RuleFlow }) {
                 <div>
                   <dt className="text-muted-foreground">Template</dt>
                   <dd className="font-medium break-all">
-                    {testResult.templateId ?? "—"}
+                    {testResult.templateId
+                      ? (templateNames[testResult.templateId] ?? testResult.templateId)
+                      : "—"}
                   </dd>
                 </div>
                 <div>
