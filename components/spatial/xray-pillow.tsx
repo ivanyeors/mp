@@ -18,6 +18,8 @@ import { useSortable } from "@dnd-kit/react/sortable";
 
 import { SunburstMenu } from "@/components/ui/sunburst-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { layerDragDestination, layerSortableId } from "@/lib/dnd/layer-drag";
+import type { SortableDragEndEvent } from "@/lib/dnd/sortable-move";
 import { fillingItemsToSunburst, fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import {
@@ -94,6 +96,17 @@ const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
 const CHIP_CLASS = "rounded border bg-background/90 shadow-sm text-[9px] leading-4 max-md:text-[11px] max-md:leading-5";
 const CHIP_ICON_CLASS = "size-2.5 max-md:size-3.5";
 const CHIP_ICON_BUTTON_CLASS = "shrink-0 rounded max-md:flex max-md:size-7 max-md:items-center max-md:justify-center";
+
+// Layer rows are the one control staff DRAG, and a grab that misses scrolls the
+// page instead — so they get their own, larger scale rather than the read-mostly
+// chip sizing above. Desktop: 20px buttons (was a bare ~10px icon) on a panel
+// that still has to fit five rows inside a ~112px cell. Phone: the dock is in
+// normal flow with room, so the buttons go to the 44px minimum touch target.
+const LAYER_ROW_CLASS =
+  "rounded-md border bg-background/95 shadow-sm text-[10px] leading-4 max-md:text-[13px] max-md:leading-6";
+const LAYER_ICON_CLASS = "size-3 max-md:size-4";
+const LAYER_ICON_BUTTON_CLASS =
+  "flex size-5 shrink-0 items-center justify-center rounded max-md:size-11";
 const easeOut = (t: number) => t * (2 - t);
 
 /**
@@ -221,7 +234,16 @@ export function PieceLabel({ rect, lines }: { rect: PieceRect; lines: string[] }
 /**
  * One layer row (staff dive): the cell's pieces at one depth, draggable to
  * reorder the cell top→deep. Sits on the cell it controls, so it needs no leader
- * line back to its pouches; the sortable id is the layer key `sec/sub/L{depth}`.
+ * line back to its pouches.
+ *
+ * `id` must be the layer's IDENTITY, not its depth (`layerSortableId`): dnd-kit
+ * animates the dropped row from where it projected it to where React re-renders
+ * it, so a positional id — which stays at the same index after a reorder writes
+ * — makes every successful drag flip back to the slot it came from.
+ *
+ * The grip is the row's LAST control. It is the one thing here that is dragged
+ * rather than tapped, so it sits at the thumb end of the row on a phone, and
+ * away from the labels that the +/× controls belong to.
  */
 function LayerRow({
   id,
@@ -246,47 +268,51 @@ function LayerRow({
   return (
     <div
       ref={ref}
-      className={`pointer-events-auto flex items-center gap-0.5 px-1 ${CHIP_CLASS} ${isDragging ? "opacity-70 shadow-lg" : ""}`}
+      className={`pointer-events-auto flex items-center gap-1 px-1 max-md:gap-1.5 max-md:px-1.5 ${LAYER_ROW_CLASS} ${isDragging ? "z-50 opacity-70 shadow-lg" : ""}`}
     >
+      <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
+      {/* Wraps rather than overflows: five pieces per layer at a readable size
+          cannot sit on one line inside a cell (or a 360px dock). */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        {pieces.map((piece) => (
+          <span key={piece.slot} className="flex items-center gap-0.5 rounded bg-muted pl-1.5">
+            <span className="max-w-16 truncate max-md:max-w-28">{piece.label}</span>
+            <button
+              type="button"
+              className={`${LAYER_ICON_BUTTON_CLASS} hover:bg-destructive/20`}
+              aria-label={`Remove one ${piece.label} from layer ${depth + 1}`}
+              onClick={() => onRemovePiece(piece.slot)}
+            >
+              <X className={LAYER_ICON_CLASS} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <button
+        type="button"
+        disabled={full}
+        className={`${LAYER_ICON_BUTTON_CLASS} hover:bg-accent disabled:opacity-40`}
+        aria-label={full ? `Layer ${depth + 1} full (max ${MAX_PIECES_PER_LAYER})` : `Add filling to layer ${depth + 1}`}
+        onClick={onAdd}
+      >
+        <Plus className={LAYER_ICON_CLASS} />
+      </button>
+      <button
+        type="button"
+        className={`${LAYER_ICON_BUTTON_CLASS} text-muted-foreground hover:bg-destructive/20 hover:text-foreground`}
+        aria-label={`Remove layer ${depth + 1}`}
+        onClick={onRemoveLayer}
+      >
+        <Trash2 className={LAYER_ICON_CLASS} />
+      </button>
       <button
         ref={handleRef}
         type="button"
         // touch-none: a long-press drag on a phone must not scroll the page instead.
-        className={`${CHIP_ICON_BUTTON_CLASS} touch-none cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing`}
+        className={`${LAYER_ICON_BUTTON_CLASS} touch-none cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing`}
         aria-label={`Drag layer ${depth + 1} to reorder depth`}
       >
-        <GripVertical className={CHIP_ICON_CLASS} />
-      </button>
-      <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
-      {pieces.map((piece) => (
-        <span key={piece.slot} className="flex items-center gap-0.5 rounded bg-muted px-1">
-          <span className="max-w-16 truncate">{piece.label}</span>
-          <button
-            type="button"
-            className={`${CHIP_ICON_BUTTON_CLASS} hover:bg-destructive/20`}
-            aria-label={`Remove one ${piece.label} from layer ${depth + 1}`}
-            onClick={() => onRemovePiece(piece.slot)}
-          >
-            <X className={CHIP_ICON_CLASS} />
-          </button>
-        </span>
-      ))}
-      <button
-        type="button"
-        disabled={full}
-        className={`${CHIP_ICON_BUTTON_CLASS} hover:bg-accent disabled:opacity-40`}
-        aria-label={full ? `Layer ${depth + 1} full (max ${MAX_PIECES_PER_LAYER})` : `Add filling to layer ${depth + 1}`}
-        onClick={onAdd}
-      >
-        <Plus className={CHIP_ICON_CLASS} />
-      </button>
-      <button
-        type="button"
-        className={`${CHIP_ICON_BUTTON_CLASS} text-muted-foreground hover:bg-destructive/20 hover:text-foreground`}
-        aria-label={`Remove layer ${depth + 1}`}
-        onClick={onRemoveLayer}
-      >
-        <Trash2 className={CHIP_ICON_CLASS} />
+        <GripVertical className={LAYER_ICON_CLASS} />
       </button>
     </div>
   );
@@ -534,28 +560,22 @@ export function XrayPillow({
           const layers = cellLayers(placements, cell);
           return { subSection, cell, cellPcs, stacked: layers.length > 1, layers };
         });
-  // Flat top→deep layer order across the dived section → stable sortable indices.
-  const layerKeys = panels.flatMap((c) =>
-    c.layers.length > 1
-      ? c.layers.map((_, depth) => `${c.cell.section}/${c.cell.subSection}/L${depth}`)
-      : [],
-  );
-
-  // Drag a layer row onto another → reorder that cell's depth (top→deep).
-  const onLayerDragEnd = (event: {
-    operation?: { source?: { id?: string | number } | null; target?: { id?: string | number } | null };
-  }) => {
-    const src = event.operation?.source?.id;
-    const tgt = event.operation?.target?.id;
-    if (src == null || tgt == null || src === tgt) return;
-    const [ssec, ssub, sdepth] = String(src).split("/");
-    const [tsec, tsub, tdepth] = String(tgt).split("/");
-    if (ssec !== tsec || ssub !== tsub) return; // layers reorder within one cell
-    const cell: Cell = { section: ssec as Section, subSection: ssub as SubSection };
-    const from = Number(sdepth.slice(1));
-    const to = Number(tdepth.slice(1));
-    onPlacementsChange?.(moveLayer(placements, cell, from, to));
-  };
+  /**
+   * Drag a layer row to a new depth. ONE provider per cell (never one for the
+   * dived section): `source.index` is an index within the provider's group, so a
+   * provider spanning front/middle/back would both project into the wrong list
+   * and let a row be dragged into a cell it cannot move to.
+   *
+   * `layerDragDestination` carries the two traps this handler used to fall into —
+   * reading `operation.target` as the destination, and a positional sortable id.
+   */
+  const layerDragEnd =
+    (cell: Cell, layers: PillowPlacement[][]) => (event: SortableDragEndEvent) => {
+      const move = layerDragDestination(layers, event);
+      if (!move) return;
+      const { from, to } = move;
+      onPlacementsChange?.(moveLayer(placements, cell, from, to));
+    };
 
   return (
     <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
@@ -736,8 +756,8 @@ export function XrayPillow({
               Mounted on piece count, never on hover: focusin/focusout are
               DISCRETE in React and flush synchronously, so a focus-gated panel
               would unmount under the very Tab that reaches it. */}
-          {!isMobile && <DragDropProvider onDragEnd={onLayerDragEnd}>
-            {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
+          {!isMobile &&
+            panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
               const hinting = hoverSub === subSection;
               // The bloom is centred on this same point while it is open, so the
               // cell yields its panel rather than stacking controls under a ring.
@@ -757,15 +777,15 @@ export function XrayPillow({
                       readable. Tighten the chips to max-w-16 if it ever bites. */}
                   {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
                   {/* One layer needs no row of its own — its pieces are the
-                      centroid chips on the pouches. Rows appear from two up. */}
-                  {stacked &&
-                    layers.map((layer, depth) => {
-                      const key = `${cell.section}/${cell.subSection}/L${depth}`;
-                      return (
+                      centroid chips on the pouches. Rows appear from two up.
+                      One provider per CELL: see layerDragEnd. */}
+                  {stacked && (
+                    <DragDropProvider onDragEnd={layerDragEnd(cell, layers)}>
+                      {layers.map((layer, depth) => (
                         <LayerRow
-                          key={key}
-                          id={key}
-                          index={layerKeys.indexOf(key)}
+                          key={layerSortableId(layer)}
+                          id={layerSortableId(layer)}
+                          index={depth}
                           depth={depth}
                           full={layer.length >= MAX_PIECES_PER_LAYER}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
@@ -775,8 +795,9 @@ export function XrayPillow({
                             onPlacementsChange?.(removePiece(placements, cell, slot))
                           }
                         />
-                      );
-                    })}
+                      ))}
+                    </DragDropProvider>
+                  )}
                   {cellPcs.length > 0 &&
                     layers.length < MAX_LAYERS_PER_CELL &&
                     addLayerButton(cell, subSection, layers)}
@@ -791,7 +812,6 @@ export function XrayPillow({
                 </div>
               );
             })}
-          </DragDropProvider>}
 
           {/* Add-filling picker blooms from the centre of the cell you clicked —
               the whole cell is the trigger, so the menu has none of its own.
@@ -855,8 +875,11 @@ export function XrayPillow({
           style={{ pointerEvents: "auto" }}
           data-xray-dive-dock
         >
-          <div className="rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl">
-            <div className="mb-1 flex items-center justify-between px-1">
+          {/* Bounded and scrollable: three cells of 44px layer rows overrun a
+              small phone, and the dock is out of flow so the page cannot scroll
+              to reach the bottom of it. The header stays put while the cells scroll. */}
+          <div className="flex max-h-[70vh] flex-col rounded-2xl border border-border/60 bg-background/95 p-2 shadow-xl backdrop-blur-xl">
+            <div className="mb-1 flex shrink-0 items-center justify-between px-1">
               <span className="text-xs font-semibold capitalize">{dived} section</span>
               <button
                 type="button"
@@ -866,69 +889,73 @@ export function XrayPillow({
                 Done
               </button>
             </div>
-            <DragDropProvider onDragEnd={onLayerDragEnd}>
-              {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
-                const full = cellIsFull(subSection);
-                return (
-                  <div
-                    key={subSection}
-                    className="flex flex-col gap-1 border-t border-border/60 px-1 py-1.5 first:border-t-0"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-                        {subSection}
-                      </span>
-                      {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
-                      <button
-                        type="button"
-                        disabled={full}
-                        className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
-                        aria-label={
-                          full
-                            ? `${dived} ${subSection} cell full (max ${MAX_PIECES_PER_CELL})`
-                            : `Add filling to ${dived} ${subSection}`
-                        }
-                        onClick={() => !full && openPicker(subSection, null)}
-                      >
-                        <Plus className={CHIP_ICON_CLASS} />
-                        {full ? "Full" : "Add filling"}
-                      </button>
-                    </div>
-                    {!stacked && cellPcs.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {sideChips
-                          .filter((fc) => fc.subSection === subSection)
-                          .map((fc) => (
-                            <span key={fc.itemId}>{pieceChip(fc.cell, fc.itemId, fc.slots)}</span>
-                          ))}
-                      </div>
-                    )}
-                    {stacked &&
-                      layers.map((layer, depth) => {
-                        const key = `${cell.section}/${cell.subSection}/L${depth}`;
-                        return (
-                          <LayerRow
-                            key={key}
-                            id={key}
-                            index={layerKeys.indexOf(key)}
-                            depth={depth}
-                            full={layer.length >= MAX_PIECES_PER_LAYER}
-                            pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
-                            onAdd={() => openPicker(subSection, depth)}
-                            onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
-                            onRemovePiece={(slot) =>
-                              onPlacementsChange?.(removePiece(placements, cell, slot))
-                            }
-                          />
-                        );
-                      })}
-                    {cellPcs.length > 0 &&
-                      layers.length < MAX_LAYERS_PER_CELL &&
-                      addLayerButton(cell, subSection, layers)}
+            {/* Its own element, not a sibling of the header: `first:border-t-0`
+                below only reaches the first cell when the cells are the first
+                children of their container. */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {panels.map(({ subSection, cell, cellPcs, stacked, layers }) => {
+              const full = cellIsFull(subSection);
+              return (
+                <div
+                  key={subSection}
+                  className="flex flex-col gap-1.5 border-t border-border/60 px-1 py-2 first:border-t-0"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-14 shrink-0 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      {subSection}
+                    </span>
+                    {cellPcs.length >= 2 && arrangementToggle(cell, subSection, stacked)}
+                    <button
+                      type="button"
+                      disabled={full}
+                      className={`ml-auto flex items-center gap-0.5 px-1 hover:bg-accent disabled:opacity-40 max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
+                      aria-label={
+                        full
+                          ? `${dived} ${subSection} cell full (max ${MAX_PIECES_PER_CELL})`
+                          : `Add filling to ${dived} ${subSection}`
+                      }
+                      onClick={() => !full && openPicker(subSection, null)}
+                    >
+                      <Plus className={CHIP_ICON_CLASS} />
+                      {full ? "Full" : "Add filling"}
+                    </button>
                   </div>
-                );
-              })}
-            </DragDropProvider>
+                  {!stacked && cellPcs.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {sideChips
+                        .filter((fc) => fc.subSection === subSection)
+                        .map((fc) => (
+                          <span key={fc.itemId}>{pieceChip(fc.cell, fc.itemId, fc.slots)}</span>
+                        ))}
+                    </div>
+                  )}
+                  {/* One provider per CELL: see layerDragEnd. */}
+                  {stacked && (
+                    <DragDropProvider onDragEnd={layerDragEnd(cell, layers)}>
+                      {layers.map((layer, depth) => (
+                        <LayerRow
+                          key={layerSortableId(layer)}
+                          id={layerSortableId(layer)}
+                          index={depth}
+                          depth={depth}
+                          full={layer.length >= MAX_PIECES_PER_LAYER}
+                          pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
+                          onAdd={() => openPicker(subSection, depth)}
+                          onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
+                          onRemovePiece={(slot) =>
+                            onPlacementsChange?.(removePiece(placements, cell, slot))
+                          }
+                        />
+                      ))}
+                    </DragDropProvider>
+                  )}
+                  {cellPcs.length > 0 &&
+                    layers.length < MAX_LAYERS_PER_CELL &&
+                    addLayerButton(cell, subSection, layers)}
+                </div>
+              );
+            })}
+            </div>
           </div>
         </div>
       )}
