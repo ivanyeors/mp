@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/admin'
 import { validateFillingOnlyLines } from '@/lib/filling-templates'
-import { normalizeTemplateKeys, templateKeysForKind } from '@/lib/filling-templates/keys'
+import { normalizeTemplateKeys } from '@/lib/filling-templates/keys'
 import {
   assertTemplateNameFree,
   loadTemplateKeys,
@@ -217,6 +217,11 @@ export async function POST(req: NextRequest) {
     }
     fillingKeys = normalized.keys
   }
+  // Whether the caller asked for a membership at all. When this create lands on
+  // an existing shared template, an absent `keys` must leave its sizes alone —
+  // defaulting to [key] would let a create-shaped call silently drop every
+  // other size's recipe with a 200.
+  const keysRequested = role === 'filling' && parsed.data.keys !== undefined
   // Filling templates are size-scoped only (no tier).
   const pillowKind = role === 'filling' ? null : kind === 'pillow' ? (parsed.data.pillowKind ?? 'basic') : null
   const pillowVariant =
@@ -301,7 +306,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (role === 'filling') {
-      const membership = await setTemplateKeys(admin, { templateId, kind, keys: fillingKeys })
+      const current = await loadTemplateKeys(admin, [Number(templateId)])
+      if (!current.ok) return NextResponse.json({ error: current.error }, { status: 500 })
+      const existingKeys = current.byId.get(Number(templateId)) ?? []
+      const nextKeys = keysRequested ? fillingKeys : [...new Set([...existingKeys, key])]
+      const membership = await setTemplateKeys(admin, { templateId, kind, keys: nextKeys })
       if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
       return NextResponse.json({ ok: true, template: updated, keys: membership.keys, updatedExisting: true })
     }

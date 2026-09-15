@@ -1511,11 +1511,12 @@ function FillingConfigPanel({
     kind === "pillow" ? pillowPlacementsToRows(placements) : bolsterPlacementsToRows(bolsterMix);
   const spatialCount = kind === "pillow" ? placements.length : bolsterMix.length;
 
-  const putTemplatePlacements = async (templateId: number) => {
+  const putTemplatePlacements = async (templateId: number, nextName?: string) => {
     const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${templateId}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        ...(nextName ? { name: nextName } : {}),
         notes: notes.trim() || undefined,
         is_active: active,
         // Scope rides the same PUT as the recipe: an operator who widens a
@@ -1525,7 +1526,10 @@ function FillingConfigPanel({
       }),
     });
     const payload = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(payload?.error ?? "Failed to save placements");
+    if (!res.ok) {
+      const message = payload?.error ?? "Failed to save placements";
+      throw new Error(typeof message === "string" ? message : "Failed to save placements");
+    }
   };
 
   const saveTemplate = async () => {
@@ -1546,21 +1550,23 @@ function FillingConfigPanel({
       return;
     }
     setSaving(true);
+    setDeleteConfirm(false);
     try {
-      // Spatial save of an existing template: PUT placements only — legacy
-      // flat lines stay untouched server-side as the pre-spatial record (ADR 0008).
-      const existing = templates.find((t) => t.name === trimmed);
-      if (existing) {
-        await putTemplatePlacements(existing.id);
+      // Spatial save of the OPEN template: PUT placements (plus the name, which
+      // renames it in place) — legacy flat lines stay untouched server-side as
+      // the pre-spatial record (ADR 0008). Never resolve the target by name: the
+      // typed name may belong to a different template, and writing to that one
+      // would overwrite a recipe — and its size membership — nobody opened.
+      if (selectedId !== "") {
+        await putTemplatePlacements(selectedId, trimmed);
         setTemplates(await loadFillingTemplates(kind, templateKey));
         if (!scope.keys.includes(templateKey)) {
           resetEditor();
           toast.success(
-            `${trimmed} no longer applies to ${templateKeyLabel(kind, templateKey)}`,
+            `${trimmed} now applies to ${formatTemplateKeys(kind, scope.keys)} — open one of those cards to edit it`,
           );
           return;
         }
-        setSelectedId(existing.id);
         setHadPlacements(true);
         toast.success(
           scope.keys.length > 1
@@ -1584,7 +1590,10 @@ function FillingConfigPanel({
         }),
       });
       const payload = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(payload?.error ?? "Failed to save Filling Template");
+      if (!res.ok) {
+        const message = payload?.error ?? "Failed to save Filling Template";
+        throw new Error(typeof message === "string" ? message : "Failed to save Filling Template");
+      }
       const savedId = payload?.template?.id as number | undefined;
       if (savedId) {
         await putTemplatePlacements(savedId);
@@ -1601,12 +1610,12 @@ function FillingConfigPanel({
     }
   };
 
-  /** Rename in place from the list. Names are unique per kind+key scope
-   * (uq_bom_templates_filling), and the editor's name field is the key
-   * saveTemplate matches on, so a rename of the open template moves that field
-   * with it — otherwise the next save would fork a copy under the old name.
-   * Order snapshots keep the name they were built with, so past Results are
-   * untouched. */
+  /** Rename in place from the list. A name must be free at every size the
+   * template serves; the DB unique covers only the primary key, so the server
+   * re-checks the whole membership and answers 409 (the check below is a fast
+   * local pre-filter and only sees this size's list). Keeps the editor's name
+   * field in step when the renamed row is the open one. Order snapshots keep
+   * the name they were built with, so past Results are untouched. */
   const renameTemplate = async (id: number, nextName: string) => {
     const trimmed = nextName.trim();
     const current = templates.find((t) => t.id === id);
@@ -1664,7 +1673,9 @@ function FillingConfigPanel({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key: templateKey, name: copyName }),
+          // The editor's current recipe, not the stored one: the operator forks
+          // mid-edit precisely to keep these changes off the other sizes.
+          body: JSON.stringify({ key: templateKey, name: copyName, placements: spatialRows() }),
         },
       );
       const payload = await res.json().catch(() => null);
@@ -1676,7 +1687,9 @@ function FillingConfigPanel({
       setTemplates(list);
       const createdId = payload?.template?.id as number | undefined;
       if (createdId) await selectTemplate(createdId);
-      toast.success(`${copyName} now applies to ${label} only`);
+      toast.success(
+        `${copyName} applies to ${label} only — ${name.trim() || "the original"} no longer does`,
+      );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to copy Filling Template");
     } finally {
@@ -1856,12 +1869,21 @@ function FillingConfigPanel({
       <WorkbenchHeader
         title={selectedId === "" ? "New Filling Template" : name.trim() || "Untitled Filling Template"}
         description={`${kind === "pillow" ? "Size" : "Length"} ${templateKey} · ${spatialCount} piece${spatialCount === 1 ? "" : "s"} placed`}
+        // Save is pinned here while the shared-recipe notice scrolls away with
+        // the meta block, so the warning rides alongside the button it is about.
+        warning={
+          scopeKeys.length > 1
+            ? `Shared — saving rewrites ${formatTemplateKeys(kind, scopeKeys)}`
+            : null
+        }
         actions={
           <>
             {selectedId !== "" && (
               <Button variant="outline" size="sm" disabled={saving} onClick={() => void deleteTemplate()}>
                 <Trash2 className="size-4" />
-                {deleteConfirm ? `Delete from all ${scopeKeys.length} sizes` : "Delete"}
+                {deleteConfirm
+            ? `Delete from all ${scopeKeys.length} ${kind === "bolster" ? "lengths" : "sizes"}`
+            : "Delete"}
               </Button>
             )}
             <Button size="sm" onClick={() => void saveTemplate()} disabled={saving}>
@@ -1891,13 +1913,23 @@ function FillingConfigPanel({
           </SelectContent>
         </Select>
       </div>
-      <Input placeholder="Filling Template name" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input
+        placeholder="Filling Template name"
+        value={name}
+        maxLength={120}
+        onChange={(e) => setName(e.target.value)}
+      />
       <TemplateScopeField
         kind={kind}
         keys={scopeKeys}
         currentKey={templateKey}
         disabled={saving}
-        onChange={setScopeKeys}
+        onChange={(next) => {
+          // An armed delete counts the sizes it would remove, so changing them
+          // must disarm it rather than leave a stale count on a live button.
+          setDeleteConfirm(false);
+          setScopeKeys(next);
+        }}
       />
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm">
@@ -2408,10 +2440,13 @@ function WorkbenchHeader({
   title,
   description,
   actions,
+  warning,
 }: {
   title: string;
   description: string;
   actions: ReactNode;
+  /** Rides with the pinned actions, for what the operator must know before using them. */
+  warning?: string | null;
 }) {
   return (
     <div className="sticky top-0 z-20 hidden items-center justify-between gap-4 border-b bg-background/95 py-3 backdrop-blur lg:flex">
@@ -2419,7 +2454,14 @@ function WorkbenchHeader({
         <h2 className="truncate text-lg font-medium">{title}</h2>
         <p className="truncate text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      <div className="flex shrink-0 items-center gap-2">
+        {warning ? (
+          <span className="max-w-72 truncate rounded border border-amber-500/50 bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+            {warning}
+          </span>
+        ) : null}
+        {actions}
+      </div>
     </div>
   );
 }

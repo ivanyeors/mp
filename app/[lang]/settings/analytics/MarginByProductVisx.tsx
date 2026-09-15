@@ -40,6 +40,8 @@ type BomTemplateRowDb = {
   name: string | null;
   pillow_kind: "basic" | "premium" | null;
   pillow_variant: string | null;
+  /** Sizes a Filling Template serves; absent for warehouse templates (ADR 0018). */
+  keys?: string[];
 };
 
 type BomTemplateLineRowDb = {
@@ -471,6 +473,7 @@ export function MarginByProductVisx({
           { data: prices, error: prErr },
           { data: templateRows, error: tErr },
           { data: templateLineRows, error: tlErr },
+          { data: templateKeyRows },
         ] = await Promise.all([
           supabaseClient.from("pillow_products").select("id,kind,size,is_active").eq("is_active", true),
           supabaseClient.from("bom_lines").select("product_id,item_id,quantity"),
@@ -480,6 +483,10 @@ export function MarginByProductVisx({
             .select("id,kind,key,name,pillow_kind,pillow_variant")
             .eq("kind", "pillow"),
           supabaseClient.from("bom_template_lines").select("template_id,item_id,quantity"),
+          // Filling Templates serve a SET of sizes (ADR 0018). Without this the
+          // drill-down would scope them by `key`, which is only the primary, and
+          // a recipe shared across S and M would vanish from the M breakdown.
+          supabaseClient.from("bom_template_keys").select("template_id,key"),
         ]);
         if (pErr) throw new Error(pErr.message);
         if (blErr) throw new Error(blErr.message);
@@ -534,7 +541,20 @@ export function MarginByProductVisx({
 
         if (cancelled) return;
         setBaseProducts(next);
-        setTemplates((templateRows ?? []) as unknown as BomTemplateRowDb[]);
+        // Fold size membership onto each row so the drill-down can ask "does
+        // this template serve the size I am looking at" instead of comparing
+        // against `key`, which is only the primary.
+        const keysByTemplate = new Map<number, string[]>();
+        for (const row of (templateKeyRows ?? []) as Array<{ template_id: number; key: string }>) {
+          const id = Number(row.template_id);
+          keysByTemplate.set(id, [...(keysByTemplate.get(id) ?? []), row.key]);
+        }
+        setTemplates(
+          ((templateRows ?? []) as unknown as BomTemplateRowDb[]).map((t) => {
+            const served = keysByTemplate.get(Number(t.id));
+            return served ? { ...t, keys: served } : t;
+          }),
+        );
         setTemplateLines((templateLineRows ?? []) as unknown as BomTemplateLineRowDb[]);
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load product analytics");
@@ -641,7 +661,7 @@ export function MarginByProductVisx({
     const relevantTemplates = templates
       .filter((t) => String(t.kind) === "pillow")
       .filter((t) => (t.pillow_kind ?? "basic") === kind)
-      .filter((t) => String(t.key ?? "") === key);
+      .filter((t) => (t.keys?.length ? t.keys.includes(key) : String(t.key ?? "") === key));
 
     const out: MetricRow[] = relevantTemplates.map((t) => {
       const templateId = Number(t.id);

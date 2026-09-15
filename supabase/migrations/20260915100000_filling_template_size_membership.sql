@@ -24,6 +24,24 @@ create index if not exists idx_bom_template_keys_key on bom_template_keys (key);
 
 alter table bom_template_keys enable row level security;
 
+-- Staff read, mirroring the policy `bom_templates` already carries: the Admin
+-- Panel's margin drill-down reads templates with the browser client, and it now
+-- has to scope them by membership rather than by `key`. Membership is no more
+-- sensitive than the template rows it describes. Writes stay service-role only,
+-- like the placement tables — `setTemplateKeys` is the sole writer.
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'bom_template_keys'
+      and policyname = 'Staff read bom_template_keys'
+  ) then
+    create policy "Staff read bom_template_keys" on public.bom_template_keys
+      for select to authenticated using ((select public.is_admin_user()));
+  end if;
+end $$;
+
 -- Backfill: every existing filling template serves exactly the size it was
 -- authored for, so behaviour is identical until an operator shares one.
 insert into bom_template_keys (template_id, key)

@@ -105,18 +105,36 @@ export async function setTemplateKeys(
   if (!normalized.ok) return normalized;
   const keys = normalized.keys;
 
-  // Replace wholesale, like the placement writers: the set is small and the
-  // surface is admin-only, so a diff would only add ways to half-apply a change.
-  const { error: delErr } = await admin
-    .from("bom_template_keys")
-    .delete()
-    .eq("template_id", opts.templateId);
-  if (delErr) return { ok: false, error: delErr.message };
-
+  // Add before pruning, never delete-then-insert. These are two round trips
+  // with no transaction between them, and a failure after a wholesale delete
+  // would leave the template serving NO size — invisible in every list, with
+  // nothing to reconcile it from. Adding first means the worst case is a
+  // template that still serves a size it was meant to drop, which an operator
+  // can see and fix.
   const { error: insErr } = await admin
     .from("bom_template_keys")
-    .insert(keys.map((key) => ({ template_id: opts.templateId, key })));
+    .upsert(
+      keys.map((key) => ({ template_id: opts.templateId, key })),
+      { onConflict: "template_id,key", ignoreDuplicates: true },
+    );
   if (insErr) return { ok: false, error: insErr.message };
+
+  const { data: existing, error: exErr } = await admin
+    .from("bom_template_keys")
+    .select("key")
+    .eq("template_id", opts.templateId);
+  if (exErr) return { ok: false, error: exErr.message };
+  const stale = (existing ?? [])
+    .map((r: { key: string }) => r.key)
+    .filter((key) => !keys.includes(key));
+  if (stale.length) {
+    const { error: delErr } = await admin
+      .from("bom_template_keys")
+      .delete()
+      .eq("template_id", opts.templateId)
+      .in("key", stale);
+    if (delErr) return { ok: false, error: delErr.message };
+  }
 
   // Primary follows the membership so legacy `key` readers stay truthful.
   const { error: upErr } = await admin
@@ -125,5 +143,60 @@ export async function setTemplateKeys(
     .eq("id", opts.templateId);
   if (upErr) return { ok: false, error: upErr.message };
 
+  const cleared = await clearDefaultsOutsideMembership(admin, opts.templateId, opts.kind, keys);
+  if (!cleared.ok) return cleared;
+
   return { ok: true, keys };
+}
+
+/**
+ * Drop this template as the Default Filling Template of any product card whose
+ * size it no longer serves.
+ *
+ * A default that points at a template out of scope is invisible rather than
+ * wrong-looking: the assign hint silently stops appearing, the Configure picker
+ * shows "No default configured" over the old template's preview, and the next
+ * unrelated BOM save on that card fails validation. Clearing it here — in the
+ * one writer that can remove a size — keeps the stored default and the
+ * membership that justifies it in step.
+ */
+async function clearDefaultsOutsideMembership(
+  admin: Admin,
+  templateId: number,
+  kind: FillingKind,
+  keys: string[],
+): Promise<{ ok: true; clearedKeys: string[] } | { ok: false; error: string }> {
+  if (kind === "bolster") {
+    const { data, error } = await admin
+      .from("bolster_length_config")
+      .select("variant")
+      .eq("default_filling_template_id", templateId);
+    if (error) return { ok: false, error: error.message };
+    const stale = (data ?? [])
+      .map((r: { variant: string }) => r.variant)
+      .filter((variant) => !keys.includes(variant));
+    if (!stale.length) return { ok: true, clearedKeys: [] };
+    const { error: clearErr } = await admin
+      .from("bolster_length_config")
+      .update({ default_filling_template_id: null })
+      .eq("default_filling_template_id", templateId)
+      .in("variant", stale);
+    if (clearErr) return { ok: false, error: clearErr.message };
+    return { ok: true, clearedKeys: stale };
+  }
+
+  // Pillow cards are size×tier, so one dropped size clears both tiers' defaults.
+  const { data, error } = await admin
+    .from("pillow_products")
+    .select("id,size")
+    .eq("default_filling_template_id", templateId);
+  if (error) return { ok: false, error: error.message };
+  const stale = (data ?? []).filter((r: { size: string }) => !keys.includes(r.size));
+  if (!stale.length) return { ok: true, clearedKeys: [] };
+  const { error: clearErr } = await admin
+    .from("pillow_products")
+    .update({ default_filling_template_id: null })
+    .in("id", stale.map((r: { id: number }) => Number(r.id)));
+  if (clearErr) return { ok: false, error: clearErr.message };
+  return { ok: true, clearedKeys: [...new Set(stale.map((r: { size: string }) => r.size))] };
 }

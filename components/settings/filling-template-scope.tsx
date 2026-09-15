@@ -34,13 +34,23 @@ export function TemplateScopeChips({
   className?: string;
 }) {
   const all = templateKeysForKind(kind);
+  const noun = kind === "bolster" ? "lengths" : "sizes";
+  // Dim-vs-filled is a convention nobody is told, so the strip carries the same
+  // fact in words for a screen reader and on hover.
+  const label = `Applies to ${noun} ${formatTemplateKeys(kind, keys)}`;
   return (
-    <span className={cn("flex flex-wrap items-center gap-1", className)}>
+    <span
+      className={cn("flex flex-wrap items-center gap-1", className)}
+      title={label}
+      aria-label={label}
+      role="img"
+    >
       {all.map((key) => {
         const served = keys.includes(key);
         return (
           <span
             key={key}
+            aria-hidden="true"
             className={cn(
               "rounded px-1.5 py-0.5 text-[10px] font-medium leading-none",
               served

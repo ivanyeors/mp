@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/admin'
+import { normalizeTemplateKeys } from '@/lib/filling-templates/keys'
 import { setTemplateKeys, templateIdsForKey } from '@/lib/filling-templates/membership'
 import {
   rankUnpromoted,
@@ -194,6 +195,14 @@ export async function POST(req: NextRequest) {
       : verifyPromotedMix(rows as PillowPlacementRow[], fingerprint)
   if (!verified.ok) return NextResponse.json({ error: verified.error }, { status: 409 })
 
+  // Validate the size BEFORE the insert. `key` comes from a Result's
+  // assigned_size/assigned_length, which are free text with no check
+  // constraint, and setTemplateKeys below rejects anything non-canonical — a
+  // template inserted first would survive that rejection with zero membership,
+  // invisible to every list yet still holding its name in the unique index.
+  const scopeKeys = normalizeTemplateKeys(kind, [key])
+  if (!scopeKeys.ok) return NextResponse.json({ error: scopeKeys.error }, { status: 400 })
+
   // Named active catalog Filling Template — scope-keyed, so no pillow_kind/variant (ADR 0008).
   const { data: created, error: insErr } = await admin
     .from('bom_templates')
@@ -212,7 +221,7 @@ export async function POST(req: NextRequest) {
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 400 })
 
   // A promoted mix serves the size it was used at; widening is a Configure act.
-  const membership = await setTemplateKeys(admin, { templateId: created.id, kind, keys: [key] })
+  const membership = await setTemplateKeys(admin, { templateId: created.id, kind, keys: scopeKeys.keys })
   if (!membership.ok) return NextResponse.json({ error: membership.error }, { status: 400 })
 
   const payload = rows.map((r) => ({ template_id: created.id, ...r }))
