@@ -30,9 +30,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatFillingPreview } from "@/lib/filling-preview";
-import { XrayBolsterEditor, XrayEditor } from "@/components/spatial/xray-editor";
-import { XrayPackList } from "@/components/spatial/xray-pack-list";
-import { InsertOrderList } from "@/components/spatial/insert-order-list";
+import dynamic from "next/dynamic";
 import { isNeckSupportItem } from "@/lib/spatial-fillings/filling-groups";
 import {
   isSpatiallyAuthored,
@@ -69,6 +67,44 @@ import {
   normalizeTemplateKeys,
   templateKeyLabel,
 } from "@/lib/filling-templates/keys";
+
+/**
+ * The spatial editors load on demand.
+ *
+ * They are the heaviest things on this route — the x-ray drags in @dnd-kit and
+ * the sunburst filling picker, the insert-order list drags in @dnd-kit again —
+ * and none of them is reachable from the Product tab, which is where this page
+ * opens. Importing them statically put that weight in the first load of a card
+ * whether or not the operator ever touched Filling Config, and pushed the route
+ * past its bundle budget. `ssr: false` because every one of them is an
+ * interactive client editor with nothing to render on the server.
+ */
+const XrayEditor = dynamic(
+  () => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor),
+  { ssr: false, loading: () => <EditorSkeleton className="aspect-[4/3]" /> },
+);
+const XrayBolsterEditor = dynamic(
+  () => import("@/components/spatial/xray-editor").then((m) => m.XrayBolsterEditor),
+  { ssr: false, loading: () => <EditorSkeleton className="aspect-[4/3]" /> },
+);
+const XrayPackList = dynamic(
+  () => import("@/components/spatial/xray-pack-list").then((m) => m.XrayPackList),
+  { ssr: false, loading: () => <EditorSkeleton className="h-24" /> },
+) as typeof import("@/components/spatial/xray-pack-list").XrayPackList;
+const InsertOrderList = dynamic(
+  () => import("@/components/spatial/insert-order-list").then((m) => m.InsertOrderList),
+  { ssr: false, loading: () => <EditorSkeleton className="h-24" /> },
+);
+
+/** Placeholder that holds the editor's box so the card does not jump on load. */
+function EditorSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("w-full animate-pulse rounded-lg bg-muted/50", className)}
+      aria-hidden="true"
+    />
+  );
+}
 
 type FillingTemplateRow = {
   id: number;
