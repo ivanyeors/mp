@@ -37,7 +37,7 @@ export async function loadResumeFinish(
   const { data: row } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, shipping_address, data, assigned_size, assigned_tier, customer_email, customer_phone, discovery_source, discovery_source_other, access_token, customer_id",
+      "id, status, source, product_type, shipping_address, data, assigned_size, assigned_tier, customer_email, customer_phone, discovery_source, discovery_source_other, access_token, customer_id, order_id",
     )
     .eq("id", id)
     .maybeSingle();

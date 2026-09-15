@@ -926,6 +926,14 @@ export function MbolsterConfigClient({
       // off; the status page is where the customer waits for Staff instead.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
+      // Shared in-store device: the session id is now this customer's Result id.
+      // Kept, the next customer's hold would be submitted onto it.
+      try {
+        window.localStorage.removeItem(CONFIG_SESSION_KEY);
+      } catch {
+        // private mode — nothing was stored
+      }
+      setConfigSessionId(null);
       window.location.href = next as string;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
@@ -951,6 +959,7 @@ export function MbolsterConfigClient({
     assistPlacements,
     sessionFillingTemplateId,
     partner,
+    configSessionId,
   ]);
 
   const flowRouteBlocksHold = (() => {

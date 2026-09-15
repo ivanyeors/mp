@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   // theatre, because the table was reachable without going through this route.
   const { data: authRow, error: authErr } = await admin
     .from("mp_config_responses")
-    .select("access_token, customer_id, customer_email, status")
+    .select("access_token, customer_id, customer_email, status, order_id")
     .eq("id", responseId)
     .maybeSingle();
   if (authErr) return NextResponse.json({ error: authErr.message }, { status: 500 });

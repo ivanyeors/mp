@@ -31,11 +31,12 @@ const live = {
   customer_id: null,
   customer_email: null,
   status: "held" as string | null,
+  order_id: null as string | null,
 };
 /** A Draft Result created after tokens started being minted at create. */
 const draft = { ...live, status: null };
 /** A Draft Result that predates that change. */
-const legacyDraft = { access_token: null, customer_id: null, customer_email: null, status: null };
+const legacyDraft = { access_token: null, customer_id: null, customer_email: null, status: null, order_id: null };
 
 const asStaff = () => h.requireAnyAdmin.mockResolvedValue(null);
 const notStaff = () =>
@@ -59,6 +60,12 @@ describe("requireResultAccess", () => {
       ok: true,
       mode: "staff",
     });
+  });
+
+  it("asks for exactly the Staff permissions a caller narrows it to", async () => {
+    notStaff();
+    await requireResultAccess(live, null, { staffPermissions: ["results"] });
+    expect(h.requireAnyAdmin).toHaveBeenCalledWith(["results"]);
   });
 
   it("recognises an Owner holding the token", async () => {
@@ -113,6 +120,15 @@ describe("requireResultAccess", () => {
     it("does not extend the allowance to a row with a status", async () => {
       notStaff();
       const access = await requireResultAccess({ ...legacyDraft, status: "held" }, null);
+      expect(access.ok).toBe(false);
+    });
+
+    // Order sync and Staff create these tokenless and permanent — not Drafts.
+    it("does not extend the allowance to an order-linked row", async () => {
+      notStaff();
+      const access = await requireResultAccess({ ...legacyDraft, order_id: "ord-1" }, null, {
+        draftOnly: true,
+      });
       expect(access.ok).toBe(false);
     });
 

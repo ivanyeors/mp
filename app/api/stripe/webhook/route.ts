@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe/client";
+import { toStripeAmountCents } from "@/lib/authorization-hold";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { addOrderTimelineEvent } from "@/lib/ecommerce/orders";
 import { deductInventoryForOrder } from "@/lib/ecommerce/inventory-deduction";
@@ -118,6 +119,29 @@ export async function POST(req: Request) {
           }
 
           if (paymentIntent) {
+            // A re-submitted build opens a new Checkout without expiring the old
+            // one. Paying the OLD session must not attach its card to a Result
+            // now quoting a different amount: capture would fail or under-charge.
+            const { data: held } = await admin
+              .from("mp_config_responses")
+              .select("authorized_amount, currency")
+              .eq("id", resultId)
+              .eq("status", "held")
+              .maybeSingle();
+            if (!held) break;
+            if (
+              held.authorized_amount == null ||
+              toStripeAmountCents(Number(held.authorized_amount)) !== session.amount_total ||
+              String(held.currency).toLowerCase() !== session.currency?.toLowerCase()
+            ) {
+              const detail =
+                `Result ${resultId} hold session ${session.id} authorised ${session.currency} ` +
+                `${session.amount_total}, but the Result quotes ${held.currency} ` +
+                `${held.authorized_amount}. Card not attached.`;
+              console.error(`[stripe/webhook] ${detail}`);
+              await recordWebhookFailure(admin, event, detail);
+              break;
+            }
             await admin
               .from("mp_config_responses")
               .update({ payment_intent_id: paymentIntent })

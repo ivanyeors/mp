@@ -264,25 +264,35 @@ export async function POST(req: Request) {
   const { data: assisted, error: assistedErr } = input.responseId
     ? await admin
         .from("mp_config_responses")
-        .select("source, status, access_token, customer_id, customer_email")
+        .select("source, status, access_token, customer_id, customer_email, order_id, payment_intent_id")
         .eq("id", input.responseId)
         .maybeSingle()
     : { data: null, error: null };
   if (assistedErr) {
     return NextResponse.json({ error: assistedErr.message }, { status: 500 });
   }
-  // Creating a Result stays open. Re-submitting one does not: the upsert below
+  // Creating a Result stays open. Re-submitting one does not: the write below
   // rewrites its email and payment fields, so knowing the id alone would let a
   // stranger take the Result over and orphan the owner's Authorization hold.
-  // Same gate as every other write to an existing Result (lib/results/access.ts).
+  // Same gate as every other write to an existing Result (lib/results/access.ts),
+  // with Staff narrowed to `results`: a viewer carries `orders` and must not
+  // rewrite a customer's Result.
   if (assisted) {
-    const access = await requireResultAccess(assisted, input.token ?? null);
+    const access = await requireResultAccess(assisted, input.token ?? null, {
+      staffPermissions: ["results"],
+    });
     if (!access.ok) return access.response;
   }
   // Nothing Staff have assigned, or a customer has paid for, is resubmittable.
-  // The upsert below would otherwise reset it to a fresh `held` row. A stale
-  // configurator tab could do that with the same session id.
-  if (assisted?.status && ["assigned", "accepted", "captured"].includes(assisted.status)) {
+  // The write below would otherwise reset it to a fresh `held` row. A stale
+  // configurator tab could do that with the same session id. A `held` row with
+  // a payment intent is paid for too: re-submitting would null the intent and
+  // orphan the card hold, and the same params replay an already-completed
+  // Checkout whose webhook never fires again.
+  if (
+    (assisted?.status && ["assigned", "accepted", "captured"].includes(assisted.status)) ||
+    (assisted?.status === "held" && assisted.payment_intent_id)
+  ) {
     return NextResponse.json(
       { error: "This Result has already been submitted" },
       { status: 409 },
@@ -540,10 +550,14 @@ export async function POST(req: Request) {
   const takeCard = !input.deferred && authHoldEnabled;
 
   const currency = composed.sellable.currency;
-  // Kept across re-submits: a fresh token would change the Checkout success URL,
-  // so an honest retry would no longer match its own idempotency key, and the
-  // Owner's browser would lose the token it just proved ownership with.
-  const accessToken = assisted?.access_token ?? randomUUID();
+  // Kept only when this request presented it: a fresh token would change the
+  // Checkout success URL, so the Owner's honest retry would no longer match its
+  // own idempotency key. Anyone else who passed the gate (Staff, a signed-in
+  // Customer, a legacy Draft) gets a new one — otherwise Staff re-submitting on a
+  // shared device would email the next customer the previous customer's token.
+  // Same plain comparison as authorizeResultAccess: a random per-row uuid.
+  const accessToken =
+    input.token && input.token === assisted?.access_token ? input.token : randomUUID();
   const resultId = input.responseId ?? randomUUID();
 
   const user = await getAuthUser();
@@ -761,11 +775,30 @@ export async function POST(req: Request) {
     }
   }
 
-  const { error: upsertErr } = await admin.from("mp_config_responses").upsert(row, {
-    onConflict: "id",
-  });
-  if (upsertErr) {
-    return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+  // An existing row is written only if it is still what the checks above saw.
+  // The Stripe call sits between them, and in that window Staff can assign the
+  // Result or the webhook can attach a card; overwriting either would reset a
+  // live Result to a fresh `held` one. A brand-new Result is a plain insert.
+  let write;
+  if (assisted) {
+    let update = admin.from("mp_config_responses").update(row).eq("id", resultId);
+    update = assisted.status == null ? update.is("status", null) : update.eq("status", assisted.status);
+    update =
+      assisted.payment_intent_id == null
+        ? update.is("payment_intent_id", null)
+        : update.eq("payment_intent_id", assisted.payment_intent_id);
+    write = await update.select("id");
+  } else {
+    write = await admin.from("mp_config_responses").insert(row).select("id");
+  }
+  if (write.error) {
+    return NextResponse.json({ error: write.error.message }, { status: 500 });
+  }
+  if (!write.data?.length) {
+    return NextResponse.json(
+      { error: "This Result changed while it was being submitted. Please refresh and try again." },
+      { status: 409 },
+    );
   }
 
   if (fillingSnapshot) {

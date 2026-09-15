@@ -313,7 +313,7 @@ export async function POST(req: Request) {
   const { data: existing, error: existingErr } = await admin
     .from("mp_config_responses")
     .select(
-      "is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status,access_token,customer_id,customer_email",
+      "is_final,measured_by_type,measured_by_staff_id,payment_intent_id,source,status,access_token,customer_id,customer_email,order_id",
     )
     .eq("id", id)
     .maybeSingle();

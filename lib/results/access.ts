@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { requireAnyAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
+import type { Permission } from "@/lib/auth/permissions";
 
 /** Guest magic-link token or signed-in customer matching the Result. */
 export async function authorizeResultAccess(
@@ -52,6 +53,8 @@ export async function requireResultAccess(
     customer_id: string | null;
     customer_email: string | null;
     status: string | null;
+    /** Required so a caller cannot forget it and silently keep the legacy allowance. */
+    order_id: string | null;
   },
   token: string | null,
   opts?: {
@@ -61,11 +64,17 @@ export async function requireResultAccess(
      * Owner, who still needs to see their build after the hold.
      */
     draftOnly?: boolean;
+    /**
+     * Which Staff count as Staff here. The default admits every admin role —
+     * `viewer` included, since it carries `orders`. A route that rewrites a
+     * customer's Result narrows it to `results`.
+     */
+    staffPermissions?: Permission[];
   },
 ): Promise<ResultAccess> {
   // Every admin role carries `orders`, so this also admits Staff assist mode
   // running the configurator on the shared in-store device.
-  const denied = await requireAnyAdmin(["results", "orders"]);
+  const denied = await requireAnyAdmin(opts?.staffPermissions ?? ["results", "orders"]);
   if (!denied) return { ok: true, mode: "staff" };
 
   const owner =
@@ -75,8 +84,9 @@ export async function requireResultAccess(
     // neither a token nor a status. Its owner's browser has nothing to prove
     // ownership with, and minting one on their next write would lock out the
     // very session it just let through. Drafts carry no money and age out, so
-    // they stay open until the backfill closes them.
-    (row.access_token == null && row.status == null);
+    // they stay open until the backfill closes them. An order-linked row is not
+    // a Draft: order sync and Staff create those tokenless and permanent.
+    (row.access_token == null && row.status == null && row.order_id == null);
 
   if (owner) {
     // The Draft Result guard (CONTEXT.md), in one place rather than at each

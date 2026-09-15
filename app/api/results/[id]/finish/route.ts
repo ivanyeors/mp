@@ -54,7 +54,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, access_token, customer_id, customer_email",
+      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, access_token, customer_id, customer_email, order_id",
     )
     .eq("id", id)
     .maybeSingle();
