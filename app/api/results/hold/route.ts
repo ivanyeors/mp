@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createHash, randomUUID } from "crypto";
+import { secretMatches } from "@/lib/auth/secret";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/auth/user";
 import { requireResultAccess } from "@/lib/results/access";
@@ -557,7 +558,7 @@ export async function POST(req: Request) {
   // shared device would email the next customer the previous customer's token.
   // Same plain comparison as authorizeResultAccess: a random per-row uuid.
   const accessToken =
-    input.token && input.token === assisted?.access_token ? input.token : randomUUID();
+    input.token && secretMatches(assisted?.access_token ?? undefined, input.token) ? input.token : randomUUID();
   const resultId = input.responseId ?? randomUUID();
 
   const user = await getAuthUser();

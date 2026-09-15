@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/auth/user";
 import { requireAnyAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import type { Permission } from "@/lib/auth/permissions";
+import { secretMatches } from "@/lib/auth/secret";
 
 /** Guest magic-link token or signed-in customer matching the Result. */
 export async function authorizeResultAccess(
@@ -13,7 +14,7 @@ export async function authorizeResultAccess(
   },
   token: string | null,
 ): Promise<boolean> {
-  if (token && row.access_token && token === row.access_token) return true;
+  if (secretMatches(row.access_token ?? undefined, token ?? null)) return true;
 
   const user = await getAuthUser();
   if (!user) return false;
