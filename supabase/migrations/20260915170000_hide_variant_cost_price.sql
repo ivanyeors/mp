@@ -1,5 +1,9 @@
 -- Hide internal cost columns from the anon and authenticated roles (#173).
 --
+-- DEPLOY ORDER: apply only AFTER the code that ships with it is live. Older
+-- code reads `order_items(*)` as the signed-in customer and /account/orders
+-- would 500. Never roll that code back without restoring the table grant.
+--
 -- * "Public read active product_variants" (0028) lets anyone holding the public
 --   anon key read active variants straight from PostgREST, cost_price included:
 --   GET /rest/v1/product_variants?select=sku,cost_price

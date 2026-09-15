@@ -44,7 +44,7 @@ export async function attachStockAvailable<
 export const PUBLIC_PRODUCT_COLUMNS =
   "id, slug, product_type, status, content, category_id, featured, tags, published_at, created_at, updated_at";
 export const PUBLIC_VARIANT_COLUMNS =
-  "id, product_id, sku, title, option1, option2, option3, price, compare_at_price, currency, track_inventory, image_url, is_active, position";
+  "id, product_id, sku, title, option1, option2, option3, price, compare_at_price, currency, track_inventory, weight_grams, image_url, is_active, position";
 const PUBLIC_PRODUCT_SELECT = `${PUBLIC_PRODUCT_COLUMNS}, product_variants(${PUBLIC_VARIANT_COLUMNS}), product_images(id, product_id, variant_id, url, alt_text, position)`;
 
 /** Composed main products — buyable only via customisation, not the shop catalog. */
