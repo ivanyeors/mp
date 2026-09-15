@@ -4602,9 +4602,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-dive.check.ts": {
-    "mtime": 1789440150.2287683,
-    "seen": 1789440582.7997818,
-    "ast_hash": "3667cba4bf2463d8f75e5d1c52204714",
+    "mtime": 1789443933.4831338,
+    "seen": 1789445044.7594216,
+    "ast_hash": "fdcef5e16f95eb0f16d42f9214277072",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
@@ -4614,9 +4614,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1789440032.4571428,
-    "seen": 1789440582.799789,
-    "ast_hash": "2a78dbe782c64ac229fb02dfcda5b0f9",
+    "mtime": 1789443933.4592369,
+    "seen": 1789445044.7594292,
+    "ast_hash": "d83040340120da10fccd5630ea55c172",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {

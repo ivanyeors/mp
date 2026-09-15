@@ -485,19 +485,6 @@
       "source_location": "L6"
     },
     {
-      "id": "app_api_mp_config_assist_route_scope",
-      "label": "Scope",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "scope",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L17"
-    },
-    {
       "id": "lib_shopify_order_mirror_ingest_adminclient",
       "label": "AdminClient",
       "_callable": true,
@@ -589,6 +576,19 @@
       "source_location": "L372"
     },
     {
+      "id": "lib_shopify_order_mirror_ingest_shopifyorderlike",
+      "label": "ShopifyOrderLike",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "order-mirror-ingest.ts",
+      "file_type": "code",
+      "norm_label": "shopifyorderlike",
+      "source_file": "lib/shopify/order-mirror-ingest.ts",
+      "source_location": "L39"
+    },
+    {
       "id": "lib_shopify_order_mirror_ingest_shopifyorderlinelike",
       "label": "ShopifyOrderLineLike",
       "_callable": true,
@@ -600,6 +600,19 @@
       "norm_label": "shopifyorderlinelike",
       "source_file": "lib/shopify/order-mirror-ingest.ts",
       "source_location": "L30"
+    },
+    {
+      "id": "lib_shopify_order_mirror_ingest_shopifyrefundlike",
+      "label": "ShopifyRefundLike",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "order-mirror-ingest.ts",
+      "file_type": "code",
+      "norm_label": "shopifyrefundlike",
+      "source_file": "lib/shopify/order-mirror-ingest.ts",
+      "source_location": "L65"
     },
     {
       "id": "lib_shopify_order_mirror_ingest_shopifyrefundlinelike",
@@ -5022,6 +5035,19 @@
       "source_location": "L43"
     },
     {
+      "id": "lib_media_assets_import_drive_importdriveerror",
+      "label": "ImportDriveError",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 205,
+      "community_name": "import-drive.ts",
+      "file_type": "code",
+      "norm_label": "importdriveerror",
+      "source_file": "lib/media-assets/import-drive.ts",
+      "source_location": "L28"
+    },
+    {
       "id": "lib_media_assets_import_drive_importdriveerrorcode",
       "label": "ImportDriveErrorCode",
       "_callable": true,
@@ -6816,17 +6842,134 @@
       "source_location": "L64"
     },
     {
+      "id": "components_configurator_staff_assist_bolster_panel_templaterow",
+      "label": "TemplateRow",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "templaterow",
+      "source_file": "components/configurator/staff-assist-bolster-panel.tsx",
+      "source_location": "L19"
+    },
+    {
+      "id": "components_configurator_staff_assist_panel_fillingitem",
+      "label": "FillingItem",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "fillingitem",
+      "source_file": "components/configurator/staff-assist-panel.tsx",
+      "source_location": "L41"
+    },
+    {
+      "id": "components_configurator_staff_assist_panel_templaterow",
+      "label": "TemplateRow",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "templaterow",
+      "source_file": "components/configurator/staff-assist-panel.tsx",
+      "source_location": "L50"
+    },
+    {
+      "id": "components_configurator_staff_toolbox_toolspec",
+      "label": "ToolSpec",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "toolspec",
+      "source_file": "components/configurator/staff-toolbox.tsx",
+      "source_location": "L11"
+    },
+    {
       "id": "components_shop_customization_steps_recommendationresponsedata",
       "label": "RecommendationResponseData",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "recommendationresponsedata",
       "source_file": "components/shop/customization-steps.tsx",
       "source_location": "L39"
+    },
+    {
+      "id": "lib_configurator_staff_assist_confirmgatestate",
+      "label": "ConfirmGateState",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "confirmgatestate",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L37"
+    },
+    {
+      "id": "lib_configurator_staff_assist_loadedtemplate",
+      "label": "LoadedTemplate",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "loadedtemplate",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L393"
+    },
+    {
+      "id": "lib_configurator_staff_assist_saveaffordance",
+      "label": "saveAffordance",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "saveaffordance",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L424"
+    },
+    {
+      "id": "lib_configurator_staff_assist_sizetier",
+      "label": "SizeTier",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "sizetier",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L26"
+    },
+    {
+      "id": "lib_results_resume_finish_resumefinish",
+      "label": "ResumeFinish",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "resumefinish",
+      "source_file": "lib/results/resume-finish.ts",
+      "source_location": "L8"
     },
     {
       "id": "lib_spatial_fillings_color_overrides_coloroverriderow",
@@ -6835,7 +6978,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "coloroverriderow",
       "source_file": "lib/spatial-fillings/color-overrides.ts",
@@ -6848,7 +6991,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "effectivefillingcolor",
       "source_file": "lib/spatial-fillings/color-overrides.ts",
@@ -6861,11 +7004,24 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "fillingvisual",
       "source_file": "lib/spatial-fillings/visuals.ts",
       "source_location": "L70"
+    },
+    {
+      "id": "lib_spatial_fillings_xray_layout_bolsterlength",
+      "label": "BolsterLength",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "bolsterlength",
+      "source_file": "lib/spatial-fillings/xray-layout.ts",
+      "source_location": "L176"
     },
     {
       "id": "lib_media_migrate_public_apply_applypublicmigrationresult",
@@ -7659,32 +7815,6 @@
       "norm_label": "costingscontext",
       "source_file": "lib/shopify/order-mirror-ingest.ts",
       "source_location": "L22"
-    },
-    {
-      "id": "lib_shopify_order_mirror_ingest_shopifyorderlike",
-      "label": "ShopifyOrderLike",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "shopify/webhook/route.ts",
-      "file_type": "code",
-      "norm_label": "shopifyorderlike",
-      "source_file": "lib/shopify/order-mirror-ingest.ts",
-      "source_location": "L39"
-    },
-    {
-      "id": "lib_shopify_order_mirror_ingest_shopifyrefundlike",
-      "label": "ShopifyRefundLike",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "shopify/webhook/route.ts",
-      "file_type": "code",
-      "norm_label": "shopifyrefundlike",
-      "source_file": "lib/shopify/order-mirror-ingest.ts",
-      "source_location": "L65"
     },
     {
       "id": "lib_shopify_webhook_mirror_check_call",
@@ -10872,6 +11002,19 @@
       "source_location": "L37"
     },
     {
+      "id": "app_api_mp_config_assist_route_scope",
+      "label": "Scope",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "scope",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L17"
+    },
+    {
       "id": "app_lang_settings_inventory_configure_unpromoted_route_admin",
       "label": "Admin",
       "_callable": true,
@@ -10924,110 +11067,6 @@
       "source_location": "L81"
     },
     {
-      "id": "components_configurator_staff_assist_bolster_panel_templaterow",
-      "label": "TemplateRow",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "templaterow",
-      "source_file": "components/configurator/staff-assist-bolster-panel.tsx",
-      "source_location": "L19"
-    },
-    {
-      "id": "components_configurator_staff_assist_panel_fillingitem",
-      "label": "FillingItem",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "fillingitem",
-      "source_file": "components/configurator/staff-assist-panel.tsx",
-      "source_location": "L41"
-    },
-    {
-      "id": "components_configurator_staff_assist_panel_templaterow",
-      "label": "TemplateRow",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "templaterow",
-      "source_file": "components/configurator/staff-assist-panel.tsx",
-      "source_location": "L50"
-    },
-    {
-      "id": "components_configurator_staff_toolbox_toolspec",
-      "label": "ToolSpec",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "toolspec",
-      "source_file": "components/configurator/staff-toolbox.tsx",
-      "source_location": "L11"
-    },
-    {
-      "id": "lib_configurator_staff_assist_confirmgatestate",
-      "label": "ConfirmGateState",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "confirmgatestate",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L37"
-    },
-    {
-      "id": "lib_configurator_staff_assist_loadedtemplate",
-      "label": "LoadedTemplate",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "loadedtemplate",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L393"
-    },
-    {
-      "id": "lib_configurator_staff_assist_saveaffordance",
-      "label": "saveAffordance",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "saveaffordance",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L424"
-    },
-    {
-      "id": "lib_configurator_staff_assist_sizetier",
-      "label": "SizeTier",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "sizetier",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L26"
-    },
-    {
       "id": "lib_filling_templates_unpromoted_rankedunpromoted",
       "label": "RankedUnpromoted",
       "_callable": true,
@@ -11065,19 +11104,6 @@
       "norm_label": "fillingassigndecision",
       "source_file": "lib/results/filling-assign.ts",
       "source_location": "L5"
-    },
-    {
-      "id": "lib_results_resume_finish_resumefinish",
-      "label": "ResumeFinish",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "resumefinish",
-      "source_file": "lib/results/resume-finish.ts",
-      "source_location": "L8"
     },
     {
       "id": "lib_spatial_fillings_cells_cellmap",
@@ -13015,19 +13041,6 @@
       "norm_label": "driveerrorcode",
       "source_file": "lib/media-assets/drive.ts",
       "source_location": "L8"
-    },
-    {
-      "id": "lib_media_assets_import_drive_importdriveerror",
-      "label": "ImportDriveError",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "drive.ts",
-      "file_type": "code",
-      "norm_label": "importdriveerror",
-      "source_file": "lib/media-assets/import-drive.ts",
-      "source_location": "L28"
     },
     {
       "id": "app_lang_settings_rma_id_page_eventrow",
@@ -16046,19 +16059,6 @@
       "source_location": "L19"
     },
     {
-      "id": "lib_spatial_fillings_xray_layout_bolsterlength",
-      "label": "BolsterLength",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "bolsterlength",
-      "source_file": "lib/spatial-fillings/xray-layout.ts",
-      "source_location": "L176"
-    },
-    {
       "id": "lib_spatial_fillings_xray_layout_bolsterpiecelayout",
       "label": "BolsterPieceLayout",
       "_callable": true,
@@ -18622,6 +18622,18 @@
       "source_location": "L17"
     },
     {
+      "id": "lib_page_builder_locale_check_read",
+      "label": "read()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "read()",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L14"
+    },
+    {
       "id": "app_lang_sunburst_demo_page_sunburstdemopage",
       "label": "SunburstDemoPage()",
       "_callable": true,
@@ -19606,136 +19618,16 @@
       "source_location": "L40"
     },
     {
-      "id": "app_api_mp_config_assist_route_get",
-      "label": "GET()",
+      "id": "lib_i18n_marketing_copy_slice_07_check_read",
+      "label": "read()",
       "_callable": true,
       "_origin": "ast",
       "community": 108,
-      "community_name": "assist/route.ts",
+      "community_name": "marketing-copy-slice-07.check.ts",
       "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L44"
-    },
-    {
-      "id": "app_api_mp_config_assist_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L176"
-    },
-    {
-      "id": "app_api_mp_config_assist_route_resolvescope",
-      "label": "resolveScope()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "resolvescope()",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L25"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_assertfillinglines",
-      "label": "assertFillingLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "assertfillinglines()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L27"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_dedupelines",
-      "label": "dedupeLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "dedupelines()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_get",
-      "label": "GET()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L48"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_put",
-      "label": "PUT()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "put()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L126"
-    },
-    {
-      "id": "lib_bom_sanitizer_index_lookupplacementkinds",
-      "label": "lookupPlacementKinds()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "lookupplacementkinds()",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "lib_spatial_fillings_core_assertfillingitem",
-      "label": "assertFillingItem()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "assertfillingitem()",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L120"
-    },
-    {
-      "id": "lib_spatial_fillings_core_validatebolsterplacements",
-      "label": "validateBolsterPlacements()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "validatebolsterplacements()",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L187"
-    },
-    {
-      "id": "lib_spatial_fillings_core_validatepillowplacements",
-      "label": "validatePillowPlacements()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "validatepillowplacements()",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L143"
+      "norm_label": "read()",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
+      "source_location": "L19"
     },
     {
       "id": "components_partner_referral_rows_money",
@@ -20024,6 +19916,18 @@
       "norm_label": "upsertshopifyordermirror()",
       "source_file": "lib/shopify/order-mirror-ingest.ts",
       "source_location": "L537"
+    },
+    {
+      "id": "lib_shopify_webhook_mirror_besteffortupsertordermirror",
+      "label": "bestEffortUpsertOrderMirror()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "order-mirror-ingest.ts",
+      "file_type": "code",
+      "norm_label": "besteffortupsertordermirror()",
+      "source_file": "lib/shopify/webhook-mirror.ts",
+      "source_location": "L19"
     },
     {
       "id": "app_api_appointments_book_route_post",
@@ -25654,6 +25558,18 @@
       "source_location": "L250"
     },
     {
+      "id": "components_spatial_xray_pillow_piecelabel",
+      "label": "PieceLabel()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "xray-pillow.tsx",
+      "file_type": "code",
+      "norm_label": "piecelabel()",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L199"
+    },
+    {
       "id": "components_spatial_xray_pillow_xraypillow",
       "label": "XrayPillow()",
       "_callable": true,
@@ -25663,7 +25579,7 @@
       "file_type": "code",
       "norm_label": "xraypillow()",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L323"
+      "source_location": "L326"
     },
     {
       "id": "hooks_use_mobile_useismobile",
@@ -29578,16 +29494,16 @@
       "source_location": "L87"
     },
     {
-      "id": "lib_media_assets_import_drive_kindfrommime",
-      "label": "kindFromMime()",
+      "id": "lib_media_assets_import_drive_importdriveerror_constructor",
+      "label": ".constructor()",
       "_callable": true,
       "_origin": "ast",
       "community": 205,
       "community_name": "import-drive.ts",
       "file_type": "code",
-      "norm_label": "kindfrommime()",
+      "norm_label": ".constructor()",
       "source_file": "lib/media-assets/import-drive.ts",
-      "source_location": "L104"
+      "source_location": "L29"
     },
     {
       "id": "lib_media_assets_ingest_hostpreviewimage",
@@ -30212,18 +30128,6 @@
       "norm_label": "main()",
       "source_file": "scripts/smoke-usage-resolver.ts",
       "source_location": "L18"
-    },
-    {
-      "id": "app_auth_signout_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 22,
-      "community_name": "getSiteOrigin",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/auth/signout/route.ts",
-      "source_location": "L13"
     },
     {
       "id": "app_lang_account_layout_accountlayout",
@@ -34210,12 +34114,144 @@
       "source_location": "L12"
     },
     {
+      "id": "components_configurator_save_filling_template_savefillingtemplate",
+      "label": "SaveFillingTemplate()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "savefillingtemplate()",
+      "source_file": "components/configurator/save-filling-template.tsx",
+      "source_location": "L36"
+    },
+    {
+      "id": "components_configurator_staff_assist_bolster_panel_staffassistbolsterpanel",
+      "label": "StaffAssistBolsterPanel()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "staffassistbolsterpanel()",
+      "source_file": "components/configurator/staff-assist-bolster-panel.tsx",
+      "source_location": "L29"
+    },
+    {
+      "id": "components_configurator_staff_assist_panel_staffassistpanel",
+      "label": "StaffAssistPanel()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "staffassistpanel()",
+      "source_file": "components/configurator/staff-assist-panel.tsx",
+      "source_location": "L62"
+    },
+    {
+      "id": "components_configurator_staff_toolbox_stafftoolbox",
+      "label": "StaffToolbox()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "stafftoolbox()",
+      "source_file": "components/configurator/staff-toolbox.tsx",
+      "source_location": "L38"
+    },
+    {
+      "id": "components_spatial_xray_editor_useitemmaps",
+      "label": "useItemMaps()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "useitemmaps()",
+      "source_file": "components/spatial/xray-editor.tsx",
+      "source_location": "L41"
+    },
+    {
+      "id": "components_spatial_xray_editor_xraybolstereditor",
+      "label": "XrayBolsterEditor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "xraybolstereditor()",
+      "source_file": "components/spatial/xray-editor.tsx",
+      "source_location": "L109"
+    },
+    {
+      "id": "components_spatial_xray_editor_xrayeditor",
+      "label": "XrayEditor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "xrayeditor()",
+      "source_file": "components/spatial/xray-editor.tsx",
+      "source_location": "L78"
+    },
+    {
+      "id": "components_spatial_xray_editor_xrayframe",
+      "label": "XrayFrame()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "xrayframe()",
+      "source_file": "components/spatial/xray-editor.tsx",
+      "source_location": "L57"
+    },
+    {
+      "id": "components_spatial_xray_pack_list_xraypacklist",
+      "label": "XrayPackList()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "xraypacklist()",
+      "source_file": "components/spatial/xray-pack-list.tsx",
+      "source_location": "L20"
+    },
+    {
+      "id": "lib_configurator_staff_assist_confirmgate",
+      "label": "confirmGate()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "confirmgate()",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L48"
+    },
+    {
+      "id": "lib_configurator_staff_assist_sessiontemplateid",
+      "label": "sessionTemplateId()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "sessiontemplateid()",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L399"
+    },
+    {
       "id": "lib_spatial_fillings_color_overrides_effectivefillingcolors",
       "label": "effectiveFillingColors()",
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "effectivefillingcolors()",
       "source_file": "lib/spatial-fillings/color-overrides.ts",
@@ -34227,11 +34263,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "xraycolorvarstyle()",
       "source_file": "lib/spatial-fillings/color-overrides.ts",
       "source_location": "L44"
+    },
+    {
+      "id": "lib_spatial_fillings_core_flattentopacklist",
+      "label": "flattenToPackList()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "flattentopacklist()",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L213"
     },
     {
       "id": "lib_spatial_fillings_core_placementkind",
@@ -34239,11 +34287,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "placementkind()",
       "source_file": "lib/spatial-fillings/core.ts",
       "source_location": "L111"
+    },
+    {
+      "id": "lib_spatial_fillings_core_tally",
+      "label": "tally()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "tally()",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L204"
     },
     {
       "id": "lib_spatial_fillings_filling_groups_familyrank",
@@ -34251,7 +34311,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "familyrank()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34263,7 +34323,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "fillingdescriptor()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34275,7 +34335,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "fillingfamily()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34287,7 +34347,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "fillingitemstosunburst()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34299,7 +34359,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "fillinglabel()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34311,7 +34371,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "fillinglabellines()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34323,7 +34383,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "isnecksupportitem()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34335,7 +34395,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "piecelabellines()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34347,7 +34407,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "variantlabel()",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -34359,7 +34419,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "neck()",
       "source_file": "lib/spatial-fillings/__tests__/pack-list-labels-neck-support.test.ts",
@@ -34371,7 +34431,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "familycolor()",
       "source_file": "lib/spatial-fillings/visuals.ts",
@@ -34383,7 +34443,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "subtypeslug()",
       "source_file": "lib/spatial-fillings/visuals.ts",
@@ -35746,18 +35806,6 @@
       "source_location": "L34"
     },
     {
-      "id": "lib_shopify_webhook_mirror_besteffortupsertordermirror",
-      "label": "bestEffortUpsertOrderMirror()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "shopify/webhook/route.ts",
-      "file_type": "code",
-      "norm_label": "besteffortupsertordermirror()",
-      "source_file": "lib/shopify/webhook-mirror.ts",
-      "source_location": "L19"
-    },
-    {
       "id": "lib_shopify_webhook_mirror_check_main",
       "label": "main()",
       "_callable": true,
@@ -36452,18 +36500,6 @@
       "norm_label": "validatedefaultfillingtemplate()",
       "source_file": "lib/filling-templates/index.ts",
       "source_location": "L33"
-    },
-    {
-      "id": "lib_filling_templates_index_validatefillingonlylines",
-      "label": "validateFillingOnlyLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 38,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "validatefillingonlylines()",
-      "source_file": "lib/filling-templates/index.ts",
-      "source_location": "L23"
     },
     {
       "id": "lib_pricing_composed_price_baselinecasemsrpbyfamily",
@@ -41362,6 +41398,42 @@
       "source_location": "L16"
     },
     {
+      "id": "app_api_mp_config_assist_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L44"
+    },
+    {
+      "id": "app_api_mp_config_assist_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L176"
+    },
+    {
+      "id": "app_api_mp_config_assist_route_resolvescope",
+      "label": "resolveScope()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "resolvescope()",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L25"
+    },
+    {
       "id": "app_lang_settings_inventory_configure_card_page_fillingconfigpanel",
       "label": "FillingConfigPanel()",
       "_callable": true,
@@ -41396,6 +41468,54 @@
       "norm_label": "unauthoredbadge()",
       "source_file": "app/[lang]/settings/inventory/configure/[card]/page.tsx",
       "source_location": "L2066"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_assertfillinglines",
+      "label": "assertFillingLines()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "assertfillinglines()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L27"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_dedupelines",
+      "label": "dedupeLines()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "dedupelines()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L48"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_put",
+      "label": "PUT()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "put()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L126"
     },
     {
       "id": "app_lang_settings_inventory_configure_unpromoted_route_get",
@@ -41482,88 +41602,28 @@
       "source_location": "L244"
     },
     {
-      "id": "components_configurator_save_filling_template_savefillingtemplate",
-      "label": "SaveFillingTemplate()",
+      "id": "lib_bom_sanitizer_index_lookupplacementkinds",
+      "label": "lookupPlacementKinds()",
       "_callable": true,
       "_origin": "ast",
       "community": 6,
       "community_name": "core.ts",
       "file_type": "code",
-      "norm_label": "savefillingtemplate()",
-      "source_file": "components/configurator/save-filling-template.tsx",
-      "source_location": "L36"
+      "norm_label": "lookupplacementkinds()",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L14"
     },
     {
-      "id": "components_configurator_staff_assist_bolster_panel_staffassistbolsterpanel",
-      "label": "StaffAssistBolsterPanel()",
+      "id": "lib_filling_templates_index_validatefillingonlylines",
+      "label": "validateFillingOnlyLines()",
       "_callable": true,
       "_origin": "ast",
       "community": 6,
       "community_name": "core.ts",
       "file_type": "code",
-      "norm_label": "staffassistbolsterpanel()",
-      "source_file": "components/configurator/staff-assist-bolster-panel.tsx",
-      "source_location": "L29"
-    },
-    {
-      "id": "components_configurator_staff_assist_panel_staffassistpanel",
-      "label": "StaffAssistPanel()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "staffassistpanel()",
-      "source_file": "components/configurator/staff-assist-panel.tsx",
-      "source_location": "L62"
-    },
-    {
-      "id": "components_configurator_staff_toolbox_stafftoolbox",
-      "label": "StaffToolbox()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "stafftoolbox()",
-      "source_file": "components/configurator/staff-toolbox.tsx",
-      "source_location": "L38"
-    },
-    {
-      "id": "components_spatial_xray_pack_list_xraypacklist",
-      "label": "XrayPackList()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "xraypacklist()",
-      "source_file": "components/spatial/xray-pack-list.tsx",
-      "source_location": "L20"
-    },
-    {
-      "id": "lib_configurator_staff_assist_confirmgate",
-      "label": "confirmGate()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "confirmgate()",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L48"
-    },
-    {
-      "id": "lib_configurator_staff_assist_sessiontemplateid",
-      "label": "sessionTemplateId()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "sessiontemplateid()",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L399"
+      "norm_label": "validatefillingonlylines()",
+      "source_file": "lib/filling-templates/index.ts",
+      "source_location": "L23"
     },
     {
       "id": "lib_filling_templates_unpromoted_rankunpromoted",
@@ -41770,6 +41830,18 @@
       "source_location": "L23"
     },
     {
+      "id": "lib_spatial_fillings_core_assertfillingitem",
+      "label": "assertFillingItem()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "assertfillingitem()",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L120"
+    },
+    {
       "id": "lib_spatial_fillings_core_bolsterplacementstorows",
       "label": "bolsterPlacementsToRows()",
       "_callable": true,
@@ -41792,18 +41864,6 @@
       "norm_label": "canonicalizeplacements()",
       "source_file": "lib/spatial-fillings/core.ts",
       "source_location": "L229"
-    },
-    {
-      "id": "lib_spatial_fillings_core_flattentopacklist",
-      "label": "flattenToPackList()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "flattentopacklist()",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L213"
     },
     {
       "id": "lib_spatial_fillings_core_pillowplacementstorows",
@@ -41854,16 +41914,28 @@
       "source_location": "L74"
     },
     {
-      "id": "lib_spatial_fillings_core_tally",
-      "label": "tally()",
+      "id": "lib_spatial_fillings_core_validatebolsterplacements",
+      "label": "validateBolsterPlacements()",
       "_callable": true,
       "_origin": "ast",
       "community": 6,
       "community_name": "core.ts",
       "file_type": "code",
-      "norm_label": "tally()",
+      "norm_label": "validatebolsterplacements()",
       "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L204"
+      "source_location": "L187"
+    },
+    {
+      "id": "lib_spatial_fillings_core_validatepillowplacements",
+      "label": "validatePillowPlacements()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "validatepillowplacements()",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L143"
     },
     {
       "id": "lib_spatial_fillings_fingerprint_fingerprintplacements",
@@ -44871,35 +44943,47 @@
       "_callable": true,
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "read()",
       "source_file": "lib/i18n/marketing-copy-slice-01.check.ts",
       "source_location": "L18"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_07_check_read",
+      "id": "lib_i18n_marketing_copy_slice_02_check_read",
       "label": "read()",
       "_callable": true,
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "read()",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L19"
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L16"
     },
     {
-      "id": "lib_page_builder_locale_check_read",
+      "id": "lib_i18n_marketing_copy_slice_03_check_read",
       "label": "read()",
       "_callable": true,
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "read()",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L14"
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L15"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_words",
+      "label": "words()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "words()",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L19"
     },
     {
       "id": "app_api_shop_customize_route_priceapply",
@@ -45692,6 +45776,18 @@
       "norm_label": "get()",
       "source_file": "app/api/results/route.ts",
       "source_location": "L27"
+    },
+    {
+      "id": "app_auth_signout_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 65,
+      "community_name": "getAuthUser",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/auth/signout/route.ts",
+      "source_location": "L13"
     },
     {
       "id": "app_lang_account_addresses_actions_cleardefaults",
@@ -47650,18 +47746,6 @@
       "source_location": "L111"
     },
     {
-      "id": "lib_media_assets_import_drive_importdriveerror_constructor",
-      "label": ".constructor()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 7,
-      "community_name": "drive.ts",
-      "file_type": "code",
-      "norm_label": ".constructor()",
-      "source_file": "lib/media-assets/import-drive.ts",
-      "source_location": "L29"
-    },
-    {
       "id": "lib_media_assets_import_drive_importfromdrive",
       "label": "importFromDrive()",
       "_callable": true,
@@ -47672,6 +47756,18 @@
       "norm_label": "importfromdrive()",
       "source_file": "lib/media-assets/import-drive.ts",
       "source_location": "L112"
+    },
+    {
+      "id": "lib_media_assets_import_drive_kindfrommime",
+      "label": "kindFromMime()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 7,
+      "community_name": "drive.ts",
+      "file_type": "code",
+      "norm_label": "kindfrommime()",
+      "source_file": "lib/media-assets/import-drive.ts",
+      "source_location": "L104"
     },
     {
       "id": "lib_media_assets_import_drive_reimportimagefromdrive",
@@ -50614,18 +50710,6 @@
       "source_location": "L7"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_02_check_read",
-      "label": "read()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "read()",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L16"
-    },
-    {
       "id": "app_lang_settings_analytics_mpconfigmetricsstackedbarvisx_chart",
       "label": "Chart()",
       "_callable": true,
@@ -51920,30 +52004,6 @@
       "norm_label": "cardtitle()",
       "source_file": "components/ui/card.tsx",
       "source_location": "L31"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_03_check_read",
-      "label": "read()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
-      "file_type": "code",
-      "norm_label": "read()",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L15"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_03_check_words",
-      "label": "words()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
-      "file_type": "code",
-      "norm_label": "words()",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L19"
     },
     {
       "id": "lib_shop_recommendation_engine_defaultlogger",
@@ -53782,54 +53842,6 @@
       "source_location": "L49"
     },
     {
-      "id": "components_spatial_xray_editor_useitemmaps",
-      "label": "useItemMaps()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "useitemmaps()",
-      "source_file": "components/spatial/xray-editor.tsx",
-      "source_location": "L41"
-    },
-    {
-      "id": "components_spatial_xray_editor_xraybolstereditor",
-      "label": "XrayBolsterEditor()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xraybolstereditor()",
-      "source_file": "components/spatial/xray-editor.tsx",
-      "source_location": "L109"
-    },
-    {
-      "id": "components_spatial_xray_editor_xrayeditor",
-      "label": "XrayEditor()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xrayeditor()",
-      "source_file": "components/spatial/xray-editor.tsx",
-      "source_location": "L78"
-    },
-    {
-      "id": "components_spatial_xray_editor_xrayframe",
-      "label": "XrayFrame()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xrayframe()",
-      "source_file": "components/spatial/xray-editor.tsx",
-      "source_location": "L57"
-    },
-    {
       "id": "components_spatial_xray_pillow_geometry_test_groupbycell",
       "label": "groupByCell()",
       "_callable": true,
@@ -53840,18 +53852,6 @@
       "norm_label": "groupbycell()",
       "source_file": "components/spatial/xray-pillow-geometry.test.ts",
       "source_location": "L40"
-    },
-    {
-      "id": "components_spatial_xray_pillow_piecelabel",
-      "label": "PieceLabel()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "piecelabel()",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L199"
     },
     {
       "id": "lib_spatial_fillings_conform_bolstershellpolygon",
@@ -57615,26 +57615,114 @@
       "source_location": "L1"
     },
     {
-      "id": "package_dependencies_class_variance_authority",
-      "label": "class-variance-authority",
+      "id": "lib_page_builder_locale_check",
+      "label": "locale.check.ts",
       "_origin": "ast",
       "community": 100,
-      "community_name": "class-variance-authority",
+      "community_name": "locale.check.ts",
       "file_type": "code",
-      "norm_label": "class-variance-authority",
-      "source_file": "package.json",
-      "source_location": "L72"
+      "norm_label": "locale.check.ts",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L1"
     },
     {
-      "id": "class_variance_authority",
-      "label": "class-variance-authority",
+      "id": "lib_page_builder_locale_check_bilingual",
+      "label": "bilingual",
       "_origin": "ast",
       "community": 100,
-      "community_name": "class-variance-authority",
-      "file_type": "concept",
-      "norm_label": "class-variance-authority",
-      "source_file": "package.json",
-      "source_location": "L72"
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "bilingual",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "lib_page_builder_locale_check_dispatcher",
+      "label": "dispatcher",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "dispatcher",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L34"
+    },
+    {
+      "id": "lib_page_builder_locale_check_editor",
+      "label": "editor",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "editor",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L67"
+    },
+    {
+      "id": "lib_page_builder_locale_check_legacy",
+      "label": "legacy",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "legacy",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "lib_page_builder_locale_check_root",
+      "label": "ROOT",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "root",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "lib_page_builder_locale_check_sectionfiles",
+      "label": "sectionFiles",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "sectionfiles",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L45"
+    },
+    {
+      "id": "lib_page_builder_locale_check_shopcta",
+      "label": "shopCta",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "shopcta",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L59"
+    },
+    {
+      "id": "lib_page_builder_locale_check_switchbody",
+      "label": "switchBody",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "switchbody",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L36"
+    },
+    {
+      "id": "lib_page_builder_locale_check_withimage",
+      "label": "withImage",
+      "_origin": "ast",
+      "community": 100,
+      "community_name": "locale.check.ts",
+      "file_type": "code",
+      "norm_label": "withimage",
+      "source_file": "lib/page-builder/locale.check.ts",
+      "source_location": "L26"
     },
     {
       "id": "app_lang_sunburst_demo_page",
@@ -58484,147 +58572,92 @@
       "source_location": "L14"
     },
     {
-      "id": "app_api_mp_config_assist_route",
-      "label": "assist/route.ts",
+      "id": "lib_i18n_marketing_copy_slice_07_check",
+      "label": "marketing-copy-slice-07.check.ts",
       "_origin": "ast",
       "community": 108,
-      "community_name": "assist/route.ts",
+      "community_name": "marketing-copy-slice-07.check.ts",
       "file_type": "code",
-      "norm_label": "assist/route.ts",
-      "source_file": "app/api/mp-config/assist/route.ts",
+      "norm_label": "marketing-copy-slice-07.check.ts",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
       "source_location": "L1"
     },
     {
-      "id": "app_api_mp_config_assist_route_dynamic",
-      "label": "dynamic",
+      "id": "lib_i18n_marketing_copy_slice_07_check_gated",
+      "label": "gated",
       "_origin": "ast",
       "community": 108,
-      "community_name": "assist/route.ts",
+      "community_name": "marketing-copy-slice-07.check.ts",
       "file_type": "code",
-      "norm_label": "dynamic",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L35"
+      "norm_label": "gated",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
+      "source_location": "L46"
     },
     {
-      "id": "app_api_mp_config_assist_route_placementrowschema",
-      "label": "PlacementRowSchema",
+      "id": "lib_i18n_marketing_copy_slice_07_check_h1",
+      "label": "h1",
       "_origin": "ast",
       "community": 108,
-      "community_name": "assist/route.ts",
+      "community_name": "marketing-copy-slice-07.check.ts",
       "file_type": "code",
-      "norm_label": "placementrowschema",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L136"
+      "norm_label": "h1",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
+      "source_location": "L45"
     },
     {
-      "id": "app_api_mp_config_assist_route_runtime",
-      "label": "runtime",
+      "id": "lib_i18n_marketing_copy_slice_07_check_landingsrc",
+      "label": "landingSrc",
       "_origin": "ast",
       "community": 108,
-      "community_name": "assist/route.ts",
+      "community_name": "marketing-copy-slice-07.check.ts",
       "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/api/mp-config/assist/route.ts",
+      "norm_label": "landingsrc",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
+      "source_location": "L38"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_07_check_llms",
+      "label": "llms",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "marketing-copy-slice-07.check.ts",
+      "file_type": "code",
+      "norm_label": "llms",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
+      "source_location": "L85"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_07_check_root",
+      "label": "ROOT",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "marketing-copy-slice-07.check.ts",
+      "file_type": "code",
+      "norm_label": "root",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_07_check_storiessrc",
+      "label": "storiesSrc",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "marketing-copy-slice-07.check.ts",
+      "file_type": "code",
+      "norm_label": "storiessrc",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
+      "source_location": "L28"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_07_check_wrappersrc",
+      "label": "wrapperSrc",
+      "_origin": "ast",
+      "community": 108,
+      "community_name": "marketing-copy-slice-07.check.ts",
+      "file_type": "code",
+      "norm_label": "wrappersrc",
+      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
       "source_location": "L34"
-    },
-    {
-      "id": "app_api_mp_config_assist_route_saveschema",
-      "label": "SaveSchema",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "saveschema",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L151"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route",
-      "label": "[templateId]/route.ts",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "[templateid]/route.ts",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_placementrowschema",
-      "label": "PlacementRowSchema",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "placementrowschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L109"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_runtime",
-      "label": "runtime",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L16"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_updateschema",
-      "label": "UpdateSchema",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "updateschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L119"
-    },
-    {
-      "id": "lib_configurator_staff_assist_pillow_sizes",
-      "label": "PILLOW_SIZES",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "pillow_sizes",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_spatial_fillings_filling_groups_placeable_items_or",
-      "label": "PLACEABLE_ITEMS_OR",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "code",
-      "norm_label": "placeable_items_or",
-      "source_file": "lib/spatial-fillings/filling-groups.ts",
-      "source_location": "L35"
-    },
-    {
-      "id": "app_api_mp_config_assist_route_ts_docref_adr_0008",
-      "label": "ADR-0008",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0008",
-      "source_file": "app/api/mp-config/assist/route.ts",
-      "source_location": "L261"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_templateid_route_ts_docref_adr_0008",
-      "label": "ADR-0008",
-      "_origin": "ast",
-      "community": 108,
-      "community_name": "assist/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0008",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
-      "source_location": "L79"
     },
     {
       "id": "components_partner_referral_rows",
@@ -58702,6 +58735,17 @@
       "norm_label": "paid_statuses",
       "source_file": "lib/shopify/order-mirror-ingest.ts",
       "source_location": "L146"
+    },
+    {
+      "id": "lib_shopify_webhook_mirror",
+      "label": "webhook-mirror.ts",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "order-mirror-ingest.ts",
+      "file_type": "code",
+      "norm_label": "webhook-mirror.ts",
+      "source_file": "lib/shopify/webhook-mirror.ts",
+      "source_location": "L1"
     },
     {
       "id": "info_get_variants_mpillow",
@@ -61188,6 +61232,28 @@
       "source_location": null
     },
     {
+      "id": "supabase_migrations_0028_ecommerce_cart_items",
+      "label": "cart_items",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "set_updated_at",
+      "file_type": "code",
+      "norm_label": "cart_items",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L298"
+    },
+    {
+      "id": "supabase_migrations_0028_ecommerce_carts",
+      "label": "carts",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "set_updated_at",
+      "file_type": "code",
+      "norm_label": "carts",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L272"
+    },
+    {
       "id": "supabase_migrations_0028_ecommerce_collection_products",
       "label": "collection_products",
       "_origin": "ast",
@@ -61353,37 +61419,37 @@
       "source_location": "L334"
     },
     {
-      "id": "supabase_migrations_20260710080000_media_folders",
-      "label": "20260710080000_media_folders.sql",
+      "id": "supabase_migrations_0036_tax_rates",
+      "label": "0036_tax_rates.sql",
       "_origin": "ast",
       "community": 127,
       "community_name": "set_updated_at",
       "file_type": "code",
-      "norm_label": "20260710080000_media_folders.sql",
-      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "norm_label": "0036_tax_rates.sql",
+      "source_file": "supabase/migrations/0036_tax_rates.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20260710080000_media_folders_media_folders",
-      "label": "media_folders",
+      "id": "supabase_migrations_0036_tax_rates_tax_rates",
+      "label": "tax_rates",
       "_origin": "ast",
       "community": 127,
       "community_name": "set_updated_at",
       "file_type": "code",
-      "norm_label": "media_folders",
-      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
-      "source_location": "L3"
+      "norm_label": "tax_rates",
+      "source_file": "supabase/migrations/0036_tax_rates.sql",
+      "source_location": "L16"
     },
     {
-      "id": "supabase_migrations_20260710080000_media_folders_trg_media_folders_updated_at",
-      "label": "trg_media_folders_updated_at",
+      "id": "supabase_migrations_0036_tax_rates_trg_tax_rates_updated_at",
+      "label": "trg_tax_rates_updated_at",
       "_origin": "ast",
       "community": 127,
       "community_name": "set_updated_at",
       "file_type": "code",
-      "norm_label": "trg_media_folders_updated_at",
-      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
-      "source_location": "L12"
+      "norm_label": "trg_tax_rates_updated_at",
+      "source_file": "supabase/migrations/0036_tax_rates.sql",
+      "source_location": "L35"
     },
     {
       "id": "supabase_migrations_20260719180000_rule_graphs",
@@ -61417,39 +61483,6 @@
       "norm_label": "trg_rule_graphs_updated_at",
       "source_file": "supabase/migrations/20260719180000_rule_graphs.sql",
       "source_location": "L31"
-    },
-    {
-      "id": "supabase_migrations_20260719210000_filling_color_overrides",
-      "label": "20260719210000_filling_color_overrides.sql",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "set_updated_at",
-      "file_type": "code",
-      "norm_label": "20260719210000_filling_color_overrides.sql",
-      "source_file": "supabase/migrations/20260719210000_filling_color_overrides.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_20260719210000_filling_color_overrides_filling_color_overrides",
-      "label": "filling_color_overrides",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "set_updated_at",
-      "file_type": "code",
-      "norm_label": "filling_color_overrides",
-      "source_file": "supabase/migrations/20260719210000_filling_color_overrides.sql",
-      "source_location": "L5"
-    },
-    {
-      "id": "supabase_migrations_20260719210000_filling_color_overrides_trg_filling_color_overrides_updated_at",
-      "label": "trg_filling_color_overrides_updated_at",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "set_updated_at",
-      "file_type": "code",
-      "norm_label": "trg_filling_color_overrides_updated_at",
-      "source_file": "supabase/migrations/20260719210000_filling_color_overrides.sql",
-      "source_location": "L13"
     },
     {
       "id": "lib_analytics_journey_path_groups",
@@ -66837,6 +66870,28 @@
       "source_location": "L1"
     },
     {
+      "id": "components_spatial_xray_bolster",
+      "label": "xray-bolster.tsx",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "xray-pillow.tsx",
+      "file_type": "code",
+      "norm_label": "xray-bolster.tsx",
+      "source_file": "components/spatial/xray-bolster.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_spatial_xray_bolster_shell_regions",
+      "label": "SHELL_REGIONS",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "xray-pillow.tsx",
+      "file_type": "code",
+      "norm_label": "shell_regions",
+      "source_file": "components/spatial/xray-bolster.tsx",
+      "source_location": "L37"
+    },
+    {
       "id": "components_spatial_xray_pillow",
       "label": "xray-pillow.tsx",
       "_origin": "ast",
@@ -66857,6 +66912,28 @@
       "norm_label": "sil_region",
       "source_file": "components/spatial/xray-pillow.tsx",
       "source_location": "L70"
+    },
+    {
+      "id": "components_spatial_xray_pillow_xray_interior",
+      "label": "XRAY_INTERIOR",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "xray-pillow.tsx",
+      "file_type": "code",
+      "norm_label": "xray_interior",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L91"
+    },
+    {
+      "id": "components_spatial_xray_pillow_xray_shell",
+      "label": "XRAY_SHELL",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "xray-pillow.tsx",
+      "file_type": "code",
+      "norm_label": "xray_shell",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L90"
     },
     {
       "id": "hooks_use_mobile",
@@ -67319,6 +67396,17 @@
       "norm_label": "adr-0008",
       "source_file": "components/spatial/bolster-compartment-list.tsx",
       "source_location": "L26"
+    },
+    {
+      "id": "components_spatial_xray_bolster_tsx_docref_adr_0009",
+      "label": "ADR-0009",
+      "_origin": "ast",
+      "community": 168,
+      "community_name": "xray-pillow.tsx",
+      "file_type": "concept",
+      "norm_label": "adr-0009",
+      "source_file": "components/spatial/xray-bolster.tsx",
+      "source_location": "L5"
     },
     {
       "id": "components_spatial_xray_pillow_tsx_docref_adr_0009",
@@ -73690,19 +73778,19 @@
       "source_location": "L1332"
     },
     {
-      "id": "info_mpillow_final_report_article_what_led_to_the_creation_of_the_world_s_best_pillow",
-      "label": "Article: What Led To The Creation Of The World S Best Pillow",
+      "id": "info_mpillow_final_report_article_what_is_the_best_pillow_for_neck_pain_in_singapore",
+      "label": "Article: What Is The Best Pillow For Neck Pain In Singapore",
       "_origin": "ast",
       "community": 206,
       "community_name": "mpillow_final_report.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "article: what led to the creation of the world s best pillow",
+      "norm_label": "article: what is the best pillow for neck pain in singapore",
       "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1184"
+      "source_location": "L1057"
     },
     {
-      "id": "info_mpillow_final_report_extracted_text_content_1193",
+      "id": "info_mpillow_final_report_extracted_text_content_1066",
       "label": "Extracted Text Content",
       "_origin": "ast",
       "community": 206,
@@ -73711,7 +73799,7 @@
       "node_kind": "heading",
       "norm_label": "extracted text content",
       "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1193"
+      "source_location": "L1066"
     },
     {
       "id": "info_mpillow_final_report_extracted_text_content_1341",
@@ -73750,7 +73838,7 @@
       "source_location": "L810"
     },
     {
-      "id": "info_mpillow_final_report_key_images_and_descriptions_1187",
+      "id": "info_mpillow_final_report_key_images_and_descriptions_1060",
       "label": "Key Images and Descriptions",
       "_origin": "ast",
       "community": 206,
@@ -73759,7 +73847,7 @@
       "node_kind": "heading",
       "norm_label": "key images and descriptions",
       "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1187"
+      "source_location": "L1060"
     },
     {
       "id": "info_mpillow_final_report_key_images_and_descriptions_1335",
@@ -75030,6 +75118,28 @@
       "source_location": "L347"
     },
     {
+      "id": "supabase_migrations_0028_ecommerce_customer_addresses",
+      "label": "customer_addresses",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "customer_addresses",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L241"
+    },
+    {
+      "id": "supabase_migrations_0028_ecommerce_customers",
+      "label": "customers",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "customers",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L212"
+    },
+    {
       "id": "supabase_migrations_0028_ecommerce_order_items",
       "label": "order_items",
       "_origin": "ast",
@@ -75063,6 +75173,17 @@
       "source_location": "L384"
     },
     {
+      "id": "supabase_migrations_0028_ecommerce_product_reviews",
+      "label": "product_reviews",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "product_reviews",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L498"
+    },
+    {
       "id": "supabase_migrations_0028_ecommerce_shipping_methods",
       "label": "shipping_methods",
       "_origin": "ast",
@@ -75072,6 +75193,17 @@
       "norm_label": "shipping_methods",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L317"
+    },
+    {
+      "id": "supabase_migrations_0028_ecommerce_wishlists",
+      "label": "wishlists",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "wishlists",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L529"
     },
     {
       "id": "supabase_migrations_0035_order_emails",
@@ -75094,6 +75226,28 @@
       "norm_label": "order_emails",
       "source_file": "supabase/migrations/0035_order_emails.sql",
       "source_location": "L10"
+    },
+    {
+      "id": "supabase_migrations_0039_customer_order_rls",
+      "label": "0039_customer_order_rls.sql",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "0039_customer_order_rls.sql",
+      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_0039_customer_order_rls_current_customer_id",
+      "label": "current_customer_id()",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "current_customer_id()",
+      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
+      "source_location": "L16"
     },
     {
       "id": "supabase_migrations_20260630130001_money_ledger",
@@ -75836,28 +75990,6 @@
       "norm_label": "smoke-usage-resolver.ts",
       "source_file": "scripts/smoke-usage-resolver.ts",
       "source_location": "L1"
-    },
-    {
-      "id": "app_auth_signout_route",
-      "label": "signout/route.ts",
-      "_origin": "ast",
-      "community": 22,
-      "community_name": "getSiteOrigin",
-      "file_type": "code",
-      "norm_label": "signout/route.ts",
-      "source_file": "app/auth/signout/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_auth_signout_route_runtime",
-      "label": "runtime",
-      "_origin": "ast",
-      "community": 22,
-      "community_name": "getSiteOrigin",
-      "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/auth/signout/route.ts",
-      "source_location": "L6"
     },
     {
       "id": "app_lang_account_layout",
@@ -85271,11 +85403,88 @@
       "source_location": "L1"
     },
     {
+      "id": "components_configurator_staff_assist_bolster_panel",
+      "label": "staff-assist-bolster-panel.tsx",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "staff-assist-bolster-panel.tsx",
+      "source_file": "components/configurator/staff-assist-bolster-panel.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_configurator_staff_assist_panel",
+      "label": "staff-assist-panel.tsx",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "staff-assist-panel.tsx",
+      "source_file": "components/configurator/staff-assist-panel.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_configurator_staff_assist_panel_tier_label",
+      "label": "TIER_LABEL",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "tier_label",
+      "source_file": "components/configurator/staff-assist-panel.tsx",
+      "source_location": "L36"
+    },
+    {
+      "id": "components_spatial_xray_editor",
+      "label": "xray-editor.tsx",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "xray-editor.tsx",
+      "source_file": "components/spatial/xray-editor.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "components_spatial_xray_editor_xray_theme",
+      "label": "XRAY_THEME",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "xray_theme",
+      "source_file": "components/spatial/xray-editor.tsx",
+      "source_location": "L52"
+    },
+    {
+      "id": "lib_configurator_staff_assist_pillow_tiers",
+      "label": "PILLOW_TIERS",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "pillow_tiers",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L22"
+    },
+    {
+      "id": "lib_results_resume_finish",
+      "label": "resume-finish.ts",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "resume-finish.ts",
+      "source_file": "lib/results/resume-finish.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "lib_spatial_fillings_color_overrides",
       "label": "color-overrides.ts",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "color-overrides.ts",
       "source_file": "lib/spatial-fillings/color-overrides.ts",
@@ -85286,7 +85495,7 @@
       "label": "color-overrides.check.ts",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "color-overrides.check.ts",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85297,7 +85506,7 @@
       "label": "assist",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "assist",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85308,7 +85517,7 @@
       "label": "client",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "client",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85319,7 +85528,7 @@
       "label": "defaults",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "defaults",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85330,7 +85539,7 @@
       "label": "page",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "page",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85341,7 +85550,7 @@
       "label": "panel",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "panel",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85352,7 +85561,7 @@
       "label": "route",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "route",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85363,7 +85572,7 @@
       "label": "subtypes",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "subtypes",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85374,7 +85583,7 @@
       "label": "withOverride",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "withoverride",
       "source_file": "lib/spatial-fillings/color-overrides.check.ts",
@@ -85385,7 +85594,7 @@
       "label": "filling-groups.ts",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "filling-groups.ts",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -85396,7 +85605,7 @@
       "label": "filling-groups.check.ts",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "filling-groups.check.ts",
       "source_file": "lib/spatial-fillings/filling-groups.check.ts",
@@ -85407,7 +85616,7 @@
       "label": "clean",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "clean",
       "source_file": "lib/spatial-fillings/filling-groups.check.ts",
@@ -85418,7 +85627,7 @@
       "label": "deduped",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "deduped",
       "source_file": "lib/spatial-fillings/filling-groups.check.ts",
@@ -85429,7 +85638,7 @@
       "label": "items",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "items",
       "source_file": "lib/spatial-fillings/filling-groups.check.ts",
@@ -85440,7 +85649,7 @@
       "label": "tree",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "tree",
       "source_file": "lib/spatial-fillings/filling-groups.check.ts",
@@ -85451,7 +85660,7 @@
       "label": "NECK_SUPPORT",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "neck_support",
       "source_file": "lib/spatial-fillings/filling-groups.ts",
@@ -85462,7 +85671,7 @@
       "label": "color-overrides.test.ts",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "color-overrides.test.ts",
       "source_file": "lib/spatial-fillings/__tests__/color-overrides.test.ts",
@@ -85473,7 +85682,7 @@
       "label": "SUBTYPES",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "subtypes",
       "source_file": "lib/spatial-fillings/__tests__/color-overrides.test.ts",
@@ -85484,7 +85693,7 @@
       "label": "pack-list-labels-neck-support.test.ts",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "pack-list-labels-neck-support.test.ts",
       "source_file": "lib/spatial-fillings/__tests__/pack-list-labels-neck-support.test.ts",
@@ -85495,7 +85704,7 @@
       "label": "visuals.ts",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "visuals.ts",
       "source_file": "lib/spatial-fillings/visuals.ts",
@@ -85506,7 +85715,7 @@
       "label": "EXTRA_COLORS",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "extra_colors",
       "source_file": "lib/spatial-fillings/visuals.ts",
@@ -85517,7 +85726,7 @@
       "label": "FAMILY_COLORS",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "family_colors",
       "source_file": "lib/spatial-fillings/visuals.ts",
@@ -85528,18 +85737,29 @@
       "label": "SIZE_SCALES",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "code",
       "norm_label": "size_scales",
       "source_file": "lib/spatial-fillings/visuals.ts",
       "source_location": "L52"
     },
     {
+      "id": "lib_results_resume_finish_ts_docref_adr_0017",
+      "label": "ADR-0017",
+      "_origin": "ast",
+      "community": 30,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "concept",
+      "norm_label": "adr-0017",
+      "source_file": "lib/results/resume-finish.ts",
+      "source_location": "L7"
+    },
+    {
       "id": "lib_spatial_fillings_visuals_ts_docref_adr_0009",
       "label": "ADR-0009",
       "_origin": "ast",
       "community": 30,
-      "community_name": "filling-groups.ts",
+      "community_name": "staff-assist-panel.tsx",
       "file_type": "concept",
       "norm_label": "adr-0009",
       "source_file": "lib/spatial-fillings/visuals.ts",
@@ -90890,17 +91110,6 @@
       "file_type": "code",
       "norm_label": "verify.ts",
       "source_file": "lib/shopify/verify.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_shopify_webhook_mirror",
-      "label": "webhook-mirror.ts",
-      "_origin": "ast",
-      "community": 36,
-      "community_name": "shopify/webhook/route.ts",
-      "file_type": "code",
-      "norm_label": "webhook-mirror.ts",
-      "source_file": "lib/shopify/webhook-mirror.ts",
       "source_location": "L1"
     },
     {
@@ -106205,7 +106414,7 @@
       "file_type": "code",
       "norm_label": "client",
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L171"
+      "source_location": "L190"
     },
     {
       "id": "components_spatial_xray_dive_check_frame",
@@ -106216,7 +106425,7 @@
       "file_type": "code",
       "norm_label": "frame",
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L136"
+      "source_location": "L155"
     },
     {
       "id": "components_spatial_xray_dive_check_ids",
@@ -106238,7 +106447,7 @@
       "file_type": "code",
       "norm_label": "layerdrag",
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L65"
+      "source_location": "L69"
     },
     {
       "id": "components_spatial_xray_dive_check_layerrow",
@@ -106249,7 +106458,7 @@
       "file_type": "code",
       "norm_label": "layerrow",
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L86"
+      "source_location": "L90"
     },
     {
       "id": "components_spatial_xray_dive_check_literal",
@@ -106282,7 +106491,7 @@
       "file_type": "code",
       "norm_label": "sunburst",
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L128"
+      "source_location": "L147"
     },
     {
       "id": "lib_spatial_fillings_morphs",
@@ -109492,6 +109701,105 @@
       "source_location": "L1"
     },
     {
+      "id": "app_api_mp_config_assist_route",
+      "label": "assist/route.ts",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "assist/route.ts",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_api_mp_config_assist_route_dynamic",
+      "label": "dynamic",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "dynamic",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L35"
+    },
+    {
+      "id": "app_api_mp_config_assist_route_placementrowschema",
+      "label": "PlacementRowSchema",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "placementrowschema",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L136"
+    },
+    {
+      "id": "app_api_mp_config_assist_route_runtime",
+      "label": "runtime",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "runtime",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L34"
+    },
+    {
+      "id": "app_api_mp_config_assist_route_saveschema",
+      "label": "SaveSchema",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "saveschema",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L151"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route",
+      "label": "[templateId]/route.ts",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "[templateid]/route.ts",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_placementrowschema",
+      "label": "PlacementRowSchema",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "placementrowschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L109"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_runtime",
+      "label": "runtime",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "runtime",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L16"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_updateschema",
+      "label": "UpdateSchema",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "updateschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L119"
+    },
+    {
       "id": "app_lang_settings_inventory_configure_unpromoted_route",
       "label": "unpromoted/route.ts",
       "_origin": "ast",
@@ -109569,48 +109877,15 @@
       "source_location": "L34"
     },
     {
-      "id": "components_configurator_staff_assist_bolster_panel",
-      "label": "staff-assist-bolster-panel.tsx",
+      "id": "lib_configurator_staff_assist_pillow_sizes",
+      "label": "PILLOW_SIZES",
       "_origin": "ast",
       "community": 6,
       "community_name": "core.ts",
       "file_type": "code",
-      "norm_label": "staff-assist-bolster-panel.tsx",
-      "source_file": "components/configurator/staff-assist-bolster-panel.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "components_configurator_staff_assist_panel",
-      "label": "staff-assist-panel.tsx",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "staff-assist-panel.tsx",
-      "source_file": "components/configurator/staff-assist-panel.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "components_configurator_staff_assist_panel_tier_label",
-      "label": "TIER_LABEL",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "tier_label",
-      "source_file": "components/configurator/staff-assist-panel.tsx",
-      "source_location": "L36"
-    },
-    {
-      "id": "lib_configurator_staff_assist_pillow_tiers",
-      "label": "PILLOW_TIERS",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "pillow_tiers",
+      "norm_label": "pillow_sizes",
       "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L22"
+      "source_location": "L21"
     },
     {
       "id": "lib_filling_templates_tests_unpromoted_test",
@@ -109698,17 +109973,6 @@
       "file_type": "code",
       "norm_label": "filling-snapshot.ts",
       "source_file": "lib/results/filling-snapshot.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_results_resume_finish",
-      "label": "resume-finish.ts",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "code",
-      "norm_label": "resume-finish.ts",
-      "source_file": "lib/results/resume-finish.ts",
       "source_location": "L1"
     },
     {
@@ -109877,6 +110141,17 @@
       "source_location": "L1"
     },
     {
+      "id": "lib_spatial_fillings_filling_groups_placeable_items_or",
+      "label": "PLACEABLE_ITEMS_OR",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "code",
+      "norm_label": "placeable_items_or",
+      "source_file": "lib/spatial-fillings/filling-groups.ts",
+      "source_location": "L35"
+    },
+    {
       "id": "lib_spatial_fillings_fingerprint",
       "label": "fingerprint.ts",
       "_origin": "ast",
@@ -109998,6 +110273,28 @@
       "source_location": "L25"
     },
     {
+      "id": "app_api_mp_config_assist_route_ts_docref_adr_0008",
+      "label": "ADR-0008",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0008",
+      "source_file": "app/api/mp-config/assist/route.ts",
+      "source_location": "L261"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_templateid_route_ts_docref_adr_0008",
+      "label": "ADR-0008",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "core.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0008",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+      "source_location": "L79"
+    },
+    {
       "id": "app_lang_settings_inventory_configure_unpromoted_route_ts_docref_adr_0008",
       "label": "ADR-0008",
       "_origin": "ast",
@@ -110018,17 +110315,6 @@
       "norm_label": "adr-0008",
       "source_file": "lib/results/filling-snapshot.ts",
       "source_location": "L3"
-    },
-    {
-      "id": "lib_results_resume_finish_ts_docref_adr_0017",
-      "label": "ADR-0017",
-      "_origin": "ast",
-      "community": 6,
-      "community_name": "core.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0017",
-      "source_file": "lib/results/resume-finish.ts",
-      "source_location": "L7"
     },
     {
       "id": "lib_spatial_fillings_core_ts_docref_adr_0008",
@@ -113369,7 +113655,7 @@
       "label": "marketing-copy-slice-01.check.ts",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "marketing-copy-slice-01.check.ts",
       "source_file": "lib/i18n/marketing-copy-slice-01.check.ts",
@@ -113380,7 +113666,7 @@
       "label": "h1",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "h1",
       "source_file": "lib/i18n/marketing-copy-slice-01.check.ts",
@@ -113391,7 +113677,7 @@
       "label": "heroSrc",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "herosrc",
       "source_file": "lib/i18n/marketing-copy-slice-01.check.ts",
@@ -113402,18 +113688,194 @@
       "label": "ROOT",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "root",
       "source_file": "lib/i18n/marketing-copy-slice-01.check.ts",
       "source_location": "L16"
     },
     {
+      "id": "lib_i18n_marketing_copy_slice_02_check",
+      "label": "marketing-copy-slice-02.check.ts",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "marketing-copy-slice-02.check.ts",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_02_check_hero",
+      "label": "hero",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "hero",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L58"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_02_check_necksrc",
+      "label": "neckSrc",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "necksrc",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L62"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_02_check_resolved",
+      "label": "resolved",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "resolved",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L54"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_02_check_root",
+      "label": "ROOT",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "root",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_02_check_sheetsrc",
+      "label": "sheetSrc",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "sheetsrc",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L67"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_02_check_techcopy",
+      "label": "techCopy",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "techcopy",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L37"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_02_check_types",
+      "label": "types",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "types",
+      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
+      "source_location": "L42"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check",
+      "label": "marketing-copy-slice-03.check.ts",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "marketing-copy-slice-03.check.ts",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_about",
+      "label": "about",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "about",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L33"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_discover",
+      "label": "discover",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "discover",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L38"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_lede",
+      "label": "lede",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "lede",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L52"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_ledematch",
+      "label": "ledeMatch",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "ledematch",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L50"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_pagesrc",
+      "label": "pageSrc",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "pagesrc",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L49"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_root",
+      "label": "ROOT",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "root",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L11"
+    },
+    {
+      "id": "lib_i18n_marketing_copy_slice_03_check_w",
+      "label": "w",
+      "_origin": "ast",
+      "community": 639,
+      "community_name": "en-US.ts",
+      "file_type": "code",
+      "norm_label": "w",
+      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
+      "source_location": "L59"
+    },
+    {
       "id": "lib_i18n_marketing_copy_slice_05_check",
       "label": "marketing-copy-slice-05.check.ts",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "marketing-copy-slice-05.check.ts",
       "source_file": "lib/i18n/marketing-copy-slice-05.check.ts",
@@ -113424,7 +113886,7 @@
       "label": "cred",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "cred",
       "source_file": "lib/i18n/marketing-copy-slice-05.check.ts",
@@ -113435,7 +113897,7 @@
       "label": "founder",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "founder",
       "source_file": "lib/i18n/marketing-copy-slice-05.check.ts",
@@ -113446,106 +113908,18 @@
       "label": "modular",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "modular",
       "source_file": "lib/i18n/marketing-copy-slice-05.check.ts",
       "source_location": "L58"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_07_check",
-      "label": "marketing-copy-slice-07.check.ts",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "marketing-copy-slice-07.check.ts",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_07_check_gated",
-      "label": "gated",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "gated",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L46"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_07_check_h1",
-      "label": "h1",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "h1",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L45"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_07_check_landingsrc",
-      "label": "landingSrc",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "landingsrc",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L38"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_07_check_llms",
-      "label": "llms",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "llms",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L85"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_07_check_root",
-      "label": "ROOT",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "root",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_07_check_storiessrc",
-      "label": "storiesSrc",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "storiessrc",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L28"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_07_check_wrappersrc",
-      "label": "wrapperSrc",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "wrappersrc",
-      "source_file": "lib/i18n/marketing-copy-slice-07.check.ts",
-      "source_location": "L34"
-    },
-    {
       "id": "lib_i18n_messages_en_us",
       "label": "en-US.ts",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "en-us.ts",
       "source_file": "lib/i18n/messages/en-US.ts",
@@ -113556,7 +113930,7 @@
       "label": "enUS",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "enus",
       "source_file": "lib/i18n/messages/en-US.ts",
@@ -113567,7 +113941,7 @@
       "label": "zh-CN.ts",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "zh-cn.ts",
       "source_file": "lib/i18n/messages/zh-CN.ts",
@@ -113578,121 +113952,22 @@
       "label": "zhCN",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
       "norm_label": "zhcn",
       "source_file": "lib/i18n/messages/zh-CN.ts",
       "source_location": "L4"
     },
     {
-      "id": "lib_page_builder_locale_check",
-      "label": "locale.check.ts",
+      "id": "lib_product_slide_sections_configs_cervical_neck_support_cervicalnecksupportslidesections",
+      "label": "cervicalNeckSupportSlideSections",
       "_origin": "ast",
       "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
+      "community_name": "en-US.ts",
       "file_type": "code",
-      "norm_label": "locale.check.ts",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_page_builder_locale_check_bilingual",
-      "label": "bilingual",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "bilingual",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_page_builder_locale_check_dispatcher",
-      "label": "dispatcher",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "dispatcher",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L34"
-    },
-    {
-      "id": "lib_page_builder_locale_check_editor",
-      "label": "editor",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "editor",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L67"
-    },
-    {
-      "id": "lib_page_builder_locale_check_legacy",
-      "label": "legacy",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "legacy",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "lib_page_builder_locale_check_root",
-      "label": "ROOT",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "root",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "lib_page_builder_locale_check_sectionfiles",
-      "label": "sectionFiles",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "sectionfiles",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L45"
-    },
-    {
-      "id": "lib_page_builder_locale_check_shopcta",
-      "label": "shopCta",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "shopcta",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L59"
-    },
-    {
-      "id": "lib_page_builder_locale_check_switchbody",
-      "label": "switchBody",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "switchbody",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L36"
-    },
-    {
-      "id": "lib_page_builder_locale_check_withimage",
-      "label": "withImage",
-      "_origin": "ast",
-      "community": 639,
-      "community_name": "marketing-copy-slice-07.check.ts",
-      "file_type": "code",
-      "norm_label": "withimage",
-      "source_file": "lib/page-builder/locale.check.ts",
-      "source_location": "L26"
+      "norm_label": "cervicalnecksupportslidesections",
+      "source_file": "lib/product-slide-sections/configs/cervical-neck-support.ts",
+      "source_location": "L4"
     },
     {
       "id": "lib_shop_customization_price",
@@ -114905,6 +115180,28 @@
       "file_type": "code",
       "norm_label": "runtime",
       "source_file": "app/api/results/route.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "app_auth_signout_route",
+      "label": "signout/route.ts",
+      "_origin": "ast",
+      "community": 65,
+      "community_name": "getAuthUser",
+      "file_type": "code",
+      "norm_label": "signout/route.ts",
+      "source_file": "app/auth/signout/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_auth_signout_route_runtime",
+      "label": "runtime",
+      "_origin": "ast",
+      "community": 65,
+      "community_name": "getAuthUser",
+      "file_type": "code",
+      "norm_label": "runtime",
+      "source_file": "app/auth/signout/route.ts",
       "source_location": "L6"
     },
     {
@@ -121157,28 +121454,6 @@
       "source_location": "L1"
     },
     {
-      "id": "supabase_migrations_0028_ecommerce_cart_items",
-      "label": "cart_items",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "cart_items",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L298"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_carts",
-      "label": "carts",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "carts",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L272"
-    },
-    {
       "id": "supabase_migrations_0028_ecommerce_categories",
       "label": "categories",
       "_origin": "ast",
@@ -121188,28 +121463,6 @@
       "norm_label": "categories",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L15"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_customer_addresses",
-      "label": "customer_addresses",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "customer_addresses",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L241"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_customers",
-      "label": "customers",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "customers",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L212"
     },
     {
       "id": "supabase_migrations_0028_ecommerce_product_images",
@@ -121232,17 +121485,6 @@
       "norm_label": "product_options",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L82"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_product_reviews",
-      "label": "product_reviews",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "product_reviews",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L498"
     },
     {
       "id": "supabase_migrations_0028_ecommerce_product_variants",
@@ -121298,39 +121540,6 @@
       "norm_label": "wishlist_items",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L543"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_wishlists",
-      "label": "wishlists",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "wishlists",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L529"
-    },
-    {
-      "id": "supabase_migrations_0039_customer_order_rls",
-      "label": "0039_customer_order_rls.sql",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "0039_customer_order_rls.sql",
-      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_0039_customer_order_rls_current_customer_id",
-      "label": "current_customer_id()",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "current_customer_id()",
-      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
-      "source_location": "L16"
     },
     {
       "id": "supabase_migrations_20260630120000_variant_stock_bolster",
@@ -122479,6 +122688,17 @@
       "source_location": "L29"
     },
     {
+      "id": "package_dependencies_class_variance_authority",
+      "label": "class-variance-authority",
+      "_origin": "ast",
+      "community": 77,
+      "community_name": "dependencies",
+      "file_type": "code",
+      "norm_label": "class-variance-authority",
+      "source_file": "package.json",
+      "source_location": "L72"
+    },
+    {
       "id": "package_dependencies_framer_motion",
       "label": "framer-motion",
       "_origin": "ast",
@@ -122587,17 +122807,6 @@
       "norm_label": "next-mdx-remote",
       "source_file": "package.json",
       "source_location": "L85"
-    },
-    {
-      "id": "package_dependencies_ogl",
-      "label": "ogl",
-      "_origin": "ast",
-      "community": 77,
-      "community_name": "dependencies",
-      "file_type": "code",
-      "norm_label": "ogl",
-      "source_file": "package.json",
-      "source_location": "L87"
     },
     {
       "id": "package_dependencies_radix_ui_react_dropdown_menu",
@@ -122710,6 +122919,17 @@
       "source_location": "L71"
     },
     {
+      "id": "class_variance_authority",
+      "label": "class-variance-authority",
+      "_origin": "ast",
+      "community": 77,
+      "community_name": "dependencies",
+      "file_type": "concept",
+      "norm_label": "class-variance-authority",
+      "source_file": "package.json",
+      "source_location": "L72"
+    },
+    {
       "id": "framer_motion",
       "label": "framer-motion",
       "_origin": "ast",
@@ -122818,17 +123038,6 @@
       "norm_label": "next-mdx-remote",
       "source_file": "package.json",
       "source_location": "L85"
-    },
-    {
-      "id": "ogl",
-      "label": "ogl",
-      "_origin": "ast",
-      "community": 77,
-      "community_name": "dependencies",
-      "file_type": "concept",
-      "norm_label": "ogl",
-      "source_file": "package.json",
-      "source_location": "L87"
     },
     {
       "id": "radix_ui_react_dropdown_menu",
@@ -123446,103 +123655,40 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_02_check",
-      "label": "marketing-copy-slice-02.check.ts",
+      "id": "info_mpillow_final_report_article_what_led_to_the_creation_of_the_world_s_best_pillow",
+      "label": "Article: What Led To The Creation Of The World S Best Pillow",
       "_origin": "ast",
       "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "marketing-copy-slice-02.check.ts",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L1"
+      "community_name": "Article: What Led To The Creation Of The World S Best Pillow",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "article: what led to the creation of the world s best pillow",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L1184"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_02_check_hero",
-      "label": "hero",
+      "id": "info_mpillow_final_report_extracted_text_content_1193",
+      "label": "Extracted Text Content",
       "_origin": "ast",
       "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "hero",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L58"
+      "community_name": "Article: What Led To The Creation Of The World S Best Pillow",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "extracted text content",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L1193"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_02_check_necksrc",
-      "label": "neckSrc",
+      "id": "info_mpillow_final_report_key_images_and_descriptions_1187",
+      "label": "Key Images and Descriptions",
       "_origin": "ast",
       "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "necksrc",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L62"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_02_check_resolved",
-      "label": "resolved",
-      "_origin": "ast",
-      "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "resolved",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L54"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_02_check_root",
-      "label": "ROOT",
-      "_origin": "ast",
-      "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "root",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_02_check_sheetsrc",
-      "label": "sheetSrc",
-      "_origin": "ast",
-      "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "sheetsrc",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L67"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_02_check_techcopy",
-      "label": "techCopy",
-      "_origin": "ast",
-      "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "techcopy",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L37"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_02_check_types",
-      "label": "types",
-      "_origin": "ast",
-      "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "types",
-      "source_file": "lib/i18n/marketing-copy-slice-02.check.ts",
-      "source_location": "L42"
-    },
-    {
-      "id": "lib_product_slide_sections_configs_cervical_neck_support_cervicalnecksupportslidesections",
-      "label": "cervicalNeckSupportSlideSections",
-      "_origin": "ast",
-      "community": 778,
-      "community_name": "marketing-copy-slice-02.check.ts",
-      "file_type": "code",
-      "norm_label": "cervicalnecksupportslidesections",
-      "source_file": "lib/product-slide-sections/configs/cervical-neck-support.ts",
-      "source_location": "L4"
+      "community_name": "Article: What Led To The Creation Of The World S Best Pillow",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "key images and descriptions",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L1187"
     },
     {
       "id": "supabase_migrations_0027_landing_sections",
@@ -125651,92 +125797,37 @@
       "source_location": "L14"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_03_check",
-      "label": "marketing-copy-slice-03.check.ts",
+      "id": "supabase_migrations_20260710080000_media_folders",
+      "label": "20260710080000_media_folders.sql",
       "_origin": "ast",
       "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
+      "community_name": "20260710080000_media_folders.sql",
       "file_type": "code",
-      "norm_label": "marketing-copy-slice-03.check.ts",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L1"
+      "norm_label": "20260710080000_media_folders.sql",
+      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "source_location": null
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_03_check_about",
-      "label": "about",
+      "id": "supabase_migrations_20260710080000_media_folders_media_folders",
+      "label": "media_folders",
       "_origin": "ast",
       "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
+      "community_name": "20260710080000_media_folders.sql",
       "file_type": "code",
-      "norm_label": "about",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L33"
+      "norm_label": "media_folders",
+      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "source_location": "L3"
     },
     {
-      "id": "lib_i18n_marketing_copy_slice_03_check_discover",
-      "label": "discover",
+      "id": "supabase_migrations_20260710080000_media_folders_trg_media_folders_updated_at",
+      "label": "trg_media_folders_updated_at",
       "_origin": "ast",
       "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
+      "community_name": "20260710080000_media_folders.sql",
       "file_type": "code",
-      "norm_label": "discover",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L38"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_03_check_lede",
-      "label": "lede",
-      "_origin": "ast",
-      "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
-      "file_type": "code",
-      "norm_label": "lede",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L52"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_03_check_ledematch",
-      "label": "ledeMatch",
-      "_origin": "ast",
-      "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
-      "file_type": "code",
-      "norm_label": "ledematch",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L50"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_03_check_pagesrc",
-      "label": "pageSrc",
-      "_origin": "ast",
-      "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
-      "file_type": "code",
-      "norm_label": "pagesrc",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L49"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_03_check_root",
-      "label": "ROOT",
-      "_origin": "ast",
-      "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
-      "file_type": "code",
-      "norm_label": "root",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L11"
-    },
-    {
-      "id": "lib_i18n_marketing_copy_slice_03_check_w",
-      "label": "w",
-      "_origin": "ast",
-      "community": 841,
-      "community_name": "marketing-copy-slice-03.check.ts",
-      "file_type": "code",
-      "norm_label": "w",
-      "source_file": "lib/i18n/marketing-copy-slice-03.check.ts",
-      "source_location": "L59"
+      "norm_label": "trg_media_folders_updated_at",
+      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "source_location": "L12"
     },
     {
       "id": "claude_prd_page_builder_redesign_ops_signoff",
@@ -130463,17 +130554,6 @@
       "source_location": "L45"
     },
     {
-      "id": "components_spatial_xray_bolster",
-      "label": "xray-bolster.tsx",
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xray-bolster.tsx",
-      "source_file": "components/spatial/xray-bolster.tsx",
-      "source_location": "L1"
-    },
-    {
       "id": "components_spatial_xray_bolster_check",
       "label": "xray-bolster.check.ts",
       "_origin": "ast",
@@ -130527,39 +130607,6 @@
       "norm_label": "route",
       "source_file": "components/spatial/xray-bolster.check.ts",
       "source_location": "L62"
-    },
-    {
-      "id": "components_spatial_xray_bolster_shell_regions",
-      "label": "SHELL_REGIONS",
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "shell_regions",
-      "source_file": "components/spatial/xray-bolster.tsx",
-      "source_location": "L37"
-    },
-    {
-      "id": "components_spatial_xray_editor",
-      "label": "xray-editor.tsx",
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xray-editor.tsx",
-      "source_file": "components/spatial/xray-editor.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "components_spatial_xray_editor_xray_theme",
-      "label": "XRAY_THEME",
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xray_theme",
-      "source_file": "components/spatial/xray-editor.tsx",
-      "source_location": "L52"
     },
     {
       "id": "components_spatial_xray_pillow_cell_regions",
@@ -130659,28 +130706,6 @@
       "norm_label": "sil_region",
       "source_file": "components/spatial/xray-pillow-geometry.test.ts",
       "source_location": "L21"
-    },
-    {
-      "id": "components_spatial_xray_pillow_xray_interior",
-      "label": "XRAY_INTERIOR",
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xray_interior",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L91"
-    },
-    {
-      "id": "components_spatial_xray_pillow_xray_shell",
-      "label": "XRAY_SHELL",
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "code",
-      "norm_label": "xray_shell",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L90"
     },
     {
       "id": "lib_spatial_fillings_conform",
@@ -130835,17 +130860,6 @@
       "norm_label": "adr-0009",
       "source_file": "components/spatial/xray-bolster.check.ts",
       "source_location": "L25"
-    },
-    {
-      "id": "components_spatial_xray_bolster_tsx_docref_adr_0009",
-      "label": "ADR-0009",
-      "_origin": "ast",
-      "community": 90,
-      "community_name": "xray-assets.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0009",
-      "source_file": "components/spatial/xray-bolster.tsx",
-      "source_location": "L5"
     },
     {
       "id": "components_spatial_xray_pillow_check_ts_docref_adr_0009",
@@ -131603,40 +131617,37 @@
       "source_location": "L1"
     },
     {
-      "id": "info_mpillow_final_report_article_what_is_the_best_pillow_for_neck_pain_in_singapore",
-      "label": "Article: What Is The Best Pillow For Neck Pain In Singapore",
+      "id": "supabase_migrations_20260719210000_filling_color_overrides",
+      "label": "20260719210000_filling_color_overrides.sql",
       "_origin": "ast",
       "community": 911,
-      "community_name": "Article: What Is The Best Pillow For Neck Pain In Singapore",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "article: what is the best pillow for neck pain in singapore",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1057"
+      "community_name": "20260719210000_filling_color_overrides.sql",
+      "file_type": "code",
+      "norm_label": "20260719210000_filling_color_overrides.sql",
+      "source_file": "supabase/migrations/20260719210000_filling_color_overrides.sql",
+      "source_location": null
     },
     {
-      "id": "info_mpillow_final_report_extracted_text_content_1066",
-      "label": "Extracted Text Content",
+      "id": "supabase_migrations_20260719210000_filling_color_overrides_filling_color_overrides",
+      "label": "filling_color_overrides",
       "_origin": "ast",
       "community": 911,
-      "community_name": "Article: What Is The Best Pillow For Neck Pain In Singapore",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "extracted text content",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1066"
+      "community_name": "20260719210000_filling_color_overrides.sql",
+      "file_type": "code",
+      "norm_label": "filling_color_overrides",
+      "source_file": "supabase/migrations/20260719210000_filling_color_overrides.sql",
+      "source_location": "L5"
     },
     {
-      "id": "info_mpillow_final_report_key_images_and_descriptions_1060",
-      "label": "Key Images and Descriptions",
+      "id": "supabase_migrations_20260719210000_filling_color_overrides_trg_filling_color_overrides_updated_at",
+      "label": "trg_filling_color_overrides_updated_at",
       "_origin": "ast",
       "community": 911,
-      "community_name": "Article: What Is The Best Pillow For Neck Pain In Singapore",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "key images and descriptions",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1060"
+      "community_name": "20260719210000_filling_color_overrides.sql",
+      "file_type": "code",
+      "norm_label": "trg_filling_color_overrides_updated_at",
+      "source_file": "supabase/migrations/20260719210000_filling_color_overrides.sql",
+      "source_location": "L13"
     },
     {
       "id": "components_effects_spotlightcard",
@@ -134269,37 +134280,26 @@
       "source_location": "L102"
     },
     {
-      "id": "supabase_migrations_0036_tax_rates",
-      "label": "0036_tax_rates.sql",
+      "id": "package_dependencies_ogl",
+      "label": "ogl",
       "_origin": "ast",
       "community": 941,
-      "community_name": "0036_tax_rates.sql",
+      "community_name": "ogl",
       "file_type": "code",
-      "norm_label": "0036_tax_rates.sql",
-      "source_file": "supabase/migrations/0036_tax_rates.sql",
-      "source_location": null
+      "norm_label": "ogl",
+      "source_file": "package.json",
+      "source_location": "L87"
     },
     {
-      "id": "supabase_migrations_0036_tax_rates_tax_rates",
-      "label": "tax_rates",
+      "id": "ogl",
+      "label": "ogl",
       "_origin": "ast",
       "community": 941,
-      "community_name": "0036_tax_rates.sql",
-      "file_type": "code",
-      "norm_label": "tax_rates",
-      "source_file": "supabase/migrations/0036_tax_rates.sql",
-      "source_location": "L16"
-    },
-    {
-      "id": "supabase_migrations_0036_tax_rates_trg_tax_rates_updated_at",
-      "label": "trg_tax_rates_updated_at",
-      "_origin": "ast",
-      "community": 941,
-      "community_name": "0036_tax_rates.sql",
-      "file_type": "code",
-      "norm_label": "trg_tax_rates_updated_at",
-      "source_file": "supabase/migrations/0036_tax_rates.sql",
-      "source_location": "L35"
+      "community_name": "ogl",
+      "file_type": "concept",
+      "norm_label": "ogl",
+      "source_file": "package.json",
+      "source_location": "L87"
     },
     {
       "id": "app_lang_settings_results_id_page",
@@ -167332,7 +167332,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L359",
+      "source_location": "L366",
       "weight": 1.0
     },
     {
@@ -167344,7 +167344,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L361",
+      "source_location": "L368",
       "weight": 1.0
     },
     {
@@ -167356,7 +167356,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L399",
+      "source_location": "L422",
       "weight": 1.0
     },
     {
@@ -167368,7 +167368,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L399",
+      "source_location": "L422",
       "weight": 1.0
     },
     {
@@ -167380,7 +167380,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L420",
+      "source_location": "L443",
       "weight": 1.0
     },
     {
@@ -167392,67 +167392,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L421",
-      "weight": 1.0
-    },
-    {
-      "source": "components_spatial_xray_pillow_xraypillow",
-      "target": "lib_configurator_staff_assist_addpiece",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L433",
-      "weight": 1.0
-    },
-    {
-      "source": "components_spatial_xray_pillow_xraypillow",
-      "target": "lib_spatial_fillings_filling_groups_fillinglabel",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L443",
-      "weight": 1.0
-    },
-    {
-      "source": "components_spatial_xray_pillow_xraypillow",
-      "target": "lib_configurator_staff_assist_removepiece",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L461",
-      "weight": 1.0
-    },
-    {
-      "source": "components_spatial_xray_pillow_xraypillow",
-      "target": "lib_configurator_staff_assist_cellpieces",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L472",
-      "weight": 1.0
-    },
-    {
-      "source": "components_spatial_xray_pillow_xraypillow",
-      "target": "lib_configurator_staff_assist_setcellarrangement",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L499",
+      "source_location": "L444",
       "weight": 1.0
     },
     {
@@ -167464,7 +167404,67 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L519",
+      "source_location": "L456",
+      "weight": 1.0
+    },
+    {
+      "source": "components_spatial_xray_pillow_xraypillow",
+      "target": "lib_configurator_staff_assist_addpiece",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L459",
+      "weight": 1.0
+    },
+    {
+      "source": "components_spatial_xray_pillow_xraypillow",
+      "target": "lib_spatial_fillings_filling_groups_fillinglabel",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L469",
+      "weight": 1.0
+    },
+    {
+      "source": "components_spatial_xray_pillow_xraypillow",
+      "target": "lib_configurator_staff_assist_removepiece",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L487",
+      "weight": 1.0
+    },
+    {
+      "source": "components_spatial_xray_pillow_xraypillow",
+      "target": "lib_configurator_staff_assist_cellpieces",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L498",
+      "weight": 1.0
+    },
+    {
+      "source": "components_spatial_xray_pillow_xraypillow",
+      "target": "lib_configurator_staff_assist_setcellarrangement",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "components/spatial/xray-pillow.tsx",
+      "source_location": "L550",
       "weight": 1.0
     },
     {
@@ -167476,7 +167476,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L538",
+      "source_location": "L593",
       "weight": 1.0
     },
     {
@@ -167488,7 +167488,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L577",
+      "source_location": "L645",
       "weight": 1.0
     },
     {
@@ -167500,7 +167500,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L606",
+      "source_location": "L674",
       "weight": 1.0
     },
     {
@@ -167512,7 +167512,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L620",
+      "source_location": "L689",
       "weight": 1.0
     },
     {
@@ -167524,7 +167524,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L623",
+      "source_location": "L692",
       "weight": 1.0
     },
     {
@@ -167536,7 +167536,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L680",
+      "source_location": "L749",
       "weight": 1.0
     },
     {
@@ -167548,7 +167548,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L850",
+      "source_location": "L924",
       "weight": 1.0
     },
     {
@@ -167560,7 +167560,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L857",
+      "source_location": "L931",
       "weight": 1.0
     },
     {
@@ -372512,7 +372512,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L128",
+      "source_location": "L147",
       "weight": 1.0
     },
     {
@@ -372523,7 +372523,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L136",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -372534,7 +372534,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L171",
+      "source_location": "L190",
       "weight": 1.0
     },
     {
@@ -372578,7 +372578,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L65",
+      "source_location": "L69",
       "weight": 1.0
     },
     {
@@ -372589,7 +372589,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/spatial/xray-dive.check.ts",
-      "source_location": "L86",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -372710,7 +372710,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/spatial/xray-pillow.tsx",
-      "source_location": "L323",
+      "source_location": "L326",
       "weight": 1.0
     },
     {
@@ -429555,5 +429555,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "bbff49694459f79e520df45a5a489ced1a214c30"
+  "built_at_commit": "b07994ac77a27a9ead7f7c0457578eb9670416f6"
 }

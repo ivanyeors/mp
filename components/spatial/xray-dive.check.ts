@@ -50,11 +50,15 @@ assert.match(renderer, /removePiece\(placements, cell, lastSlot\)/, "remove uses
 assert.match(renderer, /setCellArrangement\(placements, cell, mode\)/, "arrangement toggle writes through the shared lib");
 assert.match(renderer, /moveLayer\(placements, cell, from, to\)/, "drag reorders layers through the lib");
 assert.match(renderer, /removeLayer\(placements, cell, depth\)/, "layer delete goes through the lib");
-assert.match(
-  renderer,
-  /<DragDropProvider onDragEnd=\{layerDragEnd\(cell, layers\)\}>/,
-  "layer rows are drag-sortable",
-);
+assert.match(renderer, /onDragEnd=\{layerDragEnd\(cell, layers\)\}/, "layer rows are drag-sortable");
+// Escape belongs to an in-flight drag (dnd-kit cancels it); ending the dive
+// under one tears the sortable tree down mid-commit.
+assert.match(renderer, /onDragStart=\{\(\) => \(draggingRef\.current = true\)\}/, "the drag window is tracked");
+assert.match(renderer, /e\.key === "Escape" && !draggingRef\.current/, "Escape cancels the drag, not the dive");
+assert.match(renderer, /window\.addEventListener\("keydown", onKey, true\)/, "the Escape guard runs before dnd-kit clears the drag flag");
+// This editor's own toasts are portalled out of the root, so a click on one
+// (Mirror's Undo) must not read as "outside" and end the dive.
+assert.match(renderer, /closest\("\[data-sonner-toaster\]"\)/, "a click on our own toast does not end the dive");
 // --- Layer drag: the three ways this reorder silently broke the panel --------
 // 1. The destination is the PROJECTED index, not `operation.target`. dnd-kit
 //    calls setDropTarget(source.id) for exactly the drags that moved a row, so a
@@ -91,14 +95,29 @@ assert.ok(
 assert.match(LAYER_ICON_BUTTON, /max-md:size-11/, "phone layer buttons hit the 44px minimum target");
 assert.doesNotMatch(layerRow, /CHIP_ICON_BUTTON_CLASS|CHIP_CLASS/, "layer rows use their own larger scale, not the chip one");
 assert.match(layerRow, /touch-none/, "a drag on the grip must not scroll the page instead");
+// The panel is an abspos box in a fixed aspect-ratio, overflow-hidden frame: a
+// wrapping row grows it vertically until its top controls are clipped off the
+// frame (3 layers x 2 pieces, well under every cap). Desktop truncates instead.
+assert.match(layerRow, /max-md:flex-wrap/, "only the phone dock wraps a layer row");
+assert.doesNotMatch(layerRow, /(?<!max-md:)flex-wrap/, "no unconditional flex-wrap on a layer row");
+assert.match(renderer, /width: divedColumnWidth/, "the panel gets a definite width, not the gap to the frame edge");
+assert.match(renderer, /if \(b === 0\) return \{ style: \{ \.\.\.base, top: "1%" \}/, "the front panel grows down, not off the frame");
+assert.match(renderer, /bottom: "1%"/, "the back panel grows up, not off the frame");
 // --- Mirror: a left ↔ right CTA, never offered on center ---------------------
 // Mirroring is across the sagittal plane and `center` sits ON it, so the CTA is
 // absent there rather than disabled — there is nothing staff could do to it.
 assert.match(renderer, /mirrorSection\(before, section\)/, "mirror writes through the shared lib");
 assert.match(renderer, /const to = mirrorTarget\(section\);\s*\n\s*if \(to === null\) return null;/, "center is offered no Mirror CTA at all");
 assert.match(renderer, /`Mirror to \$\{to\}`/, "the direction is IN the label — it replaces the whole far side");
-assert.match(renderer, /action: \{ label: "Undo", onClick: \(\) => onPlacementsChange\?\.\(before\) \}/, "a bulk overwrite carries an Undo");
-assert.match(renderer, /disabled=\{empty\}/, "an empty source cannot silently clear the far side");
+assert.match(renderer, /label: "Undo"/, "a bulk overwrite carries an Undo");
+assert.match(renderer, /if \(empty\) return;/, "an empty source cannot silently clear the far side");
+// `disabled` drops the button from the tab order, taking the aria-label that
+// explains WHY it does nothing with it.
+assert.match(renderer, /aria-disabled=\{empty\}/, "the disabled reason stays keyboard-reachable");
+// The toast outlives the click, so Undo must be an inverse, not a snapshot.
+assert.match(renderer, /if \(placementsRef\.current !== next\)/, "Undo no-ops once the mix changed after the mirror");
+// Every cell panel is in the DIVED column, so the section bar parks elsewhere.
+assert.match(renderer, /COL_X\[mirrorIdx\]/, "the section bar parks off the dived column, where no panel can reach it");
 // Both surfaces, one builder: desktop (compact, on-canvas) + phone dock header.
 assert.equal(renderer.match(/mirrorButton\(dived, (true|false)\)/g)?.length, 2, "mirror CTA mounted on desktop AND the phone dock");
 assert.match(renderer, /data-xray-dive-section-bar/, "desktop gets section-level chrome for it, inside the framed box");
@@ -141,7 +160,7 @@ assert.doesNotMatch(
   /externalSide|connectors|labelRefs|assignRef/,
   "gutter + leader-line + label-measurement machinery deleted, not just unused",
 );
-assert.match(renderer, /\.\.\.cellCenter\(subSection\)/, "the control panel is anchored to the cell centre");
+assert.match(renderer, /\.\.\.cellAnchor\(subSection\)\.style/, "the control panel is anchored to its own cell");
 // Mounted on piece count, NOT hover/focus: focusin/focusout are discrete in
 // React and flush synchronously, so a focus-gated panel would unmount under the
 // very Tab that reaches it and the toggle would be keyboard-unreachable.
