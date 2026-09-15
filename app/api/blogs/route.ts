@@ -25,6 +25,9 @@ const CreateBlogSchema = z.object({
 });
 
 export async function GET(req: Request) {
+    const denied = await requireAdmin("blogs");
+    if (denied) return denied;
+
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
 

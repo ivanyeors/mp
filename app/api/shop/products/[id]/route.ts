@@ -29,6 +29,9 @@ const UpdateProductSchema = z.object({
 }).partial();
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin("products");
+  if (denied) return denied;
+
   const { id } = await params;
 
   const result = await getAdminProduct(id);

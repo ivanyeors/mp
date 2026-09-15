@@ -27,6 +27,9 @@ const UpdateBlogSchema = z.object({
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, { params }: RouteParams) {
+    const denied = await requireAdmin("blogs");
+    if (denied) return denied;
+
     const { id } = await params;
     const { row, error } = await getAdminBlogPostById(id);
     if (error) return NextResponse.json({ error }, { status: 404 });

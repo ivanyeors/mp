@@ -126,7 +126,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!api|_next|auth|dev/|favicon.ico|manifest.webmanifest|stripe-test).*)",
+    "/((?!api|_next|auth|dev/|favicon.ico|manifest.webmanifest).*)",
   ],
 };
 
