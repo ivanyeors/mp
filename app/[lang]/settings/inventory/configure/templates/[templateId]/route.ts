@@ -117,6 +117,10 @@ const PlacementRowSchema = z.object({
 })
 
 const UpdateSchema = z.object({
+  // Rename: the list is where a template is recognised, so its name is editable
+  // there. Order snapshots keep the name they were built with (ADR 0008), so a
+  // rename never rewrites a Result's history.
+  name: z.string().trim().min(1).max(120).optional(),
   notes: z.string().trim().max(2000).optional(),
   is_active: z.boolean().optional(),
   lines: z.array(z.object({ item_id: z.number().int().positive(), quantity: z.number().int().positive() })).optional(),
@@ -139,7 +143,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
 
   const { data: tpl, error: tErr } = await admin
     .from('bom_templates')
-    .select('id,kind,notes,role,is_active')
+    .select('id,kind,name,notes,role,is_active')
     .eq('id', id)
     .maybeSingle()
   if (tErr) return NextResponse.json({ error: tErr.message }, { status: 500 })
@@ -147,12 +151,22 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ templateId:
 
   const nextNotes = parsed.data.notes !== undefined ? parsed.data.notes : (tpl.notes ?? null)
   const nextActive = parsed.data.is_active !== undefined ? parsed.data.is_active : tpl.is_active
+  const nextName = parsed.data.name !== undefined ? parsed.data.name : tpl.name
 
   const { error: upErr } = await admin
     .from('bom_templates')
-    .update({ notes: nextNotes, is_active: nextActive })
+    .update({ name: nextName, notes: nextNotes, is_active: nextActive })
     .eq('id', id)
-  if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 })
+  if (upErr) {
+    // uq_bom_templates_filling / _warehouse: one name per kind+key scope.
+    if (upErr.code === '23505') {
+      return NextResponse.json(
+        { error: 'Another template in this scope already uses that name' },
+        { status: 409 },
+      )
+    }
+    return NextResponse.json({ error: upErr.message }, { status: 500 })
+  }
 
   if (parsed.data.lines !== undefined) {
     const safeLines = dedupeLines(parsed.data.lines)

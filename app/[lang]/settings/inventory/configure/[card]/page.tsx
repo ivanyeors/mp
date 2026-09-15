@@ -23,7 +23,7 @@ import {
   stickyFirstColumnCellClassName,
   stickyFirstColumnHeadClassName,
 } from "@/components/ui/table-sticky";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Check, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -1337,9 +1337,13 @@ function FillingConfigPanel({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [authoringFilter, setAuthoringFilter] = useState<"all" | "authored" | "unauthored">("all");
+  // Inline rename in the template list: the row being edited, and its in-flight PUT.
+  const [renamingId, setRenamingId] = useState<number | "">("");
+  const [renaming, setRenaming] = useState(false);
 
   const resetEditor = useCallback(() => {
     setSelectedId("");
+    setRenamingId("");
     setName("");
     setNotes("");
     setActive(true);
@@ -1538,6 +1542,51 @@ function FillingConfigPanel({
     }
   };
 
+  /** Rename in place from the list. Names are unique per kind+key scope
+   * (uq_bom_templates_filling), and the editor's name field is the key
+   * saveTemplate matches on, so a rename of the open template moves that field
+   * with it — otherwise the next save would fork a copy under the old name.
+   * Order snapshots keep the name they were built with, so past Results are
+   * untouched. */
+  const renameTemplate = async (id: number, nextName: string) => {
+    const trimmed = nextName.trim();
+    const current = templates.find((t) => t.id === id);
+    if (!current) return;
+    if (!trimmed) {
+      toast.message("Enter a Filling Template name");
+      return;
+    }
+    if (trimmed === current.name) {
+      setRenamingId("");
+      return;
+    }
+    if (templates.some((t) => t.id !== id && t.name === trimmed)) {
+      toast.error("Another Filling Template in this scope already uses that name");
+      return;
+    }
+    setRenaming(true);
+    try {
+      const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error ?? "Failed to rename Filling Template";
+        throw new Error(typeof message === "string" ? message : "Failed to rename Filling Template");
+      }
+      setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, name: trimmed } : t)));
+      if (selectedId === id) setName(trimmed);
+      setRenamingId("");
+      toast.success("Filling Template renamed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to rename Filling Template");
+    } finally {
+      setRenaming(false);
+    }
+  };
+
   const toggleActive = async (id: number, is_active: boolean) => {
     try {
       const res = await fetch(settingsPath(`/settings/inventory/configure/templates/${id}`), {
@@ -1667,6 +1716,17 @@ function FillingConfigPanel({
             selected={selectedId === t.id}
             onSelect={() => void selectTemplate(t.id)}
             title={t.name}
+            onRename={() => setRenamingId(t.id)}
+            editing={
+              renamingId === t.id ? (
+                <TemplateNameEditor
+                  value={t.name}
+                  busy={renaming}
+                  onCancel={() => setRenamingId("")}
+                  onSubmit={(next) => void renameTemplate(t.id, next)}
+                />
+              ) : null
+            }
             meta={
               !t.is_active || isUnauthoredTemplate(t) ? (
                 <>
@@ -1763,14 +1823,35 @@ function FillingConfigPanel({
               {templates.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell>
-                    <button
-                      type="button"
-                      className="text-left font-medium hover:underline"
-                      onClick={() => void selectTemplate(t.id)}
-                    >
-                      {t.name}
-                    </button>
-                    {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} className="ml-2" />}
+                    {renamingId === t.id ? (
+                      <TemplateNameEditor
+                        value={t.name}
+                        busy={renaming}
+                        onCancel={() => setRenamingId("")}
+                        onSubmit={(next) => void renameTemplate(t.id, next)}
+                      />
+                    ) : (
+                      <div className="flex min-w-0 flex-wrap items-center gap-1">
+                        <button
+                          type="button"
+                          className="min-w-0 text-left font-medium hover:underline"
+                          onClick={() => void selectTemplate(t.id)}
+                        >
+                          {t.name}
+                        </button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="shrink-0"
+                          onClick={() => setRenamingId(t.id)}
+                          aria-label={`Rename ${t.name}`}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        {isUnauthoredTemplate(t) && <UnauthoredBadge sections={t.sections ?? []} />}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Switch checked={t.is_active} onCheckedChange={(checked) => void toggleActive(t.id, checked)} />
@@ -2082,6 +2163,69 @@ function UnauthoredBadge({ sections, className }: { sections: string[]; classNam
 }
 
 /**
+ * Inline rename field for one row of a template list. Enter or the tick commits,
+ * Escape or the cross reverts. Remounted per row via the caller's `renamingId`,
+ * so the draft always starts from the row's current name.
+ */
+function TemplateNameEditor({
+  value,
+  busy,
+  onCancel,
+  onSubmit,
+}: {
+  value: string;
+  busy: boolean;
+  onCancel: () => void;
+  onSubmit: (next: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-1">
+      <Input
+        autoFocus
+        value={draft}
+        disabled={busy}
+        maxLength={120}
+        aria-label="Filling Template name"
+        className="h-8 min-w-0 flex-1"
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onSubmit(draft);
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            onCancel();
+          }
+        }}
+      />
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        className="shrink-0"
+        disabled={busy}
+        onClick={() => onSubmit(draft)}
+        aria-label="Save name"
+      >
+        <Check className="size-4" />
+      </Button>
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        className="shrink-0"
+        disabled={busy}
+        onClick={onCancel}
+        aria-label="Cancel rename"
+      >
+        <X className="size-4" />
+      </Button>
+    </div>
+  );
+}
+
+/**
  * Desktop (lg+) template rail: the Products toolbar (search + Select filters)
  * stacked over a scrollable list. Phones keep the inline template Select.
  */
@@ -2145,13 +2289,26 @@ function TemplateRailItem({
   title,
   meta,
   trailing,
+  onRename,
+  editing,
 }: {
   selected: boolean;
   onSelect: () => void;
   title: string;
   meta?: ReactNode;
   trailing?: ReactNode;
+  /** Opens the inline rename field; omit on lists that cannot be renamed. */
+  onRename?: () => void;
+  /** The rename field itself, rendered in place of the row while it is open. */
+  editing?: ReactNode;
 }) {
+  if (editing) {
+    return (
+      <li className={cn("flex items-center gap-2 rounded-lg px-2 py-1", selected ? "bg-muted" : null)}>
+        {editing}
+      </li>
+    );
+  }
   return (
     <li
       className={cn(
@@ -2170,6 +2327,18 @@ function TemplateRailItem({
           <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">{meta}</span>
         ) : null}
       </button>
+      {onRename && (
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="shrink-0"
+          onClick={onRename}
+          aria-label={`Rename ${title}`}
+        >
+          <Pencil className="size-4" />
+        </Button>
+      )}
       {trailing}
     </li>
   );
