@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrSvg } from "@/components/ui/qr-svg";
-import { getClientSiteOrigin } from "@/lib/site-url";
+import { getClientPublicOrigin } from "@/lib/site-url";
 
 /**
  * The Staff member's own Assist link — copy it once, reuse it with every
@@ -22,9 +22,9 @@ export function AssistLinkCard() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // getClientSiteOrigin, never window.location: a link copied from a preview
+  // getClientPublicOrigin, never window.location: a link copied from a preview
   // deployment must not send a customer to a preview deployment.
-  const link = code ? `${getClientSiteOrigin()}/mp-config?assist=${code}` : "";
+  const link = code ? `${getClientPublicOrigin()}/mp-config?assist=${code}` : "";
 
   const reveal = async () => {
     setBusy(true);

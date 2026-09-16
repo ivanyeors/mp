@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QrSvg } from "@/components/ui/qr-svg";
-import { getClientSiteOrigin } from "@/lib/site-url";
+import { getClientPublicOrigin } from "@/lib/site-url";
 
 type Props = {
   /** The approved partner's referral code (e.g. from ensureReferralCode). */
@@ -19,7 +19,7 @@ type Props = {
 };
 
 export function ReferralShareCard({ code, siteOrigin }: Props) {
-  const origin = siteOrigin ?? getClientSiteOrigin();
+  const origin = siteOrigin ?? getClientPublicOrigin();
   const link = `${origin}/?ref=${code}`;
   const [copied, setCopied] = useState(false);
 

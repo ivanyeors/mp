@@ -17,6 +17,7 @@ import { createHeldCommissionsForOrder } from "@/lib/commissions/ledger";
 import { recordLedgerEntry, rollupOrderMoney } from "@/lib/ecommerce/money-ledger";
 import { applyMilestoneProgress } from "@/lib/milestones/ledger";
 import { sendReferralEarnedEmail } from "@/lib/email/partner";
+import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,7 +40,7 @@ export async function POST(
   }
   const { token = null, topupSessionId } = parsed.data;
   const admin = supabaseAdmin();
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
 
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")

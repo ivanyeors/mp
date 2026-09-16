@@ -5,6 +5,7 @@ import { renderResultAssignedEmail, statusUrl } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
+import { getPublicOrigin } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -29,7 +30,7 @@ export async function POST(
 
   const { id } = await params;
   const admin = supabaseAdmin();
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
 
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
