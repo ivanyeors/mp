@@ -1,5 +1,9 @@
 -- Customer payment reminders for an assigned Result.
 --
+-- Applied to the live project on 2026-09-16; the filename carries the version
+-- the remote ledger recorded, so `supabase db push` sees it as already done
+-- rather than re-running it. Every statement is idempotent regardless.
+--
 -- Until now the balance-due nudge borrowed `last_reminder_at` from the operator
 -- SLA, so the two cadences could not be set apart and the first customer chase
 -- could land a whole interval late. Give the customer side its own clock and its
