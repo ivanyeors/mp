@@ -358,6 +358,18 @@ export default function ResultDetailPage({
   const productType = row?.product_type === "bolster" ? "bolster" : "pillow";
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
   const canAssign = row?.status === "held";
+  /**
+   * Re-open this build in the configurator (`lib/results/staff-edit.ts`) rather
+   * than growing a second editor here. Mirrors `staffEditableResult`: the two
+   * open states, no Order yet, and Mpillow only — Mbolster composes through its
+   * own schema and stays with the assignment card above.
+   */
+  const canReconfigure =
+    productType === "pillow" &&
+    !row?.order_id &&
+    (row?.status === "held" || row?.status === "assigned") &&
+    Boolean(row?.assigned_size ?? row?.suggested_size) &&
+    Boolean(row?.assigned_tier ?? row?.suggested_tier);
   // Both open states. Once an Order exists the money moves through the Order, not here.
   const canCancel =
     !row?.order_id && (row?.status === "held" || row?.status === "assigned");
@@ -621,8 +633,10 @@ export default function ResultDetailPage({
     load,
   ]);
 
-  // Re-send the priced email and fetch the customer's link. The route writes
-  // nothing, so this is safe to press twice — hence no reload afterwards.
+  // Re-send the priced email and fetch the customer's link. The route reprices
+  // the Result from its current configuration, so the stored final amount can
+  // change here — reload afterwards rather than leave a stale number on screen.
+  // Still safe to press twice: the same build reprices to the same total.
   const requestPayment = useCallback(async () => {
     if (!id) return;
     setRequestingPayment(true);
@@ -636,15 +650,18 @@ export default function ResultDetailPage({
       setPaymentLink((payload?.statusUrl as string | undefined) ?? null);
       toast.success(
         payload?.emailStatus === "sent"
-          ? "Payment email sent"
+          ? payload?.repriced === "updated"
+            ? "Repriced and payment email sent"
+            : "Payment email sent"
           : "Link ready — no customer email on file",
       );
+      if (payload?.repriced === "updated") await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to request payment");
     } finally {
       setRequestingPayment(false);
     }
-  }, [id]);
+  }, [id, load]);
 
   const copyPaymentLink = async () => {
     if (!paymentLink) return;
@@ -825,6 +842,18 @@ export default function ResultDetailPage({
           >
             Refresh
           </Button>
+          {canReconfigure && (
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() =>
+                router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`))
+              }
+              disabled={saving || deleting}
+            >
+              Edit configuration
+            </Button>
+          )}
           {canCancel && (
             <Button
               variant="outline"
@@ -961,9 +990,11 @@ export default function ResultDetailPage({
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Re-sends the priced email and gives you the customer&apos;s link to
-                  paste into WhatsApp. Safe to press twice — it changes nothing on
-                  the Result.
+                  Reprices this Result from its current configuration, re-sends the
+                  priced email, and gives you the customer&apos;s link to paste into
+                  WhatsApp. Safe to press twice — the same build reprices to the
+                  same total. Use it after <span className="font-medium">Edit
+                  configuration</span> so the customer is quoted the new build.
                 </p>
               </div>
             </>

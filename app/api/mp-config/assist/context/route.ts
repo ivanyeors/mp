@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getAvailableComponents } from "@/lib/shop/customization-inventory";
 import { PILLOW_SIZES, PILLOW_TIERS } from "@/lib/configurator/staff-assist";
 import { loadTemplateKeys } from "@/lib/filling-templates/membership";
+import { loadComposedSellable } from "@/lib/results/composed-sellable";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const [{ data: variant }, components, { data: buildableRows }] = await Promise.all([
+  const [{ data: variant }, components, { data: buildableRows }, composed] = await Promise.all([
     admin
       .from("product_variants")
       .select("id, product_id, price, currency")
@@ -53,6 +54,14 @@ export async function GET(req: NextRequest) {
       .maybeSingle(),
     getAvailableComponents(product.id),
     admin.from("product_buildable").select("product_id, size, buildable"),
+    // The preview's ballpark is computed client-side from these Costings inputs.
+    // Without them a size×tier switch left the quote priced for the SIZE BEFORE
+    // it — the shelf price of one pillow against the cover and case of another.
+    loadComposedSellable(admin, {
+      productType: "pillow",
+      size,
+      tier: tier as "basic" | "premium",
+    }),
   ]);
   const composed_buildable = Number(
     buildableRows?.find((r) => r.product_id === product.id)?.buildable ??
@@ -91,6 +100,18 @@ export async function GET(req: NextRequest) {
           product_id: variant.product_id,
           price: variant.price,
           currency: variant.currency,
+        }
+      : null,
+    // Same shape as /api/shop/customize, so the preview's quote reads one
+    // structure whichever route filled it in.
+    pricing: composed.ok
+      ? {
+          msrp_by_family: composed.sellable.msrpByFamily,
+          default_cover: composed.sellable.defaultCover,
+          default_case: composed.sellable.defaultCase,
+          case_options: composed.sellable.caseOptions,
+          cover_options: composed.sellable.coverOptions,
+          shelf_price: composed.sellable.msrp,
         }
       : null,
     components,

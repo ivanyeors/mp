@@ -9,6 +9,7 @@ import { roleHasPermission } from "@/lib/auth/permissions";
 import { getPartnerByCode } from "@/lib/referrals";
 import { getStaffByAssistCode } from "@/lib/assist-link";
 import { loadResumeFinish } from "@/lib/results/resume-finish";
+import { loadStaffEditResult } from "@/lib/results/staff-edit";
 import { DEFAULT_LOCALE, isSupportedLocale, type Locale } from "@/lib/i18n/locales";
 import { MpConfigClient } from "./mp-config-client";
 
@@ -27,7 +28,14 @@ const INTRO: Record<Locale, { h1: string; lede: string }> = {
 
 type Props = {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ partner?: string; assist?: string; result?: string; token?: string }>;
+  searchParams: Promise<{
+    partner?: string;
+    assist?: string;
+    result?: string;
+    token?: string;
+    /** `1` → Staff re-configuration of an existing Result (lib/results/staff-edit). */
+    edit?: string;
+  }>;
 };
 
 export default async function MpConfigPage({ params, searchParams }: Props) {
@@ -37,23 +45,32 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
     assist: assistCode,
     result: resultId,
     token: resultToken,
+    edit: editFlag,
   } = await searchParams;
+  const staffEditRequested = editFlag === "1";
   const locale: Locale = isSupportedLocale(lang) ? lang : DEFAULT_LOCALE;
   const intro = INTRO[locale];
   // Staff assist gate: existing Staff check (admin_users / bootstrap). Guests get null.
   // Partner-assist (#78) is INDEPENDENT of staff auth — it comes from the ?partner
   // URL code, re-resolved server-side (never a client-supplied id).
   // The Assist link (?assist=) is a THIRD, independent axis — see the prop below.
-  const [offer, faq, staffCtx, partner, assistStaff, resumeFinish] = await Promise.all([
-    getConfiguratorOfferRange("pillow"),
-    getPageFaq("mp-config", locale),
-    getAdminContext(),
-    partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
-    assistCode ? getStaffByAssistCode(assistCode) : Promise.resolve(null),
-    // Finish link from the "choose your finish" email (ADR 0017). Null for
-    // anything not openable, which falls through to the ordinary configurator.
-    resultId ? loadResumeFinish(resultId, resultToken) : Promise.resolve(null),
-  ]);
+  const [offer, faq, staffCtx, partner, assistStaff, resumeFinish, staffEdit] =
+    await Promise.all([
+      getConfiguratorOfferRange("pillow"),
+      getPageFaq("mp-config", locale),
+      getAdminContext(),
+      partnerCode ? getPartnerByCode(partnerCode) : Promise.resolve(null),
+      assistCode ? getStaffByAssistCode(assistCode) : Promise.resolve(null),
+      // Finish link from the "choose your finish" email (ADR 0017). Null for
+      // anything not openable, which falls through to the ordinary configurator.
+      resultId && !staffEditRequested
+        ? loadResumeFinish(resultId, resultToken)
+        : Promise.resolve(null),
+      // Staff re-configuration of a live Result. Staff-gated inside the loader,
+      // and null for anything not editable — a guest following this link lands
+      // on the ordinary configurator and learns nothing about the Result.
+      staffEditRequested ? loadStaffEditResult(resultId) : Promise.resolve(null),
+    ]);
   const info = {
     h1: intro.h1,
     lede: intro.lede,
@@ -77,7 +94,12 @@ export default async function MpConfigPage({ params, searchParams }: Props) {
         <ConfiguratorSeoIntro h1={intro.h1} answerLede={intro.lede} jsonLd={jsonLd} />
         <PageFaqSection surfaceKey="mp-config" locale={locale} />
       </div>
-      {resumeFinish ? (
+      {staffEdit ? (
+        // Staff editing a live Result: the full assist editor (x-ray, size×tier,
+        // Filling Template) over a build that already exists, saving back to the
+        // Result instead of submitting a new hold.
+        <MpConfigClient info={info} staffEdit={staffEdit} staffAssist canViewResults />
+      ) : resumeFinish ? (
         // The customer's finish, not a new session: no assist chrome, no Assist
         // link, no partner. Even on a Staff device the fillings stay read-only —
         // Staff change them on the Result, not here.

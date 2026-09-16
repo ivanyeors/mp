@@ -59,6 +59,14 @@ function itemLabel(name: string, subtype: string | null | undefined): string {
 export async function loadAssignedBuild(
   admin: SupabaseClient,
   row: AssignedBuildRow,
+  opts?: {
+    /**
+     * Price a mix that is not (yet) the stored snapshot. Staff re-configuration
+     * quotes the build it is about to write, so a price Costings refuses leaves
+     * the Result untouched instead of half-saved.
+     */
+    fillingPlacements?: Array<PillowPlacementRow | BolsterPlacementRow>;
+  },
 ): Promise<AssignedBuildOk | AssignedBuildErr> {
   const productType = (row.product_type as "pillow" | "bolster" | null) ?? "pillow";
 
@@ -66,15 +74,20 @@ export async function loadAssignedBuild(
   // the assigned template's flat lines are the legacy fallback. Bolster snapshots
   // live in their own table (own schema — slot rows only).
   const isBolster = productType === "bolster";
-  const { data: snapRows, error: snapErr } = await admin
-    .from(isBolster ? "result_bolster_filling_placements" : "result_filling_placements")
-    .select(isBolster ? "slot, item_id" : "section, sub_section, slot, item_id, row_index")
-    .eq("result_id", row.id)
-    .order("slot");
-  if (snapErr) return { ok: false, error: snapErr.message };
-  const fillingPlacements = (snapRows ?? []) as unknown as Array<
-    PillowPlacementRow | BolsterPlacementRow
-  >;
+  let fillingPlacements: Array<PillowPlacementRow | BolsterPlacementRow>;
+  if (opts?.fillingPlacements) {
+    fillingPlacements = opts.fillingPlacements;
+  } else {
+    const { data: snapRows, error: snapErr } = await admin
+      .from(isBolster ? "result_bolster_filling_placements" : "result_filling_placements")
+      .select(isBolster ? "slot, item_id" : "section, sub_section, slot, item_id, row_index")
+      .eq("result_id", row.id)
+      .order("slot");
+    if (snapErr) return { ok: false, error: snapErr.message };
+    fillingPlacements = (snapRows ?? []) as unknown as Array<
+      PillowPlacementRow | BolsterPlacementRow
+    >;
+  }
 
   if (!row.filling_template_id && fillingPlacements.length === 0) {
     return { ok: false, error: "Result has no Filling Template" };
