@@ -20,6 +20,7 @@ import {
 import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
 import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
+import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -87,7 +88,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
   const admin = supabaseAdmin();
   const stored = await getSiteSettings([...SLA_SETTING_KEYS]);
   const settings = parseSlaSettings(stored);

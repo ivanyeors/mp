@@ -49,6 +49,7 @@ import {
   preOrderFlagForResult,
 } from "@/lib/configurator/pre-order-persist";
 import { getAdminContext } from "@/lib/auth/admin";
+import { getPublicOrigin } from "@/lib/site-url";
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
@@ -252,7 +253,7 @@ export async function POST(req: Request) {
   }
   const input = parsed.data;
   const admin = supabaseAdmin();
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
   const productType = input.productType;
 
   // Deferred (no-card) submit — the trust boundary of the assisted flow.

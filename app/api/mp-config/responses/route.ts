@@ -17,6 +17,7 @@ import { requireResultAccess } from "@/lib/results/access";
 import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
+import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -419,7 +420,7 @@ export async function POST(req: Request) {
   if (isFinal && !wasFinal) {
     const chatId = parseTelegramChatId();
     if (chatId) {
-      const origin = new URL(req.url).origin;
+      const origin = getPublicOrigin(req);
       const d = parsed.data.data;
       const ts = formatTelegramTimestamp(new Date());
 

@@ -26,6 +26,7 @@ import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
 import { getDefaultFromAddress } from "@/lib/email/transport";
+import { getPublicOrigin } from "@/lib/site-url";
 import {
   renderResultAssignedEmail,
   type ResultPricing,
@@ -119,7 +120,7 @@ export async function POST(
   }
   const input = parsed.data;
   const admin = supabaseAdmin();
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
 
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")

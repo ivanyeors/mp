@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { secretMatches } from "@/lib/auth/secret";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
+import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const origin = new URL(req.url).origin;
+  const origin = getPublicOrigin(req);
   try {
     const restock = await runPreOrderRestockNotices(supabaseAdmin(), { origin });
     return NextResponse.json({ ok: true, restock });
