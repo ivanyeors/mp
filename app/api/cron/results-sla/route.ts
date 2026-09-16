@@ -80,6 +80,7 @@ async function sendCustomerExpiredEmail(opts: {
   accessToken: string | null;
   origin: string;
   productType: string | null;
+  reason?: "unreviewed" | "unpaid";
 }) {
   await getEmailTransport().send({
     to: opts.to,
@@ -88,7 +89,12 @@ async function sendCustomerExpiredEmail(opts: {
   });
 }
 
-/** Daily cron tick (Hobby-safe): remind operators and expire held Results past SLA / before auth dies. */
+/**
+ * Daily cron tick (Hobby-safe). Three jobs: remind operators about held Results,
+ * expire them past SLA / before the authorization dies, and chase customers who
+ * have an assigned build they have not paid for — expiring that too once its
+ * hold lapses.
+ */
 export async function GET(req: Request) {
   if (!authorizeCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -107,7 +113,7 @@ export async function GET(req: Request) {
   const { data: rows, error } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count",
+      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count, topup_paid_at",
     )
     // `assigned` joins the scan because a Result sitting there owes a Balance
     // payment and nothing else in the system would ever chase it (ADR 0016).
@@ -142,6 +148,97 @@ export async function GET(req: Request) {
     // made the first customer chase up to one operator-interval late and welded
     // the two schedules together.
     if (row.status === "assigned") {
+      // The hold is dead: end it rather than leaving the row in `assigned`
+      // forever, still offering the customer a Pay button whose capture can no
+      // longer succeed. Nothing else closes this — the SLA force-expire below
+      // only ever covered `held`, so an assigned Result whose customer went
+      // quiet had no ending at all. result-stage badges these hold_rotting from
+      // day 6, which is the day of warning staff get before this fires.
+      //
+      // Money already moved is never expired here. A customer who paid a top-up
+      // and never got back to finish accepting sits `assigned` with
+      // `topup_paid_at` stamped by the webhook, and result-stage flags that
+      // `topup_unsettled` — paid, no Order — for a human to settle. Expiring it
+      // would close the row, take that alarm off the queue, and email someone
+      // who has paid us that nothing was charged. Accept still knows how to
+      // settle from the stored intent; leave it for that.
+      if (hasHold && row.topup_paid_at) {
+        continue;
+      }
+      if (hasHold && now.getTime() >= authExpiresAt(heldAt).getTime()) {
+        const life = transitionResult(
+          {
+            status: "assigned",
+            filling_template_id: row.filling_template_id,
+            payment_intent_id: row.payment_intent_id,
+          },
+          { action: "expire" },
+        );
+        if (!life.ok) {
+          summary.errors.push(`${row.id}: ${life.error}`);
+          continue;
+        }
+
+        // Claim the row FIRST, and only then touch Stripe or the customer.
+        //
+        // CAS on `assigned` so an Accept in flight wins. Ordering is the whole
+        // point: cancelling the PaymentIntent before this would let a tick land
+        // between accept's status claim and its capture, killing a hold for an
+        // order that is going ahead. `.select()` because a zero-row match is not
+        // an error — it means someone else moved the row, and everything below
+        // would then be acting on a sale that is no longer ours to end.
+        const { data: expired, error: expireErr } = await admin
+          .from("mp_config_responses")
+          .update({ status: life.status })
+          .eq("id", row.id)
+          .eq("status", "assigned")
+          .select("id");
+        if (expireErr) {
+          summary.errors.push(`${row.id}: ${expireErr.message}`);
+          continue;
+        }
+        if (!expired?.length) {
+          // Accept got there first. Nothing to report: this is the race
+          // resolving correctly.
+          continue;
+        }
+
+        // Best-effort, and expected to fail: Stripe rejects cancelling a
+        // PaymentIntent that is no longer cancellable, and we are here precisely
+        // because the authorization has lapsed. Harmless either way — Stripe
+        // releases an uncaptured hold by itself at seven days, so a cancel that
+        // does not land costs the customer nothing.
+        if (life.releaseHold && row.payment_intent_id) {
+          try {
+            await releaseHold(row.payment_intent_id);
+          } catch {
+            /* already released at Stripe — that is why we are expiring it */
+          }
+        }
+
+        if (row.customer_email) {
+          try {
+            await sendCustomerExpiredEmail({
+              to: row.customer_email,
+              resultId: row.id,
+              accessToken: row.access_token,
+              origin,
+              productType: row.product_type,
+              // Not "we never reviewed it" — it was built and priced. The
+              // customer simply never paid.
+              reason: "unpaid",
+            });
+          } catch (e) {
+            summary.errors.push(
+              `${row.id}: unpaid-expiry email ${e instanceof Error ? e.message : "failed"}`,
+            );
+          }
+        }
+
+        summary.expired += 1;
+        continue;
+      }
+
       if (!row.customer_email) continue;
       // A hold no longer skips the chase. Both kinds of assigned Result are
       // waiting on the same customer action — Accept — and the held one is the

@@ -77,7 +77,14 @@ export function transitionResult(
       };
     }
     case "expire": {
-      if (state.status !== "held") {
+      // `assigned` as well as `held`. A held Result expires because WE did not
+      // finish reviewing it in time; an assigned one expires because its
+      // Authorization hold died before the customer accepted. Both end the same
+      // way — hold released, nothing charged — and until this allowed
+      // `assigned`, that second case had no ending at all: the row sat in
+      // `assigned` forever, still showing the customer a Pay button whose
+      // capture could no longer succeed.
+      if (state.status !== "held" && state.status !== "assigned") {
         return { ok: false, error: `Cannot expire from status ${state.status}` };
       }
       return {

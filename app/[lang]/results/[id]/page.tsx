@@ -264,6 +264,36 @@ function ResultStatusPage() {
     }
   };
 
+  /**
+   * Rebuild this build as a fresh, payable Result.
+   *
+   * Priced at today's Costings, so the total can differ from the one they were
+   * originally quoted. `repriced=1` on the destination makes that change visible
+   * on arrival instead of letting them discover it at the payment step.
+   */
+  const reorder = async () => {
+    setActing(true);
+    setActionMessage(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/results/${id}/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(token ? { token } : {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not rebuild this order");
+      const qs = new URLSearchParams({ token: data.accessToken as string });
+      if (data.priceChanged) qs.set("repriced", "1");
+      router.push(
+        withLocale(`/results/${encodeURIComponent(data.resultId as string)}?${qs}`, locale),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not rebuild this order");
+      setActing(false);
+    }
+  };
+
   const topupStarted = useRef(false);
   // Resume accept after top-up Checkout returns.
   useEffect(() => {
@@ -326,6 +356,8 @@ function ResultStatusPage() {
   // for the whole total instead of capturing a hold (ADR 0016). Gating this on a
   // hold is what used to strand an assigned build with no way to pay for it.
   const canDecide = status === "assigned";
+  /** Arrived here from a reorder whose total differs from the original quote. */
+  const repriced = searchParams.get("repriced") === "1";
   const activeStep = journeyIndex(status);
   const progressValue = ((activeStep + 1) / JOURNEY_STEPS.length) * 100;
   const isTerminalFail = status === "declined" || status === "expired";
@@ -491,6 +523,12 @@ function ResultStatusPage() {
         </div>
       )}
 
+      {repriced && canDecide && (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-800 dark:text-amber-300">
+          Our prices have changed since your original quote, so this total is
+          today&rsquo;s price for the same build.
+        </p>
+      )}
       {canDecide && !needsFinish && (
         <div className="flex flex-wrap gap-2 border-t pt-3" id="decide" data-section="decide">
           <Button
@@ -527,15 +565,27 @@ function ResultStatusPage() {
       )}
 
       {(status === "declined" || status === "expired") && (
-        <div className="border-t pt-3">
-          <Button asChild size="sm">
-            <a href={withLocale(
-              result.product_type === "bolster" ? "/mbolster-config" : "/mp-config",
-              locale,
-            )}>
-              Start customisation again
-            </a>
-          </Button>
+        <div className="space-y-2 border-t pt-3" id="reorder" data-section="reorder">
+          <div className="flex flex-wrap gap-2">
+            {/* The build is still on the row — offer it back before offering the
+                questionnaire again. Until this existed, the only way back was to
+                answer every question a second time. */}
+            <Button size="sm" onClick={reorder} disabled={acting}>
+              {acting ? "Rebuilding…" : "Reorder this build"}
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <a href={withLocale(
+                result.product_type === "bolster" ? "/mbolster-config" : "/mp-config",
+                locale,
+              )}>
+                Start from scratch
+              </a>
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Reordering makes a new order with exactly this configuration, priced
+            at today&rsquo;s prices. Nothing is charged until you pay.
+          </p>
         </div>
       )}
 

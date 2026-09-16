@@ -103,9 +103,12 @@ export type PaymentReminderState = {
    *
    * For a Result backed by an Authorization hold this is when that hold dies.
    * Past it, "review and pay — nothing charged yet" is a false promise: Accept
-   * captures the hold, and capturing a dead one 502s. Nothing expires an
-   * ASSIGNED row (the SLA force-expire only covers `held`), so the schedule has
-   * to know to stop on its own.
+   * captures the hold, and capturing a dead one fails.
+   *
+   * The cron now expires such a Result at that same moment, so in practice it
+   * stops chasing before this clamp is reached. Kept regardless: the schedule
+   * should not be correct only by virtue of the order its caller happens to do
+   * things in.
    */
   notAfter?: Date | null;
 };
