@@ -1,5 +1,9 @@
 /**
  * Run: npx tsx lib/site-url.check.ts
+ *
+ * Note: `.check.ts` files are not part of `vitest --include`, so this script is
+ * a developer aid, not a CI gate. The deployment-host rules it exercises are
+ * enforced for real in `lib/__tests__/site-url.test.ts`.
  */
 import assert from "node:assert/strict";
 import {
@@ -26,6 +30,7 @@ assert.equal(getRequestOrigin(localCallback), "http://localhost:3000");
 
 // getPublicOrigin: a customer-facing link must never carry a *.vercel.app
 // deployment host — Deployment Protection turns one into a vercel.com/login wall.
+// Mirrored, with the getSiteOrigin cases, in lib/__tests__/site-url.test.ts.
 const CRON_URL = "https://mp-15j5vdlfc-ivanyeors-projects.vercel.app/api/cron/results-sla";
 // NODE_ENV is typed readonly; the check needs the production branch.
 const env = process.env as Record<string, string | undefined>;

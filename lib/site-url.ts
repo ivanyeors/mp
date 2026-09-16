@@ -20,10 +20,17 @@ export function getSiteOrigin(): string {
   const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
   if (configured) return configured;
 
-  const vercel = normalizeOrigin(
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-  );
-  if (vercel) return vercel;
+  // VERCEL_URL is always the per-deployment host and never the custom domain,
+  // and Deployment Protection gates it. That is the right self-reference for a
+  // preview, and exactly wrong for production, where it would put a
+  // vercel.com/login wall behind every email logo, order link and canonical URL
+  // the moment NEXT_PUBLIC_SITE_URL went missing.
+  if (process.env.VERCEL_ENV !== "production") {
+    const vercel = normalizeOrigin(
+      process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    );
+    if (vercel) return vercel;
+  }
 
   if (process.env.NODE_ENV === "production") return PROD_FALLBACK_ORIGIN;
   return LOCAL_DEV_ORIGIN;
@@ -40,7 +47,14 @@ export function getClientSiteOrigin(): string {
   }
   const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
   if (configured) return configured;
-  if (typeof window !== "undefined") return window.location.origin;
+  // A partner reading the hub on a deployment URL would otherwise copy a
+  // referral link nobody outside the Vercel team can open.
+  if (
+    typeof window !== "undefined" &&
+    !isVercelDeploymentHost(window.location.hostname)
+  ) {
+    return window.location.origin;
+  }
   return getSiteOrigin();
 }
 
