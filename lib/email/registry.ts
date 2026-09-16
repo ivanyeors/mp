@@ -26,6 +26,7 @@ import {
   renderResultAssignedEmail,
   renderResultDeclinedEmail,
   renderResultHeldEmail,
+  renderResultUpdatedEmail,
 } from "./results";
 import { money } from "./format";
 import { RMA_EMAIL_TEMPLATES } from "./rma";
@@ -49,6 +50,9 @@ import {
   sampleResultDeclinedNoHold,
   sampleResultHeld,
   sampleResultHeldNoHold,
+  sampleResultUpdated,
+  sampleResultUpdatedBalance,
+  sampleResultUpdatedWithinHold,
   sampleRma,
   type EmailFixture,
 } from "./__fixtures__/samples";
@@ -190,6 +194,33 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderResultAssignedEmail(sampleResultAssignedFinish(f)),
+  },
+  {
+    // Staff re-configured a build the customer already has, and the total grew
+    // past their Authorization hold: the balance is paid at checkout.
+    id: "results.updated",
+    label: "Build updated — balance due",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultUpdatedEmail(sampleResultUpdated(f)),
+  },
+  {
+    // Same renderer, hold still covers the new total — nothing extra to pay.
+    // Registered for the preview and contract.test.ts: registry-coverage only
+    // enumerates render*Email FUNCTIONS, so a parameter variant is invisible to it.
+    id: "results.updated_within_hold",
+    label: "Build updated — hold covers it",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultUpdatedEmail(sampleResultUpdatedWithinHold(f)),
+  },
+  {
+    // Same renderer, no Authorization hold (Assisted customisation).
+    id: "results.updated_balance",
+    label: "Build updated — payment due",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultUpdatedEmail(sampleResultUpdatedBalance(f)),
   },
   {
     id: "results.balance_due",

@@ -358,6 +358,18 @@ export default function ResultDetailPage({
   const productType = row?.product_type === "bolster" ? "bolster" : "pillow";
   const sizeKey = productType === "bolster" ? assignLength : assignSize;
   const canAssign = row?.status === "held";
+  /**
+   * Re-open this build in the configurator (`lib/results/staff-edit.ts`) rather
+   * than growing a second editor here. Mirrors `staffEditableResult`: the two
+   * open states, no Order yet, and Mpillow only — Mbolster composes through its
+   * own schema and stays with the assignment card above.
+   */
+  const canReconfigure =
+    productType === "pillow" &&
+    !row?.order_id &&
+    (row?.status === "held" || row?.status === "assigned") &&
+    Boolean(row?.assigned_size ?? row?.suggested_size) &&
+    Boolean(row?.assigned_tier ?? row?.suggested_tier);
   // Both open states. Once an Order exists the money moves through the Order, not here.
   const canCancel =
     !row?.order_id && (row?.status === "held" || row?.status === "assigned");
@@ -621,8 +633,10 @@ export default function ResultDetailPage({
     load,
   ]);
 
-  // Re-send the priced email and fetch the customer's link. The route writes
-  // nothing, so this is safe to press twice — hence no reload afterwards.
+  // Re-send the priced email and fetch the customer's link. The route reprices
+  // the Result from its current configuration, so the stored final amount can
+  // change here — reload afterwards rather than leave a stale number on screen.
+  // Still safe to press twice: the same build reprices to the same total.
   const requestPayment = useCallback(async () => {
     if (!id) return;
     setRequestingPayment(true);
@@ -641,18 +655,26 @@ export default function ResultDetailPage({
         | "skipped"
         | undefined;
       if (emailStatus === "sent") {
-        toast.success("Payment email sent");
+        // Which template went out is the operator's confirmation that the
+        // customer was told the price moved — not just that mail was sent.
+        toast.success(
+          payload?.emailTemplate === "updated"
+            ? "Repriced — sent the customer the updated build and new total"
+            : "Payment email sent",
+        );
       } else if (emailStatus === "failed") {
         toast.error("Could not send the payment email — the link below still works");
       } else {
         toast.success("Link ready — no customer email on file");
       }
+      // The route stores the recomputed total, so the amount on screen is stale.
+      if (payload?.repriced === "updated") await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to request payment");
     } finally {
       setRequestingPayment(false);
     }
-  }, [id]);
+  }, [id, load]);
 
   const copyPaymentLink = async () => {
     if (!paymentLink) return;
@@ -833,6 +855,18 @@ export default function ResultDetailPage({
           >
             Refresh
           </Button>
+          {canReconfigure && (
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() =>
+                router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`))
+              }
+              disabled={saving || deleting}
+            >
+              Edit configuration
+            </Button>
+          )}
           {canCancel && (
             <Button
               variant="outline"
@@ -969,9 +1003,16 @@ export default function ResultDetailPage({
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Re-sends the priced email and gives you the customer&apos;s link to
-                  paste into WhatsApp. Safe to press twice — it changes nothing on
-                  the Result.
+                  Reprices this Result from its current configuration, emails the
+                  customer, and gives you their link to paste into WhatsApp. Safe to
+                  press twice — the same build reprices to the same total.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  If the price moved since they were last told — after{" "}
+                  <span className="font-medium">Edit configuration</span> — they get
+                  &ldquo;your build has been updated&rdquo;, showing the old total
+                  beside the new one and what their card covers. Otherwise it is a
+                  plain re-send of the build-ready email.
                 </p>
               </div>
             </>
