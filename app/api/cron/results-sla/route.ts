@@ -113,7 +113,7 @@ export async function GET(req: Request) {
   const { data: rows, error } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count",
+      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count, topup_paid_at",
     )
     // `assigned` joins the scan because a Result sitting there owes a Balance
     // payment and nothing else in the system would ever chase it (ADR 0016).
@@ -154,6 +154,17 @@ export async function GET(req: Request) {
       // only ever covered `held`, so an assigned Result whose customer went
       // quiet had no ending at all. result-stage badges these hold_rotting from
       // day 6, which is the day of warning staff get before this fires.
+      //
+      // Money already moved is never expired here. A customer who paid a top-up
+      // and never got back to finish accepting sits `assigned` with
+      // `topup_paid_at` stamped by the webhook, and result-stage flags that
+      // `topup_unsettled` — paid, no Order — for a human to settle. Expiring it
+      // would close the row, take that alarm off the queue, and email someone
+      // who has paid us that nothing was charged. Accept still knows how to
+      // settle from the stored intent; leave it for that.
+      if (hasHold && row.topup_paid_at) {
+        continue;
+      }
       if (hasHold && now.getTime() >= authExpiresAt(heldAt).getTime()) {
         const life = transitionResult(
           {
@@ -168,29 +179,41 @@ export async function GET(req: Request) {
           continue;
         }
 
-        // Best-effort, and expected to fail. We are here precisely because the
-        // authorization has already lapsed, and Stripe rejects cancelling a
-        // PaymentIntent that is no longer cancellable. Releasing is how a LIVE
-        // hold is let go; for a dead one the attempt is belt-and-braces and its
-        // failure must not block the status flip.
+        // Claim the row FIRST, and only then touch Stripe or the customer.
+        //
+        // CAS on `assigned` so an Accept in flight wins. Ordering is the whole
+        // point: cancelling the PaymentIntent before this would let a tick land
+        // between accept's status claim and its capture, killing a hold for an
+        // order that is going ahead. `.select()` because a zero-row match is not
+        // an error — it means someone else moved the row, and everything below
+        // would then be acting on a sale that is no longer ours to end.
+        const { data: expired, error: expireErr } = await admin
+          .from("mp_config_responses")
+          .update({ status: life.status })
+          .eq("id", row.id)
+          .eq("status", "assigned")
+          .select("id");
+        if (expireErr) {
+          summary.errors.push(`${row.id}: ${expireErr.message}`);
+          continue;
+        }
+        if (!expired?.length) {
+          // Accept got there first. Nothing to report: this is the race
+          // resolving correctly.
+          continue;
+        }
+
+        // Best-effort, and expected to fail: Stripe rejects cancelling a
+        // PaymentIntent that is no longer cancellable, and we are here precisely
+        // because the authorization has lapsed. Harmless either way — Stripe
+        // releases an uncaptured hold by itself at seven days, so a cancel that
+        // does not land costs the customer nothing.
         if (life.releaseHold && row.payment_intent_id) {
           try {
             await releaseHold(row.payment_intent_id);
           } catch {
-            /* already dead at Stripe — that is the reason we are expiring it */
+            /* already released at Stripe — that is why we are expiring it */
           }
-        }
-
-        // CAS on `assigned`: an Accept in flight must win the race, not be
-        // overwritten by a cron tick.
-        const { error: expireErr } = await admin
-          .from("mp_config_responses")
-          .update({ status: life.status })
-          .eq("id", row.id)
-          .eq("status", "assigned");
-        if (expireErr) {
-          summary.errors.push(`${row.id}: ${expireErr.message}`);
-          continue;
         }
 
         if (row.customer_email) {

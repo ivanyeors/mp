@@ -446,6 +446,10 @@ export function renderResultDeclinedEmail(p: {
   const restartPath = p.productType === "bolster" ? "/mbolster-config" : "/mp-config";
   const restartHref = `${p.origin}${restartPath}`;
   const url = statusUrl(p.origin, p.resultId, p.accessToken);
+  // statusUrl without a token still resolves to the Result page, but a customer
+  // arriving there unauthenticated cannot act on it — so the reorder CTA only
+  // leads the email when the token is there to make it work.
+  const canReorder = p.accessToken != null;
   const subject = `Your ${name} order is cancelled`;
   const released = p.releasedAmount == null ? null : money(p.releasedAmount, p.currency);
 
@@ -458,11 +462,15 @@ export function renderResultDeclinedEmail(p: {
     "",
     moneyLine,
     "",
-    "Changed your mind? You can reorder this exact build from its status page:",
-    reorderUrl(url),
-    "",
-    "Or start a new customisation from scratch:",
-    restartHref,
+    ...(canReorder
+      ? [
+          "Changed your mind? You can reorder this exact build from its status page:",
+          reorderUrl(url),
+          "",
+          "Or start a new customisation from scratch:",
+          restartHref,
+        ]
+      : ["Changed your mind? You can start a new customisation anytime:", restartHref]),
   ].join("\n");
 
   const html = renderEmailShell({
@@ -471,12 +479,18 @@ export function renderResultDeclinedEmail(p: {
     bodyHtml: `${statusPill("Cancelled", "neutral")}
 ${paragraph(`Your custom ${name} order has been cancelled, as you asked.`, { top: 16 })}
 ${paragraph(moneyLine, { muted: true })}
-${paragraph("Changed your mind? You do not have to start over — this exact build is still on its status page, and one button rebuilds it at today's prices.", { muted: true })}
+${
+      canReorder
+        ? `${paragraph("Changed your mind? You do not have to start over — this exact build is still on its status page, and one button rebuilds it at today's prices.", { muted: true })}
 ${paragraphHtml(
-      `Or ${link({ href: restartHref, label: "start a new customisation" })} from scratch.`,
-      { muted: true, top: 4 },
-    )}`,
-    cta: { href: reorderUrl(url), label: `Reorder this ${name}` },
+            `Or ${link({ href: restartHref, label: "start a new customisation" })} from scratch.`,
+            { muted: true, top: 4 },
+          )}`
+        : paragraph("Changed your mind? You can start a new customisation whenever you like.", { muted: true })
+    }`,
+    cta: canReorder
+      ? { href: reorderUrl(url), label: `Reorder this ${name}` }
+      : { href: restartHref, label: `Start a new ${name}` },
   });
 
   return { subject, text, html };
@@ -507,6 +521,11 @@ export function renderHoldExpiredEmail(p: {
   const restartPath = p.productType === "bolster" ? "/mbolster-config" : "/mp-config";
   const restartUrl = `${p.origin}${restartPath}`;
   const url = p.accessToken ? statusUrl(p.origin, p.resultId, p.accessToken) : restartUrl;
+  // Reorder needs a status page to land on, and `url` degrades to the
+  // configurator when there is no token — a "Reorder this build" button that
+  // opened a blank questionnaire would promise exactly what the feature exists
+  // to remove. Without a token there is no way back to the build, so say so.
+  const canReorder = p.reason === "unpaid" && p.accessToken != null;
   const unpaid = p.reason === "unpaid";
 
   const subject = unpaid
@@ -515,17 +534,21 @@ export function renderHoldExpiredEmail(p: {
   const lead = unpaid
     ? "Your final build was ready, but it was not paid for in time, so your card authorization hold has been released. Nothing was charged."
     : "Your customisation review window has expired and your card authorization hold has been released.";
-  const closing = unpaid
+  const closing = canReorder
     ? "The build itself is not lost. Reorder it from its status page and we will put the same one back together at today's prices — no need to answer the questions again."
-    : null;
+    : unpaid
+      ? "Nothing was charged, and there is nothing outstanding."
+      : null;
 
   const text = [
     lead,
     ...(closing ? ["", closing] : []),
     "",
-    ...(unpaid
+    ...(canReorder
       ? ["Reorder this build:", reorderUrl(url), "", "Or start from scratch:", restartUrl]
-      : ["To continue, start customisation again:", restartUrl, "", `Status page: ${url}`]),
+      : // The HTML still links the status page here, and the text body has to
+        // carry every link the HTML does.
+        ["To continue, start customisation again:", restartUrl, "", `Status page: ${url}`]),
   ].join("\n");
 
   const html = renderEmailShell({
@@ -541,7 +564,7 @@ ${paragraphHtml(
       `You can still view this customisation on its ${link({ href: url, label: STATUS_PAGE_LABEL })}.`,
       { muted: true },
     )}`,
-    cta: unpaid
+    cta: canReorder
       ? { href: reorderUrl(url), label: "Reorder this build" }
       : { href: restartUrl, label: "Start customisation again" },
   });

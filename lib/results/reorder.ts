@@ -92,6 +92,26 @@ export type ReorderResult =
     }
   | { ok: false; error: string; code?: "not_reorderable" | "out_of_stock" };
 
+/**
+ * Undo a half-made clone.
+ *
+ * The delete's own failure is folded into the message rather than dropped: a
+ * rollback that does not land leaves a live `assigned` Result with a null
+ * price sitting in the staff queue and in the payment-reminder scan, while the
+ * customer is told the reorder failed. That is worth knowing about.
+ */
+async function rollback(
+  admin: SupabaseClient,
+  id: string,
+  reason: string,
+): Promise<string> {
+  const { error } = await admin.from("mp_config_responses").delete().eq("id", id);
+  if (error) {
+    return `${reason} (and the half-made order ${id} could not be cleaned up: ${error.message})`;
+  }
+  return reason;
+}
+
 type SourceRow = Record<string, unknown> & {
   id: string;
   status: string | null;
@@ -117,6 +137,38 @@ export async function reorderResult(
       ok: false,
       code: "not_reorderable",
       error: `Only an expired or declined customisation can be reordered (this one is ${source.status ?? "unknown"})`,
+    };
+  }
+
+  // A live clone already exists — hand that back rather than making another.
+  //
+  // This POST does real work (insert, copy, price), so it is slow enough for a
+  // double tap or an edge retry to arrive twice. Without this each one becomes
+  // its own payable order, chased separately by the reminder cron, and the
+  // customer pays for whichever they happen to open.
+  const { data: existing } = await admin
+    .from("mp_config_responses")
+    .select("id, access_token, final_amount, currency")
+    .eq("reordered_from", source.id)
+    .in("status", ["assigned", "accepted", "captured"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id && existing.access_token) {
+    const total = existing.final_amount == null ? 0 : Number(existing.final_amount);
+    const previousTotal =
+      source.final_amount == null ? null : Number(source.final_amount);
+    return {
+      ok: true,
+      resultId: existing.id as string,
+      accessToken: existing.access_token as string,
+      total,
+      previousTotal,
+      priceChanged:
+        previousTotal != null &&
+        Math.round(previousTotal * 100) !== Math.round(total * 100),
+      currency: (existing.currency as string | null) ?? "SGD",
     };
   }
 
@@ -170,10 +222,7 @@ export async function reorderResult(
     .from(table)
     .select("*")
     .eq("result_id", source.id);
-  if (readErr) {
-    await admin.from("mp_config_responses").delete().eq("id", newId);
-    return { ok: false, error: readErr.message };
-  }
+  if (readErr) return { ok: false, error: await rollback(admin, newId, readErr.message) };
 
   if (placements && placements.length > 0) {
     // Spread then override, so a column added to the snapshot later is carried
@@ -183,12 +232,9 @@ export async function reorderResult(
       result_id: newId,
     }));
     const { error: copyErr } = await admin.from(table).insert(rows);
-    if (copyErr) {
-      // Cascade clears the placements; the parent has to go by hand. A Result
-      // with half its fillings would price wrongly and look legitimate.
-      await admin.from("mp_config_responses").delete().eq("id", newId);
-      return { ok: false, error: copyErr.message };
-    }
+    // Cascade clears the placements; the parent has to go by hand. A Result
+    // with half its fillings would price wrongly and look legitimate.
+    if (copyErr) return { ok: false, error: await rollback(admin, newId, copyErr.message) };
   }
 
   const { data: fresh, error: reloadErr } = await admin
@@ -199,25 +245,26 @@ export async function reorderResult(
     .eq("id", newId)
     .maybeSingle();
   if (reloadErr || !fresh) {
-    await admin.from("mp_config_responses").delete().eq("id", newId);
-    return { ok: false, error: reloadErr?.message ?? "Reorder could not be re-read" };
+    const error = await rollback(
+      admin,
+      newId,
+      reloadErr?.message ?? "Reorder could not be re-read",
+    );
+    return { ok: false, error };
   }
 
   const build = await loadAssignedBuild(admin, fresh);
-  if (!build.ok) {
-    await admin.from("mp_config_responses").delete().eq("id", newId);
-    return { ok: false, error: build.error };
-  }
+  if (!build.ok) return { ok: false, error: await rollback(admin, newId, build.error) };
   if (build.shortages.length > 0) {
-    await admin.from("mp_config_responses").delete().eq("id", newId);
     const detail = build.shortages.map((s) => s.name).join(", ");
-    return {
-      ok: false,
-      code: "out_of_stock",
-      // Checked here rather than left to Accept: a Result that cannot be paid
-      // for is worse than a refusal, because it looks like an order.
-      error: `Out of stock right now: ${detail}. Get in touch and we will let you know when it is back.`,
-    };
+    // Checked here rather than left to Accept: a Result that cannot be paid
+    // for is worse than a refusal, because it looks like an order.
+    const error = await rollback(
+      admin,
+      newId,
+      `Out of stock right now: ${detail}. Get in touch and we will let you know when it is back.`,
+    );
+    return { ok: false, code: "out_of_stock", error };
   }
 
   const total = build.pricing.total;
@@ -225,10 +272,7 @@ export async function reorderResult(
     .from("mp_config_responses")
     .update({ final_amount: total })
     .eq("id", newId);
-  if (priceErr) {
-    await admin.from("mp_config_responses").delete().eq("id", newId);
-    return { ok: false, error: priceErr.message };
-  }
+  if (priceErr) return { ok: false, error: await rollback(admin, newId, priceErr.message) };
 
   const previousTotal =
     source.final_amount == null ? null : Number(source.final_amount);
