@@ -52,6 +52,33 @@ export function statusUrl(
  */
 const STATUS_PAGE_LABEL = "status page";
 
+/**
+ * The decision card's anchor on the status page. Both Pay and Decline live
+ * there, so a cancel link is just a deep link to the same page the CTA opens.
+ *
+ * Cancelling is deliberately NOT a bare link that acts on click: Gmail, Outlook
+ * and corporate security gateways fetch every URL in an email before a human
+ * sees it, and a GET that cancelled an order would let them cancel orders
+ * nobody clicked. Decline stays a POST behind a confirm dialog.
+ */
+const DECIDE_ANCHOR = "#decide";
+
+function cancelUrl(url: string): string {
+  return `${url}${DECIDE_ANCHOR}`;
+}
+
+/** Muted "changed your mind" line for the emails that ask for money. */
+function cancelLineHtml(url: string): string {
+  return paragraphHtml(
+    `Changed your mind? You can ${link({ href: cancelUrl(url), label: "cancel this order" })} on the same page.`,
+    { muted: true, top: 4 },
+  );
+}
+
+function cancelLineText(url: string): string[] {
+  return ["", "Changed your mind? Cancel this order:", cancelUrl(url)];
+}
+
 // ------------------------------------------------------------
 // Submission received → "under review" (hold) / "being made" (assisted)
 // ------------------------------------------------------------
@@ -259,6 +286,7 @@ export function renderResultAssignedEmail(p: {
     "",
     reviewLabel,
     url,
+    ...cancelLineText(url),
   ].join("\n");
 
   const specRows = buildSpecRows(p);
@@ -295,7 +323,8 @@ export function renderResultAssignedEmail(p: {
 ${infoList(specRows)}
 ${buildSectionsHtml(p)}
 ${pricingRows.length > 0 ? infoList(pricingRows) : ""}
-${paragraph(closing, { muted: true })}`,
+${paragraph(closing, { muted: true })}
+${cancelLineHtml(url)}`,
     cta: { href: url, label: ctaLabel },
   });
 
@@ -479,6 +508,7 @@ export function renderBalanceDueReminderEmail(p: {
       url,
       "",
       "Nothing has been charged yet.",
+      ...cancelLineText(url),
     ].join("\n");
     const html = renderEmailShell({
       title: subject,
@@ -488,7 +518,8 @@ ${paragraph(`Your custom ${name} fillings are built and waiting for you.`, { top
 ${paragraphHtml(
         `Choose your cover, case and shipping on its ${link({ href: url, label: STATUS_PAGE_LABEL })} to see your final price. Nothing is charged until you pay.`,
         { muted: true },
-      )}`,
+      )}
+${cancelLineHtml(url)}`,
       cta: { href: url, label: "Choose your finish" },
     });
     return { subject, text, html };
@@ -505,6 +536,7 @@ ${paragraphHtml(
     url,
     "",
     "Nothing has been charged yet.",
+    ...cancelLineText(url),
   ].join("\n");
 
   const html = renderEmailShell({
@@ -524,8 +556,78 @@ ${
 ${paragraphHtml(
       `Review the full build on its ${link({ href: url, label: STATUS_PAGE_LABEL })} and pay there to send it into production.`,
       { muted: true },
-    )}`,
+    )}
+${cancelLineHtml(url)}`,
     cta: { href: url, label: "Review and pay" },
+  });
+
+  return { subject, text, html };
+}
+
+// ------------------------------------------------------------
+// Customer declined → "your order is cancelled"
+// ------------------------------------------------------------
+
+/**
+ * Confirmation that a customer's own Decline went through.
+ *
+ * Until now Decline was silent: the status flipped, any hold was released, and
+ * nobody told the customer anything. A cancellation the customer cannot see
+ * confirmed is the one most likely to become a support message, so this closes
+ * the loop and says plainly that no money was taken.
+ *
+ * Separate from `renderHoldExpiredEmail`, which reports a cancellation WE made
+ * when the SLA ran out. Same outcome, opposite author — telling someone their
+ * order "expired" when they cancelled it reads as a system that was not
+ * listening.
+ */
+export function renderResultDeclinedEmail(p: {
+  origin: string;
+  resultId: string;
+  accessToken: string | null;
+  productType: string | null;
+  /** The released Authorization hold, or null when no card was ever taken. */
+  releasedAmount: number | null;
+  currency: string;
+}): RenderedEmail {
+  const name = productName(p.productType);
+  // Derived, not passed: same as renderHoldExpiredEmail. A caller-supplied path
+  // would be an unescaped fragment of an href for no benefit — product_type is
+  // already the only thing that decides it.
+  const restartPath = p.productType === "bolster" ? "/mbolster-config" : "/mp-config";
+  const restartHref = `${p.origin}${restartPath}`;
+  const url = statusUrl(p.origin, p.resultId, p.accessToken);
+  const subject = `Your ${name} order is cancelled`;
+  const released = p.releasedAmount == null ? null : money(p.releasedAmount, p.currency);
+
+  const moneyLine = released
+    ? `Your card was never charged. The ${released} authorization hold has been released — depending on your bank it can take a few days to disappear from your statement.`
+    : "Nothing was charged, and there is nothing outstanding.";
+
+  const text = [
+    `Your custom ${name} order has been cancelled, as you asked.`,
+    "",
+    moneyLine,
+    "",
+    "Changed your mind? You can start a new customisation anytime:",
+    restartHref,
+    "",
+    "This cancelled order stays on its status page:",
+    url,
+  ].join("\n");
+
+  const html = renderEmailShell({
+    title: subject,
+    preheader: `Your ${name} order is cancelled. Nothing was charged.`,
+    bodyHtml: `${statusPill("Cancelled", "neutral")}
+${paragraph(`Your custom ${name} order has been cancelled, as you asked.`, { top: 16 })}
+${paragraph(moneyLine, { muted: true })}
+${paragraph("Changed your mind? You can start a new customisation whenever you like.", { muted: true })}
+${paragraphHtml(
+      `This cancelled order stays on its ${link({ href: url, label: STATUS_PAGE_LABEL })} for your records.`,
+      { muted: true, top: 4 },
+    )}`,
+    cta: { href: restartHref, label: `Start a new ${name}` },
   });
 
   return { subject, text, html };

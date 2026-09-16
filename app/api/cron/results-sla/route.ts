@@ -14,12 +14,18 @@ import { getSiteSettings } from "@/lib/site-settings";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import {
   SLA_SETTING_KEYS,
+  authExpiresAt,
   parseSlaSettings,
   planHeldTick,
 } from "@/lib/sla-reminders";
 import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
 import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
+import {
+  parsePaymentReminderSettings,
+  PAYMENT_REMINDER_SETTING_KEYS,
+  planPaymentReminder,
+} from "@/lib/payment-reminders";
 import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
@@ -90,19 +96,24 @@ export async function GET(req: Request) {
 
   const origin = getPublicOrigin(req);
   const admin = supabaseAdmin();
-  const stored = await getSiteSettings([...SLA_SETTING_KEYS]);
+  const stored = await getSiteSettings([
+    ...SLA_SETTING_KEYS,
+    ...PAYMENT_REMINDER_SETTING_KEYS,
+  ]);
   const settings = parseSlaSettings(stored);
+  const paymentReminders = parsePaymentReminderSettings(stored);
   const now = new Date();
 
   const { data: rows, error } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address",
+      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count",
     )
-    // `assigned` joins the scan for one reason: a Result with no hold sits there
-    // owing a Balance payment, and nothing else in the system would ever chase it
-    // (ADR 0016). Assigned rows WITH a hold are still skipped below — result-stage
-    // flags those as hold_rotting for a human.
+    // `assigned` joins the scan because a Result sitting there owes a Balance
+    // payment and nothing else in the system would ever chase it (ADR 0016).
+    // Rows WITH a hold are chased too — they are waiting on the same Accept and
+    // their authorization is dying — but only until that authorization dies;
+    // past it result-stage badges them hold_rotting for a human.
     .in("status", ["held", "assigned"]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -122,18 +133,38 @@ export async function GET(req: Request) {
     const heldAt = new Date(row.created_at);
     const lastReminderAt = row.last_reminder_at ? new Date(row.last_reminder_at) : null;
 
-    // An assigned Result with no hold is waiting on the CUSTOMER, not on us: the
-    // build is finished and priced and nobody has paid for it. Remind them and
-    // move on — there is no hold to expire and no operator action outstanding.
-    // `last_reminder_at` is shared with the operator nudges above, so the first
-    // payment reminder can be up to one interval late. That is the right trade
-    // against a second column for the same cadence.
+    // An assigned Result is waiting on the CUSTOMER, not on us: the build is
+    // finished and priced and nobody has paid for it. Remind them and move on —
+    // there is no operator action outstanding.
+    //
+    // This cadence is its own (lib/payment-reminders) with its own columns. It
+    // used to borrow the operator SLA's interval and `last_reminder_at`, which
+    // made the first customer chase up to one operator-interval late and welded
+    // the two schedules together.
     if (row.status === "assigned") {
-      if (hasHold) continue;
       if (!row.customer_email) continue;
-      if (planHeldTick({ id: row.id, heldAt, lastReminderAt }, settings, now, false) !== "remind") {
-        continue;
-      }
+      // A hold no longer skips the chase. Both kinds of assigned Result are
+      // waiting on the same customer action — Accept — and the held one is the
+      // more urgent of the two, since its authorization dies at 7 days.
+      const assignedAt = row.assigned_at ? new Date(row.assigned_at) : heldAt;
+      const plan = planPaymentReminder(
+        {
+          assignedAt,
+          lastReminderAt: row.payment_reminder_last_at
+            ? new Date(row.payment_reminder_last_at)
+            : null,
+          remindersSent: row.payment_reminder_count ?? 0,
+          // A hold dies 7 days after submit and nothing expires an ASSIGNED
+          // row, so the chase has to stop itself. Past that point "pay now,
+          // nothing charged yet" is false: Accept captures the hold, and
+          // capturing a dead one fails. result-stage already badges these
+          // hold_rotting for a human to pick up.
+          notAfter: hasHold ? authExpiresAt(heldAt) : null,
+        },
+        paymentReminders,
+        now,
+      );
+      if (plan !== "remind") continue;
       try {
         await getEmailTransport().send({
           to: row.customer_email,
@@ -148,11 +179,27 @@ export async function GET(req: Request) {
             needsFinish: needsCustomerFinish(row),
           }),
         });
-        await admin
+        // Its own clock and counter — `last_reminder_at` stays the operator SLA's,
+        // so moving one cadence no longer drags the other with it.
+        //
+        // The error is NOT ignorable. The email has already gone; if this write
+        // fails the count stays put and the due date stays in the past, so every
+        // daily tick re-sends and maxReminders stops meaning anything. Surface it
+        // rather than counting a send that the schedule will repeat.
+        const { error: markErr } = await admin
           .from("mp_config_responses")
-          .update({ last_reminder_at: now.toISOString() })
+          .update({
+            payment_reminder_last_at: now.toISOString(),
+            payment_reminder_count: (row.payment_reminder_count ?? 0) + 1,
+          })
           .eq("id", row.id);
-        summary.paymentReminded += 1;
+        if (markErr) {
+          summary.errors.push(
+            `${row.id}: balance-due email sent but counter not advanced (${markErr.message}) — it will re-send`,
+          );
+        } else {
+          summary.paymentReminded += 1;
+        }
       } catch (e) {
         summary.errors.push(
           `${row.id}: balance-due email ${e instanceof Error ? e.message : "failed"}`,

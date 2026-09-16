@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { MoreVertical, Send, SquareArrowOutUpRight, Trash2 } from "lucide-react";
 import { AssistLinkCard } from "@/components/admin/assist-link-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { rowsToCsv } from "@/lib/results/rows-to-csv";
 import {
   STAGE_BUCKETS,
@@ -86,6 +94,9 @@ type MpConfigResponseRow = {
   assigned_size?: string | null;
   assigned_tier?: string | null;
   customer_email?: string | null;
+  /** Balance-due chases already sent. Null on rows predating the counter. */
+  payment_reminder_count?: number | null;
+  payment_reminder_last_at?: string | null;
 };
 
 type StaffRow = {
@@ -218,6 +229,7 @@ export default function ResultsPage({
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [orderFilter, setOrderFilter] = useState<OrderFilter>("all");
   const [sending, setSending] = useState<Record<string, boolean>>({});
+  const [requestingPayment, setRequestingPayment] = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MpConfigResponseRow | null>(null);
@@ -466,6 +478,54 @@ export default function ResultsPage({
       })
       .map((s) => s.row);
   }, [staged, search, tab, sourceFilter, orderFilter]);
+
+  /**
+   * Re-send the priced "ready to pay" email from the list.
+   *
+   * The same action already existed on the detail page, which meant chasing a
+   * customer cost two navigations from the one tab that exists to show who is
+   * being waited on. The route writes nothing to the Result, so pressing it
+   * twice sends a second copy and changes nothing else — no reload needed, and
+   * the local counter below is only there to tell staff it landed.
+   */
+  const requestPayment = useCallback(async (row: MpConfigResponseRow) => {
+    if (!row.customer_email) {
+      toast.error("No customer email on file — open the result to copy the link");
+      return;
+    }
+    setRequestingPayment((prev) => ({ ...prev, [row.id]: true }));
+    try {
+      const res = await fetch(
+        `/api/results/${encodeURIComponent(row.id)}/request-payment`,
+        { method: "POST" },
+      );
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
+      // Three outcomes, not two. The route returns 200 with emailStatus
+      // "failed" when the transport throws, and calling that a success told
+      // staff the customer had been chased when nothing was sent.
+      const emailStatus = payload?.emailStatus as
+        | "sent"
+        | "failed"
+        | "skipped"
+        | undefined;
+      if (emailStatus === "sent") {
+        toast.success(`Payment email sent to ${row.customer_email}`);
+      } else if (emailStatus === "failed") {
+        toast.error("Could not send the payment email — open the result to copy the link");
+      } else {
+        toast.success("Link ready — no customer email on file");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to request payment");
+    } finally {
+      setRequestingPayment((prev) => {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      });
+    }
+  }, []);
 
   const sendToTelegram = useCallback(
     async (row: MpConfigResponseRow) => {
@@ -1024,20 +1084,76 @@ export default function ResultsPage({
                           e.stopPropagation();
                         }}
                       >
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="min-h-11 min-w-11"
-                          onClick={() => {
-                            setDeleteTarget(row);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={isDeleting}
-                          aria-label="Delete result"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {/*
+                          One kebab per row instead of a column per action. The
+                          table already scrolls sideways on a phone, and the
+                          actions staff want here — chase the customer, open the
+                          build — were otherwise only reachable from inside the
+                          detail page.
+                        */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="min-h-11 min-w-11"
+                              aria-label="Result actions"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuItem
+                              onSelect={() => router.push(to(`/settings/results/${row.id}`))}
+                            >
+                              <SquareArrowOutUpRight className="h-4 w-4" />
+                              Open result
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={
+                                Boolean(requestingPayment[row.id]) ||
+                                row.status !== "assigned" ||
+                                !row.customer_email
+                              }
+                              // Let the menu close: the toast is the feedback,
+                              // and an open menu would sit on top of it on the
+                              // phone screen where staff actually do this.
+                              onSelect={() => void requestPayment(row)}
+                            >
+                              <Send className="h-4 w-4" />
+                              Request payment
+                            </DropdownMenuItem>
+                            {/* Why the item above is greyed out, rather than
+                                leaving staff to guess. */}
+                            {row.status !== "assigned" ? (
+                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+                                Only an assigned build can be paid for
+                              </DropdownMenuLabel>
+                            ) : !row.customer_email ? (
+                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+                                No customer email on file
+                              </DropdownMenuLabel>
+                            ) : (row.payment_reminder_count ?? 0) > 0 ? (
+                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+                                {row.payment_reminder_count} auto reminder
+                                {row.payment_reminder_count === 1 ? "" : "s"} sent
+                              </DropdownMenuLabel>
+                            ) : null}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              disabled={isDeleting}
+                              onSelect={() => {
+                                setDeleteTarget(row);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete result
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );

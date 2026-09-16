@@ -441,6 +441,11 @@ export async function POST(
       filling_template_id: persistedTemplateId,
       final_amount: finalAmount,
       status: lifecycle.status,
+      // Anchors the customer payment-reminder cadence. No counter reset beside
+      // it: this update is CAS'd on `status = 'held'` and transitionResult
+      // refuses assign from `assigned`, so a row can only arrive here with the
+      // counters still at their insert defaults.
+      assigned_at: new Date().toISOString(),
       // Only touched when a spatial save happened; hold-create snapshots stay otherwise.
       ...(fingerprint !== undefined ? { filling_fingerprint: fingerprint } : {}),
     })

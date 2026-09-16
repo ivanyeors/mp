@@ -648,13 +648,26 @@ export default function ResultDetailPage({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
       setPaymentLink((payload?.statusUrl as string | undefined) ?? null);
-      toast.success(
-        payload?.emailStatus === "sent"
-          ? payload?.emailTemplate === "updated"
+      // Three outcomes, not two: emailStatus "failed" comes back with HTTP 200.
+      const emailStatus = payload?.emailStatus as
+        | "sent"
+        | "failed"
+        | "skipped"
+        | undefined;
+      if (emailStatus === "sent") {
+        // Which template went out is the operator's confirmation that the
+        // customer was told the price moved — not just that mail was sent.
+        toast.success(
+          payload?.emailTemplate === "updated"
             ? "Repriced — sent the customer the updated build and new total"
-            : "Payment email sent"
-          : "Link ready — no customer email on file",
-      );
+            : "Payment email sent",
+        );
+      } else if (emailStatus === "failed") {
+        toast.error("Could not send the payment email — the link below still works");
+      } else {
+        toast.success("Link ready — no customer email on file");
+      }
+      // The route stores the recomputed total, so the amount on screen is stale.
       if (payload?.repriced === "updated") await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to request payment");

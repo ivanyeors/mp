@@ -5,10 +5,18 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
+  PAYMENT_REMINDER_SETTING_KEYS,
+  parsePaymentReminderSettings,
+  paymentReminderSettingsToStored,
+} from "@/lib/payment-reminders";
+import {
   SLA_SETTING_KEYS,
   parseSlaSettings,
   slaSettingsToStored,
 } from "@/lib/sla-reminders";
+
+/** Both groups live in `site_settings`; one read and one write serves them. */
+const ALL_KEYS = [...SLA_SETTING_KEYS, ...PAYMENT_REMINDER_SETTING_KEYS];
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +29,21 @@ const PutSchema = z.object({
   opsEmail: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
   authExpiryBufferHours: z.number().int().min(1).max(72).optional(),
   authHoldEnabled: z.boolean().optional(),
+  /**
+   * Customer payment reminders. Nested rather than flattened so the two
+   * cadences stay visibly distinct — they were one setting until now, and the
+   * whole point of the split is that staff can see which is which.
+   */
+  paymentReminders: z
+    .object({
+      enabled: z.boolean().optional(),
+      // 0 is allowed: "chase on the next tick after assignment".
+      firstDelayDays: z.number().int().min(0).max(60).optional(),
+      intervalDays: z.number().int().min(1).max(60).optional(),
+      // 0 is allowed: "never chase", without flipping the switch off.
+      maxReminders: z.number().int().min(0).max(10).optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -33,7 +56,7 @@ const readStoredSlaSettings = unstable_cache(
     const { data, error } = await admin
       .from("site_settings")
       .select("key, value")
-      .in("key", [...SLA_SETTING_KEYS]);
+      .in("key", ALL_KEYS);
     if (error) throw new Error(error.message);
 
     const stored: Record<string, string> = {};
@@ -50,7 +73,11 @@ export async function GET() {
 
   try {
     const stored = await readStoredSlaSettings();
-    return NextResponse.json({ ok: true, settings: parseSlaSettings(stored) });
+    return NextResponse.json({
+      ok: true,
+      settings: parseSlaSettings(stored),
+      paymentReminders: parsePaymentReminderSettings(stored),
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
@@ -73,7 +100,7 @@ export async function PUT(req: Request) {
   const { data } = await admin
     .from("site_settings")
     .select("key, value")
-    .in("key", [...SLA_SETTING_KEYS]);
+    .in("key", ALL_KEYS);
   const stored: Record<string, string> = {};
   for (const row of data ?? []) stored[row.key] = row.value;
 
@@ -99,7 +126,20 @@ export async function PUT(req: Request) {
           : input.opsEmail,
   };
 
-  const rows = Object.entries(slaSettingsToStored(next)).map(([key, value]) => ({
+  // Undefined fields fall through to the stored value, so a client that knows
+  // only about the SLA half cannot blank the reminder half by omitting it.
+  const currentReminders = parsePaymentReminderSettings(stored);
+  const nextReminders = {
+    ...currentReminders,
+    ...Object.fromEntries(
+      Object.entries(input.paymentReminders ?? {}).filter(([, v]) => v !== undefined),
+    ),
+  };
+
+  const rows = Object.entries({
+    ...slaSettingsToStored(next),
+    ...paymentReminderSettingsToStored(nextReminders),
+  }).map(([key, value]) => ({
     key,
     value,
     updated_at: new Date().toISOString(),
@@ -109,5 +149,9 @@ export async function PUT(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   invalidateTag("site-settings");
-  return NextResponse.json({ ok: true, settings: next });
+  return NextResponse.json({
+    ok: true,
+    settings: next,
+    paymentReminders: nextReminders,
+  });
 }

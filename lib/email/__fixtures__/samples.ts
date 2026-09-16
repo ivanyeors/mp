@@ -207,6 +207,22 @@ export function sampleBalanceDueFinish(fixture: EmailFixture = "happy") {
   return { ...sampleBalanceDue(fixture), needsFinish: true };
 }
 
+export function sampleResultDeclined(fixture: EmailFixture = "happy") {
+  return {
+    origin: ORIGIN,
+    resultId: pick(fixture, "8f2c1d54-77a1-4a0e-9d55-2f1c4bb9a001"),
+    accessToken: pick(fixture, "tok_preview_9f2b"),
+    productType: "pillow",
+    releasedAmount: 428,
+    currency: "SGD",
+  };
+}
+
+/** Assisted / no-card decline: nothing to release, so the money line changes. */
+export function sampleResultDeclinedNoHold(fixture: EmailFixture = "happy") {
+  return { ...sampleResultDeclined(fixture), releasedAmount: null };
+}
+
 export function sampleRestock(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,

@@ -24,6 +24,7 @@ import {
   renderHoldExpiredEmail,
   renderRestockEmail,
   renderResultAssignedEmail,
+  renderResultDeclinedEmail,
   renderResultHeldEmail,
   renderResultUpdatedEmail,
 } from "./results";
@@ -44,6 +45,8 @@ import {
   sampleResultAssigned,
   sampleResultAssignedBalance,
   sampleResultAssignedFinish,
+  sampleResultDeclined,
+  sampleResultDeclinedNoHold,
   sampleResultHeld,
   sampleResultHeldNoHold,
   sampleResultUpdated,
@@ -135,6 +138,23 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderResultHeldEmail(sampleResultHeldNoHold(f)),
+  },
+  {
+    id: "results.declined",
+    label: "Order cancelled by customer",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultDeclinedEmail(sampleResultDeclined(f)),
+  },
+  {
+    // Same renderer with no hold to release (Assisted / no-card): the money
+    // sentence is the only thing that differs, and it is the sentence most
+    // likely to be wrong, so it gets its own preview.
+    id: "results.declined_no_hold",
+    label: "Order cancelled — no card taken",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderResultDeclinedEmail(sampleResultDeclinedNoHold(f)),
   },
   {
     id: "results.assigned",
