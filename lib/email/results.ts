@@ -61,6 +61,21 @@ const STATUS_PAGE_LABEL = "status page";
  * nobody clicked. Decline stays a POST behind a confirm dialog.
  */
 const DECIDE_ANCHOR = "#decide";
+/** The Reorder / Start from scratch block a closed Result shows. */
+const REORDER_ANCHOR = "#reorder";
+
+/**
+ * Reorder link for a Result that is over.
+ *
+ * Points at the status page, never at an endpoint that acts. Reordering creates
+ * a real, staff-visible order, and mail providers and security gateways fetch
+ * every URL in an email before a human sees it — a GET that rebuilt a build
+ * would fill the queue with orders nobody asked for. Same rule as the cancel
+ * link above.
+ */
+function reorderUrl(url: string): string {
+  return `${url}${REORDER_ANCHOR}`;
+}
 
 function cancelUrl(url: string): string {
   return `${url}${DECIDE_ANCHOR}`;
@@ -443,11 +458,11 @@ export function renderResultDeclinedEmail(p: {
     "",
     moneyLine,
     "",
-    "Changed your mind? You can start a new customisation anytime:",
-    restartHref,
+    "Changed your mind? You can reorder this exact build from its status page:",
+    reorderUrl(url),
     "",
-    "This cancelled order stays on its status page:",
-    url,
+    "Or start a new customisation from scratch:",
+    restartHref,
   ].join("\n");
 
   const html = renderEmailShell({
@@ -456,12 +471,12 @@ export function renderResultDeclinedEmail(p: {
     bodyHtml: `${statusPill("Cancelled", "neutral")}
 ${paragraph(`Your custom ${name} order has been cancelled, as you asked.`, { top: 16 })}
 ${paragraph(moneyLine, { muted: true })}
-${paragraph("Changed your mind? You can start a new customisation whenever you like.", { muted: true })}
+${paragraph("Changed your mind? You do not have to start over — this exact build is still on its status page, and one button rebuilds it at today's prices.", { muted: true })}
 ${paragraphHtml(
-      `This cancelled order stays on its ${link({ href: url, label: STATUS_PAGE_LABEL })} for your records.`,
+      `Or ${link({ href: restartHref, label: "start a new customisation" })} from scratch.`,
       { muted: true, top: 4 },
     )}`,
-    cta: { href: restartHref, label: `Start a new ${name}` },
+    cta: { href: reorderUrl(url), label: `Reorder this ${name}` },
   });
 
   return { subject, text, html };
@@ -501,17 +516,16 @@ export function renderHoldExpiredEmail(p: {
     ? "Your final build was ready, but it was not paid for in time, so your card authorization hold has been released. Nothing was charged."
     : "Your customisation review window has expired and your card authorization hold has been released.";
   const closing = unpaid
-    ? "The build itself is not lost — get in touch and we can put the same one back together for you, or start again below."
+    ? "The build itself is not lost. Reorder it from its status page and we will put the same one back together at today's prices — no need to answer the questions again."
     : null;
 
   const text = [
     lead,
     ...(closing ? ["", closing] : []),
     "",
-    "To continue, start customisation again:",
-    restartUrl,
-    "",
-    `Status page: ${url}`,
+    ...(unpaid
+      ? ["Reorder this build:", reorderUrl(url), "", "Or start from scratch:", restartUrl]
+      : ["To continue, start customisation again:", restartUrl, "", `Status page: ${url}`]),
   ].join("\n");
 
   const html = renderEmailShell({
@@ -527,7 +541,9 @@ ${paragraphHtml(
       `You can still view this customisation on its ${link({ href: url, label: STATUS_PAGE_LABEL })}.`,
       { muted: true },
     )}`,
-    cta: { href: restartUrl, label: "Start customisation again" },
+    cta: unpaid
+      ? { href: reorderUrl(url), label: "Reorder this build" }
+      : { href: restartUrl, label: "Start customisation again" },
   });
 
   return { subject, text, html };
