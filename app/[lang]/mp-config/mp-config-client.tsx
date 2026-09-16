@@ -176,6 +176,7 @@ import {
 } from "@/lib/spatial-fillings/core";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
+import type { StaffEditResult } from "@/lib/results/staff-edit";
 
 type MeasureKey = "shoulderLength" | "neckToBack" | "headToBack" | "neckLength";
 
@@ -288,6 +289,7 @@ export function MpConfigClient({
   partner = null,
   assistCode = null,
   resumeFinish = null,
+  staffEdit = null,
 }: {
   info: MpConfigInfo;
   /** Staff assist mode (slice 04): true only for Staff sessions (admin_users / bootstrap). */
@@ -321,6 +323,14 @@ export function MpConfigClient({
    * autosaves a Draft and never submits a hold.
    */
   resumeFinish?: ResumeFinish | null;
+  /**
+   * A live Result reopened by Staff for re-configuration
+   * (`lib/results/staff-edit.ts`). Opens on the preview with the existing
+   * build loaded — size×tier, cover/case, add-ons, shipping and the filling
+   * mix — and saves back onto that Result instead of submitting a new hold.
+   * Never autosaves a Draft, and never creates an Authorization hold.
+   */
+  staffEdit?: StaffEditResult | null;
 }) {
   // Everything assist-specific gates on this; false ⇒ zero render change (AC5).
   const partnerAssisted = Boolean(partner);
@@ -339,7 +349,11 @@ export function MpConfigClient({
   const to = (href: string) => withLocale(href, locale);
 
   const isMobile = useIsMobile();
-  const [currentStep, setCurrentStep] = useState<Step>(resumeFinish ? "preview" : "welcome");
+  // Both reopened modes start on the preview: there is already a build to look
+  // at, so the questionnaire would only be in the way.
+  const [currentStep, setCurrentStep] = useState<Step>(
+    resumeFinish || staffEdit ? "preview" : "welcome",
+  );
   const [restoringHoldCancel, setRestoringHoldCancel] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [gridSpeed, setGridSpeed] = useState<"slow" | "fast" | "reverse">("slow");
@@ -364,6 +378,7 @@ export function MpConfigClient({
     usesBolster: "",
     // The submitted answers, so the recommendation fetch below has real inputs.
     ...(resumeFinish?.measurements as Partial<MeasurementData> | undefined),
+    ...(staffEdit?.measurements as Partial<MeasurementData> | undefined),
   }));
 
   /**
@@ -371,7 +386,9 @@ export function MpConfigClient({
    * nothing else — it is NOT a Staff session and must never gate staff chrome.
    */
   const assisted = Boolean(assistCode);
-  const [responseId, setResponseId] = useState<string | null>(null);
+  /** Staff re-configuring an existing Result — never a new Draft, never a hold. */
+  const staffEditing = Boolean(staffEdit);
+  const [responseId, setResponseId] = useState<string | null>(staffEdit?.id ?? null);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [suggestion, setSuggestion] = useState<MpConfigSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
@@ -386,16 +403,37 @@ export function MpConfigClient({
   // --- Online purchase path (cover/case prefs, add-ons, hold) — no fillings/protector ---
   const [shopRecommendation, setShopRecommendation] = useState<RecommendationResponseData | null>(null);
   const [shopLoading, setShopLoading] = useState(false);
-  const [selectedCover, setSelectedCover] = useState<number | null>(null);
-  const [selectedCase, setSelectedCase] = useState<number | null>(null);
-  const [selectedAddons, setSelectedAddons] = useState<Set<number>>(new Set());
+  // A reopened Result brings its own picks; only a fresh session defaults them
+  // from the recommendation.
+  const [selectedCover, setSelectedCover] = useState<number | null>(
+    staffEdit?.preferences.find((p) => p.category === "cover")?.item_id ?? null,
+  );
+  const [selectedCase, setSelectedCase] = useState<number | null>(
+    staffEdit?.preferences.find((p) => p.category === "case")?.item_id ?? null,
+  );
+  const [selectedAddons, setSelectedAddons] = useState<Set<number>>(
+    () => new Set(staffEdit?.addonItemIds ?? []),
+  );
   const [addons, setAddons] = useState<AddonOption[]>([]);
 
   // --- Staff assist mode (slice 04) — top-level so the mix survives step navigation ---
-  const [assistPlacements, setAssistPlacements] = useState<PillowPlacement[]>([]);
-  const [assistLoadedTemplate, setAssistLoadedTemplate] = useState<LoadedTemplate | null>(null);
+  const [assistPlacements, setAssistPlacements] = useState<PillowPlacement[]>(() =>
+    staffEdit ? rowsToPillowPlacements(staffEdit.placements) : [],
+  );
+  // Seeded with the Result's own template + mix, so an untouched re-configure
+  // keeps `filling_template_id` and only a real edit clears it (ADR 0008).
+  const [assistLoadedTemplate, setAssistLoadedTemplate] = useState<LoadedTemplate | null>(() =>
+    staffEdit && staffEdit.fillingTemplateId != null
+      ? {
+          id: staffEdit.fillingTemplateId,
+          placements: rowsToPillowPlacements(staffEdit.placements),
+        }
+      : null,
+  );
   // Filling items surfaced from the assist panel; the x-ray resolves shapes/colors by subtype.
-  const [assistItems, setAssistItems] = useState<FillingItem[]>([]);
+  // Seeded from the Result so the x-ray labels and prices the placed pieces on
+  // first paint, before the assist catalog fetch lands.
+  const [assistItems, setAssistItems] = useState<FillingItem[]>(staffEdit?.items ?? []);
   const assistItemSubtypes = useMemo(
     () => new Map(assistItems.map((i) => [i.id, fillingDescriptor(i)])),
     [assistItems],
@@ -423,22 +461,27 @@ export function MpConfigClient({
     () => sessionTemplateId(assistLoadedTemplate, assistPlacements),
     [assistLoadedTemplate, assistPlacements],
   );
-  const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? "");
-  const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? "");
-  const [discoverySource, setDiscoverySource] = useState(resumeFinish?.discoverySource ?? "");
+  const [holdEmail, setHoldEmail] = useState(resumeFinish?.email ?? staffEdit?.email ?? "");
+  const [holdPhone, setHoldPhone] = useState(resumeFinish?.phone ?? staffEdit?.phone ?? "");
+  const [discoverySource, setDiscoverySource] = useState(
+    resumeFinish?.discoverySource ?? staffEdit?.discoverySource ?? "",
+  );
   const [discoverySourceOther, setDiscoverySourceOther] = useState(
-    resumeFinish?.discoverySourceOther ?? "",
+    resumeFinish?.discoverySourceOther ?? staffEdit?.discoverySourceOther ?? "",
   );
   const [referralCode, setReferralCode] = useState("");
   const [holdNotes, setHoldNotes] = useState("");
-  const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>({
+  const [holdAddress, setHoldAddress] = useState<HoldShippingAddress>(() => ({
     recipient: "",
     line1: "",
     line2: "",
     city: "",
     postal_code: "",
     country: "SG",
-  });
+    // The Result's stored address, when it has one. An Assisted customisation
+    // has none yet, and then Staff are filling it in for the first time.
+    ...((staffEdit?.shippingAddress ?? {}) as Partial<HoldShippingAddress>),
+  }));
   const {
     signedIn: shippingSignedIn,
     savedAddresses,
@@ -790,6 +833,11 @@ export function MpConfigClient({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Re-configuring a Result: the Customisation session IS that Result, so any
+    // Reference photo lands on it. Touching this device's own draft id here
+    // would both hijack the session and risk autosaving a customer's answers
+    // onto an unrelated row.
+    if (staffEdit) return;
     let id = window.localStorage.getItem(sessionStorageKey);
     if (!id) {
       id = newResponseId();
@@ -833,11 +881,14 @@ export function MpConfigClient({
         // Best-effort only; never block the UI.
       }
     })();
-  }, [sessionStorageKey, tokenStorageKey]);
+  }, [sessionStorageKey, tokenStorageKey, staffEdit]);
 
   // Stripe hold cancel → restore preview + selections (and light notice).
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // A reopened Result is not a cancelled hold; restoring this device's draft
+    // over it would replace the customer's build with someone else's session.
+    if (staffEdit) return;
     const holdCancelled = isHoldCancelledQuery(window.location.search);
     const draft = readHoldCancelDraft(window.localStorage, holdSurface);
     if (!shouldRestorePreview({ holdCancelled, draftStep: draft?.step })) {
@@ -909,7 +960,7 @@ export function MpConfigClient({
     if (typeof window === "undefined") return;
     if (currentStep !== "preview") return;
     // Not a hold session: nothing to restore after a Stripe cancel.
-    if (resumeFinish) return;
+    if (resumeFinish || staffEdit) return;
     writeHoldCancelDraft(window.localStorage, {
       v: 1,
       surface: holdSurface,
@@ -947,6 +998,7 @@ export function MpConfigClient({
     holdNotes,
     holdAddress,
     resumeFinish,
+    staffEdit,
   ]);
 
   useEffect(() => {
@@ -1089,7 +1141,10 @@ export function MpConfigClient({
   ): Promise<{ id: string; telegramStatus?: "sent" | "skipped" | "failed" } | null> => {
     // A reopened finish holds someone's submitted answers. Autosaving them into
     // this device's own Draft session would copy them onto an unrelated row.
-    if (!responseId || resumeFinish) return null;
+    // A Staff re-configuration writes through `/reconfigure` on save instead:
+    // the responses route refuses a non-null status anyway, and a silent
+    // autosave of a live Result is not something a Save button should imply.
+    if (!responseId || resumeFinish || staffEdit) return null;
     if (!hasAnyInput) return { id: responseId };
 
     const snapshot = JSON.stringify({ responseId, measurementData, isFinal: opts?.isFinal ?? null });
@@ -1124,7 +1179,15 @@ export function MpConfigClient({
       setSaveStatus("error");
       return null;
     }
-  }, [responseId, hasAnyInput, measurementData, tokenStorageKey, assistCode, resumeFinish]);
+  }, [
+    responseId,
+    hasAnyInput,
+    measurementData,
+    tokenStorageKey,
+    assistCode,
+    resumeFinish,
+    staffEdit,
+  ]);
 
   const loadSuggestion = async () => {
     if (!responseId) return;
@@ -1356,6 +1419,9 @@ export function MpConfigClient({
       }),
       pillow_product: data.pillow_product,
       variant: data.variant,
+      // Costings for the NEW size×tier. Carrying the old ones forward is what
+      // made the ballpark quote a different pillow than the one on screen.
+      pricing: data.pricing ?? null,
       components: data.components,
       composed_buildable: data.composed_buildable,
     }));
@@ -1422,11 +1488,62 @@ export function MpConfigClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoringHoldCancel, currentStep]);
 
-  // Finish link: load the ASSIGNED size's cover/case options and pricing, once.
+  /**
+   * Product context for a size×tier without going through the engine. A Result
+   * measured through the Basic flow, or in store before a question existed,
+   * can lack inputs `fetchShopRecommendation` insists on — and Staff opening it
+   * to swap a cover are not going to re-answer the questionnaire to get there.
+   * Options and Costings come from the assist route instead; the mix and the
+   * Result's own picks are left exactly as they are.
+   */
+  const loadStaffEditContext = useCallback(async (size: string, tier: string) => {
+    const res = await fetch(
+      `/api/mp-config/assist/context?size=${encodeURIComponent(size)}&tier=${encodeURIComponent(tier)}`,
+    );
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data?.pillow_product) {
+      toast.error(getApiErrorMessage(data?.error, "Could not load this build's options"));
+      return;
+    }
+    setShopRecommendation({
+      ok: true,
+      recommendation: {
+        recommended_size: size,
+        recommended_kind: tier,
+        filling_lines: [],
+        summary: "",
+        explanation: "",
+      },
+      templates: [],
+      available_fillings: [],
+      pillow_product: data.pillow_product,
+      variant: data.variant,
+      pricing: data.pricing ?? null,
+      components: data.components,
+      composed_buildable: data.composed_buildable,
+    } as RecommendationResponseData);
+  }, []);
+
+  // A reopened Result (finish link or Staff re-configuration): load the
+  // ASSIGNED size's cover/case options and pricing, once.
   useEffect(() => {
-    if (!resumeFinish) return;
+    const reopened = resumeFinish ?? staffEdit;
+    if (!reopened) return;
+    const missing = incompleteEngineInputs(
+      "premium-mpillow",
+      wizardToEngineInputs(measurementData),
+    );
+    if (staffEdit && missing.length > 0) {
+      void loadStaffEditContext(staffEdit.size, staffEdit.tier);
+      return;
+    }
     void fetchShopRecommendation({
-      assigned: { size: resumeFinish.size, tier: resumeFinish.tier },
+      assigned: { size: reopened.size, tier: reopened.tier },
+      // A re-configuration keeps the Result's own cover and case: defaulting
+      // them would quietly undo the customer's choice on a save that only meant
+      // to change the fillings. A finish link has no picks yet, so it takes the
+      // recommendation's defaults as before.
+      preserveSelections: Boolean(staffEdit),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; the answers never change here
   }, []);
@@ -1467,9 +1584,16 @@ export function MpConfigClient({
           methods = all.rows ?? [];
         }
         setShippingMethods(methods);
-        setSelectedShippingId((prev) =>
-          methods.some((m) => m.id === prev) ? prev : (methods[0]?.id ?? ""),
-        );
+        setSelectedShippingId((prev) => {
+          if (methods.some((m) => m.id === prev)) return prev;
+          // Re-configuring: keep the method the Result already carries. The
+          // column stores a slug and the picker keys off the id, so the match
+          // happens here rather than in the server payload.
+          const stored = staffEdit?.shippingMethodSlug
+            ? methods.find((m) => m.slug === staffEdit.shippingMethodSlug)
+            : undefined;
+          return stored?.id ?? methods[0]?.id ?? "";
+        });
       })
       .catch(() => setShippingMethods([]));
   }, [
@@ -1478,6 +1602,7 @@ export function MpConfigClient({
     suggestion?.recommended?.size,
     suggestion?.product?.size,
     holdAddress.country,
+    staffEdit,
   ]);
 
   // Fetch alt-tier price while a Flow route awaits Upgrade / Keep.
@@ -1579,6 +1704,9 @@ export function MpConfigClient({
     }
     setCurrentStep("preview");
   }, [fetchShopRecommendation, patchRecommendationRecord]);
+
+  /** Where a re-configuration returns to — the Result it came from. */
+  const staffEditResultPath = staffEdit ? to(`/settings/results/${staffEdit.id}`) : null;
 
   /** Where a finish link returns to — its status page — instead of the questionnaire. */
   const resumeStatusPath = resumeFinish
@@ -1724,6 +1852,79 @@ export function MpConfigClient({
         accept.ok && acceptData.checkoutUrl ? (acceptData.checkoutUrl as string) : statusPath;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save your finish");
+      setHoldSubmitting(false);
+    }
+  };
+
+  /**
+   * Staff re-configuration: write the edited build back onto the Result.
+   *
+   * No hold, no Checkout, no new Draft — the Result keeps its status, its
+   * Authorization hold and its customer link, and the server reprices it so
+   * `final_amount` describes what was just composed. Staff land back on the
+   * Result detail page, where "Request payment" re-sends the priced email.
+   */
+  const handleStaffEditSave = async () => {
+    if (!staffEdit) return;
+    const size = shopRecommendation?.pillow_product?.size ?? staffEdit.size;
+    const tier =
+      (shopRecommendation?.pillow_product?.kind as "basic" | "premium" | undefined) ??
+      staffEdit.tier;
+    // Cover and case only. The rest of `holdFields` guards a hold submit; an
+    // Assisted customisation being re-configured legitimately has no address
+    // yet, and flagging it would block an edit that never touches shipping.
+    const coverCaseErrors = buildFieldErrorMap(
+      holdFields.filter((f) => f.key === "cover" || f.key === "case"),
+    );
+    if (Object.keys(coverCaseErrors).length > 0 || selectedCover == null || selectedCase == null) {
+      setFieldErrors(coverCaseErrors);
+      toast.error("Choose a cover and a case");
+      return;
+    }
+    // Shipping travels only when it is complete. An Assisted customisation has
+    // none yet and the customer supplies it at their finish — half an address
+    // would fail the server's schema and block an otherwise valid edit.
+    const addressComplete = Boolean(
+      holdAddress.line1.trim() && holdAddress.city.trim() && holdAddress.postal_code.trim(),
+    );
+    const shipping =
+      selectedShippingId && addressComplete
+        ? {
+            shippingMethodId: selectedShippingId,
+            shippingAddress: {
+              ...holdAddress,
+              recipient: holdAddress.recipient || measurementData.name,
+            },
+          }
+        : {};
+
+    setHoldSubmitting(true);
+    try {
+      const res = await fetch(`/api/results/${staffEdit.id}/reconfigure`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignedSize: size,
+          assignedTier: tier,
+          measurements: measurementData,
+          preferenceLines: [
+            { item_id: selectedCover, quantity: 1, category: "cover" },
+            { item_id: selectedCase, quantity: 1, category: "case" },
+          ],
+          addonLines: [...selectedAddons].map((item_id) => ({ item_id, quantity: 1 })),
+          placements: pillowPlacementsToRows(assistPlacements),
+          // Re-verified server-side against the template's current placements.
+          fillingTemplateId: sessionFillingTemplateId,
+          ...shipping,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(getApiErrorMessage(data.error, "Could not save this configuration"));
+      }
+      window.location.href = staffEditResultPath!;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save this configuration");
       setHoldSubmitting(false);
     }
   };
@@ -2048,15 +2249,35 @@ export function MpConfigClient({
         }).isPreOrder
       : false;
     const holdCta = holdSubmitting
-      ? "Redirecting…"
-      : resumeFinish
-        ? "Continue to payment"
-        : holdCtaLabel(preOrder, assisted);
-    const backFromPreview = resumeStatusPath
+      ? staffEdit
+        ? "Saving…"
+        : "Redirecting…"
+      : staffEdit
+        ? "Save configuration"
+        : resumeFinish
+          ? "Continue to payment"
+          : holdCtaLabel(preOrder, assisted);
+    const returnPath = staffEditResultPath ?? resumeStatusPath;
+    const backFromPreview = returnPath
       ? () => {
-          window.location.href = resumeStatusPath;
+          window.location.href = returnPath;
         }
       : goToPreviousStep;
+    // One primary action for the preview, whichever mode opened it.
+    const onPreviewContinue = () =>
+      void (staffEdit
+        ? handleStaffEditSave()
+        : resumeFinish
+          ? handleFinishAndPay()
+          : handleAuthorizeHold());
+    // A pending Upgrade/Keep route is a question for the shopper. Staff pick the
+    // tier outright in the assist panel, so it must not freeze their save.
+    const continueBlocked =
+      holdSubmitting ||
+      shopLoading ||
+      !shopRecommendation ||
+      quoteBlocked ||
+      (!staffEditing && flowRouteBlocksHold);
     const waitingCopy = preOrder ? preOrderWaitingCopy(locale) : null;
 
     return (
@@ -2279,12 +2500,24 @@ export function MpConfigClient({
               <div className={cn("flex-1 space-y-8 overflow-y-auto", configuratorPreviewPadClassName)}>
                 {partner ? <CoBrandBanner partner={partner} /> : null}
                 <div className="space-y-1">
-                  <h2 className="text-xl font-semibold tracking-tight">Customize finish</h2>
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    {staffEdit ? "Edit configuration" : "Customize finish"}
+                  </h2>
                   <p className="text-sm text-muted-foreground">
-                    {resumeFinish
-                      ? "Our team has built your fillings. Choose cover and case, optional add-ons and shipping, then pay to confirm your order."
-                      : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
+                    {staffEdit
+                      ? "Change size, tier, fillings, cover, case, add-ons or shipping for this Result. Saving reprices the build — send the customer the new quote with Request payment."
+                      : resumeFinish
+                        ? "Our team has built your fillings. Choose cover and case, optional add-ons and shipping, then pay to confirm your order."
+                        : "Choose cover and case, optional add-ons, then authorize payment. You are not charged until you accept the final build."}
                   </p>
+                  {staffEdit ? (
+                    <p className="text-xs text-muted-foreground">
+                      Result {staffEdit.id.slice(0, 8)} · {staffEdit.status}
+                      {staffEdit.authorizedAmount != null
+                        ? ` · authorized ${staffEdit.currency} ${staffEdit.authorizedAmount.toFixed(2)}`
+                        : " · no card hold"}
+                    </p>
+                  ) : null}
                 </div>
 
                 {shopRecommendation ? (
@@ -2306,7 +2539,7 @@ export function MpConfigClient({
                       basePrice={basePrice}
                       addonPrice={addonTotal}
                       onBack={backFromPreview}
-                      onContinue={() => void (resumeFinish ? handleFinishAndPay() : handleAuthorizeHold())}
+                      onContinue={onPreviewContinue}
                       preferencesOnly
                       hideNav
                     />
@@ -2356,8 +2589,10 @@ export function MpConfigClient({
                   />
                 ) : null}
 
-                {/* A finish link already has contact from the questionnaire submit. */}
-                {!resumeFinish && (
+                {/* A finish link already has contact from the questionnaire submit,
+                    and a re-configuration edits the build, not who it belongs to —
+                    contact and Discovery source stay on the Result detail page. */}
+                {!resumeFinish && !staffEdit && (
                 <PreviewContactFields
                     locale={locale}
                     fieldErrors={fieldErrors}
@@ -2598,14 +2833,8 @@ export function MpConfigClient({
                   <Button
                     className="flex-[2]"
                     size="lg"
-                    onClick={() => void (resumeFinish ? handleFinishAndPay() : handleAuthorizeHold())}
-                    disabled={
-                      holdSubmitting ||
-                      shopLoading ||
-                      !shopRecommendation ||
-                      quoteBlocked ||
-                      flowRouteBlocksHold
-                    }
+                    onClick={onPreviewContinue}
+                    disabled={continueBlocked}
                   >
                     {holdCta}
                     <ArrowRight className="size-4" />

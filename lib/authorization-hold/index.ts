@@ -159,34 +159,9 @@ export async function releaseHold(paymentIntentId: string) {
   return stripe.paymentIntents.cancel(paymentIntentId);
 }
 
-export type CapturePlan =
-  | { kind: "capture"; amount: number }
-  | { kind: "top_up"; holdCapture: number; topUp: number };
-
-/**
- * Decide how to settle final vs authorized hold.
- * Never captures above authorized — excess requires a separate Balance payment.
- *
- * A Result with no Authorization hold passes `authorizedAmount = 0` and takes the
- * same branch for its whole total: a full payment is a top-up from a hold of zero
- * (ADR 0016). That keeps one settlement path rather than two.
- */
-export function planCapture(finalAmount: number, authorizedAmount: number): CapturePlan {
-  if (finalAmount <= 0) {
-    throw new Error("final amount must be positive");
-  }
-  if (authorizedAmount <= 0) {
-    return { kind: "top_up", holdCapture: 0, topUp: finalAmount };
-  }
-  if (finalAmount <= authorizedAmount) {
-    return { kind: "capture", amount: finalAmount };
-  }
-  return {
-    kind: "top_up",
-    holdCapture: authorizedAmount,
-    topUp: Math.round((finalAmount - authorizedAmount) * 100) / 100,
-  };
-}
+// The settlement split lives in its own module: it is pure, and the "build
+// updated" email needs it without loading the Stripe SDK this file pulls in.
+export { planCapture, type CapturePlan } from "./settlement-plan";
 
 export type CreateTopUpCheckoutInput = {
   amount: number;
