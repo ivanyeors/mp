@@ -151,6 +151,38 @@ export function sampleResultAssignedFinish(fixture: EmailFixture = "happy") {
   };
 }
 
+/**
+ * Staff re-configured an assigned build and the price grew past the hold, so
+ * the customer owes a Balance payment at checkout. Spread from the assigned
+ * fixture so the shared spec rows cannot drift between the two templates.
+ */
+export function sampleResultUpdated(fixture: EmailFixture = "happy") {
+  const base = sampleResultAssigned(fixture);
+  return {
+    ...base,
+    preferences: [pick(fixture, "Satin Cover"), pick(fixture, "Fibrecool Case")],
+    // Rows that add up: these previews get read, and a totals table that does
+    // not reconcile is the first thing a reviewer stops on.
+    pricing: { ...base.pricing, subtotal: 434, shipping: 12, tax: 32.12, total: 478.12 },
+    previousTotal: base.pricing.total,
+  };
+}
+
+/** Same change, but the hold still covers it — nothing extra to pay. */
+export function sampleResultUpdatedWithinHold(fixture: EmailFixture = "happy") {
+  const base = sampleResultUpdated(fixture);
+  return {
+    ...base,
+    pricing: { ...base.pricing, subtotal: 349, shipping: 12, tax: 28.02, total: 389.02 },
+  };
+}
+
+/** Assisted customisation: no hold, so the whole new total is owed. */
+export function sampleResultUpdatedBalance(fixture: EmailFixture = "happy") {
+  const base = sampleResultUpdated(fixture);
+  return { ...base, pricing: { ...base.pricing, authorized: null } };
+}
+
 export function sampleHoldExpired(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,

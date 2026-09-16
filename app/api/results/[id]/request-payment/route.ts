@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getEmailTransport } from "@/lib/email";
-import { renderResultAssignedEmail, statusUrl } from "@/lib/email/results";
+import {
+  renderResultAssignedEmail,
+  renderResultUpdatedEmail,
+  statusUrl,
+} from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
@@ -100,34 +104,56 @@ export async function POST(
 
   const link = statusUrl(origin, id, row.access_token);
 
+  const spec = {
+    origin,
+    resultId: id,
+    accessToken: row.access_token,
+    productType: row.product_type ?? "pillow",
+    size: row.assigned_size,
+    tier: row.assigned_tier,
+    length: row.assigned_length,
+    fillingSummary,
+    preferences,
+    addons,
+    pricing: {
+      subtotal: build.pricing.subtotal,
+      shipping: build.pricing.shipping,
+      tax: build.pricing.tax,
+      total: build.pricing.total,
+      currency: row.currency ?? "SGD",
+      authorized: row.authorized_amount != null ? Number(row.authorized_amount) : null,
+    },
+  };
+
+  // Which of two emails, on one question: has the price moved since the
+  // customer was last told?
+  //
+  // Unchanged is the ordinary case — Staff press this because the customer lost
+  // the email, or to get the link for WhatsApp — and there "Your final build is
+  // ready" is exactly right, a faithful re-send.
+  //
+  // Repriced is not a re-send. Staff have re-configured the build
+  // (`/reconfigure`), and a second copy of the same announcement carrying a
+  // different total would leave the customer with two identical subjects, two
+  // numbers and no way to tell which is current. That gets its own template,
+  // which names the change and what it does to their card.
+  //
+  // A Result still awaiting the customer's finish is never "repriced": its
+  // price is a floor, not a total, until they choose cover, case and shipping
+  // (ADR 0017), so it keeps the "choose your finish" voice whatever moved.
+  const needsFinish = needsCustomerFinish(row);
+  const rendered =
+    repriced === "updated" && !needsFinish
+      ? renderResultUpdatedEmail({ ...spec, previousTotal: storedFinal })
+      : renderResultAssignedEmail({ ...spec, needsFinish });
+
   let emailStatus: "sent" | "failed" | "skipped" = "skipped";
   if (row.customer_email) {
     try {
       await getEmailTransport().send({
         to: row.customer_email,
         from: getDefaultFromAddress(),
-        ...renderResultAssignedEmail({
-          origin,
-          resultId: id,
-          accessToken: row.access_token,
-          productType: row.product_type ?? "pillow",
-          size: row.assigned_size,
-          tier: row.assigned_tier,
-          length: row.assigned_length,
-          fillingSummary,
-          preferences,
-          addons,
-          pricing: {
-            subtotal: build.pricing.subtotal,
-            shipping: build.pricing.shipping,
-            tax: build.pricing.tax,
-            total: build.pricing.total,
-            currency: row.currency ?? "SGD",
-            authorized:
-              row.authorized_amount != null ? Number(row.authorized_amount) : null,
-          },
-          needsFinish: needsCustomerFinish(row),
-        }),
+        ...rendered,
       });
       emailStatus = "sent";
     } catch (e) {
@@ -141,6 +167,8 @@ export async function POST(
     emailStatus,
     statusUrl: link,
     repriced,
+    /** Which template went out, so the Admin Panel can say so honestly. */
+    emailTemplate: repriced === "updated" && !needsFinish ? "updated" : "assigned",
     finalAmount: build.pricing.total,
     currency: row.currency ?? "SGD",
   });

@@ -114,4 +114,26 @@ describe("request-payment", () => {
     expect(src).toMatch(/\.eq\("status", "assigned"\)/);
     expect(src).toMatch(/\.is\("order_id", null\)/);
   });
+
+  it("sends the update template only when the price actually moved", () => {
+    // A plain re-send ("the customer lost the email") is still the assigned
+    // one. Two emails under the same subject with different totals is the
+    // failure renderResultUpdatedEmail exists to prevent.
+    expect(src).toMatch(/repriced === "updated" && !needsFinish\s*\?\s*renderResultUpdatedEmail/);
+    expect(src).toMatch(/:\s*renderResultAssignedEmail\(\{ \.\.\.spec, needsFinish \}\)/);
+  });
+
+  it("hands the customer's previous quote to the update template", () => {
+    expect(src).toMatch(/previousTotal: storedFinal/);
+    // Read before the write, or it would compare the new total against itself.
+    expect(src.indexOf("const storedFinal")).toBeLessThan(
+      src.indexOf("final_amount: build.pricing.total"),
+    );
+  });
+
+  it("keeps the floor-price voice for a Result still awaiting its finish", () => {
+    // Its price is a floor until the customer picks cover, case and shipping
+    // (ADR 0017) — "your new total" would be a number that does not exist yet.
+    expect(src).toMatch(/const needsFinish = needsCustomerFinish\(row\);/);
+  });
 });

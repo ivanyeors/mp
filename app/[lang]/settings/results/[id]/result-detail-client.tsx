@@ -650,8 +650,8 @@ export default function ResultDetailPage({
       setPaymentLink((payload?.statusUrl as string | undefined) ?? null);
       toast.success(
         payload?.emailStatus === "sent"
-          ? payload?.repriced === "updated"
-            ? "Repriced and payment email sent"
+          ? payload?.emailTemplate === "updated"
+            ? "Repriced — sent the customer the updated build and new total"
             : "Payment email sent"
           : "Link ready — no customer email on file",
       );
@@ -990,11 +990,16 @@ export default function ResultDetailPage({
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Reprices this Result from its current configuration, re-sends the
-                  priced email, and gives you the customer&apos;s link to paste into
-                  WhatsApp. Safe to press twice — the same build reprices to the
-                  same total. Use it after <span className="font-medium">Edit
-                  configuration</span> so the customer is quoted the new build.
+                  Reprices this Result from its current configuration, emails the
+                  customer, and gives you their link to paste into WhatsApp. Safe to
+                  press twice — the same build reprices to the same total.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  If the price moved since they were last told — after{" "}
+                  <span className="font-medium">Edit configuration</span> — they get
+                  &ldquo;your build has been updated&rdquo;, showing the old total
+                  beside the new one and what their card covers. Otherwise it is a
+                  plain re-send of the build-ready email.
                 </p>
               </div>
             </>
