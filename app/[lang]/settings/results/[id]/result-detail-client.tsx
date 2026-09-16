@@ -634,11 +634,19 @@ export default function ResultDetailPage({
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
       setPaymentLink((payload?.statusUrl as string | undefined) ?? null);
-      toast.success(
-        payload?.emailStatus === "sent"
-          ? "Payment email sent"
-          : "Link ready — no customer email on file",
-      );
+      // Three outcomes, not two: emailStatus "failed" comes back with HTTP 200.
+      const emailStatus = payload?.emailStatus as
+        | "sent"
+        | "failed"
+        | "skipped"
+        | undefined;
+      if (emailStatus === "sent") {
+        toast.success("Payment email sent");
+      } else if (emailStatus === "failed") {
+        toast.error("Could not send the payment email — the link below still works");
+      } else {
+        toast.success("Link ready — no customer email on file");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to request payment");
     } finally {

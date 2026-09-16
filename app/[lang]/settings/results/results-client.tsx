@@ -501,11 +501,21 @@ export default function ResultsPage({
       );
       const payload = await res.json().catch(() => null);
       if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
-      toast.success(
-        payload?.emailStatus === "sent"
-          ? `Payment email sent to ${row.customer_email}`
-          : "Link ready — no customer email on file",
-      );
+      // Three outcomes, not two. The route returns 200 with emailStatus
+      // "failed" when the transport throws, and calling that a success told
+      // staff the customer had been chased when nothing was sent.
+      const emailStatus = payload?.emailStatus as
+        | "sent"
+        | "failed"
+        | "skipped"
+        | undefined;
+      if (emailStatus === "sent") {
+        toast.success(`Payment email sent to ${row.customer_email}`);
+      } else if (emailStatus === "failed") {
+        toast.error("Could not send the payment email — open the result to copy the link");
+      } else {
+        toast.success("Link ready — no customer email on file");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to request payment");
     } finally {

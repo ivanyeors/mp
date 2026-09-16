@@ -98,6 +98,16 @@ export type PaymentReminderState = {
   lastReminderAt: Date | null;
   /** How many have gone out. */
   remindersSent: number;
+  /**
+   * Hard stop, or null when there is none.
+   *
+   * For a Result backed by an Authorization hold this is when that hold dies.
+   * Past it, "review and pay — nothing charged yet" is a false promise: Accept
+   * captures the hold, and capturing a dead one 502s. Nothing expires an
+   * ASSIGNED row (the SLA force-expire only covers `held`), so the schedule has
+   * to know to stop on its own.
+   */
+  notAfter?: Date | null;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -111,7 +121,9 @@ export function nextReminderDue(
   if (state.remindersSent >= settings.maxReminders) return null;
   const anchor = state.lastReminderAt ?? state.assignedAt;
   const days = state.lastReminderAt ? settings.intervalDays : settings.firstDelayDays;
-  return new Date(anchor.getTime() + days * DAY_MS);
+  const due = new Date(anchor.getTime() + days * DAY_MS);
+  if (state.notAfter && due.getTime() >= state.notAfter.getTime()) return null;
+  return due;
 }
 
 /**
@@ -127,5 +139,9 @@ export function planPaymentReminder(
 ): "remind" | "none" {
   const due = nextReminderDue(state, settings);
   if (!due) return "none";
+  // Checked against `now` as well as against the due date: a cron that arrives
+  // late must not send a reminder that came due while the hold was alive but is
+  // being acted on after it died.
+  if (state.notAfter && now.getTime() >= state.notAfter.getTime()) return "none";
   return now.getTime() >= due.getTime() ? "remind" : "none";
 }

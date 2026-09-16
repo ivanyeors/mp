@@ -93,6 +93,57 @@ describe("planPaymentReminder", () => {
     expect(planPaymentReminder(fresh, D, day(4))).toBe("remind");
   });
 
+  describe("notAfter (the Authorization hold's death)", () => {
+    // Submitted day 0, hold dies day 7, assigned day 0 for arithmetic clarity.
+    const holdDies = day(7);
+
+    it("sends the chases that land while the hold is alive", () => {
+      const held = { ...fresh, notAfter: holdDies };
+      expect(planPaymentReminder(held, D, day(3))).toBe("remind");
+    });
+
+    it("never promises payment on a hold that has already died", () => {
+      const held = {
+        assignedAt: ASSIGNED,
+        lastReminderAt: day(3),
+        remindersSent: 1,
+        notAfter: holdDies,
+      };
+      // Due day 6 — before the hold dies — but the cron is running on day 8.
+      // Accept would 502 on captureHold, so this must not go out.
+      expect(planPaymentReminder(held, D, day(8))).toBe("none");
+    });
+
+    it("schedules nothing whose due date is past the deadline", () => {
+      const held = {
+        assignedAt: ASSIGNED,
+        lastReminderAt: day(6),
+        remindersSent: 2,
+        notAfter: holdDies,
+      };
+      // Next would be day 9, after the hold dies on day 7.
+      expect(nextReminderDue(held, D)).toBeNull();
+      expect(planPaymentReminder(held, D, day(9))).toBe("none");
+    });
+
+    it("leaves a no-hold Result unbounded", () => {
+      // No deadline, so a late cron still chases — there is no dead hold to
+      // make the promise false, only an unpaid balance.
+      expect(planPaymentReminder(fresh, D, day(30))).toBe("remind");
+      const late = { ...fresh, lastReminderAt: day(20), remindersSent: 1 };
+      expect(planPaymentReminder(late, D, day(23))).toBe("remind");
+    });
+
+    it("is the deadline, not the lateness, that stops a held Result", () => {
+      // Same state, same late tick — only notAfter differs.
+      const late = { ...fresh, lastReminderAt: day(20), remindersSent: 1 };
+      expect(planPaymentReminder(late, D, day(23))).toBe("remind");
+      expect(
+        planPaymentReminder({ ...late, notAfter: day(7) }, D, day(23)),
+      ).toBe("none");
+    });
+  });
+
   it("walks a full three-reminder schedule and then goes quiet", () => {
     let state = fresh;
     const fired: number[] = [];
