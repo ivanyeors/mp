@@ -69,7 +69,7 @@ export async function listMpConfigResponses(params: {
   const [listResult, locations] = await Promise.all([
     admin
       .from("mp_config_responses")
-      .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,location_id,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email,payment_intent_id,topup_paid_at", { count: "exact" })
+      .select("id,data,is_final,measured_by_type,measured_by_staff_id,source,location_id,order_id,created_at,updated_at,status,suggested_size,suggested_tier,assigned_size,assigned_tier,customer_email,payment_intent_id,topup_paid_at,payment_reminder_count,payment_reminder_last_at", { count: "exact" })
       .order("updated_at", { ascending: false })
       .range(offset, offset + limit - 1),
     getLocations(),

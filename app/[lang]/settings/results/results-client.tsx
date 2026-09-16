@@ -86,6 +86,9 @@ type MpConfigResponseRow = {
   assigned_size?: string | null;
   assigned_tier?: string | null;
   customer_email?: string | null;
+  /** Balance-due chases already sent. Null on rows predating the counter. */
+  payment_reminder_count?: number | null;
+  payment_reminder_last_at?: string | null;
 };
 
 type StaffRow = {
@@ -218,6 +221,7 @@ export default function ResultsPage({
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [orderFilter, setOrderFilter] = useState<OrderFilter>("all");
   const [sending, setSending] = useState<Record<string, boolean>>({});
+  const [requestingPayment, setRequestingPayment] = useState<Record<string, boolean>>({});
   const [deleting, setDeleting] = useState<Record<string, boolean>>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MpConfigResponseRow | null>(null);
@@ -466,6 +470,44 @@ export default function ResultsPage({
       })
       .map((s) => s.row);
   }, [staged, search, tab, sourceFilter, orderFilter]);
+
+  /**
+   * Re-send the priced "ready to pay" email from the list.
+   *
+   * The same action already existed on the detail page, which meant chasing a
+   * customer cost two navigations from the one tab that exists to show who is
+   * being waited on. The route writes nothing to the Result, so pressing it
+   * twice sends a second copy and changes nothing else — no reload needed, and
+   * the local counter below is only there to tell staff it landed.
+   */
+  const requestPayment = useCallback(async (row: MpConfigResponseRow) => {
+    if (!row.customer_email) {
+      toast.error("No customer email on file — open the result to copy the link");
+      return;
+    }
+    setRequestingPayment((prev) => ({ ...prev, [row.id]: true }));
+    try {
+      const res = await fetch(
+        `/api/results/${encodeURIComponent(row.id)}/request-payment`,
+        { method: "POST" },
+      );
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error ?? "Failed to request payment");
+      toast.success(
+        payload?.emailStatus === "sent"
+          ? `Payment email sent to ${row.customer_email}`
+          : "Link ready — no customer email on file",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to request payment");
+    } finally {
+      setRequestingPayment((prev) => {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      });
+    }
+  }, []);
 
   const sendToTelegram = useCallback(
     async (row: MpConfigResponseRow) => {
@@ -820,6 +862,9 @@ export default function ResultsPage({
                 <TableHead className="hidden w-[140px] md:table-cell">Age group</TableHead>
                 <TableHead className="hidden w-[130px] md:table-cell">Shoulder (cm)</TableHead>
                 <TableHead className="w-[220px]">Measured by</TableHead>
+                {tab === "awaiting_customer" && (
+                  <TableHead className="w-[150px]">Payment</TableHead>
+                )}
                 <TableHead className="w-[140px]">Group Updates</TableHead>
                 <TableHead className="hidden w-[260px] lg:table-cell">ID</TableHead>
                 <TableHead className="w-[52px] text-right" />
@@ -828,7 +873,11 @@ export default function ResultsPage({
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={14} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell
+                    // Tracks the conditional Payment column above.
+                    colSpan={tab === "awaiting_customer" ? 15 : 14}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
                     {tab === "stuck"
                       ? "Nothing stuck — every Result is moving."
                       : `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`}
@@ -1001,6 +1050,41 @@ export default function ResultsPage({
                           <div className="mt-1 text-[11px] text-muted-foreground">Selected: {measuredByText}</div>
                         )}
                       </TableCell>
+                      {/* Only on the tab that exists to show who is being waited
+                          on — the table is already wide enough on a phone. */}
+                      {tab === "awaiting_customer" && (
+                        <TableCell
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        >
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => requestPayment(row)}
+                            disabled={
+                              Boolean(requestingPayment[row.id]) ||
+                              row.status !== "assigned" ||
+                              !row.customer_email
+                            }
+                            title={
+                              row.status !== "assigned"
+                                ? "Only an assigned build can be paid for"
+                                : !row.customer_email
+                                  ? "No customer email on file"
+                                  : "Re-send the payment email"
+                            }
+                          >
+                            {requestingPayment[row.id] ? "Sending…" : "Request payment"}
+                          </Button>
+                          {(row.payment_reminder_count ?? 0) > 0 && (
+                            <div className="mt-1 text-[11px] text-muted-foreground">
+                              {row.payment_reminder_count} auto reminder
+                              {row.payment_reminder_count === 1 ? "" : "s"} sent
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell
                         onClick={(e) => {
                           e.stopPropagation();

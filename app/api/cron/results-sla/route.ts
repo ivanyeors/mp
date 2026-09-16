@@ -20,6 +20,11 @@ import {
 import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
 import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
+import {
+  parsePaymentReminderSettings,
+  PAYMENT_REMINDER_SETTING_KEYS,
+  planPaymentReminder,
+} from "@/lib/payment-reminders";
 import { getPublicOrigin } from "@/lib/site-url";
 
 export const runtime = "nodejs";
@@ -90,14 +95,18 @@ export async function GET(req: Request) {
 
   const origin = getPublicOrigin(req);
   const admin = supabaseAdmin();
-  const stored = await getSiteSettings([...SLA_SETTING_KEYS]);
+  const stored = await getSiteSettings([
+    ...SLA_SETTING_KEYS,
+    ...PAYMENT_REMINDER_SETTING_KEYS,
+  ]);
   const settings = parseSlaSettings(stored);
+  const paymentReminders = parsePaymentReminderSettings(stored);
   const now = new Date();
 
   const { data: rows, error } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address",
+      "id, status, source, created_at, last_reminder_at, payment_intent_id, filling_template_id, customer_email, access_token, product_type, final_amount, currency, shipping_address, assigned_at, payment_reminder_last_at, payment_reminder_count",
     )
     // `assigned` joins the scan for one reason: a Result with no hold sits there
     // owing a Balance payment, and nothing else in the system would ever chase it
@@ -129,11 +138,23 @@ export async function GET(req: Request) {
     // payment reminder can be up to one interval late. That is the right trade
     // against a second column for the same cadence.
     if (row.status === "assigned") {
-      if (hasHold) continue;
       if (!row.customer_email) continue;
-      if (planHeldTick({ id: row.id, heldAt, lastReminderAt }, settings, now, false) !== "remind") {
-        continue;
-      }
+      // A hold no longer skips the chase. Both kinds of assigned Result are
+      // waiting on the same customer action — Accept — and the held one is the
+      // more urgent of the two, since its authorization dies at 7 days.
+      const assignedAt = row.assigned_at ? new Date(row.assigned_at) : heldAt;
+      const plan = planPaymentReminder(
+        {
+          assignedAt,
+          lastReminderAt: row.payment_reminder_last_at
+            ? new Date(row.payment_reminder_last_at)
+            : null,
+          remindersSent: row.payment_reminder_count ?? 0,
+        },
+        paymentReminders,
+        now,
+      );
+      if (plan !== "remind") continue;
       try {
         await getEmailTransport().send({
           to: row.customer_email,
@@ -148,9 +169,14 @@ export async function GET(req: Request) {
             needsFinish: needsCustomerFinish(row),
           }),
         });
+        // Its own clock and counter — `last_reminder_at` stays the operator SLA's,
+        // so moving one cadence no longer drags the other with it.
         await admin
           .from("mp_config_responses")
-          .update({ last_reminder_at: now.toISOString() })
+          .update({
+            payment_reminder_last_at: now.toISOString(),
+            payment_reminder_count: (row.payment_reminder_count ?? 0) + 1,
+          })
           .eq("id", row.id);
         summary.paymentReminded += 1;
       } catch (e) {
