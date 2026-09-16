@@ -80,6 +80,7 @@ async function sendCustomerExpiredEmail(opts: {
   accessToken: string | null;
   origin: string;
   productType: string | null;
+  reason?: "unreviewed" | "unpaid";
 }) {
   await getEmailTransport().send({
     to: opts.to,
@@ -88,7 +89,12 @@ async function sendCustomerExpiredEmail(opts: {
   });
 }
 
-/** Daily cron tick (Hobby-safe): remind operators and expire held Results past SLA / before auth dies. */
+/**
+ * Daily cron tick (Hobby-safe). Three jobs: remind operators about held Results,
+ * expire them past SLA / before the authorization dies, and chase customers who
+ * have an assigned build they have not paid for — expiring that too once its
+ * hold lapses.
+ */
 export async function GET(req: Request) {
   if (!authorizeCron(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -142,6 +148,74 @@ export async function GET(req: Request) {
     // made the first customer chase up to one operator-interval late and welded
     // the two schedules together.
     if (row.status === "assigned") {
+      // The hold is dead: end it rather than leaving the row in `assigned`
+      // forever, still offering the customer a Pay button whose capture can no
+      // longer succeed. Nothing else closes this — the SLA force-expire below
+      // only ever covered `held`, so an assigned Result whose customer went
+      // quiet had no ending at all. result-stage badges these hold_rotting from
+      // day 6, which is the day of warning staff get before this fires.
+      if (hasHold && now.getTime() >= authExpiresAt(heldAt).getTime()) {
+        const life = transitionResult(
+          {
+            status: "assigned",
+            filling_template_id: row.filling_template_id,
+            payment_intent_id: row.payment_intent_id,
+          },
+          { action: "expire" },
+        );
+        if (!life.ok) {
+          summary.errors.push(`${row.id}: ${life.error}`);
+          continue;
+        }
+
+        // Best-effort, and expected to fail. We are here precisely because the
+        // authorization has already lapsed, and Stripe rejects cancelling a
+        // PaymentIntent that is no longer cancellable. Releasing is how a LIVE
+        // hold is let go; for a dead one the attempt is belt-and-braces and its
+        // failure must not block the status flip.
+        if (life.releaseHold && row.payment_intent_id) {
+          try {
+            await releaseHold(row.payment_intent_id);
+          } catch {
+            /* already dead at Stripe — that is the reason we are expiring it */
+          }
+        }
+
+        // CAS on `assigned`: an Accept in flight must win the race, not be
+        // overwritten by a cron tick.
+        const { error: expireErr } = await admin
+          .from("mp_config_responses")
+          .update({ status: life.status })
+          .eq("id", row.id)
+          .eq("status", "assigned");
+        if (expireErr) {
+          summary.errors.push(`${row.id}: ${expireErr.message}`);
+          continue;
+        }
+
+        if (row.customer_email) {
+          try {
+            await sendCustomerExpiredEmail({
+              to: row.customer_email,
+              resultId: row.id,
+              accessToken: row.access_token,
+              origin,
+              productType: row.product_type,
+              // Not "we never reviewed it" — it was built and priced. The
+              // customer simply never paid.
+              reason: "unpaid",
+            });
+          } catch (e) {
+            summary.errors.push(
+              `${row.id}: unpaid-expiry email ${e instanceof Error ? e.message : "failed"}`,
+            );
+          }
+        }
+
+        summary.expired += 1;
+        continue;
+      }
+
       if (!row.customer_email) continue;
       // A hold no longer skips the chase. Both kinds of assigned Result are
       // waiting on the same customer action — Accept — and the held one is the

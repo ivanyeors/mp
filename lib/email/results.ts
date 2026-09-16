@@ -476,13 +476,37 @@ export function renderHoldExpiredEmail(p: {
   resultId: string;
   accessToken: string | null;
   productType: string | null;
+  /**
+   * Which expiry this is.
+   *
+   * `unreviewed` — the default and the original behaviour: the Result was still
+   * waiting on an operator when the SLA ran out. That is our delay, not theirs.
+   *
+   * `unpaid` — the build was finished and priced, and the Authorization hold
+   * died before the customer accepted it. Telling that customer their "review
+   * window expired" is the wrong story: there was nothing left for them to
+   * review, only something to pay for.
+   */
+  reason?: "unreviewed" | "unpaid";
 }): RenderedEmail {
   const restartPath = p.productType === "bolster" ? "/mbolster-config" : "/mp-config";
   const restartUrl = `${p.origin}${restartPath}`;
   const url = p.accessToken ? statusUrl(p.origin, p.resultId, p.accessToken) : restartUrl;
+  const unpaid = p.reason === "unpaid";
+
+  const subject = unpaid
+    ? "Your customisation hold has expired — nothing was charged"
+    : "Your customisation hold has expired";
+  const lead = unpaid
+    ? "Your final build was ready, but it was not paid for in time, so your card authorization hold has been released. Nothing was charged."
+    : "Your customisation review window has expired and your card authorization hold has been released.";
+  const closing = unpaid
+    ? "The build itself is not lost — get in touch and we can put the same one back together for you, or start again below."
+    : null;
 
   const text = [
-    "Your customisation review window has expired and your card authorization hold has been released.",
+    lead,
+    ...(closing ? ["", closing] : []),
     "",
     "To continue, start customisation again:",
     restartUrl,
@@ -491,13 +515,11 @@ export function renderHoldExpiredEmail(p: {
   ].join("\n");
 
   const html = renderEmailShell({
-    title: "Your customisation hold has expired",
+    title: subject,
     preheader: "Your authorization hold has been released — nothing was charged.",
     bodyHtml: `${statusPill("Hold released", "neutral")}
-${paragraph(
-      "Your customisation review window has expired and your card authorization hold has been released.",
-      { top: 16 },
-    )}
+${paragraph(lead, { top: 16 })}
+${closing ? paragraph(closing, { muted: true }) : ""}
 ${paragraphHtml(
       // The plain-text body has always linked the status page; the old HTML
       // dropped it, then carried it as unlinked text. Keep both in step, and
@@ -508,7 +530,7 @@ ${paragraphHtml(
     cta: { href: restartUrl, label: "Start customisation again" },
   });
 
-  return { subject: "Your customisation hold has expired", text, html };
+  return { subject, text, html };
 }
 
 // ------------------------------------------------------------

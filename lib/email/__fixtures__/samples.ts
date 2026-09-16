@@ -175,6 +175,11 @@ export function sampleBalanceDueFinish(fixture: EmailFixture = "happy") {
   return { ...sampleBalanceDue(fixture), needsFinish: true };
 }
 
+/** The build was priced and the hold died unpaid — the other expiry voice. */
+export function sampleHoldExpiredUnpaid(fixture: EmailFixture = "happy") {
+  return { ...sampleHoldExpired(fixture), reason: "unpaid" as const };
+}
+
 export function sampleResultDeclined(fixture: EmailFixture = "happy") {
   return {
     origin: ORIGIN,

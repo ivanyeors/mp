@@ -36,6 +36,7 @@ import {
   sampleContact,
   sampleHeldReminder,
   sampleHoldExpired,
+  sampleHoldExpiredUnpaid,
   sampleOrder,
   samplePartnerListing,
   sampleBalanceDue,
@@ -134,6 +135,16 @@ export const EMAIL_REGISTRY: readonly EmailCase[] = [
     group: "results",
     audience: "customer",
     render: (f) => renderResultHeldEmail(sampleResultHeldNoHold(f)),
+  },
+  {
+    // Same renderer, the unpaid voice: the build was finished and priced and
+    // the hold died before anyone accepted it. The sentence about whose delay
+    // it was is the one most likely to be wrong, so it gets its own preview.
+    id: "results.hold_expired_unpaid",
+    label: "Hold expired — build never paid for",
+    group: "results",
+    audience: "customer",
+    render: (f) => renderHoldExpiredEmail(sampleHoldExpiredUnpaid(f)),
   },
   {
     id: "results.declined",

@@ -157,6 +157,27 @@ describe("transitionResult", () => {
       });
     });
 
+    it("expires an assigned Result whose hold has died", () => {
+      // The customer never accepted and the authorization is gone. Same ending
+      // as a held expiry: released, nothing charged.
+      expect(
+        transitionResult(
+          { status: "assigned", filling_template_id: 1, payment_intent_id: "pi_abc" },
+          { action: "expire" },
+        ),
+      ).toEqual({ ok: true, status: "expired", releaseHold: true });
+    });
+
+    it("refuses to expire from anywhere money has moved", () => {
+      for (const status of ["accepted", "captured", "declined", "expired"] as const) {
+        const res = transitionResult(
+          { status, filling_template_id: 1, payment_intent_id: "pi_abc" },
+          { action: "expire" },
+        );
+        expect(res.ok, `expire should be refused from ${status}`).toBe(false);
+      }
+    });
+
     it("leaves terminal states terminal", () => {
       for (const status of ["captured", "declined", "expired", "cancelled"] as const) {
         const res = transitionResult(
