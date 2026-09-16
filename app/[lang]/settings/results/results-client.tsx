@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { MoreVertical, Send, SquareArrowOutUpRight, Trash2 } from "lucide-react";
 import { AssistLinkCard } from "@/components/admin/assist-link-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { rowsToCsv } from "@/lib/results/rows-to-csv";
 import {
   STAGE_BUCKETS,
@@ -862,9 +870,6 @@ export default function ResultsPage({
                 <TableHead className="hidden w-[140px] md:table-cell">Age group</TableHead>
                 <TableHead className="hidden w-[130px] md:table-cell">Shoulder (cm)</TableHead>
                 <TableHead className="w-[220px]">Measured by</TableHead>
-                {tab === "awaiting_customer" && (
-                  <TableHead className="w-[150px]">Payment</TableHead>
-                )}
                 <TableHead className="w-[140px]">Group Updates</TableHead>
                 <TableHead className="hidden w-[260px] lg:table-cell">ID</TableHead>
                 <TableHead className="w-[52px] text-right" />
@@ -873,11 +878,7 @@ export default function ResultsPage({
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    // Tracks the conditional Payment column above.
-                    colSpan={tab === "awaiting_customer" ? 15 : 14}
-                    className="py-10 text-center text-sm text-muted-foreground"
-                  >
+                  <TableCell colSpan={14} className="py-10 text-center text-sm text-muted-foreground">
                     {tab === "stuck"
                       ? "Nothing stuck — every Result is moving."
                       : `Nothing in ${TAB_LABELS[tab].toLowerCase()}.`}
@@ -1050,41 +1051,6 @@ export default function ResultsPage({
                           <div className="mt-1 text-[11px] text-muted-foreground">Selected: {measuredByText}</div>
                         )}
                       </TableCell>
-                      {/* Only on the tab that exists to show who is being waited
-                          on — the table is already wide enough on a phone. */}
-                      {tab === "awaiting_customer" && (
-                        <TableCell
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
-                        >
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => requestPayment(row)}
-                            disabled={
-                              Boolean(requestingPayment[row.id]) ||
-                              row.status !== "assigned" ||
-                              !row.customer_email
-                            }
-                            title={
-                              row.status !== "assigned"
-                                ? "Only an assigned build can be paid for"
-                                : !row.customer_email
-                                  ? "No customer email on file"
-                                  : "Re-send the payment email"
-                            }
-                          >
-                            {requestingPayment[row.id] ? "Sending…" : "Request payment"}
-                          </Button>
-                          {(row.payment_reminder_count ?? 0) > 0 && (
-                            <div className="mt-1 text-[11px] text-muted-foreground">
-                              {row.payment_reminder_count} auto reminder
-                              {row.payment_reminder_count === 1 ? "" : "s"} sent
-                            </div>
-                          )}
-                        </TableCell>
-                      )}
                       <TableCell
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1108,20 +1074,76 @@ export default function ResultsPage({
                           e.stopPropagation();
                         }}
                       >
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="min-h-11 min-w-11"
-                          onClick={() => {
-                            setDeleteTarget(row);
-                            setDeleteDialogOpen(true);
-                          }}
-                          disabled={isDeleting}
-                          aria-label="Delete result"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {/*
+                          One kebab per row instead of a column per action. The
+                          table already scrolls sideways on a phone, and the
+                          actions staff want here — chase the customer, open the
+                          build — were otherwise only reachable from inside the
+                          detail page.
+                        */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="min-h-11 min-w-11"
+                              aria-label="Result actions"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuItem
+                              onSelect={() => router.push(to(`/settings/results/${row.id}`))}
+                            >
+                              <SquareArrowOutUpRight className="h-4 w-4" />
+                              Open result
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={
+                                Boolean(requestingPayment[row.id]) ||
+                                row.status !== "assigned" ||
+                                !row.customer_email
+                              }
+                              // Let the menu close: the toast is the feedback,
+                              // and an open menu would sit on top of it on the
+                              // phone screen where staff actually do this.
+                              onSelect={() => void requestPayment(row)}
+                            >
+                              <Send className="h-4 w-4" />
+                              Request payment
+                            </DropdownMenuItem>
+                            {/* Why the item above is greyed out, rather than
+                                leaving staff to guess. */}
+                            {row.status !== "assigned" ? (
+                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+                                Only an assigned build can be paid for
+                              </DropdownMenuLabel>
+                            ) : !row.customer_email ? (
+                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+                                No customer email on file
+                              </DropdownMenuLabel>
+                            ) : (row.payment_reminder_count ?? 0) > 0 ? (
+                              <DropdownMenuLabel className="pt-0 text-[11px] font-normal text-muted-foreground">
+                                {row.payment_reminder_count} auto reminder
+                                {row.payment_reminder_count === 1 ? "" : "s"} sent
+                              </DropdownMenuLabel>
+                            ) : null}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              disabled={isDeleting}
+                              onSelect={() => {
+                                setDeleteTarget(row);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete result
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );
