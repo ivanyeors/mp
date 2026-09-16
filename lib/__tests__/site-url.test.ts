@@ -5,16 +5,28 @@
 // `mp-<hash>-ivanyeors-projects.vercel.app` link for months while the suite was
 // green. These cases exist to fail when the env var is the thing that is
 // missing.
+//
+// Every expected origin below is distinct from PROD_FALLBACK_ORIGIN on purpose.
+// An earlier draft reused the fallback string as the configured value, which
+// made the configured / forwarded / request-origin branches pass whether or not
+// the code consulted them at all.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  getClientPublicOrigin,
   getClientSiteOrigin,
   getPublicOrigin,
   getRequestOrigin,
   getSiteOrigin,
 } from "../site-url";
 
-const CANONICAL = "https://custom.mpillow.com";
+/** Matches PROD_FALLBACK_ORIGIN — only ever asserted as a *fallback*. */
+const FALLBACK = "https://custom.mpillow.com";
+/** Allowlisted, and distinct from the fallback, so "configured wins" can fail. */
+const CONFIGURED = "https://configured.mpillow.com";
+const FORWARDED_HOST = "forwarded.mpillow.com";
+/** Off-domain: a forged Host header must never become a public link. */
+const HOSTILE_HOST = "attacker.example.com";
 const DEPLOYMENT_HOST = "mp-15j5vdlfc-ivanyeors-projects.vercel.app";
 const DEPLOYMENT_ORIGIN = `https://${DEPLOYMENT_HOST}`;
 
@@ -45,19 +57,19 @@ function setWindow(origin: string) {
 }
 
 describe("getSiteOrigin", () => {
-  it("prefers the configured public origin", () => {
+  it("prefers the configured public origin over the deployment host", () => {
     env.NODE_ENV = "production";
-    env.NEXT_PUBLIC_SITE_URL = `${CANONICAL}/`;
+    env.NEXT_PUBLIC_SITE_URL = `${CONFIGURED}/`;
     env.VERCEL_ENV = "production";
     env.VERCEL_URL = DEPLOYMENT_HOST;
-    expect(getSiteOrigin()).toBe(CANONICAL);
+    expect(getSiteOrigin()).toBe(CONFIGURED);
   });
 
   it("never falls back to the deployment host in production", () => {
     env.NODE_ENV = "production";
     env.VERCEL_ENV = "production";
     env.VERCEL_URL = DEPLOYMENT_HOST;
-    expect(getSiteOrigin()).toBe(CANONICAL);
+    expect(getSiteOrigin()).toBe(FALLBACK);
   });
 
   it("still self-references on a preview deployment", () => {
@@ -73,68 +85,110 @@ describe("getSiteOrigin", () => {
 });
 
 describe("getPublicOrigin", () => {
-  const cronRequest = (headers?: Record<string, string>) =>
-    new Request(`${DEPLOYMENT_ORIGIN}/api/cron/results-sla`, { headers });
+  const request = (url: string, headers?: Record<string, string>) =>
+    new Request(url, { headers });
+  const cron = (headers?: Record<string, string>) =>
+    request(`${DEPLOYMENT_ORIGIN}/api/cron/results-sla`, headers);
 
-  it("rewrites a cron invocation to the canonical origin", () => {
+  it("rewrites a cron invocation to the configured origin", () => {
     env.NODE_ENV = "production";
-    env.NEXT_PUBLIC_SITE_URL = CANONICAL;
-    expect(getPublicOrigin(cronRequest())).toBe(CANONICAL);
+    env.NEXT_PUBLIC_SITE_URL = CONFIGURED;
+    expect(getPublicOrigin(cron())).toBe(CONFIGURED);
   });
 
   it("refuses the deployment host even with no configured origin", () => {
     env.NODE_ENV = "production";
-    expect(getPublicOrigin(cronRequest())).toBe(CANONICAL);
+    expect(getPublicOrigin(cron())).toBe(FALLBACK);
   });
 
-  it("ignores a forwarded deployment host but trusts a real domain", () => {
+  it("trusts a forwarded host on our own domain", () => {
     env.NODE_ENV = "production";
+    expect(getPublicOrigin(cron({ "x-forwarded-host": FORWARDED_HOST }))).toBe(
+      `https://${FORWARDED_HOST}`,
+    );
+  });
+
+  it("ignores a forwarded deployment host", () => {
+    env.NODE_ENV = "production";
+    expect(getPublicOrigin(cron({ "x-forwarded-host": DEPLOYMENT_HOST }))).toBe(
+      FALLBACK,
+    );
+  });
+
+  it("ignores a forged off-domain Host so links cannot be poisoned", () => {
+    env.NODE_ENV = "production";
+    expect(getPublicOrigin(cron({ "x-forwarded-host": HOSTILE_HOST }))).toBe(
+      FALLBACK,
+    );
+    // Same for a request that arrived addressed to the attacker's host.
+    expect(getPublicOrigin(request(`https://${HOSTILE_HOST}/api/results/hold`))).toBe(
+      FALLBACK,
+    );
+    // ...and the lookalike suffix trick.
     expect(
-      getPublicOrigin(cronRequest({ "x-forwarded-host": DEPLOYMENT_HOST })),
-    ).toBe(CANONICAL);
-    expect(
-      getPublicOrigin(cronRequest({ "x-forwarded-host": "custom.mpillow.com" })),
-    ).toBe(CANONICAL);
+      getPublicOrigin(cron({ "x-forwarded-host": "evil-mpillow.com" })),
+    ).toBe(FALLBACK);
+  });
+
+  it("keeps the request origin when it is already on our domain", () => {
+    env.NODE_ENV = "production";
+    expect(getPublicOrigin(request(`https://${FORWARDED_HOST}/api/results/hold`))).toBe(
+      `https://${FORWARDED_HOST}`,
+    );
   });
 
   it("keeps a preview self-referential so it cannot mint production links", () => {
     env.NODE_ENV = "production";
     env.VERCEL_ENV = "preview";
-    env.NEXT_PUBLIC_SITE_URL = CANONICAL;
-    expect(getPublicOrigin(cronRequest())).toBe(DEPLOYMENT_ORIGIN);
+    env.NEXT_PUBLIC_SITE_URL = CONFIGURED;
+    expect(getPublicOrigin(cron())).toBe(DEPLOYMENT_ORIGIN);
   });
 
   it("uses the live origin in local development", () => {
-    expect(
-      getPublicOrigin(new Request("http://localhost:3000/api/cron/results-sla")),
-    ).toBe("http://localhost:3000");
+    expect(getPublicOrigin(request("http://localhost:3000/api/cron/results-sla"))).toBe(
+      "http://localhost:3000",
+    );
   });
 });
 
-describe("getClientSiteOrigin", () => {
+describe("getClientPublicOrigin", () => {
   it("does not hand out a deployment host as a shareable origin", () => {
     env.NODE_ENV = "production";
     setWindow(DEPLOYMENT_ORIGIN);
-    expect(getClientSiteOrigin()).toBe(CANONICAL);
+    expect(getClientPublicOrigin()).toBe(FALLBACK);
+  });
+
+  it("prefers the configured origin over the live tab", () => {
+    env.NODE_ENV = "production";
+    env.NEXT_PUBLIC_SITE_URL = CONFIGURED;
+    setWindow(DEPLOYMENT_ORIGIN);
+    expect(getClientPublicOrigin()).toBe(CONFIGURED);
   });
 
   it("uses the live origin on a real domain", () => {
     env.NODE_ENV = "production";
-    setWindow("https://custom.mpillow.com");
-    expect(getClientSiteOrigin()).toBe(CANONICAL);
+    setWindow(`https://${FORWARDED_HOST}`);
+    expect(getClientPublicOrigin()).toBe(`https://${FORWARDED_HOST}`);
   });
 });
 
-describe("getRequestOrigin", () => {
-  // Intentionally NOT hardened against the deployment host: this one answers
-  // "where did this browser come from" for an auth round-trip, and bouncing a
-  // half-finished PKCE exchange onto another domain would strand the verifier
-  // cookie. NEXT_PUBLIC_SITE_URL is what keeps it canonical in production.
-  it("prefers the configured origin in production", () => {
+describe("auth-round-trip helpers keep the browser's own origin", () => {
+  // Both are intentionally NOT hardened against the deployment host. They feed
+  // authCallbackUrl / the Supabase redirectTo, and bouncing a half-finished PKCE
+  // exchange onto another domain would strand the verifier cookie — sign-in on a
+  // preview would break. NEXT_PUBLIC_SITE_URL is what keeps them canonical in
+  // production.
+  it("getClientSiteOrigin stays on a preview deployment", () => {
     env.NODE_ENV = "production";
-    env.NEXT_PUBLIC_SITE_URL = CANONICAL;
+    setWindow(DEPLOYMENT_ORIGIN);
+    expect(getClientSiteOrigin()).toBe(DEPLOYMENT_ORIGIN);
+  });
+
+  it("getRequestOrigin prefers the configured origin in production", () => {
+    env.NODE_ENV = "production";
+    env.NEXT_PUBLIC_SITE_URL = CONFIGURED;
     expect(
       getRequestOrigin(new Request(`${DEPLOYMENT_ORIGIN}/auth/callback?code=x`)),
-    ).toBe(CANONICAL);
+    ).toBe(CONFIGURED);
   });
 });

@@ -71,7 +71,10 @@ assert.equal(
 );
 delete process.env.VERCEL_ENV;
 
-env.NODE_ENV = savedNodeEnv;
+// Plain assignment would write the literal string "undefined" when NODE_ENV
+// was unset, which is how this script is normally run.
+if (savedNodeEnv === undefined) delete env.NODE_ENV;
+else env.NODE_ENV = savedNodeEnv;
 process.env.NEXT_PUBLIC_SITE_URL = "https://custom.mpillow.com";
 
 // ponytail: minimal window shim — getClientSiteOrigin reads hostname/origin only

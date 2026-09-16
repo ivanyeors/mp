@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 
 const LOCAL_DEV_ORIGIN = "http://localhost:3000";
 const PROD_FALLBACK_ORIGIN = "https://custom.mpillow.com";
+/** Registrable domain we serve from; the allowlist for any host we trust. */
+const PUBLIC_DOMAIN = "mpillow.com";
 
 function normalizeOrigin(url: string | undefined | null): string | null {
   const trimmed = url?.trim().replace(/\/$/, "");
@@ -36,7 +38,16 @@ export function getSiteOrigin(): string {
   return LOCAL_DEV_ORIGIN;
 }
 
-/** Browser auth redirects — live tab wins in local dev over configured origin. */
+/**
+ * Browser auth redirects — live tab wins in local dev over configured origin.
+ *
+ * Deliberately NOT hardened against a deployment host, for the same reason
+ * `getRequestOrigin` is not: this feeds `authCallbackUrl`, and sending Supabase
+ * a `redirectTo` on a different domain than the tab would strand the PKCE
+ * verifier cookie and break sign-in outright. A preview must be able to
+ * complete an auth round-trip against itself. For a link the viewer will hand
+ * to someone else, use `getClientPublicOrigin` instead.
+ */
 export function getClientSiteOrigin(): string {
   if (
     typeof window !== "undefined" &&
@@ -47,8 +58,27 @@ export function getClientSiteOrigin(): string {
   }
   const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
   if (configured) return configured;
-  // A partner reading the hub on a deployment URL would otherwise copy a
-  // referral link nobody outside the Vercel team can open.
+  if (typeof window !== "undefined") return window.location.origin;
+  return getSiteOrigin();
+}
+
+/**
+ * Browser-side counterpart to `getPublicOrigin`: an origin safe to paste into
+ * something a customer will open — an assist link, a partner referral link.
+ *
+ * Same split as the server pair. Copying a link off a deployment URL would
+ * otherwise hand a stranger a vercel.com login wall.
+ */
+export function getClientPublicOrigin(): string {
+  if (
+    typeof window !== "undefined" &&
+    (isLocalHost(window.location.hostname) ||
+      process.env.NODE_ENV === "development")
+  ) {
+    return window.location.origin;
+  }
+  const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
+  if (configured) return configured;
   if (
     typeof window !== "undefined" &&
     !isVercelDeploymentHost(window.location.hostname)
@@ -72,6 +102,12 @@ function isVercelDeploymentHost(hostname: string): boolean {
 
 function firstHeaderValue(value: string | null): string | null {
   return value?.split(",")[0]?.trim() || null;
+}
+
+/** Hostnames we will mint a public link for: our own domain, nothing else. */
+function isPublicHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === PUBLIC_DOMAIN || host.endsWith(`.${PUBLIC_DOMAIN}`);
 }
 
 /**
@@ -106,13 +142,17 @@ export function getPublicOrigin(request: NextRequest | Request): string {
   const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL);
   if (configured) return configured;
 
+  // Allowlisted, not merely "not Vercel". `POST /api/results/hold` is
+  // unauthenticated and its email carries the Result's access_token, so an
+  // attacker who could steer this header would be mailing themselves a link
+  // that opens someone else's Result. A forged Host cannot name our domain.
   const forwardedHost = firstHeaderValue(request.headers.get("x-forwarded-host"));
-  if (forwardedHost && !isVercelDeploymentHost(forwardedHost.split(":")[0] ?? "")) {
+  if (forwardedHost && isPublicHost(forwardedHost.split(":")[0] ?? "")) {
     const proto = firstHeaderValue(request.headers.get("x-forwarded-proto")) ?? "https";
     return `${proto}://${forwardedHost}`;
   }
 
-  if (!isVercelDeploymentHost(requestUrl.hostname)) return requestUrl.origin;
+  if (isPublicHost(requestUrl.hostname)) return requestUrl.origin;
 
   // Nothing trustworthy left: a deployment host is the one answer that is
   // certainly wrong, so fall through to the known public domain.
