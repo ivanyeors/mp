@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireResultAccess } from "@/lib/results/access";
-import { loadAssignedBuild } from "@/lib/results/assigned-build";
+import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import {
   AddonLineSchema,
@@ -54,7 +54,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency, access_token, customer_id, customer_email, order_id",
+      `${ASSIGNED_BUILD_COLUMNS}, status, source, access_token, customer_id, customer_email, order_id`,
     )
     .eq("id", id)
     .maybeSingle();

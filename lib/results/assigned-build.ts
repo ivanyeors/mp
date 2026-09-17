@@ -35,6 +35,51 @@ export type AssignedBuildRow = {
   currency: string | null;
 };
 
+/**
+ * The columns a caller must select before it can hand a row to
+ * `loadAssignedBuild`.
+ *
+ * Every route that prices a Result used to spell this out by hand — finish,
+ * request-payment and reorder each kept a copy, written in three different
+ * sessions. Nothing had drifted yet, but the failure mode if it ever did is the
+ * bad kind: a missing column arrives as `undefined`, which prices a DIFFERENT
+ * build at a plausible number rather than throwing. Silent wrong money.
+ *
+ * It stays a literal, and is not derived from a key map, because the Supabase
+ * client parses this string AT THE TYPE LEVEL to infer the row it returns.
+ * Anything it cannot read as a literal — `Object.keys(...).join()`, for
+ * instance — collapses the whole query's result type to a ParserError, which
+ * costs more safety than the duplication ever did.
+ *
+ * `_NoMissingBuildColumns` below is what keeps it honest instead.
+ */
+export const ASSIGNED_BUILD_COLUMNS =
+  "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency" as const;
+
+type TrimCol<S extends string> = S extends ` ${infer R}`
+  ? TrimCol<R>
+  : S extends `${infer R} `
+    ? TrimCol<R>
+    : S;
+
+type SplitCols<S extends string> = S extends `${infer Head},${infer Tail}`
+  ? TrimCol<Head> | SplitCols<Tail>
+  : TrimCol<S>;
+
+/**
+ * Compile-time completeness check. Add a field to `AssignedBuildRow` without
+ * adding it to the string above and this becomes that field's name instead of
+ * `never`, and the assignment below stops compiling — here, rather than in
+ * whichever route silently mispriced.
+ */
+type _NoMissingBuildColumns = Exclude<
+  keyof AssignedBuildRow,
+  SplitCols<typeof ASSIGNED_BUILD_COLUMNS>
+>;
+
+const _assertBuildColumnsCoverRow: _NoMissingBuildColumns extends never ? true : never = true;
+void _assertBuildColumnsCoverRow;
+
 export type AssignedBuildOk = {
   ok: true;
   lines: BuildLine[];

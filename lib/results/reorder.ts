@@ -20,7 +20,7 @@
 import { randomUUID } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { loadAssignedBuild } from "@/lib/results/assigned-build";
+import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
 
 /**
  * Columns a reorder carries over: the customisation, and who it belongs to.
@@ -239,9 +239,7 @@ export async function reorderResult(
 
   const { data: fresh, error: reloadErr } = await admin
     .from("mp_config_responses")
-    .select(
-      "id, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, currency",
-    )
+    .select(ASSIGNED_BUILD_COLUMNS)
     .eq("id", newId)
     .maybeSingle();
   if (reloadErr || !fresh) {

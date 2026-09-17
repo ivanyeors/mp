@@ -7,7 +7,7 @@ import {
   statusUrl,
 } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
-import { loadAssignedBuild } from "@/lib/results/assigned-build";
+import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { getPublicOrigin } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase/server";
@@ -45,7 +45,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, customer_email, access_token, order_id",
+      `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, customer_email, access_token, order_id`,
     )
     .eq("id", id)
     .maybeSingle();

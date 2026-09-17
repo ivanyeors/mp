@@ -50,7 +50,13 @@ vi.mock("@/lib/stripe/client", () => ({
   getStripe: () => ({ checkout: { sessions: { retrieve: h.retrieve } } }),
 }));
 vi.mock("@/lib/config-upload", () => ({ listConfigUploads: vi.fn().mockResolvedValue([]) }));
-vi.mock("@/lib/results/assigned-build", () => ({ loadAssignedBuild: h.loadAssignedBuild }));
+// importOriginal so the real ASSIGNED_BUILD_COLUMNS comes through: the routes
+// interpolate it into their select, and a mock that omits it fails at the query
+// rather than at the behaviour under test.
+vi.mock("@/lib/results/assigned-build", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/results/assigned-build")>()),
+  loadAssignedBuild: h.loadAssignedBuild,
+}));
 
 const { GET } = await import("@/app/api/results/[id]/route");
 const { POST: finish } = await import("@/app/api/results/[id]/finish/route");
