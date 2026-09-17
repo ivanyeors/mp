@@ -18,13 +18,14 @@ import { clientIp, isRateLimited } from "@/lib/rate-limit";
 import { listMpConfigResponses } from "@/lib/results/admin/responses-list";
 import { listConfigUploads } from "@/lib/config-upload";
 import { getPublicOrigin } from "@/lib/site-url";
+import { MP_CONFIG_TELEGRAM_CHAT_ID } from "@/lib/telegram/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Safety guard: mp-config notifications are restricted to a single Telegram group chat.
-// This prevents accidental leakage to other chats even if env vars are misconfigured.
-const MP_CONFIG_TELEGRAM_CHAT_ID = -1001279910218;
+// Safety guard: mp-config notifications are restricted to a single Telegram group
+// chat, so a misconfigured env var cannot leak them elsewhere. One definition,
+// in lib/telegram/notify.ts — this file used to carry its own copy of the id.
 
 function getOptionalEnv(name: string): string | null {
   const v = process.env[name];

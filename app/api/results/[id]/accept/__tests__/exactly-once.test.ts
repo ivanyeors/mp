@@ -79,7 +79,13 @@ vi.mock("@/lib/authorization-hold", async (orig) => ({
   createTopUpCheckout: vi.fn(),
 }));
 vi.mock("@/lib/results/access", () => ({ authorizeResultAccess: async () => true }));
-vi.mock("@/lib/results/assigned-build", () => ({ loadAssignedBuild: h.loadAssignedBuild }));
+// importOriginal so the real ASSIGNED_BUILD_COLUMNS reaches the route: accept
+// interpolates it into its select, and a mock that omits it fails at the query
+// rather than at the concurrency behaviour under test.
+vi.mock("@/lib/results/assigned-build", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/results/assigned-build")>()),
+  loadAssignedBuild: h.loadAssignedBuild,
+}));
 vi.mock("@/lib/commissions/ledger", () => ({
   createHeldCommissionsForOrder: h.createHeldCommissionsForOrder,
 }));
