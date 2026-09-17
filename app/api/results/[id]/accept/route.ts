@@ -9,7 +9,7 @@ import {
   planCapture,
 } from "@/lib/authorization-hold";
 import { authorizeResultAccess } from "@/lib/results/access";
-import { loadAssignedBuild } from "@/lib/results/assigned-build";
+import { ASSIGNED_BUILD_COLUMNS, loadAssignedBuild } from "@/lib/results/assigned-build";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import { buildResultOrderSnapshot } from "@/lib/results/order-build-snapshot";
 import { settleResult } from "@/lib/results/settlement";
@@ -45,7 +45,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, source, product_type, assigned_size, assigned_tier, assigned_length, filling_template_id, preference_lines, addon_lines, shipping_method, shipping_address, authorized_amount, final_amount, currency, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source",
+      `${ASSIGNED_BUILD_COLUMNS}, status, source, authorized_amount, final_amount, payment_intent_id, topup_payment_intent_id, topup_paid_at, customer_email, customer_id, access_token, order_id, partner_id, ref_code, attribution_source`,
     )
     .eq("id", id)
     .maybeSingle();

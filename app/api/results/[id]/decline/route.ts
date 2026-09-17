@@ -150,6 +150,13 @@ export async function POST(
     ].join("\n"),
   );
 
+  if (telegramStatus === "failed") {
+    // Symmetry with the email path above. `telegramStatus` alone travels in a
+    // response body nobody reads, so a revoked bot token would stop every
+    // cancellation notice silently.
+    console.error("Result declined Telegram notice failed", { resultId: id });
+  }
+
   return NextResponse.json({
     ok: true,
     status: life.status,
