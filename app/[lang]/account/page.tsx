@@ -62,7 +62,7 @@ export default async function AccountProfilePage({
         </div>
       </div>
 
-      <AccountSecurity email={email} googleLinked={googleLinked} />
+      <AccountSecurity googleLinked={googleLinked} />
 
       <Separator />
 

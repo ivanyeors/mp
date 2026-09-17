@@ -1698,10 +1698,10 @@
     "semantic_hash": "61e2c233af396531df4991154f6642c2"
   },
   "app/[lang]/account/page.tsx": {
-    "mtime": 1789525318.9976048,
-    "seen": 1789525722.651239,
-    "ast_hash": "50f18cd6df301e61804770da27cc85a5",
-    "semantic_hash": "50f18cd6df301e61804770da27cc85a5"
+    "mtime": 1789623067.9264836,
+    "seen": 1789623434.2654922,
+    "ast_hash": "03ad2ebff98d2dfcdd7eb4c6698ba21c",
+    "semantic_hash": ""
   },
   "app/[lang]/account/results/page.tsx": {
     "mtime": 1789525318.9976048,
@@ -3558,9 +3558,9 @@
     "semantic_hash": ""
   },
   "components/auth/account-security.tsx": {
-    "mtime": 1789525319.0267599,
-    "seen": 1789525722.6520703,
-    "ast_hash": "0be05ae4ee2bd126268f7c1b78987867",
+    "mtime": 1789623231.05048,
+    "seen": 1789623434.2663903,
+    "ast_hash": "905d1d2a8edbc13ce0e10488bf2e125a",
     "semantic_hash": ""
   },
   "components/auth/login-form.tsx": {
