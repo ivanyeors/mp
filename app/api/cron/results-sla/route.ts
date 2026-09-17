@@ -11,6 +11,7 @@ import {
   renderHoldExpiredEmail,
 } from "@/lib/email/results";
 import { getSiteSettings } from "@/lib/site-settings";
+import { sendTelegram } from "@/lib/telegram/notify";
 import { needsCustomerFinish } from "@/lib/results/needs-customer-finish";
 import {
   SLA_SETTING_KEYS,
@@ -31,8 +32,6 @@ import { getPublicOrigin } from "@/lib/site-url";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MP_CONFIG_TELEGRAM_CHAT_ID = -1001279910218;
-
 function authorizeCron(req: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) {
@@ -42,21 +41,6 @@ function authorizeCron(req: Request): boolean {
   return secretMatches(`Bearer ${secret}`, req.headers.get("authorization"));
 }
 
-async function sendTelegram(text: string): Promise<"sent" | "skipped" | "failed"> {
-  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  if (!token) return "skipped";
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: MP_CONFIG_TELEGRAM_CHAT_ID, text }),
-      cache: "no-store",
-    });
-    return res.ok ? "sent" : "failed";
-  } catch {
-    return "failed";
-  }
-}
 
 /** Best-effort ops reminder. Rendering lives in lib/email/ops.ts. */
 async function sendOpsReminderEmail(opts: {

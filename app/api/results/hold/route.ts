@@ -12,6 +12,7 @@ import { createHoldCheckout } from "@/lib/authorization-hold";
 import { calculateShippingRate } from "@/lib/ecommerce/shipping";
 import { computeTax, resolveTaxRuleForRegion } from "@/lib/ecommerce/tax";
 import { getEmailTransport } from "@/lib/email";
+import { sendTelegram } from "@/lib/telegram/notify";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { renderResultHeldEmail } from "@/lib/email/results";
 import {
@@ -80,8 +81,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const MP_CONFIG_TELEGRAM_CHAT_ID = -1001279910218;
 
 /** Customer-facing message when a configuration's price isn't set up in Costings yet. */
 const PRICING_UNAVAILABLE_MESSAGE =
@@ -197,21 +196,6 @@ const HoldSchema = z
     });
   });
 
-async function sendTelegram(text: string) {
-  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
-  if (!token) return "skipped" as const;
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: MP_CONFIG_TELEGRAM_CHAT_ID, text }),
-      cache: "no-store",
-    });
-    return res.ok ? ("sent" as const) : ("failed" as const);
-  } catch {
-    return "failed" as const;
-  }
-}
 
 /** Best-effort "under review" notice. Rendering lives in lib/email/results.ts. */
 async function sendHeldEmail(opts: {

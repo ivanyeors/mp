@@ -8,6 +8,7 @@ import { renderResultDeclinedEmail } from "@/lib/email/results";
 import { getDefaultFromAddress } from "@/lib/email/transport";
 import { authorizeResultAccess } from "@/lib/results/access";
 import { getPublicOrigin } from "@/lib/site-url";
+import { sendTelegram } from "@/lib/telegram/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +33,7 @@ export async function POST(
   const { data: row, error: loadErr } = await admin
     .from("mp_config_responses")
     .select(
-      "id, status, filling_template_id, payment_intent_id, access_token, customer_id, customer_email, order_id, product_type, authorized_amount, currency",
+      "id, status, filling_template_id, payment_intent_id, access_token, customer_id, customer_email, order_id, product_type, authorized_amount, currency, assigned_size, assigned_tier, assigned_length, final_amount",
     )
     .eq("id", id)
     .maybeSingle();
@@ -122,11 +123,39 @@ export async function POST(
     }
   }
 
+  // And tell the build team, in the same group the held and assigned notices go
+  // to. A cancellation is the one lifecycle move nobody was watching for: it
+  // takes work out of the queue rather than putting it in, so without this the
+  // first anyone knows is a build that quietly stopped mattering.
+  const currency = row.currency ?? "SGD";
+  const amount =
+    row.final_amount != null
+      ? Number(row.final_amount)
+      : row.authorized_amount != null
+        ? Number(row.authorized_amount)
+        : null;
+  const spec = [row.assigned_size, row.assigned_tier, row.assigned_length]
+    .filter(Boolean)
+    .join(" · ");
+
+  const telegramStatus = await sendTelegram(
+    [
+      "🚫 Customer cancelled a build",
+      spec || "(no assignment recorded)",
+      `Email: ${row.customer_email ?? "—"}`,
+      amount != null ? `Was: ${currency} ${amount.toFixed(2)}` : "No amount recorded",
+      life.releaseHold ? "Authorization hold released." : "No card was taken.",
+      "",
+      `Platform: ${getPublicOrigin(req)}/settings/results/${id}`,
+    ].join("\n"),
+  );
+
   return NextResponse.json({
     ok: true,
     status: life.status,
     holdReleased: life.releaseHold,
     restartPath,
     emailStatus,
+    telegramStatus,
   });
 }
