@@ -940,6 +940,19 @@
       "source_location": "L122"
     },
     {
+      "id": "lib_filling_templates_keys_fillingkind",
+      "label": "FillingKind",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "fillingkind",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L9"
+    },
+    {
       "id": "lib_ecommerce_exchange_rates_exchangerates",
       "label": "ExchangeRates",
       "_callable": true,
@@ -1785,121 +1798,43 @@
       "source_location": "L57"
     },
     {
-      "id": "components_shop_customization_steps_customizationstepsummaryprops",
-      "label": "CustomizationStepSummaryProps",
+      "id": "lib_analytics_journey_identity_visitconversioncandidate",
+      "label": "VisitConversionCandidate",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "customizationstepsummaryprops",
-      "source_file": "components/shop/customization-steps.tsx",
-      "source_location": "L649"
+      "norm_label": "visitconversioncandidate",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L71"
     },
     {
-      "id": "lib_product_builder_overlays_itemoverlay",
-      "label": "ItemOverlay",
+      "id": "lib_analytics_journey_identity_visitoridentityrow",
+      "label": "VisitorIdentityRow",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "itemoverlay",
-      "source_file": "lib/product-builder/overlays.ts",
-      "source_location": "L17"
+      "norm_label": "visitoridentityrow",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L24"
     },
     {
-      "id": "lib_types_customization_apiconfig",
-      "label": "ApiConfig",
+      "id": "lib_analytics_journey_identity_visitormergepatch",
+      "label": "VisitorMergePatch",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "apiconfig",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L146"
-    },
-    {
-      "id": "lib_types_customization_componentoption",
-      "label": "ComponentOption",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 114,
-      "community_name": "customization.ts",
-      "file_type": "code",
-      "norm_label": "componentoption",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L81"
-    },
-    {
-      "id": "lib_types_customization_configline",
-      "label": "ConfigLine",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 114,
-      "community_name": "customization.ts",
-      "file_type": "code",
-      "norm_label": "configline",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L16"
-    },
-    {
-      "id": "lib_types_customization_customizationconfig",
-      "label": "CustomizationConfig",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 114,
-      "community_name": "customization.ts",
-      "file_type": "code",
-      "norm_label": "customizationconfig",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L127"
-    },
-    {
-      "id": "lib_types_customization_customizationorder",
-      "label": "CustomizationOrder",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 114,
-      "community_name": "customization.ts",
-      "file_type": "code",
-      "norm_label": "customizationorder",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L110"
-    },
-    {
-      "id": "lib_types_customization_fillingline",
-      "label": "FillingLine",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 114,
-      "community_name": "customization.ts",
-      "file_type": "code",
-      "norm_label": "fillingline",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_types_customization_upsellitem",
-      "label": "UpsellItem",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 114,
-      "community_name": "customization.ts",
-      "file_type": "code",
-      "norm_label": "upsellitem",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L96"
+      "norm_label": "visitormergepatch",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L30"
     },
     {
       "id": "lib_google_fallback_testimonials_testimonial",
@@ -2812,30 +2747,17 @@
       "source_location": "L269"
     },
     {
-      "id": "components_shop_pillow_customizer_applyresponse",
-      "label": "ApplyResponse",
+      "id": "components_shop_customization_steps_customizationstepsummaryprops",
+      "label": "CustomizationStepSummaryProps",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 129,
       "community_name": "customization-steps.tsx",
       "file_type": "code",
-      "norm_label": "applyresponse",
-      "source_file": "components/shop/pillow-customizer.tsx",
-      "source_location": "L55"
-    },
-    {
-      "id": "components_shop_pillow_customizer_pillowcustomizerprops",
-      "label": "PillowCustomizerProps",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 129,
-      "community_name": "customization-steps.tsx",
-      "file_type": "code",
-      "norm_label": "pillowcustomizerprops",
-      "source_file": "components/shop/pillow-customizer.tsx",
-      "source_location": "L40"
+      "norm_label": "customizationstepsummaryprops",
+      "source_file": "components/shop/customization-steps.tsx",
+      "source_location": "L649"
     },
     {
       "id": "lib_pricing_composed_price_composedpriceresult",
@@ -2849,6 +2771,19 @@
       "norm_label": "composedpriceresult",
       "source_file": "lib/pricing/composed-price.ts",
       "source_location": "L70"
+    },
+    {
+      "id": "lib_product_builder_overlays_itemoverlay",
+      "label": "ItemOverlay",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "itemoverlay",
+      "source_file": "lib/product-builder/overlays.ts",
+      "source_location": "L17"
     },
     {
       "id": "lib_shop_customization_price_customizationpricinginputs",
@@ -2875,6 +2810,97 @@
       "norm_label": "customizedbuildinput",
       "source_file": "lib/shop/customization-price.ts",
       "source_location": "L39"
+    },
+    {
+      "id": "lib_types_customization_apiconfig",
+      "label": "ApiConfig",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "apiconfig",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L146"
+    },
+    {
+      "id": "lib_types_customization_componentoption",
+      "label": "ComponentOption",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "componentoption",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L81"
+    },
+    {
+      "id": "lib_types_customization_configline",
+      "label": "ConfigLine",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "configline",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L16"
+    },
+    {
+      "id": "lib_types_customization_customizationconfig",
+      "label": "CustomizationConfig",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "customizationconfig",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L127"
+    },
+    {
+      "id": "lib_types_customization_customizationorder",
+      "label": "CustomizationOrder",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "customizationorder",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L110"
+    },
+    {
+      "id": "lib_types_customization_fillingline",
+      "label": "FillingLine",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "fillingline",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "lib_types_customization_upsellitem",
+      "label": "UpsellItem",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "upsellitem",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L96"
     },
     {
       "id": "app_lang_settings_costings_page_baselinestate",
@@ -9611,110 +9637,6 @@
       "source_location": "L107"
     },
     {
-      "id": "lib_bom_sanitizer_index_bomlineinput",
-      "label": "BomLineInput",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "bomlineinput",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L6"
-    },
-    {
-      "id": "lib_bom_sanitizer_index_linewithcategory",
-      "label": "LineWithCategory",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "linewithcategory",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L8"
-    },
-    {
-      "id": "lib_filling_templates_index_fillingproducttype",
-      "label": "FillingProductType",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "fillingproducttype",
-      "source_file": "lib/filling-templates/index.ts",
-      "source_location": "L7"
-    },
-    {
-      "id": "lib_filling_templates_index_fillingtemplatelike",
-      "label": "FillingTemplateLike",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "fillingtemplatelike",
-      "source_file": "lib/filling-templates/index.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_filling_templates_index_linewithcategory",
-      "label": "LineWithCategory",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "linewithcategory",
-      "source_file": "lib/filling-templates/index.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "lib_filling_templates_index_productcardkey",
-      "label": "ProductCardKey",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "productcardkey",
-      "source_file": "lib/filling-templates/index.ts",
-      "source_location": "L20"
-    },
-    {
-      "id": "lib_filling_templates_keys_fillingkind",
-      "label": "FillingKind",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "fillingkind",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_filling_templates_membership_admin",
-      "label": "Admin",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "admin",
-      "source_file": "lib/filling-templates/membership.ts",
-      "source_location": "L18"
-    },
-    {
       "id": "app_lang_settings_analytics_marginbyproductvisx_bomlinerowdb",
       "label": "BomLineRowDb",
       "_callable": true,
@@ -13797,45 +13719,6 @@
       "source_location": "L78"
     },
     {
-      "id": "lib_analytics_journey_identity_visitconversioncandidate",
-      "label": "VisitConversionCandidate",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "visitconversioncandidate",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L71"
-    },
-    {
-      "id": "lib_analytics_journey_identity_visitoridentityrow",
-      "label": "VisitorIdentityRow",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "visitoridentityrow",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "lib_analytics_journey_identity_visitormergepatch",
-      "label": "VisitorMergePatch",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "visitormergepatch",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L30"
-    },
-    {
       "id": "lib_configurator_preference_policy_preferencecategory",
       "label": "PreferenceCategory",
       "_callable": true,
@@ -13860,6 +13743,19 @@
       "norm_label": "preferenceproducttype",
       "source_file": "lib/configurator/preference-policy.ts",
       "source_location": "L1"
+    },
+    {
+      "id": "lib_results_filling_assign_fillingassigndecision",
+      "label": "FillingAssignDecision",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "fillingassigndecision",
+      "source_file": "lib/results/filling-assign.ts",
+      "source_location": "L5"
     },
     {
       "id": "lib_results_filling_snapshot_bolsterfillingsnapshot",
@@ -13899,6 +13795,32 @@
       "norm_label": "configvalidation",
       "source_file": "lib/shop/customization-inventory.ts",
       "source_location": "L309"
+    },
+    {
+      "id": "lib_spatial_fillings_core_anyplacement",
+      "label": "AnyPlacement",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "anyplacement",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L226"
+    },
+    {
+      "id": "lib_spatial_fillings_core_pillowplacementrow",
+      "label": "PillowPlacementRow",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "pillowplacementrow",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L42"
     },
     {
       "id": "app_lang_settings_blogs_id_blog_editor_client_blogeditorinitialdata",
@@ -14330,6 +14252,45 @@
       "source_location": "L88"
     },
     {
+      "id": "lib_bom_sanitizer_index_bomlineinput",
+      "label": "BomLineInput",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "bomlineinput",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L6"
+    },
+    {
+      "id": "lib_bom_sanitizer_index_linewithcategory",
+      "label": "LineWithCategory",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "linewithcategory",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L8"
+    },
+    {
+      "id": "lib_filling_templates_membership_admin",
+      "label": "Admin",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "admin",
+      "source_file": "lib/filling-templates/membership.ts",
+      "source_location": "L18"
+    },
+    {
       "id": "lib_filling_templates_unpromoted_rankedunpromoted",
       "label": "RankedUnpromoted",
       "_callable": true,
@@ -14356,45 +14317,6 @@
       "source_location": "L18"
     },
     {
-      "id": "lib_results_filling_assign_fillingassigndecision",
-      "label": "FillingAssignDecision",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "fillingassigndecision",
-      "source_file": "lib/results/filling-assign.ts",
-      "source_location": "L5"
-    },
-    {
-      "id": "lib_results_resume_finish_resumefinish",
-      "label": "ResumeFinish",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "resumefinish",
-      "source_file": "lib/results/resume-finish.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_spatial_fillings_core_anyplacement",
-      "label": "AnyPlacement",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "anyplacement",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L226"
-    },
-    {
       "id": "lib_spatial_fillings_core_bolsterplacementrow",
       "label": "BolsterPlacementRow",
       "_callable": true,
@@ -14406,19 +14328,6 @@
       "norm_label": "bolsterplacementrow",
       "source_file": "lib/spatial-fillings/core.ts",
       "source_location": "L52"
-    },
-    {
-      "id": "lib_spatial_fillings_core_pillowplacementrow",
-      "label": "PillowPlacementRow",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "pillowplacementrow",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L42"
     },
     {
       "id": "app_api_shop_checkout_tests_customisation_binding_test_recommendationresponsedata",
@@ -14889,6 +14798,58 @@
       "source_location": "L169"
     },
     {
+      "id": "lib_filling_templates_index_fillingproducttype",
+      "label": "FillingProductType",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "fillingproducttype",
+      "source_file": "lib/filling-templates/index.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "lib_filling_templates_index_fillingtemplatelike",
+      "label": "FillingTemplateLike",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "fillingtemplatelike",
+      "source_file": "lib/filling-templates/index.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "lib_filling_templates_index_linewithcategory",
+      "label": "LineWithCategory",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "linewithcategory",
+      "source_file": "lib/filling-templates/index.ts",
+      "source_location": "L24"
+    },
+    {
+      "id": "lib_filling_templates_index_productcardkey",
+      "label": "ProductCardKey",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "productcardkey",
+      "source_file": "lib/filling-templates/index.ts",
+      "source_location": "L20"
+    },
+    {
       "id": "lib_pricing_composed_price_composedpricebreakdown",
       "label": "ComposedPriceBreakdown",
       "_callable": true,
@@ -15146,6 +15107,19 @@
       "file_type": "code",
       "norm_label": "resultorderbuildsnapshot",
       "source_file": "lib/results/order-build-snapshot.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "lib_results_resume_finish_resumefinish",
+      "label": "ResumeFinish",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "resumefinish",
+      "source_file": "lib/results/resume-finish.ts",
       "source_location": "L9"
     },
     {
@@ -16590,6 +16564,32 @@
       "norm_label": "variantrow",
       "source_file": "lib/shop/price-sync.ts",
       "source_location": "L10"
+    },
+    {
+      "id": "components_shop_pillow_customizer_applyresponse",
+      "label": "ApplyResponse",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "applyresponse",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L55"
+    },
+    {
+      "id": "components_shop_pillow_customizer_pillowcustomizerprops",
+      "label": "PillowCustomizerProps",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "pillowcustomizerprops",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L40"
     },
     {
       "id": "app_lang_settings_analytics_prospectjourneycard_camera",
@@ -19629,18 +19629,6 @@
       "source_location": "L11"
     },
     {
-      "id": "lib_filling_templates_membership_templateidsforkey",
-      "label": "templateIdsForKey()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 100,
-      "community_name": "detail-prep.ts",
-      "file_type": "code",
-      "norm_label": "templateidsforkey()",
-      "source_file": "lib/filling-templates/membership.ts",
-      "source_location": "L43"
-    },
-    {
       "id": "lib_results_admin_detail_prep_canassignresult",
       "label": "canAssignResult()",
       "_callable": true,
@@ -20563,6 +20551,78 @@
       "norm_label": "unauthoredbadge()",
       "source_file": "components/settings/filling-template-list.tsx",
       "source_location": "L25"
+    },
+    {
+      "id": "components_settings_filling_template_scope_sharedtemplatenotice",
+      "label": "SharedTemplateNotice()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "sharedtemplatenotice()",
+      "source_file": "components/settings/filling-template-scope.tsx",
+      "source_location": "L133"
+    },
+    {
+      "id": "components_settings_filling_template_scope_templatescopechips",
+      "label": "TemplateScopeChips()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "templatescopechips()",
+      "source_file": "components/settings/filling-template-scope.tsx",
+      "source_location": "L25"
+    },
+    {
+      "id": "components_settings_filling_template_scope_templatescopefield",
+      "label": "TemplateScopeField()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "templatescopefield()",
+      "source_file": "components/settings/filling-template-scope.tsx",
+      "source_location": "L72"
+    },
+    {
+      "id": "lib_filling_templates_keys_formattemplatekeys",
+      "label": "formatTemplateKeys()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "formattemplatekeys()",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L65"
+    },
+    {
+      "id": "lib_filling_templates_keys_templatekeylabel",
+      "label": "templateKeyLabel()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "templatekeylabel()",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "lib_filling_templates_keys_templatekeysforkind",
+      "label": "templateKeysForKind()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "templatekeysforkind()",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L16"
     },
     {
       "id": "lib_spatial_fillings_authoring_isspatiallyauthored",
@@ -22065,40 +22125,76 @@
       "source_location": "L16"
     },
     {
-      "id": "lib_ecommerce_order_cost_calculateaddoncost",
-      "label": "calculateAddonCost()",
+      "id": "lib_analytics_journey_identity_linkvisittopaidorder",
+      "label": "linkVisitToPaidOrder()",
       "_callable": true,
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "calculateaddoncost()",
-      "source_file": "lib/ecommerce/order-cost.ts",
-      "source_location": "L20"
+      "norm_label": "linkvisittopaidorder()",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L149"
     },
     {
-      "id": "lib_ecommerce_order_cost_calculatecustomizationbomcost",
-      "label": "calculateCustomizationBomCost()",
+      "id": "lib_analytics_journey_identity_mergevisitoridentity",
+      "label": "mergeVisitorIdentity()",
       "_callable": true,
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "calculatecustomizationbomcost()",
-      "source_file": "lib/ecommerce/order-cost.ts",
-      "source_location": "L4"
+      "norm_label": "mergevisitoridentity()",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L105"
     },
     {
-      "id": "lib_ecommerce_order_cost_resolveorderitemunitcost",
-      "label": "resolveOrderItemUnitCost()",
+      "id": "lib_analytics_journey_identity_normalizevisitoremail",
+      "label": "normalizeVisitorEmail()",
       "_callable": true,
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "resolveorderitemunitcost()",
-      "source_file": "lib/ecommerce/order-cost.ts",
-      "source_location": "L36"
+      "norm_label": "normalizevisitoremail()",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L18"
+    },
+    {
+      "id": "lib_analytics_journey_identity_parsevisitorid",
+      "label": "parseVisitorId()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 114,
+      "community_name": "identity.ts",
+      "file_type": "code",
+      "norm_label": "parsevisitorid()",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_analytics_journey_identity_pickvisitforconversion",
+      "label": "pickVisitForConversion()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 114,
+      "community_name": "identity.ts",
+      "file_type": "code",
+      "norm_label": "pickvisitforconversion()",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L82"
+    },
+    {
+      "id": "lib_analytics_journey_identity_planvisitormerge",
+      "label": "planVisitorMerge()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 114,
+      "community_name": "identity.ts",
+      "file_type": "code",
+      "norm_label": "planvisitormerge()",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L40"
     },
     {
       "id": "app_api_reviews_route_get",
@@ -24009,42 +24105,6 @@
       "source_location": "L422"
     },
     {
-      "id": "components_shop_customization_steps_customizationstepcomponents",
-      "label": "CustomizationStepComponents()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 129,
-      "community_name": "customization-steps.tsx",
-      "file_type": "code",
-      "norm_label": "customizationstepcomponents()",
-      "source_file": "components/shop/customization-steps.tsx",
-      "source_location": "L472"
-    },
-    {
-      "id": "components_shop_customization_steps_customizationsteprecommendation",
-      "label": "CustomizationStepRecommendation()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 129,
-      "community_name": "customization-steps.tsx",
-      "file_type": "code",
-      "norm_label": "customizationsteprecommendation()",
-      "source_file": "components/shop/customization-steps.tsx",
-      "source_location": "L280"
-    },
-    {
-      "id": "components_shop_customization_steps_customizationstepsummary",
-      "label": "CustomizationStepSummary()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 129,
-      "community_name": "customization-steps.tsx",
-      "file_type": "code",
-      "norm_label": "customizationstepsummary()",
-      "source_file": "components/shop/customization-steps.tsx",
-      "source_location": "L669"
-    },
-    {
       "id": "components_shop_customization_steps_quotecustomization",
       "label": "quoteCustomization()",
       "_callable": true,
@@ -24057,28 +24117,40 @@
       "source_location": "L216"
     },
     {
-      "id": "components_shop_customization_steps_rolebasequantity",
-      "label": "roleBaseQuantity()",
+      "id": "lib_ecommerce_order_cost_calculateaddoncost",
+      "label": "calculateAddonCost()",
       "_callable": true,
       "_origin": "ast",
       "community": 129,
       "community_name": "customization-steps.tsx",
       "file_type": "code",
-      "norm_label": "rolebasequantity()",
-      "source_file": "components/shop/customization-steps.tsx",
-      "source_location": "L200"
+      "norm_label": "calculateaddoncost()",
+      "source_file": "lib/ecommerce/order-cost.ts",
+      "source_location": "L20"
     },
     {
-      "id": "components_shop_pillow_customizer_steppreferences",
-      "label": "StepPreferences()",
+      "id": "lib_ecommerce_order_cost_calculatecustomizationbomcost",
+      "label": "calculateCustomizationBomCost()",
       "_callable": true,
       "_origin": "ast",
       "community": 129,
       "community_name": "customization-steps.tsx",
       "file_type": "code",
-      "norm_label": "steppreferences()",
-      "source_file": "components/shop/pillow-customizer.tsx",
-      "source_location": "L481"
+      "norm_label": "calculatecustomizationbomcost()",
+      "source_file": "lib/ecommerce/order-cost.ts",
+      "source_location": "L4"
+    },
+    {
+      "id": "lib_ecommerce_order_cost_resolveorderitemunitcost",
+      "label": "resolveOrderItemUnitCost()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "resolveorderitemunitcost()",
+      "source_file": "lib/ecommerce/order-cost.ts",
+      "source_location": "L36"
     },
     {
       "id": "lib_shop_customization_price_customizationdelta",
@@ -24861,18 +24933,6 @@
       "source_location": "L320"
     },
     {
-      "id": "lib_shop_customize_apply_payload_buildcustomizeapplypayload",
-      "label": "buildCustomizeApplyPayload()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 131,
-      "community_name": "customization-inventory.test.ts",
-      "file_type": "code",
-      "norm_label": "buildcustomizeapplypayload()",
-      "source_file": "lib/shop/customize-apply-payload.ts",
-      "source_location": "L56"
-    },
-    {
       "id": "lib_shop_customize_apply_payload_componentvariantname",
       "label": "componentVariantName()",
       "_callable": true,
@@ -24883,18 +24943,6 @@
       "norm_label": "componentvariantname()",
       "source_file": "lib/shop/customize-apply-payload.ts",
       "source_location": "L49"
-    },
-    {
-      "id": "lib_shop_customize_apply_payload_resolvebolstervariant",
-      "label": "resolveBolsterVariant()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 131,
-      "community_name": "customization-inventory.test.ts",
-      "file_type": "code",
-      "norm_label": "resolvebolstervariant()",
-      "source_file": "lib/shop/customize-apply-payload.ts",
-      "source_location": "L38"
     },
     {
       "id": "lib_shop_customize_apply_payload_resolveecomproductid",
@@ -27691,18 +27739,6 @@
       "norm_label": "subscribeactiveapirequests()",
       "source_file": "lib/request-progress.ts",
       "source_location": "L24"
-    },
-    {
-      "id": "app_api_mp_config_assist_context_route_get",
-      "label": "GET()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "staff-assist.ts",
-      "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "app/api/mp-config/assist/context/route.ts",
-      "source_location": "L18"
     },
     {
       "id": "components_spatial_insert_order_list_insertorderlist",
@@ -36573,6 +36609,30 @@
       "source_location": "L151"
     },
     {
+      "id": "lib_shop_customize_apply_payload_buildcustomizeapplypayload",
+      "label": "buildCustomizeApplyPayload()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 33,
+      "community_name": "mp-maker/page.tsx",
+      "file_type": "code",
+      "norm_label": "buildcustomizeapplypayload()",
+      "source_file": "lib/shop/customize-apply-payload.ts",
+      "source_location": "L56"
+    },
+    {
+      "id": "lib_shop_customize_apply_payload_resolvebolstervariant",
+      "label": "resolveBolsterVariant()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 33,
+      "community_name": "mp-maker/page.tsx",
+      "file_type": "code",
+      "norm_label": "resolvebolstervariant()",
+      "source_file": "lib/shop/customize-apply-payload.ts",
+      "source_location": "L38"
+    },
+    {
       "id": "lib_utils_getapierrormessage",
       "label": "getApiErrorMessage()",
       "_callable": true,
@@ -41397,6 +41457,18 @@
       "source_location": "L44"
     },
     {
+      "id": "lib_spatial_fillings_core_bolsterplacementstorows",
+      "label": "bolsterPlacementsToRows()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "staff-assist-panel.tsx",
+      "file_type": "code",
+      "norm_label": "bolsterplacementstorows()",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L103"
+    },
+    {
       "id": "lib_spatial_fillings_core_flattentopacklist",
       "label": "flattenToPackList()",
       "_callable": true,
@@ -41793,328 +41865,16 @@
       "source_location": "L10"
     },
     {
-      "id": "app_lang_settings_inventory_configure_save_route_dedupelines",
-      "label": "dedupeLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "dedupelines()",
-      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_save_route_formatsupabaseerror",
-      "label": "formatSupabaseError()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "formatsupabaseerror()",
-      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
-      "source_location": "L8"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_save_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
-      "source_location": "L40"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_apply_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_assertfillinglines",
-      "label": "assertFillingLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "assertfillinglines()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L61"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_dedupelines",
-      "label": "dedupeLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "dedupelines()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L53"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_delete",
-      "label": "DELETE()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "delete()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L352"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_get",
-      "label": "GET()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L82"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L195"
-    },
-    {
-      "id": "components_settings_filling_template_scope_sharedtemplatenotice",
-      "label": "SharedTemplateNotice()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "sharedtemplatenotice()",
-      "source_file": "components/settings/filling-template-scope.tsx",
-      "source_location": "L133"
-    },
-    {
-      "id": "components_settings_filling_template_scope_templatescopechips",
-      "label": "TemplateScopeChips()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "templatescopechips()",
-      "source_file": "components/settings/filling-template-scope.tsx",
-      "source_location": "L25"
-    },
-    {
-      "id": "components_settings_filling_template_scope_templatescopefield",
-      "label": "TemplateScopeField()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "templatescopefield()",
-      "source_file": "components/settings/filling-template-scope.tsx",
-      "source_location": "L72"
-    },
-    {
-      "id": "lib_bom_sanitizer_index_lookupitemcategories",
-      "label": "lookupItemCategories()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "lookupitemcategories()",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L32"
-    },
-    {
-      "id": "lib_bom_sanitizer_index_rejectfillinglines",
-      "label": "rejectFillingLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "rejectfillinglines()",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L56"
-    },
-    {
-      "id": "lib_bom_sanitizer_index_stripfillinglines",
-      "label": "stripFillingLines()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "stripfillinglines()",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L48"
-    },
-    {
-      "id": "lib_filling_templates_index_validatedefaultfillingtemplate",
-      "label": "validateDefaultFillingTemplate()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "validatedefaultfillingtemplate()",
-      "source_file": "lib/filling-templates/index.ts",
-      "source_location": "L40"
-    },
-    {
-      "id": "lib_filling_templates_keys_formattemplatekeys",
-      "label": "formatTemplateKeys()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "formattemplatekeys()",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L65"
-    },
-    {
-      "id": "lib_filling_templates_keys_normalizetemplatekeys",
-      "label": "normalizeTemplateKeys()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "normalizetemplatekeys()",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L31"
-    },
-    {
-      "id": "lib_filling_templates_keys_primarytemplatekey",
-      "label": "primaryTemplateKey()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "primarytemplatekey()",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L53"
-    },
-    {
-      "id": "lib_filling_templates_keys_templatekeylabel",
-      "label": "templateKeyLabel()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "templatekeylabel()",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_filling_templates_keys_templatekeysforkind",
-      "label": "templateKeysForKind()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "templatekeysforkind()",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L16"
-    },
-    {
-      "id": "lib_filling_templates_keys_templateserveskey",
-      "label": "templateServesKey()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "templateserveskey()",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L59"
-    },
-    {
       "id": "lib_filling_templates_membership_check_read",
       "label": "read()",
       "_callable": true,
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "code",
       "norm_label": "read()",
       "source_file": "lib/filling-templates/membership.check.ts",
       "source_location": "L13"
-    },
-    {
-      "id": "lib_filling_templates_membership_cleardefaultsoutsidemembership",
-      "label": "clearDefaultsOutsideMembership()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "cleardefaultsoutsidemembership()",
-      "source_file": "lib/filling-templates/membership.ts",
-      "source_location": "L163"
-    },
-    {
-      "id": "lib_filling_templates_membership_settemplatekeys",
-      "label": "setTemplateKeys()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "settemplatekeys()",
-      "source_file": "lib/filling-templates/membership.ts",
-      "source_location": "L100"
-    },
-    {
-      "id": "lib_results_composed_sellable_setdefaultfillingtemplateid",
-      "label": "setDefaultFillingTemplateId()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "setdefaultfillingtemplateid()",
-      "source_file": "lib/results/composed-sellable.ts",
-      "source_location": "L354"
-    },
-    {
-      "id": "lib_spatial_fillings_core_placementkind",
-      "label": "placementKind()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "placementkind()",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L111"
     },
     {
       "id": "scripts_smoke_staging_e2e_signoff_main",
@@ -49677,30 +49437,6 @@
       "source_location": "L225"
     },
     {
-      "id": "app_api_results_hold_tests_ownership_test_post",
-      "label": "post()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
-      "source_location": "L155"
-    },
-    {
-      "id": "app_api_results_hold_tests_ownership_test_signinadmin",
-      "label": "signInAdmin()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "signinadmin()",
-      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
-      "source_location": "L148"
-    },
-    {
       "id": "app_api_results_id_finish_route_post",
       "label": "POST()",
       "_callable": true,
@@ -49713,76 +49449,16 @@
       "source_location": "L41"
     },
     {
-      "id": "lib_analytics_journey_identity_linkvisittopaidorder",
-      "label": "linkVisitToPaidOrder()",
+      "id": "app_api_results_id_reconfigure_route_post",
+      "label": "POST()",
       "_callable": true,
       "_origin": "ast",
       "community": 774,
       "community_name": "hold/route.ts",
       "file_type": "code",
-      "norm_label": "linkvisittopaidorder()",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L149"
-    },
-    {
-      "id": "lib_analytics_journey_identity_mergevisitoridentity",
-      "label": "mergeVisitorIdentity()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "mergevisitoridentity()",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L105"
-    },
-    {
-      "id": "lib_analytics_journey_identity_normalizevisitoremail",
-      "label": "normalizeVisitorEmail()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "normalizevisitoremail()",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L18"
-    },
-    {
-      "id": "lib_analytics_journey_identity_parsevisitorid",
-      "label": "parseVisitorId()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "parsevisitorid()",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "lib_analytics_journey_identity_pickvisitforconversion",
-      "label": "pickVisitForConversion()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "pickvisitforconversion()",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L82"
-    },
-    {
-      "id": "lib_analytics_journey_identity_planvisitormerge",
-      "label": "planVisitorMerge()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "planvisitormerge()",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L40"
+      "norm_label": "post()",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L89"
     },
     {
       "id": "lib_configurator_pre_order_persist_loadpreordertriggerathold",
@@ -49819,6 +49495,54 @@
       "norm_label": "solecaseid()",
       "source_file": "lib/configurator/preference-policy.ts",
       "source_location": "L11"
+    },
+    {
+      "id": "lib_results_filling_assign_decidefillingassign",
+      "label": "decideFillingAssign()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "decidefillingassign()",
+      "source_file": "lib/results/filling-assign.ts",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_results_filling_snapshot_buildbolsterfillingsnapshot",
+      "label": "buildBolsterFillingSnapshot()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "buildbolsterfillingsnapshot()",
+      "source_file": "lib/results/filling-snapshot.ts",
+      "source_location": "L70"
+    },
+    {
+      "id": "lib_results_filling_snapshot_buildfillingsnapshot",
+      "label": "buildFillingSnapshot()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "buildfillingsnapshot()",
+      "source_file": "lib/results/filling-snapshot.ts",
+      "source_location": "L51"
+    },
+    {
+      "id": "lib_results_filling_snapshot_confirmedtemplateid",
+      "label": "confirmedTemplateId()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "confirmedtemplateid()",
+      "source_file": "lib/results/filling-snapshot.ts",
+      "source_location": "L38"
     },
     {
       "id": "lib_shop_customization_inventory_getavailablebolstercomponents",
@@ -49879,6 +49603,54 @@
       "norm_label": "tocomponentrole()",
       "source_file": "lib/shop/customization-inventory.ts",
       "source_location": "L31"
+    },
+    {
+      "id": "lib_spatial_fillings_core_canonicalizeplacements",
+      "label": "canonicalizePlacements()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "canonicalizeplacements()",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L229"
+    },
+    {
+      "id": "lib_spatial_fillings_core_placementsexactmatch",
+      "label": "placementsExactMatch()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "placementsexactmatch()",
+      "source_file": "lib/spatial-fillings/core.ts",
+      "source_location": "L243"
+    },
+    {
+      "id": "lib_spatial_fillings_fingerprint_fingerprintplacements",
+      "label": "fingerprintPlacements()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "fingerprintplacements()",
+      "source_file": "lib/spatial-fillings/fingerprint.ts",
+      "source_location": "L8"
+    },
+    {
+      "id": "lib_spatial_fillings_tests_spatial_fillings_test_ninecells",
+      "label": "nineCells()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "ninecells()",
+      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
+      "source_location": "L28"
     },
     {
       "id": "components_product_builder_overlay_workbench_clamp",
@@ -50445,6 +50217,18 @@
       "source_location": "L11"
     },
     {
+      "id": "app_api_mp_config_assist_context_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "app/api/mp-config/assist/context/route.ts",
+      "source_location": "L18"
+    },
+    {
       "id": "app_api_mp_config_assist_route_get",
       "label": "GET()",
       "_callable": true,
@@ -50481,7 +50265,31 @@
       "source_location": "L26"
     },
     {
-      "id": "app_api_results_id_reconfigure_route_post",
+      "id": "app_lang_settings_inventory_configure_save_route_dedupelines",
+      "label": "dedupeLines()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "dedupelines()",
+      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_save_route_formatsupabaseerror",
+      "label": "formatSupabaseError()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "formatsupabaseerror()",
+      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
+      "source_location": "L8"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_save_route_post",
       "label": "POST()",
       "_callable": true,
       "_origin": "ast",
@@ -50489,8 +50297,80 @@
       "community_name": "unpromoted/route.ts",
       "file_type": "code",
       "norm_label": "post()",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
-      "source_location": "L89"
+      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
+      "source_location": "L40"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_apply_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
+      "source_location": "L13"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_assertfillinglines",
+      "label": "assertFillingLines()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "assertfillinglines()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L61"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_dedupelines",
+      "label": "dedupeLines()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "dedupelines()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L53"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_delete",
+      "label": "DELETE()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "delete()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L352"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L82"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L195"
     },
     {
       "id": "app_lang_settings_inventory_configure_templates_templateid_fork_route_post",
@@ -50613,6 +50493,18 @@
       "source_location": "L55"
     },
     {
+      "id": "lib_bom_sanitizer_index_lookupitemcategories",
+      "label": "lookupItemCategories()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "lookupitemcategories()",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L32"
+    },
+    {
       "id": "lib_bom_sanitizer_index_lookupplacementkinds",
       "label": "lookupPlacementKinds()",
       "_callable": true,
@@ -50623,6 +50515,30 @@
       "norm_label": "lookupplacementkinds()",
       "source_file": "lib/bom-sanitizer/index.ts",
       "source_location": "L14"
+    },
+    {
+      "id": "lib_bom_sanitizer_index_rejectfillinglines",
+      "label": "rejectFillingLines()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "rejectfillinglines()",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L56"
+    },
+    {
+      "id": "lib_bom_sanitizer_index_stripfillinglines",
+      "label": "stripFillingLines()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "stripfillinglines()",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L48"
     },
     {
       "id": "lib_filling_templates_index_validatefillingonlylines",
@@ -50637,6 +50553,30 @@
       "source_location": "L30"
     },
     {
+      "id": "lib_filling_templates_keys_normalizetemplatekeys",
+      "label": "normalizeTemplateKeys()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "normalizetemplatekeys()",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L31"
+    },
+    {
+      "id": "lib_filling_templates_keys_primarytemplatekey",
+      "label": "primaryTemplateKey()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "primarytemplatekey()",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L53"
+    },
+    {
       "id": "lib_filling_templates_membership_asserttemplatenamefree",
       "label": "assertTemplateNameFree()",
       "_callable": true,
@@ -50649,6 +50589,18 @@
       "source_location": "L59"
     },
     {
+      "id": "lib_filling_templates_membership_cleardefaultsoutsidemembership",
+      "label": "clearDefaultsOutsideMembership()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "cleardefaultsoutsidemembership()",
+      "source_file": "lib/filling-templates/membership.ts",
+      "source_location": "L163"
+    },
+    {
       "id": "lib_filling_templates_membership_loadtemplatekeys",
       "label": "loadTemplateKeys()",
       "_callable": true,
@@ -50659,6 +50611,30 @@
       "norm_label": "loadtemplatekeys()",
       "source_file": "lib/filling-templates/membership.ts",
       "source_location": "L21"
+    },
+    {
+      "id": "lib_filling_templates_membership_settemplatekeys",
+      "label": "setTemplateKeys()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "settemplatekeys()",
+      "source_file": "lib/filling-templates/membership.ts",
+      "source_location": "L100"
+    },
+    {
+      "id": "lib_filling_templates_membership_templateidsforkey",
+      "label": "templateIdsForKey()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "templateidsforkey()",
+      "source_file": "lib/filling-templates/membership.ts",
+      "source_location": "L43"
     },
     {
       "id": "lib_filling_templates_unpromoted_rankunpromoted",
@@ -50709,64 +50685,16 @@
       "source_location": "L67"
     },
     {
-      "id": "lib_results_filling_assign_decidefillingassign",
-      "label": "decideFillingAssign()",
+      "id": "lib_results_composed_sellable_setdefaultfillingtemplateid",
+      "label": "setDefaultFillingTemplateId()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "code",
-      "norm_label": "decidefillingassign()",
-      "source_file": "lib/results/filling-assign.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "lib_results_filling_snapshot_buildbolsterfillingsnapshot",
-      "label": "buildBolsterFillingSnapshot()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "buildbolsterfillingsnapshot()",
-      "source_file": "lib/results/filling-snapshot.ts",
-      "source_location": "L70"
-    },
-    {
-      "id": "lib_results_filling_snapshot_buildfillingsnapshot",
-      "label": "buildFillingSnapshot()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "buildfillingsnapshot()",
-      "source_file": "lib/results/filling-snapshot.ts",
-      "source_location": "L51"
-    },
-    {
-      "id": "lib_results_filling_snapshot_confirmedtemplateid",
-      "label": "confirmedTemplateId()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "confirmedtemplateid()",
-      "source_file": "lib/results/filling-snapshot.ts",
-      "source_location": "L38"
-    },
-    {
-      "id": "lib_results_resume_finish_loadresumefinish",
-      "label": "loadResumeFinish()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "loadresumefinish()",
-      "source_file": "lib/results/resume-finish.ts",
-      "source_location": "L32"
+      "norm_label": "setdefaultfillingtemplateid()",
+      "source_file": "lib/results/composed-sellable.ts",
+      "source_location": "L354"
     },
     {
       "id": "lib_spatial_fillings_core_assertfillingitem",
@@ -50781,40 +50709,16 @@
       "source_location": "L120"
     },
     {
-      "id": "lib_spatial_fillings_core_bolsterplacementstorows",
-      "label": "bolsterPlacementsToRows()",
+      "id": "lib_spatial_fillings_core_placementkind",
+      "label": "placementKind()",
       "_callable": true,
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "code",
-      "norm_label": "bolsterplacementstorows()",
+      "norm_label": "placementkind()",
       "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L103"
-    },
-    {
-      "id": "lib_spatial_fillings_core_canonicalizeplacements",
-      "label": "canonicalizePlacements()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "canonicalizeplacements()",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L229"
-    },
-    {
-      "id": "lib_spatial_fillings_core_placementsexactmatch",
-      "label": "placementsExactMatch()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "placementsexactmatch()",
-      "source_file": "lib/spatial-fillings/core.ts",
-      "source_location": "L243"
+      "source_location": "L111"
     },
     {
       "id": "lib_spatial_fillings_core_rowstobolsterplacements",
@@ -50863,30 +50767,6 @@
       "norm_label": "validatepillowplacements()",
       "source_file": "lib/spatial-fillings/core.ts",
       "source_location": "L143"
-    },
-    {
-      "id": "lib_spatial_fillings_fingerprint_fingerprintplacements",
-      "label": "fingerprintPlacements()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "fingerprintplacements()",
-      "source_file": "lib/spatial-fillings/fingerprint.ts",
-      "source_location": "L8"
-    },
-    {
-      "id": "lib_spatial_fillings_tests_spatial_fillings_test_ninecells",
-      "label": "nineCells()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "ninecells()",
-      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
-      "source_location": "L28"
     },
     {
       "id": "app_api_shop_checkout_tests_customisation_binding_test_apply",
@@ -51693,6 +51573,30 @@
       "source_location": "L70"
     },
     {
+      "id": "lib_filling_templates_index_validatedefaultfillingtemplate",
+      "label": "validateDefaultFillingTemplate()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "validatedefaultfillingtemplate()",
+      "source_file": "lib/filling-templates/index.ts",
+      "source_location": "L40"
+    },
+    {
+      "id": "lib_filling_templates_keys_templateserveskey",
+      "label": "templateServesKey()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "templateserveskey()",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L59"
+    },
+    {
       "id": "lib_pricing_composed_price_baselinecasemsrpbyfamily",
       "label": "baselineCaseMsrpByFamily()",
       "_callable": true,
@@ -51919,6 +51823,18 @@
       "norm_label": "isresultorderbuildsnapshot()",
       "source_file": "lib/results/order-build-snapshot.ts",
       "source_location": "L39"
+    },
+    {
+      "id": "lib_results_resume_finish_loadresumefinish",
+      "label": "loadResumeFinish()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "loadresumefinish()",
+      "source_file": "lib/results/resume-finish.ts",
+      "source_location": "L32"
     },
     {
       "id": "lib_results_tests_composed_sellable_test_stub",
@@ -55077,6 +54993,66 @@
       "source_location": "L22"
     },
     {
+      "id": "components_shop_customization_steps_customizationstepcomponents",
+      "label": "CustomizationStepComponents()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "customizationstepcomponents()",
+      "source_file": "components/shop/customization-steps.tsx",
+      "source_location": "L472"
+    },
+    {
+      "id": "components_shop_customization_steps_customizationsteprecommendation",
+      "label": "CustomizationStepRecommendation()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "customizationsteprecommendation()",
+      "source_file": "components/shop/customization-steps.tsx",
+      "source_location": "L280"
+    },
+    {
+      "id": "components_shop_customization_steps_customizationstepsummary",
+      "label": "CustomizationStepSummary()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "customizationstepsummary()",
+      "source_file": "components/shop/customization-steps.tsx",
+      "source_location": "L669"
+    },
+    {
+      "id": "components_shop_customization_steps_rolebasequantity",
+      "label": "roleBaseQuantity()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "rolebasequantity()",
+      "source_file": "components/shop/customization-steps.tsx",
+      "source_location": "L200"
+    },
+    {
+      "id": "components_shop_pillow_customizer_steppreferences",
+      "label": "StepPreferences()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "steppreferences()",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L481"
+    },
+    {
       "id": "app_lang_settings_analytics_diginviz_routesblockh",
       "label": "routesBlockH()",
       "_callable": true,
@@ -55975,6 +55951,30 @@
       "norm_label": "plainlanguagewhy()",
       "source_file": "lib/rules-engine/why.ts",
       "source_location": "L57"
+    },
+    {
+      "id": "app_api_results_hold_tests_ownership_test_post",
+      "label": "post()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 945,
+      "community_name": "ownership.test.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
+      "source_location": "L155"
+    },
+    {
+      "id": "app_api_results_hold_tests_ownership_test_signinadmin",
+      "label": "signInAdmin()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 945,
+      "community_name": "ownership.test.ts",
+      "file_type": "code",
+      "norm_label": "signinadmin()",
+      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
+      "source_location": "L148"
     },
     {
       "id": "app_api_admin_context_route_get",
@@ -60155,6 +60155,17 @@
       "source_location": "L82"
     },
     {
+      "id": "components_settings_filling_template_scope",
+      "label": "filling-template-scope.tsx",
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "filling-template-scope.tsx",
+      "source_file": "components/settings/filling-template-scope.tsx",
+      "source_location": "L1"
+    },
+    {
       "id": "components_ui_table_sticky",
       "label": "table-sticky.ts",
       "_origin": "ast",
@@ -60186,6 +60197,39 @@
       "norm_label": "stickyfirstcolumnheadclassname",
       "source_file": "components/ui/table-sticky.ts",
       "source_location": "L11"
+    },
+    {
+      "id": "lib_filling_templates_keys",
+      "label": "keys.ts",
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "keys.ts",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_filling_templates_keys_bolster_template_keys",
+      "label": "BOLSTER_TEMPLATE_KEYS",
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "bolster_template_keys",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L14"
+    },
+    {
+      "id": "lib_filling_templates_keys_pillow_template_keys",
+      "label": "PILLOW_TEMPLATE_KEYS",
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "[card]/page.tsx",
+      "file_type": "code",
+      "norm_label": "pillow_template_keys",
+      "source_file": "lib/filling-templates/keys.ts",
+      "source_location": "L12"
     },
     {
       "id": "lib_spatial_fillings_authoring",
@@ -62069,59 +62113,81 @@
       "source_location": "L64"
     },
     {
-      "id": "lib_ecommerce_order_cost",
-      "label": "order-cost.ts",
+      "id": "lib_analytics_journey_identity",
+      "label": "identity.ts",
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "order-cost.ts",
-      "source_file": "lib/ecommerce/order-cost.ts",
+      "norm_label": "identity.ts",
+      "source_file": "lib/analytics/journey/identity.ts",
       "source_location": "L1"
     },
     {
-      "id": "lib_ecommerce_tests_order_cost_test",
-      "label": "order-cost.test.ts",
+      "id": "lib_analytics_journey_identity_check",
+      "label": "identity.check.ts",
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "order-cost.test.ts",
-      "source_file": "lib/ecommerce/__tests__/order-cost.test.ts",
+      "norm_label": "identity.check.ts",
+      "source_file": "lib/analytics/journey/identity.check.ts",
       "source_location": "L1"
     },
     {
-      "id": "lib_ecommerce_tests_order_cost_test_coverline",
-      "label": "coverLine",
+      "id": "lib_analytics_journey_identity_check_newerended",
+      "label": "newerEnded",
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "coverline",
-      "source_file": "lib/ecommerce/__tests__/order-cost.test.ts",
-      "source_location": "L9"
+      "norm_label": "newerended",
+      "source_file": "lib/analytics/journey/identity.check.ts",
+      "source_location": "L78"
     },
     {
-      "id": "lib_ecommerce_tests_slice_09_acceptance_test",
-      "label": "slice-09-acceptance.test.ts",
+      "id": "lib_analytics_journey_identity_check_olderended",
+      "label": "olderEnded",
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "slice-09-acceptance.test.ts",
-      "source_file": "lib/ecommerce/__tests__/slice-09-acceptance.test.ts",
-      "source_location": "L1"
+      "norm_label": "olderended",
+      "source_file": "lib/analytics/journey/identity.check.ts",
+      "source_location": "L72"
     },
     {
-      "id": "lib_types_customization",
-      "label": "customization.ts",
+      "id": "lib_analytics_journey_identity_check_open",
+      "label": "open",
       "_origin": "ast",
       "community": 114,
-      "community_name": "customization.ts",
+      "community_name": "identity.ts",
       "file_type": "code",
-      "norm_label": "customization.ts",
-      "source_file": "lib/types/customization.ts",
-      "source_location": "L1"
+      "norm_label": "open",
+      "source_file": "lib/analytics/journey/identity.check.ts",
+      "source_location": "L66"
+    },
+    {
+      "id": "lib_analytics_journey_identity_visitor_cookie",
+      "label": "VISITOR_COOKIE",
+      "_origin": "ast",
+      "community": 114,
+      "community_name": "identity.ts",
+      "file_type": "code",
+      "norm_label": "visitor_cookie",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "lib_analytics_journey_identity_ts_docref_adr_0007",
+      "label": "ADR-0007",
+      "_origin": "ast",
+      "community": 114,
+      "community_name": "identity.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0007",
+      "source_file": "lib/analytics/journey/identity.ts",
+      "source_location": "L3"
     },
     {
       "id": "claude_prd_configurator_contact_forms_issues_02_catalog_schema_validation",
@@ -64190,39 +64256,6 @@
       "source_location": "L25"
     },
     {
-      "id": "supabase_migrations_0025_staff_management",
-      "label": "0025_staff_management.sql",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "set_updated_at",
-      "file_type": "code",
-      "norm_label": "0025_staff_management.sql",
-      "source_file": "supabase/migrations/0025_staff_management.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_0025_staff_management_mp_staff",
-      "label": "mp_staff",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "set_updated_at",
-      "file_type": "code",
-      "norm_label": "mp_staff",
-      "source_file": "supabase/migrations/0025_staff_management.sql",
-      "source_location": "L6"
-    },
-    {
-      "id": "supabase_migrations_0025_staff_management_trg_mp_staff_updated_at",
-      "label": "trg_mp_staff_updated_at",
-      "_origin": "ast",
-      "community": 127,
-      "community_name": "set_updated_at",
-      "file_type": "code",
-      "norm_label": "trg_mp_staff_updated_at",
-      "source_file": "supabase/migrations/0025_staff_management.sql",
-      "source_location": "L17"
-    },
-    {
       "id": "supabase_migrations_0028_ecommerce",
       "label": "0028_ecommerce.sql",
       "_origin": "ast",
@@ -64232,6 +64265,28 @@
       "norm_label": "0028_ecommerce.sql",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": null
+    },
+    {
+      "id": "supabase_migrations_0028_ecommerce_cart_items",
+      "label": "cart_items",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "set_updated_at",
+      "file_type": "code",
+      "norm_label": "cart_items",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L298"
+    },
+    {
+      "id": "supabase_migrations_0028_ecommerce_carts",
+      "label": "carts",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "set_updated_at",
+      "file_type": "code",
+      "norm_label": "carts",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L272"
     },
     {
       "id": "supabase_migrations_0028_ecommerce_collection_products",
@@ -64399,37 +64454,70 @@
       "source_location": "L334"
     },
     {
-      "id": "supabase_migrations_20260710080000_media_folders",
-      "label": "20260710080000_media_folders.sql",
+      "id": "supabase_migrations_0036_tax_rates",
+      "label": "0036_tax_rates.sql",
       "_origin": "ast",
       "community": 127,
       "community_name": "set_updated_at",
       "file_type": "code",
-      "norm_label": "20260710080000_media_folders.sql",
-      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "norm_label": "0036_tax_rates.sql",
+      "source_file": "supabase/migrations/0036_tax_rates.sql",
       "source_location": null
     },
     {
-      "id": "supabase_migrations_20260710080000_media_folders_media_folders",
-      "label": "media_folders",
+      "id": "supabase_migrations_0036_tax_rates_tax_rates",
+      "label": "tax_rates",
       "_origin": "ast",
       "community": 127,
       "community_name": "set_updated_at",
       "file_type": "code",
-      "norm_label": "media_folders",
-      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "norm_label": "tax_rates",
+      "source_file": "supabase/migrations/0036_tax_rates.sql",
+      "source_location": "L16"
+    },
+    {
+      "id": "supabase_migrations_0036_tax_rates_trg_tax_rates_updated_at",
+      "label": "trg_tax_rates_updated_at",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "set_updated_at",
+      "file_type": "code",
+      "norm_label": "trg_tax_rates_updated_at",
+      "source_file": "supabase/migrations/0036_tax_rates.sql",
+      "source_location": "L35"
+    },
+    {
+      "id": "supabase_migrations_20260719180000_rule_graphs",
+      "label": "20260719180000_rule_graphs.sql",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "set_updated_at",
+      "file_type": "code",
+      "norm_label": "20260719180000_rule_graphs.sql",
+      "source_file": "supabase/migrations/20260719180000_rule_graphs.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_20260719180000_rule_graphs_rule_graphs",
+      "label": "rule_graphs",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "set_updated_at",
+      "file_type": "code",
+      "norm_label": "rule_graphs",
+      "source_file": "supabase/migrations/20260719180000_rule_graphs.sql",
       "source_location": "L3"
     },
     {
-      "id": "supabase_migrations_20260710080000_media_folders_trg_media_folders_updated_at",
-      "label": "trg_media_folders_updated_at",
+      "id": "supabase_migrations_20260719180000_rule_graphs_trg_rule_graphs_updated_at",
+      "label": "trg_rule_graphs_updated_at",
       "_origin": "ast",
       "community": 127,
       "community_name": "set_updated_at",
       "file_type": "code",
-      "norm_label": "trg_media_folders_updated_at",
-      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
-      "source_location": "L12"
+      "norm_label": "trg_rule_graphs_updated_at",
+      "source_file": "supabase/migrations/20260719180000_rule_graphs.sql",
+      "source_location": "L31"
     },
     {
       "id": "supabase_migrations_20260719210000_filling_color_overrides",
@@ -64680,70 +64768,48 @@
       "source_location": "L1"
     },
     {
-      "id": "components_shop_customization_steps_formatprice",
-      "label": "formatPrice",
+      "id": "lib_ecommerce_order_cost",
+      "label": "order-cost.ts",
       "_origin": "ast",
       "community": 129,
       "community_name": "customization-steps.tsx",
       "file_type": "code",
-      "norm_label": "formatprice",
-      "source_file": "components/shop/customization-steps.tsx",
-      "source_location": "L103"
-    },
-    {
-      "id": "components_shop_pillow_customizer",
-      "label": "pillow-customizer.tsx",
-      "_origin": "ast",
-      "community": 129,
-      "community_name": "customization-steps.tsx",
-      "file_type": "code",
-      "norm_label": "pillow-customizer.tsx",
-      "source_file": "components/shop/pillow-customizer.tsx",
+      "norm_label": "order-cost.ts",
+      "source_file": "lib/ecommerce/order-cost.ts",
       "source_location": "L1"
     },
     {
-      "id": "components_shop_pillow_customizer_body_types",
-      "label": "BODY_TYPES",
+      "id": "lib_ecommerce_tests_order_cost_test",
+      "label": "order-cost.test.ts",
       "_origin": "ast",
       "community": 129,
       "community_name": "customization-steps.tsx",
       "file_type": "code",
-      "norm_label": "body_types",
-      "source_file": "components/shop/pillow-customizer.tsx",
-      "source_location": "L122"
+      "norm_label": "order-cost.test.ts",
+      "source_file": "lib/ecommerce/__tests__/order-cost.test.ts",
+      "source_location": "L1"
     },
     {
-      "id": "components_shop_pillow_customizer_firmness_levels",
-      "label": "FIRMNESS_LEVELS",
+      "id": "lib_ecommerce_tests_order_cost_test_coverline",
+      "label": "coverLine",
       "_origin": "ast",
       "community": 129,
       "community_name": "customization-steps.tsx",
       "file_type": "code",
-      "norm_label": "firmness_levels",
-      "source_file": "components/shop/pillow-customizer.tsx",
-      "source_location": "L131"
+      "norm_label": "coverline",
+      "source_file": "lib/ecommerce/__tests__/order-cost.test.ts",
+      "source_location": "L9"
     },
     {
-      "id": "components_shop_pillow_customizer_sleep_positions",
-      "label": "SLEEP_POSITIONS",
+      "id": "lib_ecommerce_tests_slice_09_acceptance_test",
+      "label": "slice-09-acceptance.test.ts",
       "_origin": "ast",
       "community": 129,
       "community_name": "customization-steps.tsx",
       "file_type": "code",
-      "norm_label": "sleep_positions",
-      "source_file": "components/shop/pillow-customizer.tsx",
-      "source_location": "L64"
-    },
-    {
-      "id": "components_shop_pillow_customizer_steps",
-      "label": "STEPS",
-      "_origin": "ast",
-      "community": 129,
-      "community_name": "customization-steps.tsx",
-      "file_type": "code",
-      "norm_label": "steps",
-      "source_file": "components/shop/pillow-customizer.tsx",
-      "source_location": "L142"
+      "norm_label": "slice-09-acceptance.test.ts",
+      "source_file": "lib/ecommerce/__tests__/slice-09-acceptance.test.ts",
+      "source_location": "L1"
     },
     {
       "id": "lib_shop_customization_price",
@@ -64766,17 +64832,6 @@
       "norm_label": "case_roles",
       "source_file": "lib/shop/customization-price.ts",
       "source_location": "L37"
-    },
-    {
-      "id": "lib_shop_customize_apply_payload_hardcoded_upsells",
-      "label": "HARDCODED_UPSELLS",
-      "_origin": "ast",
-      "community": 129,
-      "community_name": "customization-steps.tsx",
-      "file_type": "code",
-      "norm_label": "hardcoded_upsells",
-      "source_file": "lib/shop/customize-apply-payload.ts",
-      "source_location": "L3"
     },
     {
       "id": "lib_shop_tests_customization_price_test",
@@ -64821,6 +64876,17 @@
       "norm_label": "premiumxs",
       "source_file": "lib/shop/__tests__/customization-price.test.ts",
       "source_location": "L44"
+    },
+    {
+      "id": "lib_types_customization",
+      "label": "customization.ts",
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "customization-steps.tsx",
+      "file_type": "code",
+      "norm_label": "customization.ts",
+      "source_file": "lib/types/customization.ts",
+      "source_location": "L1"
     },
     {
       "id": "app_lang_settings_costings_page",
@@ -69625,39 +69691,6 @@
       "source_location": "L112"
     },
     {
-      "id": "app_api_mp_config_assist_context_route",
-      "label": "assist/context/route.ts",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "staff-assist.ts",
-      "file_type": "code",
-      "norm_label": "assist/context/route.ts",
-      "source_file": "app/api/mp-config/assist/context/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_api_mp_config_assist_context_route_dynamic",
-      "label": "dynamic",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "staff-assist.ts",
-      "file_type": "code",
-      "norm_label": "dynamic",
-      "source_file": "app/api/mp-config/assist/context/route.ts",
-      "source_location": "L10"
-    },
-    {
-      "id": "app_api_mp_config_assist_context_route_runtime",
-      "label": "runtime",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "staff-assist.ts",
-      "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/api/mp-config/assist/context/route.ts",
-      "source_location": "L9"
-    },
-    {
       "id": "app_lang_settings_inventory_configure_card_page_insertorderlist",
       "label": "InsertOrderList",
       "_origin": "ast",
@@ -69975,28 +70008,6 @@
       "norm_label": "pillow_cells",
       "source_file": "lib/configurator/staff-assist.ts",
       "source_location": "L31"
-    },
-    {
-      "id": "lib_configurator_staff_assist_pillow_sizes",
-      "label": "PILLOW_SIZES",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "staff-assist.ts",
-      "file_type": "code",
-      "norm_label": "pillow_sizes",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_configurator_staff_assist_pillow_tiers",
-      "label": "PILLOW_TIERS",
-      "_origin": "ast",
-      "community": 168,
-      "community_name": "staff-assist.ts",
-      "file_type": "code",
-      "norm_label": "pillow_tiers",
-      "source_file": "lib/configurator/staff-assist.ts",
-      "source_location": "L22"
     },
     {
       "id": "lib_configurator_tests_mirror_section_test",
@@ -72108,6 +72119,50 @@
       "source_location": "L1"
     },
     {
+      "id": "package",
+      "label": "package.json",
+      "_origin": "ast",
+      "community": 180,
+      "community_name": "scripts",
+      "file_type": "code",
+      "norm_label": "package.json",
+      "source_file": "package.json",
+      "source_location": "L1"
+    },
+    {
+      "id": "package_name",
+      "label": "name",
+      "_origin": "ast",
+      "community": 180,
+      "community_name": "scripts",
+      "file_type": "code",
+      "norm_label": "name",
+      "source_file": "package.json",
+      "source_location": "L2"
+    },
+    {
+      "id": "package_packagemanager",
+      "label": "packageManager",
+      "_origin": "ast",
+      "community": 180,
+      "community_name": "scripts",
+      "file_type": "code",
+      "norm_label": "packagemanager",
+      "source_file": "package.json",
+      "source_location": "L116"
+    },
+    {
+      "id": "package_private",
+      "label": "private",
+      "_origin": "ast",
+      "community": 180,
+      "community_name": "scripts",
+      "file_type": "code",
+      "norm_label": "private",
+      "source_file": "package.json",
+      "source_location": "L4"
+    },
+    {
       "id": "package_scripts",
       "label": "scripts",
       "_origin": "ast",
@@ -72359,6 +72414,17 @@
       "norm_label": "typecheck",
       "source_file": "package.json",
       "source_location": "L10"
+    },
+    {
+      "id": "package_version",
+      "label": "version",
+      "_origin": "ast",
+      "community": 180,
+      "community_name": "scripts",
+      "file_type": "code",
+      "norm_label": "version",
+      "source_file": "package.json",
+      "source_location": "L3"
     },
     {
       "id": "components_settings_appointments_calendar",
@@ -75543,6 +75609,30 @@
       "source_location": "L1332"
     },
     {
+      "id": "info_mpillow_final_report_article_what_led_to_the_creation_of_the_world_s_best_pillow",
+      "label": "Article: What Led To The Creation Of The World S Best Pillow",
+      "_origin": "ast",
+      "community": 206,
+      "community_name": "mpillow_final_report.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "article: what led to the creation of the world s best pillow",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L1184"
+    },
+    {
+      "id": "info_mpillow_final_report_extracted_text_content_1193",
+      "label": "Extracted Text Content",
+      "_origin": "ast",
+      "community": 206,
+      "community_name": "mpillow_final_report.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "extracted text content",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L1193"
+    },
+    {
       "id": "info_mpillow_final_report_extracted_text_content_1341",
       "label": "Extracted Text Content",
       "_origin": "ast",
@@ -75555,7 +75645,7 @@
       "source_location": "L1341"
     },
     {
-      "id": "info_mpillow_final_report_extracted_text_content_269",
+      "id": "info_mpillow_final_report_extracted_text_content_456",
       "label": "Extracted Text Content",
       "_origin": "ast",
       "community": 206,
@@ -75564,19 +75654,7 @@
       "node_kind": "heading",
       "norm_label": "extracted text content",
       "source_file": "info/mpillow_final_report.md",
-      "source_location": "L269"
-    },
-    {
-      "id": "info_mpillow_final_report_extracted_text_content_411",
-      "label": "Extracted Text Content",
-      "_origin": "ast",
-      "community": 206,
-      "community_name": "mpillow_final_report.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "extracted text content",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L411"
+      "source_location": "L456"
     },
     {
       "id": "info_mpillow_final_report_extracted_text_content_810",
@@ -75591,6 +75669,18 @@
       "source_location": "L810"
     },
     {
+      "id": "info_mpillow_final_report_key_images_and_descriptions_1187",
+      "label": "Key Images and Descriptions",
+      "_origin": "ast",
+      "community": 206,
+      "community_name": "mpillow_final_report.md",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "key images and descriptions",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L1187"
+    },
+    {
       "id": "info_mpillow_final_report_key_images_and_descriptions_1335",
       "label": "Key Images and Descriptions",
       "_origin": "ast",
@@ -75603,7 +75693,7 @@
       "source_location": "L1335"
     },
     {
-      "id": "info_mpillow_final_report_key_images_and_descriptions_265",
+      "id": "info_mpillow_final_report_key_images_and_descriptions_450",
       "label": "Key Images and Descriptions",
       "_origin": "ast",
       "community": 206,
@@ -75612,19 +75702,7 @@
       "node_kind": "heading",
       "norm_label": "key images and descriptions",
       "source_file": "info/mpillow_final_report.md",
-      "source_location": "L265"
-    },
-    {
-      "id": "info_mpillow_final_report_key_images_and_descriptions_405",
-      "label": "Key Images and Descriptions",
-      "_origin": "ast",
-      "community": 206,
-      "community_name": "mpillow_final_report.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "key images and descriptions",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L405"
+      "source_location": "L450"
     },
     {
       "id": "info_mpillow_final_report_key_images_and_descriptions_804",
@@ -75663,28 +75741,16 @@
       "source_location": "L801"
     },
     {
-      "id": "info_mpillow_final_report_page_contact",
-      "label": "Page: Contact",
+      "id": "info_mpillow_final_report_page_our_partners",
+      "label": "Page: Our Partners",
       "_origin": "ast",
       "community": 206,
       "community_name": "mpillow_final_report.md",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "page: contact",
+      "norm_label": "page: our partners",
       "source_file": "info/mpillow_final_report.md",
-      "source_location": "L402"
-    },
-    {
-      "id": "info_mpillow_final_report_page_our_story",
-      "label": "Page: Our Story",
-      "_origin": "ast",
-      "community": 206,
-      "community_name": "mpillow_final_report.md",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "page: our story",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L262"
+      "source_location": "L447"
     },
     {
       "id": "claude_prd_prospect_journey_analytics_prospect_journey_analytics_prd",
@@ -76795,6 +76861,28 @@
       "source_location": "L347"
     },
     {
+      "id": "supabase_migrations_0028_ecommerce_customer_addresses",
+      "label": "customer_addresses",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "customer_addresses",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L241"
+    },
+    {
+      "id": "supabase_migrations_0028_ecommerce_customers",
+      "label": "customers",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "customers",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L212"
+    },
+    {
       "id": "supabase_migrations_0028_ecommerce_order_items",
       "label": "order_items",
       "_origin": "ast",
@@ -76828,6 +76916,17 @@
       "source_location": "L384"
     },
     {
+      "id": "supabase_migrations_0028_ecommerce_product_reviews",
+      "label": "product_reviews",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "product_reviews",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L498"
+    },
+    {
       "id": "supabase_migrations_0028_ecommerce_shipping_methods",
       "label": "shipping_methods",
       "_origin": "ast",
@@ -76837,6 +76936,17 @@
       "norm_label": "shipping_methods",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L317"
+    },
+    {
+      "id": "supabase_migrations_0028_ecommerce_wishlists",
+      "label": "wishlists",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "wishlists",
+      "source_file": "supabase/migrations/0028_ecommerce.sql",
+      "source_location": "L529"
     },
     {
       "id": "supabase_migrations_0035_order_emails",
@@ -76859,6 +76969,28 @@
       "norm_label": "order_emails",
       "source_file": "supabase/migrations/0035_order_emails.sql",
       "source_location": "L10"
+    },
+    {
+      "id": "supabase_migrations_0039_customer_order_rls",
+      "label": "0039_customer_order_rls.sql",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "0039_customer_order_rls.sql",
+      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_0039_customer_order_rls_current_customer_id",
+      "label": "current_customer_id()",
+      "_origin": "ast",
+      "community": 214,
+      "community_name": "orders",
+      "file_type": "code",
+      "norm_label": "current_customer_id()",
+      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
+      "source_location": "L16"
     },
     {
       "id": "supabase_migrations_20260630130001_money_ledger",
@@ -106779,264 +106911,11 @@
       "source_location": "L18"
     },
     {
-      "id": "app_lang_settings_inventory_configure_save_route",
-      "label": "configure/save/route.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "configure/save/route.ts",
-      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_save_route_bodyschema",
-      "label": "BodySchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "bodyschema",
-      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
-      "source_location": "L27"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_save_route_bolsterbodyschema",
-      "label": "BolsterBodySchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "bolsterbodyschema",
-      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
-      "source_location": "L33"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_apply_route",
-      "label": "templates/apply/route.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "templates/apply/route.ts",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_apply_route_applyschema",
-      "label": "ApplySchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "applyschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
-      "source_location": "L9"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_apply_route_runtime",
-      "label": "runtime",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
-      "source_location": "L7"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route",
-      "label": "templates/route.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "templates/route.ts",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_createschema",
-      "label": "CreateSchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "createschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L37"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_deleteschema",
-      "label": "DeleteSchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "deleteschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L51"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_kindschema",
-      "label": "KindSchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "kindschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_listschema",
-      "label": "ListSchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "listschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L25"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_pillowkindschema",
-      "label": "PillowKindSchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "pillowkindschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L18"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_pillowvariantschema",
-      "label": "PillowVariantSchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "pillowvariantschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_roleschema",
-      "label": "RoleSchema",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "roleschema",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L20"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_runtime",
-      "label": "runtime",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "runtime",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L15"
-    },
-    {
-      "id": "components_settings_filling_template_scope",
-      "label": "filling-template-scope.tsx",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "filling-template-scope.tsx",
-      "source_file": "components/settings/filling-template-scope.tsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_bom_sanitizer_index",
-      "label": "bom-sanitizer/index.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "bom-sanitizer/index.ts",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_bom_sanitizer_tests_bom_sanitizer_test",
-      "label": "bom-sanitizer.test.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "bom-sanitizer.test.ts",
-      "source_file": "lib/bom-sanitizer/__tests__/bom-sanitizer.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_filling_templates_index",
-      "label": "filling-templates/index.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "filling-templates/index.ts",
-      "source_file": "lib/filling-templates/index.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_filling_templates_keys",
-      "label": "keys.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "keys.ts",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_filling_templates_keys_bolster_template_keys",
-      "label": "BOLSTER_TEMPLATE_KEYS",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "bolster_template_keys",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "lib_filling_templates_keys_pillow_template_keys",
-      "label": "PILLOW_TEMPLATE_KEYS",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "pillow_template_keys",
-      "source_file": "lib/filling-templates/keys.ts",
-      "source_location": "L12"
-    },
-    {
-      "id": "lib_filling_templates_membership",
-      "label": "membership.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "membership.ts",
-      "source_file": "lib/filling-templates/membership.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "lib_filling_templates_membership_check",
       "label": "membership.check.ts",
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "code",
       "norm_label": "membership.check.ts",
       "source_file": "lib/filling-templates/membership.check.ts",
@@ -107047,7 +106926,7 @@
       "label": "configurePage",
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "code",
       "norm_label": "configurepage",
       "source_file": "lib/filling-templates/membership.check.ts",
@@ -107058,7 +106937,7 @@
       "label": "deleteAt",
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "code",
       "norm_label": "deleteat",
       "source_file": "lib/filling-templates/membership.check.ts",
@@ -107069,7 +106948,7 @@
       "label": "forkRoute",
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "code",
       "norm_label": "forkroute",
       "source_file": "lib/filling-templates/membership.check.ts",
@@ -107080,7 +106959,7 @@
       "label": "insertAt",
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "code",
       "norm_label": "insertat",
       "source_file": "lib/filling-templates/membership.check.ts",
@@ -107091,51 +106970,18 @@
       "label": "membership",
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "code",
       "norm_label": "membership",
       "source_file": "lib/filling-templates/membership.check.ts",
       "source_location": "L30"
     },
     {
-      "id": "lib_filling_templates_tests_filling_templates_test",
-      "label": "filling-templates.test.ts",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "code",
-      "norm_label": "filling-templates.test.ts",
-      "source_file": "lib/filling-templates/__tests__/filling-templates.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_lang_settings_inventory_configure_templates_route_ts_docref_adr_0008",
-      "label": "ADR-0008",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0008",
-      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
-      "source_location": "L154"
-    },
-    {
-      "id": "lib_bom_sanitizer_index_ts_docref_adr_0003",
-      "label": "ADR-0003",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "templates/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0003",
-      "source_file": "lib/bom-sanitizer/index.ts",
-      "source_location": "L1"
-    },
-    {
       "id": "lib_filling_templates_membership_check_ts_docref_adr_0018",
       "label": "ADR-0018",
       "_origin": "ast",
       "community": 52,
-      "community_name": "templates/route.ts",
+      "community_name": "membership.check.ts",
       "file_type": "concept",
       "norm_label": "adr-0018",
       "source_file": "lib/filling-templates/membership.check.ts",
@@ -121330,28 +121176,6 @@
       "source_location": "L4"
     },
     {
-      "id": "supabase_migrations_0028_ecommerce_cart_items",
-      "label": "cart_items",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "cart_items",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L298"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_carts",
-      "label": "carts",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "carts",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L272"
-    },
-    {
       "id": "supabase_migrations_0028_ecommerce_categories",
       "label": "categories",
       "_origin": "ast",
@@ -121361,28 +121185,6 @@
       "norm_label": "categories",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L15"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_customer_addresses",
-      "label": "customer_addresses",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "customer_addresses",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L241"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_customers",
-      "label": "customers",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "customers",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L212"
     },
     {
       "id": "supabase_migrations_0028_ecommerce_product_images",
@@ -121405,17 +121207,6 @@
       "norm_label": "product_options",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L82"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_product_reviews",
-      "label": "product_reviews",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "product_reviews",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L498"
     },
     {
       "id": "supabase_migrations_0028_ecommerce_product_variants",
@@ -121471,39 +121262,6 @@
       "norm_label": "wishlist_items",
       "source_file": "supabase/migrations/0028_ecommerce.sql",
       "source_location": "L543"
-    },
-    {
-      "id": "supabase_migrations_0028_ecommerce_wishlists",
-      "label": "wishlists",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "wishlists",
-      "source_file": "supabase/migrations/0028_ecommerce.sql",
-      "source_location": "L529"
-    },
-    {
-      "id": "supabase_migrations_0039_customer_order_rls",
-      "label": "0039_customer_order_rls.sql",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "0039_customer_order_rls.sql",
-      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_0039_customer_order_rls_current_customer_id",
-      "label": "current_customer_id()",
-      "_origin": "ast",
-      "community": 755,
-      "community_name": "product_variants",
-      "file_type": "code",
-      "norm_label": "current_customer_id()",
-      "source_file": "supabase/migrations/0039_customer_order_rls.sql",
-      "source_location": "L16"
     },
     {
       "id": "supabase_migrations_20260630120000_variant_stock_bolster",
@@ -122851,17 +122609,6 @@
       "source_location": "L29"
     },
     {
-      "id": "package_dependencies_date_fns",
-      "label": "date-fns",
-      "_origin": "ast",
-      "community": 77,
-      "community_name": "dependencies",
-      "file_type": "code",
-      "norm_label": "date-fns",
-      "source_file": "package.json",
-      "source_location": "L75"
-    },
-    {
       "id": "package_dependencies_framer_motion",
       "label": "framer-motion",
       "_origin": "ast",
@@ -123027,6 +122774,17 @@
       "source_location": "L58"
     },
     {
+      "id": "package_dependencies_visx_axis",
+      "label": "@visx/axis",
+      "_origin": "ast",
+      "community": 77,
+      "community_name": "dependencies",
+      "file_type": "code",
+      "norm_label": "@visx/axis",
+      "source_file": "package.json",
+      "source_location": "L61"
+    },
+    {
       "id": "package_dependencies_visx_grid",
       "label": "@visx/grid",
       "_origin": "ast",
@@ -123080,17 +122838,6 @@
       "norm_label": "@xyflow/react",
       "source_file": "package.json",
       "source_location": "L71"
-    },
-    {
-      "id": "date_fns",
-      "label": "date-fns",
-      "_origin": "ast",
-      "community": 77,
-      "community_name": "dependencies",
-      "file_type": "concept",
-      "norm_label": "date-fns",
-      "source_file": "package.json",
-      "source_location": "L75"
     },
     {
       "id": "framer_motion",
@@ -123256,6 +123003,17 @@
       "norm_label": "@types/flubber",
       "source_file": "package.json",
       "source_location": "L58"
+    },
+    {
+      "id": "visx_axis",
+      "label": "@visx/axis",
+      "_origin": "ast",
+      "community": 77,
+      "community_name": "dependencies",
+      "file_type": "concept",
+      "norm_label": "@visx/axis",
+      "source_file": "package.json",
+      "source_location": "L61"
     },
     {
       "id": "visx_grid",
@@ -123598,50 +123356,6 @@
       "source_location": "L82"
     },
     {
-      "id": "app_api_results_hold_tests_ownership_test",
-      "label": "ownership.test.ts",
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "ownership.test.ts",
-      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "app_api_results_hold_tests_ownership_test_h",
-      "label": "h",
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "h",
-      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
-      "source_location": "L13"
-    },
-    {
-      "id": "app_api_results_hold_tests_ownership_test_heldrow",
-      "label": "heldRow",
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "heldrow",
-      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
-      "source_location": "L134"
-    },
-    {
-      "id": "app_api_results_hold_tests_ownership_test_paidrow",
-      "label": "paidRow",
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "paidrow",
-      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
-      "source_location": "L145"
-    },
-    {
       "id": "app_api_results_id_finish_route",
       "label": "finish/route.ts",
       "_origin": "ast",
@@ -123686,70 +123400,59 @@
       "source_location": "L19"
     },
     {
-      "id": "lib_analytics_journey_identity",
-      "label": "identity.ts",
+      "id": "app_api_results_id_reconfigure_route",
+      "label": "reconfigure/route.ts",
       "_origin": "ast",
       "community": 774,
       "community_name": "hold/route.ts",
       "file_type": "code",
-      "norm_label": "identity.ts",
-      "source_file": "lib/analytics/journey/identity.ts",
+      "norm_label": "reconfigure/route.ts",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
       "source_location": "L1"
     },
     {
-      "id": "lib_analytics_journey_identity_check",
-      "label": "identity.check.ts",
+      "id": "app_api_results_id_reconfigure_route_dynamic",
+      "label": "dynamic",
       "_origin": "ast",
       "community": 774,
       "community_name": "hold/route.ts",
       "file_type": "code",
-      "norm_label": "identity.check.ts",
-      "source_file": "lib/analytics/journey/identity.check.ts",
-      "source_location": "L1"
+      "norm_label": "dynamic",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L29"
     },
     {
-      "id": "lib_analytics_journey_identity_check_newerended",
-      "label": "newerEnded",
+      "id": "app_api_results_id_reconfigure_route_pillow_sizes",
+      "label": "PILLOW_SIZES",
       "_origin": "ast",
       "community": 774,
       "community_name": "hold/route.ts",
       "file_type": "code",
-      "norm_label": "newerended",
-      "source_file": "lib/analytics/journey/identity.check.ts",
-      "source_location": "L78"
+      "norm_label": "pillow_sizes",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L31"
     },
     {
-      "id": "lib_analytics_journey_identity_check_olderended",
-      "label": "olderEnded",
+      "id": "app_api_results_id_reconfigure_route_reconfigureschema",
+      "label": "ReconfigureSchema",
       "_origin": "ast",
       "community": 774,
       "community_name": "hold/route.ts",
       "file_type": "code",
-      "norm_label": "olderended",
-      "source_file": "lib/analytics/journey/identity.check.ts",
-      "source_location": "L72"
+      "norm_label": "reconfigureschema",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L33"
     },
     {
-      "id": "lib_analytics_journey_identity_check_open",
-      "label": "open",
+      "id": "app_api_results_id_reconfigure_route_runtime",
+      "label": "runtime",
       "_origin": "ast",
       "community": 774,
       "community_name": "hold/route.ts",
       "file_type": "code",
-      "norm_label": "open",
-      "source_file": "lib/analytics/journey/identity.check.ts",
-      "source_location": "L66"
-    },
-    {
-      "id": "lib_analytics_journey_identity_visitor_cookie",
-      "label": "VISITOR_COOKIE",
-      "_origin": "ast",
-      "community": 774,
-      "community_name": "hold/route.ts",
-      "file_type": "code",
-      "norm_label": "visitor_cookie",
-      "source_file": "lib/analytics/journey/identity.ts",
-      "source_location": "L7"
+      "norm_label": "runtime",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L28"
     },
     {
       "id": "lib_configurator_preference_policy",
@@ -123796,6 +123499,28 @@
       "source_location": "L21"
     },
     {
+      "id": "lib_results_filling_assign",
+      "label": "filling-assign.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "filling-assign.ts",
+      "source_file": "lib/results/filling-assign.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_results_filling_snapshot",
+      "label": "filling-snapshot.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "filling-snapshot.ts",
+      "source_file": "lib/results/filling-snapshot.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "lib_results_finish_schemas",
       "label": "finish-schemas.ts",
       "_origin": "ast",
@@ -123838,6 +123563,50 @@
       "norm_label": "preferencelineschema",
       "source_file": "lib/results/finish-schemas.ts",
       "source_location": "L9"
+    },
+    {
+      "id": "lib_results_tests_filling_assign_test",
+      "label": "filling-assign.test.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "filling-assign.test.ts",
+      "source_file": "lib/results/__tests__/filling-assign.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_results_tests_filling_assign_test_template",
+      "label": "template",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "template",
+      "source_file": "lib/results/__tests__/filling-assign.test.ts",
+      "source_location": "L11"
+    },
+    {
+      "id": "lib_results_tests_filling_snapshot_test",
+      "label": "filling-snapshot.test.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "filling-snapshot.test.ts",
+      "source_file": "lib/results/__tests__/filling-snapshot.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_results_tests_filling_snapshot_test_mix",
+      "label": "mix",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "mix",
+      "source_file": "lib/results/__tests__/filling-snapshot.test.ts",
+      "source_location": "L17"
     },
     {
       "id": "lib_shop_customization_inventory",
@@ -123895,6 +123664,149 @@
       "source_location": "L1"
     },
     {
+      "id": "lib_spatial_fillings_api_contract_check",
+      "label": "api-contract.check.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "api-contract.check.ts",
+      "source_file": "lib/spatial-fillings/api-contract.check.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_spatial_fillings_api_contract_check_categories",
+      "label": "categories",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "categories",
+      "source_file": "lib/spatial-fillings/api-contract.check.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "lib_spatial_fillings_api_contract_check_depth_irrelevant",
+      "label": "DEPTH_IRRELEVANT",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "depth_irrelevant",
+      "source_file": "lib/spatial-fillings/api-contract.check.ts",
+      "source_location": "L146"
+    },
+    {
+      "id": "lib_spatial_fillings_api_contract_check_payload",
+      "label": "payload",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "payload",
+      "source_file": "lib/spatial-fillings/api-contract.check.ts",
+      "source_location": "L26"
+    },
+    {
+      "id": "lib_spatial_fillings_api_contract_check_pillow_placement_tables",
+      "label": "PILLOW_PLACEMENT_TABLES",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "pillow_placement_tables",
+      "source_file": "lib/spatial-fillings/api-contract.check.ts",
+      "source_location": "L143"
+    },
+    {
+      "id": "lib_spatial_fillings_api_contract_check_route",
+      "label": "route",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "route",
+      "source_file": "lib/spatial-fillings/api-contract.check.ts",
+      "source_location": "L78"
+    },
+    {
+      "id": "lib_spatial_fillings_api_contract_check_trackedfiles",
+      "label": "trackedFiles",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "trackedfiles",
+      "source_file": "lib/spatial-fillings/api-contract.check.ts",
+      "source_location": "L155"
+    },
+    {
+      "id": "lib_spatial_fillings_fingerprint",
+      "label": "fingerprint.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "fingerprint.ts",
+      "source_file": "lib/spatial-fillings/fingerprint.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_spatial_fillings_index",
+      "label": "spatial-fillings/index.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "spatial-fillings/index.ts",
+      "source_file": "lib/spatial-fillings/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_spatial_fillings_tests_spatial_fillings_test",
+      "label": "spatial-fillings.test.ts",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "spatial-fillings.test.ts",
+      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_spatial_fillings_tests_spatial_fillings_test_categories",
+      "label": "categories",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "categories",
+      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "lib_spatial_fillings_tests_spatial_fillings_test_sections",
+      "label": "SECTIONS",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "sections",
+      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
+      "source_location": "L24"
+    },
+    {
+      "id": "lib_spatial_fillings_tests_spatial_fillings_test_sub_sections",
+      "label": "SUB_SECTIONS",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "code",
+      "norm_label": "sub_sections",
+      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
+      "source_location": "L25"
+    },
+    {
       "id": "app_api_results_hold_route_ts_docref_adr_0005",
       "label": "ADR-0005",
       "_origin": "ast",
@@ -123950,14 +123862,47 @@
       "source_location": "L31"
     },
     {
-      "id": "lib_analytics_journey_identity_ts_docref_adr_0007",
-      "label": "ADR-0007",
+      "id": "app_api_results_id_reconfigure_route_ts_docref_adr_0005",
+      "label": "ADR-0005",
       "_origin": "ast",
       "community": 774,
       "community_name": "hold/route.ts",
       "file_type": "concept",
-      "norm_label": "adr-0007",
-      "source_file": "lib/analytics/journey/identity.ts",
+      "norm_label": "adr-0005",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L85"
+    },
+    {
+      "id": "app_api_results_id_reconfigure_route_ts_docref_adr_0008",
+      "label": "ADR-0008",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0008",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L184"
+    },
+    {
+      "id": "app_api_results_id_reconfigure_route_ts_docref_adr_0016",
+      "label": "ADR-0016",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0016",
+      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "source_location": "L78"
+    },
+    {
+      "id": "lib_results_filling_snapshot_ts_docref_adr_0008",
+      "label": "ADR-0008",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0008",
+      "source_file": "lib/results/filling-snapshot.ts",
       "source_location": "L3"
     },
     {
@@ -123970,6 +123915,17 @@
       "norm_label": "adr-0017",
       "source_file": "lib/results/finish-schemas.ts",
       "source_location": "L5"
+    },
+    {
+      "id": "lib_spatial_fillings_index_ts_docref_adr_0008",
+      "label": "ADR-0008",
+      "_origin": "ast",
+      "community": 774,
+      "community_name": "hold/route.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0008",
+      "source_file": "lib/spatial-fillings/index.ts",
+      "source_location": "L2"
     },
     {
       "id": "info_mpillow_final_report_article_what_is_the_best_pillow_for_neck_pain_in_singapore",
@@ -124878,6 +124834,39 @@
       "source_location": null
     },
     {
+      "id": "app_api_mp_config_assist_context_route",
+      "label": "assist/context/route.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "assist/context/route.ts",
+      "source_file": "app/api/mp-config/assist/context/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_api_mp_config_assist_context_route_dynamic",
+      "label": "dynamic",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "dynamic",
+      "source_file": "app/api/mp-config/assist/context/route.ts",
+      "source_location": "L10"
+    },
+    {
+      "id": "app_api_mp_config_assist_context_route_runtime",
+      "label": "runtime",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "runtime",
+      "source_file": "app/api/mp-config/assist/context/route.ts",
+      "source_location": "L9"
+    },
+    {
       "id": "app_api_mp_config_assist_route",
       "label": "assist/route.ts",
       "_origin": "ast",
@@ -124933,59 +124922,169 @@
       "source_location": "L159"
     },
     {
-      "id": "app_api_results_id_reconfigure_route",
-      "label": "reconfigure/route.ts",
+      "id": "app_lang_settings_inventory_configure_save_route",
+      "label": "configure/save/route.ts",
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "code",
-      "norm_label": "reconfigure/route.ts",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "norm_label": "configure/save/route.ts",
+      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
       "source_location": "L1"
     },
     {
-      "id": "app_api_results_id_reconfigure_route_dynamic",
-      "label": "dynamic",
+      "id": "app_lang_settings_inventory_configure_save_route_bodyschema",
+      "label": "BodySchema",
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "code",
-      "norm_label": "dynamic",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
-      "source_location": "L29"
+      "norm_label": "bodyschema",
+      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
+      "source_location": "L27"
     },
     {
-      "id": "app_api_results_id_reconfigure_route_pillow_sizes",
-      "label": "PILLOW_SIZES",
+      "id": "app_lang_settings_inventory_configure_save_route_bolsterbodyschema",
+      "label": "BolsterBodySchema",
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "code",
-      "norm_label": "pillow_sizes",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
-      "source_location": "L31"
-    },
-    {
-      "id": "app_api_results_id_reconfigure_route_reconfigureschema",
-      "label": "ReconfigureSchema",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "reconfigureschema",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
+      "norm_label": "bolsterbodyschema",
+      "source_file": "app/[lang]/settings/inventory/configure/save/route.ts",
       "source_location": "L33"
     },
     {
-      "id": "app_api_results_id_reconfigure_route_runtime",
+      "id": "app_lang_settings_inventory_configure_templates_apply_route",
+      "label": "templates/apply/route.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "templates/apply/route.ts",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_apply_route_applyschema",
+      "label": "ApplySchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "applyschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
+      "source_location": "L9"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_apply_route_runtime",
       "label": "runtime",
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "code",
       "norm_label": "runtime",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
-      "source_location": "L28"
+      "source_file": "app/[lang]/settings/inventory/configure/templates/apply/route.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route",
+      "label": "templates/route.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "templates/route.ts",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_createschema",
+      "label": "CreateSchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "createschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L37"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_deleteschema",
+      "label": "DeleteSchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "deleteschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L51"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_kindschema",
+      "label": "KindSchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "kindschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_listschema",
+      "label": "ListSchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "listschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L25"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_pillowkindschema",
+      "label": "PillowKindSchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "pillowkindschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L18"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_pillowvariantschema",
+      "label": "PillowVariantSchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "pillowvariantschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L19"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_roleschema",
+      "label": "RoleSchema",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "roleschema",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L20"
+    },
+    {
+      "id": "app_lang_settings_inventory_configure_templates_route_runtime",
+      "label": "runtime",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "runtime",
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L15"
     },
     {
       "id": "app_lang_settings_inventory_configure_templates_templateid_fork_route",
@@ -125153,6 +125252,72 @@
       "source_location": "L36"
     },
     {
+      "id": "lib_bom_sanitizer_index",
+      "label": "bom-sanitizer/index.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "bom-sanitizer/index.ts",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_bom_sanitizer_tests_bom_sanitizer_test",
+      "label": "bom-sanitizer.test.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "bom-sanitizer.test.ts",
+      "source_file": "lib/bom-sanitizer/__tests__/bom-sanitizer.test.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_configurator_staff_assist_pillow_sizes",
+      "label": "PILLOW_SIZES",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "pillow_sizes",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "lib_configurator_staff_assist_pillow_tiers",
+      "label": "PILLOW_TIERS",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "pillow_tiers",
+      "source_file": "lib/configurator/staff-assist.ts",
+      "source_location": "L22"
+    },
+    {
+      "id": "lib_filling_templates_membership",
+      "label": "membership.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "membership.ts",
+      "source_file": "lib/filling-templates/membership.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "lib_filling_templates_tests_filling_templates_test",
+      "label": "filling-templates.test.ts",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "unpromoted/route.ts",
+      "file_type": "code",
+      "norm_label": "filling-templates.test.ts",
+      "source_file": "lib/filling-templates/__tests__/filling-templates.test.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "lib_filling_templates_tests_unpromoted_test",
       "label": "unpromoted.test.ts",
       "_origin": "ast",
@@ -125219,160 +125384,6 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_results_filling_assign",
-      "label": "filling-assign.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "filling-assign.ts",
-      "source_file": "lib/results/filling-assign.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_results_filling_snapshot",
-      "label": "filling-snapshot.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "filling-snapshot.ts",
-      "source_file": "lib/results/filling-snapshot.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_results_resume_finish",
-      "label": "resume-finish.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "resume-finish.ts",
-      "source_file": "lib/results/resume-finish.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_results_tests_filling_assign_test",
-      "label": "filling-assign.test.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "filling-assign.test.ts",
-      "source_file": "lib/results/__tests__/filling-assign.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_results_tests_filling_assign_test_template",
-      "label": "template",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "template",
-      "source_file": "lib/results/__tests__/filling-assign.test.ts",
-      "source_location": "L11"
-    },
-    {
-      "id": "lib_results_tests_filling_snapshot_test",
-      "label": "filling-snapshot.test.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "filling-snapshot.test.ts",
-      "source_file": "lib/results/__tests__/filling-snapshot.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_results_tests_filling_snapshot_test_mix",
-      "label": "mix",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "mix",
-      "source_file": "lib/results/__tests__/filling-snapshot.test.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "lib_spatial_fillings_api_contract_check",
-      "label": "api-contract.check.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "api-contract.check.ts",
-      "source_file": "lib/spatial-fillings/api-contract.check.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_spatial_fillings_api_contract_check_categories",
-      "label": "categories",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "categories",
-      "source_file": "lib/spatial-fillings/api-contract.check.ts",
-      "source_location": "L19"
-    },
-    {
-      "id": "lib_spatial_fillings_api_contract_check_depth_irrelevant",
-      "label": "DEPTH_IRRELEVANT",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "depth_irrelevant",
-      "source_file": "lib/spatial-fillings/api-contract.check.ts",
-      "source_location": "L146"
-    },
-    {
-      "id": "lib_spatial_fillings_api_contract_check_payload",
-      "label": "payload",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "payload",
-      "source_file": "lib/spatial-fillings/api-contract.check.ts",
-      "source_location": "L26"
-    },
-    {
-      "id": "lib_spatial_fillings_api_contract_check_pillow_placement_tables",
-      "label": "PILLOW_PLACEMENT_TABLES",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "pillow_placement_tables",
-      "source_file": "lib/spatial-fillings/api-contract.check.ts",
-      "source_location": "L143"
-    },
-    {
-      "id": "lib_spatial_fillings_api_contract_check_route",
-      "label": "route",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "route",
-      "source_file": "lib/spatial-fillings/api-contract.check.ts",
-      "source_location": "L78"
-    },
-    {
-      "id": "lib_spatial_fillings_api_contract_check_trackedfiles",
-      "label": "trackedFiles",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "trackedfiles",
-      "source_file": "lib/spatial-fillings/api-contract.check.ts",
-      "source_location": "L155"
-    },
-    {
       "id": "lib_spatial_fillings_core_max_layers_per_cell",
       "label": "MAX_LAYERS_PER_CELL",
       "_origin": "ast",
@@ -125382,72 +125393,6 @@
       "norm_label": "max_layers_per_cell",
       "source_file": "lib/spatial-fillings/core.ts",
       "source_location": "L64"
-    },
-    {
-      "id": "lib_spatial_fillings_fingerprint",
-      "label": "fingerprint.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "fingerprint.ts",
-      "source_file": "lib/spatial-fillings/fingerprint.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_spatial_fillings_index",
-      "label": "spatial-fillings/index.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "spatial-fillings/index.ts",
-      "source_file": "lib/spatial-fillings/index.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_spatial_fillings_tests_spatial_fillings_test",
-      "label": "spatial-fillings.test.ts",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "spatial-fillings.test.ts",
-      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "lib_spatial_fillings_tests_spatial_fillings_test_categories",
-      "label": "categories",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "categories",
-      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "lib_spatial_fillings_tests_spatial_fillings_test_sections",
-      "label": "SECTIONS",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "sections",
-      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
-      "source_location": "L24"
-    },
-    {
-      "id": "lib_spatial_fillings_tests_spatial_fillings_test_sub_sections",
-      "label": "SUB_SECTIONS",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "code",
-      "norm_label": "sub_sections",
-      "source_file": "lib/spatial-fillings/__tests__/spatial-fillings.test.ts",
-      "source_location": "L25"
     },
     {
       "id": "app_api_mp_config_assist_route_ts_docref_adr_0003",
@@ -125472,37 +125417,15 @@
       "source_location": "L285"
     },
     {
-      "id": "app_api_results_id_reconfigure_route_ts_docref_adr_0005",
-      "label": "ADR-0005",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0005",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
-      "source_location": "L85"
-    },
-    {
-      "id": "app_api_results_id_reconfigure_route_ts_docref_adr_0008",
+      "id": "app_lang_settings_inventory_configure_templates_route_ts_docref_adr_0008",
       "label": "ADR-0008",
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "concept",
       "norm_label": "adr-0008",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
-      "source_location": "L184"
-    },
-    {
-      "id": "app_api_results_id_reconfigure_route_ts_docref_adr_0016",
-      "label": "ADR-0016",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0016",
-      "source_file": "app/api/results/[id]/reconfigure/route.ts",
-      "source_location": "L78"
+      "source_file": "app/[lang]/settings/inventory/configure/templates/route.ts",
+      "source_location": "L154"
     },
     {
       "id": "app_lang_settings_inventory_configure_templates_templateid_fork_route_ts_docref_adr_0003",
@@ -125549,37 +125472,15 @@
       "source_location": "L35"
     },
     {
-      "id": "lib_results_filling_snapshot_ts_docref_adr_0008",
-      "label": "ADR-0008",
+      "id": "lib_bom_sanitizer_index_ts_docref_adr_0003",
+      "label": "ADR-0003",
       "_origin": "ast",
       "community": 8,
       "community_name": "unpromoted/route.ts",
       "file_type": "concept",
-      "norm_label": "adr-0008",
-      "source_file": "lib/results/filling-snapshot.ts",
-      "source_location": "L3"
-    },
-    {
-      "id": "lib_results_resume_finish_ts_docref_adr_0017",
-      "label": "ADR-0017",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0017",
-      "source_file": "lib/results/resume-finish.ts",
-      "source_location": "L8"
-    },
-    {
-      "id": "lib_spatial_fillings_index_ts_docref_adr_0008",
-      "label": "ADR-0008",
-      "_origin": "ast",
-      "community": 8,
-      "community_name": "unpromoted/route.ts",
-      "file_type": "concept",
-      "norm_label": "adr-0008",
-      "source_file": "lib/spatial-fillings/index.ts",
-      "source_location": "L2"
+      "norm_label": "adr-0003",
+      "source_file": "lib/bom-sanitizer/index.ts",
+      "source_location": "L1"
     },
     {
       "id": "app_api_shop_checkout_tests_customisation_binding_test",
@@ -126731,6 +126632,17 @@
       "source_location": "L27"
     },
     {
+      "id": "lib_filling_templates_index",
+      "label": "filling-templates/index.ts",
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "filling-templates/index.ts",
+      "source_file": "lib/filling-templates/index.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "lib_pricing_composed_price",
       "label": "composed-price.ts",
       "_origin": "ast",
@@ -126940,6 +126852,17 @@
       "source_location": "L28"
     },
     {
+      "id": "lib_results_resume_finish",
+      "label": "resume-finish.ts",
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "code",
+      "norm_label": "resume-finish.ts",
+      "source_file": "lib/results/resume-finish.ts",
+      "source_location": "L1"
+    },
+    {
       "id": "lib_results_tests_composed_sellable_test",
       "label": "composed-sellable.test.ts",
       "_origin": "ast",
@@ -127015,6 +126938,17 @@
       "norm_label": "adr-0017",
       "source_file": "lib/results/needs-customer-finish.ts",
       "source_location": "L4"
+    },
+    {
+      "id": "lib_results_resume_finish_ts_docref_adr_0017",
+      "label": "ADR-0017",
+      "_origin": "ast",
+      "community": 84,
+      "community_name": "assign/route.ts",
+      "file_type": "concept",
+      "norm_label": "adr-0017",
+      "source_file": "lib/results/resume-finish.ts",
+      "source_location": "L8"
     },
     {
       "id": "lib_results_tests_needs_customer_finish_test_ts_docref_adr_0017",
@@ -136287,40 +136221,81 @@
       "source_location": "L282"
     },
     {
-      "id": "info_mpillow_final_report_extracted_text_content_456",
-      "label": "Extracted Text Content",
+      "id": "components_shop_customization_steps_formatprice",
+      "label": "formatPrice",
       "_origin": "ast",
       "community": 937,
-      "community_name": "Page: Our Partners",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "extracted text content",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L456"
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "formatprice",
+      "source_file": "components/shop/customization-steps.tsx",
+      "source_location": "L103"
     },
     {
-      "id": "info_mpillow_final_report_key_images_and_descriptions_450",
-      "label": "Key Images and Descriptions",
+      "id": "components_shop_pillow_customizer",
+      "label": "pillow-customizer.tsx",
       "_origin": "ast",
       "community": 937,
-      "community_name": "Page: Our Partners",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "key images and descriptions",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L450"
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "pillow-customizer.tsx",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L1"
     },
     {
-      "id": "info_mpillow_final_report_page_our_partners",
-      "label": "Page: Our Partners",
+      "id": "components_shop_pillow_customizer_body_types",
+      "label": "BODY_TYPES",
       "_origin": "ast",
       "community": 937,
-      "community_name": "Page: Our Partners",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "page: our partners",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L447"
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "body_types",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L122"
+    },
+    {
+      "id": "components_shop_pillow_customizer_firmness_levels",
+      "label": "FIRMNESS_LEVELS",
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "firmness_levels",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L131"
+    },
+    {
+      "id": "components_shop_pillow_customizer_sleep_positions",
+      "label": "SLEEP_POSITIONS",
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "sleep_positions",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L64"
+    },
+    {
+      "id": "components_shop_pillow_customizer_steps",
+      "label": "STEPS",
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "steps",
+      "source_file": "components/shop/pillow-customizer.tsx",
+      "source_location": "L142"
+    },
+    {
+      "id": "lib_shop_customize_apply_payload_hardcoded_upsells",
+      "label": "HARDCODED_UPSELLS",
+      "_origin": "ast",
+      "community": 937,
+      "community_name": "pillow-customizer.tsx",
+      "file_type": "code",
+      "norm_label": "hardcoded_upsells",
+      "source_file": "lib/shop/customize-apply-payload.ts",
+      "source_location": "L3"
     },
     {
       "id": "supabase_migrations_20260915000000_filling_placement_insert_order",
@@ -137064,59 +137039,84 @@
       "source_location": "L1"
     },
     {
-      "id": "package",
-      "label": "package.json",
+      "id": "app_api_results_hold_tests_ownership_test",
+      "label": "ownership.test.ts",
       "_origin": "ast",
       "community": 945,
-      "community_name": "package.json",
+      "community_name": "ownership.test.ts",
       "file_type": "code",
-      "norm_label": "package.json",
-      "source_file": "package.json",
+      "norm_label": "ownership.test.ts",
+      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
       "source_location": "L1"
     },
     {
-      "id": "package_name",
-      "label": "name",
+      "id": "app_api_results_hold_tests_ownership_test_h",
+      "label": "h",
       "_origin": "ast",
       "community": 945,
-      "community_name": "package.json",
+      "community_name": "ownership.test.ts",
       "file_type": "code",
-      "norm_label": "name",
-      "source_file": "package.json",
-      "source_location": "L2"
+      "norm_label": "h",
+      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
+      "source_location": "L13"
     },
     {
-      "id": "package_packagemanager",
-      "label": "packageManager",
+      "id": "app_api_results_hold_tests_ownership_test_heldrow",
+      "label": "heldRow",
       "_origin": "ast",
       "community": 945,
-      "community_name": "package.json",
+      "community_name": "ownership.test.ts",
       "file_type": "code",
-      "norm_label": "packagemanager",
-      "source_file": "package.json",
-      "source_location": "L116"
+      "norm_label": "heldrow",
+      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
+      "source_location": "L134"
     },
     {
-      "id": "package_private",
-      "label": "private",
+      "id": "app_api_results_hold_tests_ownership_test_paidrow",
+      "label": "paidRow",
       "_origin": "ast",
       "community": 945,
-      "community_name": "package.json",
+      "community_name": "ownership.test.ts",
       "file_type": "code",
-      "norm_label": "private",
-      "source_file": "package.json",
-      "source_location": "L4"
+      "norm_label": "paidrow",
+      "source_file": "app/api/results/hold/__tests__/ownership.test.ts",
+      "source_location": "L145"
     },
     {
-      "id": "package_version",
-      "label": "version",
+      "id": "info_mpillow_final_report_extracted_text_content_269",
+      "label": "Extracted Text Content",
       "_origin": "ast",
-      "community": 945,
-      "community_name": "package.json",
-      "file_type": "code",
-      "norm_label": "version",
-      "source_file": "package.json",
-      "source_location": "L3"
+      "community": 946,
+      "community_name": "Page: Our Story",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "extracted text content",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L269"
+    },
+    {
+      "id": "info_mpillow_final_report_key_images_and_descriptions_265",
+      "label": "Key Images and Descriptions",
+      "_origin": "ast",
+      "community": 946,
+      "community_name": "Page: Our Story",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "key images and descriptions",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L265"
+    },
+    {
+      "id": "info_mpillow_final_report_page_our_story",
+      "label": "Page: Our Story",
+      "_origin": "ast",
+      "community": 946,
+      "community_name": "Page: Our Story",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "page: our story",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L262"
     },
     {
       "id": "supabase_migrations_20260913120000_stripe_ids_per_mode",
@@ -137845,6 +137845,42 @@
       "source_location": "L4"
     },
     {
+      "id": "info_mpillow_final_report_extracted_text_content_411",
+      "label": "Extracted Text Content",
+      "_origin": "ast",
+      "community": 950,
+      "community_name": "Page: Contact",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "extracted text content",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L411"
+    },
+    {
+      "id": "info_mpillow_final_report_key_images_and_descriptions_405",
+      "label": "Key Images and Descriptions",
+      "_origin": "ast",
+      "community": 950,
+      "community_name": "Page: Contact",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "key images and descriptions",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L405"
+    },
+    {
+      "id": "info_mpillow_final_report_page_contact",
+      "label": "Page: Contact",
+      "_origin": "ast",
+      "community": 950,
+      "community_name": "Page: Contact",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "page: contact",
+      "source_file": "info/mpillow_final_report.md",
+      "source_location": "L402"
+    },
+    {
       "id": "components_product_sections_feature_card_grid_section",
       "label": "feature-card-grid-section.tsx",
       "_origin": "ast",
@@ -137854,6 +137890,39 @@
       "norm_label": "feature-card-grid-section.tsx",
       "source_file": "components/product-sections/feature-card-grid-section.tsx",
       "source_location": "L1"
+    },
+    {
+      "id": "supabase_migrations_0025_staff_management",
+      "label": "0025_staff_management.sql",
+      "_origin": "ast",
+      "community": 952,
+      "community_name": "0025_staff_management.sql",
+      "file_type": "code",
+      "norm_label": "0025_staff_management.sql",
+      "source_file": "supabase/migrations/0025_staff_management.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_0025_staff_management_mp_staff",
+      "label": "mp_staff",
+      "_origin": "ast",
+      "community": 952,
+      "community_name": "0025_staff_management.sql",
+      "file_type": "code",
+      "norm_label": "mp_staff",
+      "source_file": "supabase/migrations/0025_staff_management.sql",
+      "source_location": "L6"
+    },
+    {
+      "id": "supabase_migrations_0025_staff_management_trg_mp_staff_updated_at",
+      "label": "trg_mp_staff_updated_at",
+      "_origin": "ast",
+      "community": 952,
+      "community_name": "0025_staff_management.sql",
+      "file_type": "code",
+      "norm_label": "trg_mp_staff_updated_at",
+      "source_file": "supabase/migrations/0025_staff_management.sql",
+      "source_location": "L17"
     },
     {
       "id": "lib_appointments_whatsapp",
@@ -137920,6 +137989,39 @@
       "norm_label": "20260915170000_hide_variant_cost_price.sql",
       "source_file": "supabase/migrations/20260915170000_hide_variant_cost_price.sql",
       "source_location": null
+    },
+    {
+      "id": "supabase_migrations_20260710080000_media_folders",
+      "label": "20260710080000_media_folders.sql",
+      "_origin": "ast",
+      "community": 957,
+      "community_name": "20260710080000_media_folders.sql",
+      "file_type": "code",
+      "norm_label": "20260710080000_media_folders.sql",
+      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "source_location": null
+    },
+    {
+      "id": "supabase_migrations_20260710080000_media_folders_media_folders",
+      "label": "media_folders",
+      "_origin": "ast",
+      "community": 957,
+      "community_name": "20260710080000_media_folders.sql",
+      "file_type": "code",
+      "norm_label": "media_folders",
+      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "source_location": "L3"
+    },
+    {
+      "id": "supabase_migrations_20260710080000_media_folders_trg_media_folders_updated_at",
+      "label": "trg_media_folders_updated_at",
+      "_origin": "ast",
+      "community": 957,
+      "community_name": "20260710080000_media_folders.sql",
+      "file_type": "code",
+      "norm_label": "trg_media_folders_updated_at",
+      "source_file": "supabase/migrations/20260710080000_media_folders.sql",
+      "source_location": "L12"
     },
     {
       "id": "app_api_results_id_accept_route",
@@ -138912,6 +139014,28 @@
       "source_location": "L11"
     },
     {
+      "id": "package_dependencies_date_fns",
+      "label": "date-fns",
+      "_origin": "ast",
+      "community": 962,
+      "community_name": "date-fns",
+      "file_type": "code",
+      "norm_label": "date-fns",
+      "source_file": "package.json",
+      "source_location": "L75"
+    },
+    {
+      "id": "date_fns",
+      "label": "date-fns",
+      "_origin": "ast",
+      "community": 962,
+      "community_name": "date-fns",
+      "file_type": "concept",
+      "norm_label": "date-fns",
+      "source_file": "package.json",
+      "source_location": "L75"
+    },
+    {
       "id": "components_product_sections_testimonial_card_section",
       "label": "testimonial-card-section.tsx",
       "_origin": "ast",
@@ -139300,28 +139424,6 @@
       "source_location": "L1265"
     },
     {
-      "id": "package_dependencies_visx_axis",
-      "label": "@visx/axis",
-      "_origin": "ast",
-      "community": 968,
-      "community_name": "@visx/axis",
-      "file_type": "code",
-      "norm_label": "@visx/axis",
-      "source_file": "package.json",
-      "source_location": "L61"
-    },
-    {
-      "id": "visx_axis",
-      "label": "@visx/axis",
-      "_origin": "ast",
-      "community": 968,
-      "community_name": "@visx/axis",
-      "file_type": "concept",
-      "norm_label": "@visx/axis",
-      "source_file": "package.json",
-      "source_location": "L61"
-    },
-    {
       "id": "docs_known_issues",
       "label": "known-issues.md",
       "_origin": "ast",
@@ -139534,42 +139636,6 @@
       "source_location": "L1"
     },
     {
-      "id": "info_mpillow_final_report_article_what_led_to_the_creation_of_the_world_s_best_pillow",
-      "label": "Article: What Led To The Creation Of The World S Best Pillow",
-      "_origin": "ast",
-      "community": 970,
-      "community_name": "Article: What Led To The Creation Of The World S Best Pillow",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "article: what led to the creation of the world s best pillow",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1184"
-    },
-    {
-      "id": "info_mpillow_final_report_extracted_text_content_1193",
-      "label": "Extracted Text Content",
-      "_origin": "ast",
-      "community": 970,
-      "community_name": "Article: What Led To The Creation Of The World S Best Pillow",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "extracted text content",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1193"
-    },
-    {
-      "id": "info_mpillow_final_report_key_images_and_descriptions_1187",
-      "label": "Key Images and Descriptions",
-      "_origin": "ast",
-      "community": 970,
-      "community_name": "Article: What Led To The Creation Of The World S Best Pillow",
-      "file_type": "document",
-      "node_kind": "heading",
-      "norm_label": "key images and descriptions",
-      "source_file": "info/mpillow_final_report.md",
-      "source_location": "L1187"
-    },
-    {
       "id": "package_dependencies_radix_ui_react_aspect_ratio",
       "label": "@radix-ui/react-aspect-ratio",
       "_origin": "ast",
@@ -139592,39 +139658,6 @@
       "source_location": "L37"
     },
     {
-      "id": "supabase_migrations_0036_tax_rates",
-      "label": "0036_tax_rates.sql",
-      "_origin": "ast",
-      "community": 973,
-      "community_name": "0036_tax_rates.sql",
-      "file_type": "code",
-      "norm_label": "0036_tax_rates.sql",
-      "source_file": "supabase/migrations/0036_tax_rates.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_0036_tax_rates_tax_rates",
-      "label": "tax_rates",
-      "_origin": "ast",
-      "community": 973,
-      "community_name": "0036_tax_rates.sql",
-      "file_type": "code",
-      "norm_label": "tax_rates",
-      "source_file": "supabase/migrations/0036_tax_rates.sql",
-      "source_location": "L16"
-    },
-    {
-      "id": "supabase_migrations_0036_tax_rates_trg_tax_rates_updated_at",
-      "label": "trg_tax_rates_updated_at",
-      "_origin": "ast",
-      "community": 973,
-      "community_name": "0036_tax_rates.sql",
-      "file_type": "code",
-      "norm_label": "trg_tax_rates_updated_at",
-      "source_file": "supabase/migrations/0036_tax_rates.sql",
-      "source_location": "L35"
-    },
-    {
       "id": "supabase_migrations_20260916063740_result_reordered_from",
       "label": "20260916063740_result_reordered_from.sql",
       "_origin": "ast",
@@ -139634,39 +139667,6 @@
       "norm_label": "20260916063740_result_reordered_from.sql",
       "source_file": "supabase/migrations/20260916063740_result_reordered_from.sql",
       "source_location": null
-    },
-    {
-      "id": "supabase_migrations_20260719180000_rule_graphs",
-      "label": "20260719180000_rule_graphs.sql",
-      "_origin": "ast",
-      "community": 975,
-      "community_name": "20260719180000_rule_graphs.sql",
-      "file_type": "code",
-      "norm_label": "20260719180000_rule_graphs.sql",
-      "source_file": "supabase/migrations/20260719180000_rule_graphs.sql",
-      "source_location": null
-    },
-    {
-      "id": "supabase_migrations_20260719180000_rule_graphs_rule_graphs",
-      "label": "rule_graphs",
-      "_origin": "ast",
-      "community": 975,
-      "community_name": "20260719180000_rule_graphs.sql",
-      "file_type": "code",
-      "norm_label": "rule_graphs",
-      "source_file": "supabase/migrations/20260719180000_rule_graphs.sql",
-      "source_location": "L3"
-    },
-    {
-      "id": "supabase_migrations_20260719180000_rule_graphs_trg_rule_graphs_updated_at",
-      "label": "trg_rule_graphs_updated_at",
-      "_origin": "ast",
-      "community": 975,
-      "community_name": "20260719180000_rule_graphs.sql",
-      "file_type": "code",
-      "norm_label": "trg_rule_graphs_updated_at",
-      "source_file": "supabase/migrations/20260719180000_rule_graphs.sql",
-      "source_location": "L31"
     },
     {
       "id": "supabase_migrations_20260917033807_security_advisor_hardening",
@@ -167967,6 +167967,18 @@
     },
     {
       "source": "components_auth_login_form_loginform",
+      "target": "lib_auth_post_auth_redirect_safenextpath",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "components/auth/login-form.tsx",
+      "source_location": "L145",
+      "weight": 1.0
+    },
+    {
+      "source": "components_auth_login_form_loginform",
       "target": "lib_site_url_authcallbackurl",
       "relation": "calls",
       "_origin": "ast",
@@ -167974,7 +167986,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/auth/login-form.tsx",
-      "source_location": "L42",
+      "source_location": "L88",
       "weight": 1.0
     },
     {
@@ -167986,19 +167998,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/auth/login-form.tsx",
-      "source_location": "L46",
-      "weight": 1.0
-    },
-    {
-      "source": "components_auth_login_form_loginform",
-      "target": "lib_auth_post_auth_redirect_safenextpath",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "components/auth/login-form.tsx",
-      "source_location": "L99",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -444445,5 +444445,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "af6a40e60955344124e2b292ebdff82e6c1298a0"
+  "built_at_commit": "236dd064146b9922bf67ba7b489305b056e8991f"
 }
