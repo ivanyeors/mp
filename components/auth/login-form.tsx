@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import { authCallbackUrl } from "@/lib/site-url";
 import { safeNextPath } from "@/lib/auth/post-auth-redirect";
+import { authErrorMessage } from "@/lib/auth/error-message";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,7 +96,7 @@ export function LoginForm({
       options: { redirectTo },
     });
     if (error) {
-      setError(error.message);
+      setError(authErrorMessage(error));
       setLoading(null);
     }
   };
@@ -112,7 +113,7 @@ export function LoginForm({
     });
     setLoading(null);
     if (error) {
-      setError(error.message);
+      setError(authErrorMessage(error));
       return;
     }
     setSent(true);
@@ -138,7 +139,7 @@ export function LoginForm({
     });
     if (error) {
       setLoading(null);
-      setError(error.message);
+      setError(authErrorMessage(error));
       return;
     }
     // Same-origin guard mirrors the callback route's safeNext; keep spinner.
