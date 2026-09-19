@@ -5,7 +5,13 @@ import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Button } from "@/components/ui/button";
-import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
+import {
+  PageActions,
+  pageActionClassName,
+  pageActionDockedClassName,
+} from "@/components/ui/page-actions";
+import { useMobileDockActions } from "@/components/ui/page-dock-actions";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -19,7 +25,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp, CloudUpload, RotateCw, X } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { InventoryItemLabel, getInventoryCategoryTitle, getInventoryItemDisplayLabel } from "../inventory/item-label";
@@ -1319,6 +1325,36 @@ export default function CostingsPage() {
     }
   };
 
+  const syncPricesToShopify = async () => {
+    setSyncingShopifyPrices(true);
+    try {
+      const res = await syncShopifyPricesOnly();
+      const stats = res?.prices ?? null;
+      toast.success(
+        stats
+          ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
+          : "Shopify prices synced",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
+    } finally {
+      setSyncingShopifyPrices(false);
+    }
+  };
+
+  // Phones: the two refresh/sync actions move into the bottom dock. Save stays
+  // in MobileStickyActionBar — it carries the "Unsaved changes" line, which a
+  // dock icon cannot, and the bar only appears when there is something to save.
+  useMobileDockActions([
+    {
+      id: "sync-shopify",
+      title: syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify",
+      icon: CloudUpload,
+      onClick: () => void syncPricesToShopify(),
+    },
+    { id: "refresh", title: "Refresh", icon: RotateCw, onClick: () => void load() },
+  ]);
+
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading costings…</div>;
   }
@@ -1347,30 +1383,15 @@ export default function CostingsPage() {
         <PageActions>
           <Button
             variant="secondary"
-            className={pageActionClassName}
-            onClick={async () => {
-              setSyncingShopifyPrices(true);
-              try {
-                const res = await syncShopifyPricesOnly();
-                const stats = res?.prices ?? null;
-                toast.success(
-                  stats
-                    ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
-                    : "Shopify prices synced",
-                );
-              } catch (e) {
-                toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
-              } finally {
-                setSyncingShopifyPrices(false);
-              }
-            }}
+            className={cn(pageActionClassName, pageActionDockedClassName)}
+            onClick={() => void syncPricesToShopify()}
             disabled={saving || syncingShopifyPrices}
           >
             {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
           </Button>
           <Button
             variant="secondary"
-            className={pageActionClassName}
+            className={cn(pageActionClassName, pageActionDockedClassName)}
             onClick={load}
             disabled={saving}
           >

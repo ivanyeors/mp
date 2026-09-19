@@ -5,6 +5,7 @@ import { buttonVariants } from "./button";
 import {
   PageActions,
   pageActionClassName,
+  pageActionDockedClassName,
   pageActionWideClassName,
 } from "./page-actions";
 
@@ -16,6 +17,20 @@ describe("PageActions", () => {
     expect(html).toMatch(/md:flex/);
     expect(html).toMatch(/md:flex-wrap/);
     expect(html).toMatch(/child/);
+  });
+
+  // Phones show these in the bottom dock instead, so the cluster hides — in
+  // CSS, so the server render is right before `useIsMobile` has an answer.
+  it("hides on mobile when the whole cluster is docked, and only then", () => {
+    const docked = renderToStaticMarkup(<PageActions docked>child</PageActions>);
+    expect(docked).toMatch(/max-md:hidden/);
+    expect(docked).toMatch(/md:flex/);
+    expect(html).not.toMatch(/max-md:hidden/);
+  });
+
+  it("hides a single docked tile without hiding its neighbours", () => {
+    expect(pageActionDockedClassName).toBe("max-md:hidden");
+    expect(pageActionClassName).not.toContain("hidden");
   });
 
   it("keeps a caller's classes", () => {

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2, Save, ArrowLeft, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
+import { useMobileDockActions } from "@/components/ui/page-dock-actions";
 import { ImagePicker } from "@/components/ui/image-picker";
 import Link from "next/link";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -210,6 +211,12 @@ export default function BlogEditorPage({
         }
     };
 
+    // Phones: the header cluster moves into the bottom dock, within thumb reach.
+    useMobileDockActions([
+        { id: "save", title: saving ? "Saving…" : "Save", icon: Save, onClick: () => void handleSave() },
+        { id: "publish", title: "Save & Publish", icon: Eye, onClick: () => void handleSave("published") },
+    ]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -230,7 +237,7 @@ export default function BlogEditorPage({
                     </Button>
                     <h1 className="truncate">{isNew ? "New Blog Post" : "Edit Blog Post"}</h1>
                 </div>
-                <PageActions>
+                <PageActions docked>
                     <Button
                         variant="outline"
                         size="sm"

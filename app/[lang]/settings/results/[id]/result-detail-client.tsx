@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button";
 import {
   PageActions,
   pageActionClassName,
+  pageActionDockedClassName,
   pageActionWideClassName,
 } from "@/components/ui/page-actions";
+import { useMobileDockActions } from "@/components/ui/page-dock-actions";
+import type { DockAction } from "@/components/ui/app-dock-actions";
+import { Ban, Save, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -812,6 +816,35 @@ export default function ResultDetailPage({
     [cancelReason, id, load],
   );
 
+  // Phones: the header cluster moves into the bottom dock, within thumb reach.
+  // Built before the early returns so the hook order never changes; the ids are
+  // stable, so the dock animates values rather than remounting buttons.
+  const dockActions = useMemo<DockAction[]>(() => {
+    const actions: DockAction[] = [];
+    if (canReconfigure && row) {
+      actions.push({
+        id: "reconfigure",
+        title: "Edit configuration",
+        icon: SlidersHorizontal,
+        onClick: () => router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`)),
+      });
+    }
+    if (canCancel) {
+      actions.push({
+        id: "cancel",
+        title: "Cancel Result",
+        icon: Ban,
+        onClick: () => setCancelDialogOpen(true),
+        active: cancelDialogOpen,
+      });
+    }
+    if (row) {
+      actions.push({ id: "save", title: saving ? "Saving…" : "Save", icon: Save, onClick: () => void save() });
+    }
+    return actions;
+  }, [canCancel, canReconfigure, cancelDialogOpen, router, row, save, saving, to]);
+  useMobileDockActions(dockActions);
+
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
@@ -870,7 +903,7 @@ export default function ResultDetailPage({
           {canReconfigure && (
             <Button
               variant="secondary"
-              className={pageActionClassName}
+              className={cn(pageActionClassName, pageActionDockedClassName)}
               onClick={() =>
                 router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`))
               }
@@ -884,6 +917,7 @@ export default function ResultDetailPage({
               variant="outline"
               className={cn(
                 pageActionClassName,
+                pageActionDockedClassName,
                 "border-destructive/40 text-destructive hover:bg-destructive/10",
               )}
               onClick={() => setCancelDialogOpen(true)}
@@ -893,7 +927,7 @@ export default function ResultDetailPage({
             </Button>
           )}
           <Button
-            className={pageActionWideClassName}
+            className={cn(pageActionWideClassName, pageActionDockedClassName)}
             onClick={save}
             disabled={saving || deleting}
           >

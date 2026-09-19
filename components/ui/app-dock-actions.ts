@@ -14,9 +14,16 @@ export type DockAction = {
 };
 
 export type DockTools = {
-  /** Locale-stripped path prefix the tools belong to. */
+  /** Locale-stripped path the tools belong to. */
   scope: string;
   actions: readonly DockAction[];
+  /**
+   * Match `scope` exactly instead of as a prefix. A flow spread over sub-paths
+   * (the Rules Engine and its `/mbolster` variant) wants the prefix; a page
+   * whose subtree holds other pages needs the exact match, or a list page's
+   * tools follow you into its own detail route.
+   */
+  exact?: boolean;
 };
 
 const NONE: DockTools = { scope: "", actions: [] };
@@ -35,10 +42,12 @@ function subscribe(l: () => void) {
 
 /** Tools to render on `basePathname`: only inside their scope. */
 export function toolsFor(tools: DockTools, basePathname: string): readonly DockAction[] {
-  const { scope, actions } = tools;
-  return scope && (basePathname === scope || basePathname.startsWith(`${scope}/`))
-    ? actions
-    : NONE.actions;
+  const { scope, actions, exact } = tools;
+  if (!scope) return NONE.actions;
+  const inScope = exact
+    ? basePathname === scope
+    : basePathname === scope || basePathname.startsWith(`${scope}/`);
+  return inScope ? actions : NONE.actions;
 }
 
 /** Read side, for AppDock. */
@@ -57,15 +66,20 @@ export function useDockTools(): DockTools {
  * ponytail: one tool set at a time (last publisher wins) — key by scope if two
  * mounted pages ever need to share the dock.
  */
-export function useDockActions(scope: string, actions: readonly DockAction[]) {
+export function useDockActions(
+  scope: string,
+  actions: readonly DockAction[],
+  exact = false,
+) {
   useEffect(() => {
-    publish({ scope, actions });
+    publish({ scope, actions, exact });
     return () => {
       if (current.actions !== actions) return; // someone newer already published
       publish({
         scope,
+        exact,
         actions: actions.map((a) => ({ ...a, active: false, badge: false })),
       });
     };
-  }, [scope, actions]);
+  }, [scope, actions, exact]);
 }

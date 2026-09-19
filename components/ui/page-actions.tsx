@@ -17,12 +17,22 @@ import { cn } from "@/lib/utils";
 export function PageActions({
   children,
   className,
+  docked = false,
 }: {
   children: ReactNode;
   className?: string;
+  /**
+   * The page also publishes these actions to the bottom dock via
+   * `useMobileDockActions`. The cluster then hides on mobile — through CSS, not
+   * `useIsMobile`, so the server render is already right and the buttons never
+   * flash in before hydration decides they belong in the dock.
+   */
+  docked?: boolean;
 }) {
   return (
-    <div className={cn(pageActionsClassName, className)}>{children}</div>
+    <div className={cn(pageActionsClassName, docked && "max-md:hidden", className)}>
+      {children}
+    </div>
   );
 }
 
@@ -40,3 +50,11 @@ export const pageActionClassName =
 
 /** A tile that spans both columns — the primary action, or an odd one out. */
 export const pageActionWideClassName = cn(pageActionClassName, "max-md:col-span-2");
+
+/**
+ * A tile whose action the page also publishes to the bottom dock through
+ * `useMobileDockActions`. It hides on mobile, where the dock shows it instead.
+ * Use this per button when only some of a cluster is docked; when the whole
+ * cluster is, `PageActions`' `docked` prop says so once.
+ */
+export const pageActionDockedClassName = "max-md:hidden";

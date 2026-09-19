@@ -8,6 +8,7 @@ import { Plus, Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "l
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
+import { useMobileDockActions } from "@/components/ui/page-dock-actions";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -349,6 +350,22 @@ export function ProductsClient({
             setResyncingPrices(false);
         }
     };
+
+    // Phones: the header cluster moves into the bottom dock, within thumb reach.
+    useMobileDockActions([
+        {
+            id: "sync-inventory",
+            title: syncing ? "Syncing…" : "Sync from Inventory",
+            icon: RefreshCw,
+            onClick: () => void syncFromInventory(),
+        },
+        {
+            id: "resync-prices",
+            title: resyncingPrices ? "Resyncing…" : "Resync prices",
+            icon: DollarSign,
+            onClick: () => void resyncPrices(),
+        },
+    ]);
 
     // ── Selection helpers ──
     const allSelected =
@@ -727,7 +744,7 @@ export function ProductsClient({
 
                 <TabsContent value="products" className="mt-6 space-y-6">
                     {/* Actions bar */}
-                    <PageActions>
+                    <PageActions docked>
                         <Button
                             size="sm"
                             variant="outline"
