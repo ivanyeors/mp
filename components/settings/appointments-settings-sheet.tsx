@@ -288,8 +288,9 @@ export function AppointmentsSettingsSheet({
           onValueChange={(v) => setTab(v as SheetTab)}
           className="flex min-h-0 flex-1 flex-col gap-3"
         >
-          {/* Five sections: a scrolling strip of ≥40px tabs on a phone, a pill row on desktop. */}
-          <TabsList className="h-auto w-full justify-start overflow-x-auto md:w-fit">
+          {/* Five sections: too wide for a phone, so TabsList collapses them into
+              one menu button there and keeps the pill row on desktop. */}
+          <TabsList className="w-full justify-start md:w-fit">
             {(
               [
                 ["locations", "Locations"],
