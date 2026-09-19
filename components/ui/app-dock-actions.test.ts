@@ -11,6 +11,14 @@ describe("toolsFor", () => {
     expect(toolsFor(tools, "/settings/product-builder/rules-engine/mbolster")).toBe(actions);
   });
 
+  it("matches a page's own path only when the caller asks for exact", () => {
+    // Page actions are the page's; without this a list page's tools follow you
+    // into its detail route, where they act on the wrong thing.
+    const page = { scope: "/settings/products", actions, exact: true };
+    expect(toolsFor(page, "/settings/products")).toBe(actions);
+    expect(toolsFor(page, "/settings/products/abc")).toEqual([]);
+  });
+
   it("hides them everywhere else, including look-alike prefixes", () => {
     expect(toolsFor(tools, "/settings/costings")).toEqual([]);
     expect(toolsFor(tools, "/settings/product-builder/rules-engine-old")).toEqual([]);

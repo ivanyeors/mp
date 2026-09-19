@@ -5,12 +5,18 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  PageActions,
+  pageActionClassName,
+  pageActionWideClassName,
+} from "@/components/ui/page-actions";
+import { useMobileDockActions } from "@/components/ui/page-dock-actions";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { collectLowStockCategories } from "@/lib/inventory/part-category-low-stock";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, ImageIcon, Trash2 } from "lucide-react";
+import { ChevronDown, ImageIcon, Plus, RotateCw, ShoppingCart, Trash2 } from "lucide-react";
 import {
   sellPillow,
   sellPart,
@@ -751,25 +757,49 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
     setCustomBolsterQty('');
   };
 
+  const cartCount =
+    cart.pillows.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0) +
+    Object.values(cart.parts).reduce((a, b) => a + b, 0);
+
+  // Phones: the header cluster moves into the bottom dock, within thumb reach.
+  useMobileDockActions([
+    { id: "refresh", title: "Refresh", icon: RotateCw, onClick: () => void load() },
+    { id: "add", title: "Add inventory", icon: Plus, onClick: () => setAddDrawerOpen(true) },
+    {
+      id: "cart",
+      title: `Cart (${cartCount})`,
+      icon: ShoppingCart,
+      onClick: () => setCartOpen(true),
+      badge: cartCount > 0,
+    },
+  ]);
+
   if (loading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1>Inventory</h1>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <Button variant="secondary" className="w-full sm:w-auto" onClick={() => void load()}>Refresh</Button>
-          <Button className="w-full sm:w-auto" onClick={() => setAddDrawerOpen(true)} aria-label="Add inventory item">
+        <PageActions docked>
+          <Button variant="secondary" className={pageActionClassName} onClick={() => void load()}>
+            Refresh
+          </Button>
+          <Button
+            className={pageActionClassName}
+            onClick={() => setAddDrawerOpen(true)}
+            aria-label="Add inventory item"
+          >
             Add inventory
           </Button>
-          <Button className="w-full sm:w-auto" onClick={() => setCartOpen(true)} aria-label="Open cart">
+          <Button
+            className={pageActionWideClassName}
+            onClick={() => setCartOpen(true)}
+            aria-label="Open cart"
+          >
             <span className="mr-2" aria-hidden>🛒</span>
-            Cart ({
-              cart.pillows.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0) +
-              Object.values(cart.parts).reduce((a, b) => a + b, 0)
-            })
+            Cart ({cartCount})
           </Button>
-        </div>
+        </PageActions>
       </div>
 
       <section className="space-y-2">

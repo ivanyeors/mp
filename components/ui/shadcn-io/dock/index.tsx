@@ -110,7 +110,9 @@ function Dock({
           mouseX.set(Infinity);
         }}
         className={cn(
-          'mx-auto flex w-fit gap-4 rounded-[35px] px-4 relative',
+          // Phones carry page actions here too, so the pill is tighter below `md`:
+          // gap-4/px-4 fits three items on a 390px screen, gap-2/px-3 fits six.
+          'mx-auto flex w-fit gap-2 md:gap-4 rounded-[35px] px-3 md:px-4 relative',
           className
         )}
         style={{ 

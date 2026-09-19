@@ -4,6 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  PageActions,
+  pageActionClassName,
+  pageActionDockedClassName,
+  pageActionWideClassName,
+} from "@/components/ui/page-actions";
+import { useMobileDockActions } from "@/components/ui/page-dock-actions";
+import type { DockAction } from "@/components/ui/app-dock-actions";
+import { Ban, Save, SlidersHorizontal } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -806,6 +816,35 @@ export default function ResultDetailPage({
     [cancelReason, id, load],
   );
 
+  // Phones: the header cluster moves into the bottom dock, within thumb reach.
+  // Built before the early returns so the hook order never changes; the ids are
+  // stable, so the dock animates values rather than remounting buttons.
+  const dockActions = useMemo<DockAction[]>(() => {
+    const actions: DockAction[] = [];
+    if (canReconfigure && row) {
+      actions.push({
+        id: "reconfigure",
+        title: "Edit configuration",
+        icon: SlidersHorizontal,
+        onClick: () => router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`)),
+      });
+    }
+    if (canCancel) {
+      actions.push({
+        id: "cancel",
+        title: "Cancel Result",
+        icon: Ban,
+        onClick: () => setCancelDialogOpen(true),
+        active: cancelDialogOpen,
+      });
+    }
+    if (row) {
+      actions.push({ id: "save", title: saving ? "Saving…" : "Save", icon: Save, onClick: () => void save() });
+    }
+    return actions;
+  }, [canCancel, canReconfigure, cancelDialogOpen, router, row, save, saving, to]);
+  useMobileDockActions(dockActions);
+
   if (loading) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
@@ -817,19 +856,25 @@ export default function ResultDetailPage({
           <h1>Result</h1>
           <p className="text-sm text-muted-foreground">Not found or failed to load.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => router.push(to("/settings/results"))}>
+        <PageActions>
+          <Button
+            variant="secondary"
+            className={pageActionClassName}
+            onClick={() => router.push(to("/settings/results"))}
+          >
             Back
           </Button>
-          <Button onClick={load}>Retry</Button>
-        </div>
+          <Button className={pageActionClassName} onClick={load}>
+            Retry
+          </Button>
+        </PageActions>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1>Result details</h1>
           <p className="text-sm text-muted-foreground font-mono break-all">{row.id}</p>
@@ -839,17 +884,17 @@ export default function ResultDetailPage({
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <PageActions>
           <Button
             variant="secondary"
-            className="w-full sm:w-auto"
+            className={pageActionClassName}
             onClick={() => router.push(to("/settings/results"))}
           >
             Back
           </Button>
           <Button
             variant="secondary"
-            className="w-full sm:w-auto"
+            className={pageActionClassName}
             onClick={load}
             disabled={saving || deleting}
           >
@@ -858,7 +903,7 @@ export default function ResultDetailPage({
           {canReconfigure && (
             <Button
               variant="secondary"
-              className="w-full sm:w-auto"
+              className={cn(pageActionClassName, pageActionDockedClassName)}
               onClick={() =>
                 router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`))
               }
@@ -870,17 +915,25 @@ export default function ResultDetailPage({
           {canCancel && (
             <Button
               variant="outline"
-              className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 sm:w-auto"
+              className={cn(
+                pageActionClassName,
+                pageActionDockedClassName,
+                "border-destructive/40 text-destructive hover:bg-destructive/10",
+              )}
               onClick={() => setCancelDialogOpen(true)}
               disabled={saving || deleting || cancelling}
             >
               {cancelling ? "Cancelling…" : "Cancel Result"}
             </Button>
           )}
-          <Button className="w-full sm:w-auto" onClick={save} disabled={saving || deleting}>
+          <Button
+            className={cn(pageActionWideClassName, pageActionDockedClassName)}
+            onClick={save}
+            disabled={saving || deleting}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
-        </div>
+        </PageActions>
       </div>
 
       {/* Inline rather than a modal: keeps Radix Dialog out of this route's bundle. */}
@@ -910,9 +963,10 @@ export default function ResultDetailPage({
               </div>
             </div>
           )}
-          <div className="flex flex-wrap gap-2">
+          <PageActions>
             <Button
               variant="destructive"
+              className={pageActionClassName}
               onClick={() => void cancelResult(Boolean(cancelError))}
               disabled={cancelling}
             >
@@ -920,6 +974,7 @@ export default function ResultDetailPage({
             </Button>
             <Button
               variant="secondary"
+              className={pageActionClassName}
               onClick={() => {
                 setCancelDialogOpen(false);
                 setCancelError(null);
@@ -928,7 +983,7 @@ export default function ResultDetailPage({
             >
               Keep it
             </Button>
-          </div>
+          </PageActions>
         </Card>
       )}
 
@@ -1513,14 +1568,24 @@ export default function ResultDetailPage({
 
           <Separator />
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={refreshSuggestion} disabled={suggestionLoading || deleting}>
+          <PageActions>
+            <Button
+              variant="secondary"
+              className={pageActionClassName}
+              onClick={refreshSuggestion}
+              disabled={suggestionLoading || deleting}
+            >
               {suggestionLoading ? "Refreshing suggestion…" : "Refresh suggestion"}
             </Button>
-            <Button variant="destructive" onClick={deleteRow} disabled={deleting || saving}>
+            <Button
+              variant="destructive"
+              className={pageActionClassName}
+              onClick={deleteRow}
+              disabled={deleting || saving}
+            >
               {deleting ? "Deleting…" : "Delete"}
             </Button>
-          </div>
+          </PageActions>
         </div>
       </Card>
 

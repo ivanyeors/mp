@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Loader2, Save, ArrowLeft, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
+import { useMobileDockActions } from "@/components/ui/page-dock-actions";
 import { ImagePicker } from "@/components/ui/image-picker";
 import Link from "next/link";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -209,6 +211,12 @@ export default function BlogEditorPage({
         }
     };
 
+    // Phones: the header cluster moves into the bottom dock, within thumb reach.
+    useMobileDockActions([
+        { id: "save", title: saving ? "Saving…" : "Save", icon: Save, onClick: () => void handleSave() },
+        { id: "publish", title: "Save & Publish", icon: Eye, onClick: () => void handleSave("published") },
+    ]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -220,7 +228,7 @@ export default function BlogEditorPage({
     return (
         <div className="space-y-6 max-w-4xl">
             {/* Header */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3 min-w-0">
                     <Button asChild variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0">
                         <Link href={to("/settings/blogs")}>
@@ -229,15 +237,26 @@ export default function BlogEditorPage({
                     </Button>
                     <h1 className="truncate">{isNew ? "New Blog Post" : "Edit Blog Post"}</h1>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                    <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => handleSave()} disabled={saving}>
+                <PageActions docked>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className={pageActionClassName}
+                        onClick={() => handleSave()}
+                        disabled={saving}
+                    >
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save
                     </Button>
-                    <Button size="sm" className="flex-1 sm:flex-none" onClick={() => handleSave("published")} disabled={saving}>
+                    <Button
+                        size="sm"
+                        className={pageActionClassName}
+                        onClick={() => handleSave("published")}
+                        disabled={saving}
+                    >
                         <Eye className="mr-2 h-4 w-4" /> Save &amp; Publish
                     </Button>
-                </div>
+                </PageActions>
             </div>
 
             {/* Language Toggle */}

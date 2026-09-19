@@ -7,6 +7,7 @@ import { MoreVertical, Send, SquareArrowOutUpRight, Trash2 } from "lucide-react"
 import { AssistLinkCard } from "@/components/admin/assist-link-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -823,10 +824,10 @@ export default function ResultsPage({
       ) : (
         <div className="space-y-3">
           {selectedRows.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2">
+            <div className="flex flex-col items-stretch gap-2 rounded-md border bg-muted/40 p-2 md:flex-row md:flex-wrap md:items-center">
               <span className="text-sm font-medium">{selectedRows.length} selected</span>
               <Select value={bulkLocation} onValueChange={setBulkLocation}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Set location…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -838,26 +839,47 @@ export default function ResultsPage({
                   ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => void bulkSetLocation()}>
-                Set Location
-              </Button>
-              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => void bulkSend()}>
-                Send Group Updates
-              </Button>
-              <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={exportCsv}>
-                Export CSV
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={bulkBusy}
-                onClick={() => {
-                  setDeleteTarget(null);
-                  setDeleteDialogOpen(true);
-                }}
-              >
-                Delete
-              </Button>
+              <PageActions className="w-full md:w-auto">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className={pageActionClassName}
+                  disabled={bulkBusy}
+                  onClick={() => void bulkSetLocation()}
+                >
+                  Set Location
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className={pageActionClassName}
+                  disabled={bulkBusy}
+                  onClick={() => void bulkSend()}
+                >
+                  Send Group Updates
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className={pageActionClassName}
+                  disabled={bulkBusy}
+                  onClick={exportCsv}
+                >
+                  Export CSV
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className={pageActionClassName}
+                  disabled={bulkBusy}
+                  onClick={() => {
+                    setDeleteTarget(null);
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  Delete
+                </Button>
+              </PageActions>
             </div>
           )}
           <Table>
