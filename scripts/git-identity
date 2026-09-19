@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Pin this clone's commit author to the identity Vercel will build for.
+#
+# Vercel refuses to build a deployment whose GIT COMMIT AUTHOR is not a member
+# of the team that owns the project. It does not fail the build — it never
+# starts one. The deployment is created in state BLOCKED with buildingAt ==
+# ready == createdAt and no build events at all, and the pull request simply
+# shows no preview. Nothing in the repository, in CI, or on the Checks tab says
+# why.
+#
+# That is how #198 lost its preview. Two agent sessions ran with
+# `git user.email` set to sg@mpillow.com, which GitHub resolves to the account
+# `mpillow-sg`. The Vercel team `ivanyeors-projects` has exactly one member,
+# `ivanyeors`, so every commit those sessions authored was blocked on arrival.
+# Every other branch in the repository built fine. Production never broke,
+# because GitHub rewrites the author to ivanyeors on squash-merge — which is
+# also why this went unnoticed for six days.
+#
+# So: pin the author, in the clone, before anything can commit. This runs from
+# the SessionStart hook in .claude/settings.json, and by hand once per clone:
+#
+#     ./scripts/git-identity
+#
+# Local config beats global, so this wins over whatever identity the agent
+# container or the developer's ~/.gitconfig supplies. The Co-Authored-By
+# trailer is what credits the agent on a commit; the author field is what
+# Vercel reads, and it has to be an account on the team.
+#
+# Skip it for one command with: MP_SKIP_GIT_IDENTITY=1 ...
+#
+# Exits 0 on every path it does not understand. A SessionStart hook that fails
+# is a session that fails, and no identity is worth that.
+set -uo pipefail
+
+[ "${MP_SKIP_GIT_IDENTITY:-}" = "1" ] && exit 0
+
+# The GitHub noreply address for user ivanyeors (id 47745593), which is the
+# GitHub login linked to the owner of the Vercel team. Deliberately the noreply
+# rather than the account's real address: it is what GitHub itself writes on
+# every merge to main, so agent commits and merge commits carry one identity.
+AUTHOR_NAME="Ivan Yeo"
+AUTHOR_EMAIL="47745593+ivanyeors@users.noreply.github.com"
+
+root="${CLAUDE_PROJECT_DIR:-}"
+if [ -z "$root" ]; then
+  root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)" || exit 0
+fi
+cd "$root" 2>/dev/null || exit 0
+
+git rev-parse --git-dir >/dev/null 2>&1 || exit 0
+
+git config user.name "$AUTHOR_NAME" || exit 0
+git config user.email "$AUTHOR_EMAIL" || exit 0
+
+# .githooks/pre-push is the backstop for anything that commits without this
+# script having run — another tool, another machine, a clone made before this
+# landed. Only claim core.hooksPath if nothing else has: a contributor who has
+# pointed it somewhere deliberately keeps their hooks, and the pre-push guard
+# is a convenience, not the mechanism.
+current_hooks_path="$(git config --get core.hooksPath || true)"
+if [ -z "$current_hooks_path" ] || [ "$current_hooks_path" = ".githooks" ]; then
+  git config core.hooksPath .githooks || true
+fi
+
+exit 0

@@ -14,6 +14,56 @@ Read these before making design decisions:
 - **`LLM.md`** — applies only to "sections-only" tasks (`agent/sections.md`).
 - **`docs/adr/`** — architecture decision records.
 
+## Commit author
+
+Every commit in this repository is authored as
+`Ivan Yeo <47745593+ivanyeors@users.noreply.github.com>`. Not a style
+preference — Vercel will not build anything else.
+
+Vercel only builds a deployment whose **git commit author** is a member of the
+team that owns `mp-inv`, and that team has one member: `ivanyeors`. A commit by
+anyone else is not built and not failed. The deployment is created in state
+`BLOCKED` with `buildingAt == ready == createdAt` and no build events, the pull
+request shows no preview, and nothing in the repo, in CI, or on the Checks tab
+says why. #198 lost its preview this way: two agent sessions ran with
+`user.email` set to `sg@mpillow.com`, which GitHub resolves to the account
+`mpillow-sg`. Production kept deploying throughout, because GitHub rewrites the
+author to `ivanyeors` on squash-merge — which is why it took six days to notice.
+
+Three things keep this true, and none of them is you remembering:
+
+- **`scripts/git-identity`** pins the clone's `user.name` / `user.email`. The
+  `SessionStart` hook in `.claude/settings.json` runs it, so an agent session is
+  already correct before it can commit. Run it by hand once in a new clone, or
+  on a machine where another tool writes its own identity:
+
+  ```bash
+  ./scripts/git-identity
+  ```
+
+- **`.githooks/pre-push`** refuses to push a commit Vercel would block, naming
+  the commits and the fix. It is installed by the script above, via
+  `core.hooksPath`. `--no-verify` bypasses it and costs you the preview.
+- **`ALLOWED` in `.githooks/pre-push`** is the list of addresses that map to a
+  team member. Widen it only when someone actually joins the Vercel team.
+  Adding an address to silence the hook trades a loud local failure for a silent
+  remote one, which is the whole problem.
+
+Authorship is not attribution: the `Co-Authored-By` trailer is what credits an
+agent on a commit, and it is unaffected. The author field is what Vercel reads.
+
+If a commit has already been made under the wrong identity, re-author it rather
+than pushing and hoping:
+
+```bash
+./scripts/git-identity
+git rebase --exec 'git commit --amend --no-edit --reset-author' origin/main
+```
+
+The alternative fix is to add the other address to the Vercel team
+(Settings → Members), which makes the author irrelevant. Until someone does
+that, the author is load-bearing.
+
 ## graphify knowledge graph
 
 This repo has a committed knowledge graph at `graphify-out/` — 9.5k nodes and
