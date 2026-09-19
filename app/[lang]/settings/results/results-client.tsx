@@ -753,7 +753,7 @@ export default function ResultsPage({
 
       <div className="flex flex-col gap-3">
         <Tabs value={tab} onValueChange={(v) => setTab(v as ResultsTab)}>
-          <TabsList className="flex-wrap">
+          <TabsList>
             {STAGE_BUCKETS.map((bucket) => (
               <TabsTrigger key={bucket} value={bucket}>
                 {TAB_LABELS[bucket]}

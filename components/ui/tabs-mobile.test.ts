@@ -1,0 +1,82 @@
+/**
+ * Tab strips must never stack onto a second row and never side-scroll inline.
+ *
+ * Both failure modes look the same on a phone: triggers half-cut at the
+ * container edge, with the overflowing ones unreachable. `TabsList` collapses
+ * an over-wide row into a single menu button instead, so these asserts pin the
+ * two places that can reintroduce the bug — the primitive itself, and a call
+ * site that overrides the primitive's guards.
+ */
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+const ROOT = process.cwd();
+const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
+
+const SEARCH_DIRS = ["app", "components"];
+const SKIP_DIRS = new Set(["node_modules", ".next", "dist", ".claude"]);
+
+function collectTsx(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    if (SKIP_DIRS.has(entry)) continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) collectTsx(full, out);
+    else if (full.endsWith(".tsx")) out.push(full);
+  }
+  return out;
+}
+
+const tabs = read("components/ui/tabs.tsx");
+
+describe("components/ui/tabs.tsx", () => {
+  it("keeps the row on one line whatever a call site passes", () => {
+    // The guard string is concatenated after `className` inside cn(), so
+    // tailwind-merge lets it win over a caller's flex-wrap / overflow-x-auto.
+    expect(tabs).toMatch(/TABS_LIST_ROW_GUARD\s*=\s*"[^"]*flex-nowrap[^"]*"/);
+    expect(tabs).toMatch(/TABS_LIST_ROW_GUARD\s*=\s*"[^"]*overflow-hidden[^"]*"/);
+    expect(tabs).toMatch(/cn\(\s*TABS_LIST_ROW,\s*className,\s*TABS_LIST_ROW_GUARD/);
+  });
+
+  it("never turns the strip into a horizontal scroller", () => {
+    expect(tabs).not.toMatch(/overflow-x-auto|overflow-x-scroll/);
+  });
+
+  it("collapses an over-wide row into a menu button", () => {
+    expect(tabs).toMatch(/data-slot="tabs-list-summary"/);
+    expect(tabs).toMatch(/scrollWidth\s*-\s*\w+\.clientWidth\s*>\s*1/);
+    expect(tabs).toMatch(/TABS_LIST_MENU/);
+  });
+
+  it("aligns with the container gutter instead of bleeding past it", () => {
+    // The old fix was a `-m-1` scroll wrapper, which pulled the strip 4px
+    // outside the page gutter and then clipped the first trigger against it.
+    expect(tabs).not.toMatch(/-m-1|-mx-1/);
+    expect(tabs).toMatch(/data-slot="tabs-list-container"[\s\S]*?relative w-full min-w-0/);
+  });
+
+  it("keeps the mobile touch baseline on both shapes", () => {
+    const rowAndSummary = tabs.match(/h-9[^"]*max-md:h-11/g) ?? [];
+    expect(rowAndSummary.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("TabsList call sites", () => {
+  const offenders: string[] = [];
+
+  for (const dir of SEARCH_DIRS) {
+    for (const file of collectTsx(join(ROOT, dir))) {
+      const src = readFileSync(file, "utf8");
+      for (const match of src.matchAll(/<TabsList\b[^>]*>/g)) {
+        if (/flex-wrap|overflow-x-auto|overflow-x-scroll/.test(match[0])) {
+          offenders.push(`${relative(ROOT, file)}: ${match[0]}`);
+        }
+      }
+    }
+  }
+
+  it("never ask the strip to wrap or to scroll sideways", () => {
+    expect(offenders).toEqual([]);
+  });
+});
