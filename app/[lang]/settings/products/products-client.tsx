@@ -7,6 +7,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Plus, Trash2, Package, Loader2, Search, RefreshCw, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -726,38 +727,36 @@ export function ProductsClient({
 
                 <TabsContent value="products" className="mt-6 space-y-6">
                     {/* Actions bar */}
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full sm:w-auto"
-                                onClick={syncFromInventory}
-                                disabled={syncing || resyncingPrices}
-                            >
-                                {syncing ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                )}
-                                Sync from Inventory
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full sm:w-auto"
-                                onClick={resyncPrices}
-                                disabled={syncing || resyncingPrices}
-                            >
-                                {resyncingPrices ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <DollarSign className="mr-2 h-4 w-4" />
-                                )}
-                                Resync prices
-                            </Button>
-                        </div>
-                    </div>
+                    <PageActions>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className={pageActionClassName}
+                            onClick={syncFromInventory}
+                            disabled={syncing || resyncingPrices}
+                        >
+                            {syncing ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                            )}
+                            Sync from Inventory
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className={pageActionClassName}
+                            onClick={resyncPrices}
+                            disabled={syncing || resyncingPrices}
+                        >
+                            {resyncingPrices ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <DollarSign className="mr-2 h-4 w-4" />
+                            )}
+                            Resync prices
+                        </Button>
+                    </PageActions>
 
                     {isAccessoriesTab && <ShopListingToggles />}
 

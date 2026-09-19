@@ -4,6 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  PageActions,
+  pageActionClassName,
+  pageActionWideClassName,
+} from "@/components/ui/page-actions";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -817,19 +823,25 @@ export default function ResultDetailPage({
           <h1>Result</h1>
           <p className="text-sm text-muted-foreground">Not found or failed to load.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => router.push(to("/settings/results"))}>
+        <PageActions>
+          <Button
+            variant="secondary"
+            className={pageActionClassName}
+            onClick={() => router.push(to("/settings/results"))}
+          >
             Back
           </Button>
-          <Button onClick={load}>Retry</Button>
-        </div>
+          <Button className={pageActionClassName} onClick={load}>
+            Retry
+          </Button>
+        </PageActions>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1>Result details</h1>
           <p className="text-sm text-muted-foreground font-mono break-all">{row.id}</p>
@@ -839,17 +851,17 @@ export default function ResultDetailPage({
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <PageActions>
           <Button
             variant="secondary"
-            className="w-full sm:w-auto"
+            className={pageActionClassName}
             onClick={() => router.push(to("/settings/results"))}
           >
             Back
           </Button>
           <Button
             variant="secondary"
-            className="w-full sm:w-auto"
+            className={pageActionClassName}
             onClick={load}
             disabled={saving || deleting}
           >
@@ -858,7 +870,7 @@ export default function ResultDetailPage({
           {canReconfigure && (
             <Button
               variant="secondary"
-              className="w-full sm:w-auto"
+              className={pageActionClassName}
               onClick={() =>
                 router.push(to(`/mp-config?result=${encodeURIComponent(row.id)}&edit=1`))
               }
@@ -870,17 +882,24 @@ export default function ResultDetailPage({
           {canCancel && (
             <Button
               variant="outline"
-              className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 sm:w-auto"
+              className={cn(
+                pageActionClassName,
+                "border-destructive/40 text-destructive hover:bg-destructive/10",
+              )}
               onClick={() => setCancelDialogOpen(true)}
               disabled={saving || deleting || cancelling}
             >
               {cancelling ? "Cancelling…" : "Cancel Result"}
             </Button>
           )}
-          <Button className="w-full sm:w-auto" onClick={save} disabled={saving || deleting}>
+          <Button
+            className={pageActionWideClassName}
+            onClick={save}
+            disabled={saving || deleting}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
-        </div>
+        </PageActions>
       </div>
 
       {/* Inline rather than a modal: keeps Radix Dialog out of this route's bundle. */}
@@ -910,9 +929,10 @@ export default function ResultDetailPage({
               </div>
             </div>
           )}
-          <div className="flex flex-wrap gap-2">
+          <PageActions>
             <Button
               variant="destructive"
+              className={pageActionClassName}
               onClick={() => void cancelResult(Boolean(cancelError))}
               disabled={cancelling}
             >
@@ -920,6 +940,7 @@ export default function ResultDetailPage({
             </Button>
             <Button
               variant="secondary"
+              className={pageActionClassName}
               onClick={() => {
                 setCancelDialogOpen(false);
                 setCancelError(null);
@@ -928,7 +949,7 @@ export default function ResultDetailPage({
             >
               Keep it
             </Button>
-          </div>
+          </PageActions>
         </Card>
       )}
 
@@ -1513,14 +1534,24 @@ export default function ResultDetailPage({
 
           <Separator />
 
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={refreshSuggestion} disabled={suggestionLoading || deleting}>
+          <PageActions>
+            <Button
+              variant="secondary"
+              className={pageActionClassName}
+              onClick={refreshSuggestion}
+              disabled={suggestionLoading || deleting}
+            >
               {suggestionLoading ? "Refreshing suggestion…" : "Refresh suggestion"}
             </Button>
-            <Button variant="destructive" onClick={deleteRow} disabled={deleting || saving}>
+            <Button
+              variant="destructive"
+              className={pageActionClassName}
+              onClick={deleteRow}
+              disabled={deleting || saving}
+            >
               {deleting ? "Deleting…" : "Delete"}
             </Button>
-          </div>
+          </PageActions>
         </div>
       </Card>
 

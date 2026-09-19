@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Button } from "@/components/ui/button";
+import { PageActions, pageActionClassName } from "@/components/ui/page-actions";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -1336,46 +1337,55 @@ export default function CostingsPage() {
 
   return (
     <div className={isDirty ? `space-y-6 ${mobileStickyActionBarSpacerClassName}` : "space-y-6"}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1>Costings</h1>
           <p className="text-sm text-muted-foreground">
             Track cost price and MSRP for each part to keep your pricing consistent.
           </p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <div className="grid grid-cols-2 gap-2 sm:contents">
-            <Button
-              variant="secondary"
-              className="w-full sm:w-auto"
-              onClick={async () => {
-                setSyncingShopifyPrices(true);
-                try {
-                  const res = await syncShopifyPricesOnly();
-                  const stats = res?.prices ?? null;
-                  toast.success(
-                    stats
-                      ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
-                      : "Shopify prices synced",
-                  );
-                } catch (e) {
-                  toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
-                } finally {
-                  setSyncingShopifyPrices(false);
-                }
-              }}
-              disabled={saving || syncingShopifyPrices}
-            >
-              {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
-            </Button>
-            <Button variant="secondary" className="w-full sm:w-auto" onClick={load} disabled={saving}>
-              Refresh
-            </Button>
-          </div>
-          <Button className="hidden w-full sm:inline-flex sm:w-auto" onClick={save} disabled={saving || !isDirty}>
+        <PageActions>
+          <Button
+            variant="secondary"
+            className={pageActionClassName}
+            onClick={async () => {
+              setSyncingShopifyPrices(true);
+              try {
+                const res = await syncShopifyPricesOnly();
+                const stats = res?.prices ?? null;
+                toast.success(
+                  stats
+                    ? `Shopify prices synced (updated ${stats.updated}, skipped ${stats.skipped}, inactive ${stats.skipped_inactive})`
+                    : "Shopify prices synced",
+                );
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Failed to sync Shopify prices");
+              } finally {
+                setSyncingShopifyPrices(false);
+              }
+            }}
+            disabled={saving || syncingShopifyPrices}
+          >
+            {syncingShopifyPrices ? "Syncing…" : "Sync prices to Shopify"}
+          </Button>
+          <Button
+            variant="secondary"
+            className={pageActionClassName}
+            onClick={load}
+            disabled={saving}
+          >
+            Refresh
+          </Button>
+          {/* Phones get Save from MobileStickyActionBar instead — `md`, the bar's
+              own breakpoint, so the two never render at once on a wide phone. */}
+          <Button
+            className="hidden md:inline-flex"
+            onClick={save}
+            disabled={saving || !isDirty}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
-        </div>
+        </PageActions>
       </div>
 
       {onHandKpis && (

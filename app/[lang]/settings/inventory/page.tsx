@@ -5,6 +5,11 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  PageActions,
+  pageActionClassName,
+  pageActionWideClassName,
+} from "@/components/ui/page-actions";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
@@ -755,21 +760,31 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1>Inventory</h1>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <Button variant="secondary" className="w-full sm:w-auto" onClick={() => void load()}>Refresh</Button>
-          <Button className="w-full sm:w-auto" onClick={() => setAddDrawerOpen(true)} aria-label="Add inventory item">
+        <PageActions>
+          <Button variant="secondary" className={pageActionClassName} onClick={() => void load()}>
+            Refresh
+          </Button>
+          <Button
+            className={pageActionClassName}
+            onClick={() => setAddDrawerOpen(true)}
+            aria-label="Add inventory item"
+          >
             Add inventory
           </Button>
-          <Button className="w-full sm:w-auto" onClick={() => setCartOpen(true)} aria-label="Open cart">
+          <Button
+            className={pageActionWideClassName}
+            onClick={() => setCartOpen(true)}
+            aria-label="Open cart"
+          >
             <span className="mr-2" aria-hidden>🛒</span>
             Cart ({
               cart.pillows.reduce((sum, line) => sum + Number(line.quantity ?? 0), 0) +
               Object.values(cart.parts).reduce((a, b) => a + b, 0)
             })
           </Button>
-        </div>
+        </PageActions>
       </div>
 
       <section className="space-y-2">

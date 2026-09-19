@@ -7,6 +7,7 @@ import { requireAdminPage } from "@/lib/auth/admin";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { humanizeToken } from "@/lib/rma/admin-view";
 import { nextStatuses, type RmaStatus } from "@/lib/rma/transitions";
+import { PageActions } from "@/components/ui/page-actions";
 import {
   saveAdminNoteForm,
   approveRmaForm,
@@ -18,6 +19,18 @@ import {
 } from "../actions";
 
 export const runtime = "nodejs";
+
+/**
+ * This page predates the shared `Button` (it is a Server Component, and
+ * `Button` is client-only), so the lifecycle actions style themselves. They
+ * still take the `PageActions` tile shape on mobile.
+ */
+const rmaActionBase =
+  "inline-flex w-full items-center justify-center rounded-md px-3 text-sm transition-colors " +
+  "h-9 max-md:h-auto max-md:min-h-14 max-md:whitespace-normal max-md:py-2 max-md:leading-tight md:w-auto";
+const rmaPrimaryAction = `${rmaActionBase} bg-primary text-primary-foreground hover:opacity-90`;
+const rmaSecondaryAction = `${rmaActionBase} border bg-background hover:bg-accent`;
+const rmaDestructiveAction = `${rmaActionBase} border border-destructive text-destructive hover:bg-destructive/10`;
 
 type ItemRow = {
   id: string;
@@ -209,48 +222,38 @@ export default async function RmaDetailPage({
       {hasActions ? (
         <section className="space-y-4 rounded-lg border p-4">
           <h2 className="text-sm font-medium">Actions</h2>
-          <div className="flex flex-wrap gap-2">
+          {/* The form is the grid/flex item; the button fills it, so a lifecycle
+              action is the same tile size as every other page action. */}
+          <PageActions>
             {next.includes("approved") ? (
-              <form action={approveRmaForm.bind(null, rma.id)}>
-                <button
-                  type="submit"
-                  className="h-9 max-md:min-h-11 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
-                >
+              <form action={approveRmaForm.bind(null, rma.id)} className="w-full md:w-auto">
+                <button type="submit" className={rmaPrimaryAction}>
                   Approve
                 </button>
               </form>
             ) : null}
             {next.includes("instructions_sent") ? (
-              <form action={sendInstructionsForm.bind(null, rma.id)}>
-                <button
-                  type="submit"
-                  className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
-                >
+              <form action={sendInstructionsForm.bind(null, rma.id)} className="w-full md:w-auto">
+                <button type="submit" className={rmaSecondaryAction}>
                   Send return instructions
                 </button>
               </form>
             ) : null}
             {next.includes("received") ? (
-              <form action={markReceivedForm.bind(null, rma.id)}>
-                <button
-                  type="submit"
-                  className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
-                >
+              <form action={markReceivedForm.bind(null, rma.id)} className="w-full md:w-auto">
+                <button type="submit" className={rmaSecondaryAction}>
                   Mark received
                 </button>
               </form>
             ) : null}
             {next.includes("refunded") && isRefund ? (
-              <form action={issueRmaRefundForm.bind(null, rma.id)}>
-                <button
-                  type="submit"
-                  className="h-9 max-md:min-h-11 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
-                >
+              <form action={issueRmaRefundForm.bind(null, rma.id)} className="w-full md:w-auto">
+                <button type="submit" className={rmaPrimaryAction}>
                   Issue refund
                 </button>
               </form>
             ) : null}
-          </div>
+          </PageActions>
 
           {next.includes("completed") && !isRefund ? (
             <form action={completeReturnForm.bind(null, rma.id)} className="space-y-2">
@@ -266,10 +269,7 @@ export default async function RmaDetailPage({
                   className="h-9 max-md:min-h-11 rounded-md border bg-background px-2 text-base md:text-sm"
                 />
               </div>
-              <button
-                type="submit"
-                className="h-9 max-md:min-h-11 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90"
-              >
+              <button type="submit" className={rmaPrimaryAction}>
                 Complete return
               </button>
             </form>
@@ -283,10 +283,7 @@ export default async function RmaDetailPage({
                 placeholder="Reason for rejection (shown to the customer)…"
                 className="w-full resize-none rounded-md border bg-background p-2 text-base md:text-sm"
               />
-              <button
-                type="submit"
-                className="h-9 max-md:min-h-11 rounded-md border border-destructive px-3 text-sm text-destructive hover:bg-destructive/10"
-              >
+              <button type="submit" className={rmaDestructiveAction}>
                 Reject return
               </button>
             </form>
@@ -332,10 +329,7 @@ export default async function RmaDetailPage({
             placeholder="Add an internal note visible only to staff…"
             className="w-full resize-none rounded-md border bg-background p-2 text-base md:text-sm"
           />
-          <button
-            type="submit"
-            className="h-9 max-md:min-h-11 rounded-md border bg-background px-3 text-sm hover:bg-accent"
-          >
+          <button type="submit" className={rmaSecondaryAction}>
             Save note
           </button>
         </form>
