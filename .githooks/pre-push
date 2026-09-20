@@ -16,13 +16,26 @@
 # build — production still will, because GitHub re-authors on squash-merge.
 set -uo pipefail
 
-# Every identity that maps to a member of the Vercel team `ivanyeors-projects`.
-# Add a line when someone joins the team — not before. An address that is not
-# on the team is exactly what this hook is here to catch, and widening the list
-# to silence it trades a loud local failure for a silent remote one.
+# One person, one GitHub account (`ivanyeors`), two addresses GitHub attributes
+# to it. Not two users.
+#
+# `ivanyeoart@gmail.com` is the one we author as — scripts/git-identity pins it
+# and every commit made here should carry it.
+#
+# The noreply is here only because GitHub writes it itself on every squash-merge
+# to main, and we do not get a say. Merging main into a branch and pushing —
+# which .github/workflows/pr-guard.yml tells you to do — puts those commits in
+# the push range. Dropping it would reject that push for commits nobody in this
+# repository authored.
+#
+# Nothing else belongs in this list. In particular a platform, mail or service
+# LOGIN address is not a git identity and must never be added, whoever it
+# belongs to: that mix-up is what blocked #198. Add a line only when a new
+# person actually joins the Vercel team, never to silence this hook — that
+# trades a loud local failure for the silent remote one it exists to prevent.
 ALLOWED=(
-  "47745593+ivanyeors@users.noreply.github.com"   # ivanyeors, via GitHub noreply
-  "ivanyeoart@gmail.com"                          # ivanyeors, Vercel account address
+  "ivanyeoart@gmail.com"                          # ivanyeors — the deploy identity
+  "47745593+ivanyeors@users.noreply.github.com"   # same account; GitHub's own merge stamp
 )
 
 zero='0000000000000000000000000000000000000000'
@@ -71,9 +84,10 @@ Fix, from the repo root:
       origin/main                   # re-author what is already committed
     git push
 
-If these commits belong to someone who should be on the team, add
-them in Vercel (Settings -> Members) and add their address to
-ALLOWED in .githooks/pre-push. See CLAUDE.md, "Commit author".
+If this is a login address you use elsewhere, it is not a git
+identity — run the script above rather than adding it to ALLOWED.
+Widen ALLOWED only when a new person joins the Vercel team
+(Settings -> Members). See CLAUDE.md, "Commit author".
 
 To push anyway and accept no preview build: git push --no-verify
 ---------------------------------------------------------------

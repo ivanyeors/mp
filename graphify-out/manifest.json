@@ -9486,9 +9486,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1789820113.9827003,
-    "seen": 1789820146.0488203,
-    "ast_hash": "c92d52be6fea0b9a40265b7643aa4ebd",
+    "mtime": 1789867596.5046098,
+    "seen": 1789867655.8610282,
+    "ast_hash": "260a5d4a87048b8e67c9a1a78339288b",
     "semantic_hash": ""
   },
   "scripts/graphify-digest.py": {
@@ -11820,15 +11820,15 @@
     "semantic_hash": ""
   },
   ".githooks/pre-push": {
-    "mtime": 1789819976.1761122,
-    "seen": 1789820146.0468206,
-    "ast_hash": "5ea85fa0c0a40a503b3a7f09d9c5fb3d",
+    "mtime": 1789867578.792609,
+    "seen": 1789867655.858641,
+    "ast_hash": "a6d980212dcd42ef5e9894d72d615f4e",
     "semantic_hash": ""
   },
   "scripts/git-identity": {
-    "mtime": 1789819976.1761122,
-    "seen": 1789820146.048237,
-    "ast_hash": "eb928476ccbc6b305c930a8759b8f99a",
+    "mtime": 1789867551.3966072,
+    "seen": 1789867655.8603988,
+    "ast_hash": "6060d6e051268c74cdd5fcce5e8d4aac",
     "semantic_hash": ""
   }
 }
