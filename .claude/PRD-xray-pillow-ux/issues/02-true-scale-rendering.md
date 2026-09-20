@@ -1,0 +1,40 @@
+# 02: True-scale rendering — pouches drawn at their footprint relative to the pillow Size, on every surface
+
+Tracker: #202 · Parent: #200
+
+**Type:** AFK
+**Blocked by:** 01 (the registry; can be built against placeholders and verified once the numbers land)
+**User stories:** 1, 2, 3, 4, 46, 47
+**Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
+
+## Goal
+
+One pouch in a cell is drawn as one pouch, with room around it. Five 6D L across a **Section** are drawn as five 6D L. The pillow **Size** sets the scale.
+
+## The gap, precisely
+
+- `lib/spatial-fillings/xray-layout.ts` `packRows`: "Pieces always fill their tract" — a piece's rect is the row split by weight, never its size.
+- `packPieces` auto-splits a layer into 1–2 rows to fit more pieces bigger; `packDepthStack` shifts each layer by a fixed `DEPTH_OFX = 7`, `DEPTH_OFY = 14`.
+- `layoutPlacements(placements, itemScales)` takes a relative weight map (`itemScaleMap` in `xray-pillow.tsx:78`).
+- The pillow **Size** is known on every host and passed to none of them: `size` in `mp-config-client.tsx`, `selectedSize` on the Configure card page, `assignSize` on **Result** detail.
+
+## Scope
+
+- **Scale:** `k = XRAY_VIEW.width / PILLOW_DIMENSIONS[size].widthMm`. The silhouette keeps filling the stage. `COL_X` derives from `sectionWidthsMm` when the registry carries them, else equal thirds as today.
+- **Layout:** `layoutPlacements(placements, ctx: { pillowSize, dimsOf })`. A piece's rect is `widthMm × k` by `lengthMm × k` (orientation applied). Pieces in a layer pack left→right in slot order and the group is centred in the cell; front↔back centred. Length is clamped to the cell height (a longer pouch spans it, no error). Depth offset per layer = thickest piece's `thicknessMm × k × FORESHORTEN`, clamped so the deepest slab stays in the cell. Compression is slice 03; here a layer wider than the cell is simply clamped to the cell width pro rata (so nothing overflows visually yet).
+- **Retire** `itemScales`, `itemScaleMap`, `sizeScale` and `SIZE_SCALES`. Move their tests.
+- **`XrayPillow` props:** `pillowSize` and `itemDims: ReadonlyMap<number, ResolvedDims>` replace `itemSizes`. `XrayEditor`'s `useItemMaps` derives `itemDims` from `items` via `resolveDims`; `mp-config-client` derives it in the same memo as `assistItemSubtypes` / `guestItemSubtypes`. Read-only mode (no `items`, no change handler) is unchanged.
+- **Hosts** pass the **Size**: configurator (assist and guest), Configure card page, **Result** assign, rules-engine preview. Fallback M with a `ponytail:` note if a host truly cannot know it.
+- **Neck support** uses `NECK_SUPPORT_DIMENSIONS`; the pill outline in `conform.ts` takes its rect from the layout and drops the `long / 2.2` cap.
+- **Mbolster** keeps today's packing in this slice (slice 09 gives it dimensions).
+
+## Acceptance criteria
+
+- [ ] vitest: one pouch renders at `widthMm × k` by `lengthMm × k` (±0.1) centred in its cell; two pouches that fit side by side keep their footprints and do not shrink each other; a pouch renders larger on XS than on XL in view units.
+- [ ] vitest: every existing layout invariant still holds — disjoint pieces, inside the frame, stable keys, deepest-first emission, identical output regardless of input order.
+- [ ] vitest: depth offset grows with the layer's thickness; five layers of the thickest filling still keep the deepest slab inside the cell.
+- [ ] `xray-pillow.check.ts` still passes: no `<rect`, no hard-coded paths, nested clipping intact.
+- [ ] The configurator (Staff and guest), Configure card page and **Result** assign all pass `pillowSize`, and `surface-parity.check.ts` asserts it.
+- [ ] `sizeScale` / `SIZE_SCALES` / `itemScaleMap` no longer exist; `grep` finds no caller.
+- [ ] Shopper preview gains no edit affordance (read-only detection unchanged).
+- [ ] `./scripts/graphify update .` run and committed.
