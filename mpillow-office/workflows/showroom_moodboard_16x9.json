@@ -3366,11 +3366,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\floorplan\\plan-p4-300dpi.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\floorplan\\plan-p4-300dpi.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "2.1  Floor plan (brief p.4, 300 dpi)"
     },
     {
@@ -3490,7 +3490,7 @@
         "Node name for S&R": "Load3D"
       },
       "widgets_values": [
-        "showroom_massing.glb",
+        "3d/showroom_massing.glb",
         {},
         1664,
         928
@@ -3695,11 +3695,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_ne.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_ne.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "2.4  Massing view -- iso_ne  (baked, render lock)"
     },
     {
@@ -3763,11 +3763,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_nw.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_nw.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "2.4  Massing view -- iso_nw  (baked, render lock)"
     },
     {
@@ -3831,11 +3831,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_low.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_low.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "2.4  Massing view -- iso_low  (baked, render lock)"
     },
     {
@@ -3899,11 +3899,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_long_sec.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_long_sec.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "2.4  Massing view -- long_sec  (baked, render lock)"
     },
     {
@@ -6213,11 +6213,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_ne_depth.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_ne_depth.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "5.5  Depth pass -- iso_ne"
     },
     {
@@ -6479,11 +6479,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_nw_depth.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_nw_depth.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "5.5  Depth pass -- iso_nw"
     },
     {
@@ -6745,11 +6745,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_low_depth.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_iso_low_depth.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "5.5  Depth pass -- iso_low"
     },
     {
@@ -7011,11 +7011,11 @@
       "properties": {
         "Node name for S&R": "VHS_LoadImagePath"
       },
-      "widgets_values": [
-        "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_long_sec_depth.png",
-        0,
-        0
-      ],
+      "widgets_values": {
+        "image": "D:\\Workfiles\\Repo\\mp\\mpillow-office\\ref-img\\massing\\massing_long_sec_depth.png",
+        "custom_width": 0,
+        "custom_height": 0
+      },
       "title": "5.5  Depth pass -- long_sec"
     },
     {

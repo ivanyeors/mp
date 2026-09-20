@@ -12,16 +12,19 @@ source/      Custom Pillow Showroom Design.pdf  -- the brief, Rev A, 10 pp
 ref-img/     everything ComfyUI reads, by absolute path
   floorplan/   brief-01..10.png (pages), plan-p4-300dpi.png (the plan)
   site/        the four site photos from page 3
-  massing/     baked cutaway + depth views of the 3D model (render_views.py)
+  massing/     baked cutaway, depth, ID and zoned views of the 3D model (render_views.py)
   moodboard/   01-entry-waiting/ .. 06-patio-wash-dry/   <- drop refs here
   furniture/   01-entry-waiting/ .. 06-patio-wash-dry/   <- drop refs here
   renders/     earlier outputs kept as references (v1-v3, old sheets)
 model/       showroom_massing.glb / .obj  -- the dimensioned 3D model
 tools/       build_massing.py, render_views.py, build_workflow.py
 workflows/   showroom_moodboard_16x9.json  -- the one workflow
+             showroom_zoned_16x9.json      -- the same, with colour-zoned areas
 renders/     outputs (== ComfyUI/output/mpillow-office/)
   moodboard/   one sheet per area + the two master sheets
   final/       one render per camera view, 16:9
+               <view>        section 4      <view>_cn        section 5
+               <view>_zoned  section 4 zoned <view>_cn_zoned section 5 zoned
 ```
 
 Nothing is copied between the repo and ComfyUI. References are read from
@@ -77,6 +80,34 @@ images go in, so materials and light come from the prompt while geometry and
 viewpoint come from the depth map. `strength` on each Apply ControlNet node
 is the knob (1.0 traces the model exactly, 0.6-0.8 lets detail deviate).
 
+## The zoned variant
+
+`showroom_zoned_16x9.json` is the same five-section graph built with
+`--zoned`. It answers "how does each area get its own look" with a colour
+**ID pass**: `render_views.py` paints every visible surface point with the
+flat colour of the area it sits in (by plan position: red entry, green
+fitting, blue inventory, yellow workshop, magenta service, cyan patio) and
+writes `massing_<view>_ids.png`, a tinted `massing_<view>_zoned.png`, and
+`zones.json` with the frame coverage of each area per camera.
+
+- **Section 4** receives the tinted view and a colour legend appended to the
+  prompt, so the edit model knows which zone is which. Output
+  `renders/final/<view>_zoned`.
+- **Section 5** does regional prompting. `ImageColorToMask` recovers one
+  mask per area from the ID pass; each area prompt from section 1 is
+  encoded on its own and confined to its mask with `ConditioningSetMask`;
+  all sit on top of the whole-scene prompt (full-frame mask, strength 0.5)
+  and are combined before the depth ControlNet. The sampler evaluates the
+  model once per conditioning entry and blends by mask, so a view costs
+  about seven times the plain section 5 sampling. Output
+  `renders/final/<view>_cn_zoned`.
+
+Only areas covering at least 1% of a camera's frame are wired into that
+view. The InstantX Union has no segmentation mode (canny, soft edge, depth,
+pose only), which is why the ID pass drives masks rather than the
+ControlNet itself. Sections 1 to 3 are identical to the plain workflow, so
+their results are shared through the ComfyUI cache.
+
 ## Why the 3D step is computed, not generated
 
 Image-to-3D models (TRELLIS.2, Hunyuan3D, Tripo, Meshy, Rodin) rebuild a
@@ -95,6 +126,7 @@ is right-handed for Y-up viewers.
 python tools/build_massing.py    # -> model/showroom_massing.glb (+ ComfyUI/input/3d/)
 python tools/render_views.py     # -> ref-img/massing/massing_<view>[_depth].png
 python tools/build_workflow.py   # -> workflows/showroom_moodboard_16x9.json (+ sidebar)
+python tools/build_workflow.py --zoned   # -> workflows/showroom_zoned_16x9.json (+ sidebar)
 ```
 
 Nothing is hand-edited JSON. Change a prompt, a folder, a dimension or a

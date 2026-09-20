@@ -32,17 +32,33 @@ ComfyUI/output/mpillow-office (ComfyUI refuses to read or write through a link
 that resolves outside its own input/output folders, so the link points from
 the repo into ComfyUI, not the other way).
 
-    python tools/build_workflow.py
+    python tools/build_workflow.py            # -> workflows/showroom_moodboard_16x9.json
+    python tools/build_workflow.py --zoned    # -> workflows/showroom_zoned_16x9.json
+
+--zoned writes a second, otherwise identical workflow that uses the colour
+ID pass baked by render_views.py ("rotoscoped" areas, one flat colour each):
+
+  section 4   the massing view carries the area tints and the prompt gets a
+              colour legend, so Qwen-Image-Edit knows which zone is which.
+  section 5   regional prompting: the ID pass is split into one mask per area
+              (ImageColorToMask), each area prompt from section 1 is encoded on
+              its own and confined to its mask (ConditioningSetMask), all
+              combined with the whole-scene prompt underneath, then the depth
+              ControlNet and the sampler as before. Only areas visible in a
+              camera (zones.json) are wired into that view.
 """
 
 import json
 import os
 import shutil
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 EDIT_TPL = os.path.join(HERE, "_edit2509_template.json")
-OUT = os.path.join(ROOT, "workflows", "showroom_moodboard_16x9.json")
+ZONED = "--zoned" in sys.argv
+OUT = os.path.join(ROOT, "workflows",
+                   "showroom_zoned_16x9.json" if ZONED else "showroom_moodboard_16x9.json")
 SIDEBAR = r"D:\AI\ComfyUI\user\default\workflows\mpillow-office"
 
 REF_ABS = os.path.join(ROOT, "ref-img")          # for the folder loaders
@@ -51,7 +67,7 @@ OUT_PREFIX = "mpillow-office"                   # output/mpillow-office == <repo
 W, H = 1664, 928                    # Qwen-Image native 16:9
 TILE_W, TILE_H = 832, 624           # contact-sheet tiles, 4:3
 MAX_TILES = 6
-MODEL_FILE = "showroom_massing.glb"
+MODEL_FILE = "3d/showroom_massing.glb"      # Load3D lists files relative to ComfyUI/input
 MUTED = 2                           # 0 = active, 2 = muted, 4 = bypassed
 TARGET = (8.88, 1.64, 3.95)         # model centre, from build_massing.py
 
@@ -223,6 +239,53 @@ NEGATIVE = (
 )
 AREA_COLOR = "#3a5a4c"
 
+# --------------------------------------------------------------------------
+# Zoned variant (--zoned). One colour per area, in AREAS order, identical to
+# render_views.ZONES. Section 5 masks the ID pass per colour so each area
+# prompt only conditions its own pixels; section 4 gets the tinted view + LEGEND.
+# --------------------------------------------------------------------------
+ZONES = [("red", 0xFF0000), ("green", 0x00FF00), ("blue", 0x0000FF),
+         ("yellow", 0xFFFF00), ("magenta", 0xFF00FF), ("cyan", 0x00FFFF)]
+ZONE_MIN_COVER = 0.01      # wire an area into a view only if it covers >= 1% of the frame
+ZONE_STRENGTH = 1.0        # ConditioningSetMask strength of an area prompt inside its zone
+GLOBAL_STRENGTH = 0.5      # whole-scene prompt underneath; weights are normalised, so
+                           # inside a zone the area prompt counts 2:1 against it
+LEGEND = (
+    "The colour tints on the picture are zone markers, not materials: "
+    + "; ".join("%s tint = %s" % (ZONES[i][0], AREAS[i][1]) for i in range(len(AREAS)))
+    + ". Render each tinted zone as that area, exactly as described above, and "
+    "remove every tint completely: there is no red, green, blue, yellow, magenta "
+    "or cyan colour cast anywhere in the finished photograph."
+)
+ZONE_NOTE = (
+    "## Zoned variant\n\n"
+    "`render_views.py` bakes an **ID pass** per camera: every visible surface\n"
+    "point is painted with the flat colour of the area it sits in (by plan\n"
+    "position). `ImageColorToMask` turns each colour into a mask; the area\n"
+    "prompt from section 1 is encoded on its own and `ConditioningSetMask`\n"
+    "confines it to that mask. All six sit on top of the whole-scene prompt\n"
+    "(masked to the full frame at `GLOBAL_STRENGTH`), are combined, and go\n"
+    "through the depth ControlNet and the sampler as in the plain workflow.\n\n"
+    "The sampler runs the model once per conditioning entry and blends the\n"
+    "results by mask, so a view with six areas costs about 7x the plain\n"
+    "section 5 sampling time (still 4 steps).\n\n"
+    "Knobs:\n"
+    "- `strength` on the whole-scene mask: lower = area prompts dominate more.\n"
+    "- `strength` on an area mask: raise for a stubborn area, or 0 to drop it.\n"
+    "- colours: red entry, green fitting, blue inventory, yellow workshop,\n"
+    "  magenta service, cyan patio (`render_views.ZONES`).\n\n"
+    "Outputs go to `renders/final/<view>_cn_zoned`; section 4 to\n"
+    "`renders/final/<view>_zoned`, so the plain workflow's files stay put."
+)
+ZONE_README = (
+    "\n\n---\n\n**ZONED VARIANT.** This copy of the workflow uses the colour ID pass\n"
+    "(`ref-img/massing/massing_<view>_ids.png`): section 4 receives the tinted\n"
+    "massing view plus a colour legend in the prompt; section 5 runs regional\n"
+    "prompting, each area prompt confined to its own zone mask on top of the\n"
+    "whole-scene prompt, then the depth ControlNet. Outputs carry a `_zoned`\n"
+    "suffix. Built with `python tools/build_workflow.py --zoned`."
+)
+
 
 def node(nid, ntype, pos, size, widgets=None, inputs=None, outputs=None,
          props=None, title=None, mode=0, color=None):
@@ -260,7 +323,11 @@ def load_image(nid, pos, path, title, size=(420, 420)):
     Core LoadImage only accepts files physically inside ComfyUI/input, so the
     repo's ref-img/ is read by absolute path instead. Uses ids nid and nid+400.
     """
-    ld = node(nid, "VHS_LoadImagePath", pos, (size[0], 130), [path, 0, 0],
+    # VHS serialises widgets_values as a name->value dict (not the usual list)
+    # and flags the node red ("Failed to restore node") if it gets a list whose
+    # length differs from its widget count, so hand it its own format.
+    ld = node(nid, "VHS_LoadImagePath", pos, (size[0], 130),
+              {"image": path, "custom_width": 0, "custom_height": 0},
               outputs=[out("IMAGE", "IMAGE"), out("mask", "MASK")], title=title)
     pv = node(nid + 400, "PreviewImage", (pos[0], pos[1] + 150), (size[0], size[1] - 150), [],
               inputs=[inp("images", "IMAGE")], title="preview")
@@ -341,7 +408,9 @@ def main():
                        "bounding": [x, y, w, h], "color": color,
                        "font_size": font, "flags": {}})
 
-    nodes.append(node(1, "MarkdownNote", (-3040, -1700), (2100, 520), [README], title="READ ME"))
+    nodes.append(node(1, "MarkdownNote", (-3040, -1700), (2100, 520),
+                      [README + (ZONE_README if ZONED else "")],
+                      title="READ ME" + ("  --  ZONED VARIANT" if ZONED else "")))
 
     # ======================= SECTION 1: MOODBOARDS ==========================
     S1X, S1Y, AREA_H = -3040, -1080, 800
@@ -424,8 +493,9 @@ def main():
         VIEW_NODE[cam] = nid
         col, row = k % 2, k // 2
         add_image(nid, (S2X + 20 + col * 560, S2Y + 1220 + row * 400),
-                  "massing/massing_%s.png" % cam,
-                  "2.4  Massing view -- %s  (baked, render lock)" % cam, (520, 360))
+                  "massing/massing_%s%s.png" % (cam, "_zoned" if ZONED else ""),
+                  "2.4  Massing view -- %s  (baked, render lock%s)" % (cam, ", area tints" if ZONED else ""),
+                  (520, 360))
     group("SECTION 2  --  FLOOR PLAN  ->  3D MASSING  ->  VIEWS",
           S2X - 20, S2Y - 20, 1180, 2080, SECTION_COLORS["s2"])
 
@@ -456,8 +526,16 @@ def main():
     nodes.append(node(56, "PreviewAny", (CX, S3Y + 1280), (420, 420), [],
                       inputs=[inp("source", "*")], title="3.4  FINAL PROMPT  (what the renders receive)"))
     link(FINAL_PROMPT, 0, 56, 0, "*")
+    RENDER_PROMPT, s3_h = FINAL_PROMPT, 1800
+    if ZONED:
+        nodes.append(text(57, (S3X + 20, S3Y + 1280), (480, 300), LEGEND,
+                          "3.5  COLOUR LEGEND  (zoned views; section 4 only)"))
+        nodes.append(concat(58, (CX, S3Y + 1740), "", " ", "final prompt + legend  ->  section 4"))
+        link(FINAL_PROMPT, 0, 58, 0, "STRING")
+        link(57, 0, 58, 1, "STRING")
+        RENDER_PROMPT, s3_h = 58, 1920
     group("SECTION 3  --  PROMPTS  ->  ONE FINAL RENDER PROMPT",
-          S3X - 20, S3Y - 20, 1060, 1800, SECTION_COLORS["s3"])
+          S3X - 20, S3Y - 20, 1060, s3_h, SECTION_COLORS["s3"])
 
     # ======================= SECTION 4: RENDERS =============================
     S4X, S4Y = 1040, -1080
@@ -490,13 +568,15 @@ def main():
     for j, cam in enumerate(VIEWS):
         b = 200 + j * 10
         y = S4Y + 60 + j * 700
-        nodes.append(edit_node(b, (S4X + 620, y), "4.3  RENDER -- %s  (Image Edit, Qwen 2509)" % cam))
-        nodes.append(save(b + 1, (S4X + 620, y + 300), "%s/final/%s" % (OUT_PREFIX, cam),
-                          "4.4  renders/final/%s" % cam, (520, 360)))
+        sfx = "_zoned" if ZONED else ""
+        nodes.append(edit_node(b, (S4X + 620, y), "4.3  RENDER -- %s  (Image Edit, Qwen 2509%s)"
+                               % (cam, ", tinted view + legend" if ZONED else "")))
+        nodes.append(save(b + 1, (S4X + 620, y + 300), "%s/final/%s%s" % (OUT_PREFIX, cam, sfx),
+                          "4.4  renders/final/%s%s" % (cam, sfx), (520, 360)))
         link(VIEW_NODE[cam], 0, b, 0, "IMAGE")      # massing view      -> image
         link(MASTER_MOOD, 0, b, 1, "IMAGE")         # master moodboard  -> image2
         link(MASTER_FURN, 0, b, 2, "IMAGE")         # master furniture  -> image3
-        link(FINAL_PROMPT, 0, b, 3, "STRING")       # final prompt      -> prompt
+        link(RENDER_PROMPT, 0, b, 3, "STRING")      # final prompt (+ legend) -> prompt
         link(b, 0, b + 1, 0, "IMAGE")
         group("4.3  %s" % cam.upper(), S4X + 600, y - 50, 580, 660, "#5a3f6a", 20)
 
@@ -544,31 +624,92 @@ def main():
     link(303, 0, 307, 0, "CLIP")
     link(FINAL_PROMPT, 0, 306, 1, "STRING")
 
+    ROW = 760 if ZONED else 700
+    s5_h = 60 + len(VIEWS) * ROW
+    if ZONED:
+        cover_path = os.path.join(REF_ABS, "massing", "zones.json")
+        if not os.path.exists(cover_path):
+            raise SystemExit("missing %s -- run tools/render_views.py first" % cover_path)
+        with open(cover_path, encoding="utf-8") as f:
+            COVER = json.load(f)
+        # Shared: one text encode per area (text <- the section 1 area prompt)
+        # and the whole-scene prompt masked to the full frame underneath.
+        for k, (slug, label, _) in enumerate(AREAS):
+            nodes.append(node(360 + k, "CLIPTextEncode", (LX, S5Y + 1820 + k * 150), (420, 120), [""],
+                              inputs=[inp("clip", "CLIP"), inp("text", "STRING", widget=True)],
+                              outputs=[out("CONDITIONING", "CONDITIONING")],
+                              title="5.9  AREA %d (%s)  <- section 1 prompt" % (k + 1, ZONES[k][0])))
+            link(303, 0, 360 + k, 0, "CLIP")
+            link(100 + k * 10 + 6, 0, 360 + k, 1, "STRING")
+        nodes.append(node(366, "SolidMask", (LX, S5Y + 2740), (420, 110), [1.0, W, H],
+                          outputs=[out("MASK", "MASK")], title="5.9  Whole frame"))
+        nodes.append(node(367, "ConditioningSetMask", (LX, S5Y + 2890), (420, 110),
+                          [GLOBAL_STRENGTH, "default"],
+                          inputs=[inp("conditioning", "CONDITIONING"), inp("mask", "MASK")],
+                          outputs=[out("CONDITIONING", "CONDITIONING")],
+                          title="5.9  Whole-scene prompt underneath  (strength)"))
+        link(306, 0, 367, 0, "CONDITIONING")
+        link(366, 0, 367, 1, "MASK")
+        nodes.append(node(368, "MarkdownNote", (LX, S5Y + 3040), (420, 440), [ZONE_NOTE],
+                          title="5.9  Zoning  (how and why)"))
+        s5_h = max(s5_h, 3540)
+
     for j, cam in enumerate(VIEWS):
         b = 310 + j * 10
-        y = S5Y + 60 + j * 700
+        y = S5Y + 60 + j * ROW
         VX = S5X + 500
         add_image(b, (VX, y), "massing/massing_%s_depth.png" % cam,
                   "5.5  Depth pass -- %s" % cam, (400, 330))
-        nodes.append(node(b + 1, "ControlNetApplyAdvanced", (VX + 440, y), (340, 170),
+        positive, AX = 306, VX + 440
+        if ZONED:
+            z = 500 + j * 40
+            add_image(z, (VX, y + 380), "massing/massing_%s_ids.png" % cam,
+                      "5.9  ID pass -- %s  (one colour per area)" % cam, (400, 330))
+            visible = [k for k, (slug, _, _) in enumerate(AREAS)
+                       if COVER.get(cam, {}).get(slug, 0) >= ZONE_MIN_COVER]
+            prev = 367
+            for p, k in enumerate(visible):
+                cname, cval = ZONES[k]
+                ry = y + p * 115
+                nodes.append(node(z + 1 + p, "ImageColorToMask", (VX + 440, ry), (280, 60), [cval],
+                                  inputs=[inp("image", "IMAGE")], outputs=[out("MASK", "MASK")],
+                                  title="%s  =  area %d" % (cname, k + 1)))
+                nodes.append(node(z + 7 + p, "ConditioningSetMask", (VX + 760, ry), (300, 110),
+                                  [ZONE_STRENGTH, "default"],
+                                  inputs=[inp("conditioning", "CONDITIONING"), inp("mask", "MASK")],
+                                  outputs=[out("CONDITIONING", "CONDITIONING")],
+                                  title="area %d prompt, only in its zone" % (k + 1)))
+                nodes.append(node(z + 13 + p, "ConditioningCombine", (VX + 1100, ry), (240, 60), [],
+                                  inputs=[inp("conditioning_1", "CONDITIONING"),
+                                          inp("conditioning_2", "CONDITIONING")],
+                                  outputs=[out("CONDITIONING", "CONDITIONING")], title="+"))
+                link(z, 0, z + 1 + p, 0, "IMAGE")
+                link(360 + k, 0, z + 7 + p, 0, "CONDITIONING")
+                link(z + 1 + p, 0, z + 7 + p, 1, "MASK")
+                link(prev, 0, z + 13 + p, 0, "CONDITIONING")
+                link(z + 7 + p, 0, z + 13 + p, 1, "CONDITIONING")
+                prev = z + 13 + p
+            positive, AX = prev, VX + 1380
+        nodes.append(node(b + 1, "ControlNetApplyAdvanced", (AX, y), (340, 170),
                           [CN_STRENGTH, 0.0, 1.0],
                           inputs=[inp("positive", "CONDITIONING"), inp("negative", "CONDITIONING"),
                                   inp("control_net", "CONTROL_NET"), inp("image", "IMAGE"),
                                   inp("vae", "VAE", optional=True)],
                           outputs=[out("positive", "CONDITIONING"), out("negative", "CONDITIONING")],
                           title="5.6  Apply ControlNet  (strength)"))
-        nodes.append(node(b + 2, "KSampler", (VX + 440, y + 210), (340, 270),
+        nodes.append(node(b + 2, "KSampler", (AX, y + 210), (340, 270),
                           [CN_SEED + j, "fixed", CN_STEPS, CN_CFG, "euler", "simple", 1.0],
                           inputs=[inp("model", "MODEL"), inp("positive", "CONDITIONING"),
                                   inp("negative", "CONDITIONING"), inp("latent_image", "LATENT")],
                           outputs=[out("LATENT", "LATENT")], title="5.7  KSampler"))
-        nodes.append(node(b + 3, "VAEDecode", (VX + 440, y + 520), (340, 50), [],
+        nodes.append(node(b + 3, "VAEDecode", (AX, y + 520), (340, 50), [],
                           inputs=[inp("samples", "LATENT"), inp("vae", "VAE")],
                           outputs=[out("IMAGE", "IMAGE")], title="VAE Decode"))
-        nodes.append(save(b + 4, (VX + 820, y), "%s/final/%s_cn" % (OUT_PREFIX, cam),
-                          "5.8  renders/final/%s_cn" % cam, (520, 360)))
+        sfx = "_cn_zoned" if ZONED else "_cn"
+        nodes.append(save(b + 4, (AX + 380, y), "%s/final/%s%s" % (OUT_PREFIX, cam, sfx),
+                          "5.8  renders/final/%s%s" % (cam, sfx), (520, 360)))
 
-        link(306, 0, b + 1, 0, "CONDITIONING")
+        link(positive, 0, b + 1, 0, "CONDITIONING")
         link(307, 0, b + 1, 1, "CONDITIONING")
         link(305, 0, b + 1, 2, "CONTROL_NET")
         link(b, 0, b + 1, 3, "IMAGE")               # depth pass -> control image
@@ -580,10 +721,12 @@ def main():
         link(b + 2, 0, b + 3, 0, "LATENT")
         link(304, 0, b + 3, 1, "VAE")
         link(b + 3, 0, b + 4, 0, "IMAGE")
-        group("5.5  %s  (depth-locked)" % cam.upper(), VX - 20, y - 50, 1400, 660, "#6a3f4a", 20)
+        group("5.5  %s  (depth-locked%s)" % (cam.upper(), ", zoned prompts" if ZONED else ""),
+              VX - 20, y - 50, AX - VX + 960, ROW - 40, "#6a3f4a", 20)
 
-    group("SECTION 5  --  CONTROLNET RENDERS  (Qwen-Image + InstantX Union on the depth pass)",
-          S5X - 20, S5Y - 20, 1920, 60 + len(VIEWS) * 700, SECTION_COLORS["s5"])
+    group("SECTION 5  --  CONTROLNET RENDERS  (Qwen-Image + InstantX Union on the depth pass%s)"
+          % (" + regional prompts" if ZONED else ""),
+          S5X - 20, S5Y - 20, AX - S5X + 980, s5_h, SECTION_COLORS["s5"])
 
     # ---------------- resolve links onto slots --------------------------
     by_id = {n["id"]: n for n in nodes}
@@ -602,7 +745,7 @@ def main():
         n["order"] = i
 
     graph = {
-        "id": "mpillow-showroom",
+        "id": "mpillow-showroom-zoned" if ZONED else "mpillow-showroom",
         "revision": 0,
         "last_node_id": max(n["id"] for n in nodes),
         "last_link_id": lid[0],

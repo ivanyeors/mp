@@ -10,12 +10,26 @@ Outputs go to ref-img/massing/. The workflow reads them by absolute path:
 the beauty passes feed section 4 (image edit), the depth passes (near = white)
 feed section 5 (ControlNet Union, depth).
 
+Two more passes per camera serve the zoned variant of the workflow
+(build_workflow.py --zoned):
+
+  massing_<view>_ids.png    ID pass: every visible surface point painted with
+                            the flat colour of the showroom area it sits in
+                            (by plan position, see ZONES). Exact colours, no
+                            shading, no antialiasing, so ImageColorToMask in
+                            ComfyUI recovers each area as a clean mask.
+  massing_<view>_zoned.png  the beauty pass tinted with the same colours, for
+                            Qwen-Image-Edit with a colour legend in the prompt.
+  zones.json                per view, the fraction of the frame each area
+                            covers, so the builder only wires visible areas.
+
     python tools/render_views.py
     python tools/render_views.py --list
     python tools/render_views.py iso_ne
 """
 
 import argparse
+import json
 import math
 import os
 
@@ -32,6 +46,27 @@ W, H = 1664, 928                  # Qwen-Image native 16:9
 LIGHT = np.array([0.45, 0.82, -0.35])   # from the north-east, above (Z is south)
 AMBIENT = 0.42
 BG = (138, 141, 146)
+ZONE_TINT = 0.40                  # how much ID colour goes into the zoned beauty pass
+
+# Plan constants, from build_massing.py (plan z is measured from the south wall).
+PLAN_W = 7.90
+X_PANTRY = 10.45                  # service band starts
+X_PATIO = 13.20                   # patio starts
+Z_INV_TOP = 2.08                  # south strip: rack, aisle, inventory wall, sign band
+Z_BENCH_TOP = 2.90                # workbench band
+X_ENTRY = 4.40                    # west end: door, seats, rug, feature wall
+
+# Area slug (matches build_workflow.AREAS), legend colour name, RGB.
+# Pure primaries/secondaries: far apart for exact-colour masking, nameable in
+# a prompt legend.
+ZONES = [
+    ("01-entry-waiting",     "red",     (255, 0, 0)),
+    ("02-fitting-bays",      "green",   (0, 255, 0)),
+    ("03-inventory-wall",    "blue",    (0, 0, 255)),
+    ("04-workshop",          "yellow",  (255, 255, 0)),
+    ("05-service-pantry-wc", "magenta", (255, 0, 255)),
+    ("06-patio-wash-dry",    "cyan",    (0, 255, 255)),
+]
 
 # Parts dropped per camera so the view reads as an architectural cutaway --
 # without this the wall nearest the camera hides the whole interior.
@@ -92,10 +127,14 @@ def rasterize(verts, faces, colors, yaw, pitch, margin):
     rgb = np.zeros((H, W, 3), np.float32)
     rgb[:] = np.array(BG, np.float32) / 255.0
     zbuf = np.full((H, W), np.inf, np.float32)
+    wx = np.full((H, W), np.nan, np.float32)      # world x of the visible point
+    wz = np.full((H, W), np.nan, np.float32)      # world z (GLB, mirrored) of it
 
     px = sx[faces]          # (M,3)
     py = sy[faces]
     pz = z[faces]
+    vx = verts[:, 0][faces]  # world coords, for the ID pass
+    vz = verts[:, 2][faces]
 
     order = np.argsort(-pz.mean(axis=1))    # far to near, helps the z test
     for fi in order:
@@ -132,8 +171,10 @@ def rasterize(verts, faces, colors, yaw, pitch, margin):
         sub_z[hit] = depth[hit]
         col = colors[fi][:3].astype(np.float32) / 255.0 * shade[fi]
         rgb[y0:y1, x0:x1][hit] = col
+        wx[y0:y1, x0:x1][hit] = (w0 * vx[fi, 0] + w1 * vx[fi, 1] + w2 * vx[fi, 2])[hit]
+        wz[y0:y1, x0:x1][hit] = (w0 * vz[fi, 0] + w1 * vz[fi, 1] + w2 * vz[fi, 2])[hit]
 
-    return rgb, zbuf
+    return rgb, zbuf, wx, wz
 
 
 def depth_image(zbuf):
@@ -145,6 +186,38 @@ def depth_image(zbuf):
         rng = max(hi - lo, 1e-6)
         out[finite] = 1.0 - (zbuf[finite] - lo) / rng     # near = white
     return (np.clip(out, 0, 1) * 255).astype(np.uint8)
+
+
+def zone_ids(wx, wz):
+    """Area index per pixel (-1 = no geometry) from the plan position of the
+    visible surface point. The GLB is mirrored on export (Z south), so plan z
+    from the south wall is PLAN_W - z."""
+    valid = np.isfinite(wx)
+    x = np.where(valid, wx, 0.0)
+    z = PLAN_W - np.where(valid, wz, 0.0)
+    rules = [
+        (x >= X_PATIO, 5),                          # patio
+        ((x >= X_PANTRY) & (z < 1.0), 3),           # sewing table, workshop prompt
+        (x >= X_PANTRY, 4),                         # service band
+        (z < Z_INV_TOP, 2),                         # south strip
+        (z < Z_BENCH_TOP, 3),                       # workbench
+        (x < X_ENTRY, 0),                           # west end
+    ]
+    ids = np.select([c for c, _ in rules], [i for _, i in rules], default=1)  # else fitting
+    return np.where(valid, ids, -1)
+
+
+def id_image(ids):
+    out = np.zeros(ids.shape + (3,), np.uint8)
+    for i, (_, _, rgb) in enumerate(ZONES):
+        out[ids == i] = rgb
+    return out
+
+
+def zoned_image(rgb, ids):
+    tint = id_image(ids).astype(np.float32) / 255.0
+    zoned = np.where((ids >= 0)[..., None], rgb * (1 - ZONE_TINT) + tint * ZONE_TINT, rgb)
+    return (np.clip(zoned, 0, 1) * 255).astype(np.uint8)
 
 
 def main():
@@ -161,6 +234,11 @@ def main():
     scene = trimesh.load(MODEL)
     os.makedirs(VIEWS, exist_ok=True)
     todo = {args.camera: CAMERAS[args.camera]} if args.camera else CAMERAS
+    zones_path = os.path.join(VIEWS, "zones.json")
+    coverage = {}
+    if os.path.exists(zones_path):
+        with open(zones_path, encoding="utf-8") as f:
+            coverage = json.load(f)
 
     for name, (yaw, pitch, margin, cull) in todo.items():
         keep = [g for gname, g in scene.geometry.items() if gname not in cull]
@@ -169,7 +247,7 @@ def main():
         faces = np.asarray(mesh.faces, np.int64)
         colors = np.asarray(mesh.visual.face_colors, np.uint8)
 
-        rgb, zbuf = rasterize(verts, faces, colors, yaw, pitch, margin)
+        rgb, zbuf, wx, wz = rasterize(verts, faces, colors, yaw, pitch, margin)
 
         beauty = os.path.join(VIEWS, "massing_%s.png" % name)
         Image.fromarray((np.clip(rgb, 0, 1) * 255).astype(np.uint8)).save(beauty)
@@ -177,8 +255,18 @@ def main():
         depth = os.path.join(VIEWS, "massing_%s_depth.png" % name)
         Image.fromarray(depth_image(zbuf)).save(depth)
 
-        print("  %-10s -> %s  (+ depth)" % (name, os.path.basename(beauty)))
+        ids = zone_ids(wx, wz)
+        Image.fromarray(id_image(ids)).save(os.path.join(VIEWS, "massing_%s_ids.png" % name))
+        Image.fromarray(zoned_image(rgb, ids)).save(os.path.join(VIEWS, "massing_%s_zoned.png" % name))
+        coverage[name] = {slug: round(float((ids == i).mean()), 4)
+                          for i, (slug, _, _) in enumerate(ZONES)}
 
+        print("  %-10s -> %s  (+ depth, ids, zoned)  cover: %s" % (
+            name, os.path.basename(beauty),
+            " ".join("%s=%.0f%%" % (slug[:2], v * 100) for slug, v in coverage[name].items())))
+
+    with open(zones_path, "w", encoding="utf-8") as f:
+        json.dump(coverage, f, indent=2)
     print("wrote %s" % VIEWS)
 
 

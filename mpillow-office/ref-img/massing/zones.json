@@ -1,0 +1,42 @@
+{
+  "iso_ne": {
+    "01-entry-waiting": 0.0756,
+    "02-fitting-bays": 0.0424,
+    "03-inventory-wall": 0.0971,
+    "04-workshop": 0.0453,
+    "05-service-pantry-wc": 0.0341,
+    "06-patio-wash-dry": 0.1416
+  },
+  "iso_nw": {
+    "01-entry-waiting": 0.0614,
+    "02-fitting-bays": 0.0605,
+    "03-inventory-wall": 0.1175,
+    "04-workshop": 0.0654,
+    "05-service-pantry-wc": 0.0857,
+    "06-patio-wash-dry": 0.0735
+  },
+  "iso_low": {
+    "01-entry-waiting": 0.0784,
+    "02-fitting-bays": 0.0449,
+    "03-inventory-wall": 0.1099,
+    "04-workshop": 0.0436,
+    "05-service-pantry-wc": 0.041,
+    "06-patio-wash-dry": 0.1534
+  },
+  "plan": {
+    "01-entry-waiting": 0.1255,
+    "02-fitting-bays": 0.1665,
+    "03-inventory-wall": 0.1269,
+    "04-workshop": 0.0605,
+    "05-service-pantry-wc": 0.1035,
+    "06-patio-wash-dry": 0.2044
+  },
+  "long_sec": {
+    "01-entry-waiting": 0.0435,
+    "02-fitting-bays": 0.0367,
+    "03-inventory-wall": 0.1303,
+    "04-workshop": 0.0616,
+    "05-service-pantry-wc": 0.0529,
+    "06-patio-wash-dry": 0.094
+  }
+}
