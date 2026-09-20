@@ -3,7 +3,7 @@
 Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Each slice is a thin, demoable path through the pure model, the renderer and the three surfaces, and leaves a vitest or `.check.ts` behind.
 
 - **Triage label:** `needs-triage` (all slices)
-- **Tracker:** [#200](https://github.com/ivanyeors/mp/issues/200) is the PRD issue. Each slice is a sub-issue (#201–#210), and Project **mp** auto-added them as `Todo`.
+- **Tracker:** [#200](https://github.com/ivanyeors/mp/issues/200) is the PRD issue. Each slice is a sub-issue (#201–#210). Project **mp**: add #200 to the board by hand and its sub-issues follow automatically (the sub-issue workflow that put #167–#183 on the board two seconds after #166 was added).
 - **Start here:** slice 01 needs Ivan's measurements; slice 02 can be built against placeholders in parallel and verified once they land.
 
 ## Slices

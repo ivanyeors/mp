@@ -29,7 +29,7 @@ One pure module holds every physical measurement the x-ray needs, in millimetres
 - **`lib/spatial-fillings/dimensions.check.ts`**: every descriptor the seeds and live inventory use resolves as `measured`; an unknown one resolves as `fallback`; the placeholder flag is off.
 - **Product Visualize** (Settings → Products → Product Visualize, the filling colour table): a read-only **Dimensions** column, `180 × 120 × 45 mm`, or `— (fallback)` when unresolved. No editing.
 - **`CONTEXT.md`**: **Product dimensions**, **Loft**, **Fit status**, **Cross-section view**, **Nudge**; amend **Filling visual** (scale from the registry).
-- **`docs/adr/0019-physical-fit-model.md`**: measurements in code (mm); fit derived on read, never persisted; pro-rata compression; advisory-not-blocking; DB-backed dimensions considered and rejected for v1, with the churn condition that reopens it.
+- **`docs/adr/0019-physical-fit-model.md`** (0019 was the next free number at drafting; the open PayNow and Counter Payments PRDs also plan ADRs, so take the next free number when this lands): measurements in code (mm); fit derived on read, never persisted; pro-rata compression; advisory-not-blocking; DB-backed dimensions considered and rejected for v1, with the churn condition that reopens it.
 - **Ivan:** fill the four intake tables in the PRD (pillow, pouches, Neck support, Mbolster). The slice records them with the date measured.
 
 ## Acceptance criteria
