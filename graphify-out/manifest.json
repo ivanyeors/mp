@@ -11886,15 +11886,87 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
-    "mtime": 1789956304.1947224,
-    "seen": 1789956339.0605636,
-    "ast_hash": "ec2f50e1e25699aed363a9ce940a7047",
+    "mtime": 1789995159.5138686,
+    "seen": 1789995202.7076125,
+    "ast_hash": "09a9447a5e86189a32ff628876180f3f",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
     "mtime": 1789956304.1940267,
     "seen": 1789956339.060561,
     "ast_hash": "5d05929c512696af6db64990d2300251",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-gusset-profile.json": {
+    "mtime": 1789995124.1277237,
+    "seen": 1789995202.703506,
+    "ast_hash": "825c593d73424f9f594193d17c34ec93",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-l.json": {
+    "mtime": 1789995124.0582006,
+    "seen": 1789995202.7035108,
+    "ast_hash": "8e62f3cf8ed2b44c0589d3bde4a112f8",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-m-bottom.json": {
+    "mtime": 1789995124.1178677,
+    "seen": 1789995202.7035134,
+    "ast_hash": "9b4ceb781cad52c81b591de022d9dfbb",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-s.json": {
+    "mtime": 1789995124.0287132,
+    "seen": 1789995202.7035167,
+    "ast_hash": "6f8904c7d2749e1f5f06e0fe76ce0611",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-xl.json": {
+    "mtime": 1789995124.087602,
+    "seen": 1789995202.7035186,
+    "ast_hash": "ba20cbb1ddc3b294b57dac3375c16a7d",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-xs.json": {
+    "mtime": 1789995123.9964924,
+    "seen": 1789995202.7035203,
+    "ast_hash": "2ada083f57648e6ef6b4bb7f8099c3d4",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-plan-metrics.json": {
+    "mtime": 1789995124.1252258,
+    "seen": 1789995202.7035224,
+    "ast_hash": "89716f0517319ffe60832374344fac0e",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-l.svg": {
+    "mtime": 1789995124.036433,
+    "seen": 1789995202.7079382,
+    "ast_hash": "b29eab878594a4c2964b555043082959",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-m-bottom.svg": {
+    "mtime": 1789995124.0954,
+    "seen": 1789995202.70794,
+    "ast_hash": "66fd4bb32008b5feb39a541c22b0c5a2",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-s.svg": {
+    "mtime": 1789995124.005808,
+    "seen": 1789995202.7079415,
+    "ast_hash": "bbaf6ae2afcdb742caa06bfcf4afb580",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-xl.svg": {
+    "mtime": 1789995124.0652735,
+    "seen": 1789995202.7079432,
+    "ast_hash": "74166e8e2af3ec5eb3b3e8c701fa2e3a",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/case-outline-xs.svg": {
+    "mtime": 1789995123.9733806,
+    "seen": 1789995202.7079442,
+    "ast_hash": "2a9ff76615b87be33bf277bd0d86df14",
     "semantic_hash": ""
   }
 }

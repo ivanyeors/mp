@@ -299,11 +299,41 @@ Pillow (per **Size**):
 
 | Size | Width, left↔right (mm) | Length, front↔back (mm) | Max loft (mm) | Section widths L / C / R (mm, only if not equal thirds) |
 |---|---|---|---|---|
-| XS | | | | |
-| S | | | | |
-| M | | | | |
-| L | | | | |
-| XL | | | | |
+| XS | 604 ⁽ᵈ⁾ | 353 ⁽ᵈ⁾ = 305 body + 47 tab (311 at the centre line) | 101 ⁽ᵈ⁾ gusset, doming TBC | |
+| S | 647 ⁽ᵈ⁾ | 400 ⁽ᵈ⁾ = 330 body + 70 tab (359 at the centre line) | 127 ⁽ᵈ⁾ gusset, doming TBC | |
+| M | 706 ⁽ᵈ⁾ | 330 body ⁽ᵈ⁾ + tab TBC (no Top drawing; S–L interpolation ≈ 78 × 138) | 153 ⁽ᵈ⁾ gusset, doming TBC | |
+| L | 762 ⁽ᵈ⁾ | 435 ⁽ᵈ⁾ = 350 body + 85 tab (382 at the centre line) | 178 ⁽ᵈ⁾ gusset, doming TBC | |
+| XL | 836 ⁽ᵈ⁾ | 457 ⁽ᵈ⁾ = 365 body + 92 tab (404 at the centre line) | 203 ⁽ᵈ⁾ gusset, doming TBC | |
+
+⁽ᵈ⁾ read off the 2018 case drawings (below), not yet confirmed by Ivan.
+
+**Measured from the 2018 case drawings.** Source: Drive › *01 Drawing* (2018) › the COVER folders — drawing "Cover" is the current **case**, drawing "Inner" the current **protector**, drawing "Protector" the current **cover**. The PDFs are 1:1 (PDFCreator, A0/A1); every figure below is the finished size with the 10 mm seam allowance removed, read from the vector geometry, and agrees with the sheet labels (24/26/28/30/33'' widths, 4/5/6/7/8'' sides). XS is dated 22-11-2017, the rest 13-3-2018; the S, M and L sheets are titled "No Neck Line". M has Side and Bottom sheets only, so its plan figures come from the bottom panel and its tab is unknown. Orientation assumed and still to be confirmed: the notched edge with the centre tab is the front (shoulders in the notches, tab under the neck); the wave edge is the back.
+
+Plan, top panel (mm):
+
+| Size | Width | Body length (lobe line, the drawing's "length") | Length on the centre line, tab tip → back edge | Tab length × width | Body length on the centre line, without tab | Notch depth / mouth at the lobe line | Back wave, concave depth at centre | Flat end edge |
+|---|---|---|---|---|---|---|---|---|
+| XS | 604 | 306 | 311 | 47 × 106 | 264 | 80 / 184 | 42 | 136 |
+| S | 647 | 330 | 359 | 70 × 127 | 289 | 91 / 195 | 41 | 161 |
+| M (bottom panel) | 706 | 330 | 289 (no tab on the bottom) | – | 289 | 97 / 211 | 41 | 161 |
+| L | 762 | 350 | 382 | 85 × 150 | 297 | 104 / 237 | 53 | 159 |
+| XL | 836 | 365 | 404 | 92 × 170 | 312 | 120 / 258 | 53 | 172 |
+
+Gusset, the side band ("Cover Side", two identical strips per case; mm):
+
+| Size | Full height H | Height at the tab end | Taper run, tab end → H | Height at centre back | Dip run | Strip length |
+|---|---|---|---|---|---|---|
+| XS | 101 (4'') | 20 | 147 | 76 (H − 25) | 109 | 865 |
+| S | 127 (5'') | 20 | 144 | 102 (H − 25) | 122 | 930 |
+| M | 153 (6'') | 20 | 172 | 128 (H − 25) | 132 | 985 |
+| L | 178 (7'') | 20 | 201 | 153 (H − 25) | 132 | 1057 |
+| XL | 203 (8'') | 20 | 228 | 178 (H − 25) | 156 | 1123 |
+
+So the case is full height along the ends and the back, drops 25 mm over the last ~110–160 mm to the centre back (zipper end), and tapers to a 20 mm edge under the neck tab over the last ~150–230 mm of each strip — the taper edge is sewn into the notch (its arc length is the "AL 175 / 200 / 228 / 270 / 308" note on the sheets). *Mpillow Sizes Measurement.xlsx* lists "Pillow Height (Side)" as 4''–8'', i.e. the same H.
+
+Reference files, `.claude/PRD-xray-pillow-ux/reference/`: `case-outline-<size>.svg` and `.json` (the finished outline as a polygon in mm; x = width from the left end, y = 0 at the back extreme, tab edge at max y), `case-plan-metrics.json`, `case-gusset-profile.json`. Slice 01 turns these into the registry once the open points are settled.
+
+Open points from the drawings: (1) front/back orientation as assumed above; (2) whether the x-ray silhouette follows the top panel (with the tab) or the bottom panel (flat centre, no tab); (3) the M tab, or an M Top sheet; (4) whether "No Neck Line" is the shipping construction — the XS sheet still carries a line 132 mm in from the back edge; (5) max loft for fit: the gusset H, or H plus the doming of the panels when full; (6) the fit budget should probably come from the **protector** (drawing "Inner"), which the fillings actually sit in, rather than the case — those sheets have not been read yet.
 
 Filling pouches (one row per type × size the inventory actually carries; add rows as needed):
 
