@@ -1,11 +1,11 @@
 # PRD: X-ray pillow UX — true scale, physical fit, cross-section, granular moves
 
 Status: Draft (needs-triage)
-Tracker: #200 (slices #201–#210, `issues/`)
+Tracker: #200 (slices #201–#210 and #212, `issues/`)
 Source: Ivan's brief (2026-09-20) + a code audit of the x-ray subsystem at `main` @ `d745e83`
 ADRs: `docs/adr/0008-spatial-filling-placements.md` (**Placement** rows are the "where" truth; pack list derived), `docs/adr/0009-xray-filling-visuals.md` (x-ray guardrails: no box cropping, legible piece count, deterministic layout, prepared morphs, one asset pipeline). Slice 01 adds **ADR 0019** (physical fit model: measurements in code, fit derived on read, never persisted; 0019 was the next free number at drafting, so take the next free one when the slice lands).
 Glossary: `CONTEXT.md` — **Placement**, **Section**, **sub-section**, **cell**, **Layer**, **Insert order**, **X-ray editor**, **Filling visual**, **Neck support**, **Staff assist mode**, **Filling Template**, **Size membership**, **Result**, **Composed sellable**, **Product Visualize**
-Decisions taken before drafting: (a) every measurement lives in code, in millimetres, not in the database — Ivan's brief says "embedded in our code base", and ADR 0009 already splits shape (code) from colour (DB) the same way; (b) fit and compression are **derived** from **Placements** plus the registry on every read and never stored, exactly like the **Spatially authored** status; (c) the x-ray stays one component on three surfaces — nothing forks; (d) no physics engine, no WebGL, no soft-body simulation (ADR 0009 still stands); (e) the only schema change in the whole PRD is the optional fine-nudge pair of columns in slice 08, and that slice is gated on evidence from the discrete-move slices.
+Decisions taken before drafting: (a) every measurement lives in code, in millimetres, not in the database — Ivan's brief says "embedded in our code base", and ADR 0009 already splits shape (code) from colour (DB) the same way; (b) fit and compression are **derived** from **Placements** plus the registry on every read and never stored, exactly like the **Spatially authored** status; (c) the x-ray stays one component on three surfaces — nothing forks; (d) no physics engine, no WebGL, no soft-body simulation (ADR 0009 still stands); (e) the only schema change in the whole PRD is the optional fine-nudge pair of columns in slice 08, and that slice is gated on evidence from the discrete-move slices; (f) **natural settle** (Ivan, 2026-09-21) is a display-and-fit pass over the authored **Placements** — fill spreads into an empty neighbouring **sub-section** on screen and in the loft arithmetic, but nothing ever rewrites which **cell** a pouch was put in.
 
 ## Problem Statement
 
@@ -16,6 +16,8 @@ Today a single 6D L pouch dropped into a cell is drawn stretched to fill the who
 Depth is faked. A stacked cell shifts each **Layer** down and right by a fixed 7 × 14 view units and darkens it, whatever the pouches are. Five **Layers** of 6D+ (Folded), the thickest filling we sell, draw the same as five **Layers** of 3D (S). There is no notion of loft — the pillow's maximum height — so there is no notion of a stack that cannot close. The caps that exist (five pieces per **Layer**, five **Layers**, twenty-five per **cell**) are database ceilings chosen for the schema, not for any pillow. Staff can build, save and hold a mix that no build team can assemble, and the only person who finds out is the one holding the pouches at the bench.
 
 Moving a pouch is remove-and-add. The editor can add a piece to a **cell** (radial picker), remove one (chip), reorder whole **Layers** (drag rows), flip a cell between side-by-side and stacked, and mirror a **Section**. It cannot move one pouch to the next **cell**, to the next **Layer**, or to the other end of its row. There is no selection, no keyboard, no nudge. An in-store fitting where the customer says "the firmer one to the outside" is two gestures and a picker traversal instead of one.
+
+A **cell** is also a box. A pouch is conformed to its authored **cell** ∩ silhouette and stops dead at the **sub-section** divider, so a center **Section** with the middle filled and the back empty draws a pouch and, behind it, a void. No built pillow has that void: a **Section** is one chamber, the **sub-sections** are only positions along it, and fill slumps into empty space the moment the pouch is pushed in. The render shows a hole the product does not have, and the loft arithmetic of this PRD would judge the middle as if the back were not there to spill into.
 
 And the x-ray is top-down only. The question every side sleeper asks — *are the sides higher than the middle?* — is the one view the product cannot draw. A stacked cell's depth is implied by an offset and a scrim; the shopper reading the completed preview cannot see loft at all.
 
@@ -32,6 +34,7 @@ Measured against `main` @ `d745e83`. File references are the drop-in points for 
 | Depth / loft | `packDepthStack`: fixed 7 × 14 view-unit shift per **Layer** + a scrim of 0.14 per depth (max 0.5) | Loft is not modelled; a stack never "does not fit"; thickness per filling is unknown |
 | Compression | `pouchOutline` rounds corners as the aspect ratio grows (cosmetic); no compression limits | No minimum thickness, no minimum width, no error state |
 | Caps | 5 per **Layer**, 5 **Layers**, 25 per **cell** (`core.ts`); DB checks mirror them | Schema ceilings, not physical ones; the real limit (does it fit) is unenforced |
+| Empty sub-sections | A pouch is conformed to its authored cell ∩ silhouette (`CELL_CLIP_PATHS`, `conformPouchPath` against the cell polygon); an empty neighbouring sub-section renders as a void | Real fill slumps into the void within the chamber; the render shows a hole no built pillow has, and any loft arithmetic on authored cells alone judges a stack without the room it would spill into |
 | Add | Click the dived cell → radial picker → `addPiece` (lowest free slot, topmost **Layer** with room) | Fine as is |
 | Remove | Chip on the pouch group / layer row / pack list (`removePiece`, `removeLayer`, `removeFilling`) | Fine as is |
 | Reorder | Drag **Layer** rows (`moveLayer`, dnd-kit); Side / Stacked toggle (`setCellArrangement`); Mirror with Undo | Whole-**Layer** only. No per-piece move between **cells**, between **Layers**, or within a **Layer**; no selection; no keyboard; no nudge |
@@ -45,13 +48,13 @@ Measured against `main` @ `d745e83`. File references are the drop-in points for 
 
 ## Solution
 
-From a **Staff** perspective: the x-ray becomes honest. A pouch is drawn at its real size for the pillow **Size** on screen, so one pouch in a cell is one pouch with room around it, and five 6D L across a **Section** visibly do not fit. Stacked **Layers** compress — down to each pouch's minimum thickness and no further — against the pillow's maximum loft, and a cell that has hit that limit is outlined amber; one that cannot close even fully compressed is outlined red, with a message that names the numbers. A live cross-section beside the pillow shows the three **Sections** as stacks against the loft line, so "sides higher than center" is a glance, not an inference. Any pouch can be selected and moved: to the next **cell**, up or down a **Layer**, along its row — by keyboard, by an on-canvas pad, or by dragging it — with Undo. Same component, same gestures, on the configurator, in Configure and on **Result** assign.
+From a **Staff** perspective: the x-ray becomes honest. A pouch is drawn at its real size for the pillow **Size** on screen, so one pouch in a cell is one pouch with room around it, and five 6D L across a **Section** visibly do not fit. Stacked **Layers** compress — down to each pouch's minimum thickness and no further — against the pillow's maximum loft, and a cell that has hit that limit is outlined amber; one that cannot close even fully compressed is outlined red, with a message that names the numbers. Leave a **sub-section** empty and the fill beside it settles into the space the way it does in the chamber: the pouch spreads along the **Section**, thins in proportion, and the void disappears — on screen and in the loft arithmetic — while the **cell** it was put in stays exactly where it was authored. A live cross-section beside the pillow shows the three **Sections** as stacks against the loft line, so "sides higher than center" is a glance, not an inference. Any pouch can be selected and moved: to the next **cell**, up or down a **Layer**, along its row — by keyboard, by an on-canvas pad, or by dragging it — with Undo. Same component, same gestures, on the configurator, in Configure and on **Result** assign.
 
 From a shopper perspective: the read-only preview x-ray draws the recommended mix at true scale, and the cross-section beside it shows the build's profile. Nothing becomes editable.
 
 From a developer perspective: two new pure modules and one changed one. A **dimension registry** (millimetres, keyed by pillow **Size**, filling type × size, **Neck support** size, Mbolster length) and a **fit model** that turns **Placements** plus the registry into per-**Layer** width fit, per-**cell** loft fit, compression ratios and a status. The layout engine reads footprints and compression from the fit instead of partitioning space; the renderer, the gauges and the cross-section all read one memoised fit result. Moves are pure functions beside `addPiece` and `moveLayer`. No schema change until slice 08, and that one is optional.
 
-What ships, in order:
+What ships, numbered by slice (the build order, which puts 11 between 3 and 4, is in Further Notes):
 
 1. The dimension registry in code, with Ivan's measurements; glossary entries and ADR 0019; a read-only Dimensions column in **Product Visualize** so an unmeasured filling is visible.
 2. True-scale rendering: the layout engine draws pouches at their footprint relative to the pillow **Size**, on every surface.
@@ -63,6 +66,7 @@ What ships, in order:
 8. *(optional, gated)* Fine nudge in millimetre steps, persisted as visual-only columns.
 9. Mbolster parity: capsule dimensions, a physical cap, compression feedback, end-on cross-section.
 10. Physical calibration sign-off against real builds.
+11. Natural settle: a pure pass between layout and fit that spreads a pouch into an empty neighbouring **sub-section** of the same **Section** and **Layer**, thinning it by volume; the settled view is the default everywhere, the dived **Section** shows authored cells with a settled ghost, and leaving the dive morphs one into the other.
 
 ## User Stories
 
@@ -139,6 +143,22 @@ What ships, in order:
 48. As **Staff**, I want a physical calibration pass on real builds, so that the numbers in code are trusted rather than typed.
 49. As a developer, I want the committed knowledge graph refreshed in the same commit as the code, so that the freshness check passes.
 
+### Natural settle (display physics)
+
+50. As **Staff**, I want a pouch whose neighbouring **sub-section** is empty drawn spreading into that space, so that the x-ray shows the slumped fill a real pillow has instead of a void no real pillow has.
+51. As **Staff**, I want a pouch to spread only within its own **Section** and **Layer**, so that the chamber walls stay walls.
+52. As **Staff**, I want a pouch that spreads to thin in proportion to how far it spreads, never below its minimum thickness, so that the cross-section shows the loft I would actually feel.
+53. As **Staff**, I want the settled view to be what I see after I leave the dive or save, and the authored **cells** to be what I see while I am editing a **Section**, so that editing stays precise and the result stays natural.
+54. As **Staff**, I want a faint outline of where a pouch will settle while I am still editing, so that the effect of adding or moving a piece is visible live, before I leave the dive.
+55. As **Staff**, I want the change from authored to settled animated when I leave the dive, so that I can see which pouch moved where.
+56. As **Staff**, I want two pouches that spread into the same gap to meet at a seam and stay two pouches, so that the piece count stays legible (ADR 0009 guardrail 2).
+57. As **Staff**, I want my moves and nudges to act on the authored **cells** with settle re-derived afterwards, so that free-form adjustment and natural display never fight.
+58. As **Staff**, I want a nudge to decide where a pouch sits when it cannot fill the whole void, so that the fine adjustment still means something in the settled view.
+59. As **Staff**, I want the fit, the gauges and the cross-section computed on the settled geometry, so that a stack that spills into an empty back is judged the way it will actually lie.
+60. As a shopper, I want the preview x-ray settled, so that the pillow I see is the pillow I get.
+61. As a developer, I want settle to be a pure display-and-fit pass that writes nothing to **Placements**, so that the pack list, the fingerprint and the authored recipe are untouched.
+62. As **Staff**, I want a product with physical **sub-section** dividers to keep its pouches in their **cells**, so that settle is a fact recorded about the product and not a global assumption.
+
 ## Implementation Decisions
 
 ### Units and scale
@@ -154,6 +174,7 @@ Pure, browser-safe. The whole registry and the whole lookup:
 - `PILLOW_DIMENSIONS[size]`: width, length, max loft (all mm), optional section widths.
 - `POUCH_DIMENSIONS[key]`: width, length, relaxed thickness, fully-compressed thickness, minimum width, orientation. Key = filling family + variant or size, derived from the same `fillingDescriptor` the picker and the colours already use (`"6D (L)"` and `"6D L"` and `"6D Fold" + size L` all resolve to `6d/l`). Aliases are one table (`fold` → `folded`).
 - `NECK_SUPPORT_DIMENSIONS[size]` (XS–L) and `BOLSTER_DIMENSIONS[length]` (short / medium / long: length, diameter).
+- Optional per pouch: `flatLengthMm` / `flatWidthMm`, the fabric's own limit when it stops a spread before the fill reaches its fully compressed thickness. Absent, the registry derives the limit from volume (see Natural settle). Optional per pillow **Size**: `subSectionDividers: boolean` (default false) for a product whose sub-sections are physically walled; settle is off for it.
 - `resolveDims(item)` returns `{ dims, source: "measured" | "fallback" }`. The fallback is the family's default (3D, 6D, 6D+) and, failing that, a generic pouch. Never throws, never returns undefined — the x-ray must not blank on a new **Item**.
 - Values ship as Ivan's measurements (intake table in Further Notes). Until they land the file carries `PLACEHOLDER` values behind a single flag that the self-check refuses in CI; slice 01 is HITL for that reason.
 
@@ -167,6 +188,17 @@ Pure, deterministic, O(pieces):
 - `wouldFit(placements, change, ctx)` for the add / move refusal — the same function on the hypothetical result, no second rule set.
 - Loft is the height signal the brief asks for; width is the second axis the same model gives for free. Length (front-to-back) is clamped to the **cell** and never an error: a pouch longer than a **sub-section** is drawn spanning it, which is what it does physically.
 
+### New deep module — `lib/spatial-fillings/settle.ts` (natural settle)
+
+Pure, deterministic, runs between layout and fit: authored rects in, settled rects out, `fitPillow` reads the settled ones.
+
+- **What a pouch is, physically.** A closed pouch of fill has a fixed volume `V = widthMm × lengthMm × thicknessMm` (relaxed). Its thickness can fall to `minThicknessMm`; its footprint can grow until it does, so the natural spread limit along an axis is `V / (widthMm × minThicknessMm)` — the same variable compression uses, read the other way. `flatLengthMm`, when the registry carries it, caps that lower.
+- **Where it may spread.** Along front↔back, within its own **Section** (chamber walls are walls) and its own **Layer** (a plane spreads within its plane; sag between **Layers** is out of scope). Never across x into a neighbouring **Section**, never into a **sub-section** that holds a piece of the same **Layer**.
+- **The rule.** For each **Section** × **Layer**: the empty **sub-sections** form voids; each void is claimed by the occupied **sub-section**(s) touching it. Every piece in a claimant spreads along y into the void up to the smaller of the void's length and its own remaining spread capacity. A void touched from both ends is split where the two claimants' capacities meet, pro rata by capacity, so two pouches meet at one seam and stay two outlines (guardrail 2). Thickness follows: `V / (widthMm × settledLengthMm)`, floored at `minThicknessMm`. A pouch that cannot fill its void leaves the remainder empty; the authored anchor plus any nudge decides which end of the void the gap sits at.
+- **Order with compression.** Settle first (voids absorbed, thickness reduced by spread), then loft fit per **sub-section** column on the settled thickness, so a stack that does not fit in the middle but has an empty back behind it is judged with that back. A settled pouch contributes its settled thickness to every column it spans.
+- **Off switch.** `subSectionDividers: true` on the **Size** makes the pass the identity.
+- **Display only.** Writes nothing. `PillowPlacement` is untouched; pack list, fingerprint and **Promote** grouping cannot see it. `ponytail:` the pro-rata split and the per-**Layer** plane are the simplest deterministic rules; slice 10 photographs a real slumped pouch against them.
+
 ### Changed module — `lib/spatial-fillings/xray-layout.ts`
 
 - `layoutPlacements(placements, ctx)` where `ctx` carries the pillow **Size**, the dims resolver and the fit result. The `itemScales` parameter and `visuals.ts` `sizeScale` are retired; the tests move with them.
@@ -177,6 +209,7 @@ Pure, deterministic, O(pieces):
 ### Renderer — `components/spatial/xray-pillow.tsx`
 
 - Props: `pillowSize` (falls back to M with a `ponytail:` note when a host cannot know it — today every host can) and `itemDims` (item id → resolved dims), derived beside `itemSubtypes` in `XrayEditor`'s `useItemMaps` and in `mp-config-client`'s existing memoised maps. `itemSizes` goes away.
+- **Two views of one recipe.** Settled is the default render everywhere: the shopper preview, **Result** read-only, Configure, and every **Section** the editor is not diving into. The dived **Section** draws its pieces at their authored rects (crisp **cells**, the drop targets and move pad refer to them) with the settled outline underneath as a dashed ghost, so the effect of an edit is visible live. Leaving the dive morphs each piece from authored to settled: the two outlines are conformed polygons of the same pouch, so the interpolator is prepared once per transition (not per frame), passed through the existing degeneracy check, and falls back to the crossfade — `d` and opacity only, no layout (guardrail 4). A settled piece conforms against silhouette ∩ **Section** (`SECTION_HIT_PATHS`) rather than its **cell** polygon; the **sub-section** dividers become faint guides drawn only in the dive.
 - Compression on the pouch itself: a squeezed piece's stroke turns dashed and, when the piece is wide enough for a label, a `↕ 78 %` micro-label joins the type label. An `over` piece gets a red tint. No new shapes, no rects — ADR 0009 guardrail 1 is checked by the existing `.check.ts`.
 - Cell status ring: the cell clip path itself stroked amber (`compressed`) or red (`over`), inside the silhouette clip. A stroke on an existing region path, not a new element class.
 - Dive panel: a loft gauge (`42 / 60 mm`, bar) per cell, and the fit message when the cell is not `ok`. Phone dock: the same gauge and message per cell group.
@@ -187,7 +220,7 @@ Pure, deterministic, O(pieces):
 ### New shallow module — `components/spatial/xray-cross-section.tsx`
 
 - Pure SVG from the fit result. Two cuts: **across** (left, center, right at a chosen **sub-section**, default middle) and **along** (front, middle, back of the dived **Section**, or of center when nothing is dived). A dashed cut line on the x-ray shows where the section is taken, so the two views are linked.
-- Shell drawn as a lens whose height is the max loft; each **Layer** a rounded slab of its compressed thickness, coloured by family through the same CSS variables the pouches use; compressed slabs hatched; an `over` stack drawn through the loft line in red; a dashed loft line with its mm label; each **Section**'s loft in mm under it.
+- Reads the settled fit: a pouch that spread across middle and back contributes its thinner, settled thickness to both columns, so a stack that spilled into an empty back shows as two lower columns rather than one tall one and a gap. Shell drawn as a lens whose height is the max loft; each **Layer** a rounded slab of its compressed thickness, coloured by family through the same CSS variables the pouches use; compressed slabs hatched; an `over` stack drawn through the loft line in red; a dashed loft line with its mm label; each **Section**'s loft in mm under it.
 - Mounts: under the pillow on the configurator stage (Staff and guest — the guest gets no controls, just the across cut), beside the pack list on the Configure card page and on **Result** assign, and in the phone layout above the dock, collapsible.
 - No animation on the slabs in v1: the values change discretely with the mix, and ADR 0009 guardrail 4 keeps animation to transform / `d` / opacity. `ponytail:` a `transform: scaleY` transition is one CSS line if it ever wants to breathe.
 
@@ -196,6 +229,7 @@ Pure, deterministic, O(pieces):
 - `movePiece(placements, ref, to)` where `to` is a **cell**, an optional **Layer**, an optional position in the **Layer**. Re-slots in the target, compacts **Layers** in both **cells**, drops `insertOrder` when the **Section** changes and keeps it otherwise. Refuses (same shape as `addPiece`) when the target **Layer** is full or the move `wouldFit` says `over`.
 - `shiftPieceLayer(placements, ref, ±1)`: to the adjacent **Layer**, creating one below the deepest if needed; compaction closes the one it left.
 - `reorderInLayer(placements, ref, ±1)`: swaps slot order with the neighbour. Slot is the piece key, so both pieces' slots are rewritten together; the fingerprint ignores slots (`canonicalizePlacements`), the pack list ignores them, so nothing downstream moves.
+- Every move acts on the authored **cell**, **Layer** and order; settle is re-derived from the result, so a piece moved into a **sub-section** that a neighbour had settled into simply pushes that neighbour back to its own **cell**. Selection shows the authored **cell** ring and the settled ghost together.
 - Selection is renderer state (`selected: PieceRef | null`), cleared on dive exit like the picker. Keyboard, in the dive: ← → reorder in the **Layer**; ↑ ↓ move to the front / back **sub-section**; `[` `]` **Layer** up / down; Shift + ← → move to the neighbouring **Section**. An on-canvas pad with the same six actions sits in the cell panel (desktop) and the dock (phone), because touch has no keyboard.
 - Undo: the Mirror toast pattern — an inverse applied only while the move is still the last thing that happened (`placementsRef`).
 - Drag (slice 07): a pouch group becomes a dnd-kit draggable, the nine cell hit paths (already clipped to the silhouette) become droppables, the layer rows become droppables for a depth target. The drop resolves through `movePiece`, so a drag can never do something a keystroke cannot. The adapter is pure (`lib/dnd/`), like `layerDragDestination`.
@@ -205,22 +239,24 @@ Pure, deterministic, O(pieces):
 - Two nullable `smallint` columns on both placement tables: `offset_x_mm`, `offset_y_mm`, `|v| ≤ 200`. Additive and nullable, the `insert_order` migration pattern. Bolster tables untouched.
 - Visual-only: out of `canonicalizePlacements`, so out of the fingerprint and the pack list; a test asserts the fingerprint is byte-identical with and without offsets.
 - Every **Placement** reader selects them and every writer accepts them (assist route, Admin template route, **Result** assign); the `api-contract.check.ts` row-index contract grows two columns.
+- In the settled view a nudge is the anchor: when a pouch cannot fill its void, the nudge decides which end the gap sits at; when it can, the nudge is absorbed and the piece reads unchanged.
 - Interaction: with a piece selected, Alt + arrows (or the pad's Fine toggle) nudges 5 mm; the layout clamps so the footprint stays inside **cell** ∩ silhouette minus the seam, then the conform pass deforms at the shell as it does today.
 - **Gate:** build only if the slice 10 sign-off finds discrete positions (cell × **Layer** × order) insufficient for what the build team needs to see. Ponytail: the simplest thing first; this is the upgrade path, named.
 
 ### Mbolster (slice 09)
 
 - `BOLSTER_DIMENSIONS[length]` gives the capsule's length and diameter. `fitBolster`: Σ pouch widths along the capsule vs its length (`ok` / `compressed` / `over`); thickness vs diameter is a per-piece check. The "no cap in v1" note in ADR 0008 is amended: the cap is physical, derived, never a slot number.
+- Settle in one dimension: pouches spread along the capsule into its empty ends by the same volume rule, thinning toward the diameter's floor.
 - End-on cross-section (a circle with the stack inside) beside the capsule; the same status ring and gauge.
 
 ### Glossary and ADR (slice 01)
 
-- `CONTEXT.md` gains **Product dimensions**, **Loft**, **Fit status** (`ok` / `compressed` / `over`, always derived), **Cross-section view**, **Nudge**, and amends **Filling visual** (scale now comes from the registry, not `items.size` alone).
+- `CONTEXT.md` gains **Product dimensions**, **Loft**, **Fit status** (`ok` / `compressed` / `over`, always derived), **Cross-section view**, **Nudge**, **Natural settle** (with **Authored** and **Settled** as the two views of one recipe), and amends **Filling visual** (scale now comes from the registry, not `items.size` alone).
 - ADR 0019: measurements in code (mm), fit derived on read and never persisted, the pro-rata compression rule, the advisory-not-blocking error posture, the option of DB-backed dimensions rejected for v1 with the churn condition that would reopen it.
 
 ### Performance and mobile
 
-- One memo: `useMemo(() => fitPillow(...), [placements, pillowSize, itemDims])`, and the geometry chain reads it. The cross-section and the gauges take the same object as a prop. No second polygon scan, no new dependency.
+- One memo: `useMemo(() => fitPillow(settle(layout(...))), [placements, pillowSize, itemDims])`, and the geometry chain reads it. Settle is O(pieces) per **Section** × **Layer** and joins the same memo. The cross-section and the gauges take the same object as a prop. No second polygon scan, no new dependency.
 - Phone: the cell rings and the compression marks are on the canvas already; the gauge, message and move pad join the dock groups; the cross-section sits between the x-ray and the dock, collapsed by default.
 
 ## Testing Decisions
@@ -231,19 +267,22 @@ A good test here asserts what the modules return for a given mix and **Size**, n
 
 **Tested (vitest): the fit model.** Relaxed, compressed and over cases for width and for loft; pro-rata sharing sums exactly to the available budget; determinism across input order; `wouldFit` agrees with `fitPillow` on the applied result; the legacy caps still refuse first when they bite first. Prior art: `xray-layout.test.ts`.
 
+**Tested (vitest): settle.** One pouch in center/middle with front and back empty spreads both ways up to its capacity and thins to `V / (w × l')`, never below `minThicknessMm`; a pouch whose capacity is smaller than the void leaves the remainder at the end the nudge says; front and back both occupied with the middle empty meet at one seam split pro rata and stay two rects; nothing crosses a **Section** wall or a **Layer**; `subSectionDividers: true` is the identity; the pass is input-order independent; and `fitPillow` of the settled result reports a lower loft than of the authored rects for the spill case. Prior art: `xray-layout.test.ts`.
+
 **Tested (vitest): the layout.** A single pouch renders at footprint × `k` centred in its cell; two pouches do not shrink each other while they fit; a compressed **Layer** narrows pieces to their ratio and no further; depth offsets grow with thickness; all existing invariants (disjoint, inside the frame, stable keys, deepest-first) still hold.
 
 **Tested (vitest): the moves.** `movePiece`, `shiftPieceLayer`, `reorderInLayer`: slot uniqueness per cell, dense **Layers** afterwards, `insertOrder` kept within a **Section** and dropped across, refusal on full or `over`, and the drag adapter mapping a dnd-kit event to the same call. Prior art: `layer-drag.test.ts`, `staff-edit.test.ts`.
 
 **Tested (vitest): the nudge** (if built). Clamp inside cell ∩ silhouette; fingerprint invariance with and without offsets.
 
-**Tested by self-check.** The renderer guardrails (`xray-pillow.check.ts`): still no `<rect`, the status ring strokes an existing cell path; `surface-parity.check.ts`: the cross-section is mounted on all three surfaces and read-only on the shopper preview; `api-contract.check.ts`: every **Placement** reader selects the offset columns once slice 08 lands; a new `dimensions.check.ts` that fails while the `PLACEHOLDER` flag is set, so CI cannot ship typed-in numbers.
+**Tested by self-check.** The renderer guardrails (`xray-pillow.check.ts`): still no `<rect`, the status ring strokes an existing cell path, settled pieces conform against the **Section** region and the dive ghost is a dashed stroke of the same path; the settle transition goes through `prepareMorph` and falls back to crossfade; `surface-parity.check.ts`: the cross-section is mounted on all three surfaces and read-only on the shopper preview; `api-contract.check.ts`: every **Placement** reader selects the offset columns once slice 08 lands; a new `dimensions.check.ts` that fails while the `PLACEHOLDER` flag is set, so CI cannot ship typed-in numbers.
 
 **Not tested automatically:** whether the drawn loft matches the real pillow. That is slice 10, a person with a ruler.
 
 ## Out of Scope
 
-- **Physics.** No soft-body, no collision solver, no WebGL, no generated blobs (ADR 0009). The fit model is arithmetic over rectangles and thicknesses.
+- **Physics.** No soft-body, no collision solver, no WebGL, no generated blobs (ADR 0009). The fit model and the settle pass are arithmetic over rectangles, thicknesses and volumes.
+- **Dynamic settle.** No gravity, no head pressure, no sag from one **Layer** into an empty **sub-section** of the **Layer** below, no spread across a **Section** wall. Settle is static and per plane; the calibration slice says whether that is enough.
 - **Designer shapes and the asset pipeline.** The silhouette, the nine cell polygons and the two shapes stay the ADR 0009 placeholders; this PRD scales and places them.
 - **Storing or editing dimensions in the database or in Product Visualize.** Read-only there in v1; code is the source (decision a). Reopen only if the numbers churn.
 - **Rules engine.** A rule still selects *which* template; fit is a property of the selected mix, and a template that does not fit its **Size** is a Configure warning, not a rule.
@@ -281,6 +320,8 @@ Filling pouches (one row per type × size the inventory actually carries; add ro
 | 6D+ | L | | | | | | |
 | 6D+ (Folded) | – | | | | | | |
 
+Optional per pouch, only if the fabric stops a spread before the fill is fully compressed: flat (fully spread) length and width in mm. Otherwise the registry derives the limit from volume. Optional per pillow **Size**: whether the **sub-sections** are physically divided (yes / no; assumed no).
+
 Cervical **Neck support**:
 
 | Size | Width (mm) | Length (mm) | Thickness (mm) | Fully compressed thickness (mm) |
@@ -300,6 +341,6 @@ Mbolster:
 
 **Timing.** Nothing here changes a fingerprint or a pack list, so it is safe at any point in the catalog's life; the ten authored templates (PRD `unified-spatial-filling-editor`) will simply start reporting a fit status, and the ones that do not fit their **Size** get an amber or red cell rather than a rewrite.
 
-**Order.** 01 → 02 → 03 → 04 → 05 is the spine. 06 depends on 02 (selection needs the true-scale hit areas) and on 03 for its refusals; 07 on 06; 09 on 03; 08 is optional and last; 10 closes the PRD.
+**Order.** 01 → 02 → 03 → 11 → 04 → 05 is the spine — settle sits between the fit model and the surfaces that display it, so 04 and 05 are built once against settled geometry (the fit object is the contract, so they do not change shape if 11 slips). 06 depends on 02 (selection needs the true-scale hit areas) and on 03 for its refusals; 07 on 06; 09 on 03; 08 is optional and last; 10 closes the PRD.
 
 **Graph.** Every code slice ends with `./scripts/graphify update .` in the same commit.

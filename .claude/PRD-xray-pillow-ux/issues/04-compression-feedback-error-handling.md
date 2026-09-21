@@ -3,7 +3,7 @@
 Tracker: #204 · Parent: #200
 
 **Type:** AFK
-**Blocked by:** 03
+**Blocked by:** 03; build after 11 so rings, gauges and messages are written once against settled geometry
 **User stories:** 12, 14, 15, 16, 17, 18, 19, 20, 21
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
 
@@ -37,5 +37,6 @@ Staff see the maximum compression of the fillings and the maximum expansion of t
 - [ ] Loading a Size L mix into a Size XS session flags the `over` cells and shows the banner; changing **Size** back clears it.
 - [ ] Hold, Save and Save assignment each confirm once with an `over` cell present and proceed on confirm; they do not confirm when every cell is `ok` or `compressed`.
 - [ ] The **Size membership** chips carry a fit dot per size, and a recipe that fits M and not XS shows green and red respectively.
+- [ ] Rings, the gauge, `wouldFit` and the banner all evaluate the settled fit (slice 11): a stack that is `over` in center/middle on authored cells but has an empty back reads `compressed` or `ok`, and the message names the authored cell ("center · middle, settled into back").
 - [ ] `xray-dive.check.ts` extended for the gauge and the refusal wiring; `surface-parity.check.ts` asserts the confirm on all three save paths.
 - [ ] `./scripts/graphify update .` run and committed.

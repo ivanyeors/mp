@@ -11820,9 +11820,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/01-dimension-registry-glossary-adr.md": {
-    "mtime": 1789908990.5460572,
-    "seen": 1789909015.6556454,
-    "ast_hash": "dc06010620d835404e9ec8422ee9c1cc",
+    "mtime": 1789956264.3931122,
+    "seen": 1789956339.0605464,
+    "ast_hash": "a49c7bacaa73b768ece030f04cedc4d2",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
@@ -11838,21 +11838,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/04-compression-feedback-error-handling.md": {
-    "mtime": 1789908869.1908162,
-    "seen": 1789908920.537077,
-    "ast_hash": "e676d2d904a7768f930b2a82b1920fe5",
+    "mtime": 1789956264.3935428,
+    "seen": 1789956339.0605512,
+    "ast_hash": "3ffb8ec367535964f15bd19003cc9acd",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/05-cross-section-view.md": {
-    "mtime": 1789908869.191032,
-    "seen": 1789908920.5370777,
-    "ast_hash": "d091a4cd8ee3c51827663ec9066358d5",
+    "mtime": 1789956264.3938115,
+    "seen": 1789956339.0605524,
+    "ast_hash": "84fcc295dd83d5893d396491c67ea8f4",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/06-move-pieces-select-keyboard-pad.md": {
-    "mtime": 1789908869.1912966,
-    "seen": 1789908920.537079,
-    "ast_hash": "16c6d524210b284ec4254ad14573eab6",
+    "mtime": 1789956264.3940485,
+    "seen": 1789956339.0605538,
+    "ast_hash": "65e3cf3429b26da6431a32940e7f415d",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/07-drag-pouch-to-cell-or-layer.md": {
@@ -11862,33 +11862,39 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/08-fine-nudge-persisted-offsets.md": {
-    "mtime": 1789908869.1916976,
-    "seen": 1789908920.537081,
-    "ast_hash": "29b4fcfac94e151a5040a65e8d7bbc98",
+    "mtime": 1789956264.3942997,
+    "seen": 1789956339.0605567,
+    "ast_hash": "9de9677eda92ddc7db1e46d7105e7079",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/09-mbolster-parity.md": {
-    "mtime": 1789908869.1918836,
-    "seen": 1789908920.5370822,
-    "ast_hash": "80b84c3f958845b4155abfeba031663a",
+    "mtime": 1789956264.3945155,
+    "seen": 1789956339.060558,
+    "ast_hash": "e228de3eeff2f61cabc9d0b1e2ba7c12",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/10-physical-calibration-signoff.md": {
-    "mtime": 1789908869.1920674,
-    "seen": 1789908920.5370831,
-    "ast_hash": "d26501697c81ce6c4af89cf15961bc6c",
+    "mtime": 1789956264.3947165,
+    "seen": 1789956339.060559,
+    "ast_hash": "f8eb60f66a61c1b196e06f741b6ff1b3",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1789908990.545854,
-    "seen": 1789909015.655661,
-    "ast_hash": "b0e78421c0ee319d51cdef4ec7030543",
+    "mtime": 1789956304.1943142,
+    "seen": 1789956339.0605624,
+    "ast_hash": "46b3b34b424eab2669cfd6ef78e64f77",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
-    "mtime": 1789908990.54638,
-    "seen": 1789909015.655662,
-    "ast_hash": "535cef74f38ff42b20d9bb394e3f6a30",
+    "mtime": 1789956304.1947224,
+    "seen": 1789956339.0605636,
+    "ast_hash": "ec2f50e1e25699aed363a9ce940a7047",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
+    "mtime": 1789956304.1940267,
+    "seen": 1789956339.060561,
+    "ast_hash": "5d05929c512696af6db64990d2300251",
     "semantic_hash": ""
   }
 }

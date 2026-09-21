@@ -3,7 +3,7 @@
 Tracker: #205 · Parent: #200
 
 **Type:** AFK
-**Blocked by:** 03 (reads the fit result); 04 is not required
+**Blocked by:** 03 (reads the fit result), 11 (settled thickness per column); 04 is not required
 **User stories:** 23, 24, 25, 26, 27, 28, 29, 30
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
 
@@ -33,6 +33,7 @@ The question a side sleeper asks — are the sides higher than the middle? — i
 
 - [ ] With a mix that stacks three layers in left and right and one in center, the Across cut at middle shows two tall stacks and one short one, with mm labels that equal `fitPillow`'s per-section loft.
 - [ ] Switching the sub-section tab or Along changes the cut and the dashed cut line on the x-ray.
+- [ ] A pouch that settled across middle and back contributes its settled thickness to both columns: the spill case shows two lower columns, not one tall one and a gap.
 - [ ] A compressed layer is hatched; an `over` stack pokes above the dashed loft line in red.
 - [ ] Adding, removing or moving a piece updates the cross-section with no extra interaction.
 - [ ] The shopper preview shows the Across cut, read-only, with no toggle and no edit affordance.

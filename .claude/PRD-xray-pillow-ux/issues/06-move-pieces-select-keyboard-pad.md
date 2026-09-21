@@ -34,6 +34,7 @@ Tracker: #206 · Parent: #200
 
 - [ ] vitest: `movePiece` across cells keeps slot uniqueness per cell, leaves both cells' layers dense, keeps `insertOrder` within a Section and drops it across; refuses a full target layer and an `over` target with the same shapes `addPiece` returns.
 - [ ] vitest: `shiftPieceLayer` at the deepest layer creates a new one; moving the only piece out of a layer closes it; `reorderInLayer` at the row's end is a no-op that returns the same reference.
+- [ ] Every move acts on the authored cell, Layer and order; settle (slice 11) is re-derived afterwards, and selection shows the authored cell ring together with the settled ghost.
 - [ ] Click a pouch in the dive → it is outlined and named; Escape clears the selection without leaving the dive; a second Escape leaves.
 - [ ] Each of the six keys performs its move and the x-ray, panel, cross-section and pack list agree afterwards.
 - [ ] The move pad appears for the selected piece's cell on desktop and in its dock group on phone; every pad action equals its key.
