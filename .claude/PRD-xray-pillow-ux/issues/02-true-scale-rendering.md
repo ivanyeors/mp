@@ -20,7 +20,8 @@ One pouch in a cell is drawn as one pouch, with room around it. Five 6D L across
 
 ## Scope
 
-- **Scale:** `k = XRAY_VIEW.width / PILLOW_DIMENSIONS[size].widthMm`. The silhouette keeps filling the stage. `COL_X` derives from `sectionWidthsMm` when the registry carries them, else equal thirds as today.
+- **Scale:** `k = XRAY_VIEW.width / PILLOW_DIMENSIONS[size].widthMm`. The silhouette keeps filling the stage. `COL_X` derives from `sectionWidthsMm × k` — every **Size** carries them (the protector's divider seams), so the centre column is narrower than the sides on XS–L and equal thirds only on XL.
+- **Silhouette per Size:** the stage path is `PILLOW_DIMENSIONS[size].outline` scaled by `k` (tab edge = front, at the top of the stage), replacing the fixed placeholder path; the nine cell polygons are cut from it at the section widths. Prepared morphs (ADR 0009) are rebuilt from the same outline. The neck line is never drawn.
 - **Layout:** `layoutPlacements(placements, ctx: { pillowSize, dimsOf })`. A piece's rect is `widthMm × k` by `lengthMm × k` (orientation applied). Pieces in a layer pack left→right in slot order and the group is centred in the cell; front↔back centred. Length is clamped to the cell height (a longer pouch spans it, no error). Depth offset per layer = thickest piece's `thicknessMm × k × FORESHORTEN`, clamped so the deepest slab stays in the cell. Compression is slice 03; here a layer wider than the cell is simply clamped to the cell width pro rata (so nothing overflows visually yet).
 - **Retire** `itemScales`, `itemScaleMap`, `sizeScale` and `SIZE_SCALES`. Move their tests.
 - **`XrayPillow` props:** `pillowSize` and `itemDims: ReadonlyMap<number, ResolvedDims>` replace `itemSizes`. `XrayEditor`'s `useItemMaps` derives `itemDims` from `items` via `resolveDims`; `mp-config-client` derives it in the same memo as `assistItemSubtypes` / `guestItemSubtypes`. Read-only mode (no `items`, no change handler) is unchanged.
@@ -34,6 +35,8 @@ One pouch in a cell is drawn as one pouch, with room around it. Five 6D L across
 - [ ] vitest: every existing layout invariant still holds — disjoint pieces, inside the frame, stable keys, deepest-first emission, identical output regardless of input order.
 - [ ] vitest: depth offset grows with the layer's thickness; five layers of the thickest filling still keep the deepest slab inside the cell.
 - [ ] `xray-pillow.check.ts` still passes: no `<rect`, no hard-coded paths, nested clipping intact.
+- [ ] vitest: the stage path for each **Size** is the registry `outline` × `k` (bounding box ±0.1), with the tab edge at the top; switching **Size** changes the silhouette.
+- [ ] vitest: the column boundaries sit at the registry's section widths × `k` (XS: 204 and 399 mm × `k`, ±0.1); XL's are thirds.
 - [ ] The configurator (Staff and guest), Configure card page and **Result** assign all pass `pillowSize`, and `surface-parity.check.ts` asserts it.
 - [ ] `sizeScale` / `SIZE_SCALES` / `itemScaleMap` no longer exist; `grep` finds no caller.
 - [ ] Shopper preview gains no edit affordance (read-only detection unchanged).

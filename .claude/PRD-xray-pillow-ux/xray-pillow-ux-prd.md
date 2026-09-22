@@ -164,17 +164,17 @@ What ships, numbered by slice (the build order, which puts 11 between 3 and 4, i
 ### Units and scale
 
 - **Millimetres everywhere in the registry.** View units are derived, never authored. One factor per pillow **Size**: `k = XRAY_VIEW.width / pillowWidthMm(size)`. The silhouette keeps filling the stage at every **Size** — the three surfaces have a fixed stage, and what matters for fit is the pouch-to-pillow proportion, not an absolute XS-next-to-XL comparison. `ponytail:` an absolute-scale toggle is one multiplier away if art direction ever wants it.
-- **Section widths** default to equal thirds (today's `COL_X`). The registry may carry per-**Size** left / center / right widths; when it does, the cell grid derives from them. The silhouette path and the nine cell polygons remain the ADR 0009 placeholder assets until the designer export lands; this PRD does not touch them.
+- **Section widths** come from the protector's divider seams, per **Size** (`sectionWidthsMm`: XS 204 / 195 / 204, S 203 / 240 / 203, M 223 / 260 / 223, L 251 / 260 / 251, XL equal thirds; Further Notes). The cell grid derives from them and replaces today's equal-thirds `COL_X`. The silhouette becomes per-**Size**: the traced top-panel `outline` scaled by `k` replaces the fixed placeholder path, and the nine cell polygons are cut from it (across at the section widths, **sub-sections** front-to-back with *front* on the tab side). The side view is Ivan's side SVG with its height set from `gusset` × (1 + `LOFT_ALLOWANCE`). The neck line is never drawn.
 - **Pouch orientation** (long axis across the **Section** or along front-to-back) is a registry property per filling, default across. Data, not code, so a folded pouch that lies the other way is a row edit.
 
 ### New deep module — `lib/spatial-fillings/dimensions.ts`
 
 Pure, browser-safe. The whole registry and the whole lookup:
 
-- `PILLOW_DIMENSIONS[size]`: width, length, max loft (all mm), optional section widths.
+- `PILLOW_DIMENSIONS[size]`: width, length, max loft, section widths (all mm; the section widths are the protector's divider seams, `reference/protector-sections.json`). Also per **Size**: `outline` (the finished top-panel polygon in mm, from `reference/case-outline-<size>.json`, which the protector's `protector-outline-<size>.json` matches within 0.4 mm; M takes the protector's, tab included, pending the open question in Further Notes) and `gusset` (full height, tab-end height, taper run, centre-back height, dip run; the protector is the same height with no dip). `LOFT_ALLOWANCE = 0.10` is one exported constant: max loft = gusset height × (1 + allowance), for the side view and for fit alike.
 - `POUCH_DIMENSIONS[key]`: width, length, relaxed thickness, fully-compressed thickness, minimum width, orientation. Key = filling family + variant or size, derived from the same `fillingDescriptor` the picker and the colours already use (`"6D (L)"` and `"6D L"` and `"6D Fold" + size L` all resolve to `6d/l`). Aliases are one table (`fold` → `folded`).
 - `NECK_SUPPORT_DIMENSIONS[size]` (XS–L) and `BOLSTER_DIMENSIONS[length]` (short / medium / long: length, diameter).
-- Optional per pouch: `flatLengthMm` / `flatWidthMm`, the fabric's own limit when it stops a spread before the fill reaches its fully compressed thickness. Absent, the registry derives the limit from volume (see Natural settle). Optional per pillow **Size**: `subSectionDividers: boolean` (default false) for a product whose sub-sections are physically walled; settle is off for it.
+- Optional per pouch: `flatLengthMm` / `flatWidthMm`, the fabric's own limit when it stops a spread before the fill reaches its fully compressed thickness. Absent, the registry derives the limit from volume (see Natural settle). Optional per pillow **Size**: `subSectionDividers: boolean` (default false) for a product whose sub-sections are physically walled; settle is off for it. The pillow's protector walls its three **Sections** and nothing else (2018 drawings, Further Notes), so it is `false` for every pillow **Size**.
 - `resolveDims(item)` returns `{ dims, source: "measured" | "fallback" }`. The fallback is the family's default (3D, 6D, 6D+) and, failing that, a generic pouch. Never throws, never returns undefined — the x-ray must not blank on a new **Item**.
 - Values ship as Ivan's measurements (intake table in Further Notes). Until they land the file carries `PLACEHOLDER` values behind a single flag that the self-check refuses in CI; slice 01 is HITL for that reason.
 
@@ -299,15 +299,15 @@ Pillow (per **Size**):
 
 | Size | Width, left↔right (mm) | Length, front↔back (mm) | Max loft (mm) | Section widths L / C / R (mm, only if not equal thirds) |
 |---|---|---|---|---|
-| XS | 604 ⁽ᵈ⁾ | 353 ⁽ᵈ⁾ = 305 body + 47 tab (311 at the centre line) | 101 ⁽ᵈ⁾ gusset, doming TBC | |
-| S | 647 ⁽ᵈ⁾ | 400 ⁽ᵈ⁾ = 330 body + 70 tab (359 at the centre line) | 127 ⁽ᵈ⁾ gusset, doming TBC | |
-| M | 706 ⁽ᵈ⁾ | 330 body ⁽ᵈ⁾ + tab TBC (no Top drawing; S–L interpolation ≈ 78 × 138) | 153 ⁽ᵈ⁾ gusset, doming TBC | |
-| L | 762 ⁽ᵈ⁾ | 435 ⁽ᵈ⁾ = 350 body + 85 tab (382 at the centre line) | 178 ⁽ᵈ⁾ gusset, doming TBC | |
-| XL | 836 ⁽ᵈ⁾ | 457 ⁽ᵈ⁾ = 365 body + 92 tab (404 at the centre line) | 203 ⁽ᵈ⁾ gusset, doming TBC | |
+| XS | 604 ⁽ᵈ⁾ | 353 ⁽ᵈ⁾ = 305 body + 47 tab (311 at the centre line) | 101 ⁽ᵈ⁾ gusset | 204 / 195 / 204 ⁽ᵖ⁾ |
+| S | 647 ⁽ᵈ⁾ | 400 ⁽ᵈ⁾ = 330 body + 70 tab (359 at the centre line) | 127 ⁽ᵈ⁾ gusset | 203 / 240 / 203 ⁽ᵖ⁾ |
+| M | 706 ⁽ᵈ⁾ | 330 ⁽ᵈ⁾ body (the case has no Top sheet; its bottom sheet stands in) + 73 × 147 tab ⁽ᵖ⁾ from the protector Top sheet = 403 (362 at the centre line) | 153 ⁽ᵈ⁾ gusset | 223 / 260 / 223 ⁽ᵖ⁾ |
+| L | 762 ⁽ᵈ⁾ | 435 ⁽ᵈ⁾ = 350 body + 85 tab (382 at the centre line) | 178 ⁽ᵈ⁾ gusset | 251 / 260 / 251 ⁽ᵖ⁾ |
+| XL | 836 ⁽ᵈ⁾ | 457 ⁽ᵈ⁾ = 365 body + 92 tab (404 at the centre line) | 203 ⁽ᵈ⁾ gusset | 279 / 279 / 279 ⁽ᵖ⁾ (equal thirds) |
 
-⁽ᵈ⁾ read off the 2018 case drawings (below), not yet confirmed by Ivan.
+⁽ᵈ⁾ read off the 2018 case drawings (below), confirmed by Ivan 22-9-2026. ⁽ᵖ⁾ read off the 2018 protector drawings (the divider seams and the M tab on the Inner Single Top sheets, below). Max loft in the registry is the gusset height × (1 + `LOFT_ALLOWANCE`), allowance 10 % by default and configurable — cloth gives; the protector's gusset is the same height, so there is one max loft per **Size**.
 
-**Measured from the 2018 case drawings.** Source: Drive › *01 Drawing* (2018) › the COVER folders — drawing "Cover" is the current **case**, drawing "Inner" the current **protector**, drawing "Protector" the current **cover**. The PDFs are 1:1 (PDFCreator, A0/A1); every figure below is the finished size with the 10 mm seam allowance removed, read from the vector geometry, and agrees with the sheet labels (24/26/28/30/33'' widths, 4/5/6/7/8'' sides). XS is dated 22-11-2017, the rest 13-3-2018; the S, M and L sheets are titled "No Neck Line". M has Side and Bottom sheets only, so its plan figures come from the bottom panel and its tab is unknown. Orientation assumed and still to be confirmed: the notched edge with the centre tab is the front (shoulders in the notches, tab under the neck); the wave edge is the back.
+**Measured from the 2018 case drawings.** Source: Drive › *01 Drawing* (2018) › the COVER folders — drawing "Cover" is the current **case**, drawing "Inner" the current **protector**, drawing "Protector" the current **cover**. The PDFs are 1:1 (PDFCreator, A0/A1); every figure below is the finished size with the 10 mm seam allowance removed, read from the vector geometry, and agrees with the sheet labels (24/26/28/30/33'' widths, 4/5/6/7/8'' sides). XS is dated 22-11-2017, the rest 13-3-2018; the S, M and L sheets are titled "No Neck Line". M has Side and Bottom sheets only, so its plan figures come from the bottom panel; its tab comes from the protector Top sheet (73 × 147, below). Orientation (confirmed): the notched edge with the centre tab is the **front** (shoulders in the notches, tab under the neck); the wave edge is the **back**. So the **sub-section** *front* is the tab side.
 
 Plan, top panel (mm):
 
@@ -331,9 +331,47 @@ Gusset, the side band ("Cover Side", two identical strips per case; mm):
 
 So the case is full height along the ends and the back, drops 25 mm over the last ~110–160 mm to the centre back (zipper end), and tapers to a 20 mm edge under the neck tab over the last ~150–230 mm of each strip — the taper edge is sewn into the notch (its arc length is the "AL 175 / 200 / 228 / 270 / 308" note on the sheets). *Mpillow Sizes Measurement.xlsx* lists "Pillow Height (Side)" as 4''–8'', i.e. the same H.
 
-Reference files, `.claude/PRD-xray-pillow-ux/reference/`: `case-outline-<size>.svg` and `.json` (the finished outline as a polygon in mm; x = width from the left end, y = 0 at the back extreme, tab edge at max y), `case-plan-metrics.json`, `case-gusset-profile.json`. Slice 01 turns these into the registry once the open points are settled.
+Reference files, `.claude/PRD-xray-pillow-ux/reference/`: `case-outline-<size>.svg` and `.json` (the finished outline as a polygon in mm; x = width from the left end, y = 0 at the back extreme, front/tab edge at max y), `case-plan-metrics.json`, `case-gusset-profile.json`. Slice 01 turns these into the registry.
 
-Open points from the drawings: (1) front/back orientation as assumed above; (2) whether the x-ray silhouette follows the top panel (with the tab) or the bottom panel (flat centre, no tab); (3) the M tab, or an M Top sheet; (4) whether "No Neck Line" is the shipping construction — the XS sheet still carries a line 132 mm in from the back edge; (5) max loft for fit: the gusset H, or H plus the doming of the panels when full; (6) the fit budget should probably come from the **protector** (drawing "Inner"), which the fillings actually sit in, rather than the case — those sheets have not been read yet.
+Decisions on the drawings (Ivan, 22-9-2026): (1) front is the tab edge, back is the wave edge; (2) the x-ray silhouette follows the **top panel** outline, and the product is visualised from the top and from the side; (3) M has no Top sheet, so its bottom-panel outline stands in for its top (no tab); (4) the neck line is ignored for every **Size** and never displayed; (5) the side-view height is the drawing's gusset height plus a configurable allowance, 10 % by default, because the case is cloth and gives; (6) the same figures and the same allowance feed the fit budget. The **protector** sheets (drawing "Inner", the bag the fillings actually sit in) are read the same way below.
+
+**Measured from the 2018 protector drawings.** Source: the same COVER folders › *Inner Single Top* (sheet 1 of 3) and *Inner Single Side, Divider* (sheet 2 of 3) per **Size** — drawing "Inner" is the current **protector**, the waterproof bag the fillings actually sit in. Top sheets dated 22/23-11-2017 (XS, S, M) and 13-3-2018 (L, XL); Side/Divider sheets revision B, 21-5-2018 (XS, S, M), 28-5-2018 (L), 6-6-2018 (XL). Read the same way as the case: 1:1 vector geometry, 10 mm seam allowance removed, checked against the sheet labels. Three findings.
+
+1. **The protector's top panel is the case's top panel.** Traced outline against traced outline, the largest deviation is 0.4 mm (M) and under 0.2 mm on the other four (`reference/protector-vs-case.json`), so one `outline` per **Size** serves the silhouette, the side view and the fit budget. The M protector *does* have a Top sheet, and it carries the tab the case's bottom sheet lacks: a separate 73 × 147 rectangle sewn to the centre of the front edge (the other **Sizes** cut the tab in one with the panel). Plan, mm:
+
+| Size | Width | Body length (lobe line) | Centre line, tab tip → back edge | Tab length × width | Notch depth / mouth | Back wave depth | Flat end edge |
+|---|---|---|---|---|---|---|---|
+| XS | 604 | 306 | 311 | 47 × 106 | 80 / 184 | 42 | 136 |
+| S | 647 | 330 | 359 | 70 × 127 | 91 / 195 | 41 | 161 |
+| M | 706 | 330 | 362 | 73 × 147 | 97 / 211 | 41 | 161 |
+| L | 762 | 350 | 382 | 85 × 150 | 104 / 237 | 53 | 159 |
+| XL | 836 | 365 | 404 | 92 × 170 | 120 / 258 | 53 | 172 |
+
+2. **The protector's gusset is the case's height, without the back dip.** Two strips per bag ("Inner Single Side"), full height along the ends and the whole back — the bag closes with a 25 mm velcro strip along the back ("Side Back", "Velcro 25"), not a zipper, so there is no 25 mm drop at the centre back — tapering to the same 20 mm edge under the tab over the same run as the case. The strips are 25–50 mm shorter than the case's, which carry the zipper overlap. Max loft is therefore one number per **Size**: H × (1 + `LOFT_ALLOWANCE`), for the case's side view and for the protector's fit budget alike.
+
+| Size | Full height H | Height at the tab end | Taper run, tab end → H | Height at centre back | Strip length |
+|---|---|---|---|---|---|
+| XS | 101 (4'') | 20 | 147 | 101 | 840 |
+| S | 127 (5'') | 20 | 143 | 127 | 906 |
+| M | 153 (6'') | 20 | 173 | 153 | 936 |
+| L | 178 (7'') | 20 | 201 | 178 | 1008 |
+| XL | 203 (8'') | 20 | 228 | 203 | 1074 |
+
+3. **The protector is walled into three Sections, and only three.** Every Top sheet carries two hatched divider seams running front-to-back, and sheet 2 the two divider panels ("Inner Single Divider Left, Right"): full height — cut 126 / 152 / 178 / 203 / 228 = H + a 25 mm velcro flap; the sheets note "Divider height 126 was 151" and so on, the 2018 revision — fixed to the gusset with H × 50 (XS, S) or H × 100 (M–XL) velcro patches. Each seam runs the local front-to-back depth to within 20 mm of either edge, so a pouch cannot migrate into the next **Section**; there is no wall between front, middle and back, so `subSectionDividers` is `false` for every pillow **Size** and natural settle (slice 11) applies. The seams are **not at thirds** — the centre **Section** is narrower than the sides on XS–L and equal only on XL (the sheets label the centre 195 / 240 / 260 / 260 / 280):
+
+| Size | Width | Left / Centre / Right | Divider seam length | Front-to-back depth at the seam |
+|---|---|---|---|---|
+| XS | 604 | 204 / 195 / 204 | 172 | 211 |
+| S | 647 | 203 / 240 / 203 | 212 | 232 |
+| M | 706 | 223 / 260 / 223 | 211 | 231 |
+| L | 762 | 251 / 260 / 251 | 220 | 240 |
+| XL | 836 | 279 / 279 / 279 | 192 | 232 |
+
+`sectionWidthsMm` in the registry is therefore measured data for every **Size**, and the cell grid derives from it (slice 02) instead of today's equal thirds.
+
+Reference files, `.claude/PRD-xray-pillow-ux/reference/`: `protector-outline-<size>.svg` and `.json` (same frame as the case outlines; M carries its tab), `protector-plan-metrics.json`, `protector-gusset-profile.json`, `protector-sections.json` (seam positions, section widths, divider panel and velcro sizes, local depth at the seam), `protector-vs-case.json` (the outline comparison).
+
+Open with Ivan (22-9-2026): (a) **M's tab** — decision (3) has the case's bottom panel stand in for the M top, but the protector Top sheet supplies the tab; the recommendation, taken until he says otherwise, is that the registry draws M from the protector outline (identical body plus the 73 × 147 tab) so every **Size** is drawn the same way; (b) **the divider positions** are the 2018 revision-B drawings — confirm the protectors in production are still sewn to them, since `sectionWidthsMm` now comes from those seams.
 
 Filling pouches (one row per type × size the inventory actually carries; add rows as needed):
 

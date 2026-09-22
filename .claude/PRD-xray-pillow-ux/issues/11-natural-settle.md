@@ -25,7 +25,7 @@ Fill the center middle and leave the back empty, save, and the x-ray shows what 
   - A void touched from both ends splits pro rata by capacity; the two pouches meet at one seam and stay two rects.
   - Settled thickness = `V / (widthMm × settledLengthMm)`, floored at `minThicknessMm`.
   - A pouch that cannot fill its void leaves the remainder at the end its anchor (authored position + nudge) says.
-  - Never across a Section wall, never across a Layer, never into a sub-section holding a piece of the same Layer. `subSectionDividers: true` on the Size → identity.
+  - Never across a Section wall, never across a Layer, never into a sub-section holding a piece of the same Layer. `subSectionDividers: true` on the Size → identity (it is `false` for every pillow Size: the 2018 protector drawings wall the three Sections and nothing else, PRD Further Notes).
 - **Pipeline:** `layout → settle → fit → render`. `fitPillow` reads settled rects and thickness; a settled pouch contributes to every sub-section column it spans (the cross-section reads that).
 - **Renderer:**
   - Settled is the default view: shopper preview, **Result** read-only, Configure, and every Section not being dived.
