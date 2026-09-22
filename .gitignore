@@ -65,3 +65,7 @@ graphify-out/.graphify_analysis.json
 
 # Local scratch output (email previews, ad-hoc dumps).
 /.scratch/
+
+
+# Renders
+renders

@@ -13,8 +13,19 @@ Z south, which is what every Y-up viewer (ComfyUI Load3D, three.js) expects.
 
     python tools/build_massing.py
 
-Writes model/showroom_massing.glb (+ .obj) and copies the GLB into
-ComfyUI/input/3d/ so the Load3D node in the workflow can open it.
+Writes model/showroom_massing.glb (+ .obj) and three companions, and copies
+the GLBs into ComfyUI/input/3d/ so the Load3D nodes in the workflow can open
+them:
+
+  showroom_massing.glb          the model, as drawn
+  showroom_massing_cut.glb      north wall and patio roof removed (cutaway, as
+                                the iso cameras see it)
+  showroom_massing_ids.glb      every part cut along the area boundaries and
+                                painted with its area colour (the ID model:
+                                ComfyUI's RenderMesh bakes an ID pass from it
+                                for any camera -- the free camera of the zoned
+                                workflow)
+  showroom_massing_cut_ids.glb  the ID model, cutaway
 """
 
 import math
@@ -281,6 +292,61 @@ for k in range(3):
 add("poly_roof", X_PATIO, 0, L, zf, 2.55, 2.62, PALETTE["glass"])
 add("poly_roof_n", AC_X[1], zf, L, W, 2.55, 2.62, PALETTE["glass"])
 
+# ---- zone ID model ---------------------------------------------------------
+# A second copy of every part, cut along the showroom area boundaries and
+# painted with the flat area colour -- the same rules and colours as
+# render_views.zone_ids -- so ComfyUI's RenderMesh (mode "vertex colors") can
+# bake an ID pass for ANY camera, including the free camera of the zoned
+# workflow (stage 5.13). Each piece lies in one area, so its vertex colours are
+# uniform and the render stays exact-colour for ImageColorToMask.
+ZONE_RGB = [(255, 0, 0), (0, 255, 0), (0, 0, 255),
+            (255, 255, 0), (255, 0, 255), (0, 255, 255)]
+X_ENTRY, Z_INV_TOP, Z_BENCH_TOP = 4.40, 2.08, 2.90      # = render_views plan constants
+INF = 1e3
+# Disjoint plan boxes (x0, x1, z0, z1) -> area index. Together they tile the
+# plan; the order is irrelevant because they do not overlap.
+ZONE_BOXES = [
+    ((X_PATIO, INF, -INF, INF), 5),                     # patio
+    ((X_PANTRY, X_PATIO, -INF, 1.0), 3),                # sewing table: workshop prompt
+    ((X_PANTRY, X_PATIO, 1.0, INF), 4),                 # service band
+    ((-INF, X_PANTRY, -INF, Z_INV_TOP), 2),             # south strip
+    ((-INF, X_PANTRY, Z_INV_TOP, Z_BENCH_TOP), 3),      # workbench
+    ((-INF, X_ENTRY, Z_BENCH_TOP, INF), 0),             # west end
+    ((X_ENTRY, X_PANTRY, Z_BENCH_TOP, INF), 1),         # fitting bays
+]
+# Parts dropped for the cutaway copies (= render_views.CUT_N): the wall nearest
+# the iso cameras and the patio roof, so a camera outside the box sees in.
+CUTAWAY = ["wall_north", "patio_wall_n", "poly_roof", "poly_roof_n"]
+
+
+def clip_box(mesh, x0, x1, z0, z1):
+    """The part of `mesh` inside the plan box, cut faces capped; None if empty."""
+    lo, hi = mesh.bounds
+    if lo[0] >= x1 or hi[0] <= x0 or lo[2] >= z1 or hi[2] <= z0:
+        return None
+    if lo[0] >= x0 and hi[0] <= x1 and lo[2] >= z0 and hi[2] <= z1:
+        return mesh.copy()
+    m = mesh
+    for normal, origin, bound in (((1, 0, 0), (x0, 0, 0), x0), ((-1, 0, 0), (x1, 0, 0), x1),
+                                  ((0, 0, 1), (0, 0, z0), z0), ((0, 0, -1), (0, 0, z1), z1)):
+        if abs(bound) >= INF:
+            continue
+        try:
+            m = trimesh.intersections.slice_mesh_plane(m, normal, origin, cap=True)
+        except Exception:
+            m = trimesh.intersections.slice_mesh_plane(m, normal, origin, cap=False)
+        if m is None or m.is_empty or len(m.faces) == 0:
+            return None
+    return m
+
+
+id_parts = {}
+for name, mesh in parts.items():
+    for (x0, x1, z0, z1), zone in ZONE_BOXES:
+        piece = clip_box(mesh, x0, x1, z0, z1)
+        if piece is not None:
+            id_parts["%s__z%d" % (name, zone)] = _paint(piece, ZONE_RGB[zone])
+
 # ---- export --------------------------------------------------------------
 # Mirror Z so the model is right-handed (X east, Y up, Z south). trimesh
 # re-orients the faces itself when a transform has a negative determinant.
@@ -289,27 +355,40 @@ MIRROR[2, 3] = W
 for mesh in parts.values():
     mesh.apply_transform(MIRROR)
     assert mesh.volume > 0, "inverted winding: " + str(mesh)
-
-scene = trimesh.Scene()
-for name, mesh in parts.items():
-    scene.add_geometry(mesh, geom_name=name, node_name=name)
+for mesh in id_parts.values():
+    mesh.apply_transform(MIRROR)
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 out_dir = os.path.join(root, "model")
 os.makedirs(out_dir, exist_ok=True)
 
-glb = os.path.join(out_dir, "showroom_massing.glb")
-scene.export(glb)
+
+def export_glb(filename, items):
+    scene = trimesh.Scene()
+    for name, mesh in items.items():
+        scene.add_geometry(mesh, geom_name=name, node_name=name)
+    path = os.path.join(out_dir, filename)
+    scene.export(path)
+    if os.path.isdir(COMFY_3D):
+        shutil.copy(path, os.path.join(COMFY_3D, filename))
+    print("glb:     %s  (%s bytes, %d parts)" % (path, format(os.path.getsize(path), ","), len(items)))
+    return path
+
+
+def without(items, dropped):
+    return {n: m for n, m in items.items() if n.split("__z")[0] not in dropped}
+
+
+glb = export_glb("showroom_massing.glb", parts)                  # full, as drawn
+export_glb("showroom_massing_cut.glb", without(parts, CUTAWAY))  # north wall + roof off
+export_glb("showroom_massing_ids.glb", id_parts)                 # area colours, full
+export_glb("showroom_massing_cut_ids.glb", without(id_parts, CUTAWAY))
 
 merged = trimesh.util.concatenate(list(parts.values()))
 obj = os.path.join(out_dir, "showroom_massing.obj")
 merged.export(obj)
 
-if os.path.isdir(COMFY_3D):
-    shutil.copy(glb, os.path.join(COMFY_3D, os.path.basename(glb)))
-
-print("parts:   %d" % len(parts))
+print("parts:   %d  (+ %d zone pieces)" % (len(parts), len(id_parts)))
 print("extents: %s  (X len, Y height, Z width)" % merged.extents.round(2))
 print("centre:  %s" % merged.bounds.mean(axis=0).round(2))
-print("glb:     %s  (%s bytes)" % (glb, format(os.path.getsize(glb), ",")))
 print("obj:     %s  (%s bytes)" % (obj, format(os.path.getsize(obj), ",")))

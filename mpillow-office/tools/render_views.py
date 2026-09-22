@@ -23,9 +23,14 @@ Two more passes per camera serve the zoned variant of the workflow
   zones.json                per view, the fraction of the frame each area
                             covers, so the builder only wires visible areas.
 
+The zoned workflow also takes one ZONE SECTION per area (SECTIONS below):
+the model is clipped to the area's plan box and viewed from its open side.
+Output massing_sec_<area>[_depth|_ids|_zoned].png.
+
     python tools/render_views.py
     python tools/render_views.py --list
     python tools/render_views.py iso_ne
+    python tools/render_views.py sec_02-fitting-bays
 """
 
 import argparse
@@ -78,9 +83,63 @@ CAMERAS = {
     "iso_ne":   (135.0, 30.0, 1.04, CUT_N),
     "iso_nw":   (-135.0, 30.0, 1.04, CUT_N + ["wall_west_n", "wall_west_s", "wall_west_head"]),
     "iso_low":  (145.0, 18.0, 1.04, CUT_N),
+    "iso_high": (160.0, 50.0, 1.04, CUT_N),     # bird's eye from the north, reads the plan
     "plan":     (0.0, 89.0, 1.02, ["poly_roof", "poly_roof_n"]),
     "long_sec": (180.0, 8.0, 1.02, CUT_N),      # from the north, looking south
 }
+
+# Zone sections for the zoned workflow (build_workflow.py --zoned, stage 5.12):
+# everything outside the area's plan box is cut away (cut faces capped) and an
+# orthographic camera looks in from the open side, slightly from above.
+# slug -> ((x0, x1, z0, z1) plan metres, None = open; yaw as CAMERAS).
+# Output massing_sec_<slug>*.png, coverage key sec_<slug>.
+SECTIONS = {
+    "01-entry-waiting":     ((None, X_ENTRY, None, None), 90.0),           # from the east, looking west
+    "02-fitting-bays":      ((X_ENTRY, X_PANTRY, Z_BENCH_TOP, None), 0.0), # from the south, looking north
+    "03-inventory-wall":    ((None, X_PANTRY, None, 2.04), 180.0),         # from the north; stops short of the bench
+    "04-workshop":          ((None, X_PATIO, None, Z_BENCH_TOP), 180.0),   # bench in front of the inventory wall
+    "05-service-pantry-wc": ((X_PANTRY, None, None, None), -90.0),         # from the west, looking east
+    "06-patio-wash-dry":    ((X_PATIO, None, None, None), -90.0),
+}
+SEC_PITCH, SEC_MARGIN = 15.0, 1.02
+SEC_INSET = 0.002    # clip planes sit 2 mm inside the box so a capped cut face that
+                     # lies exactly on an area boundary is still classified inside it
+
+
+def clip_box(mesh, x0, x1, z0, z1):
+    """The part of `mesh` inside a GLB-space box (None = open side), cut faces
+    capped, face colours kept (each part is one colour). None if nothing is left."""
+    lo, hi = mesh.bounds
+    planes = [((1, 0, 0), (x0, 0, 0)) if x0 is not None else None,
+              ((-1, 0, 0), (x1, 0, 0)) if x1 is not None else None,
+              ((0, 0, 1), (0, 0, z0)) if z0 is not None else None,
+              ((0, 0, -1), (0, 0, z1)) if z1 is not None else None]
+    if ((x1 is not None and lo[0] >= x1) or (x0 is not None and hi[0] <= x0) or
+            (z1 is not None and lo[2] >= z1) or (z0 is not None and hi[2] <= z0)):
+        return None
+    color = mesh.visual.face_colors[0]
+    m = mesh
+    for p in planes:
+        if p is None:
+            continue
+        try:
+            m = trimesh.intersections.slice_mesh_plane(m, p[0], p[1], cap=True)
+        except Exception:
+            m = trimesh.intersections.slice_mesh_plane(m, p[0], p[1], cap=False)
+        if m is None or m.is_empty or len(m.faces) == 0:
+            return None
+    m.visual.face_colors = np.tile(color, (len(m.faces), 1))
+    return m
+
+
+def section_box_glb(box):
+    """Plan box -> GLB box. The GLB is mirrored (Z south): glb z = PLAN_W - plan z."""
+    x0, x1, z0, z1 = box
+    gx0 = None if x0 is None else x0 + SEC_INSET
+    gx1 = None if x1 is None else x1 - SEC_INSET
+    gz0 = None if z1 is None else PLAN_W - z1 + SEC_INSET
+    gz1 = None if z0 is None else PLAN_W - z0 - SEC_INSET
+    return gx0, gx1, gz0, gz1
 
 
 def basis(yaw_deg, pitch_deg):
@@ -226,22 +285,30 @@ def main():
     ap.add_argument("--list", action="store_true")
     args = ap.parse_args()
 
+    # name -> (yaw, pitch, margin, culled parts, GLB clip box or None)
+    jobs = {k: v + (None,) for k, v in CAMERAS.items()}
+    for slug, (box, yaw) in SECTIONS.items():
+        jobs["sec_" + slug] = (yaw, SEC_PITCH, SEC_MARGIN, [], section_box_glb(box))
+
     if args.list:
-        for k, v in CAMERAS.items():
-            print("%-10s yaw=%6.1f pitch=%5.1f  cull=%s" % (k, v[0], v[1], ",".join(v[3])))
+        for k, (yaw, pitch, _, cull, box) in jobs.items():
+            print("%-26s yaw=%6.1f pitch=%5.1f  %s" % (
+                k, yaw, pitch, ("clip=%s" % (box,)) if box else ("cull=%s" % ",".join(cull))))
         return
 
     scene = trimesh.load(MODEL)
     os.makedirs(VIEWS, exist_ok=True)
-    todo = {args.camera: CAMERAS[args.camera]} if args.camera else CAMERAS
+    todo = {args.camera: jobs[args.camera]} if args.camera else jobs
     zones_path = os.path.join(VIEWS, "zones.json")
     coverage = {}
     if os.path.exists(zones_path):
         with open(zones_path, encoding="utf-8") as f:
             coverage = json.load(f)
 
-    for name, (yaw, pitch, margin, cull) in todo.items():
+    for name, (yaw, pitch, margin, cull, box) in todo.items():
         keep = [g for gname, g in scene.geometry.items() if gname not in cull]
+        if box is not None:
+            keep = [p for p in (clip_box(g, *box) for g in keep) if p is not None]
         mesh = trimesh.util.concatenate(keep)
         verts = np.asarray(mesh.vertices, np.float64)
         faces = np.asarray(mesh.faces, np.int64)
