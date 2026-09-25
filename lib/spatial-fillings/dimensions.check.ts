@@ -62,12 +62,25 @@ if (unmeasured.length) {
   console.warn(`dimensions.check: ${unmeasured.length} entries still resolve as fallback (Ivan's measurements pending):\n  ${unmeasured.join("\n  ")}`);
 }
 
-// --- Product Visualize shows the column, read-only ---------------------------
+// --- Product Visualize: the Dimensions section (slice 12) --------------------
 const page = readFileSync("app/[lang]/settings/products/product-visualize.tsx", "utf8");
-assert.match(page, /resolveDims\(/, "Product Visualize resolves each filling's dimensions");
-assert.match(page, /<TableHead>Dimensions<\/TableHead>/, "Dimensions column present");
-assert.match(page, /\(fallback\)/, "unmeasured fillings are marked (fallback)");
-assert.doesNotMatch(page, /widthMm[^\n]*onChange/, "slice 01: no dimension is editable here (slice 12 adds that)");
+assert.match(page, /<DimensionsSection settingsPath=\{settingsPath\} \/>/, "Product Visualize mounts the Dimensions section");
+const section = readFileSync("app/[lang]/settings/products/dimensions-section.tsx", "utf8");
+assert.match(section, /Unmeasured/, "an unmeasured entry is labelled, never presented as measured");
+assert.match(section, /Use default/, "Reset restores the code default");
+assert.match(section, /Loft allowance/, "the allowance is editable");
+assert.doesNotMatch(section, /kind:\s*"pillow"|sectionWidthsMm|scaledOutline|SILHOUETTE_MASTER/, "pillow geometry has no edit path on the page");
+
+// --- Route: admin-gated, validated, never writes pillow geometry --------------
+const route = readFileSync("app/[lang]/settings/product-builder/dimensions/route.ts", "utf8");
+assert.equal(route.match(/const denied = await requireAdmin\('page-builder'\)/g)?.length, 3, "GET, POST and DELETE are admin-gated");
+assert.match(route, /min_thickness_mm <= d\.thickness_mm/, "the route enforces min thickness ≤ thickness");
+assert.match(route, /min_width_mm <= d\.width_mm/, "the route enforces min width ≤ width");
+assert.match(route, /LOFT_ALLOWANCE_MAX_PCT/, "the allowance is capped");
+assert.doesNotMatch(route, /PILLOW_DIMENSIONS|pillow_dimension|section_widths_mm|gusset_|full_mm|back_mm/, "pillow geometry has no write path");
+const migration = readFileSync("supabase/migrations/20260925090000_dimension_overrides.sql", "utf8");
+assert.match(migration, /min_thickness_mm <= thickness_mm/, "the database enforces min thickness ≤ thickness");
+assert.match(migration, /enable row level security/, "override tables are service-role only");
 
 // --- Glossary and ADR --------------------------------------------------------
 const glossary = readFileSync("CONTEXT.md", "utf8");

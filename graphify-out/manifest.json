@@ -11250,9 +11250,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/product-visualize.tsx": {
-    "mtime": 1790327082.8518305,
-    "seen": 1790327310.5729344,
-    "ast_hash": "b9caacb6c6b2a2b3e13152c4836659fc",
+    "mtime": 1790327600.9838614,
+    "seen": 1790327817.4985187,
+    "ast_hash": "72ba61f2427d5378bc13f5fe220cb5e8",
     "semantic_hash": ""
   },
   "app/api/results/[id]/finish/route.ts": {
@@ -12720,9 +12720,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1790327250.3369925,
-    "seen": 1790327310.5751777,
-    "ast_hash": "bb617688b46200027dc041ef8167aa51",
+    "mtime": 1790327746.6246889,
+    "seen": 1790327817.5008752,
+    "ast_hash": "8bce04bd52724c541fd15b43d59eb7b6",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -13212,9 +13212,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/12-dimension-settings.md": {
-    "mtime": 1790320730.5314758,
-    "seen": 1790320770.6098557,
-    "ast_hash": "02e93a0a7e10887a841d44ffbbabc1f7",
+    "mtime": 1790327746.6243987,
+    "seen": 1790327817.5008738,
+    "ast_hash": "457397edb8986cde9d85e4b8fdda78c0",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/dimensions.test.ts": {
@@ -13224,9 +13224,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/dimensions.check.ts": {
-    "mtime": 1790327033.2158277,
-    "seen": 1790327310.5744665,
-    "ast_hash": "d4001c936cc28212d955676dd579c15e",
+    "mtime": 1790327765.087871,
+    "seen": 1790327817.5000696,
+    "ast_hash": "b3598aa67b618a4fee0b151403e5f495",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/dimensions.ts": {
@@ -13251,6 +13251,36 @@
     "mtime": 1790327057.1798291,
     "seen": 1790327310.5753334,
     "ast_hash": "2803703817cc8795fec907ef1c7c678f",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/product-builder/dimensions/route.ts": {
+    "mtime": 1790327511.795856,
+    "seen": 1790327817.4984803,
+    "ast_hash": "ec4ea67fbeb399d6b5759b63fb870e1b",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/products/dimensions-section.tsx": {
+    "mtime": 1790327578.55186,
+    "seen": 1790327817.4985147,
+    "ast_hash": "73382b8e2dacbeaf7bc047f3d3d0137a",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/__tests__/dimension-overrides.test.ts": {
+    "mtime": 1790327444.455852,
+    "seen": 1790327817.5000477,
+    "ast_hash": "616e2e68a970318143f6644004a6307a",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/dimension-overrides.ts": {
+    "mtime": 1790327425.831851,
+    "seen": 1790327817.500068,
+    "ast_hash": "3e9c2a0d2367ea9daf4a95edf063ea9c",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260925090000_dimension_overrides.sql": {
+    "mtime": 1790327396.719849,
+    "seen": 1790327817.5003972,
+    "ast_hash": "08de35a4659815640de48e378ea02db6",
     "semantic_hash": ""
   }
 }

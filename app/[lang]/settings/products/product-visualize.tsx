@@ -30,7 +30,7 @@ import {
   type ColorOverrideRow,
   type EffectiveFillingColor,
 } from "@/lib/spatial-fillings/color-overrides";
-import { formatDims, resolveDims } from "@/lib/spatial-fillings/dimensions";
+import { DimensionsSection } from "./dimensions-section";
 import type { OverlayFit, OverlayMappingItem } from "@/lib/product-builder/overlays";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -143,6 +143,8 @@ export function ProductVisualize() {
       )}
 
       <FillingVisualsSection settingsPath={settingsPath} />
+
+      <DimensionsSection settingsPath={settingsPath} />
     </div>
   );
 }
@@ -238,7 +240,6 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
               <TableHead className="w-20">Shape</TableHead>
               <TableHead>Subtype</TableHead>
               <TableHead>Effective color</TableHead>
-              <TableHead>Dimensions</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -254,7 +255,7 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                   No active filling items with a subtype found.
                 </TableCell>
               </TableRow>
@@ -263,32 +264,6 @@ function FillingVisualsSection({ settingsPath }: { settingsPath: (path: string) 
         </Table>
       )}
     </div>
-  );
-}
-
-/**
- * Width × length × thickness in mm from the dimension registry, or a clear
- * "(fallback)" when the pouch has not been measured, so a fallback-sized
- * pouch in the x-ray is never mistaken for a measured one.
- */
-function DimensionsCell({ subtype }: { subtype: string }) {
-  const resolved = resolveDims({ name: subtype, subtype });
-  if (resolved.source === "fallback") {
-    return (
-      <span className="text-muted-foreground text-xs" title={`Drawn at ${formatDims(resolved.dims)} until measured`}>
-        — (fallback)
-      </span>
-    );
-  }
-  return (
-    <span className="text-xs">
-      {formatDims(resolved.dims)}
-      {resolved.source === "configured" && (
-        <Badge variant="default" className="ml-2 text-xs">
-          Configured
-        </Badge>
-      )}
-    </span>
   );
 }
 
@@ -329,10 +304,6 @@ function FillingVisualRow({
             {row.overridden ? "Override" : "Default"}
           </Badge>
         </div>
-      </TableCell>
-      <TableCell>
-        {/* Read-only in slice 01 (ADR 0019): the registry in code is the source; slice 12 makes it editable. */}
-        <DimensionsCell subtype={row.subtype} />
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">

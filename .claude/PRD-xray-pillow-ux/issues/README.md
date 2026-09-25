@@ -21,7 +21,7 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | [09](https://github.com/ivanyeors/mp/issues/209) | Mbolster parity — capsule dimensions, physical cap, end-on cut | AFK | P2 | not started | 03, 11 | 44, 45 |
 | [10](https://github.com/ivanyeors/mp/issues/210) | Physical calibration sign-off | HITL | P1 | not started | 01–07, 09, 11 | 48 |
 | [11](https://github.com/ivanyeors/mp/issues/212) | Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic | AFK | P1 | not started | 02, 03 | 50–62 |
-| [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | not started | 01 | 63–66 |
+| [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | built (PR #213); host plumbing lands with 02 | 01 | 63–66 |
 
 ## Dependency graph
 
@@ -83,4 +83,4 @@ graph TD
 
 ## Schema
 
-Slice 12 carries an additive migration (`filling_dimension_overrides`, `neck_support_dimension_overrides`) and slice 08 an optional one (`offset_x_mm`, `offset_y_mm`, additive and nullable). Apply with `supabase db push` in the same sitting as the merge, never the MCP apply.
+Slice 12 carries an additive migration (`20260925090000_dimension_overrides.sql`: `filling_dimension_overrides`, `neck_support_dimension_overrides`) and slice 08 an optional one (`offset_x_mm`, `offset_y_mm`, additive and nullable). Apply with `supabase db push` in the same sitting as the merge, never the MCP apply.
