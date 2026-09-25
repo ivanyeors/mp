@@ -95,9 +95,19 @@ assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/
 assert.match(renderer, /layoutPlacements\(placements,/, "deterministic layout engine renders the mix");
 assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims, fit \}\)/, "true-scale layout: the Size's stage and each item's registry dimensions");
 assert.match(renderer, /const stage = useMemo\(\(\) => stageGeometry\(pillowSize\), \[pillowSize\]\)/, "the stage follows the pillow Size");
-assert.match(renderer, /const fit = useMemo\(\s*\(\) => fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the fit is computed once per geometry change (slice 03)");
+assert.match(renderer, /const fit = useMemo\(\s*\(\) => fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the fit is computed once per geometry change (slice 03)");
 assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims, fit \}\)/, "the layout reads the fit — squeezed widths and thicknesses draw as such");
 assert.doesNotMatch(renderer, /sizeScale|itemScaleMap|SIZE_SCALES/, "the relative size scale is retired");
+// Slice 04: the status ring strokes the cell's own region path — no new element class.
+assert.match(
+  renderer,
+  /d=\{stage\.cellClipPaths\[`\$\{c\.section\}\/\$\{c\.subSection\}`\]\}\s+fill="none"\s+stroke=\{c\.status === "over" \? RING_OVER : RING_COMPRESSED\}/,
+  "the cell status ring is a stroke on the existing cell clip path, amber or red",
+);
+assert.match(renderer, /strokeDasharray: status === "ok" \? undefined : "6 3"/, "a squeezed piece draws with a dashed stroke");
+assert.match(renderer, /squeeze\.status === "over" && <path d=\{d\} fill=\{RING_OVER\}/, "a piece in a cell that cannot close is tinted red on its own outline");
+assert.match(renderer, /\.\.\.squeezeLines\(pieceStatuses\.get\(p\.key\)\)/, "the ↕ / ↔ micro-label joins the type label through PieceLabel's size rule");
+assert.match(renderer, /fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 
 // --- Wiring: one gated mount over the silhouette (RE slice 07: guests read-only) ---

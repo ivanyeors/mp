@@ -132,6 +132,20 @@ assert.doesNotMatch(renderer, /animate=\{\{ x/, "dive never pans — the x-ray o
 assert.match(renderer, /setAttribute\("d"/, "morphs write path d only (no layout thrash)");
 assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1)");
 
+// --- Slice 04: the fit on the pillow, in the panel, in the dock, at the add ---
+assert.equal(renderer.match(/<LoftGauge/g)?.length, 2, "the loft gauge is mounted once in the desktop panel and once in the phone dock");
+assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pillowSize\} compact \/>/, "the desktop panel gauge is the compact one");
+assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pillowSize\} compact=\{false\} \/>/, "the phone dock gauge is the readable one");
+assert.match(renderer, /role="meter"/, "the gauge is a meter for assistive tech");
+assert.match(renderer, /fitMessage\(cell, size\)/, "the gauge's message is the pure fitMessage — the three numbers and the Size");
+assert.match(
+  renderer,
+  /const would = wouldFit\(placements, \{ kind: "add", cell, itemId, layer \}, \{ size: pillowSize, dims: itemDims, loftAllowance \}\);/,
+  "an add is judged by wouldFit after the caps",
+);
+assert.match(renderer, /if \(would\.cell\?\.status === "over"\) \{\s*toast\.error\(fitMessage\(would\.cell, pillowSize\)\);\s*return;/, "over is refused with the numbers on the existing toast path; compressed goes through");
+assert.doesNotMatch(renderer, /would\.cell\?\.status === "compressed"[\s\S]{0,80}return/, "compression is a working state, never a refusal");
+
 // --- Add target = the cell region, not a floating + button --------------------
 // The old picker parked a ~28px + in each band's footer: a tiny thing to aim at,
 // and the bottom one landed under the silhouette's curve. The target is now the

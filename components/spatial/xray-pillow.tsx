@@ -52,7 +52,16 @@ import {
 } from "@/lib/spatial-fillings/conform";
 import { getShapeMorph, prepareMorph } from "@/lib/spatial-fillings/morphs";
 import { fillingVisual, type FillingVisual } from "@/lib/spatial-fillings/visuals";
-import { fitPillow } from "@/lib/spatial-fillings/fit";
+import {
+  fitMessage,
+  fitPillow,
+  pieceFitStatus,
+  wouldFit,
+  type CellFit,
+  type FitStatus,
+  type PieceFitStatus,
+  type PillowFit,
+} from "@/lib/spatial-fillings/fit";
 import { GAP, layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -107,6 +116,20 @@ const MORPH_MS = 320;
 export const XRAY_SHELL = "var(--xray-shell, rgba(255,255,255,0.9))";
 export const XRAY_INTERIOR = "var(--xray-interior, rgba(15,23,42,0.5))";
 const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
+// Fit status paint (slice 04): amber at the compression limit, red when a cell
+// cannot close — the same two colours on the cell ring, the piece tint, the
+// gauge bar and the cross-section.
+const RING_COMPRESSED = "#f59e0b";
+const RING_OVER = "#ef4444";
+const RELAXED_PIECE: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
+/** `↕ 78 %` / `↔ 85 %` beside the type label when the piece draws squeezed. */
+const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
+  if (!ps) return [];
+  const out: string[] = [];
+  if (ps.thicknessRatio < 1 - 1e-6) out.push(`↕ ${Math.round(ps.thicknessRatio * 100)} %`);
+  if (ps.widthRatio < 1 - 1e-6) out.push(`↔ ${Math.round(ps.widthRatio * 100)} %`);
+  return out;
+};
 
 // Dive-editor control sizing. The chips sit ON the pouches, so on a desktop
 // stage (650px wide) they stay tiny; below md the stage is ~360px wide and
@@ -150,11 +173,14 @@ export function MorphPiece({
   visual,
   d,
   view = "settled",
+  status = "ok",
 }: {
   subtype: string | null;
   visual: FillingVisual;
   d: string;
   view?: PieceView;
+  /** The piece's own fit (slice 04): a squeezed piece draws with a dashed stroke. */
+  status?: FitStatus;
 }) {
   const shape = visual.shape;
   const ref = useRef<SVGPathElement>(null);
@@ -247,6 +273,7 @@ export function MorphPiece({
     fillOpacity: 0.9,
     stroke: "rgba(255,255,255,0.9)",
     strokeWidth: 2,
+    strokeDasharray: status === "ok" ? undefined : "6 3",
     vectorEffect: "non-scaling-stroke",
   } as const;
 
@@ -256,6 +283,40 @@ export function MorphPiece({
       {settleGhost && <path ref={settleGhostRef} d={settleGhost} {...paint} />}
       <path ref={ref} d={d} {...paint} />
     </>
+  );
+}
+
+/**
+ * A cell's loft against its Section's budget (slice 04): `42 / 60 mm`, a bar,
+ * and the fit message when the stack is at its limit or past it. Reads the
+ * fit the x-ray already holds; nothing is recomputed. Not interactive — it sits
+ * over the cell art and must not swallow the click that adds to it.
+ */
+export function LoftGauge({ cell, size, compact }: { cell: CellFit; size: string; compact: boolean }) {
+  const pct = Math.min(cell.loftMm / Math.max(cell.maxLoftMm, 1), 1) * 100;
+  const bar = cell.status === "over" ? "bg-red-500" : cell.status === "compressed" ? "bg-amber-500" : "bg-emerald-500";
+  const tone = cell.status === "over" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400";
+  return (
+    <div
+      className={`flex w-full flex-col gap-0.5 rounded border bg-background/90 px-1.5 py-0.5 shadow-sm ${compact ? "text-[9px] leading-4" : "text-[11px] leading-5"}`}
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={cell.maxLoftMm}
+      aria-valuenow={cell.loftMm}
+      aria-label={`${cell.section} ${cell.subSection} loft`}
+      data-xray-loft-gauge={cell.status}
+    >
+      <div className="flex items-center gap-1 tabular-nums">
+        <span>
+          {Math.round(cell.loftMm)} / {Math.round(cell.maxLoftMm)} mm
+        </span>
+        {cell.status !== "ok" && <span className={`capitalize ${tone}`}>{cell.status}</span>}
+      </div>
+      <div className="h-1 w-full overflow-hidden rounded bg-muted">
+        <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
+      </div>
+      {cell.status !== "ok" && <div className="text-muted-foreground">{fitMessage(cell, size)}</div>}
+    </div>
   );
 }
 
@@ -400,6 +461,7 @@ export function XrayPillow({
   // configurator, Configure and Result all know it and pass it.
   pillowSize = "M",
   loftAllowance,
+  fit: fitProp,
   items,
   onPlacementsChange,
   className,
@@ -415,6 +477,8 @@ export function XrayPillow({
   pillowSize?: PillowSize;
   /** The loft allowance the fit budgets with (a Settings value, slice 12); the code default when omitted. */
   loftAllowance?: number;
+  /** The host's fit (`usePillowFit`), shared with its banner, confirm and cross-section; computed here when omitted. */
+  fit?: PillowFit;
   /** Inventory filling Items for the dive editor picker; read-only when omitted. */
   items?: FillingItem[];
   /** Same lifted session-mix state the list editor writes (never forked). */
@@ -499,16 +563,22 @@ export function XrayPillow({
   // layoutPlacements + conformPouchPath are pure and deterministic, so the whole
   // geometry chain memoises on (placements, stage, itemDims): a hover/dive
   // re-render no longer re-runs the pouch conform (polygon scans) for every piece.
-  // The physical fit (slice 03): computed once here, read by the layout (squeezed
-  // widths and thicknesses draw as such) and, later, by the rings, gauges and
-  // the cross-section — never recomputed downstream.
+  // The physical fit (slice 03): the host's when it computes one (its banner,
+  // confirm and cross-section read the same object), else computed once here;
+  // the layout (squeezed widths and thicknesses draw as such), the rings and
+  // the gauges read it — never recomputed downstream.
   const fit = useMemo(
-    () => fitPillow(placements, { size: pillowSize, dims: itemDims, loftAllowance }),
-    [placements, pillowSize, itemDims, loftAllowance],
+    () => fitProp ?? fitPillow(placements, { size: pillowSize, dims: itemDims, loftAllowance }),
+    [fitProp, placements, pillowSize, itemDims, loftAllowance],
   );
   const pieces = useMemo(
     () => layoutPlacements(placements, { stage, dims: itemDims, fit }),
     [placements, stage, itemDims, fit],
+  );
+  /** piece key → its own squeeze (slice 04): dashed stroke, red tint and the ↕ / ↔ micro-label read this. */
+  const pieceStatuses = useMemo(
+    () => new Map(pieces.map((p) => [p.key, pieceFitStatus(fit, p, p.depth)] as const)),
+    [pieces, fit],
   );
   /** cell key → its pieces, in layout order (one grouping pass, not a filter per cell). */
   const piecesByCell = useMemo(() => {
@@ -594,8 +664,20 @@ export function XrayPillow({
       toast.error(result.error); // cap / rule feedback, visible on-canvas
       return;
     }
+    // Slice 04: the physical fit after the add. A cell that could not close
+    // even fully compressed is refused with the numbers; one that merely
+    // compresses is allowed — its ring turns amber. Advisory, after the caps.
+    const would = wouldFit(placements, { kind: "add", cell, itemId, layer }, { size: pillowSize, dims: itemDims, loftAllowance });
+    if (would.cell?.status === "over") {
+      toast.error(fitMessage(would.cell, pillowSize));
+      return;
+    }
     onPlacementsChange?.(result.placements);
   };
+
+  /** The dived cell's fit, for its gauge; undefined while the cell is empty. */
+  const cellFitOf = (subSection: SubSection): CellFit | undefined =>
+    dived ? fit.cells.find((c) => c.section === dived && c.subSection === subSection) : undefined;
 
   const pieceLabel = (itemId: number) => {
     const item = items?.find((i) => i.id === itemId);
@@ -888,6 +970,7 @@ export function XrayPillow({
                     const visual = fillingVisual(subtype);
                     const key = `${p.section}/${p.subSection}` as CellKey;
                     const d = (authored ? authoredPaths.get(p.key) : settledPaths.get(p.key))!;
+                    const squeeze = pieceStatuses.get(p.key) ?? RELAXED_PIECE;
                     return (
                       <g key={p.key} clipPath={authored ? `url(#${clipId(key)})` : undefined}>
                         <MorphPiece
@@ -896,16 +979,38 @@ export function XrayPillow({
                           visual={visual}
                           d={d}
                           view={authored ? "authored" : "settled"}
+                          status={squeeze.status}
                         />
                         {p.depth > 0 && (
                           <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
                         )}
+                        {/* A piece in a cell that cannot close: red tint (slice 04). */}
+                        {squeeze.status === "over" && <path d={d} fill={RING_OVER} fillOpacity={0.3} />}
                       </g>
                     );
                   })}
                 </g>
               );
             })}
+
+            {/* Cell status rings (slice 04): the cell's own region stroked amber
+                when its stack is at the compression limit, red when it cannot
+                close even fully compressed — inside the silhouette clip, in
+                both views, so the problem is on the pillow itself. A stroke on
+                an existing region path, not a new element class. */}
+            {fit.cells.map((c) =>
+              c.status === "ok" ? null : (
+                <path
+                  key={`ring-${c.section}/${c.subSection}`}
+                  d={stage.cellClipPaths[`${c.section}/${c.subSection}`]}
+                  fill="none"
+                  stroke={c.status === "over" ? RING_OVER : RING_COMPRESSED}
+                  strokeWidth={2.5}
+                  strokeOpacity={0.9}
+                  vectorEffect="non-scaling-stroke"
+                />
+              ),
+            )}
 
             {/* Sub-section dividers are authoring guides, not walls (slice 11):
                 faint, and drawn only in the dive. */}
@@ -931,7 +1036,10 @@ export function XrayPillow({
                 <PieceLabel
                   key={`label-${p.key}`}
                   rect={p.section === dived ? p : p.settled}
-                  lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
+                  lines={[
+                    ...pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null),
+                    ...squeezeLines(pieceStatuses.get(p.key)),
+                  ]}
                 />
               ) : null,
             )}
@@ -1092,6 +1200,10 @@ export function XrayPillow({
                   className={`absolute z-20 flex flex-col items-center gap-0.5 ${cellAnchor(subSection).translate}`}
                   style={{ ...cellAnchor(subSection).style, pointerEvents: "none" }}
                 >
+                  {/* Loft gauge (slice 04): used / max mm and the fit message, on the cell. */}
+                  {cellPcs.length > 0 && cellFitOf(subSection) && (
+                    <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact />
+                  )}
                   {/* ponytail: a side cell's centroid chips share this band; the
                       panel's opaque background and z-20 keep the toggle
                       readable. Tighten the chips to max-w-16 if it ever bites. */}
@@ -1246,6 +1358,10 @@ export function XrayPillow({
                       {full ? "Full" : "Add filling"}
                     </button>
                   </div>
+                  {/* Phone parity (slice 04): the same gauge and message in the dock group. */}
+                  {cellPcs.length > 0 && cellFitOf(subSection) && (
+                    <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact={false} />
+                  )}
                   {!stacked && cellPcs.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {sideChips

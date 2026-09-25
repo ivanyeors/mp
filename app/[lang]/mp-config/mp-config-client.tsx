@@ -165,6 +165,8 @@ import {
 } from "@/lib/configurator/staff-assist";
 import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
+import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { stageGeometry } from "@/components/spatial/xray-assets";
 import { pillowDimensions } from "@/lib/spatial-fillings/dimensions";
@@ -464,6 +466,21 @@ export function MpConfigClient({
     [assistDimensionOverrides, shopDimensionOverrides],
   );
   const assistItemDims = useMemo(() => resolveItemDims(assistItems, assistRegistry), [assistItems, assistRegistry]);
+  // Slice 04: the physical fit of the session mix at the Size on screen —
+  // computed once here and shared by the x-ray, the banner and the hold /
+  // save confirm (and the cross-section, slice 05). The same Size expression
+  // the hold submits with, so the fit is judged against the pillow being held.
+  const previewSize =
+    shopRecommendation?.pillow_product?.size ?? suggestion?.recommended?.size ?? suggestion?.product?.size ?? null;
+  const assistFit = useMemo(
+    () =>
+      fitPillow(assistPlacements, {
+        size: previewSize,
+        dims: assistItemDims,
+        loftAllowance: assistRegistry.loftAllowance,
+      }),
+    [assistPlacements, previewSize, assistItemDims, assistRegistry.loftAllowance],
+  );
   // RE slice 07: guests read the same filling_color_overrides table via the shop
   // response; staff panel overrides win once loaded.
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -1899,6 +1916,8 @@ export function MpConfigClient({
       toast.error("Choose a cover and a case");
       return;
     }
+    // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
+    if (!confirmSaveWithOverCells(assistFit, "Save")) return;
     // Shipping travels only when it is complete. An Assisted customisation has
     // none yet and the customer supplies it at their finish — half an address
     // would fail the server's schema and block an otherwise valid edit.
@@ -1981,6 +2000,9 @@ export function MpConfigClient({
       setFieldErrors(errors);
       return;
     }
+    // Slice 04: a Staff-assisted mix with a cell that cannot close is a
+    // confirm, never a block (ADR 0019) — the same posture as Spatially authored.
+    if (staffAssist && !confirmSaveWithOverCells(assistFit, "Hold")) return;
 
     setHoldSubmitting(true);
     try {
@@ -2073,6 +2095,7 @@ export function MpConfigClient({
     holdFields,
     staffAssist,
     assistPlacements,
+    assistFit,
     sessionFillingTemplateId,
     partner,
     tokenStorageKey,
@@ -2178,6 +2201,16 @@ export function MpConfigClient({
       guestLoftAllowance: registryFromPayload(shopRecommendation?.dimension_overrides ?? null).loftAllowance,
     };
   }, [shopRecommendation, resumeFinish]);
+  // The guest's fit of the recommended (or finished) mix: read-only x-ray and cross-section.
+  const guestFit = useMemo(
+    () =>
+      fitPillow(guestPreview.guestPlacements, {
+        size: previewSize,
+        dims: guestPreview.guestItemDims,
+        loftAllowance: guestPreview.guestLoftAllowance,
+      }),
+    [guestPreview, previewSize],
+  );
 
   // Hold preview uses mp-maker split layout (cover/case card pickers, no fillings/protector).
   if (currentStep === "preview") {
@@ -2434,6 +2467,7 @@ export function MpConfigClient({
                       itemDims={staffAssist ? assistItemDims : guestItemDims}
                       pillowSize={pillowDimensions(size).dims.size}
                       loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
+                      fit={staffAssist ? assistFit : guestFit}
                       // read-only for guests: no items / no change handler → no edit affordances
                       items={staffAssist ? assistItems : undefined}
                       onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
@@ -2446,6 +2480,11 @@ export function MpConfigClient({
                     </div>
                   )}
                 </div>
+                {/* Slice 04: a loaded template or a Size change that no longer
+                    fits is flagged here as well as on the cells. Advisory. */}
+                {staffAssist && xrayVisible && (
+                  <FitBanner fit={assistFit} className="w-full max-w-md text-white [&_p]:text-white/80 [&_li]:text-white/80" />
+                )}
                 {(() => {
                   const sleepPos = measurementData.sleepPositionType[0];
                   const why = record

@@ -93,6 +93,8 @@ export type CellFit = {
   thicknessRatios: number[];
   /** Planes standing in this cell's column once settled: its own Layers, plus any a neighbour's fill spread in at another depth. */
   loftLayers: number;
+  /** The other columns this cell's own pieces settled into (slice 11), front → back; the message names them. */
+  settledInto: SubSection[];
   /** The worse of the loft status and every Layer's width status. */
   status: FitStatus;
 };
@@ -232,6 +234,7 @@ function cellFit(
   thicknessRatios: number[],
   loftMm: number,
   loftLayers: number,
+  settledInto: SubSection[] = [],
 ): CellFit {
   return {
     section,
@@ -243,6 +246,7 @@ function cellFit(
     loftMm: r1(loftMm),
     thicknessRatios,
     loftLayers,
+    settledInto,
     status: layerFits.reduce((s, l) => worstStatus(s, l.status), stack.status),
   };
 }
@@ -336,7 +340,20 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
       const layerFits = layers.map((l, d) => fitLayer(l, pillow.sectionWidthsMm[a], d));
       const stack = stacks[b]!;
       const thicknessRatios = layers.map((l) => Math.min(...l.map((p) => pieceRatio.get(`${section}/${subSection}/${p.slot}`) ?? 1)));
-      const cell = cellFit(section, subSection, layerFits, stack.fit, budget[a], thicknessRatios, loftBySubSection[subSection], stack.depths.length);
+      const settledInto = SUB_SECTIONS.filter(
+        (other) => other !== subSection && settled.some((s) => s.subSection === subSection && spans(s, other)),
+      );
+      const cell = cellFit(
+        section,
+        subSection,
+        layerFits,
+        stack.fit,
+        budget[a],
+        thicknessRatios,
+        loftBySubSection[subSection],
+        stack.depths.length,
+        settledInto,
+      );
       cells.push(cell);
       sectionStatus = worstStatus(sectionStatus, cell.status);
     }
@@ -403,7 +420,7 @@ export function wouldFit(
  * for a loft problem; the same shape per Layer for a width problem; `fits` otherwise.
  */
 export function fitMessage(cell: CellFit, size: string): string {
-  const where = `${cell.section} · ${cell.subSection}`;
+  const where = `${cell.section} · ${cell.subSection}${cell.settledInto.length ? ` (settled into ${cell.settledInto.join(" and ")})` : ""}`;
   const loftStatus = cell.relaxedLoftMm <= cell.maxLoftMm ? "ok" : cell.minLoftMm <= cell.maxLoftMm ? "compressed" : "over";
   if (loftStatus !== "ok") {
     const n = cell.loftLayers;
@@ -415,4 +432,48 @@ export function fitMessage(cell: CellFit, size: string): string {
     return `${where} layer ${layer.depth + 1}: ${n} ${n === 1 ? "piece needs" : "pieces need"} ${Math.round(layer.relaxedMm)} mm relaxed, ${Math.round(layer.minMm)} mm fully squeezed; the ${cell.section} Section is ${Math.round(layer.availableMm)} mm wide`;
   }
   return `${where}: fits`;
+}
+
+// --- Feedback helpers (slice 04) ----------------------------------------------
+
+/** A piece's own squeeze, for the drawing: its Layer's width status and its cell's thickness ratio at its depth. */
+export type PieceFitStatus = { status: FitStatus; widthRatio: number; thicknessRatio: number };
+
+const RELAXED: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
+
+/**
+ * `over` when the piece's Layer does not fit across even fully squeezed or its
+ * cell cannot close even fully compressed; `compressed` when it draws squeezed
+ * either way; `ok` otherwise.
+ */
+export function pieceFitStatus(fit: PillowFit, piece: { section: Section; subSection: SubSection; slot: number }, depth: number): PieceFitStatus {
+  const cell = fit.cells.find((c) => c.section === piece.section && c.subSection === piece.subSection);
+  if (!cell) return RELAXED;
+  const layer = cell.layers[depth];
+  const widthRatio = layer?.pieces.find((p) => p.slot === piece.slot)?.widthRatio ?? 1;
+  const thicknessRatio = cell.thicknessRatios[depth] ?? 1;
+  const loftOver = cell.minLoftMm > cell.maxLoftMm + 1e-9;
+  const status: FitStatus =
+    layer?.status === "over" || loftOver
+      ? "over"
+      : widthRatio < 1 - 1e-6 || thicknessRatio < 1 - 1e-6
+        ? "compressed"
+        : "ok";
+  return { status, widthRatio, thicknessRatio };
+}
+
+/** The cells that cannot close even fully compressed — the banner and the save confirm list these. */
+export function overCells(fit: PillowFit): CellFit[] {
+  return fit.cells.filter((c) => c.status === "over");
+}
+
+/** The same recipe judged at each Size — the Size membership chips' fit dots. O(pieces) per Size. */
+export function fitAtSizes(
+  placements: PillowPlacement[],
+  sizes: readonly string[],
+  ctx: Omit<FitContext, "size">,
+): Record<string, FitStatus> {
+  const out: Record<string, FitStatus> = {};
+  for (const size of sizes) out[size] = fitPillow(placements, { ...ctx, size }).status;
+  return out;
 }

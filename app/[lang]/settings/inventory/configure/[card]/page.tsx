@@ -40,6 +40,8 @@ import {
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
+import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { useFitAtSizes, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import {
   bolsterPlacementsToRows,
   pillowPlacementsToRows,
@@ -1596,6 +1598,8 @@ function FillingConfigPanel({
       toast.error(`A new Filling Template must apply to ${templateKeyLabel(kind, templateKey)}`);
       return;
     }
+    // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
+    if (kind === "pillow" && !confirmSaveWithOverCells(fit, "Save")) return;
     setSaving(true);
     setDeleteConfirm(false);
     try {
@@ -1799,6 +1803,11 @@ function FillingConfigPanel({
         })),
     [items, templateKey, kind],
   );
+  // Slice 04: the physical fit of the recipe at this card's Size — one object
+  // for the x-ray, the banner, the save confirm and the cross-section — and
+  // its status at every Size it is shared with, for the membership chips.
+  const fit = usePillowFit(placements, templateKey, gridItems, dimensionOverrides);
+  const fitBySize = useFitAtSizes(placements, scopeKeys, gridItems, dimensionOverrides);
   // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
   // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
   const unauthoredCount = useMemo(() => templates.filter(isUnauthoredTemplate).length, [templates]);
@@ -1971,6 +1980,7 @@ function FillingConfigPanel({
         keys={scopeKeys}
         currentKey={templateKey}
         disabled={saving}
+        fitBySize={kind === "pillow" ? fitBySize : undefined}
         onChange={(next) => {
           // An armed delete counts the sizes it would remove, so changing them
           // must disarm it rather than leave a stale count on a live button.
@@ -2061,6 +2071,7 @@ function FillingConfigPanel({
                   </p>
                 </div>
               )}
+              <FitBanner fit={fit} className="mb-3" />
               <XrayEditor
                 placements={placements}
                 onPlacementsChange={setPlacements}
@@ -2068,6 +2079,7 @@ function FillingConfigPanel({
                 pillowSize={templateKey}
                 colorOverrides={colorOverrides}
                 dimensionOverrides={dimensionOverrides}
+                fit={fit}
               />
             </Section>
           ) : (

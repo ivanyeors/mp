@@ -16,47 +16,34 @@
  * Dimensions (slice 02 / ADR 0019) come the same way: the dimension override
  * rows ride beside the colour rows and are folded over the code registry here.
  *
+ * The physical fit (slice 03/04): a host that shows the banner, the save
+ * confirm or the cross-section computes it once with `usePillowFit`
+ * (use-pillow-fit.ts) and hands the same object to this frame, so the x-ray,
+ * the gauges and the cross-section can never disagree. A host that needs none
+ * of those omits it and the x-ray computes its own.
+ *
  * ponytail: a wrapper, not a fork — every editing behaviour stays in XrayPillow,
  * so the three surfaces cannot drift.
  */
 
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { XrayBolster } from "./xray-bolster";
 import { XrayPillow } from "./xray-pillow";
 import { XRAY_VIEW } from "./xray-assets";
+import { useItemMaps } from "./use-pillow-fit";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
-import {
-  registryFromPayload,
-  resolveItemDims,
-  type DimensionOverridesPayload,
-} from "@/lib/spatial-fillings/dimension-overrides";
+import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { pillowDimensions, type PillowSize } from "@/lib/spatial-fillings/dimensions";
-import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
+import type { PillowFit } from "@/lib/spatial-fillings/fit";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings/core";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 
 // The pouch colour, label size and drawn footprint come from each Item's type,
-// size and registry dimensions, exactly as in the configurator — derived here
-// so call sites pass one items array.
-//
-// Memoised on `items` (and the overrides), not rebuilt per render: the x-rays
-// memoise their geometry chain (layout → conformPouchPath polygon scans) on
-// [placements, stage, itemDims], so a fresh Map identity invalidates all of it.
-// Both host pages keep text inputs in the same component as this editor, so
-// every keystroke would otherwise re-conform every pouch (~7ms at 11 pieces,
-// ~10ms at 17). mp-config memoises these maps for the same reason.
-function useItemMaps(items: FillingItem[] | undefined, dimensionOverrides: DimensionOverridesPayload | undefined) {
-  const itemSubtypes = useMemo(
-    () => new Map((items ?? []).map((i) => [i.id, fillingDescriptor(i)])),
-    [items],
-  );
-  const itemSizes = useMemo(() => new Map((items ?? []).map((i) => [i.id, i.size])), [items]);
-  const registry = useMemo(() => registryFromPayload(dimensionOverrides), [dimensionOverrides]);
-  const itemDims = useMemo(() => resolveItemDims(items ?? [], registry), [items, registry]);
-  return { itemSubtypes, itemSizes, itemDims, loftAllowance: registry.loftAllowance };
-}
+// size and registry dimensions, exactly as in the configurator — derived in
+// `useItemMaps` (use-pillow-fit.ts) so call sites pass one items array, and so
+// a host can compute the same fit without loading this frame.
 
 // Light ground in light mode, dark in dark mode; the shell paint follows via
 // the variables XrayPillow/XrayBolster read. Pieces keep their family colors.
@@ -93,6 +80,7 @@ export function XrayEditor({
   pillowSize,
   colorOverrides = [],
   dimensionOverrides,
+  fit,
   className,
 }: {
   placements: PillowPlacement[];
@@ -105,6 +93,8 @@ export function XrayEditor({
   colorOverrides?: ColorOverrideRow[];
   /** Settings dimension overrides from the same server route as the colours. */
   dimensionOverrides?: DimensionOverridesPayload;
+  /** The host's fit (`usePillowFit`), shared with its banner and cross-section; computed by the x-ray when omitted. */
+  fit?: PillowFit;
   className?: string;
 }) {
   const { itemSubtypes, itemSizes, itemDims, loftAllowance } = useItemMaps(items, dimensionOverrides);
@@ -118,6 +108,7 @@ export function XrayEditor({
         itemDims={itemDims}
         pillowSize={size}
         loftAllowance={loftAllowance}
+        fit={fit}
         items={items}
         onPlacementsChange={onPlacementsChange}
         className="absolute inset-0"

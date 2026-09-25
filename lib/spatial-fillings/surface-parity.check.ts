@@ -87,7 +87,28 @@ for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   assert.ok(/pillowSize=\{/.test(src), `${surface} passes pillowSize to the x-ray`);
   assert.ok(/dimensionOverrides=\{|itemDims=\{/.test(src), `${surface} passes the dimension overrides beside the colour overrides`);
 }
-assert.ok(frame.includes("resolveItemDims"), "the frame resolves item dimensions from the registry (+ overrides)");
+const itemMaps = readFileSync("components/spatial/use-pillow-fit.ts", "utf8");
+assert.ok(frame.includes("useItemMaps"), "the frame resolves item dimensions through the shared item maps hook");
+assert.ok(itemMaps.includes("resolveItemDims"), "the item maps hook resolves item dimensions from the registry (+ overrides)");
+assert.ok(!itemMaps.includes("xray-pillow"), "the fit hook never imports the renderer (the lazy Configure editor keeps its chunk)");
 assert.ok(frame.includes("pillowSize"), "the frame passes the Size through");
+
+// Slice 04 (ADR 0019): every editing surface computes the fit once, hands it to
+// the x-ray, shows the banner for cells that cannot close, and confirms — never
+// blocks — the save or hold that carries one. Same posture as Spatially authored.
+for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
+  const src = readFileSync(path, "utf8");
+  assert.ok(/\bfit=\{/.test(src), `${surface} hands its own fit to the x-ray`);
+  assert.ok(src.includes("<FitBanner"), `${surface} shows the over-cells banner`);
+  assert.ok(src.includes("confirmSaveWithOverCells("), `${surface} confirms a save/hold with an over cell`);
+  assert.ok(!/confirmSaveWithOverCells\([^)]*\)\s*\)\s*throw/.test(src), `${surface} never blocks on the fit`);
+}
+const banner = readFileSync("components/spatial/xray-fit-banner.tsx", "utf8");
+assert.ok(banner.includes("window.confirm("), "the confirm is one native confirm, not a modal flow");
+assert.ok(banner.includes("overCells(fit)"), "banner and confirm read the fit's over cells — nothing recomputed");
+const scope = readFileSync("components/settings/filling-template-scope.tsx", "utf8");
+assert.ok(scope.includes("fitBySize"), "the Size membership chips carry a fit dot per member Size");
+const configure = readFileSync(EDITING_SURFACES["Configure → Filling Template"].path, "utf8");
+assert.ok(configure.includes("useFitAtSizes(placements, scopeKeys"), "the chips' dots come from the recipe judged at every member Size");
 
 console.log("surface-parity.check: all assertions passed");

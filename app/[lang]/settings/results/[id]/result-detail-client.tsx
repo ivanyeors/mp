@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { XrayEditor } from "@/components/spatial/xray-editor";
+import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
@@ -720,6 +722,9 @@ export default function ResultDetailPage({
         : fillingItems.filter((i) => !NECK_SUPPORT.test(i.name)),
     [fillingItems, productType, assignTier],
   );
+  // Slice 04: the physical fit of the assignment at its Size — one object for
+  // the x-ray, the banner, the save confirm and the cross-section.
+  const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
 
   const refreshSuggestion = useCallback(async () => {
     if (!id) return;
@@ -1278,6 +1283,7 @@ export default function ResultDetailPage({
                               </p>
                             </div>
                           )}
+                          <FitBanner fit={fit} />
                           <XrayEditor
                             placements={placements}
                             onPlacementsChange={setPlacements}
@@ -1285,6 +1291,7 @@ export default function ResultDetailPage({
                             pillowSize={assignSize}
                             colorOverrides={colorOverrides}
                             dimensionOverrides={dimensionOverrides}
+                            fit={fit}
                           />
                         </>
                       ) : (
@@ -1318,7 +1325,14 @@ export default function ResultDetailPage({
                     </div>
                   )}
 
-                  <Button onClick={assign} disabled={assigning || !fillingTemplateId}>
+                  <Button
+                    onClick={() => {
+                      // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
+                      if (productType === "pillow" && !confirmSaveWithOverCells(fit, "Save assignment")) return;
+                      void assign();
+                    }}
+                    disabled={assigning || !fillingTemplateId}
+                  >
                     {assigning ? "Assigning…" : "Save assignment"}
                   </Button>
                 </CollapsibleContent>

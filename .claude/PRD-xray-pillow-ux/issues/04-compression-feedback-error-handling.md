@@ -6,6 +6,7 @@ Tracker: #204 · Parent: #200
 **Blocked by:** 03; build after 11 so rings, gauges and messages are written once against settled geometry
 **User stories:** 12, 14, 15, 16, 17, 18, 19, 20, 21
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
+**Status:** built (PR #213) — rings, squeeze marks and the loft gauge in `xray-pillow.tsx`; `wouldFit` refusal on add; `xray-fit-banner.tsx` (banner + one confirm) and `use-pillow-fit.ts` (the host's fit, once) on all three surfaces; fit dots on the Size membership chips.
 
 ## Goal
 
@@ -31,12 +32,20 @@ Staff see the maximum compression of the fillings and the maximum expansion of t
 
 ## Acceptance criteria
 
-- [ ] A cell at its compression limit shows an amber ring; a cell that cannot fit shows a red ring; both are strokes on the cell clip path (self-check).
-- [ ] The dive panel shows the loft gauge for every cell of the dived **Section**; the phone dock shows the same per cell.
-- [ ] Adding a piece that would make a cell `over` is refused with a toast naming needed, fully-compressed and maximum mm; adding one that only compresses is accepted and the ring turns amber.
-- [ ] Loading a Size L mix into a Size XS session flags the `over` cells and shows the banner; changing **Size** back clears it.
-- [ ] Hold, Save and Save assignment each confirm once with an `over` cell present and proceed on confirm; they do not confirm when every cell is `ok` or `compressed`.
-- [ ] The **Size membership** chips carry a fit dot per size, and a recipe that fits M and not XS shows green and red respectively.
-- [ ] Rings, the gauge, `wouldFit` and the banner all evaluate the settled fit (slice 11): a stack that is `over` in center/middle on authored cells but has an empty back reads `compressed` or `ok`, and the message names the authored cell ("center · middle, settled into back").
-- [ ] `xray-dive.check.ts` extended for the gauge and the refusal wiring; `surface-parity.check.ts` asserts the confirm on all three save paths.
-- [ ] `./scripts/graphify update .` run and committed.
+- [x] A cell at its compression limit shows an amber ring; a cell that cannot fit shows a red ring; both are strokes on the cell clip path (self-check).
+- [x] The dive panel shows the loft gauge for every occupied cell of the dived **Section**; the phone dock shows the same per cell (self-check counts both mounts).
+- [x] Adding a piece that would make a cell `over` is refused with a toast naming needed, fully-compressed and maximum mm; adding one that only compresses is accepted and the ring turns amber (`wouldFit` after the caps; self-check).
+- [x] Loading a Size L mix into a Size XS session flags the `over` cells and shows the banner; changing **Size** back clears it. *As built:* the banner is derived from the live fit rather than fired by the load or Size-change event, so it appears whenever an `over` cell exists and clears the moment none does — the two events are the only ways an `over` cell can arise, since adds are refused.
+- [x] Hold, Save and Save assignment each confirm once with an `over` cell present and proceed on confirm; they do not confirm when every cell is `ok` or `compressed` (`confirmSaveWithOverCells`; the configurator's Staff-edit save confirms too).
+- [x] The **Size membership** chips carry a fit dot per size, and a recipe that fits M and not XS shows green and red respectively (`fitAtSizes`, vitest).
+- [x] Rings, the gauge, `wouldFit` and the banner all evaluate the settled fit (slice 11) — they all read the one fit object — and the message names the authored cell and where it settled ("center · middle (settled into front and back)"). *Amended with slice 11:* the reachable relief is `compressed → ok`; `over` cannot flip by settling (the fully compressed floor is volume-invariant).
+- [x] `xray-dive.check.ts` extended for the gauge and the refusal wiring; `surface-parity.check.ts` asserts the fit, the banner and the confirm on all three surfaces and the chip dots.
+- [x] `./scripts/graphify update .` run and committed.
+
+## Build notes (2026-09-25)
+
+- **One fit per host.** `usePillowFit` (`components/spatial/use-pillow-fit.ts`, light: no renderer import, so the lazily loaded Configure editor keeps its chunk) computes `fitPillow` once from the same registry the frame draws with; the host hands it to `XrayPillow` (`fit` prop, which wins over the x-ray's own memo), the banner, the confirm and, in slice 05, the cross-section. The configurator computes it beside its existing memoised maps (`assistFit`, `guestFit`).
+- **Piece marks.** `pieceFitStatus` reads a piece's Layer width status and its cell's thickness ratio at its depth: `compressed` draws a dashed stroke and the `↕ 78 %` / `↔ 85 %` lines through `PieceLabel`'s size rule; `over` adds a red tint on the piece's own outline. Nothing new is drawn as a rect.
+- **Gauge.** `LoftGauge` is a `role="meter"`, not interactive, so it never swallows the click that adds to the cell under it. Desktop: first child of the cell panel; phone: after the dock group's header.
+- **Refusal order.** `addPiece` (the schema ceilings) refuses first, then `wouldFit`; `compressed` is accepted. Moves (slice 06) go through the same two steps.
+- **Confirm.** One `window.confirm` per save with the same numbers as the banner; the Result page wraps the button's click (its `assign` callback predates the fit in the hook order), the other two confirm inside their handlers.

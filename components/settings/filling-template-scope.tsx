@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import type { FitStatus } from "@/lib/spatial-fillings/fit";
 import { cn } from "@/lib/utils";
 import {
   formatTemplateKeys,
@@ -69,18 +70,28 @@ export function TemplateScopeChips({
 
 /** Editable scope. At least one size must stay on — a template serving none
  * would vanish from every list with no way back. */
+/** The dot a Size chip carries when the recipe has been judged at that Size (slice 04). */
+const FIT_DOT: Record<FitStatus, { className: string; label: string }> = {
+  ok: { className: "bg-emerald-500", label: "fits" },
+  compressed: { className: "bg-amber-500", label: "fits compressed" },
+  over: { className: "bg-red-500", label: "cannot close" },
+};
+
 export function TemplateScopeField({
   kind,
   keys,
   currentKey,
   disabled,
   onChange,
+  fitBySize,
 }: {
   kind: FillingKind;
   keys: string[];
   currentKey: string;
   disabled?: boolean;
   onChange: (next: string[]) => void;
+  /** Size key → the recipe's fit status at that Size; a chip with one shows a dot. Pillows only. */
+  fitBySize?: Partial<Record<string, FitStatus>>;
 }) {
   const all = templateKeysForKind(kind);
   const noun = kind === "bolster" ? "lengths" : "sizes";
@@ -114,6 +125,14 @@ export function TemplateScopeField({
               onClick={() => toggle(key)}
               className={cn("min-w-14", key === currentKey && !on && "border-dashed")}
             >
+              {fitBySize?.[key] && (
+                <span
+                  className={cn("size-2 shrink-0 rounded-full", FIT_DOT[fitBySize[key]!].className)}
+                  role="img"
+                  aria-label={`${templateKeyLabel(kind, key)}: ${FIT_DOT[fitBySize[key]!].label}`}
+                  data-fit-dot={fitBySize[key]}
+                />
+              )}
               {templateKeyLabel(kind, key)}
             </Button>
           );
