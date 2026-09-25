@@ -19,7 +19,7 @@ The question a side sleeper asks — are the sides higher than the middle? — i
 ## Scope
 
 - **`components/spatial/xray-cross-section.tsx`** (new): pure SVG from `PillowFit`.
-  - **Across** cut (default): left, center, right **Sections** at a chosen **sub-section** (front / middle / back; default middle). Shell drawn as a lens whose height is `maxLoftMm × k'`; each **Layer** a rounded slab of its compressed thickness, coloured by family through the same `--xray-fill-*` variables; compressed slabs hatched (an SVG `<pattern>`); an `over` stack drawn through the loft line in red; dashed loft line labelled in mm; each **Section**'s loft in mm beneath it.
+  - **Across** cut (default): left, center, right **Sections** at a chosen **sub-section** (front / middle / back; default middle). Shell drawn as three lenses whose heights are `maxLoftMm[section] × k'` (the centre lens is one inch lower); each **Layer** a rounded slab of its compressed thickness, coloured by family through the same `--xray-fill-*` variables; compressed slabs hatched (an SVG `<pattern>`); an `over` stack drawn through the loft line in red; dashed loft line labelled in mm; each **Section**'s loft in mm beneath it.
   - **Along** cut: front, middle, back of the dived **Section** (center when nothing is dived). A small toggle Across | Along; sub-section tabs for Across.
   - A dashed cut line on the x-ray marks where the section is taken (rendered by `XrayPillow` from a `cutAt` prop), so the two views are linked.
   - No slab animation in v1 (`ponytail:` one CSS transition if wanted later).
@@ -38,5 +38,5 @@ The question a side sleeper asks — are the sides higher than the middle? — i
 - [ ] Adding, removing or moving a piece updates the cross-section with no extra interaction.
 - [ ] The shopper preview shows the Across cut, read-only, with no toggle and no edit affordance.
 - [ ] Configure and **Result** assign show it beside the pack list; `surface-parity.check.ts` asserts the mount on all three surfaces and the read-only variant on the preview.
-- [ ] vitest: a pure `crossSectionSlabs(fit, cut)` returns slab heights that sum to each section's `loftMm` and never exceed `maxLoftMm` unless the status is `over`.
+- [ ] vitest: a pure `crossSectionSlabs(fit, cut)` returns slab heights that sum to each section's `loftMm` and never exceed `maxLoftMm[section]` unless the status is `over`.
 - [ ] `./scripts/graphify update .` run and committed.

@@ -11820,9 +11820,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/01-dimension-registry-glossary-adr.md": {
-    "mtime": 1790308942.2989855,
-    "seen": 1790309033.2840626,
-    "ast_hash": "3b5f76427b03fe4a54932d5fe97eb715",
+    "mtime": 1790309221.2030106,
+    "seen": 1790309274.5962217,
+    "ast_hash": "2d355ac097657775f48ad900f04b8ed6",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
@@ -11832,9 +11832,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/03-fit-model.md": {
-    "mtime": 1789908869.190591,
-    "seen": 1789908920.537076,
-    "ast_hash": "b83d6ca44da2ef3976b907d56b9883df",
+    "mtime": 1790309221.2031999,
+    "seen": 1790309274.5962262,
+    "ast_hash": "69b6ccc0a35bdc05b38d84d6e200089b",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/04-compression-feedback-error-handling.md": {
@@ -11844,9 +11844,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/05-cross-section-view.md": {
-    "mtime": 1789956264.3938115,
-    "seen": 1789956339.0605524,
-    "ast_hash": "84fcc295dd83d5893d396491c67ea8f4",
+    "mtime": 1790309221.2033663,
+    "seen": 1790309274.59623,
+    "ast_hash": "31353c9f5b400fb1284f2c37e65862a6",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/06-move-pieces-select-keyboard-pad.md": {
@@ -11886,9 +11886,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
-    "mtime": 1790308942.2981648,
-    "seen": 1790309033.2840881,
-    "ast_hash": "451c5b9a0706d8275d6d63f5639b27f0",
+    "mtime": 1790309221.2026386,
+    "seen": 1790309274.5962455,
+    "ast_hash": "2bd057b15f0ea9fb155e17418c188de4",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {

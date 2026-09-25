@@ -22,7 +22,7 @@ Tracker: #203 · Parent: #200
 - **`lib/spatial-fillings/fit.ts`** (new, pure):
   - `FitStatus = "ok" | "compressed" | "over"`.
   - `fitLayer`: relaxed width = Σ `widthMm` + seams; available = the **Section** width for the **Size**; squeeze shared pro rata by each piece's `widthMm − minWidthMm`; `widthRatio` per piece; status.
-  - `fitCell`: relaxed loft = Σ per-layer max `thicknessMm`; min loft = Σ per-layer max `minThicknessMm`; max = `maxLoftMm`; compression shared pro rata by each layer's compressible range; `thicknessRatio` per layer; `loftMm`; status.
+  - `fitCell`: relaxed loft = Σ per-layer max `thicknessMm`; min loft = Σ per-layer max `minThicknessMm`; max = `maxLoftMm[section]` (the centre is one inch lower than the sides); compression shared pro rata by each layer's compressible range; `thicknessRatio` per layer; `loftMm`; status.
   - `fitPillow(placements, ctx): { cells, sections, status }` — `sections` carries per-**Section**, per-**sub-section** loft for the cross-section.
   - `wouldFit(placements, change, ctx)`: the same function on the hypothetical result; `change` is an add or a move.
   - `fitMessage(cellFit, size)`: `"center · middle: 3 layers need 95 mm relaxed, 70 mm fully compressed; Size M holds 60 mm"`.
@@ -34,7 +34,7 @@ Tracker: #203 · Parent: #200
 ## Acceptance criteria
 
 - [ ] vitest: relaxed → `ok` with ratios 1; over-wide but squeezable → `compressed` with Σ (width × ratio) + seams = available (±0.1) and no piece below `minWidthMm`; over-wide beyond minimums → `over`.
-- [ ] vitest: the same three cases for loft across layers; pro-rata sharing sums exactly to `maxLoftMm`.
+- [ ] vitest: the same three cases for loft across layers; pro-rata sharing sums exactly to `maxLoftMm[section]`; the same stack that is `ok` in a side Section can be `compressed` in the centre.
 - [ ] vitest: `fitPillow` is input-order independent and byte-identical across two calls; `wouldFit(add)` equals `fitPillow(applied)`.
 - [ ] vitest: `fitMessage` renders the three numbers and the **Size**.
 - [ ] vitest: `addPiece` still refuses at the legacy caps before the fit is consulted (ceilings unchanged; `core.ts` untouched).
