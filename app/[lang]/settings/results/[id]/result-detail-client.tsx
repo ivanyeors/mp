@@ -20,13 +20,29 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { XrayEditor } from "@/components/spatial/xray-editor";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
-import { useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
-import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
+import { useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
+
+/**
+ * The x-ray editor and the cross-section load on demand, as on the Configure
+ * card: the editor drags in @dnd-kit and the sunburst picker, both sit inside
+ * the collapsed assign section, and importing them statically put that weight
+ * in this route's first load and past its bundle budget. `ssr: false` — they
+ * are interactive client editors with nothing to render on the server.
+ */
+const XrayEditor = dynamic(
+  () => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor),
+  { ssr: false, loading: () => <Skeleton className="aspect-[664/374] w-full rounded-lg" /> },
+);
+const XrayCrossSection = dynamic(
+  () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
+  { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
+);
 import {
   isSpatiallyAuthored,
   looksLikeLegacyImport,

@@ -12,14 +12,14 @@
  * ponytail: a scaleY transition is one CSS line if it ever wants to breathe).
  */
 
-import { useCallback, useId, useState } from "react";
+import { useId } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { SECTIONS, SUB_SECTIONS, type Section } from "@/lib/spatial-fillings/core";
-import { crossSectionSlabs, cutLabel, DEFAULT_CUT, type Cut } from "@/lib/spatial-fillings/cross-section";
+import { crossSectionSlabs, cutLabel, type Cut } from "@/lib/spatial-fillings/cross-section";
 import type { PillowFit } from "@/lib/spatial-fillings/fit";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
@@ -33,15 +33,8 @@ const COLUMN_GAP = 14;
 const SLAB_INSET = 8;
 const OVER = "#ef4444";
 
-/** The cut a host holds: the cross-section's controls set it, the x-ray draws it, an along cut follows the dive. */
-export function useCut(initial: Cut = DEFAULT_CUT) {
-  const [cut, setCut] = useState<Cut>(initial);
-  const onDiveChange = useCallback((section: Section | null) => {
-    if (!section) return;
-    setCut((c) => (c.axis === "along" && c.section !== section ? { axis: "along", section } : c));
-  }, []);
-  return { cut, setCut, onDiveChange };
-}
+/** The cut state hook lives with the other host hooks so a page can lazy-load this component and still hold the state. */
+export { useCut } from "./use-pillow-fit";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
 

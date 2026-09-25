@@ -12,10 +12,11 @@
  * re-conform every pouch on every keystroke of the host's text inputs.
  */
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import type { PillowPlacement } from "@/lib/spatial-fillings/core";
+import type { PillowPlacement, Section } from "@/lib/spatial-fillings/core";
+import { DEFAULT_CUT, type Cut } from "@/lib/spatial-fillings/cross-section";
 import {
   registryFromPayload,
   resolveItemDims,
@@ -62,4 +63,19 @@ export function useFitAtSizes(
     () => fitAtSizes(placements, sizes, { dims: itemDims, loftAllowance }),
     [placements, sizes, itemDims, loftAllowance],
   );
+}
+
+/**
+ * The cut a host holds (slice 05): the cross-section's controls set it, the
+ * x-ray draws it as a dashed line, and an along cut follows the dived Section.
+ * Here rather than beside the cross-section so a page can lazy-load that
+ * component and still hold the state statically.
+ */
+export function useCut(initial: Cut = DEFAULT_CUT) {
+  const [cut, setCut] = useState<Cut>(initial);
+  const onDiveChange = useCallback((section: Section | null) => {
+    if (!section) return;
+    setCut((c) => (c.axis === "along" && c.section !== section ? { axis: "along", section } : c));
+  }, []);
+  return { cut, setCut, onDiveChange };
 }

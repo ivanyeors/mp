@@ -41,8 +41,7 @@ import {
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
-import { useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
-import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
+import { useCut, useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
 import {
   bolsterPlacementsToRows,
   pillowPlacementsToRows,
@@ -90,6 +89,10 @@ const XrayEditor = dynamic(
 const XrayBolsterEditor = dynamic(
   () => import("@/components/spatial/xray-editor").then((m) => m.XrayBolsterEditor),
   { ssr: false, loading: () => <EditorSkeleton className="aspect-[4/3]" /> },
+);
+const XrayCrossSection = dynamic(
+  () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
+  { ssr: false, loading: () => <EditorSkeleton className="h-40" /> },
 );
 const XrayPackList = dynamic(
   () => import("@/components/spatial/xray-pack-list").then((m) => m.XrayPackList),
