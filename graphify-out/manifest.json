@@ -8166,9 +8166,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1789525318.5903904,
-    "seen": 1790320067.7631738,
-    "ast_hash": "6786961e57022285d9d67b6c9a59a39b",
+    "mtime": 1790327109.8509963,
+    "seen": 1790327310.5752118,
+    "ast_hash": "ce6bc1fabeae2f4f5c22ab9f7b126cb9",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -11250,9 +11250,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/product-visualize.tsx": {
-    "mtime": 1789525318.6051342,
-    "seen": 1790320067.7611177,
-    "ast_hash": "7f47b2292cf8a4197d0db83f9830a447",
+    "mtime": 1790327082.8518305,
+    "seen": 1790327310.5729344,
+    "ast_hash": "b9caacb6c6b2a2b3e13152c4836659fc",
     "semantic_hash": ""
   },
   "app/api/results/[id]/finish/route.ts": {
@@ -12654,9 +12654,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/01-dimension-registry-glossary-adr.md": {
-    "mtime": 1790320674.1755974,
-    "seen": 1790320770.609839,
-    "ast_hash": "a5e1d2fa26c194263863b5dd3b86e100",
+    "mtime": 1790327250.3367617,
+    "seen": 1790327310.575164,
+    "ast_hash": "37d5fd34775b70fcdf8af233073a3ee6",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
@@ -12720,9 +12720,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1790320730.5437698,
-    "seen": 1790320770.6098576,
-    "ast_hash": "5a30a18a5ca531e072d64f0acccfb47c",
+    "mtime": 1790327250.3369925,
+    "seen": 1790327310.5751777,
+    "ast_hash": "bb617688b46200027dc041ef8167aa51",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -13215,6 +13215,42 @@
     "mtime": 1790320730.5314758,
     "seen": 1790320770.6098557,
     "ast_hash": "02e93a0a7e10887a841d44ffbbabc1f7",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/__tests__/dimensions.test.ts": {
+    "mtime": 1790327228.142498,
+    "seen": 1790327310.5744493,
+    "ast_hash": "a4c12c973c93e36e0fdcbfa22e82183d",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/dimensions.check.ts": {
+    "mtime": 1790327033.2158277,
+    "seen": 1790327310.5744665,
+    "ast_hash": "d4001c936cc28212d955676dd579c15e",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/dimensions.ts": {
+    "mtime": 1790326978.7278244,
+    "seen": 1790327310.5744681,
+    "ast_hash": "05a1207ac63a1ee0ea05f73f5cee5e6a",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/silhouette-master.ts": {
+    "mtime": 1790326915.2798207,
+    "seen": 1790327310.5744746,
+    "ast_hash": "4d08cd697229b7d81bdf4129cd3088d2",
+    "semantic_hash": ""
+  },
+  "scripts/gen-silhouette-master.mjs": {
+    "mtime": 1790326915.0747545,
+    "seen": 1790327310.5745695,
+    "ast_hash": "8f6a6c88b5031d58d2ee6b9a49ad5b36",
+    "semantic_hash": ""
+  },
+  "docs/adr/0019-physical-fit-model.md": {
+    "mtime": 1790327057.1798291,
+    "seen": 1790327310.5753334,
+    "ast_hash": "2803703817cc8795fec907ef1c7c678f",
     "semantic_hash": ""
   }
 }

@@ -10,7 +10,7 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 
 | # | Title | Type | Pri | Status | Blocked by | User stories |
 |---|-------|------|-----|--------|------------|--------------|
-| [01](https://github.com/ivanyeors/mp/issues/201) | Dimension registry, glossary and ADR 0019 — real measurements in code | HITL | P1 | not started | none | 5–7, 49 |
+| [01](https://github.com/ivanyeors/mp/issues/201) | Dimension registry, glossary and ADR 0019 — real measurements in code | HITL | P1 | code half built (PR #213); Ivan's pouch / Neck support numbers pending | none | 5–7, 49 |
 | [02](https://github.com/ivanyeors/mp/issues/202) | True-scale rendering — pouches at their footprint relative to the pillow Size | AFK | P1 | not started | 01 | 1–4, 46, 47 |
 | [03](https://github.com/ivanyeors/mp/issues/203) | Fit model — width and loft budgets, compression limits, fit status | AFK | P1 | not started | 01, 02 | 8–11, 13, 22 |
 | [04](https://github.com/ivanyeors/mp/issues/204) | Compression feedback and error handling in the editor | AFK | P1 | not started | 03, 11 | 12, 14–21 |
