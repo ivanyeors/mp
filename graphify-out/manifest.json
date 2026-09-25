@@ -4548,9 +4548,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-dive.check.ts": {
-    "mtime": 1790333544.6222441,
-    "seen": 1790333589.3447092,
-    "ast_hash": "d92c0554423b9f6de6853ae6589de000",
+    "mtime": 1790333997.9301357,
+    "seen": 1790334037.6706345,
+    "ast_hash": "aa11fd715b90108c0ae3b83a30f2ecc7",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
@@ -4560,9 +4560,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1790333488.099999,
-    "seen": 1790333589.3447175,
-    "ast_hash": "d350130c5d3f21ef37a9732013132c2e",
+    "mtime": 1790333875.0722344,
+    "seen": 1790334037.6706493,
+    "ast_hash": "5097a21417db5f14590726ea70843214",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -12690,9 +12690,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/07-drag-pouch-to-cell-or-layer.md": {
-    "mtime": 1789908869.1914957,
-    "seen": 1790320067.7631392,
-    "ast_hash": "34311b4b50dc89754c2a05383db8b4d7",
+    "mtime": 1790333932.5280504,
+    "seen": 1790334037.6734653,
+    "ast_hash": "75526cbd8175881ad31740a77169bd10",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/08-fine-nudge-persisted-offsets.md": {
@@ -12720,9 +12720,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1790333466.8000367,
-    "seen": 1790333589.3462946,
-    "ast_hash": "0a675a714b2acdefd226c9d580e94387",
+    "mtime": 1790333997.929878,
+    "seen": 1790334037.6734755,
+    "ast_hash": "d9c758f7a83de45f92a8fd7155b37985",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -13377,6 +13377,18 @@
     "mtime": 1790333429.6955378,
     "seen": 1790333589.3450913,
     "ast_hash": "b8ebfb99dd9c6f46d7beff9f29c4947b",
+    "semantic_hash": ""
+  },
+  "lib/dnd/__tests__/pouch-drag.test.ts": {
+    "mtime": 1790333875.0703619,
+    "seen": 1790334037.6713712,
+    "ast_hash": "fb6391f9eef7baf403bf2255397ffebe",
+    "semantic_hash": ""
+  },
+  "lib/dnd/pouch-drag.ts": {
+    "mtime": 1790333703.7202241,
+    "seen": 1790334037.6713784,
+    "ast_hash": "367b24b5274c5d985f2f48d112b9e51d",
     "semantic_hash": ""
   }
 }

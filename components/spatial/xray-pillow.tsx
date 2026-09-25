@@ -41,6 +41,7 @@ import {
   type PieceRef,
 } from "@/lib/configurator/staff-assist";
 import { isTypingTarget, MOVE_ACTIONS, moveKeyFor, type MoveKind } from "@/lib/configurator/move-keys";
+import { dropTargetFromElement, pouchDropDestination, type PouchDropTarget } from "@/lib/dnd/pouch-drag";
 import {
   MAX_LAYERS_PER_CELL,
   MAX_PIECES_PER_CELL,
@@ -129,6 +130,23 @@ const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
 const RING_COMPRESSED = "#f59e0b";
 const RING_OVER = "#ef4444";
 const RELAXED_PIECE: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
+/** A pouch drag in flight (slice 07). */
+type PouchDrag = {
+  source: PieceRef & { depth: number; itemId: number };
+  key: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  /** Pointer travel in view units — the ghost's offset. */
+  dx: number;
+  dy: number;
+  active: boolean;
+  over: PouchDropTarget | null;
+  /** The hovered target would leave its cell unable to close. */
+  refused: boolean;
+};
+const DRAG_THRESHOLD_PX = 6;
+
 /** `↕ 78 %` / `↔ 85 %` beside the type label when the piece draws squeezed. */
 const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
   if (!ps) return [];
@@ -454,6 +472,7 @@ function LayerRow({
   id,
   index,
   depth,
+  dropCell,
   pieces,
   full,
   onAdd,
@@ -463,6 +482,8 @@ function LayerRow({
   id: string;
   index: number;
   depth: number;
+  /** `section/subSection`: a pouch dragged onto this row lands in this Layer (slice 07). */
+  dropCell: string;
   pieces: Array<{ slot: number; label: string }>;
   full: boolean;
   onAdd: () => void;
@@ -473,6 +494,8 @@ function LayerRow({
   return (
     <div
       ref={ref}
+      data-drop-cell={dropCell}
+      data-drop-layer={depth}
       className={`pointer-events-auto flex w-full items-center gap-1 px-1 max-md:gap-1.5 max-md:px-1.5 ${LAYER_ROW_CLASS} ${isDragging ? "z-50 opacity-70 shadow-lg" : ""}`}
     >
       <span className="shrink-0 tabular-nums text-muted-foreground">{depth + 1}</span>
@@ -585,6 +608,13 @@ export function XrayPillow({
   // Section switch and by Escape (before the Escape that ends the dive).
   const [selected, setSelected] = useState<PieceRef | null>(null);
   const selectedRef = useRef(selected);
+  // A pouch drag in flight (slice 07): pointer events on the pouch's own hit
+  // path, resolved through the pure adapter on drop — never a second dnd-kit
+  // provider (the layer rows own one per cell for their sort).
+  const [drag, setDrag] = useState<PouchDrag | null>(null);
+  const dragRef = useRef<PouchDrag | null>(null);
+  const justDraggedRef = useRef(false);
+  const svgRef = useRef<SVGSVGElement>(null);
   const editable = Boolean(items && onPlacementsChange);
   // Phones: a cell is ~65px tall on a 360px stage, so controls parked ON the
   // cells collide with their neighbours at any font size. Below md the dive
@@ -792,11 +822,32 @@ export function XrayPillow({
   const selectedKey = selectedPiece ? `${selectedPiece.section}/${selectedPiece.subSection}/${selectedPiece.slot}` : null;
 
   /**
+   * Write a successful move (key, pad or drag): the selection follows the
+   * piece, and Undo is the Mirror pattern — an inverse applied only while the
+   * move is still the last thing that happened.
+   */
+  const commitMove = (before: PillowPlacement[], next: PillowPlacement[], ref: PieceRef & { itemId: number }, nextRef: PieceRef) => {
+    onPlacementsChange?.(next);
+    setSelected(nextRef);
+    toast.success(`Moved ${pieceLabel(ref.itemId)} to ${nextRef.section} ${nextRef.subSection}`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          if (placementsRef.current !== next) {
+            toast.error("Undo unavailable — the mix changed after the move");
+            return;
+          }
+          onPlacementsChange?.(before);
+          setSelected(ref);
+        },
+      },
+    });
+  };
+
+  /**
    * One move of the selected pouch, from a key or the pad: the pure functions
    * decide (caps first, then the fit), the refusal rides the same toast path
-   * as an add, the selection follows the piece, and Undo is the Mirror pattern
-   * — an inverse applied only while the move is still the last thing that
-   * happened.
+   * as an add, the selection follows the piece.
    */
   const performMove = (kind: MoveKind) => {
     const ref = selectedPiece;
@@ -850,26 +901,95 @@ export function XrayPillow({
       return;
     }
     if (next === before) return;
-    onPlacementsChange(next);
-    setSelected(nextRef);
-    toast.success(`Moved ${pieceLabel(ref.itemId)} to ${nextRef.section} ${nextRef.subSection}`, {
-      action: {
-        label: "Undo",
-        onClick: () => {
-          if (placementsRef.current !== next) {
-            toast.error("Undo unavailable — the mix changed after the move");
-            return;
-          }
-          onPlacementsChange(before);
-          setSelected(ref);
-        },
-      },
-    });
+    commitMove(before, next, ref, nextRef);
   };
   const performMoveRef = useRef(performMove);
   useEffect(() => {
     performMoveRef.current = performMove;
   });
+
+  // --- Pouch drag (slice 07) --------------------------------------------------
+  // A press on a pouch's hit path starts a candidate drag; it becomes a drag
+  // once the pointer travels DRAG_THRESHOLD_PX (a click still selects). While
+  // dragging, the element under the pointer names the drop target (the nine
+  // cell regions, the layer rows, the add-layer button — all tagged), the
+  // hovered cell highlights (red when the fit says the drop cannot close), a
+  // ghost of the outline follows the pointer, and the drop resolves through
+  // `pouchDropDestination` → `movePiece`: a drag can never do what a key cannot.
+  const startDrag = (e: React.PointerEvent<SVGPathElement>, p: PieceLayout) => {
+    if (!editable || e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const d: PouchDrag = {
+      source: { section: p.section, subSection: p.subSection, slot: p.slot, depth: p.depth, itemId: p.itemId },
+      key: p.key,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      dx: 0,
+      dy: 0,
+      active: false,
+      over: null,
+      refused: false,
+    };
+    dragRef.current = d;
+    setDrag(d);
+  };
+  const moveDrag = (e: React.PointerEvent<SVGPathElement>) => {
+    const d = dragRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    const dxPx = e.clientX - d.startX;
+    const dyPx = e.clientY - d.startY;
+    if (!d.active && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD_PX) return;
+    if (!d.active) {
+      draggingRef.current = true; // Escape now cancels the drag, not the dive
+      setSelected({ section: d.source.section, subSection: d.source.subSection, slot: d.source.slot });
+    }
+    const box = svgRef.current?.getBoundingClientRect();
+    const scale = box && box.width > 0 ? XRAY_VIEW.width / box.width : 1;
+    const over = dropTargetFromElement(document.elementFromPoint(e.clientX, e.clientY));
+    const dest = pouchDropDestination(d.source, over);
+    const refused = dest
+      ? wouldFit(placements, { kind: "move", from: d.source, to: dest }, { size: pillowSize, dims: itemDims, loftAllowance }).cell?.status === "over"
+      : false;
+    const next: PouchDrag = { ...d, active: true, dx: dxPx * scale, dy: dyPx * scale, over, refused };
+    dragRef.current = next;
+    setDrag(next);
+  };
+  const endDrag = (e: React.PointerEvent<SVGPathElement>, canceled: boolean) => {
+    const d = dragRef.current;
+    if (!d || d.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    setDrag(null);
+    if (!d.active) return; // a click: the hit path's onClick selects
+    draggingRef.current = false;
+    justDraggedRef.current = true; // the click that follows the drop must not re-select the old ref
+    const dest = pouchDropDestination(d.source, canceled ? null : d.over, canceled);
+    if (!dest) return;
+    const r = movePiece(placements, d.source, dest, { size: pillowSize, dims: itemDims, loftAllowance });
+    if (!r.ok) {
+      toast.error(r.error); // cap / fit feedback, the add's path
+      return;
+    }
+    commitMove(placements, r.placements, d.source, r.ref);
+  };
+  const cancelDrag = useCallback(() => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    draggingRef.current = false;
+    setDrag(null);
+  }, []);
+  // Escape mid-drag cancels the drag and keeps the dive open. Capture phase,
+  // like the dive's own guard, which stands down while draggingRef is set.
+  useEffect(() => {
+    if (!drag?.active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      cancelDrag();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [drag?.active, cancelDrag]);
 
   // Keyboard moves (dive, with a selection): the same table as the pad.
   // Text controls keep their arrows; the page keeps its scroll otherwise.
@@ -1039,6 +1159,9 @@ export function XrayPillow({
   const addLayerButton = (cell: Cell, subSection: SubSection, layers: readonly unknown[]) => (
     <button
       type="button"
+      // A pouch dropped here starts a new Layer under the deepest (slice 07).
+      data-drop-cell={`${cell.section}/${cell.subSection}`}
+      data-drop-layer={layers.length}
       className={`pointer-events-auto flex items-center gap-0.5 px-1 hover:bg-accent max-md:min-h-7 max-md:px-2 ${CHIP_CLASS}`}
       aria-label={`Add a layer under ${cell.section} ${subSection}`}
       onClick={() => openPicker(subSection, layers.length)}
@@ -1112,6 +1235,7 @@ export function XrayPillow({
   return (
     <div ref={rootRef} className={className} style={{ pointerEvents: "none" }}>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${XRAY_VIEW.width} ${XRAY_VIEW.height}`}
         xmlns="http://www.w3.org/2000/svg"
         preserveAspectRatio="xMidYMid meet"
@@ -1259,6 +1383,30 @@ export function XrayPillow({
               </>
             )}
 
+            {/* Drag feedback (slice 07): the hovered drop cell highlights with
+                the add-target fill — red when the fit says the drop could not
+                close — and a ghost of the pouch's outline follows the pointer. */}
+            {drag?.active && drag.over && (
+              <path
+                d={stage.cellClipPaths[`${drag.over.section}/${drag.over.subSection}`]}
+                fill={drag.refused ? RING_OVER : "white"}
+                fillOpacity={drag.refused ? 0.25 : 0.14}
+                data-xray-drop-hover={drag.refused ? "refused" : "ok"}
+              />
+            )}
+            {drag?.active && authoredPaths.has(drag.key) && (
+              <path
+                d={authoredPaths.get(drag.key)!}
+                transform={`translate(${drag.dx} ${drag.dy})`}
+                fill="white"
+                fillOpacity={0.35}
+                stroke="#38bdf8"
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
+                data-xray-drag-ghost
+              />
+            )}
+
             {/* Sub-section dividers are authoring guides, not walls (slice 11):
                 faint, and drawn only in the dive. */}
             {dived &&
@@ -1402,16 +1550,45 @@ export function XrayPillow({
                   aria-pressed={on}
                   aria-label={`${on ? "Selected" : "Select"} ${pieceLabel(p.itemId)} in ${p.section} ${p.subSection}`}
                   fill="transparent"
-                  style={{ pointerEvents: "auto", cursor: "pointer", outline: "none" }}
-                  onClick={() => setSelected({ section: p.section, subSection: p.subSection, slot: p.slot })}
+                  // touch-action none: a finger drag on a pouch must not scroll the page instead.
+                  style={{ pointerEvents: "auto", cursor: drag?.active ? "grabbing" : "grab", outline: "none", touchAction: "none" }}
+                  onClick={() => {
+                    if (justDraggedRef.current) {
+                      justDraggedRef.current = false;
+                      return;
+                    }
+                    setSelected({ section: p.section, subSection: p.subSection, slot: p.slot });
+                  }}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter" && e.key !== " ") return;
                     e.preventDefault();
                     setSelected({ section: p.section, subSection: p.subSection, slot: p.slot });
                   }}
+                  onPointerDown={(e) => startDrag(e, p)}
+                  onPointerMove={moveDrag}
+                  onPointerUp={(e) => endDrag(e, false)}
+                  onPointerCancel={(e) => endDrag(e, true)}
                 />
               );
             })}
+
+          {/* Drop targets while a pouch is dragged (slice 07): the nine cell
+              regions of every Section, so a drop can cross Sections. The
+              pointer is captured by the dragged pouch, so these only exist for
+              the hit test under the pointer — they never take an event. */}
+          {drag?.active &&
+            SECTIONS.flatMap((section) =>
+              SUB_SECTIONS.map((subSection) => (
+                <path
+                  key={`drop-${section}/${subSection}`}
+                  d={stage.cellClipPaths[`${section}/${subSection}`]}
+                  clipPath={`url(#${clipId("sil")})`}
+                  data-drop-cell={`${section}/${subSection}`}
+                  fill="transparent"
+                  style={{ pointerEvents: "auto" }}
+                />
+              )),
+            )}
         </g>
       </svg>
 
@@ -1503,6 +1680,7 @@ export function XrayPillow({
                           id={layerSortableId(layer)}
                           index={depth}
                           depth={depth}
+                          dropCell={`${cell.section}/${cell.subSection}`}
                           full={layer.length >= MAX_PIECES_PER_LAYER}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
                           onAdd={() => openPicker(subSection, depth)}
@@ -1668,6 +1846,7 @@ export function XrayPillow({
                           id={layerSortableId(layer)}
                           index={depth}
                           depth={depth}
+                          dropCell={`${cell.section}/${cell.subSection}`}
                           full={layer.length >= MAX_PIECES_PER_LAYER}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
                           onAdd={() => openPicker(subSection, depth)}

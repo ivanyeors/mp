@@ -150,7 +150,7 @@ assert.doesNotMatch(renderer, /would\.cell\?\.status === "compressed"[\s\S]{0,80
 assert.match(renderer, /const \[selected, setSelected\] = useState<PieceRef \| null>\(null\)/, "selection is renderer state, a piece ref");
 assert.match(renderer, /if \(selectedRef\.current\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
 assert.match(renderer, /setDived\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
-assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,400}onClick=\{\(\) => setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\)\}/, "a pouch's own outline is the focusable, pressable selection target");
+assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,700}setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\);/, "a pouch's own outline is the focusable, pressable selection target");
 assert.match(renderer, /const kind = moveKeyFor\(e\);/, "keys go through the shared move map");
 assert.match(renderer, /if \(isTypingTarget\(e\.target\) \|\| draggingRef\.current\) return;/, "text controls and a drag in flight keep their keys");
 assert.equal(renderer.match(/<MovePad /g)?.length, 2, "the move pad is mounted once in the cell panel and once in the dock");
@@ -163,6 +163,23 @@ assert.match(renderer, /toast\.error\(error\); \/\/ cap \/ fit feedback, the add
 assert.equal(renderer.match(/label: "Undo"/g)?.length, 2, "Undo on the move toast, the Mirror pattern");
 assert.match(renderer, /Undo unavailable — the mix changed after the move/, "a later edit makes the move's Undo unavailable");
 assert.match(renderer, /data-xray-selected-cell[\s\S]{0,400}data-xray-selected-piece/, "selection shows the authored cell ring and the piece outline (the settled ghost is drawn by the dive already)");
+
+// --- Slice 07: drag a pouch onto a cell or a Layer -----------------------------
+assert.equal(renderer.match(/<DragDropProvider/g)?.length, 2, "still one sortable provider per cell — the pouch drag is pointer events, not a nested provider");
+assert.match(renderer, /onPointerDown=\{\(e\) => startDrag\(e, p\)\}\s+onPointerMove=\{moveDrag\}\s+onPointerUp=\{\(e\) => endDrag\(e, false\)\}\s+onPointerCancel=\{\(e\) => endDrag\(e, true\)\}/, "the pouch's own hit path is the drag handle");
+assert.match(renderer, /touchAction: "none"/, "a finger drag on a pouch does not scroll the page");
+assert.match(renderer, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the pointer is captured for the drag");
+assert.match(renderer, /Math\.hypot\(dxPx, dyPx\) < DRAG_THRESHOLD_PX/, "a press becomes a drag only past the threshold — a click still selects");
+assert.match(renderer, /dropTargetFromElement\(document\.elementFromPoint\(e\.clientX, e\.clientY\)\)/, "the drop target is the tagged element under the pointer");
+assert.match(renderer, /const dest = pouchDropDestination\(d\.source, canceled \? null : d\.over, canceled\);/, "the drop resolves through the pure adapter");
+assert.match(renderer, /const r = movePiece\(placements, d\.source, dest, \{ size: pillowSize, dims: itemDims, loftAllowance \}\);/, "a drop is a movePiece — a drag can never do what a key cannot");
+assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
+assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
+assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
+assert.match(renderer, /fill=\{drag\.refused \? RING_OVER : "white"\}/, "the hovered cell highlights with the add-target fill, red when the drop could not close");
+assert.match(renderer, /data-xray-drag-ghost/, "a ghost of the outline follows the pointer");
+assert.match(renderer, /if \(e\.key !== "Escape"\) return;\s*e\.stopPropagation\(\);\s*cancelDrag\(\);/, "Escape mid-drag cancels the drag and keeps the dive open");
+assert.match(renderer, /draggingRef\.current = true; \/\/ Escape now cancels the drag, not the dive/, "the dive's Escape guard stands down during a pouch drag");
 
 // --- Add target = the cell region, not a floating + button --------------------
 // The old picker parked a ~28px + in each band's footer: a tiny thing to aim at,
