@@ -11820,15 +11820,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/01-dimension-registry-glossary-adr.md": {
-    "mtime": 1790082669.625089,
-    "seen": 1790082714.4938138,
-    "ast_hash": "74f0bd2be759a718f6c65a133b882b4a",
+    "mtime": 1790308942.2989855,
+    "seen": 1790309033.2840626,
+    "ast_hash": "3b5f76427b03fe4a54932d5fe97eb715",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
-    "mtime": 1790082669.6252396,
-    "seen": 1790082714.4938157,
-    "ast_hash": "3237be7b8538280127b4321dcfbc3a22",
+    "mtime": 1790308942.2992907,
+    "seen": 1790309033.284065,
+    "ast_hash": "bcfbfc173ce5abe219706df8f22f3010",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/03-fit-model.md": {
@@ -11886,9 +11886,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
-    "mtime": 1790082669.6248004,
-    "seen": 1790082714.4938338,
-    "ast_hash": "9a52d99b98206a6681433a4e8da9f589",
+    "mtime": 1790308942.2981648,
+    "seen": 1790309033.2840881,
+    "ast_hash": "451c5b9a0706d8275d6d63f5639b27f0",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
@@ -12051,6 +12051,78 @@
     "mtime": 1790082423.4270842,
     "seen": 1790082714.4940903,
     "ast_hash": "a736370c2a5c561cce3f18bb54566ccd",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-l.json": {
+    "mtime": 1790308907.8324773,
+    "seen": 1790309033.2800653,
+    "ast_hash": "e30fc707a936a182ed821410786655fc",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-m.json": {
+    "mtime": 1790308907.1621668,
+    "seen": 1790309033.2800682,
+    "ast_hash": "f701c82cd20390b6dc52e0d6359fb862",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-master.json": {
+    "mtime": 1790308904.8777888,
+    "seen": 1790309033.2800694,
+    "ast_hash": "9f82aa4ef905016b9601f79a188caefd",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-metrics.json": {
+    "mtime": 1790308908.6152399,
+    "seen": 1790309033.2800713,
+    "ast_hash": "191ebbfe356b610c607072e2457258be",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-s.json": {
+    "mtime": 1790308906.3524773,
+    "seen": 1790309033.2800727,
+    "ast_hash": "b820aa978866d654918604058065120e",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-xl.json": {
+    "mtime": 1790308908.6084774,
+    "seen": 1790309033.2800748,
+    "ast_hash": "e0aee562aa8a3103018b5a48d648192b",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-xs.json": {
+    "mtime": 1790308905.5884774,
+    "seen": 1790309033.2800763,
+    "ast_hash": "2b17a7946d58a7722e114bd9f09b1ff6",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-l.svg": {
+    "mtime": 1790308907.837597,
+    "seen": 1790309033.2844017,
+    "ast_hash": "6a007c9282b08d4eaa384c2cdc5bb5dd",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-m.svg": {
+    "mtime": 1790308907.1649761,
+    "seen": 1790309033.2844036,
+    "ast_hash": "f61ade60e5d340e3d06de22adb3f182e",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-s.svg": {
+    "mtime": 1790308906.3580244,
+    "seen": 1790309033.2844048,
+    "ast_hash": "738e2061ad8f36dad033b9a25af0e3d6",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-xl.svg": {
+    "mtime": 1790308908.6131847,
+    "seen": 1790309033.2844062,
+    "ast_hash": "5d2eb82641e0216f817b350d6af3e9c5",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/reference/silhouette-xs.svg": {
+    "mtime": 1790308905.5934417,
+    "seen": 1790309033.284408,
+    "ast_hash": "fe65649ac3594dab55c2d29611809bc1",
     "semantic_hash": ""
   }
 }
