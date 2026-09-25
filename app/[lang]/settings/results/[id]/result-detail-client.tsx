@@ -30,6 +30,7 @@ import {
   unauthoredReason,
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
   bolsterPlacementsToRows,
@@ -296,6 +297,7 @@ export default function ResultDetailPage({
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
   const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>([]);
+  const [dimensionOverrides, setDimensionOverrides] = useState<DimensionOverridesPayload | undefined>(undefined);
   const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [templateNotes, setTemplateNotes] = useState("");
   const [fillingItems, setFillingItems] = useState<BolsterListItem[]>(seed.fillingItems);
@@ -571,6 +573,7 @@ export default function ResultDetailPage({
         // Product Builder colours for the x-ray — same server route as Configure,
         // because filling_color_overrides is service-role-only under RLS.
         setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
+        setDimensionOverrides((payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined);
       } catch {
         setPlacements([]);
         setBolsterMix([]);
@@ -1279,7 +1282,9 @@ export default function ResultDetailPage({
                             placements={placements}
                             onPlacementsChange={setPlacements}
                             items={pickerItems}
+                            pillowSize={assignSize}
                             colorOverrides={colorOverrides}
+                            dimensionOverrides={dimensionOverrides}
                           />
                         </>
                       ) : (

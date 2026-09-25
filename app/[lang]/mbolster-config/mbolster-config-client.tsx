@@ -110,6 +110,7 @@ import {
   xrayColorVarStyle,
   type ColorOverrideRow,
 } from "@/lib/spatial-fillings/color-overrides";
+import { resolveItemDims } from "@/lib/spatial-fillings/dimension-overrides";
 import {
   SavedAddressSelect,
   useSavedShippingPrefill,
@@ -341,6 +342,8 @@ export function MbolsterConfigClient({
     () => new Map(assistItems.map((i) => [i.id, i.size])),
     [assistItems],
   );
+  // Slice 02: registry widths weight the capsule pack (slice 09 gives the bolster true scale).
+  const assistItemDims = React.useMemo(() => resolveItemDims(assistItems), [assistItems]);
   // Same DB table either way — assist rows win once the Staff panel loads them,
   // guests ride the shop customize response (RE slice 07).
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -382,6 +385,9 @@ export function MbolsterConfigClient({
   );
   const guestItemSizes = new Map(
     (shopRecommendation?.available_fillings ?? []).map((f) => [f.item_id, f.size ?? null]),
+  );
+  const guestItemDims = resolveItemDims(
+    (shopRecommendation?.available_fillings ?? []).map((f) => ({ id: f.item_id, name: f.name, subtype: f.subtype ?? null, size: f.size ?? null })),
   );
   // Legacy-flat templates (no placements) keep the text mix summary.
   // Assisted runs show LENGTH ONLY — no filling x-ray (AC3).
@@ -1129,6 +1135,7 @@ export function MbolsterConfigClient({
                     length={suggestedLength ?? DEFAULT_BOLSTER_LENGTH}
                     itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
                     itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                    itemDims={staffAssist ? assistItemDims : guestItemDims}
                     // Guests view, never edit: omitting these keeps the renderer read-only.
                     items={staffAssist ? assistItems : undefined}
                     onPlacementsChange={staffAssist ? setAssistPlacements : undefined}

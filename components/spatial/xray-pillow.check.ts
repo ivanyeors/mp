@@ -15,7 +15,9 @@ import {
   SILHOUETTE_PATH,
   SILHOUETTE_POLYGON,
 } from "./xray-assets";
-import { fillingVisual, sizeScale, subtypeSlug } from "@/lib/spatial-fillings/visuals";
+import { fillingVisual, subtypeSlug } from "@/lib/spatial-fillings/visuals";
+import { PILLOW_SIZES, resolveDims } from "@/lib/spatial-fillings/dimensions";
+import { stageGeometry } from "@/lib/spatial-fillings/xray-stage";
 
 // --- Asset pipeline contract (drop-in point for the designer SVG export) -----
 assert.equal(Object.keys(CELL_CLIP_PATHS).length, 9, "nine cell boundary paths");
@@ -28,7 +30,12 @@ assert.equal(fillingVisual("Cervical Neck Support").shape, "pill");
 assert.match(FILLING_SHAPE_PATHS.pouch, /^M.*Z$/, "pouch is a closed path");
 assert.ok(SILHOUETTE_POLYGON.length > 50, "silhouette sampled densely for conform geometry");
 assert.equal(Object.keys(CELL_POLYGONS).length, 9, "cell polygons mirror the clip paths");
-assert.match(SILHOUETTE_PATH, /^M441\.322/, "silhouette is the shared configurator path");
+assert.equal(SILHOUETTE_PATH, stageGeometry("M").silhouettePath, "the M silhouette is the registry outline (slice 02)");
+for (const size of PILLOW_SIZES) {
+  const stage = stageGeometry(size);
+  assert.match(stage.silhouettePath, /^M[\d.\- ]+( L[\d.\- ]+)+ Z$/, `${size}: silhouette is a closed polygon path`);
+  assert.equal(Object.keys(stage.cellClipPaths).length, 9, `${size}: nine cell regions`);
+}
 for (const [key, d] of Object.entries(CELL_CLIP_PATHS)) {
   assert.match(d, /^M[\d.\- ]+(L[\d.\- ]+)+Z$/, `${key} is a closed polygon path`);
 }
@@ -43,11 +50,10 @@ assert.notEqual(
   fillingVisual("6D (S)").defaultColor,
   "6D+ matches before 6D",
 );
-// Item size → pouch render scale (bigger fillings draw bigger)
-assert.ok(sizeScale("S") < sizeScale("M"), "S renders smaller than M");
-assert.ok(sizeScale("M") < sizeScale("L"), "M renders smaller than L");
-assert.equal(sizeScale(null), 1, "unknown size renders at 1");
-assert.equal(sizeScale("l"), sizeScale("L"), "size lookup is case-insensitive");
+// Registry footprint → pouch size (slice 02, ADR 0019): the Size sets the scale,
+// the registry the millimetres; the relative SIZE_SCALES are gone.
+assert.ok(stageGeometry("XS").k > stageGeometry("XL").k, "XS draws more view units per mm than XL");
+assert.ok(resolveDims({ name: "filling", subtype: "6D (L)" }).dims.widthMm > 0, "every filling resolves to a footprint");
 
 // --- Renderer guardrails ------------------------------------------------------
 const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray-pillow.tsx"), "utf8");
@@ -73,7 +79,9 @@ assert.match(
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");
 assert.match(renderer, /layoutPlacements\(placements,/, "deterministic layout engine renders the mix");
-assert.match(renderer, /itemScaleMap\(itemSizes\)/, "Item size scales the pouch");
+assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims \}\)/, "true-scale layout: the Size's stage and each item's registry dimensions");
+assert.match(renderer, /const stage = useMemo\(\(\) => stageGeometry\(pillowSize\), \[pillowSize\]\)/, "the stage follows the pillow Size");
+assert.doesNotMatch(renderer, /sizeScale|itemScaleMap|SIZE_SCALES/, "the relative size scale is retired");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 
 // --- Wiring: one gated mount over the silhouette (RE slice 07: guests read-only) ---
@@ -96,6 +104,8 @@ assert.match(
   "staff renders the assist session mix live; guests the recommended template",
 );
 assert.match(client, /xrayVisible && "opacity-80 saturate-50"/, "shell desaturates in x-ray mode");
-assert.match(client, /const PILLOW_PATH = SILHOUETTE_PATH/, "one silhouette source (guardrail 5)");
+assert.match(client, /stageGeometry\(/, "one silhouette source: the shell and the x-ray share the Size's stage (guardrail 5)");
+assert.doesNotMatch(client, /SILHOUETTE_PATH/, "no fixed placeholder silhouette left in the configurator");
+assert.match(client, /pillowSize=\{/, "the configurator passes the Size to the x-ray");
 
 console.log("xray-pillow.check: all assertions passed");

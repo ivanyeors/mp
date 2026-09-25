@@ -13,6 +13,7 @@ import {
   validatePillowPlacements,
 } from "@/lib/spatial-fillings";
 import { PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
+import { loadDimensionOverrides } from "@/lib/spatial-fillings/dimension-overrides.server";
 import { loadTemplateKeys, setTemplateKeys, templateIdsForKey } from "@/lib/filling-templates/membership";
 
 type Scope = { kind: "pillow" | "bolster"; key: string };
@@ -99,6 +100,7 @@ export async function GET(req: NextRequest) {
     { data: templates, error: listErr },
     { data: items, error: itemsErr },
     { data: colorOverrides, error: colorsErr },
+    dimensionOverrides,
   ] = await Promise.all([
     memberIds.length
       ? admin
@@ -119,6 +121,8 @@ export async function GET(req: NextRequest) {
       .order("name"),
     // Slice 11: Product Builder color overrides for the x-ray CSS-variable pipeline.
     admin.from("filling_color_overrides").select("subtype,color"),
+    // Slice 02/12: Settings dimension overrides for the true-scale x-ray.
+    loadDimensionOverrides(admin),
   ]);
   if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
   if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 500 });
@@ -134,6 +138,7 @@ export async function GET(req: NextRequest) {
       msrp: (Array.isArray(item_prices) ? item_prices[0] : item_prices)?.msrp ?? null,
     })),
     colorOverrides: colorOverrides ?? [],
+    dimensionOverrides,
   });
 }
 

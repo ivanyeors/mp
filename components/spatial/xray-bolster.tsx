@@ -29,7 +29,8 @@ import {
   conformPouchPath,
   makeRegion,
 } from "@/lib/spatial-fillings/conform";
-import { itemScaleMap, MorphPiece, PieceLabel, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
+import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { MorphPiece, PieceLabel, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
 import { pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath, SHELL_SEAM, XRAY_VIEW } from "./xray-assets";
 
@@ -45,6 +46,7 @@ export function XrayBolster({
   length,
   itemSubtypes,
   itemSizes,
+  itemDims,
   items,
   onPlacementsChange,
   className,
@@ -54,8 +56,10 @@ export function XrayBolster({
   length: BolsterLength;
   /** item id → subtype (resolves color). */
   itemSubtypes: ReadonlyMap<number, string | null>;
-  /** item id → Item size (scales the pouch); absent ids render at 1. */
+  /** item id → Item size, written in the piece's label. */
   itemSizes?: ReadonlyMap<number, string | null>;
+  /** item id → registry dimensions: relative widths until slice 09 gives the bolster true scale. */
+  itemDims?: ReadonlyMap<number, ResolvedDims>;
   /** Inventory filling Items for the editor picker; read-only when omitted. */
   items?: FillingItem[];
   /** Lifted session-mix state (never forked). */
@@ -69,7 +73,7 @@ export function XrayBolster({
   const pieces = layoutBolsterPlacements(
     placements,
     length,
-    itemSizes ? itemScaleMap(itemSizes) : undefined,
+    itemDims ? new Map([...itemDims].map(([id, d]) => [id, d.dims.widthMm])) : undefined,
   );
 
   const addItem = (itemId: number) => {

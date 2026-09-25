@@ -166,7 +166,13 @@ import {
 import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
-import { SILHOUETTE_PATH } from "@/components/spatial/xray-assets";
+import { stageGeometry } from "@/components/spatial/xray-assets";
+import { pillowDimensions } from "@/lib/spatial-fillings/dimensions";
+import {
+  registryFromPayload,
+  resolveItemDims,
+  type DimensionOverridesPayload,
+} from "@/lib/spatial-fillings/dimension-overrides";
 import {
   flattenToPackList,
   pillowPlacementsToRows,
@@ -202,8 +208,11 @@ function pickDefaultComponent(
 const KEEP_EMAIL: Dispatch<SetStateAction<string>> = () => {};
 const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
 
-// Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline).
-const PILLOW_PATH = SILHOUETTE_PATH;
+// Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline) and
+// is the pillow Size's registry outline since slice 02 — the shell and the
+// x-ray share one path, so they cannot misalign.
+const pillowPath = (size: string | null | undefined) =>
+  stageGeometry(pillowDimensions(size).dims.size).silhouettePath;
 
 type Step =
   | "welcome"
@@ -446,6 +455,14 @@ export function MpConfigClient({
   // Product Builder color overrides (slice 11) → CSS vars on the x-ray container;
   // cleared overrides simply vanish and var(x, default) falls back to code defaults.
   const [assistColorOverrides, setAssistColorOverrides] = useState<ColorOverrideRow[]>([]);
+  // Slice 02: Settings dimension overrides ride the same responses as the colours;
+  // the staff panel's rows win once loaded, guests read the shop response.
+  const [assistDimensionOverrides, setAssistDimensionOverrides] = useState<DimensionOverridesPayload | null>(null);
+  const shopDimensionOverrides = shopRecommendation?.dimension_overrides ?? null;
+  const assistItemDims = useMemo(
+    () => resolveItemDims(assistItems, registryFromPayload(assistDimensionOverrides ?? shopDimensionOverrides)),
+    [assistItems, assistDimensionOverrides, shopDimensionOverrides],
+  );
   // RE slice 07: guests read the same filling_color_overrides table via the shop
   // response; staff panel overrides win once loaded.
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -2148,6 +2165,15 @@ export function MpConfigClient({
         ...guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
         ...(resumeFinish?.items ?? []).map((i) => [i.id, i.size] as const),
       ]),
+      // Slice 02: the drawn footprint of every guest-visible piece, from the
+      // registry with the shop response's Settings overrides applied.
+      guestItemDims: resolveItemDims(
+        [
+          ...guestFillings.map((f) => ({ id: f.item_id, name: f.name, subtype: f.subtype ?? null, size: f.size ?? null })),
+          ...(resumeFinish?.items ?? []),
+        ],
+        registryFromPayload(shopRecommendation?.dimension_overrides ?? null),
+      ),
     };
   }, [shopRecommendation, resumeFinish]);
 
@@ -2170,7 +2196,7 @@ export function MpConfigClient({
       requiredInputsComplete: Boolean(shopRecommendation && size),
       flowRouteUnresolved: routePending,
     });
-    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes } = guestPreview;
+    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims } = guestPreview;
     // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
     // Assisted runs show SIZE ONLY — no filling x-ray (AC3).
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
@@ -2374,12 +2400,12 @@ export function MpConfigClient({
                     xmlns="http://www.w3.org/2000/svg"
                     preserveAspectRatio="xMidYMid meet"
                   >
-                    <path d={PILLOW_PATH} fill="white" />
+                    <path d={pillowPath(size)} fill="white" />
                     {selectedOverlay && (
                       <>
                         <defs>
                           <clipPath id="mp-config-overlay-clip">
-                            <path d={PILLOW_PATH} />
+                            <path d={pillowPath(size)} />
                           </clipPath>
                         </defs>
                         <image
@@ -2391,7 +2417,7 @@ export function MpConfigClient({
                       </>
                     )}
                     <path
-                      d={PILLOW_PATH}
+                      d={pillowPath(size)}
                       fill="none"
                       stroke="white"
                       strokeWidth="3"
@@ -2403,6 +2429,8 @@ export function MpConfigClient({
                       placements={staffAssist ? assistPlacements : guestPlacements}
                       itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
                       itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                      itemDims={staffAssist ? assistItemDims : guestItemDims}
+                      pillowSize={pillowDimensions(size).dims.size}
                       // read-only for guests: no items / no change handler → no edit affordances
                       items={staffAssist ? assistItems : undefined}
                       onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
@@ -2486,6 +2514,7 @@ export function MpConfigClient({
                     onApplySizeTier={applyAssistSizeTier}
                     onItemsChange={setAssistItems}
                     onColorOverridesChange={setAssistColorOverrides}
+                    onDimensionOverridesChange={setAssistDimensionOverrides}
                   />
                 ) : !shopRecommendation ? (
                   <p className="max-w-xs text-center text-xs text-white/80">

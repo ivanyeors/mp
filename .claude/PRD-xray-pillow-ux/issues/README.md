@@ -11,7 +11,7 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | # | Title | Type | Pri | Status | Blocked by | User stories |
 |---|-------|------|-----|--------|------------|--------------|
 | [01](https://github.com/ivanyeors/mp/issues/201) | Dimension registry, glossary and ADR 0019 — real measurements in code | HITL | P1 | code half built (PR #213); Ivan's pouch / Neck support numbers pending | none | 5–7, 49 |
-| [02](https://github.com/ivanyeors/mp/issues/202) | True-scale rendering — pouches at their footprint relative to the pillow Size | AFK | P1 | not started | 01 | 1–4, 46, 47 |
+| [02](https://github.com/ivanyeors/mp/issues/202) | True-scale rendering — pouches at their footprint relative to the pillow Size | AFK | P1 | built (PR #213) | 01 | 1–4, 46, 47 |
 | [03](https://github.com/ivanyeors/mp/issues/203) | Fit model — width and loft budgets, compression limits, fit status | AFK | P1 | not started | 01, 02 | 8–11, 13, 22 |
 | [04](https://github.com/ivanyeors/mp/issues/204) | Compression feedback and error handling in the editor | AFK | P1 | not started | 03, 11 | 12, 14–21 |
 | [05](https://github.com/ivanyeors/mp/issues/205) | Cross-section view — live across / along cut on every surface | AFK | P1 | not started | 03, 11 | 23–30 |
@@ -21,7 +21,7 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | [09](https://github.com/ivanyeors/mp/issues/209) | Mbolster parity — capsule dimensions, physical cap, end-on cut | AFK | P2 | not started | 03, 11 | 44, 45 |
 | [10](https://github.com/ivanyeors/mp/issues/210) | Physical calibration sign-off | HITL | P1 | not started | 01–07, 09, 11 | 48 |
 | [11](https://github.com/ivanyeors/mp/issues/212) | Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic | AFK | P1 | not started | 02, 03 | 50–62 |
-| [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | built (PR #213); host plumbing lands with 02 | 01 | 63–66 |
+| [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | built (PR #213) | 01 | 63–66 |
 
 ## Dependency graph
 

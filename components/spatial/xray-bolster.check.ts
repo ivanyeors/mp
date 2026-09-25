@@ -33,7 +33,7 @@ assert.match(
 );
 assert.match(renderer, /bolsterShellPolygon\(/, "capsule sampled for conform geometry");
 assert.match(renderer, /layoutBolsterPlacements\(/, "deterministic layout engine renders the mix");
-assert.match(renderer, /itemScaleMap\(itemSizes\)/, "Item size scales the pouch");
+assert.match(renderer, /d\.dims\.widthMm/, "registry width weights the pouch (slice 09 gives the bolster true scale)");
 assert.match(renderer, /addBolsterPiece\(placements, itemId\)/, "add goes through the shared lib");
 assert.match(renderer, /removeBolsterPiece\(placements, p\.slot\)/, "remove goes through the shared lib");
 assert.doesNotMatch(renderer, /MAX_PIECES_PER_CELL|Cell full/, "no pillow cap on the bolster (v1)");

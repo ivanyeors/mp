@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BolsterPlacement, PillowPlacement } from "../core";
+import { GENERIC_POUCH, type ResolvedDims } from "../dimensions";
 import {
   bolsterFrame,
   cellFrame,
@@ -89,11 +90,15 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     expect(layout[0].itemId).toBe(9);
   });
 
-  it("a larger item shoves the row: wider tract than its sibling", () => {
-    const layout = layoutPlacements([piece(1, 8), piece(2, 9)], new Map([[9, 1.3]]));
+  it("a wider pouch draws wider than its sibling — its registry width, not a weight", () => {
+    const dims = new Map<number, ResolvedDims>([
+      [8, { key: "a", kind: "pouch", source: "measured", measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, widthMm: 80 } }],
+      [9, { key: "b", kind: "pouch", source: "measured", measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, widthMm: 104 } }],
+    ]);
+    const layout = layoutPlacements([piece(1, 8), piece(2, 9)], { dims });
     const small = layout.find((p) => p.itemId === 8)!;
     const large = layout.find((p) => p.itemId === 9)!;
-    expect(large.w).toBeGreaterThan(small.w);
+    expect(large.w / small.w).toBeCloseTo(1.3, 1);
   });
 
   it("explicit depth stacks as a back-to-front overlay (deeper shifts down-right)", () => {

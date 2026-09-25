@@ -51,32 +51,31 @@ import {
   type ConformRegion,
 } from "@/lib/spatial-fillings/conform";
 import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
-import { fillingVisual, sizeScale, type FillingVisual } from "@/lib/spatial-fillings/visuals";
-import { COL_X, GAP, layoutPlacements, ROW_Y, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
-import {
-  CELL_CLIP_PATHS,
-  CELL_POLYGONS,
-  FILLING_SHAPE_PATHS,
-  SECTION_HIT_PATHS,
-  SHELL_SEAM,
-  SILHOUETTE_PATH,
-  SILHOUETTE_POLYGON,
-  XRAY_VIEW,
-  type CellKey,
-} from "./xray-assets";
+import { fillingVisual, type FillingVisual } from "@/lib/spatial-fillings/visuals";
+import { GAP, layoutPlacements, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
+import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
+import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 
 // Shell regions pouches deform against: the silhouette (wide seam) and each
-// cell's wavy boundary (thin seam, matching the pouch-to-pouch gap).
-const SIL_REGION = makeRegion(SILHOUETTE_POLYGON, SHELL_SEAM);
-const CELL_REGIONS = Object.fromEntries(
-  (Object.entries(CELL_POLYGONS) as Array<[CellKey, typeof SILHOUETTE_POLYGON]>).map(
-    ([key, poly]) => [key, makeRegion(poly, GAP)],
-  ),
-) as Record<CellKey, ConformRegion>;
-
-/** item id → pouch render scale, from each Item's size. */
-export function itemScaleMap(itemSizes: ReadonlyMap<number, string | null>): Map<number, number> {
-  return new Map([...itemSizes].map(([id, size]) => [id, sizeScale(size)]));
+// cell's wavy boundary (thin seam, matching the pouch-to-pouch gap). One set
+// per Size (slice 02), built on first use and shared by every x-ray on the page.
+type StageRegions = { sil: ConformRegion; cells: Record<CellKey, ConformRegion> };
+const REGIONS_BY_SIZE = new Map<PillowSize, StageRegions>();
+export function stageRegions(stage: StageGeometry): StageRegions {
+  let regions = REGIONS_BY_SIZE.get(stage.size);
+  if (!regions) {
+    regions = {
+      sil: makeRegion(stage.silhouettePolygon, SHELL_SEAM),
+      cells: Object.fromEntries(
+        (Object.entries(stage.cellPolygons) as Array<[CellKey, StageGeometry["silhouettePolygon"]]>).map(
+          ([key, poly]) => [key, makeRegion(poly, GAP)],
+        ),
+      ) as Record<CellKey, ConformRegion>,
+    };
+    REGIONS_BY_SIZE.set(stage.size, regions);
+  }
+  return regions;
 }
 
 // useLayoutEffect starts morphs before paint (no first-frame flash); SSR no-ops.
@@ -327,6 +326,10 @@ export function XrayPillow({
   placements,
   itemSubtypes,
   itemSizes,
+  itemDims,
+  // ponytail: a host that truly cannot know the Size falls back to M — the
+  // configurator, Configure and Result all know it and pass it.
+  pillowSize = "M",
   items,
   onPlacementsChange,
   className,
@@ -334,8 +337,12 @@ export function XrayPillow({
   placements: PillowPlacement[];
   /** item id → subtype (resolves fluid shape + color). */
   itemSubtypes: ReadonlyMap<number, string | null>;
-  /** item id → Item size (scales the pouch); absent ids render at 1. */
+  /** item id → Item size, written in the piece's label; absent ids show the type alone. */
   itemSizes?: ReadonlyMap<number, string | null>;
+  /** item id → registry dimensions (slice 02): the pouch's drawn footprint; absent ids draw as the generic pouch. */
+  itemDims?: ReadonlyMap<number, ResolvedDims>;
+  /** The pillow Size: sets the silhouette, the Section columns and the mm → view scale. */
+  pillowSize?: PillowSize;
   /** Inventory filling Items for the dive editor picker; read-only when omitted. */
   items?: FillingItem[];
   /** Same lifted session-mix state the list editor writes (never forked). */
@@ -415,12 +422,14 @@ export function XrayPillow({
     };
   }, [dived, endDive]);
 
+  // The Size's stage: silhouette, Section columns and cell regions (slice 02).
+  const stage = useMemo(() => stageGeometry(pillowSize), [pillowSize]);
   // layoutPlacements + conformPouchPath are pure and deterministic, so the whole
-  // geometry chain memoises on (placements, itemSizes): a hover/dive re-render
-  // no longer re-runs the pouch conform (polygon scans) for every piece.
+  // geometry chain memoises on (placements, stage, itemDims): a hover/dive
+  // re-render no longer re-runs the pouch conform (polygon scans) for every piece.
   const pieces = useMemo(
-    () => layoutPlacements(placements, itemSizes ? itemScaleMap(itemSizes) : undefined),
-    [placements, itemSizes],
+    () => layoutPlacements(placements, { stage, dims: itemDims }),
+    [placements, stage, itemDims],
   );
   /** cell key → its pieces, in layout order (one grouping pass, not a filter per cell). */
   const piecesByCell = useMemo(() => {
@@ -437,6 +446,7 @@ export function XrayPillow({
   /** piece key → conformed pouch outline, computed once per geometry change. */
   const conformedPaths = useMemo(() => {
     const paths = new Map<string, string>();
+    const { sil: SIL_REGION, cells: CELL_REGIONS } = stageRegions(stage);
     for (const [key, cellPieceList] of piecesByCell) {
       const regions = [SIL_REGION, CELL_REGIONS[key]];
       for (const p of cellPieceList) {
@@ -445,7 +455,7 @@ export function XrayPillow({
       }
     }
     return paths;
-  }, [piecesByCell, itemSubtypes]);
+  }, [piecesByCell, itemSubtypes, stage]);
   const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
   // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
@@ -502,12 +512,12 @@ export function XrayPillow({
   const cellCenter = (subSection: SubSection) => {
     const b = SUB_SECTIONS.indexOf(subSection);
     return {
-      left: `${(((COL_X[divedIdx] + COL_X[divedIdx + 1]) / 2) / XRAY_VIEW.width) * 100}%`,
-      top: `${(((ROW_Y[b] + ROW_Y[b + 1]) / 2) / XRAY_VIEW.height) * 100}%`,
+      left: `${(((stage.colX[divedIdx] + stage.colX[divedIdx + 1]) / 2) / XRAY_VIEW.width) * 100}%`,
+      top: `${(((stage.rowY[b] + stage.rowY[b + 1]) / 2) / XRAY_VIEW.height) * 100}%`,
     };
   };
   /** The dived column's width, as a % of the frame. */
-  const divedColumnWidth = `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`;
+  const divedColumnWidth = `${((stage.colX[divedIdx + 1] - stage.colX[divedIdx]) / XRAY_VIEW.width) * 100}%`;
   /**
    * Where a cell's control panel hangs, and which way it grows. The frame clips
    * (fixed aspect ratio + overflow-hidden), so a panel taller than its own band
@@ -703,11 +713,11 @@ export function XrayPillow({
       >
         <defs>
           <clipPath id={clipId("sil")}>
-            <path d={SILHOUETTE_PATH} />
+            <path d={stage.silhouettePath} />
           </clipPath>
           {cellsInUse.map((key) => (
             <clipPath key={key} id={clipId(key)}>
-              <path d={CELL_CLIP_PATHS[key]} />
+              <path d={stage.cellClipPaths[key]} />
             </clipPath>
           ))}
         </defs>
@@ -715,7 +725,7 @@ export function XrayPillow({
         <g>
           {/* x-ray art direction: shell interior darkens so fillings read inside */}
           <g clipPath={`url(#${clipId("sil")})`}>
-            <path d={SILHOUETTE_PATH} fill={XRAY_INTERIOR} />
+            <path d={stage.silhouettePath} fill={XRAY_INTERIOR} />
 
             {/* nested clipping: silhouette ∩ cell — belt only; the pouch
                 geometry itself deforms to stay a seam inside both regions.
@@ -752,13 +762,13 @@ export function XrayPillow({
             )}
 
             {hovered && hovered !== dived && (
-              <path d={SECTION_HIT_PATHS[hovered]} fill="white" fillOpacity={0.15} />
+              <path d={stage.sectionHitPaths[hovered]} fill="white" fillOpacity={0.15} />
             )}
 
             {/* Dive focus: neighbor Sections dim (static veil, silhouette-clipped) */}
             {dived &&
               SECTIONS.filter((s) => s !== dived).map((s) => (
-                <path key={s} d={SECTION_HIT_PATHS[s]} fill={XRAY_VEIL} fillOpacity={0.55} />
+                <path key={s} d={stage.sectionHitPaths[s]} fill={XRAY_VEIL} fillOpacity={0.55} />
               ))}
 
             {/* The add target is a whole cell, and its highlight IS the cell
@@ -766,7 +776,7 @@ export function XrayPillow({
                 sit outside the shell the way a floating + button did. */}
             {dived && editable && addTarget && (
               <path
-                d={CELL_CLIP_PATHS[`${dived}/${addTarget}`]}
+                d={stage.cellClipPaths[`${dived}/${addTarget}`]}
                 fill="white"
                 fillOpacity={cellIsFull(addTarget) ? 0.05 : 0.14}
               />
@@ -774,7 +784,7 @@ export function XrayPillow({
           </g>
 
           <path
-            d={SILHOUETTE_PATH}
+            d={stage.silhouettePath}
             fill="none"
             stroke={XRAY_SHELL}
             strokeWidth={3}
@@ -785,7 +795,7 @@ export function XrayPillow({
           {SECTIONS.map((section) => (
             <path
               key={section}
-              d={SECTION_HIT_PATHS[section]}
+              d={stage.sectionHitPaths[section]}
               data-section={section}
               role={editable ? "button" : undefined}
               aria-label={editable ? `Dive into ${section} section` : undefined}
@@ -814,7 +824,7 @@ export function XrayPillow({
               return (
                 <path
                   key={subSection}
-                  d={CELL_CLIP_PATHS[`${dived}/${subSection}`]}
+                  d={stage.cellClipPaths[`${dived}/${subSection}`]}
                   clipPath={`url(#${clipId("sil")})`}
                   role="button"
                   tabIndex={0}
@@ -859,7 +869,7 @@ export function XrayPillow({
             <div
               className="absolute z-30 flex -translate-x-1/2 justify-center"
               style={{
-                left: `${(((COL_X[mirrorIdx] + COL_X[mirrorIdx + 1]) / 2) / XRAY_VIEW.width) * 100}%`,
+                left: `${(((stage.colX[mirrorIdx] + stage.colX[mirrorIdx + 1]) / 2) / XRAY_VIEW.width) * 100}%`,
                 top: "1.5%",
                 pointerEvents: "none",
               }}
@@ -964,7 +974,7 @@ export function XrayPillow({
                 ...(isMobile ? { left: "50%", top: "50%" } : cellCenter(openSub)),
                 width: isMobile
                   ? "100%"
-                  : `${((COL_X[divedIdx + 1] - COL_X[divedIdx]) / XRAY_VIEW.width) * 100}%`,
+                  : `${((stage.colX[divedIdx + 1] - stage.colX[divedIdx]) / XRAY_VIEW.width) * 100}%`,
                 pointerEvents: "auto",
               }}
             >

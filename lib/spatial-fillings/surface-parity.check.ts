@@ -79,4 +79,15 @@ assert.ok(
   "the frame applies Product Builder colour overrides as CSS variables",
 );
 
+// Slice 02 (ADR 0019): every pillow x-ray mount passes the Size, so the
+// silhouette and the pouch footprints are the Size's, never the placeholder's,
+// and the dimension overrides ride beside the colour overrides.
+for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
+  const src = readFileSync(path, "utf8");
+  assert.ok(/pillowSize=\{/.test(src), `${surface} passes pillowSize to the x-ray`);
+  assert.ok(/dimensionOverrides=\{|itemDims=\{/.test(src), `${surface} passes the dimension overrides beside the colour overrides`);
+}
+assert.ok(frame.includes("resolveItemDims"), "the frame resolves item dimensions from the registry (+ overrides)");
+assert.ok(frame.includes("pillowSize"), "the frame passes the Size through");
+
 console.log("surface-parity.check: all assertions passed");

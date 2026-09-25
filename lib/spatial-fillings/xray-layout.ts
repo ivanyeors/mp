@@ -2,6 +2,12 @@
  * X-ray layout engine (ADR 0009 guardrail 3): deterministic slot layout for
  * 1–5 pieces per cell. Same placements → identical positions, always — Staff
  * compare the x-ray against the physical build. Pure, no I/O.
+ *
+ * Slice 02 (ADR 0019): a piece's rect is its registry footprint, `mm × k` for
+ * the pillow Size, packed left→right in slot order and centred in its cell —
+ * never a share of the cell split by weight. A layer wider than its cell is
+ * clamped pro rata for now; slice 03 turns that into compression with a
+ * status. Depth is the layer's real thickness, foreshortened.
  */
 
 import {
@@ -12,12 +18,19 @@ import {
   type Section,
   type SubSection,
 } from "./core";
+import { GENERIC_POUCH, type PouchDimensions, type ResolvedDims } from "./dimensions";
+import { stageGeometry, XRAY_VIEW, type StageGeometry } from "./xray-stage";
 
-export const XRAY_VIEW = { width: 664, height: 374 } as const;
+export { XRAY_VIEW };
 
-/** Nominal 3×3 grid boundaries (columns = Sections, rows = sub-sections). */
-export const COL_X = [0, 221.3, 442.7, 664] as const;
-export const ROW_Y = [0, 124.7, 249.3, 374] as const;
+const M_STAGE = () => stageGeometry("M");
+
+/**
+ * Nominal 3×3 grid boundaries of the M stage (columns = Sections, rows =
+ * sub-sections). Every other Size reads its own from `stageGeometry(size)`.
+ */
+export const COL_X: readonly [number, number, number, number] = M_STAGE().colX;
+export const ROW_Y: readonly [number, number, number, number] = M_STAGE().rowY;
 
 /**
  * Hair of padding between the shell and the fillings: pouches run to the
@@ -29,14 +42,14 @@ export const GAP = 1;
 
 export type CellFrame = { x: number; y: number; w: number; h: number };
 
-export function cellFrame(section: Section, subSection: SubSection): CellFrame {
+export function cellFrame(section: Section, subSection: SubSection, stage: StageGeometry = M_STAGE()): CellFrame {
   const a = SECTIONS.indexOf(section);
   const b = SUB_SECTIONS.indexOf(subSection);
   return {
-    x: COL_X[a] + INSET,
-    y: ROW_Y[b] + INSET,
-    w: COL_X[a + 1] - COL_X[a] - 2 * INSET,
-    h: ROW_Y[b + 1] - ROW_Y[b] - 2 * INSET,
+    x: stage.colX[a] + INSET,
+    y: stage.rowY[b] + INSET,
+    w: stage.colX[a + 1] - stage.colX[a] - 2 * INSET,
+    h: stage.rowY[b + 1] - stage.rowY[b] - 2 * INSET,
   };
 }
 
@@ -46,68 +59,78 @@ export type PieceRect = { x: number; y: number; w: number; h: number };
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 /**
- * Pack explicit rows of tracts: each row splits the frame width by weight so
- * pouches press flat against their neighbors across a thin seam and a bigger
- * pouch shoves the row over. Rects come back flattened in row-then-order.
- * ponytail: space partition stands in for collision physics — deterministic,
- * no solver; revisit only if art direction demands organic jostling.
+ * Pack pieces into a frame by weight: the frame width is split in proportion,
+ * so pouches press flat against their neighbours across a thin seam and a
+ * bigger pouch shoves the row over. Kept for the Mbolster (slice 09 gives it
+ * dimensions); the pillow packs true-scale below.
  */
-function packRows(frame: CellFrame, rowsOfWeights: number[][]): PieceRect[] {
-  const rowH = frame.h / rowsOfWeights.length;
+function packByWeight(frame: CellFrame, weights: number[]): PieceRect[] {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let x = frame.x;
   const out: PieceRect[] = [];
-  rowsOfWeights.forEach((rowWeights, row) => {
-    const total = rowWeights.reduce((a, b) => a + b, 0);
-    let x = frame.x;
-    for (const weight of rowWeights) {
-      const tract = (frame.w * weight) / total;
-      // Pieces always fill their tract — stuffed pouches conform to the
-      // compartment (the shell clip rounds off whatever meets the curve).
-      out.push({
-        x: r1(x + GAP / 2),
-        y: r1(frame.y + row * rowH + GAP / 2),
-        w: r1(tract - GAP),
-        h: r1(rowH - GAP),
-      });
-      x += tract;
-    }
-  });
-  return out;
-}
-
-/**
- * Auto-pack: partition the space into 1–2 rows (whichever fits the pieces
- * bigger) and delegate to packRows. Used when a cell has no explicit `row`
- * arrangement (backward-compatible default; also the guest default).
- */
-function packPieces(frame: CellFrame, weights: number[], maxRows = 2): PieceRect[] {
-  const n = weights.length;
-  const fit = (r: number) => Math.min(frame.h / r, frame.w / Math.ceil(n / r));
-  const rows = maxRows > 1 && n > 1 && fit(2) > fit(1) ? 2 : 1;
-  const perRow = Math.ceil(n / rows);
-  const groups: number[][] = [];
-  for (let row = 0; row < rows; row++) groups.push(weights.slice(row * perRow, (row + 1) * perRow));
-  return packRows(frame, groups);
-}
-
-/** Layer overlay offsets (view units): deeper layers shift down + a hair right. */
-const DEPTH_OFX = 7;
-const DEPTH_OFY = 14;
-
-/**
- * Layer slabs: the x-ray is top-down, so a multi-layer cell fakes depth — each
- * near-full-cell slab shifts down/right by its layer index so they read as a
- * front-to-back stack (index 0 = top/front). Returned by depth (index 0 first).
- * A single layer gets the whole frame back unchanged.
- */
-function packDepthStack(frame: CellFrame, count: number): PieceRect[] {
-  const maxD = Math.max(count - 1, 0);
-  const w = frame.w - DEPTH_OFX * maxD;
-  const h = frame.h - DEPTH_OFY * maxD;
-  const out: PieceRect[] = [];
-  for (let d = 0; d < count; d++) {
-    out.push({ x: r1(frame.x + DEPTH_OFX * d), y: r1(frame.y + DEPTH_OFY * d), w: r1(w), h: r1(h) });
+  for (const weight of weights) {
+    const tract = (frame.w * weight) / total;
+    out.push({ x: r1(x + GAP / 2), y: r1(frame.y + GAP / 2), w: r1(tract - GAP), h: r1(frame.h - GAP) });
+    x += tract;
   }
   return out;
+}
+
+/**
+ * Depth is drawn as a foreshortened offset: each layer shifts the next one down
+ * (and a hair right) by its thickest piece × k × FORESHORTEN, so a stack of
+ * thick pouches reads deeper than a stack of thin ones. The whole stack never
+ * drops further than MAX_STACK_DROP of the cell, so the deepest slab stays in
+ * the cell whatever is piled on it.
+ */
+const FORESHORTEN = 0.5;
+const DEPTH_DX = 0.5;
+const MAX_STACK_DROP = 0.5;
+
+/** Slab rects per layer (index 0 = top/front), offset by the layers above it. */
+function depthSlabs(frame: CellFrame, thicknessesMm: number[], k: number): PieceRect[] {
+  const offsets = [0];
+  for (let d = 1; d < thicknessesMm.length; d++) {
+    offsets.push(offsets[d - 1] + thicknessesMm[d - 1] * k * FORESHORTEN);
+  }
+  const total = offsets[offsets.length - 1];
+  const scale = total > frame.h * MAX_STACK_DROP ? (frame.h * MAX_STACK_DROP) / total : 1;
+  const drop = total * scale;
+  return offsets.map((o) => ({
+    x: r1(frame.x + o * scale * DEPTH_DX),
+    y: r1(frame.y + o * scale),
+    w: r1(frame.w - drop * DEPTH_DX),
+    h: r1(frame.h - drop),
+  }));
+}
+
+/** A pouch's drawn footprint: the long axis across the Section unless it lies along it. */
+function footprint(dims: PouchDimensions, k: number): { w: number; h: number } {
+  return dims.orientation === "along"
+    ? { w: dims.lengthMm * k, h: dims.widthMm * k }
+    : { w: dims.widthMm * k, h: dims.lengthMm * k };
+}
+
+/**
+ * True-scale pack of one layer: rects at `mm × k`, left→right in slot order,
+ * the group centred in the slab; length clamped to the slab (a longer pouch
+ * spans it, no error). A group wider than the slab is clamped pro rata so
+ * nothing overflows — slice 03 replaces that with compression and a status.
+ */
+function packTrueScale(slab: CellFrame, pieces: PouchDimensions[], k: number): PieceRect[] {
+  const seams = GAP * (pieces.length - 1);
+  const feet = pieces.map((d) => footprint(d, k));
+  const totalW = feet.reduce((sum, f) => sum + f.w, 0);
+  const avail = Math.max(slab.w - seams, 1);
+  const scale = totalW > avail ? avail / totalW : 1;
+  let x = slab.x + (slab.w - (totalW * scale + seams)) / 2;
+  return feet.map((f) => {
+    const w = f.w * scale;
+    const h = Math.min(f.h, slab.h);
+    const rect = { x: r1(x), y: r1(slab.y + (slab.h - h) / 2), w: r1(w), h: r1(h) };
+    x += w + GAP;
+    return rect;
+  });
 }
 
 export type PieceLayout = {
@@ -120,24 +143,29 @@ export type PieceLayout = {
   depth: number;
 } & PieceRect;
 
+/** What the pillow layout needs beyond the placements: the Size's stage and each item's dimensions. */
+export type LayoutContext = {
+  /** Defaults to the M stage. */
+  stage?: StageGeometry;
+  /** item id → resolved dimensions; an absent id draws as the generic pouch. */
+  dims?: ReadonlyMap<number, ResolvedDims>;
+};
+
 /**
  * Deterministic layout: fixed cell order, pieces sorted by slot within a cell,
- * packed edge-to-edge. `itemScales` (item id → scale from the Item's size)
- * widens/narrows a piece's tract; absent ids weigh 1.
+ * each drawn at its registry footprint for the Size (`ctx.stage.k`).
  */
-export function layoutPlacements(
-  placements: PillowPlacement[],
-  itemScales?: ReadonlyMap<number, number>,
-): PieceLayout[] {
+export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutContext = {}): PieceLayout[] {
+  const stage = ctx.stage ?? M_STAGE();
+  const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
   const out: PieceLayout[] = [];
-  const weight = (p: PillowPlacement) => itemScales?.get(p.itemId) ?? 1;
   for (const section of SECTIONS) {
     for (const subSection of SUB_SECTIONS) {
       const pieces = placements
         .filter((p) => p.section === section && p.subSection === subSection)
         .sort((a, b) => a.slot - b.slot);
       if (pieces.length === 0) continue;
-      const frame = cellFrame(section, subSection);
+      const frame = cellFrame(section, subSection, stage);
       // Group into layers (`row`, absent = layer 0) and compact the numbering,
       // so a gap left by a deleted layer never renders as an empty slab.
       const byLayer = new Map<number, PillowPlacement[]>();
@@ -148,12 +176,14 @@ export function layoutPlacements(
         else byLayer.set(layer, [piece]);
       }
       const layers = [...byLayer.entries()].sort(([a], [b]) => a - b).map(([, list]) => list);
-      // One layer → the slab IS the frame, so this is the plain side-by-side
-      // pack; several → each layer packs side-by-side inside its own slab.
-      const slabs = packDepthStack(frame, layers.length);
+      const slabs = depthSlabs(
+        frame,
+        layers.map((list) => Math.max(...list.map((p) => dimsOf(p.itemId).thicknessMm))),
+        stage.k,
+      );
       // Emit deepest-first so the renderer paints the top layer last (on top).
       for (let d = layers.length - 1; d >= 0; d--) {
-        const rects = packPieces(slabs[d], layers[d].map(weight));
+        const rects = packTrueScale(slabs[d], layers[d].map((p) => dimsOf(p.itemId)), stage.k);
         layers[d].forEach((piece, idx) => {
           out.push({
             key: `${section}/${subSection}/${piece.slot}`,
@@ -210,19 +240,20 @@ export type BolsterPieceLayout = {
  * Deterministic bolster layout: pieces sorted by slot, packed edge-to-edge in
  * a SINGLE line along the capsule — the physical bolster can't stack a second
  * layer. No cap — tracts shrink as pieces are added, outlines stay distinct
- * (guardrail 2).
+ * (guardrail 2). `itemWeights` (item id → relative width, the registry's
+ * widthMm) widens/narrows a piece's tract; absent ids weigh 1. Slice 09 gives
+ * the bolster true dimensions.
  */
 export function layoutBolsterPlacements(
   placements: BolsterPlacement[],
   length: BolsterLength,
-  itemScales?: ReadonlyMap<number, number>,
+  itemWeights?: ReadonlyMap<number, number>,
 ): BolsterPieceLayout[] {
   const pieces = [...placements].sort((a, b) => a.slot - b.slot);
   if (pieces.length === 0) return [];
-  const rects = packPieces(
+  const rects = packByWeight(
     bolsterFrame(length),
-    pieces.map((p) => itemScales?.get(p.itemId) ?? 1),
-    1,
+    pieces.map((p) => itemWeights?.get(p.itemId) ?? 1),
   );
   return pieces.map((piece, idx) => ({
     key: `compartment/${piece.slot}`,

@@ -11,6 +11,8 @@ import {
   templateIdsForKey,
 } from '@/lib/filling-templates/membership'
 import { lookupItemCategories, rejectFillingLines } from '@/lib/bom-sanitizer'
+import { loadDimensionOverrides } from '@/lib/spatial-fillings/dimension-overrides.server'
+import type { DimensionOverridesPayload } from '@/lib/spatial-fillings/dimension-overrides'
 
 export const runtime = 'nodejs'
 
@@ -175,12 +177,19 @@ export async function GET(req: NextRequest) {
   // opened, and a brand-new template never gets them at all. Service-role-only
   // under RLS, so the browser cannot fetch them itself.
   let colorOverrides: Array<{ subtype: string; color: string }> | undefined
+  let dimensionOverrides: DimensionOverridesPayload | undefined
   if (role === 'filling' && parsed.data.kind === 'pillow') {
     const { data: colors, error: colorErr } = await admin
       .from('filling_color_overrides')
       .select('subtype,color')
     if (colorErr) return NextResponse.json({ error: colorErr.message }, { status: 500 })
     colorOverrides = colors ?? []
+    // Slice 02/12: the dimension overrides ride beside the colours, same reason.
+    try {
+      dimensionOverrides = await loadDimensionOverrides(admin)
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
+    }
   }
 
   return NextResponse.json({
@@ -189,6 +198,7 @@ export async function GET(req: NextRequest) {
     ...(templateKeys ? { templateKeys } : {}),
     ...(sectionCoverage ? { sectionCoverage } : {}),
     ...(colorOverrides ? { colorOverrides } : {}),
+    ...(dimensionOverrides ? { dimensionOverrides } : {}),
   })
 }
 

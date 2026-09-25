@@ -117,7 +117,7 @@ assert.match(renderer, /aria-disabled=\{empty\}/, "the disabled reason stays key
 // The toast outlives the click, so Undo must be an inverse, not a snapshot.
 assert.match(renderer, /if \(placementsRef\.current !== next\)/, "Undo no-ops once the mix changed after the mirror");
 // Every cell panel is in the DIVED column, so the section bar parks elsewhere.
-assert.match(renderer, /COL_X\[mirrorIdx\]/, "the section bar parks off the dived column, where no panel can reach it");
+assert.match(renderer, /stage\.colX\[mirrorIdx\]/, "the section bar parks off the dived column, where no panel can reach it");
 // Both surfaces, one builder: desktop (compact, on-canvas) + phone dock header.
 assert.equal(renderer.match(/mirrorButton\(dived, (true|false)\)/g)?.length, 2, "mirror CTA mounted on desktop AND the phone dock");
 assert.match(renderer, /data-xray-dive-section-bar/, "desktop gets section-level chrome for it, inside the framed box");
@@ -138,7 +138,7 @@ assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1
 // cell itself, clipped to the shell so it can never sit outside the pillow.
 assert.match(
   renderer,
-  /d=\{CELL_CLIP_PATHS\[`\$\{dived\}\/\$\{subSection\}`\]\}/,
+  /d=\{stage\.cellClipPaths\[`\$\{dived\}\/\$\{subSection\}`\]\}/,
   "add hit area is the whole cell region",
 );
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "hit area clipped to the silhouette");

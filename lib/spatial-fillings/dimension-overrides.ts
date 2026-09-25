@@ -14,12 +14,15 @@ import {
   NECK_SUPPORT_SIZES,
   POUCH_FAMILY_FALLBACKS,
   GENERIC_POUCH,
+  resolveDims,
+  type DimensionItemLike,
   type DimensionRegistry,
   type Measured,
   type NeckSupportDimensions,
   type NeckSupportSize,
   type Orientation,
   type PouchDimensions,
+  type ResolvedDims,
 } from "./dimensions";
 
 /** `site_settings.key` holding the allowance as a whole percentage, "10". */
@@ -187,3 +190,30 @@ export type DimensionsPayload = {
   /** The effective allowance as a fraction, for the drawn-height hint. */
   loftAllowance: number;
 };
+
+// --- What a host receives and how it resolves items --------------------------
+
+/**
+ * The override rows a server route ships to an x-ray host, beside the colour
+ * overrides it already ships (both tables are service-role only under RLS).
+ */
+export type DimensionOverridesPayload = {
+  pouches: DimensionOverrideRow[];
+  neck: NeckSupportOverrideRow[];
+  /** The stored allowance setting, or null for the code default. */
+  loftAllowance: string | null;
+};
+
+/** The registry a host draws with: the payload folded over the code defaults, or the code alone. */
+export function registryFromPayload(payload: DimensionOverridesPayload | null | undefined): DimensionRegistry {
+  if (!payload) return CODE_REGISTRY;
+  return effectiveRegistry(payload.pouches ?? [], payload.neck ?? [], payload.loftAllowance ?? null);
+}
+
+/** item id → resolved dimensions for every item a host can place. */
+export function resolveItemDims(
+  items: readonly (DimensionItemLike & { id: number })[],
+  registry: DimensionRegistry = CODE_REGISTRY,
+): Map<number, ResolvedDims> {
+  return new Map(items.map((item) => [item.id, resolveDims(item, registry)]));
+}

@@ -39,6 +39,7 @@ import {
   unauthoredReason,
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import {
   bolsterPlacementsToRows,
   pillowPlacementsToRows,
@@ -557,6 +558,8 @@ export default function ConfigureCardPage() {
   };
 
   const [cardColorOverrides, setCardColorOverrides] = useState<ColorOverrideRow[]>([]);
+  // Slice 02: Settings dimension overrides ride the same list response.
+  const [cardDimensionOverrides, setCardDimensionOverrides] = useState<DimensionOverridesPayload | undefined>(undefined);
 
   const loadFillingTemplates = useCallback(async (kind: "pillow" | "bolster", key: string) => {
     const url = settingsPath(
@@ -574,6 +577,9 @@ export default function ConfigureCardPage() {
     // defaults while the configurator shows Product Builder colours).
     if (payload?.colorOverrides) {
       setCardColorOverrides(payload.colorOverrides as ColorOverrideRow[]);
+    }
+    if (payload?.dimensionOverrides) {
+      setCardDimensionOverrides(payload.dimensionOverrides as DimensionOverridesPayload);
     }
     // Fold Section coverage and size membership onto each row so the call sites
     // keep the same shape and only the badge and the scope strip know about them.
@@ -1033,6 +1039,7 @@ export default function ConfigureCardPage() {
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
                   colorOverrides={cardColorOverrides}
+                  dimensionOverrides={cardDimensionOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1239,6 +1246,7 @@ export default function ConfigureCardPage() {
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
                   colorOverrides={cardColorOverrides}
+                  dimensionOverrides={cardDimensionOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1364,6 +1372,7 @@ function FillingConfigPanel({
   loadFillingTemplates,
   deleteTemplateById,
   colorOverrides,
+  dimensionOverrides,
 }: {
   kind: "pillow" | "bolster";
   templateKey: string;
@@ -1373,6 +1382,8 @@ function FillingConfigPanel({
   deleteTemplateById: (templateId: number) => Promise<void>;
   /** Global per-subtype x-ray colours, owned by the card (not per-template). */
   colorOverrides: ColorOverrideRow[];
+  /** Settings dimension overrides, owned by the card the same way (slice 02). */
+  dimensionOverrides?: DimensionOverridesPayload;
 }) {
   const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
@@ -2054,7 +2065,9 @@ function FillingConfigPanel({
                 placements={placements}
                 onPlacementsChange={setPlacements}
                 items={gridItems}
+                pillowSize={templateKey}
                 colorOverrides={colorOverrides}
+                dimensionOverrides={dimensionOverrides}
               />
             </Section>
           ) : (
@@ -2067,6 +2080,7 @@ function FillingConfigPanel({
                 onPlacementsChange={setBolsterMix}
                 items={gridItems}
                 colorOverrides={colorOverrides}
+                dimensionOverrides={dimensionOverrides}
               />
             </Section>
           )}
