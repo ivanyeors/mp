@@ -64,6 +64,7 @@ import {
 } from "@/lib/spatial-fillings/fit";
 import { GAP, layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
+import type { Cut } from "@/lib/spatial-fillings/cross-section";
 import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 
@@ -462,6 +463,8 @@ export function XrayPillow({
   pillowSize = "M",
   loftAllowance,
   fit: fitProp,
+  cutAt,
+  onDiveChange,
   items,
   onPlacementsChange,
   className,
@@ -479,6 +482,10 @@ export function XrayPillow({
   loftAllowance?: number;
   /** The host's fit (`usePillowFit`), shared with its banner, confirm and cross-section; computed here when omitted. */
   fit?: PillowFit;
+  /** Where the host's cross-section is taken (slice 05): drawn as a dashed cut line so the two views are linked. */
+  cutAt?: Cut;
+  /** The dived Section, as it changes — an along cut follows it. */
+  onDiveChange?: (section: Section | null) => void;
   /** Inventory filling Items for the dive editor picker; read-only when omitted. */
   items?: FillingItem[];
   /** Same lifted session-mix state the list editor writes (never forked). */
@@ -513,6 +520,10 @@ export function XrayPillow({
   useEffect(() => {
     placementsRef.current = placements;
   }, [placements]);
+
+  useEffect(() => {
+    onDiveChange?.(dived);
+  }, [dived, onDiveChange]);
 
   // Leaving the dive takes the open picker and the cell hover with it — the
   // cell hit areas unmount, so no mouseleave would ever fire to clear them.
@@ -1010,6 +1021,26 @@ export function XrayPillow({
                   vectorEffect="non-scaling-stroke"
                 />
               ),
+            )}
+
+            {/* Where the cross-section is taken (slice 05): one dashed cut line,
+                silhouette-clipped, through the sub-section row or the Section
+                column the host's cut names. */}
+            {cutAt && (
+              <path
+                d={
+                  cutAt.axis === "across"
+                    ? `M0 ${(stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection)] + stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection) + 1]) / 2} L${XRAY_VIEW.width} ${(stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection)] + stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection) + 1]) / 2}`
+                    : `M${(stage.colX[SECTIONS.indexOf(cutAt.section)] + stage.colX[SECTIONS.indexOf(cutAt.section) + 1]) / 2} ${stage.rowY[0]} L${(stage.colX[SECTIONS.indexOf(cutAt.section)] + stage.colX[SECTIONS.indexOf(cutAt.section) + 1]) / 2} ${stage.rowY[3]}`
+                }
+                fill="none"
+                stroke="white"
+                strokeOpacity={0.8}
+                strokeWidth={1.5}
+                strokeDasharray="8 5"
+                vectorEffect="non-scaling-stroke"
+                data-xray-cut={cutAt.axis}
+              />
             )}
 
             {/* Sub-section dividers are authoring guides, not walls (slice 11):

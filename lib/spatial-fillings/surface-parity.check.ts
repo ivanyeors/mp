@@ -111,4 +111,26 @@ assert.ok(scope.includes("fitBySize"), "the Size membership chips carry a fit do
 const configure = readFileSync(EDITING_SURFACES["Configure → Filling Template"].path, "utf8");
 assert.ok(configure.includes("useFitAtSizes(placements, scopeKeys"), "the chips' dots come from the recipe judged at every member Size");
 
+// Slice 05: the cross-section is mounted on all three surfaces, reads the same
+// fit object as the x-ray, and is read-only on the shopper preview.
+for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
+  const src = readFileSync(path, "utf8");
+  assert.ok(src.includes("<XrayCrossSection"), `${surface} mounts the cross-section`);
+  assert.ok(/cutAt=\{cut\}/.test(src), `${surface} links the x-ray's cut line to the cross-section's cut`);
+  assert.ok(src.includes("useCut()"), `${surface} holds the cut in the shared hook`);
+}
+const configurator = readFileSync(EDITING_SURFACES["configurator (Staff assist mode)"].path, "utf8");
+assert.ok(
+  configurator.includes("onCutChange={staffAssist ? setCut : undefined}"),
+  "the shopper preview gets the across cut read-only — no toggle, no tabs",
+);
+assert.ok(configurator.includes("fit={staffAssist ? assistFit : guestFit}"), "the preview's cross-section and x-ray read the same guest fit");
+const crossSection = readFileSync("components/spatial/xray-cross-section.tsx", "utf8");
+assert.ok(crossSection.includes("crossSectionSlabs(fit, cut)"), "the cross-section draws from the pure slab model — nothing recomputed");
+assert.ok(!crossSection.includes("fitPillow("), "the cross-section never recomputes the fit");
+assert.ok(!/<rect/.test(crossSection), "slabs are rounded paths, not rects");
+assert.ok(crossSection.includes("<pattern"), "compressed slabs are hatched with an SVG pattern");
+assert.ok(crossSection.includes("var(${visual.cssVar}, ${visual.defaultColor})"), "slabs take the pouches' family colour variables");
+assert.ok(crossSection.includes("Collapsible"), "phones get the collapsed disclosure");
+
 console.log("surface-parity.check: all assertions passed");

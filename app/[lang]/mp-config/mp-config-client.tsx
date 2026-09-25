@@ -166,6 +166,7 @@ import {
 import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { stageGeometry } from "@/components/spatial/xray-assets";
@@ -481,6 +482,8 @@ export function MpConfigClient({
       }),
     [assistPlacements, previewSize, assistItemDims, assistRegistry.loftAllowance],
   );
+  // Slice 05: where the cross-section is cut; the x-ray draws the line, an along cut follows the dive.
+  const { cut, setCut, onDiveChange } = useCut();
   // RE slice 07: guests read the same filling_color_overrides table via the shop
   // response; staff panel overrides win once loaded.
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -2468,6 +2471,8 @@ export function MpConfigClient({
                       pillowSize={pillowDimensions(size).dims.size}
                       loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
                       fit={staffAssist ? assistFit : guestFit}
+                      cutAt={cut}
+                      onDiveChange={onDiveChange}
                       // read-only for guests: no items / no change handler → no edit affordances
                       items={staffAssist ? assistItems : undefined}
                       onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
@@ -2484,6 +2489,19 @@ export function MpConfigClient({
                     fits is flagged here as well as on the cells. Advisory. */}
                 {staffAssist && xrayVisible && (
                   <FitBanner fit={assistFit} className="w-full max-w-md text-white [&_p]:text-white/80 [&_li]:text-white/80" />
+                )}
+                {/* Slice 05: the live cut under the pillow — Staff get the
+                    controls, a guest the across cut alone, read-only. */}
+                {xrayVisible && (
+                  <XrayCrossSection
+                    fit={staffAssist ? assistFit : guestFit}
+                    itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                    cut={cut}
+                    onCutChange={staffAssist ? setCut : undefined}
+                    colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
+                    themed={false}
+                    className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
+                  />
                 )}
                 {(() => {
                   const sleepPos = measurementData.sleepPositionType[0];

@@ -22,7 +22,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { XrayEditor } from "@/components/spatial/xray-editor";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
-import { usePillowFit } from "@/components/spatial/use-pillow-fit";
+import { useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
+import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
@@ -725,6 +726,9 @@ export default function ResultDetailPage({
   // Slice 04: the physical fit of the assignment at its Size — one object for
   // the x-ray, the banner, the save confirm and the cross-section.
   const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
+  // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
+  const { cut, setCut, onDiveChange } = useCut();
+  const { itemSubtypes: pickerItemSubtypes } = useItemMaps(pickerItems, dimensionOverrides);
 
   const refreshSuggestion = useCallback(async () => {
     if (!id) return;
@@ -1292,6 +1296,15 @@ export default function ResultDetailPage({
                             colorOverrides={colorOverrides}
                             dimensionOverrides={dimensionOverrides}
                             fit={fit}
+                            cutAt={cut}
+                            onDiveChange={onDiveChange}
+                          />
+                          <XrayCrossSection
+                            fit={fit}
+                            cut={cut}
+                            onCutChange={setCut}
+                            itemSubtypes={pickerItemSubtypes}
+                            colorOverrides={colorOverrides}
                           />
                         </>
                       ) : (

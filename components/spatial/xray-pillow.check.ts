@@ -108,6 +108,9 @@ assert.match(renderer, /strokeDasharray: status === "ok" \? undefined : "6 3"/, 
 assert.match(renderer, /squeeze\.status === "over" && <path d=\{d\} fill=\{RING_OVER\}/, "a piece in a cell that cannot close is tinted red on its own outline");
 assert.match(renderer, /\.\.\.squeezeLines\(pieceStatuses\.get\(p\.key\)\)/, "the ↕ / ↔ micro-label joins the type label through PieceLabel's size rule");
 assert.match(renderer, /fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
+// Slice 05: the cut line is one dashed path inside the silhouette clip, driven by the host's cut.
+assert.match(renderer, /\{cutAt && \(\s*<path[\s\S]{0,900}data-xray-cut=\{cutAt\.axis\}/, "the cross-section's cut is drawn as a dashed line on the x-ray");
+assert.match(renderer, /onDiveChange\?\.\(dived\)/, "the dive is reported so an along cut can follow it");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 
 // --- Wiring: one gated mount over the silhouette (RE slice 07: guests read-only) ---

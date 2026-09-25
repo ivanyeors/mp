@@ -41,7 +41,8 @@ import {
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
-import { useFitAtSizes, usePillowFit } from "@/components/spatial/use-pillow-fit";
+import { useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
+import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
 import {
   bolsterPlacementsToRows,
   pillowPlacementsToRows,
@@ -1808,6 +1809,9 @@ function FillingConfigPanel({
   // its status at every Size it is shared with, for the membership chips.
   const fit = usePillowFit(placements, templateKey, gridItems, dimensionOverrides);
   const fitBySize = useFitAtSizes(placements, scopeKeys, gridItems, dimensionOverrides);
+  // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
+  const { cut, setCut, onDiveChange } = useCut();
+  const { itemSubtypes: gridItemSubtypes } = useItemMaps(gridItems, dimensionOverrides);
   // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
   // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
   const unauthoredCount = useMemo(() => templates.filter(isUnauthoredTemplate).length, [templates]);
@@ -2080,6 +2084,15 @@ function FillingConfigPanel({
                 colorOverrides={colorOverrides}
                 dimensionOverrides={dimensionOverrides}
                 fit={fit}
+                cutAt={cut}
+                onDiveChange={onDiveChange}
+              />
+              <XrayCrossSection
+                fit={fit}
+                cut={cut}
+                onCutChange={setCut}
+                itemSubtypes={gridItemSubtypes}
+                colorOverrides={colorOverrides}
               />
             </Section>
           ) : (

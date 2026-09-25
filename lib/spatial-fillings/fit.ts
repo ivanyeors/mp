@@ -99,12 +99,39 @@ export type CellFit = {
   status: FitStatus;
 };
 
+/** One plane of a sub-section column's stack, as drawn: the thickest piece standing in it at that depth. */
+export type ColumnPlane = {
+  depth: number;
+  /** Drawn thickness: settled × the piece's ratio, mm. */
+  thicknessMm: number;
+  /** The thickness before the loft squeeze (settled), mm. */
+  settledMm: number;
+  minMm: number;
+  ratio: number;
+  /** The piece that sets this plane's thickness — the cross-section colours the slab by its family. */
+  itemId: number;
+  status: FitStatus;
+};
+
+/** A sub-section column's stack once settled (slice 05 reads it): every piece standing in the column, one plane per depth. */
+export type ColumnFit = {
+  relaxedMm: number;
+  minMm: number;
+  maxLoftMm: number;
+  /** What the column stands at: Σ of its planes as drawn. */
+  loftMm: number;
+  status: FitStatus;
+  planes: ColumnPlane[];
+};
+
 export type SectionFit = {
   section: Section;
   widthMm: number;
   maxLoftMm: number;
-  /** Loft per sub-section, 0 where the cell is empty — the cross-section reads this. */
+  /** Loft per sub-section, 0 where the column is empty — the cross-section reads this. */
   loftBySubSection: Record<SubSection, number>;
+  /** The stack behind each of those numbers; null where the column is empty. */
+  columns: Record<SubSection, ColumnFit | null>;
   status: FitStatus;
 };
 
@@ -315,20 +342,39 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
       for (let b = subSectionIndex(s.spanFrom); b <= subSectionIndex(s.spanTo); b++) ratio = Math.min(ratio, ratioAt(b, s.depth));
       pieceRatio.set(s.key, ratio);
     }
-    // What each column stands at: Σ over its planes of the thickest drawn piece.
+    // What each column stands at: its planes as drawn, each the thickest piece
+    // standing at that depth once squeezed — Σ is the column's loft.
     const loftBySubSection = { front: 0, middle: 0, back: 0 } as Record<SubSection, number>;
+    const columns = { front: null, middle: null, back: null } as Record<SubSection, ColumnFit | null>;
     let sectionStatus: FitStatus = "ok";
     SUB_SECTIONS.forEach((subSection, b) => {
       const stack = stacks[b];
       if (!stack) return;
-      loftBySubSection[subSection] = r1(
-        stack.depths.reduce(
-          (sum, d) =>
-            sum +
-            Math.max(...stack.standing.filter((s) => s.depth === d).map((s) => s.settledThicknessMm * pieceRatio.get(s.key)!)),
-          0,
-        ),
-      );
+      const drawn = (s: { settledThicknessMm: number; key: string }) => s.settledThicknessMm * (pieceRatio.get(s.key) ?? 1);
+      const planes: ColumnPlane[] = stack.depths.map((depth) => {
+        const at = stack.standing.filter((s) => s.depth === depth);
+        const top = at.reduce((best, s) => (drawn(s) > drawn(best) ? s : best));
+        const ratio = pieceRatio.get(top.key) ?? 1;
+        return {
+          depth,
+          thicknessMm: r1(drawn(top)),
+          settledMm: top.settledThicknessMm,
+          minMm: top.minThicknessMm,
+          ratio,
+          itemId: top.itemId,
+          status: stack.fit.status === "over" ? "over" : ratio < 1 - 1e-6 ? "compressed" : "ok",
+        };
+      });
+      const loft = r1(planes.reduce((sum, pl) => sum + pl.thicknessMm, 0));
+      loftBySubSection[subSection] = loft;
+      columns[subSection] = {
+        relaxedMm: r1(stack.fit.relaxed),
+        minMm: r1(stack.fit.min),
+        maxLoftMm: r1(budget[a]),
+        loftMm: loft,
+        status: stack.fit.status,
+        planes,
+      };
       sectionStatus = worstStatus(sectionStatus, stack.fit.status);
     });
     for (const [b, subSection] of SUB_SECTIONS.entries()) {
@@ -362,6 +408,7 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
       widthMm: pillow.sectionWidthsMm[a],
       maxLoftMm: r1(budget[a]),
       loftBySubSection,
+      columns,
       status: sectionStatus,
     };
     status = worstStatus(status, sectionStatus);

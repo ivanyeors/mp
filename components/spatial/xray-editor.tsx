@@ -32,10 +32,13 @@ import { XrayBolster } from "./xray-bolster";
 import { XrayPillow } from "./xray-pillow";
 import { XRAY_VIEW } from "./xray-assets";
 import { useItemMaps } from "./use-pillow-fit";
+import { XRAY_THEME } from "./xray-theme";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { pillowDimensions, type PillowSize } from "@/lib/spatial-fillings/dimensions";
 import type { PillowFit } from "@/lib/spatial-fillings/fit";
+import type { Cut } from "@/lib/spatial-fillings/cross-section";
+import type { Section } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings/core";
 import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
@@ -45,12 +48,9 @@ import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 // `useItemMaps` (use-pillow-fit.ts) so call sites pass one items array, and so
 // a host can compute the same fit without loading this frame.
 
-// Light ground in light mode, dark in dark mode; the shell paint follows via
-// the variables XrayPillow/XrayBolster read. Pieces keep their family colors.
-const XRAY_THEME = [
-  "border bg-slate-100 [--xray-shell:#64748b] [--xray-interior:rgba(255,255,255,0.75)] [--xray-veil:#f1f5f9]",
-  "dark:border-transparent dark:bg-slate-950 dark:[--xray-shell:rgba(255,255,255,0.9)] dark:[--xray-interior:rgba(15,23,42,0.5)] dark:[--xray-veil:rgb(2,6,23)]",
-].join(" ");
+// Light ground in light mode, dark in dark mode (xray-theme.ts, shared with the
+// cross-section); the shell paint follows via the variables XrayPillow reads.
+// Pieces keep their family colors.
 
 function XrayFrame({
   colorOverrides,
@@ -81,6 +81,8 @@ export function XrayEditor({
   colorOverrides = [],
   dimensionOverrides,
   fit,
+  cutAt,
+  onDiveChange,
   className,
 }: {
   placements: PillowPlacement[];
@@ -95,6 +97,9 @@ export function XrayEditor({
   dimensionOverrides?: DimensionOverridesPayload;
   /** The host's fit (`usePillowFit`), shared with its banner and cross-section; computed by the x-ray when omitted. */
   fit?: PillowFit;
+  /** Where the host's cross-section is taken (slice 05); the x-ray draws the cut line. */
+  cutAt?: Cut;
+  onDiveChange?: (section: Section | null) => void;
   className?: string;
 }) {
   const { itemSubtypes, itemSizes, itemDims, loftAllowance } = useItemMaps(items, dimensionOverrides);
@@ -109,6 +114,8 @@ export function XrayEditor({
         pillowSize={size}
         loftAllowance={loftAllowance}
         fit={fit}
+        cutAt={cutAt}
+        onDiveChange={onDiveChange}
         items={items}
         onPlacementsChange={onPlacementsChange}
         className="absolute inset-0"
