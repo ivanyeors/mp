@@ -8,8 +8,7 @@
  */
 
 import {
-  BOLSTER_CAPSULE_HEIGHT,
-  BOLSTER_CAPSULE_LENGTHS,
+  bolsterStage,
   XRAY_VIEW,
   type BolsterLength,
   type PieceRect,
@@ -212,13 +211,11 @@ export function conformPouchPath(
   return `M${out.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
 }
 
-/** The Mbolster capsule sampled as a polygon (flat sides + semicircular caps). */
+/** The Mbolster capsule sampled as a polygon (flat sides + semicircular caps), at the length's stage (slice 09: the diameter sets its height). */
 export function bolsterShellPolygon(length: BolsterLength, arcSamples = 24): Pt[] {
-  const len = BOLSTER_CAPSULE_LENGTHS[length];
-  const r = BOLSTER_CAPSULE_HEIGHT / 2;
-  const x0 = (XRAY_VIEW.width - len) / 2;
+  const { lengthView: len, heightView, x0, cy } = bolsterStage(length);
+  const r = heightView / 2;
   const x1 = x0 + len;
-  const cy = XRAY_VIEW.height / 2;
   const pts: Pt[] = [
     [x0 + r, cy - r],
     [x1 - r, cy - r],

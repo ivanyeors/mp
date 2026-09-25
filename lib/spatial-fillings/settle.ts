@@ -261,3 +261,65 @@ export function spans(s: PieceSettle, subSection: SubSection): boolean {
   const b = subSectionIndex(subSection);
   return subSectionIndex(s.spanFrom) <= b && b <= subSectionIndex(s.spanTo);
 }
+
+// --- Mbolster: the same rule in one dimension, along the capsule (slice 09) ----
+
+/** How much further a pouch can spread along the capsule (its width axis) before its fill is fully compressed or its fabric lies flat. */
+export function bolsterSpreadCapacityMm(d: PouchDimensions): number {
+  const minT = Math.min(d.minThicknessMm, d.thicknessMm);
+  const byVolume = minT > 0 ? d.widthMm * (d.thicknessMm / minT - 1) : 0;
+  const byFabric = d.flatWidthMm === undefined ? Infinity : Math.max(d.flatWidthMm - d.widthMm, 0);
+  return Math.max(Math.min(byVolume, byFabric), 0);
+}
+
+/** The thickness a pouch stands at once spread to `settledWidthMm` along the capsule: volume conserved, floored at the minimum. */
+export function bolsterSettledThicknessMm(d: PouchDimensions, settledWidthMm: number): number {
+  if (settledWidthMm <= d.widthMm + EPS) return d.thicknessMm;
+  return Math.max(Math.min(d.minThicknessMm, d.thicknessMm), (d.thicknessMm * d.widthMm) / settledWidthMm);
+}
+
+export type BolsterPieceSettle = {
+  slot: number;
+  itemId: number;
+  widthMm: number;
+  /** Into the capsule's empty end this piece touches (both ends for a lone piece), mm. */
+  spreadMm: number;
+  settledWidthMm: number;
+  thicknessMm: number;
+  minThicknessMm: number;
+  settledThicknessMm: number;
+};
+
+/**
+ * Pouches packed edge to edge along the capsule, centred, spread into the two
+ * empty ends: the first piece into the front end, the last into the back end
+ * (a lone piece into both), each up to its own capacity. Nothing between two
+ * packed pouches is a void, so the middle pieces keep their relaxed width.
+ */
+export function settleBolster(
+  pieces: readonly { slot: number; itemId: number; dims: PouchDimensions }[],
+  lengthMm: number,
+): BolsterPieceSettle[] {
+  const n = pieces.length;
+  const relaxed = pieces.reduce((s, p) => s + p.dims.widthMm, 0) + SEAM_MM * Math.max(n - 1, 0);
+  const slack = Math.max(lengthMm - relaxed, 0);
+  const end = slack / 2;
+  return pieces.map((p, i) => {
+    const cap = bolsterSpreadCapacityMm(p.dims);
+    let spread = 0;
+    if (n === 1) spread = Math.min(cap, slack);
+    else if (i === 0 || i === n - 1) spread = Math.min(cap, end);
+    spread = spread > EPS ? spread : 0;
+    const settledWidth = p.dims.widthMm + spread;
+    return {
+      slot: p.slot,
+      itemId: p.itemId,
+      widthMm: r1(p.dims.widthMm),
+      spreadMm: r1(spread),
+      settledWidthMm: r1(settledWidth),
+      thicknessMm: r1(p.dims.thicknessMm),
+      minThicknessMm: r1(Math.min(p.dims.minThicknessMm, p.dims.thicknessMm)),
+      settledThicknessMm: r1(bolsterSettledThicknessMm(p.dims, settledWidth)),
+    };
+  });
+}

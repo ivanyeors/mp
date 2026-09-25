@@ -97,6 +97,9 @@ import {
 import { overlayFrame } from "@/lib/product-builder/overlays";
 import { previewMixMode } from "@/lib/rules-engine/preview-xray";
 import { XrayBolster } from "@/components/spatial/xray-bolster";
+import { BolsterCrossSection } from "@/components/spatial/xray-cross-section";
+import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
+import { fitBolster } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath } from "@/components/spatial/xray-assets";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
@@ -342,8 +345,14 @@ export function MbolsterConfigClient({
     () => new Map(assistItems.map((i) => [i.id, i.size])),
     [assistItems],
   );
-  // Slice 02: registry widths weight the capsule pack (slice 09 gives the bolster true scale).
+  // Slice 02 / 09: registry dimensions draw the capsule pack at true scale.
   const assistItemDims = React.useMemo(() => resolveItemDims(assistItems), [assistItems]);
+  // Slice 09: the physical fit of the session mix at the recommended length —
+  // one object for the x-ray, the hold confirm and the end-on cross-section.
+  const assistBolsterFit = React.useMemo(
+    () => fitBolster(assistPlacements, suggestedLength ?? DEFAULT_BOLSTER_LENGTH, { dims: assistItemDims }),
+    [assistPlacements, suggestedLength, assistItemDims],
+  );
   // Same DB table either way — assist rows win once the Staff panel loads them,
   // guests ride the shop customize response (RE slice 07).
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -389,6 +398,8 @@ export function MbolsterConfigClient({
   const guestItemDims = resolveItemDims(
     (shopRecommendation?.available_fillings ?? []).map((f) => ({ id: f.item_id, name: f.name, subtype: f.subtype ?? null, size: f.size ?? null })),
   );
+  // The guest's fit of the recommended mix: read-only x-ray and cross-section.
+  const guestBolsterFit = fitBolster(guestPlacements, suggestedLength ?? DEFAULT_BOLSTER_LENGTH, { dims: guestItemDims });
   // Legacy-flat templates (no placements) keep the text mix summary.
   // Assisted runs show LENGTH ONLY — no filling x-ray (AC3).
   const guestXray =
@@ -894,6 +905,8 @@ export function MbolsterConfigClient({
       setFieldErrors(errors);
       return;
     }
+    // Slice 09: a mix the bolster cannot fit is a confirm, never a block (ADR 0019).
+    if (staffAssist && !confirmSaveWithBolsterFit(assistBolsterFit, "Hold")) return;
 
     setHoldSubmitting(true);
     try {
@@ -978,6 +991,7 @@ export function MbolsterConfigClient({
     shopRecommendation?.recommendation_record,
     staffAssist,
     assistPlacements,
+    assistBolsterFit,
     sessionFillingTemplateId,
     partner,
     configSessionId,
@@ -1136,6 +1150,7 @@ export function MbolsterConfigClient({
                     itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
                     itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
                     itemDims={staffAssist ? assistItemDims : guestItemDims}
+                    fit={staffAssist ? assistBolsterFit : guestBolsterFit}
                     // Guests view, never edit: omitting these keeps the renderer read-only.
                     items={staffAssist ? assistItems : undefined}
                     onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
@@ -1148,6 +1163,16 @@ export function MbolsterConfigClient({
                   </div>
                 )}
               </div>
+              {/* Slice 09: the end-on cut under the capsule, Staff and guest, read-only. */}
+              {xrayVisible && (
+                <BolsterCrossSection
+                  fit={staffAssist ? assistBolsterFit : guestBolsterFit}
+                  itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                  colorOverrides={assistColorOverrides.length ? assistColorOverrides : (shopColorOverrides ?? [])}
+                  themed={false}
+                  className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
+                />
+              )}
               {(() => {
                 const why = previewRecord
                   ? plainLanguageWhy(previewRecord)

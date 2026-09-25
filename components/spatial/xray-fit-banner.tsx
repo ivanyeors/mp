@@ -8,7 +8,7 @@
  * authored warning. Both read the host's fit object; nothing is recomputed.
  */
 
-import { fitMessage, overCells, type PillowFit } from "@/lib/spatial-fillings/fit";
+import { bolsterFitMessage, fitMessage, overCells, type BolsterFit, type PillowFit } from "@/lib/spatial-fillings/fit";
 
 export function FitBanner({ fit, className }: { fit: PillowFit; className?: string }) {
   const over = overCells(fit);
@@ -46,4 +46,10 @@ export function confirmSaveWithOverCells(fit: PillowFit | null | undefined, acti
   return window.confirm(
     `${heading} at Size ${fit.size}:\n${over.map((c) => fitMessage(c, fit.size)).join("\n")}\n\n${action} anyway?`,
   );
+}
+
+/** The Mbolster's one confirm (slice 09): true when the save may go ahead; asks only when the pack cannot fit even fully squeezed. */
+export function confirmSaveWithBolsterFit(fit: BolsterFit | null | undefined, action: string): boolean {
+  if (!fit || fit.status !== "over") return true;
+  return window.confirm(`The ${fit.length} Mbolster cannot fit this mix:\n${bolsterFitMessage(fit)}\n\n${action} anyway?`);
 }

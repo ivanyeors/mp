@@ -20,11 +20,7 @@ import {
   type CellKey,
   type Pt,
 } from "@/lib/spatial-fillings/xray-stage";
-import {
-  BOLSTER_CAPSULE_HEIGHT,
-  BOLSTER_CAPSULE_LENGTHS,
-  type BolsterLength,
-} from "@/lib/spatial-fillings/xray-layout";
+import { bolsterStage, type BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import type { ShapeId } from "@/lib/spatial-fillings/visuals";
 
 export { XRAY_VIEW, stageGeometry };
@@ -86,11 +82,10 @@ export const SILHOUETTE_POLYGON: Pt[] = M_STAGE.silhouettePolygon;
 
 /** Long-pill silhouette, length driven by the Mbolster length (shared 664×374 view). */
 export function bolsterCapsulePath(length: BolsterLength): string {
-  const len = BOLSTER_CAPSULE_LENGTHS[length];
-  const r = BOLSTER_CAPSULE_HEIGHT / 2;
-  const x0 = (XRAY_VIEW.width - len) / 2;
+  // The length's stage (slice 09): the registry diameter sets the height.
+  const { lengthView: len, heightView, x0, cy } = bolsterStage(length);
+  const r = heightView / 2;
   const x1 = x0 + len;
-  const cy = XRAY_VIEW.height / 2;
   return (
     `M${x0 + r} ${cy - r} L${x1 - r} ${cy - r} A${r} ${r} 0 0 1 ${x1 - r} ${cy + r} ` +
     `L${x0 + r} ${cy + r} A${r} ${r} 0 0 1 ${x0 + r} ${cy - r} Z`

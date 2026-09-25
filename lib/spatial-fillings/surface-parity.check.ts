@@ -133,4 +133,19 @@ assert.ok(crossSection.includes("<pattern"), "compressed slabs are hatched with 
 assert.ok(crossSection.includes("var(${visual.cssVar}, ${visual.defaultColor})"), "slabs take the pouches' family colour variables");
 assert.ok(crossSection.includes("Collapsible"), "phones get the collapsed disclosure");
 
+// Slice 09: the Mbolster speaks the same fit language on its three surfaces —
+// the end-on cross-section beside the capsule (or the list), the save confirm.
+const BOLSTER_SURFACES = {
+  "mbolster configurator": "app/[lang]/mbolster-config/mbolster-config-client.tsx",
+  "Configure → Filling Template (bolster)": EDITING_SURFACES["Configure → Filling Template"].path,
+  "Result detail → assign (bolster)": EDITING_SURFACES["Result detail → assign"].path,
+} as const;
+for (const [surface, path] of Object.entries(BOLSTER_SURFACES)) {
+  const src = readFileSync(path, "utf8");
+  assert.ok(src.includes("<BolsterCrossSection"), `${surface} mounts the end-on cross-section`);
+  assert.ok(src.includes("confirmSaveWithBolsterFit("), `${surface} confirms a save/hold the bolster cannot fit`);
+}
+const adr8 = readFileSync("docs/adr/0008-spatial-filling-placements.md", "utf8");
+assert.ok(adr8.includes("Amendment") && adr8.includes("physical"), "ADR 0008 carries the physical-cap amendment");
+
 console.log("surface-parity.check: all assertions passed");

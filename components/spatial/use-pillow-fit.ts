@@ -15,7 +15,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
-import type { PillowPlacement, Section } from "@/lib/spatial-fillings/core";
+import type { BolsterPlacement, PillowPlacement, Section } from "@/lib/spatial-fillings/core";
 import { DEFAULT_CUT, type Cut } from "@/lib/spatial-fillings/cross-section";
 import {
   registryFromPayload,
@@ -23,7 +23,8 @@ import {
   type DimensionOverridesPayload,
 } from "@/lib/spatial-fillings/dimension-overrides";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
-import { fitAtSizes, fitPillow, type FitStatus, type PillowFit } from "@/lib/spatial-fillings/fit";
+import { fitAtSizes, fitBolster, fitPillow, type BolsterFit, type FitStatus, type PillowFit } from "@/lib/spatial-fillings/fit";
+import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 
 /** subtype, size and registry dimensions per Item id, plus the loft allowance the registry carries. */
 export function useItemMaps(items: FillingItem[] | undefined, dimensionOverrides: DimensionOverridesPayload | undefined) {
@@ -49,6 +50,17 @@ export function usePillowFit(
     () => fitPillow(placements, { size: pillowSize, dims: itemDims, loftAllowance }),
     [placements, pillowSize, itemDims, loftAllowance],
   );
+}
+
+/** The Mbolster's fit at a length (slice 09) — shared by the capsule x-ray, the confirm and the end-on cross-section. */
+export function useBolsterFit(
+  placements: BolsterPlacement[],
+  length: BolsterLength,
+  items: FillingItem[] | undefined,
+  dimensionOverrides: DimensionOverridesPayload | undefined,
+): BolsterFit {
+  const { itemDims } = useItemMaps(items, dimensionOverrides);
+  return useMemo(() => fitBolster(placements, length, { dims: itemDims }), [placements, length, itemDims]);
 }
 
 /** The same recipe judged at every Size it is shared with — the membership chips' dots. */

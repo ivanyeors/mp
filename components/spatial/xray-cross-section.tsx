@@ -20,7 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import { SECTIONS, SUB_SECTIONS, type Section } from "@/lib/spatial-fillings/core";
 import { crossSectionSlabs, cutLabel, type Cut } from "@/lib/spatial-fillings/cross-section";
-import type { PillowFit } from "@/lib/spatial-fillings/fit";
+import type { BolsterFit, PillowFit } from "@/lib/spatial-fillings/fit";
 import { fillingVisual } from "@/lib/spatial-fillings/visuals";
 import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
@@ -239,6 +239,113 @@ export function XrayCrossSection({
     <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>
       {onCutChange && <CutControls cut={cut} onCutChange={onCutChange} />}
       <CrossSectionSvg fit={fit} cut={cut} itemSubtypes={itemSubtypes} />
+    </div>
+  );
+  if (collapsible && isMobile) {
+    return (
+      <Collapsible className={className} data-xray-cross-section-disclosure>
+        <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border bg-background/90 px-3 py-2 text-sm font-medium [&[data-state=open]>svg]:rotate-180">
+          Cross-section
+          <ChevronDown className="size-4 transition-transform" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">{body}</CollapsibleContent>
+      </Collapsible>
+    );
+  }
+  return <div className={className}>{body}</div>;
+}
+
+// --- Mbolster: end-on (slice 09) ---------------------------------------------
+
+/**
+ * The bolster seen end-on: a circle of the registry diameter with the
+ * thickest pouch's slab inside at its settled, squeezed thickness — the one
+ * that decides whether the bolster closes — and, under it, what the pack
+ * stands at along the capsule. Same fit language as the pillow: hatched when
+ * compressed, red through the shell when it cannot fit.
+ */
+export function BolsterCrossSectionSvg({ fit, itemSubtypes }: { fit: BolsterFit; itemSubtypes: ReadonlyMap<number, string | null> }) {
+  const uid = useId();
+  const { width, height } = CROSS_SECTION_VIEW;
+  const hatchId = `${uid}-bhatch`;
+  const thickest = fit.pieces.reduce<BolsterFit["pieces"][number] | null>(
+    (best, p) => (best === null || p.settledThicknessMm > best.settledThicknessMm ? p : best),
+    null,
+  );
+  const tallest = Math.max(fit.diameterMm, thickest?.settledThicknessMm ?? 0, 1);
+  const plotH = height - PAD_TOP - PAD_BOTTOM;
+  const ky = plotH / (tallest * 1.12);
+  const r = (fit.diameterMm * ky) / 2;
+  const cx = width / 2;
+  const cy = PAD_TOP + plotH / 2;
+  const slabH = thickest ? thickest.settledThicknessMm * ky : 0;
+  const slabW = Math.max(r * 1.4, 1);
+  const status = thickest?.thicknessStatus ?? "ok";
+  const visual = thickest ? fillingVisual(itemSubtypes.get(thickest.itemId) ?? null) : null;
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      xmlns="http://www.w3.org/2000/svg"
+      preserveAspectRatio="xMidYMid meet"
+      className="h-auto w-full"
+      aria-label="Mbolster cross-section, end-on"
+      data-xray-cross-section="bolster"
+    >
+      <defs>
+        <pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <path d="M0 0 L0 6" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+        </pattern>
+      </defs>
+      {/* The shell: the registry diameter. */}
+      <circle cx={cx} cy={cy} r={r} fill={XRAY_INTERIOR_VAR} stroke={fit.status === "over" ? OVER : XRAY_SHELL_VAR} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      {thickest && visual && (
+        <g data-slab-status={status} data-item-subtype={itemSubtypes.get(thickest.itemId) ?? ""}>
+          <path
+            d={slabPath(cx - slabW / 2, cy - slabH / 2, slabW, Math.max(slabH, 1))}
+            fill={`var(${visual.cssVar}, ${visual.defaultColor})`}
+            fillOpacity={0.9}
+            stroke={status === "over" ? OVER : "rgba(255,255,255,0.9)"}
+            strokeWidth={1.5}
+            vectorEffect="non-scaling-stroke"
+          />
+          {status !== "ok" && <path d={slabPath(cx - slabW / 2, cy - slabH / 2, slabW, Math.max(slabH, 1))} fill={`url(#${hatchId})`} />}
+          {status === "over" && <path d={slabPath(cx - slabW / 2, cy - slabH / 2, slabW, Math.max(slabH, 1))} fill={OVER} fillOpacity={0.35} />}
+        </g>
+      )}
+      <text x={r1(cx + r + 6)} y={r1(cy - r + 4)} fontSize={9} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
+        Ø {Math.round(fit.diameterMm)} mm
+      </text>
+      <text x={cx} y={PAD_TOP + plotH + 13} textAnchor="middle" fontSize={11} fontWeight={600} fill={XRAY_SHELL_VAR} className="select-none">
+        end-on · {fit.length}
+      </text>
+      <text x={cx} y={PAD_TOP + plotH + 25} textAnchor="middle" fontSize={10} fill={fit.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
+        {fit.pieces.length === 0
+          ? "empty"
+          : `${thickest ? `${Math.round(thickest.settledThicknessMm)} mm thick` : ""} · ${Math.round(fit.usedMm)} / ${Math.round(fit.lengthMm)} mm along${fit.status === "compressed" ? " · compressed" : fit.status === "over" ? " · cannot fit" : ""}`}
+      </text>
+    </svg>
+  );
+}
+
+export function BolsterCrossSection({
+  fit,
+  itemSubtypes,
+  colorOverrides = [],
+  themed = true,
+  collapsible = true,
+  className,
+}: {
+  fit: BolsterFit;
+  itemSubtypes: ReadonlyMap<number, string | null>;
+  colorOverrides?: ColorOverrideRow[];
+  themed?: boolean;
+  collapsible?: boolean;
+  className?: string;
+}) {
+  const isMobile = useIsMobile();
+  const body = (
+    <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel="bolster">
+      <BolsterCrossSectionSvg fit={fit} itemSubtypes={itemSubtypes} />
     </div>
   );
   if (collapsible && isMobile) {

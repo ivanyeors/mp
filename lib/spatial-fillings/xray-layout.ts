@@ -23,8 +23,8 @@ import {
   type Section,
   type SubSection,
 } from "./core";
-import { GENERIC_POUCH, type PouchDimensions, type ResolvedDims } from "./dimensions";
-import type { CellFit, PillowFit } from "./fit";
+import { BOLSTER_DIMENSIONS, GENERIC_POUCH, type BolsterDimensions, type PouchDimensions, type ResolvedDims } from "./dimensions";
+import type { BolsterFit, CellFit, PillowFit } from "./fit";
 import type { PieceSettle } from "./settle";
 import { stageGeometry, XRAY_VIEW, type StageGeometry } from "./xray-stage";
 
@@ -64,24 +64,6 @@ export function cellFrame(section: Section, subSection: SubSection, stage: Stage
 export type PieceRect = { x: number; y: number; w: number; h: number };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
-
-/**
- * Pack pieces into a frame by weight: the frame width is split in proportion,
- * so pouches press flat against their neighbours across a thin seam and a
- * bigger pouch shoves the row over. Kept for the Mbolster (slice 09 gives it
- * dimensions); the pillow packs true-scale below.
- */
-function packByWeight(frame: CellFrame, weights: number[]): PieceRect[] {
-  const total = weights.reduce((a, b) => a + b, 0);
-  let x = frame.x;
-  const out: PieceRect[] = [];
-  for (const weight of weights) {
-    const tract = (frame.w * weight) / total;
-    out.push({ x: r1(x + GAP / 2), y: r1(frame.y + GAP / 2), w: r1(tract - GAP), h: r1(frame.h - GAP) });
-    x += tract;
-  }
-  return out;
-}
 
 /**
  * Depth is drawn as a foreshortened offset: each layer shifts the next one down
@@ -242,7 +224,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
   return out;
 }
 
-// --- Mbolster: single long compartment (ADR 0008 amendment, slice 13) --------
+// --- Mbolster: single long compartment (ADR 0008 amendment, slice 13; true scale, slice 09) --
 
 export type BolsterLength = "short" | "medium" | "long";
 
@@ -253,21 +235,43 @@ export const BOLSTER_CAPSULE_LENGTHS: Record<BolsterLength, number> = {
   long: 640,
 };
 
+/** The capsule height before slice 09 — kept as the reference the tests and thumbnails compare against. */
 export const BOLSTER_CAPSULE_HEIGHT = 180;
+
+export type BolsterStage = {
+  length: BolsterLength;
+  /** View units per millimetre for this length: the capsule fills its view length. */
+  k: number;
+  lengthView: number;
+  /** The registry diameter × k: a long bolster draws thinner than a short one, as it is. */
+  heightView: number;
+  x0: number;
+  cy: number;
+};
+
+/**
+ * The bolster's stage (slice 09): `k = capsule view length / lengthMm` per
+ * length, the height the registry diameter at that scale, so every pouch is
+ * drawn at `mm × k` along the capsule.
+ */
+export function bolsterStage(length: BolsterLength, bolster: BolsterDimensions = BOLSTER_DIMENSIONS[length]): BolsterStage {
+  const lengthView = BOLSTER_CAPSULE_LENGTHS[length];
+  const k = lengthView / bolster.lengthMm;
+  const heightView = Math.min(r1(bolster.diameterMm * k), XRAY_VIEW.height - 40);
+  return { length, k, lengthView, heightView, x0: (XRAY_VIEW.width - lengthView) / 2, cy: XRAY_VIEW.height / 2 };
+}
 
 /**
  * Inner content frame of the capsule — full bleed into the rounded ends: the
  * capsule clip molds the end pouches to the curve (conform, no dead margin).
  */
 export function bolsterFrame(length: BolsterLength): CellFrame {
-  const len = BOLSTER_CAPSULE_LENGTHS[length];
-  const x0 = (XRAY_VIEW.width - len) / 2;
-  const y0 = (XRAY_VIEW.height - BOLSTER_CAPSULE_HEIGHT) / 2;
+  const stage = bolsterStage(length);
   return {
-    x: x0 + INSET,
-    y: y0 + INSET,
-    w: len - 2 * INSET,
-    h: BOLSTER_CAPSULE_HEIGHT - 2 * INSET,
+    x: stage.x0 + INSET,
+    y: stage.cy - stage.heightView / 2 + INSET,
+    w: stage.lengthView - 2 * INSET,
+    h: stage.heightView - 2 * INSET,
   };
 }
 
@@ -277,24 +281,42 @@ export type BolsterPieceLayout = {
   itemId: number;
 } & PieceRect;
 
+/** What the bolster layout needs beyond the placements: each item's dimensions and the fit. */
+export type BolsterLayoutContext = {
+  dims?: ReadonlyMap<number, ResolvedDims>;
+  /** The fit computed once by the caller (slice 09): settled widths and the squeeze draw as such. */
+  fit?: BolsterFit;
+};
+
 /**
  * Deterministic bolster layout: pieces sorted by slot, packed edge-to-edge in
  * a SINGLE line along the capsule — the physical bolster can't stack a second
- * layer. No cap — tracts shrink as pieces are added, outlines stay distinct
- * (guardrail 2). `itemWeights` (item id → relative width, the registry's
- * widthMm) widens/narrows a piece's tract; absent ids weigh 1. Slice 09 gives
- * the bolster true dimensions.
+ * layer. Footprint-true (slice 09): each pouch `widthMm × k` along the
+ * capsule (its settled width, × the fit's ratio, when a fit is given), its
+ * short axis across, the group centred; a pack longer than the capsule is
+ * clamped pro rata so outlines stay distinct (guardrail 2) — the fit says
+ * whether that is compression or overflow.
  */
 export function layoutBolsterPlacements(
   placements: BolsterPlacement[],
   length: BolsterLength,
-  itemWeights?: ReadonlyMap<number, number>,
+  ctx: BolsterLayoutContext = {},
 ): BolsterPieceLayout[] {
   const pieces = [...placements].sort((a, b) => a.slot - b.slot);
   if (pieces.length === 0) return [];
-  const rects = packByWeight(
+  const stage = bolsterStage(length);
+  const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
+  const fitOf = new Map((ctx.fit?.pieces ?? []).map((p) => [p.slot, p] as const));
+  // The width axis runs along the capsule whatever the pillow orientation says.
+  const drawn = pieces.map((p) => {
+    const d = dimsOf(p.itemId);
+    return { ...d, orientation: "across" as const, widthMm: fitOf.get(p.slot)?.settledWidthMm ?? d.widthMm };
+  });
+  const rects = packTrueScale(
     bolsterFrame(length),
-    pieces.map((p) => itemWeights?.get(p.itemId) ?? 1),
+    drawn,
+    stage.k,
+    pieces.map((p) => fitOf.get(p.slot)?.widthRatio ?? 1),
   );
   return pieces.map((piece, idx) => ({
     key: `compartment/${piece.slot}`,

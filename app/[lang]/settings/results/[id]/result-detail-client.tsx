@@ -22,8 +22,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
-import { useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
+import { confirmSaveWithBolsterFit, confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { useBolsterFit, useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
+import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
@@ -41,6 +42,10 @@ const XrayEditor = dynamic(
 );
 const XrayCrossSection = dynamic(
   () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
+  { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
+);
+const BolsterCrossSection = dynamic(
+  () => import("@/components/spatial/xray-cross-section").then((m) => m.BolsterCrossSection),
   { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
 );
 import {
@@ -745,6 +750,9 @@ export default function ResultDetailPage({
   // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
   const { cut, setCut, onDiveChange } = useCut();
   const { itemSubtypes: pickerItemSubtypes } = useItemMaps(pickerItems, dimensionOverrides);
+  // Slice 09: the Mbolster's fit at the assigned length, for the confirm and the end-on cut.
+  const bolsterLength = (["short", "medium", "long"] as const).find((l) => l === assignLength) ?? "medium";
+  const bolsterFit = useBolsterFit(bolsterMix, bolsterLength as BolsterLength, pickerItems, dimensionOverrides);
 
   const refreshSuggestion = useCallback(async () => {
     if (!id) return;
@@ -1325,11 +1333,14 @@ export default function ResultDetailPage({
                         </>
                       ) : (
                         // Mbolster: single compartment — ordered list, no cap, never the 3×3 grid.
-                        <BolsterCompartmentList
-                          value={bolsterMix}
-                          onChange={setBolsterMix}
-                          items={pickerItems}
-                        />
+                        <>
+                          <BolsterCompartmentList
+                            value={bolsterMix}
+                            onChange={setBolsterMix}
+                            items={pickerItems}
+                          />
+                          <BolsterCrossSection fit={bolsterFit} itemSubtypes={pickerItemSubtypes} colorOverrides={colorOverrides} />
+                        </>
                       )}
                       <div className="rounded-md border bg-muted/30 p-3 text-sm">
                         <div className="text-xs text-muted-foreground mb-1">Derived pack list</div>
@@ -1358,6 +1369,7 @@ export default function ResultDetailPage({
                     onClick={() => {
                       // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
                       if (productType === "pillow" && !confirmSaveWithOverCells(fit, "Save assignment")) return;
+                      if (productType === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save assignment")) return;
                       void assign();
                     }}
                     disabled={assigning || !fillingTemplateId}

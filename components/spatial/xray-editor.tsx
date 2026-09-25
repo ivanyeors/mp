@@ -36,7 +36,7 @@ import { XRAY_THEME } from "./xray-theme";
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { pillowDimensions, type PillowSize } from "@/lib/spatial-fillings/dimensions";
-import type { PillowFit } from "@/lib/spatial-fillings/fit";
+import type { BolsterFit, PillowFit } from "@/lib/spatial-fillings/fit";
 import type { Cut } from "@/lib/spatial-fillings/cross-section";
 import type { Section } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
@@ -132,6 +132,7 @@ export function XrayBolsterEditor({
   items,
   colorOverrides = [],
   dimensionOverrides,
+  fit,
   className,
 }: {
   placements: BolsterPlacement[];
@@ -141,6 +142,8 @@ export function XrayBolsterEditor({
   items?: FillingItem[];
   colorOverrides?: ColorOverrideRow[];
   dimensionOverrides?: DimensionOverridesPayload;
+  /** The host's fit (`useBolsterFit`), shared with its confirm and cross-section; computed by the x-ray when omitted. */
+  fit?: BolsterFit;
   className?: string;
 }) {
   const { itemSubtypes, itemSizes, itemDims } = useItemMaps(items, dimensionOverrides);
@@ -152,6 +155,7 @@ export function XrayBolsterEditor({
         itemSubtypes={itemSubtypes}
         itemSizes={itemSizes}
         itemDims={itemDims}
+        fit={fit}
         items={items}
         onPlacementsChange={onPlacementsChange}
         className="absolute inset-0"

@@ -26,22 +26,26 @@ import {
   MAX_PIECES_PER_LAYER,
   SECTIONS,
   SUB_SECTIONS,
+  type BolsterPlacement,
   type PillowPlacement,
   type Section,
   type SubSection,
 } from "./core";
 import {
+  BOLSTER_DIMENSIONS,
   GENERIC_POUCH,
   LOFT_ALLOWANCE,
   maxLoftMm,
   pillowDimensions,
   SEAM_MM,
+  type BolsterDimensions,
   type PillowDimensions,
   type PillowSize,
   type PouchDimensions,
   type ResolvedDims,
 } from "./dimensions";
-import { settlePillow, spans, subSectionIndex, type PillowSettle } from "./settle";
+import { settleBolster, settlePillow, spans, subSectionIndex, type BolsterPieceSettle, type PillowSettle } from "./settle";
+import type { BolsterLength } from "./xray-layout";
 
 export { SEAM_MM };
 
@@ -147,14 +151,102 @@ export type PillowFit = {
   status: FitStatus;
 };
 
-/** Slice 09 gives the Mbolster its own fit; the type exists so its renderer can compile against it. */
+/** One Mbolster pouch's fit: its width along the capsule (settled, then squeezed) and its thickness against the diameter. */
+export type BolsterPieceFit = PieceFit &
+  BolsterPieceSettle & {
+    /** `over` when even fully compressed it is thicker than the bolster; `compressed` when it must squeeze to fit. */
+    thicknessStatus: FitStatus;
+  };
+
+/**
+ * The Mbolster's fit (slice 09): pouches settled into the capsule's empty
+ * ends, then Σ widths + seams against the capsule length (`ok` /
+ * `compressed` / `over`, the squeeze shared pro rata), and each pouch's
+ * thickness against the diameter. The cap is physical and derived — never a
+ * slot number (ADR 0008 amendment).
+ */
 export type BolsterFit = {
-  length: "short" | "medium" | "long";
+  length: BolsterLength;
+  lengthMm: number;
+  diameterMm: number;
+  /** Σ settled widths + seams, mm. */
   relaxedMm: number;
+  /** Σ minimum widths + seams, mm. */
   minMm: number;
+  /** The capsule length, mm. */
   availableMm: number;
+  /** What the pack stands at along the capsule: Σ drawn widths + seams, mm. */
+  usedMm: number;
+  /** In slot order. */
+  pieces: BolsterPieceFit[];
+  /** The width status along the capsule alone. */
+  lengthStatus: FitStatus;
+  /** The worse of the length status and every pouch's thickness status. */
   status: FitStatus;
 };
+
+export type BolsterFitContext = {
+  /** item id → resolved dimensions; an absent id is the generic pouch. */
+  dims?: ReadonlyMap<number, ResolvedDims>;
+  /** The capsule when it is not the registry's (a test). */
+  bolster?: BolsterDimensions;
+};
+
+export function fitBolster(placements: BolsterPlacement[], length: BolsterLength, ctx: BolsterFitContext = {}): BolsterFit {
+  const bolster = ctx.bolster ?? BOLSTER_DIMENSIONS[length];
+  const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
+  const pieces = [...placements].sort((a, b) => a.slot - b.slot).map((p) => ({ slot: p.slot, itemId: p.itemId, dims: dimsOf(p.itemId) }));
+  const settled = settleBolster(pieces, bolster.lengthMm);
+  const seams = SEAM_MM * Math.max(pieces.length - 1, 0);
+  const widths = settled.map((s) => s.settledWidthMm);
+  const floors = pieces.map((p) => Math.min(p.dims.minWidthMm, p.dims.widthMm));
+  const relaxed = widths.reduce((a, b) => a + b, 0) + seams;
+  const min = floors.reduce((a, b) => a + b, 0) + seams;
+  let lengthStatus: FitStatus = "ok";
+  let squeezed = widths.slice();
+  if (relaxed > bolster.lengthMm + 1e-9) {
+    lengthStatus = min <= bolster.lengthMm + 1e-9 ? "compressed" : "over";
+    squeezed = shareSqueeze(widths, floors, relaxed - bolster.lengthMm);
+  }
+  const fitted: BolsterPieceFit[] = settled.map((s, i) => {
+    const thin = s.minThicknessMm;
+    const thicknessStatus: FitStatus =
+      s.settledThicknessMm <= bolster.diameterMm + 1e-9 ? "ok" : thin <= bolster.diameterMm + 1e-9 ? "compressed" : "over";
+    return {
+      ...s,
+      acrossMm: s.settledWidthMm,
+      minAcrossMm: r1(floors[i]),
+      widthRatio: widths[i] > 0 ? squeezed[i] / widths[i] : 1,
+      thicknessStatus,
+    };
+  });
+  const status = fitted.reduce((acc, p) => worstStatus(acc, p.thicknessStatus), lengthStatus);
+  return {
+    length,
+    lengthMm: bolster.lengthMm,
+    diameterMm: bolster.diameterMm,
+    relaxedMm: r1(relaxed),
+    minMm: r1(min),
+    availableMm: bolster.lengthMm,
+    usedMm: r1(squeezed.reduce((a, b) => a + b, 0) + seams),
+    pieces: fitted,
+    lengthStatus,
+    status,
+  };
+}
+
+/** The Mbolster's fit message: the length first, then the first pouch too thick for the diameter; `fits` otherwise. */
+export function bolsterFitMessage(fit: BolsterFit, label: (itemId: number) => string = (id) => `item #${id}`): string {
+  if (fit.lengthStatus !== "ok") {
+    const n = fit.pieces.length;
+    return `${n} ${n === 1 ? "pouch needs" : "pouches need"} ${Math.round(fit.relaxedMm)} mm relaxed, ${Math.round(fit.minMm)} mm fully squeezed; the ${fit.length} Mbolster is ${Math.round(fit.lengthMm)} mm long`;
+  }
+  const thick = fit.pieces.find((p) => p.thicknessStatus !== "ok");
+  if (thick) {
+    return `${label(thick.itemId)} is ${Math.round(thick.settledThicknessMm)} mm thick, ${Math.round(thick.minThicknessMm)} mm fully compressed; the Mbolster is ${Math.round(fit.diameterMm)} mm across`;
+  }
+  return "fits";
+}
 
 export type FitContext = {
   /** Any case; unknown falls back to M. */

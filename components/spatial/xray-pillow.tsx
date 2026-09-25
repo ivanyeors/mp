@@ -148,7 +148,7 @@ type PouchDrag = {
 const DRAG_THRESHOLD_PX = 6;
 
 /** `↕ 78 %` / `↔ 85 %` beside the type label when the piece draws squeezed. */
-const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
+export const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
   if (!ps) return [];
   const out: string[] = [];
   if (ps.thicknessRatio < 1 - 1e-6) out.push(`↕ ${Math.round(ps.thicknessRatio * 100)} %`);
