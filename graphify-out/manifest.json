@@ -6048,9 +6048,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/conform.ts": {
-    "mtime": 1789525318.8506145,
-    "seen": 1790320067.7625437,
-    "ast_hash": "eae183c9dc8b039b24043f271c6e3ea6",
+    "mtime": 1790328931.0590868,
+    "seen": 1790328978.699171,
+    "ast_hash": "9362ed53da779ee00ca7309c2eb5aa3b",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/core.ts": {
@@ -12660,9 +12660,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
-    "mtime": 1790328817.9132283,
-    "seen": 1790328865.0238621,
-    "ast_hash": "3dc409f05bf467a6b034ff56168ea2b7",
+    "mtime": 1790328931.0593905,
+    "seen": 1790328978.6998854,
+    "ast_hash": "46d81dd85672d020ac37c4f14d6ae2aa",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/03-fit-model.md": {

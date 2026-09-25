@@ -148,15 +148,10 @@ const densify = (pts: Pt[], maxSeg = 8): Pt[] => {
  */
 export function pouchOutline(rect: PieceRect, arcSamples = 5, shape: ShapeId = "pouch"): Pt[] {
   if (shape === "pill") {
-    // Flexible pill: runs the tract's full length, but never fatter than
-    // ~2.2:1, so it still reads as a pill in a square tract. Centered, and
-    // sampled finer so its big round ends stay smooth.
-    const long = Math.max(rect.w, rect.h);
-    const thick = Math.min(rect.w, rect.h, long / 2.2);
-    rect =
-      rect.w >= rect.h
-        ? { ...rect, y: rect.y + (rect.h - thick) / 2, h: thick }
-        : { ...rect, x: rect.x + (rect.w - thick) / 2, w: thick };
+    // The pill IS its rect: since slice 02 the layout hands it the Neck
+    // support's registry footprint, so no aspect cap is needed to make it read
+    // as a pill (the old `long / 2.2` cap thinned a tract-shaped rect). Sampled
+    // finer so its big round ends stay smooth.
     arcSamples = Math.max(arcSamples, 10);
   }
   const { x, y, w, h } = rect;
