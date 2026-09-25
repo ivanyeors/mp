@@ -1812,9 +1812,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
-    "mtime": 1790328617.5919619,
-    "seen": 1790328865.0215986,
-    "ast_hash": "88b6a72d1cc0157830456c0d7fa97869",
+    "mtime": 1790329689.9608493,
+    "seen": 1790329862.663946,
+    "ast_hash": "d65b0179744f960d3720f1721de46a30",
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/page.tsx": {
@@ -4554,15 +4554,15 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
-    "mtime": 1790328373.9344194,
-    "seen": 1790328865.0222533,
-    "ast_hash": "ed58ec8cfb2092fac517cefcd1729d6c",
+    "mtime": 1790329729.6653252,
+    "seen": 1790329862.6648824,
+    "ast_hash": "377d0be4858745c159f3c896f9a26679",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1790328373.9337416,
-    "seen": 1790328865.0222542,
-    "ast_hash": "4b3b9286c4ca7cb5a64294ff69beb47d",
+    "mtime": 1790329689.9620442,
+    "seen": 1790329862.6648839,
+    "ast_hash": "e62823516f000b8dc3f57712dcc6dd02",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -6054,9 +6054,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/core.ts": {
-    "mtime": 1789525318.8506145,
-    "seen": 1790320067.7625444,
-    "ast_hash": "92272d541332e11785a61d43a6ee9cc9",
+    "mtime": 1790329689.9620442,
+    "seen": 1790329862.6659207,
+    "ast_hash": "c625bd86735d3ce964f29f84a21dfe16",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/filling-groups.check.ts": {
@@ -6096,9 +6096,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/xray-layout.ts": {
-    "mtime": 1790328175.8445988,
-    "seen": 1790328865.0232038,
-    "ast_hash": "fbfaf65822b0d4f4005c81770b4bf416",
+    "mtime": 1790329689.9620442,
+    "seen": 1790329862.6659384,
+    "ast_hash": "4947d3267f3fa019b3902a963283affa",
     "semantic_hash": ""
   },
   "lib/whatsapp/__tests__/partner-notify.test.ts": {
@@ -9606,9 +9606,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow-geometry.test.ts": {
-    "mtime": 1789525318.6299415,
-    "seen": 1790320067.761609,
-    "ast_hash": "8e217caf3cd601a3259d22844c39f2e5",
+    "mtime": 1790329689.9608493,
+    "seen": 1790329862.6648812,
+    "ast_hash": "bd44e6e2121d99ba10a2de2073d615cd",
     "semantic_hash": ""
   },
   "lib/appointments/settings-store.ts": {
@@ -10590,9 +10590,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-editor.tsx": {
-    "mtime": 1790328396.6999087,
-    "seen": 1790328865.0222502,
-    "ast_hash": "b927df1e21d0b932a44afd3a97d0ae2a",
+    "mtime": 1790329689.9608493,
+    "seen": 1790329862.6648777,
+    "ast_hash": "276492183f7dbcb2c2a77d698825e0bb",
     "semantic_hash": ""
   },
   "lib/results/__tests__/result-stage.test.ts": {
@@ -11298,9 +11298,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/pack-list-labels-neck-support.test.ts": {
-    "mtime": 1789525318.8506145,
-    "seen": 1790320067.762535,
-    "ast_hash": "77d94b0baea0078656c29da8fc32444c",
+    "mtime": 1790329019.598016,
+    "seen": 1790329862.6659098,
+    "ast_hash": "f5bf672fa7b45c908f1f03b10fde6b39",
     "semantic_hash": ""
   },
   "components/spatial/insert-order-list.tsx": {
@@ -12666,9 +12666,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/03-fit-model.md": {
-    "mtime": 1790309221.2031999,
-    "seen": 1790320067.7631357,
-    "ast_hash": "69b6ccc0a35bdc05b38d84d6e200089b",
+    "mtime": 1790329830.369218,
+    "seen": 1790329862.666794,
+    "ast_hash": "a27f8c7aa0d72142d1ad477813c115dd",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/04-compression-feedback-error-handling.md": {
@@ -12720,9 +12720,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1790328817.9136105,
-    "seen": 1790328865.023875,
-    "ast_hash": "072495eb17b08c2914b6b453149c4bd8",
+    "mtime": 1790329830.3695078,
+    "seen": 1790329862.6668084,
+    "ast_hash": "a1c4783a51c0d1d491f2f2a946e4588f",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -13299,6 +13299,18 @@
     "mtime": 1790328127.7558928,
     "seen": 1790328865.0232046,
     "ast_hash": "0b0e3a72a8bfaa1ba6104584b0cc1baa",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/__tests__/fit.test.ts": {
+    "mtime": 1790329620.2498617,
+    "seen": 1790329862.6659043,
+    "ast_hash": "bc5827b107d8ccba738633f2c603832f",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/fit.ts": {
+    "mtime": 1790329191.859956,
+    "seen": 1790329862.6659312,
+    "ast_hash": "c9b9daf53098208044216e106c284658",
     "semantic_hash": ""
   }
 }

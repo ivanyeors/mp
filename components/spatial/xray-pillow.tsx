@@ -52,6 +52,7 @@ import {
 } from "@/lib/spatial-fillings/conform";
 import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
 import { fillingVisual, type FillingVisual } from "@/lib/spatial-fillings/visuals";
+import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { GAP, layoutPlacements, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
@@ -330,6 +331,7 @@ export function XrayPillow({
   // ponytail: a host that truly cannot know the Size falls back to M — the
   // configurator, Configure and Result all know it and pass it.
   pillowSize = "M",
+  loftAllowance,
   items,
   onPlacementsChange,
   className,
@@ -343,6 +345,8 @@ export function XrayPillow({
   itemDims?: ReadonlyMap<number, ResolvedDims>;
   /** The pillow Size: sets the silhouette, the Section columns and the mm → view scale. */
   pillowSize?: PillowSize;
+  /** The loft allowance the fit budgets with (a Settings value, slice 12); the code default when omitted. */
+  loftAllowance?: number;
   /** Inventory filling Items for the dive editor picker; read-only when omitted. */
   items?: FillingItem[];
   /** Same lifted session-mix state the list editor writes (never forked). */
@@ -427,9 +431,16 @@ export function XrayPillow({
   // layoutPlacements + conformPouchPath are pure and deterministic, so the whole
   // geometry chain memoises on (placements, stage, itemDims): a hover/dive
   // re-render no longer re-runs the pouch conform (polygon scans) for every piece.
+  // The physical fit (slice 03): computed once here, read by the layout (squeezed
+  // widths and thicknesses draw as such) and, later, by the rings, gauges and
+  // the cross-section — never recomputed downstream.
+  const fit = useMemo(
+    () => fitPillow(placements, { size: pillowSize, dims: itemDims, loftAllowance }),
+    [placements, pillowSize, itemDims, loftAllowance],
+  );
   const pieces = useMemo(
-    () => layoutPlacements(placements, { stage, dims: itemDims }),
-    [placements, stage, itemDims],
+    () => layoutPlacements(placements, { stage, dims: itemDims, fit }),
+    [placements, stage, itemDims, fit],
   );
   /** cell key → its pieces, in layout order (one grouping pass, not a filter per cell). */
   const piecesByCell = useMemo(() => {

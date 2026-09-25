@@ -11,6 +11,7 @@
  */
 
 import {
+  cellLayerGroups,
   SECTIONS,
   SUB_SECTIONS,
   type BolsterPlacement,
@@ -19,6 +20,7 @@ import {
   type SubSection,
 } from "./core";
 import { GENERIC_POUCH, type PouchDimensions, type ResolvedDims } from "./dimensions";
+import type { CellFit, PillowFit } from "./fit";
 import { stageGeometry, XRAY_VIEW, type StageGeometry } from "./xray-stage";
 
 export { XRAY_VIEW };
@@ -79,9 +81,11 @@ function packByWeight(frame: CellFrame, weights: number[]): PieceRect[] {
 /**
  * Depth is drawn as a foreshortened offset: each layer shifts the next one down
  * (and a hair right) by its thickest piece × k × FORESHORTEN, so a stack of
- * thick pouches reads deeper than a stack of thin ones. The whole stack never
- * drops further than MAX_STACK_DROP of the cell, so the deepest slab stays in
- * the cell whatever is piled on it.
+ * thick pouches reads deeper than a stack of thin ones. A slab loses only its
+ * own offset, so the top layer keeps the whole cell and draws at true scale
+ * whatever lies under it. The whole stack never drops further than
+ * MAX_STACK_DROP of the cell, so the deepest slab stays in the cell whatever
+ * is piled on it.
  */
 const FORESHORTEN = 0.5;
 const DEPTH_DX = 0.5;
@@ -95,12 +99,11 @@ function depthSlabs(frame: CellFrame, thicknessesMm: number[], k: number): Piece
   }
   const total = offsets[offsets.length - 1];
   const scale = total > frame.h * MAX_STACK_DROP ? (frame.h * MAX_STACK_DROP) / total : 1;
-  const drop = total * scale;
   return offsets.map((o) => ({
     x: r1(frame.x + o * scale * DEPTH_DX),
     y: r1(frame.y + o * scale),
-    w: r1(frame.w - drop * DEPTH_DX),
-    h: r1(frame.h - drop),
+    w: r1(frame.w - o * scale * DEPTH_DX),
+    h: r1(frame.h - o * scale),
   }));
 }
 
@@ -114,12 +117,16 @@ function footprint(dims: PouchDimensions, k: number): { w: number; h: number } {
 /**
  * True-scale pack of one layer: rects at `mm × k`, left→right in slot order,
  * the group centred in the slab; length clamped to the slab (a longer pouch
- * spans it, no error). A group wider than the slab is clamped pro rata so
- * nothing overflows — slice 03 replaces that with compression and a status.
+ * spans it, no error). With a fit (slice 03) each width is its relaxed width
+ * × `widthRatio`, so a squeezed layer draws squeezed; a group still wider than
+ * the slab (an `over` layer) is clamped pro rata so nothing overflows.
  */
-function packTrueScale(slab: CellFrame, pieces: PouchDimensions[], k: number): PieceRect[] {
+function packTrueScale(slab: CellFrame, pieces: PouchDimensions[], k: number, widthRatios?: readonly number[]): PieceRect[] {
   const seams = GAP * (pieces.length - 1);
-  const feet = pieces.map((d) => footprint(d, k));
+  const feet = pieces.map((d, i) => {
+    const f = footprint(d, k);
+    return { w: f.w * (widthRatios?.[i] ?? 1), h: f.h };
+  });
   const totalW = feet.reduce((sum, f) => sum + f.w, 0);
   const avail = Math.max(slab.w - seams, 1);
   const scale = totalW > avail ? avail / totalW : 1;
@@ -143,12 +150,14 @@ export type PieceLayout = {
   depth: number;
 } & PieceRect;
 
-/** What the pillow layout needs beyond the placements: the Size's stage and each item's dimensions. */
+/** What the pillow layout needs beyond the placements: the Size's stage, each item's dimensions and the fit. */
 export type LayoutContext = {
   /** Defaults to the M stage. */
   stage?: StageGeometry;
   /** item id → resolved dimensions; an absent id draws as the generic pouch. */
   dims?: ReadonlyMap<number, ResolvedDims>;
+  /** The fit computed once by the caller (slice 03): squeezed widths and thicknesses are drawn as such. */
+  fit?: PillowFit;
 };
 
 /**
@@ -166,24 +175,27 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
         .sort((a, b) => a.slot - b.slot);
       if (pieces.length === 0) continue;
       const frame = cellFrame(section, subSection, stage);
-      // Group into layers (`row`, absent = layer 0) and compact the numbering,
-      // so a gap left by a deleted layer never renders as an empty slab.
-      const byLayer = new Map<number, PillowPlacement[]>();
-      for (const piece of pieces) {
-        const layer = piece.row ?? 0;
-        const list = byLayer.get(layer);
-        if (list) list.push(piece);
-        else byLayer.set(layer, [piece]);
-      }
-      const layers = [...byLayer.entries()].sort(([a], [b]) => a - b).map(([, list]) => list);
+      // Layers compacted exactly as the fit model compacts them (core.cellLayerGroups).
+      const layers = cellLayerGroups(pieces);
+      const cellFit: CellFit | undefined = ctx.fit?.cells.find(
+        (c) => c.section === section && c.subSection === subSection,
+      );
       const slabs = depthSlabs(
         frame,
-        layers.map((list) => Math.max(...list.map((p) => dimsOf(p.itemId).thicknessMm))),
+        layers.map(
+          (list, d) =>
+            Math.max(...list.map((p) => dimsOf(p.itemId).thicknessMm)) * (cellFit?.thicknessRatios[d] ?? 1),
+        ),
         stage.k,
       );
       // Emit deepest-first so the renderer paints the top layer last (on top).
       for (let d = layers.length - 1; d >= 0; d--) {
-        const rects = packTrueScale(slabs[d], layers[d].map((p) => dimsOf(p.itemId)), stage.k);
+        const rects = packTrueScale(
+          slabs[d],
+          layers[d].map((p) => dimsOf(p.itemId)),
+          stage.k,
+          cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
+        );
         layers[d].forEach((piece, idx) => {
           out.push({
             key: `${section}/${subSection}/${piece.slot}`,

@@ -53,11 +53,9 @@ function useItemMaps(items: FillingItem[] | undefined, dimensionOverrides: Dimen
     [items],
   );
   const itemSizes = useMemo(() => new Map((items ?? []).map((i) => [i.id, i.size])), [items]);
-  const itemDims = useMemo(
-    () => resolveItemDims(items ?? [], registryFromPayload(dimensionOverrides)),
-    [items, dimensionOverrides],
-  );
-  return { itemSubtypes, itemSizes, itemDims };
+  const registry = useMemo(() => registryFromPayload(dimensionOverrides), [dimensionOverrides]);
+  const itemDims = useMemo(() => resolveItemDims(items ?? [], registry), [items, registry]);
+  return { itemSubtypes, itemSizes, itemDims, loftAllowance: registry.loftAllowance };
 }
 
 // Light ground in light mode, dark in dark mode; the shell paint follows via
@@ -109,7 +107,7 @@ export function XrayEditor({
   dimensionOverrides?: DimensionOverridesPayload;
   className?: string;
 }) {
-  const { itemSubtypes, itemSizes, itemDims } = useItemMaps(items, dimensionOverrides);
+  const { itemSubtypes, itemSizes, itemDims, loftAllowance } = useItemMaps(items, dimensionOverrides);
   const size: PillowSize = pillowDimensions(pillowSize).dims.size;
   return (
     <XrayFrame colorOverrides={colorOverrides} className={className}>
@@ -119,6 +117,7 @@ export function XrayEditor({
         itemSizes={itemSizes}
         itemDims={itemDims}
         pillowSize={size}
+        loftAllowance={loftAllowance}
         items={items}
         onPlacementsChange={onPlacementsChange}
         className="absolute inset-0"

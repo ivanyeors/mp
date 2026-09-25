@@ -105,3 +105,28 @@ describe("conformPouchPath memoisation is byte-identical", () => {
     expect(JSON.stringify(regions)).toBe(before);
   });
 });
+
+describe("a compressed piece still conforms inside its regions (slice 03)", () => {
+  it("keeps every outline point inside the silhouette and the cell after the fit squeezes it", async () => {
+    const { fitPillow } = await import("@/lib/spatial-fillings/fit");
+    const { GENERIC_POUCH } = await import("@/lib/spatial-fillings/dimensions");
+    const { pointInPolygon } = await import("@/lib/spatial-fillings/conform");
+    const dims = new Map([
+      [1, { key: "k", kind: "pouch" as const, source: "measured" as const, measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, widthMm: 150, minWidthMm: 100 } }],
+    ]);
+    const crowded: PillowPlacement[] = [1, 2, 3].map((slot) => ({ section: "center", subSection: "middle", slot, itemId: 1 }));
+    const fit = fitPillow(crowded, { size: "M", dims });
+    expect(fit.status).not.toBe("ok");
+    const laid = layoutPlacements(crowded, { dims, fit });
+    const regions = [SIL_REGION, CELL_REGIONS["center/middle"]];
+    for (const p of laid) {
+      const d = conformPouchPath(p, regions);
+      const pts = (d.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+      for (let i = 0; i + 1 < pts.length; i += 2) {
+        const pt: [number, number] = [pts[i], pts[i + 1]];
+        expect(pointInPolygon(pt, SILHOUETTE_POLYGON)).toBe(true);
+        expect(pointInPolygon(pt, CELL_POLYGONS["center/middle"])).toBe(true);
+      }
+    }
+  });
+});

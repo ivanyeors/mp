@@ -6,6 +6,7 @@ Tracker: #203 · Parent: #200
 **Blocked by:** 01, 02
 **User stories:** 8, 9, 10, 11, 13, 22
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
+**Status:** built (PR #213) — `lib/spatial-fillings/fit.ts`, `__tests__/fit.test.ts`; the layout and `XrayPillow` read the fit; hosts pass the Settings loft allowance through.
 
 ## Goal
 
@@ -33,11 +34,17 @@ Tracker: #203 · Parent: #200
 
 ## Acceptance criteria
 
-- [ ] vitest: relaxed → `ok` with ratios 1; over-wide but squeezable → `compressed` with Σ (width × ratio) + seams = available (±0.1) and no piece below `minWidthMm`; over-wide beyond minimums → `over`.
-- [ ] vitest: the same three cases for loft across layers; pro-rata sharing sums exactly to `maxLoftMm[section]`; the same stack that is `ok` in a side Section can be `compressed` in the centre.
-- [ ] vitest: `fitPillow` is input-order independent and byte-identical across two calls; `wouldFit(add)` equals `fitPillow(applied)`.
-- [ ] vitest: `fitMessage` renders the three numbers and the **Size**.
-- [ ] vitest: `addPiece` still refuses at the legacy caps before the fit is consulted (ceilings unchanged; `core.ts` untouched).
-- [ ] `xray-pillow-geometry.test.ts` extended: the conformed outline of a compressed piece stays inside the same regions.
-- [ ] Devtools spot-check noted in the PR: at 17 pieces the fit adds < 1 ms to the memoised chain.
-- [ ] `./scripts/graphify update .` run and committed.
+- [x] vitest: relaxed → `ok` with ratios 1; over-wide but squeezable → `compressed` with Σ (width × ratio) + seams = available (±0.1) and no piece below `minWidthMm`; over-wide beyond minimums → `over`.
+- [x] vitest: the same three cases for loft across layers; pro-rata sharing sums exactly to `maxLoftMm[section]`; the same stack that is `ok` in a side Section can be `compressed` in the centre.
+- [x] vitest: `fitPillow` is input-order independent and byte-identical across two calls; `wouldFit(add)` equals `fitPillow(applied)`.
+- [x] vitest: `fitMessage` renders the three numbers and the **Size**.
+- [x] vitest: `addPiece` still refuses at the legacy caps before the fit is consulted (ceilings unchanged; `core.ts` gained only the pure `cellLayerGroups` helper the fit and the layout share).
+- [x] `xray-pillow-geometry.test.ts` extended: the conformed outline of a compressed piece stays inside the same regions.
+- [x] Spot-check noted in the PR: at 17 pieces `fitPillow` takes ~0.04 ms and the fit-aware layout ~0.03 ms (vitest timing probe, 2000 iterations), well under the 1 ms budget.
+- [x] `./scripts/graphify update .` run and committed.
+
+## Build notes (2026-09-25)
+
+- The width budget is the **Section** width for the **Size** in mm; a Layer's drawn group is clamped to the cell frame (the frame is the Section width × k less a 1-unit inset each side), so a compressed Layer fills its cell wall to wall with a 1-unit seam between pieces.
+- `depthSlabs` changed with the fit: each slab loses only its own offset, so the top Layer always draws at true scale and only the Layers under it foreshorten. The deepest slab still keeps at least half the cell.
+- The fit is advisory (ADR 0019): `addPiece` keeps refusing at the schema ceilings; nothing else blocks on a status. Slice 04 surfaces the statuses in the editor.

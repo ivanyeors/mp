@@ -459,10 +459,11 @@ export function MpConfigClient({
   // the staff panel's rows win once loaded, guests read the shop response.
   const [assistDimensionOverrides, setAssistDimensionOverrides] = useState<DimensionOverridesPayload | null>(null);
   const shopDimensionOverrides = shopRecommendation?.dimension_overrides ?? null;
-  const assistItemDims = useMemo(
-    () => resolveItemDims(assistItems, registryFromPayload(assistDimensionOverrides ?? shopDimensionOverrides)),
-    [assistItems, assistDimensionOverrides, shopDimensionOverrides],
+  const assistRegistry = useMemo(
+    () => registryFromPayload(assistDimensionOverrides ?? shopDimensionOverrides),
+    [assistDimensionOverrides, shopDimensionOverrides],
   );
+  const assistItemDims = useMemo(() => resolveItemDims(assistItems, assistRegistry), [assistItems, assistRegistry]);
   // RE slice 07: guests read the same filling_color_overrides table via the shop
   // response; staff panel overrides win once loaded.
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -2174,6 +2175,7 @@ export function MpConfigClient({
         ],
         registryFromPayload(shopRecommendation?.dimension_overrides ?? null),
       ),
+      guestLoftAllowance: registryFromPayload(shopRecommendation?.dimension_overrides ?? null).loftAllowance,
     };
   }, [shopRecommendation, resumeFinish]);
 
@@ -2196,7 +2198,7 @@ export function MpConfigClient({
       requiredInputsComplete: Boolean(shopRecommendation && size),
       flowRouteUnresolved: routePending,
     });
-    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims } = guestPreview;
+    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims, guestLoftAllowance } = guestPreview;
     // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
     // Assisted runs show SIZE ONLY — no filling x-ray (AC3).
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
@@ -2431,6 +2433,7 @@ export function MpConfigClient({
                       itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
                       itemDims={staffAssist ? assistItemDims : guestItemDims}
                       pillowSize={pillowDimensions(size).dims.size}
+                      loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
                       // read-only for guests: no items / no change handler → no edit affordances
                       items={staffAssist ? assistItems : undefined}
                       onPlacementsChange={staffAssist ? setAssistPlacements : undefined}

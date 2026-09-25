@@ -79,8 +79,10 @@ assert.match(
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");
 assert.match(renderer, /layoutPlacements\(placements,/, "deterministic layout engine renders the mix");
-assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims \}\)/, "true-scale layout: the Size's stage and each item's registry dimensions");
+assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims, fit \}\)/, "true-scale layout: the Size's stage and each item's registry dimensions");
 assert.match(renderer, /const stage = useMemo\(\(\) => stageGeometry\(pillowSize\), \[pillowSize\]\)/, "the stage follows the pillow Size");
+assert.match(renderer, /const fit = useMemo\(\s*\(\) => fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the fit is computed once per geometry change (slice 03)");
+assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims, fit \}\)/, "the layout reads the fit — squeezed widths and thicknesses draw as such");
 assert.doesNotMatch(renderer, /sizeScale|itemScaleMap|SIZE_SCALES/, "the relative size scale is retired");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 
