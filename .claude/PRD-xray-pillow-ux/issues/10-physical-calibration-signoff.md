@@ -6,6 +6,7 @@ Tracker: #210 · Parent: #200
 **Blocked by:** 01, 02, 03, 04, 05, 06, 07, 09, 11
 **User stories:** 48
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
+**Status:** ready for sign-off (PR #213, 2026-09-25) — every AFK slice this waits on is built. What still draws from fallbacks: the pouch, Neck support and Mbolster dimensions (Ivan's numbers → `dimensions.ts` or Settings); the side-view SVG is not used by any slice yet.
 
 ## Why this cannot be AFK
 
