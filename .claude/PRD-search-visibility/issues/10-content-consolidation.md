@@ -7,6 +7,9 @@ User stories covered: 25, 26, 27
 
 ## What to build
 
+Pruning is approved (Sep 2026). Scope follows the slice 09 map once marketing signs off.
+
+
 - Rewrite each canonical target, folding the best sections of merged posts into it; answer lede; question-style H2s; named author/reviewer; updated date; first-hand photos; cited sources
 - 301 merged slugs to their targets (`next.config.ts` redirects or a blog redirect map), for every locale
 - Pruned posts: 410, or `noindex` where they still serve users

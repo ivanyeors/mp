@@ -12558,9 +12558,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/08-ga4-crosscheck.md": {
-    "mtime": 1790327134.9390213,
-    "seen": 1790327216.4808817,
-    "ast_hash": "51dbc0ac3a200972e08036b4531a39b7",
+    "mtime": 1790327718.2891657,
+    "seen": 1790327757.3708916,
+    "ast_hash": "39ddb58b15de3638065ab28a06c74775",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/09-content-audit.md": {
@@ -12570,9 +12570,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/10-content-consolidation.md": {
-    "mtime": 1790327134.9391367,
-    "seen": 1790327216.480884,
-    "ast_hash": "b79c33607e8c3a92eca1d160f54310e2",
+    "mtime": 1790327718.2893965,
+    "seen": 1790327757.3708944,
+    "ast_hash": "e13c8be45efb8fb1f0d1b84c29f42d46",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/11-fit-report.md": {
@@ -12588,9 +12588,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/13-merchant-feed.md": {
-    "mtime": 1790327134.939389,
-    "seen": 1790327216.480887,
-    "ast_hash": "7d113d21367470140961152d2d0c5743",
+    "mtime": 1790327718.288864,
+    "seen": 1790327757.370899,
+    "ast_hash": "55896994915650465358270b684ec039",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/14-gbp-reviews.md": {
@@ -12618,15 +12618,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/README.md": {
-    "mtime": 1790327169.0112188,
-    "seen": 1790327216.4808927,
-    "ast_hash": "6c049e660c84d9a1a6c6be3c1c475786",
+    "mtime": 1790327718.2896037,
+    "seen": 1790327757.370906,
+    "ast_hash": "cd91aabdf686e453e295413607d940a5",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/search-visibility-prd.md": {
-    "mtime": 1790327154.225527,
-    "seen": 1790327216.4808936,
-    "ast_hash": "2e8fc79772b46594e22d3da231e52b47",
+    "mtime": 1790327718.2883615,
+    "seen": 1790327757.3709075,
+    "ast_hash": "bc118b0e6836df421c84688e1613bfb7",
     "semantic_hash": ""
   },
   "mpillow-office/renders/final/iso_low_00001_.png": {
@@ -13017,6 +13017,12 @@
     "mtime": 1790212159.3550699,
     "seen": 1790327216.4813488,
     "ast_hash": "39a1c8350110f121cc139468fc453487",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-search-visibility/GA4-SETUP.md": {
+    "mtime": 1790327697.4975147,
+    "seen": 1790327757.370878,
+    "ast_hash": "56f1c241f46dedfeddd63ddbbd0a9535",
     "semantic_hash": ""
   }
 }

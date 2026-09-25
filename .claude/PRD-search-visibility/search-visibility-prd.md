@@ -160,21 +160,23 @@ From a **developer** perspective:
 
 ## Implementation Decisions
 
-### Proposed design decisions (to confirm in triage)
+### Design decisions
+
+Confirmed by the user (Sep 2026): merchant feed uses price ranges; pruning approved; no GA4 property exists, so a new one is set up per `GA4-SETUP.md`.
 
 | Decision | Proposal | Rationale |
 |----------|----------|-----------|
 | Primary SEO source | GSC Search Analytics API | Free, authoritative, per-query/page |
 | Storage | Daily snapshots in Supabase; admin reads Supabase only | Outlives 16-month window; no API latency/quota on page load |
 | AEO traffic source of truth | First-party `analytics_visits.referrer_host` classifier | Covers Perplexity; joins to orders; history since Jul 2026 |
-| GA4 | Optional cross-check slice; gated on OPS confirmation of property | Legacy GTM container unverified |
+| GA4 | **Confirmed:** new GA4 property loaded via direct gtag (`NEXT_PUBLIC_GA_MEASUREMENT_ID`); legacy GTM audited then retired; conversions sent as `gtag('event')` key events | No existing property; the GTM container is Shopify-era and unmaintained |
 | Ahrefs | Domain Rating free endpoint only; backlinks/audit via Ahrefs UI | Full API is paid |
 | Gen-AI impressions / Copilot citations | Manual CSV upload until APIs exist | No API as of Sep 2026 |
 | Auth to Google | Service account, restricted GSC user + GA4 Viewer | Avoids another personal refresh token |
 | Cron | Chain inside `results-sla` (Hobby plan = 2 crons) | Same pattern as `ga-sync` |
 | Charts | visx (existing), dataviz palette | Consistency with page |
-| Blog | Consolidate before writing more; no new commodity posts | Cannibalisation + site-wide quality |
-| Merchant feed pricing | Fixed-price storefront products first; composed sellables only if a truthful per-variant price exists | Merchant policy requires the landing price to match; Costings stays the single price source |
+| Blog | **Confirmed:** consolidate and prune (~15–20 posts) once the slice 09 map is approved; no new commodity posts | Cannibalisation + site-wide quality |
+| Merchant feed pricing | **Confirmed: price range.** Composed sellables are listed as one item per **Variant** (size × tier / length), grouped by `item_group_id`, each with its own Costings price. Each links to `mp-config` / `mbolster-config` preselected to that variant, which displays that exact price | Merchant Center takes a single price per item, not a range; a range becomes a set of variant items. The landing price must match or items are disapproved |
 
 ### Deep modules
 
@@ -206,6 +208,7 @@ From a **developer** perspective:
 - `GA4_PROPERTY_ID` (optional slice)
 - `AHREFS_API_KEY` (free key; required from 10 Aug 2026)
 - `INDEXNOW_KEY`
+- `NEXT_PUBLIC_GA_MEASUREMENT_ID` (new GA4 property; see `GA4-SETUP.md`)
 
 ## Testing Decisions
 

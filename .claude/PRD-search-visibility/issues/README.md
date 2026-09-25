@@ -61,6 +61,10 @@ graph TD
 5. **06, 07, 08, 12**
 6. **16**: ongoing, once 05 exists to log placements
 
+## OPS runbooks
+
+- `../GA4-SETUP.md`: new GA4 property for `custom.mpillow.com` (slice 08)
+
 ## Hard constraints
 
 - Costings is the single source of sell price. The merchant feed never computes its own price.
