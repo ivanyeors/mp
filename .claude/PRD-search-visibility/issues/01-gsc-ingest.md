@@ -17,11 +17,11 @@ User stories covered: 1, 3, 4, 7, 20
 
 ## Acceptance criteria
 
-- [ ] Backfill loads ≥15 months of `total` rows for `custom.mpillow.com`
-- [ ] Re-running the ingest for the same window changes no row counts (idempotent)
-- [ ] Last 3 days are overwritten on each run
-- [ ] Unit tests: pagination stop, upsert, `position_sum` math
-- [ ] A missing env var makes the ingest a logged no-op, not a failure of `results-sla`
+- [ ] (OPS, `../GOOGLE-ACCESS-SETUP.md` part A) Backfill loads ≥15 months of `total` rows for `custom.mpillow.com`
+- [x] Re-running the ingest for the same window changes no row counts (idempotent)
+- [x] Last 3 days are overwritten on each run
+- [x] Unit tests: pagination stop, upsert, `position_sum` math (`lib/seo-metrics/__tests__/ingest-gsc.test.ts`)
+- [x] A missing env var makes the ingest a logged no-op, not a failure of `results-sla`
 
 ## Blocked by
 

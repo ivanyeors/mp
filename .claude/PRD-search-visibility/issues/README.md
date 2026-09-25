@@ -64,6 +64,7 @@ graph TD
 ## OPS runbooks
 
 - `../GA4-SETUP.md`: new GA4 property for `custom.mpillow.com` (slice 08)
+- `../GOOGLE-ACCESS-SETUP.md`: service account for the GSC ingest (slice 01) + GA4 MCP for Claude Code on your laptop
 
 ## Hard constraints
 
