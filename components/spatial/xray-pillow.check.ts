@@ -60,7 +60,8 @@ const renderer = readFileSync(join(process.cwd(), "components", "spatial", "xray
 assert.doesNotMatch(renderer, /<rect/, "no box crops anywhere (ADR 0009 guardrail 1)");
 assert.doesNotMatch(renderer, /d="M/, "no hard-coded paths — assets only (guardrail 5)");
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "silhouette clip");
-assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\(key\)\}\)`\}/, "nested cell clip inside silhouette");
+assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\(section\)\}\)`\}/, "nested Section clip inside silhouette (slice 11: only the Section walls are walls)");
+assert.match(renderer, /clipPath=\{authored \? `url\(#\$\{clipId\(key\)\}\)` : undefined\}/, "the dived Section adds the cell clip inside the Section clip");
 assert.match(
   renderer,
   /const regions = \[SIL_REGION, CELL_REGIONS\[key\]\];/,
@@ -73,9 +74,22 @@ assert.match(
 );
 assert.match(
   renderer,
-  /const conformedPaths = useMemo\(/,
+  /const authoredPaths = useMemo\(/,
   "conformed pouch outlines are memoised (pure geometry, keyed on the piece list)",
 );
+assert.match(renderer, /const settledPaths = useMemo\(/, "the settled outlines are memoised too (slice 11)");
+assert.match(
+  renderer,
+  /const settledRegions = \[SIL_REGION, SECTION_REGIONS\[section\]\];/,
+  "settled pieces conform against silhouette ∩ Section, not the cell polygon",
+);
+assert.match(renderer, /conformPouchPath\(p\.settled, settledRegions, 2, shape\)/, "the settled rect is what conforms in the settled view");
+assert.match(renderer, /d=\{settledPaths\.get\(p\.key\)!\}\s+fill="none"[\s\S]{0,240}strokeDasharray="5 4"/, "the dive ghost is a dashed stroke of the same settled path");
+assert.match(renderer, /view=\{authored \? "authored" : "settled"\}/, "two views of one recipe: the dived Section is authored, the rest settled");
+assert.match(renderer, /const morph = prepareMorph\(fromD, d\);/, "the settle transition goes through prepareMorph (prepared once per transition, guardrail 4)");
+assert.match(renderer, /setSettleGhost\(fromD\)/, "a degenerate settle pair crossfades");
+assert.match(renderer, /rect=\{p\.section === dived \? p : p\.settled\}/, "labels sit at the settled centroid outside the dive");
+assert.doesNotMatch(renderer, /\bmovePiece\b|settlePillow\(/, "the renderer neither moves placements for settle nor recomputes it — it reads the fit");
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");
 assert.match(renderer, /layoutPlacements\(placements,/, "deterministic layout engine renders the mix");

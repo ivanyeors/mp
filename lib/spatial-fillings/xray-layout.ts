@@ -8,6 +8,10 @@
  * never a share of the cell split by weight. A layer wider than its cell is
  * clamped pro rata for now; slice 03 turns that into compression with a
  * status. Depth is the layer's real thickness, foreshortened.
+ *
+ * Slice 11: every piece also carries its SETTLED rect — the authored rect
+ * spread front/back into the empty neighbouring sub-sections the fit's settle
+ * pass says it fills — and a settled stack steps by its settled thickness.
  */
 
 import {
@@ -21,6 +25,7 @@ import {
 } from "./core";
 import { GENERIC_POUCH, type PouchDimensions, type ResolvedDims } from "./dimensions";
 import type { CellFit, PillowFit } from "./fit";
+import type { PieceSettle } from "./settle";
 import { stageGeometry, XRAY_VIEW, type StageGeometry } from "./xray-stage";
 
 export { XRAY_VIEW };
@@ -148,7 +153,20 @@ export type PieceLayout = {
   itemId: number;
   /** The piece's layer: 0 = top/front, increasing = deeper. */
   depth: number;
+  /**
+   * The rect once the fill has settled (slice 11): the authored rect spread
+   * front/back into the empty neighbouring sub-sections, anchored at its
+   * authored end. The authored rect itself when nothing spreads.
+   */
+  settled: PieceRect;
 } & PieceRect;
+
+/** The authored rect spread by the settle pass, kept inside the Section (INSET in from the body ends). */
+function settledRect(rect: PieceRect, s: PieceSettle, stage: StageGeometry): PieceRect {
+  const top = Math.max(stage.rowY[0] + INSET, rect.y - s.spreadFrontMm * stage.k);
+  const bottom = Math.min(stage.rowY[3] - INSET, rect.y + rect.h + s.spreadBackMm * stage.k);
+  return { x: rect.x, y: r1(top), w: rect.w, h: r1(Math.max(bottom - top, rect.h)) };
+}
 
 /** What the pillow layout needs beyond the placements: the Size's stage, each item's dimensions and the fit. */
 export type LayoutContext = {
@@ -167,6 +185,8 @@ export type LayoutContext = {
 export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutContext = {}): PieceLayout[] {
   const stage = ctx.stage ?? M_STAGE();
   const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
+  const settleOf = new Map<string, PieceSettle>();
+  if (ctx.fit?.settle.active) for (const s of ctx.fit.settle.pieces) settleOf.set(s.key, s);
   const out: PieceLayout[] = [];
   for (const section of SECTIONS) {
     for (const subSection of SUB_SECTIONS) {
@@ -180,11 +200,16 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
       const cellFit: CellFit | undefined = ctx.fit?.cells.find(
         (c) => c.section === section && c.subSection === subSection,
       );
+      // A Layer steps by its thickest piece's SETTLED thickness (a spread pouch is thinner), then the fit's squeeze.
       const slabs = depthSlabs(
         frame,
         layers.map(
           (list, d) =>
-            Math.max(...list.map((p) => dimsOf(p.itemId).thicknessMm)) * (cellFit?.thicknessRatios[d] ?? 1),
+            Math.max(
+              ...list.map(
+                (p) => settleOf.get(`${section}/${subSection}/${p.slot}`)?.settledThicknessMm ?? dimsOf(p.itemId).thicknessMm,
+              ),
+            ) * (cellFit?.thicknessRatios[d] ?? 1),
         ),
         stage.k,
       );
@@ -197,14 +222,18 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
           cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
         );
         layers[d].forEach((piece, idx) => {
+          const key = `${section}/${subSection}/${piece.slot}`;
+          const s = settleOf.get(key);
+          const rect = rects[idx];
           out.push({
-            key: `${section}/${subSection}/${piece.slot}`,
+            key,
             section,
             subSection,
             slot: piece.slot,
             itemId: piece.itemId,
             depth: d,
-            ...rects[idx],
+            ...rect,
+            settled: s && (s.spreadFrontMm > 0 || s.spreadBackMm > 0) ? settledRect(rect, s, stage) : rect,
           });
         });
       }

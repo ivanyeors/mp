@@ -33,6 +33,9 @@ export const PILLOW_SIZES: readonly PillowSize[] = ["XS", "S", "M", "L", "XL"];
  */
 export const LOFT_ALLOWANCE = 0.1;
 
+/** Seam between two pressed pouches, mm — across a Section (the width fit) and where two settle to meet along it. */
+export const SEAM_MM = 2;
+
 /** A point in the pillow's mm frame: x across the width, y front-to-back. */
 export type PointMm = readonly [number, number];
 

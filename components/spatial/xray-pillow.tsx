@@ -2,7 +2,7 @@
 
 /**
  * X-ray filling renderer + dive editor (slices 07/08). ADR 0009 guardrails:
- * nested clipping (silhouette ∩ cell) — never box crops; deterministic layout
+ * nested clipping (silhouette ∩ Section, ∩ cell in the dive) — never box crops; deterministic layout
  * via layoutPlacements; pieces keep distinct outlines; colors via per-subtype
  * CSS variables; all paths come from the one asset pipeline (xray-assets);
  * shape swaps use PREPARED flubber morphs (crossfade on degenerate pairs) and
@@ -50,18 +50,24 @@ import {
   makeRegion,
   type ConformRegion,
 } from "@/lib/spatial-fillings/conform";
-import { getShapeMorph } from "@/lib/spatial-fillings/morphs";
+import { getShapeMorph, prepareMorph } from "@/lib/spatial-fillings/morphs";
 import { fillingVisual, type FillingVisual } from "@/lib/spatial-fillings/visuals";
 import { fitPillow } from "@/lib/spatial-fillings/fit";
-import { GAP, layoutPlacements, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
+import { GAP, layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 
-// Shell regions pouches deform against: the silhouette (wide seam) and each
-// cell's wavy boundary (thin seam, matching the pouch-to-pouch gap). One set
-// per Size (slice 02), built on first use and shared by every x-ray on the page.
-type StageRegions = { sil: ConformRegion; cells: Record<CellKey, ConformRegion> };
+// Shell regions pouches deform against: the silhouette (wide seam), each
+// cell's wavy boundary (thin seam, matching the pouch-to-pouch gap) for the
+// authored view, and each Section's for the settled view (slice 11: only the
+// Section walls are walls). One set per Size (slice 02), built on first use
+// and shared by every x-ray on the page.
+type StageRegions = {
+  sil: ConformRegion;
+  cells: Record<CellKey, ConformRegion>;
+  sections: Record<Section, ConformRegion>;
+};
 const REGIONS_BY_SIZE = new Map<PillowSize, StageRegions>();
 export function stageRegions(stage: StageGeometry): StageRegions {
   let regions = REGIONS_BY_SIZE.get(stage.size);
@@ -73,11 +79,22 @@ export function stageRegions(stage: StageGeometry): StageRegions {
           ([key, poly]) => [key, makeRegion(poly, GAP)],
         ),
       ) as Record<CellKey, ConformRegion>,
+      sections: Object.fromEntries(
+        (Object.entries(stage.sectionPolygons) as Array<[Section, StageGeometry["silhouettePolygon"]]>).map(
+          ([section, poly]) => [section, makeRegion(poly, GAP)],
+        ),
+      ) as Record<Section, ConformRegion>,
     };
     REGIONS_BY_SIZE.set(stage.size, regions);
   }
   return regions;
 }
+
+/** The two views of one recipe (slice 11): the cells as authored, or where the fill settles. */
+export type PieceView = "authored" | "settled";
+
+/** A piece whose settled rect differs from its authored one — the dive draws its settled outline as a ghost. */
+const isSpread = (p: PieceLayout) => p.settled.y !== p.y || p.settled.h !== p.h;
 
 // useLayoutEffect starts morphs before paint (no first-frame flash); SSR no-ops.
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -121,21 +138,35 @@ const easeOut = (t: number) => t * (2 - t);
  * conformed outline, so callers key a piece by its shape and a pouch↔pill swap
  * remounts instead of morphing. Rebase the morphs through conformPouchPath
  * before animating a swap.
+ *
+ * A `view` flip (slice 11: the dived Section shows authored cells, everything
+ * else the settled fill) morphs `d` from the outline it had in the other view:
+ * both are conformed polygons of the same pouch, so one interpolator is
+ * prepared per transition, degeneracy-checked, crossfade on failure. A `d`
+ * change within one view (a neighbour added, the Size changed) snaps, as before.
  */
 export function MorphPiece({
   subtype,
   visual,
   d,
+  view = "settled",
 }: {
   subtype: string | null;
   visual: FillingVisual;
   d: string;
+  view?: PieceView;
 }) {
   const shape = visual.shape;
   const ref = useRef<SVGPathElement>(null);
   const ghostRef = useRef<SVGPathElement>(null);
   const prevShape = useRef(shape);
   const [ghost, setGhost] = useState<typeof shape | null>(null);
+  // The settle transition: the outline before the view flipped, and a ghost
+  // carrying it while a degenerate pair crossfades instead.
+  const prevView = useRef(view);
+  const prevD = useRef(d);
+  const settleGhostRef = useRef<SVGPathElement>(null);
+  const [settleGhost, setSettleGhost] = useState<string | null>(null);
 
   useIsoLayoutEffect(() => {
     const from = prevShape.current;
@@ -174,6 +205,42 @@ export function MorphPiece({
     return () => cancelAnimationFrame(raf);
   }, [shape]);
 
+  useIsoLayoutEffect(() => {
+    const fromView = prevView.current;
+    const fromD = prevD.current;
+    prevView.current = view;
+    prevD.current = d;
+    const el = ref.current;
+    if (fromView === view || fromD === d || !el) return;
+    const morph = prepareMorph(fromD, d);
+    let raf = 0;
+    const t0 = performance.now();
+    if (!morph.crossfade) {
+      el.setAttribute("d", morph.interpolator(0));
+      const tick = (now: number) => {
+        const t = Math.min((now - t0) / MORPH_MS, 1);
+        el.setAttribute("d", t < 1 ? morph.interpolator(easeOut(t)) : d);
+        if (t < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    } else {
+      el.setAttribute("fill-opacity", "0");
+      el.setAttribute("stroke-opacity", "0");
+      setSettleGhost(fromD);
+      const tick = (now: number) => {
+        const t = Math.min((now - t0) / MORPH_MS, 1);
+        el.setAttribute("fill-opacity", String(0.9 * t));
+        el.setAttribute("stroke-opacity", String(t));
+        settleGhostRef.current?.setAttribute("fill-opacity", String(0.9 * (1 - t)));
+        settleGhostRef.current?.setAttribute("stroke-opacity", String(1 - t));
+        if (t < 1) raf = requestAnimationFrame(tick);
+        else setSettleGhost(null);
+      };
+      raf = requestAnimationFrame(tick);
+    }
+    return () => cancelAnimationFrame(raf);
+  }, [view, d]);
+
   const paint = {
     "data-item-subtype": subtype ?? "",
     fill: `var(${visual.cssVar}, ${visual.defaultColor})`,
@@ -186,6 +253,7 @@ export function MorphPiece({
   return (
     <>
       {ghost && <path ref={ghostRef} d={d} {...paint} />}
+      {settleGhost && <path ref={settleGhostRef} d={settleGhost} {...paint} />}
       <path ref={ref} d={d} {...paint} />
     </>
   );
@@ -454,11 +522,55 @@ export function XrayPillow({
     return byCell;
   }, [pieces]);
   const cellsInUse = useMemo(() => [...piecesByCell.keys()], [piecesByCell]);
-  /** piece key → conformed pouch outline, computed once per geometry change. */
-  const conformedPaths = useMemo(() => {
+  /**
+   * Section → its pieces deepest-first (then cell order, then slot): the paint
+   * order of both views, so a top Layer paints over a deeper neighbour that
+   * settled under it (slice 11).
+   */
+  const piecesBySection = useMemo(() => {
+    const bySection = new Map<Section, PieceLayout[]>();
+    for (const section of SECTIONS) {
+      const list = pieces.filter((p) => p.section === section);
+      if (list.length === 0) continue;
+      list.sort(
+        (a, b) =>
+          b.depth - a.depth ||
+          SUB_SECTIONS.indexOf(a.subSection) - SUB_SECTIONS.indexOf(b.subSection) ||
+          a.slot - b.slot,
+      );
+      bySection.set(section, list);
+    }
+    return bySection;
+  }, [pieces]);
+  const sectionsInUse = useMemo(() => [...piecesBySection.keys()], [piecesBySection]);
+  /**
+   * piece key → outline at its SETTLED rect, conformed to silhouette ∩ Section
+   * (only the Section walls are walls): the default view everywhere, computed
+   * once per geometry change.
+   */
+  const settledPaths = useMemo(() => {
     const paths = new Map<string, string>();
+    const { sil: SIL_REGION, sections: SECTION_REGIONS } = stageRegions(stage);
+    for (const [section, list] of piecesBySection) {
+      const settledRegions = [SIL_REGION, SECTION_REGIONS[section]];
+      for (const p of list) {
+        const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
+        paths.set(p.key, conformPouchPath(p.settled, settledRegions, 2, shape));
+      }
+    }
+    return paths;
+  }, [piecesBySection, itemSubtypes, stage]);
+  /**
+   * piece key → outline at its AUTHORED rect, conformed to silhouette ∩ cell:
+   * the dived Section only, whose crisp cells the drop targets and chips refer
+   * to. Empty when nothing is dived, so a read-only x-ray never pays for it.
+   */
+  const authoredPaths = useMemo(() => {
+    const paths = new Map<string, string>();
+    if (!dived) return paths;
     const { sil: SIL_REGION, cells: CELL_REGIONS } = stageRegions(stage);
     for (const [key, cellPieceList] of piecesByCell) {
+      if (!key.startsWith(`${dived}/`)) continue;
       const regions = [SIL_REGION, CELL_REGIONS[key]];
       for (const p of cellPieceList) {
         const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
@@ -466,7 +578,7 @@ export function XrayPillow({
       }
     }
     return paths;
-  }, [piecesByCell, itemSubtypes, stage]);
+  }, [piecesByCell, itemSubtypes, stage, dived]);
   const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
   // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
@@ -726,6 +838,11 @@ export function XrayPillow({
           <clipPath id={clipId("sil")}>
             <path d={stage.silhouettePath} />
           </clipPath>
+          {sectionsInUse.map((section) => (
+            <clipPath key={section} id={clipId(section)}>
+              <path d={stage.sectionHitPaths[section]} />
+            </clipPath>
+          ))}
           {cellsInUse.map((key) => (
             <clipPath key={key} id={clipId(key)}>
               <path d={stage.cellClipPaths[key]} />
@@ -738,35 +855,82 @@ export function XrayPillow({
           <g clipPath={`url(#${clipId("sil")})`}>
             <path d={stage.silhouettePath} fill={XRAY_INTERIOR} />
 
-            {/* nested clipping: silhouette ∩ cell — belt only; the pouch
-                geometry itself deforms to stay a seam inside both regions.
-                Stacked layers paint deepest-first with a depth scrim (deeper =
-                darker) so the overlap reads as a front-to-back stack. */}
-            {cellsInUse.map((key) => (
-              <g key={key} clipPath={`url(#${clipId(key)})`}>
-                {(piecesByCell.get(key) ?? []).map((p) => {
-                  const subtype = itemSubtypes.get(p.itemId) ?? null;
-                  const visual = fillingVisual(subtype);
-                  const d = conformedPaths.get(p.key)!;
-                  return (
-                    <g key={p.key}>
-                      <MorphPiece key={visual.shape} subtype={subtype} visual={visual} d={d} />
-                      {p.depth > 0 && (
-                        <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
-                      )}
-                    </g>
-                  );
-                })}
-              </g>
-            ))}
+            {/* Two views of one recipe (slice 11). Every Section draws SETTLED —
+                fill spread into the empty neighbouring sub-sections, conformed
+                to silhouette ∩ Section — except the dived one, which draws its
+                AUTHORED cells (nested clipping: silhouette ∩ Section ∩ cell —
+                belt only; the pouch geometry itself deforms to stay a seam
+                inside every region) over a dashed ghost of where each piece
+                settles. A piece keeps its tree position across the flip, so its
+                outline morphs instead of remounting. Deepest-first with a depth
+                scrim (deeper = darker) so the overlap reads as a stack. */}
+            {sectionsInUse.map((section) => {
+              const authored = dived === section;
+              const list = piecesBySection.get(section) ?? [];
+              return (
+                <g key={section} clipPath={`url(#${clipId(section)})`}>
+                  {authored &&
+                    list.map((p) =>
+                      isSpread(p) ? (
+                        <path
+                          key={`ghost-${p.key}`}
+                          d={settledPaths.get(p.key)!}
+                          fill="none"
+                          stroke="rgba(255,255,255,0.75)"
+                          strokeWidth={1.5}
+                          strokeDasharray="5 4"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ) : null,
+                    )}
+                  {list.map((p) => {
+                    const subtype = itemSubtypes.get(p.itemId) ?? null;
+                    const visual = fillingVisual(subtype);
+                    const key = `${p.section}/${p.subSection}` as CellKey;
+                    const d = (authored ? authoredPaths.get(p.key) : settledPaths.get(p.key))!;
+                    return (
+                      <g key={p.key} clipPath={authored ? `url(#${clipId(key)})` : undefined}>
+                        <MorphPiece
+                          key={visual.shape}
+                          subtype={subtype}
+                          visual={visual}
+                          d={d}
+                          view={authored ? "authored" : "settled"}
+                        />
+                        {p.depth > 0 && (
+                          <path d={d} fill="rgb(2,6,23)" fillOpacity={Math.min(0.14 * p.depth, 0.5)} />
+                        )}
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })}
 
-            {/* Front-layer labels. A dived Section on a desktop already names its
-                pieces with the chips sitting on them, so it drops these. */}
+            {/* Sub-section dividers are authoring guides, not walls (slice 11):
+                faint, and drawn only in the dive. */}
+            {dived &&
+              SUB_SECTIONS.map((subSection) => (
+                <path
+                  key={subSection}
+                  d={stage.cellClipPaths[`${dived}/${subSection}`]}
+                  fill="none"
+                  stroke="white"
+                  strokeOpacity={0.3}
+                  strokeWidth={1}
+                  strokeDasharray="3 3"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
+
+            {/* Front-layer labels, at the settled centroid unless the Section is
+                dived. A dived Section on a desktop already names its pieces
+                with the chips sitting on them, so it drops these. */}
             {pieces.map((p) =>
               p.depth === 0 && !(editable && !isMobile && p.section === dived) ? (
                 <PieceLabel
                   key={`label-${p.key}`}
-                  rect={p}
+                  rect={p.section === dived ? p : p.settled}
                   lines={pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null)}
                 />
               ) : null,

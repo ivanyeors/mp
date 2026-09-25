@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CELL_POLYGONS,
+  SECTION_POLYGONS,
   SHELL_SEAM,
   SILHOUETTE_POLYGON,
   type CellKey,
@@ -128,5 +129,38 @@ describe("a compressed piece still conforms inside its regions (slice 03)", () =
         expect(pointInPolygon(pt, CELL_POLYGONS["center/middle"])).toBe(true);
       }
     }
+  });
+});
+
+describe("a settled piece conforms against silhouette ∩ Section (slice 11)", () => {
+  it("spreads past its cell divider yet stays inside the Section, and the authored outline stays in the cell", async () => {
+    const { fitPillow } = await import("@/lib/spatial-fillings/fit");
+    const { GENERIC_POUCH } = await import("@/lib/spatial-fillings/dimensions");
+    const { pointInPolygon } = await import("@/lib/spatial-fillings/conform");
+    const dims = new Map([
+      [1, { key: "k", kind: "pouch" as const, source: "measured" as const, measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH } }],
+    ]);
+    const alone: PillowPlacement[] = [{ section: "center", subSection: "middle", slot: 1, itemId: 1 }];
+    const fit = fitPillow(alone, { size: "M", dims });
+    const [p] = layoutPlacements(alone, { dims, fit });
+    expect(p.settled.h).toBeGreaterThan(p.h);
+    const SECTION_REGION = makeRegion(SECTION_POLYGONS.center, GAP);
+    const settled = conformPouchPath(p.settled, [SIL_REGION, SECTION_REGION]);
+    const authored = conformPouchPath(p, [SIL_REGION, CELL_REGIONS["center/middle"]]);
+    const ring = (d: string) => {
+      const nums = (d.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+      const pts: [number, number][] = [];
+      for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+      return pts;
+    };
+    let outsideCell = 0;
+    for (const pt of ring(settled)) {
+      expect(pointInPolygon(pt, SILHOUETTE_POLYGON)).toBe(true);
+      expect(pointInPolygon(pt, SECTION_POLYGONS.center)).toBe(true);
+      if (!pointInPolygon(pt, CELL_POLYGONS["center/middle"])) outsideCell++;
+    }
+    expect(outsideCell).toBeGreaterThan(0);
+    for (const pt of ring(authored)) expect(pointInPolygon(pt, CELL_POLYGONS["center/middle"])).toBe(true);
+    expect(settled).not.toBe(authored);
   });
 });

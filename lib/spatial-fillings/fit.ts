@@ -11,6 +11,9 @@
  * - Per cell: relaxed loft = Σ of each Layer's thickest piece, against the
  *   Section's max loft (the centre is one inch lower than the sides); the same
  *   three statuses, compression shared pro rata across Layers.
+ * - Settled first (slice 11): the loft is judged per sub-section column on
+ *   the settled thickness, so a stack that spills into an empty back is judged
+ *   with that back, and a settled pouch stands in every column it spans.
  * - Advisory, never blocking: the renderer draws the squeeze, the editor warns.
  *
  * ponytail: pro-rata compression is the simplest deterministic rule; foam is
@@ -32,15 +35,17 @@ import {
   LOFT_ALLOWANCE,
   maxLoftMm,
   pillowDimensions,
+  SEAM_MM,
+  type PillowDimensions,
   type PillowSize,
   type PouchDimensions,
   type ResolvedDims,
 } from "./dimensions";
+import { settlePillow, spans, subSectionIndex, type PillowSettle } from "./settle";
+
+export { SEAM_MM };
 
 export type FitStatus = "ok" | "compressed" | "over";
-
-/** Seam between pressed pouches across a Section, mm. */
-export const SEAM_MM = 2;
 
 const RANK: Record<FitStatus, number> = { ok: 0, compressed: 1, over: 2 };
 
@@ -84,8 +89,10 @@ export type CellFit = {
   maxLoftMm: number;
   /** What the stack stands at: relaxed, the budget, or its minimum when over. */
   loftMm: number;
-  /** Drawn thickness ÷ relaxed thickness per Layer, index = depth. */
+  /** Drawn thickness ÷ settled thickness per Layer, index = depth. */
   thicknessRatios: number[];
+  /** Planes standing in this cell's column once settled: its own Layers, plus any a neighbour's fill spread in at another depth. */
+  loftLayers: number;
   /** The worse of the loft status and every Layer's width status. */
   status: FitStatus;
 };
@@ -105,6 +112,8 @@ export type PillowFit = {
   /** Occupied cells only, in fixed cell order. */
   cells: CellFit[];
   sections: Record<Section, SectionFit>;
+  /** Where every piece stands once settled (slice 11) — the layout draws from it. */
+  settle: PillowSettle;
   /** The worst status anywhere. */
   status: FitStatus;
 };
@@ -125,6 +134,8 @@ export type FitContext = {
   dims?: ReadonlyMap<number, ResolvedDims>;
   /** Overrides the code default (a Settings value, slice 12). */
   loftAllowance?: number;
+  /** The Size's geometry when it is not the registry's (a walled product, a test). */
+  pillow?: PillowDimensions;
 };
 
 /** Extent across the Section (left ↔ right) and its floor, from the pouch's orientation. */
@@ -185,16 +196,15 @@ export function fitLayer(
   };
 }
 
-/** One cell's loft budget across its Layers. */
-export function fitCell(
-  section: Section,
-  subSection: SubSection,
-  layers: readonly (readonly { slot: number; itemId: number; dims: PouchDimensions }[])[],
-  availableWidthMm: number,
-  maxLoft: number,
-): CellFit {
-  const thick = layers.map((l) => Math.max(...l.map((p) => p.dims.thicknessMm)));
-  const thin = layers.map((l) => Math.max(...l.map((p) => Math.min(p.dims.minThicknessMm, p.dims.thicknessMm))));
+/** One plane of a column's stack: the thickest piece standing in it, relaxed and fully compressed. */
+type Plane = { thicknessMm: number; minThicknessMm: number };
+
+type StackFit = { relaxed: number; min: number; loft: number; status: FitStatus; ratios: number[] };
+
+/** One column's loft budget across its planes: the three statuses, compression shared pro rata. */
+function fitStack(planes: readonly Plane[], maxLoft: number): StackFit {
+  const thick = planes.map((p) => p.thicknessMm);
+  const thin = planes.map((p) => Math.min(p.minThicknessMm, p.thicknessMm));
   const relaxed = thick.reduce((a, b) => a + b, 0);
   const min = thin.reduce((a, b) => a + b, 0);
   let status: FitStatus = "ok";
@@ -210,45 +220,124 @@ export function fitCell(
     }
     squeezed = shareSqueeze(thick, thin, relaxed - maxLoft);
   }
-  const layerFits = layers.map((l, d) => fitLayer(l, availableWidthMm, d));
+  return { relaxed, min, loft, status, ratios: thick.map((t, d) => (t > 0 ? squeezed[d] / t : 1)) };
+}
+
+function cellFit(
+  section: Section,
+  subSection: SubSection,
+  layerFits: LayerFit[],
+  stack: StackFit,
+  maxLoft: number,
+  thicknessRatios: number[],
+  loftMm: number,
+  loftLayers: number,
+): CellFit {
   return {
     section,
     subSection,
     layers: layerFits,
-    relaxedLoftMm: r1(relaxed),
-    minLoftMm: r1(min),
+    relaxedLoftMm: r1(stack.relaxed),
+    minLoftMm: r1(stack.min),
     maxLoftMm: r1(maxLoft),
-    loftMm: r1(loft),
-    thicknessRatios: thick.map((t, d) => (t > 0 ? squeezed[d] / t : 1)),
-    status: layerFits.reduce((s, l) => worstStatus(s, l.status), status),
+    loftMm: r1(loftMm),
+    thicknessRatios,
+    loftLayers,
+    status: layerFits.reduce((s, l) => worstStatus(s, l.status), stack.status),
   };
+}
+
+type LayerPieces = readonly { slot: number; itemId: number; dims: PouchDimensions }[];
+
+/** One cell's loft budget across its Layers, as authored (no neighbour settles in). */
+export function fitCell(
+  section: Section,
+  subSection: SubSection,
+  layers: readonly LayerPieces[],
+  availableWidthMm: number,
+  maxLoft: number,
+): CellFit {
+  const planes = layers.map((l) => ({
+    thicknessMm: Math.max(...l.map((p) => p.dims.thicknessMm)),
+    minThicknessMm: Math.max(...l.map((p) => Math.min(p.dims.minThicknessMm, p.dims.thicknessMm))),
+  }));
+  const stack = fitStack(planes, maxLoft);
+  const layerFits = layers.map((l, d) => fitLayer(l, availableWidthMm, d));
+  return cellFit(section, subSection, layerFits, stack, maxLoft, stack.ratios, stack.loft, planes.length);
 }
 
 /**
  * The whole pillow: every occupied cell, a per-Section summary for the
- * cross-section, and the worst status. Deterministic: fixed cell order,
- * pieces sorted by slot, layers compacted exactly as the layout compacts them.
+ * cross-section, and the worst status. Settled first (slice 11): each
+ * sub-section column's stack is every piece whose settled span covers it, one
+ * plane per depth, judged on settled thickness; a piece draws at the tightest
+ * ratio of the columns it spans. Deterministic: fixed cell order, pieces
+ * sorted by slot, layers compacted exactly as the layout compacts them.
  */
 export function fitPillow(placements: PillowPlacement[], ctx: FitContext): PillowFit {
-  const { dims: pillow } = pillowDimensions(ctx.size);
+  const pillow = ctx.pillow ?? pillowDimensions(ctx.size).dims;
   const allowance = ctx.loftAllowance ?? LOFT_ALLOWANCE;
   const budget = maxLoftMm(pillow.gusset, allowance);
   const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
+  const settle = settlePillow(placements, { size: ctx.size, dims: ctx.dims, pillow });
   const cells: CellFit[] = [];
   const sections = {} as Record<Section, SectionFit>;
   let status: FitStatus = "ok";
   SECTIONS.forEach((section, a) => {
+    const settled = settle.pieces.filter((s) => s.section === section);
+    // Column stacks: every piece standing in the column, one plane per depth.
+    const stacks = SUB_SECTIONS.map((subSection) => {
+      const standing = settled.filter((s) => spans(s, subSection));
+      if (standing.length === 0) return null;
+      const depths = [...new Set(standing.map((s) => s.depth))].sort((x, y) => x - y);
+      const planes = depths.map((d) => {
+        const at = standing.filter((s) => s.depth === d);
+        return {
+          thicknessMm: Math.max(...at.map((s) => s.settledThicknessMm)),
+          minThicknessMm: Math.max(...at.map((s) => Math.min(s.minThicknessMm, s.settledThicknessMm))),
+        };
+      });
+      return { depths, standing, fit: fitStack(planes, budget[a]) };
+    });
+    const ratioAt = (b: number, depth: number) => {
+      const stack = stacks[b];
+      const i = stack ? stack.depths.indexOf(depth) : -1;
+      return i < 0 ? 1 : stack!.fit.ratios[i];
+    };
+    // A piece draws at the tightest ratio of the columns it spans.
+    const pieceRatio = new Map<string, number>();
+    for (const s of settled) {
+      let ratio = 1;
+      for (let b = subSectionIndex(s.spanFrom); b <= subSectionIndex(s.spanTo); b++) ratio = Math.min(ratio, ratioAt(b, s.depth));
+      pieceRatio.set(s.key, ratio);
+    }
+    // What each column stands at: Σ over its planes of the thickest drawn piece.
     const loftBySubSection = { front: 0, middle: 0, back: 0 } as Record<SubSection, number>;
     let sectionStatus: FitStatus = "ok";
-    for (const subSection of SUB_SECTIONS) {
+    SUB_SECTIONS.forEach((subSection, b) => {
+      const stack = stacks[b];
+      if (!stack) return;
+      loftBySubSection[subSection] = r1(
+        stack.depths.reduce(
+          (sum, d) =>
+            sum +
+            Math.max(...stack.standing.filter((s) => s.depth === d).map((s) => s.settledThicknessMm * pieceRatio.get(s.key)!)),
+          0,
+        ),
+      );
+      sectionStatus = worstStatus(sectionStatus, stack.fit.status);
+    });
+    for (const [b, subSection] of SUB_SECTIONS.entries()) {
       const pieces = placements
         .filter((p) => p.section === section && p.subSection === subSection)
         .sort((x, y) => x.slot - y.slot);
       if (pieces.length === 0) continue;
       const layers = cellLayerGroups(pieces).map((l) => l.map((p) => ({ slot: p.slot, itemId: p.itemId, dims: dimsOf(p.itemId) })));
-      const cell = fitCell(section, subSection, layers, pillow.sectionWidthsMm[a], budget[a]);
+      const layerFits = layers.map((l, d) => fitLayer(l, pillow.sectionWidthsMm[a], d));
+      const stack = stacks[b]!;
+      const thicknessRatios = layers.map((l) => Math.min(...l.map((p) => pieceRatio.get(`${section}/${subSection}/${p.slot}`) ?? 1)));
+      const cell = cellFit(section, subSection, layerFits, stack.fit, budget[a], thicknessRatios, loftBySubSection[subSection], stack.depths.length);
       cells.push(cell);
-      loftBySubSection[subSection] = cell.loftMm;
       sectionStatus = worstStatus(sectionStatus, cell.status);
     }
     sections[section] = {
@@ -260,7 +349,7 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
     };
     status = worstStatus(status, sectionStatus);
   });
-  return { size: pillow.size, loftAllowance: allowance, cells, sections, status };
+  return { size: pillow.size, loftAllowance: allowance, cells, sections, settle, status };
 }
 
 // --- Hypothetical changes ------------------------------------------------------
@@ -317,7 +406,7 @@ export function fitMessage(cell: CellFit, size: string): string {
   const where = `${cell.section} · ${cell.subSection}`;
   const loftStatus = cell.relaxedLoftMm <= cell.maxLoftMm ? "ok" : cell.minLoftMm <= cell.maxLoftMm ? "compressed" : "over";
   if (loftStatus !== "ok") {
-    const n = cell.layers.length;
+    const n = cell.loftLayers;
     return `${where}: ${n} ${n === 1 ? "layer needs" : "layers need"} ${Math.round(cell.relaxedLoftMm)} mm relaxed, ${Math.round(cell.minLoftMm)} mm fully compressed; Size ${size} holds ${Math.round(cell.maxLoftMm)} mm`;
   }
   const layer = cell.layers.find((l) => l.status !== "ok");

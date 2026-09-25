@@ -4530,9 +4530,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-assets.ts": {
-    "mtime": 1790328192.9478965,
-    "seen": 1790328865.0222466,
-    "ast_hash": "4a9eb8d0e322571d2f4aad997bd2caef",
+    "mtime": 1790330644.1645172,
+    "seen": 1790331040.048448,
+    "ast_hash": "b05cc51d9b886a14f0d1bfcd29c8ce72",
     "semantic_hash": ""
   },
   "components/spatial/xray-bolster.check.ts": {
@@ -4554,15 +4554,15 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
-    "mtime": 1790329729.6653252,
-    "seen": 1790329862.6648824,
-    "ast_hash": "377d0be4858745c159f3c896f9a26679",
+    "mtime": 1790331002.2013772,
+    "seen": 1790331040.0484595,
+    "ast_hash": "73e819422bb98f206a5d78a7ac1f90d0",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1790329689.9620442,
-    "seen": 1790329862.6648839,
-    "ast_hash": "e62823516f000b8dc3f57712dcc6dd02",
+    "mtime": 1790330726.710161,
+    "seen": 1790331040.0484607,
+    "ast_hash": "0325131896777bfe754129b0b8f88940",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -6096,9 +6096,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/xray-layout.ts": {
-    "mtime": 1790329689.9620442,
-    "seen": 1790329862.6659384,
-    "ast_hash": "4947d3267f3fa019b3902a963283affa",
+    "mtime": 1790330644.1649163,
+    "seen": 1790331040.049376,
+    "ast_hash": "3fe1e55c5edbd266497338f38dee53bb",
     "semantic_hash": ""
   },
   "lib/whatsapp/__tests__/partner-notify.test.ts": {
@@ -9606,9 +9606,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow-geometry.test.ts": {
-    "mtime": 1790329689.9608493,
-    "seen": 1790329862.6648812,
-    "ast_hash": "bd44e6e2121d99ba10a2de2073d615cd",
+    "mtime": 1790330929.9718335,
+    "seen": 1790331040.048458,
+    "ast_hash": "24a139ca92c5bbd1013f628251349eae",
     "semantic_hash": ""
   },
   "lib/appointments/settings-store.ts": {
@@ -12714,15 +12714,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
-    "mtime": 1790082669.6254327,
-    "seen": 1790320067.7631426,
-    "ast_hash": "ca72686b3ef1fe0f1a480c39ba61404b",
+    "mtime": 1790330995.0989306,
+    "seen": 1790331040.0500274,
+    "ast_hash": "f1a2ed5503c8397af4f3a3667dcce176",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1790329830.3695078,
-    "seen": 1790329862.6668084,
-    "ast_hash": "a1c4783a51c0d1d491f2f2a946e4588f",
+    "mtime": 1790330995.099393,
+    "seen": 1790331040.0500298,
+    "ast_hash": "d301be38ad4bfbb15b33c327d8abffc7",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -13230,9 +13230,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/dimensions.ts": {
-    "mtime": 1790326978.7278244,
-    "seen": 1790327310.5744681,
-    "ast_hash": "05a1207ac63a1ee0ea05f73f5cee5e6a",
+    "mtime": 1790330551.9472337,
+    "seen": 1790331040.0493615,
+    "ast_hash": "cf5692d04d46ec3cf2f5b6cf512f4f15",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/silhouette-master.ts": {
@@ -13296,21 +13296,33 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/xray-stage.ts": {
-    "mtime": 1790328127.7558928,
-    "seen": 1790328865.0232046,
-    "ast_hash": "0b0e3a72a8bfaa1ba6104584b0cc1baa",
+    "mtime": 1790330644.1640399,
+    "seen": 1790331040.0493777,
+    "ast_hash": "b975bdd681b133f11ad23620f28e6561",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/fit.test.ts": {
-    "mtime": 1790329620.2498617,
-    "seen": 1790329862.6659043,
-    "ast_hash": "bc5827b107d8ccba738633f2c603832f",
+    "mtime": 1790330829.4952815,
+    "seen": 1790331040.0493367,
+    "ast_hash": "958f299ee48095f174517fd8611a2b86",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/fit.ts": {
-    "mtime": 1790329191.859956,
-    "seen": 1790329862.6659312,
-    "ast_hash": "c9b9daf53098208044216e106c284658",
+    "mtime": 1790330596.7975128,
+    "seen": 1790331040.0493667,
+    "ast_hash": "f238fc904e0cfadb81a6f5c07ca1371b",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/__tests__/settle.test.ts": {
+    "mtime": 1790330929.9711177,
+    "seen": 1790331040.0493438,
+    "ast_hash": "23f80e1d3d87d20ff7c9353328aeaf9f",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/settle.ts": {
+    "mtime": 1790330551.9520369,
+    "seen": 1790331040.0493703,
+    "ast_hash": "9ab3553a64d7c60a464909a7767ef926",
     "semantic_hash": ""
   }
 }

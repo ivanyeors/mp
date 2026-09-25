@@ -106,10 +106,12 @@ describe("fitCell", () => {
 describe("fitPillow", () => {
   const dims = new Map([resolved(1, { widthMm: 100, minWidthMm: 80, thicknessMm: 40, minThicknessMm: 25 }), resolved(2, { widthMm: 120, minWidthMm: 100, thicknessMm: 50, minThicknessMm: 30 })]);
   const placements: PillowPlacement[] = [at("center", "middle", 2, 2, 1), at("center", "middle", 1, 1, 0), at("left", "front", 1, 1), at("left", "front", 2, 2)];
+  // The loft arithmetic on the authored cells: a walled product, so nothing settles (settle.test.ts covers the spread).
+  const WALLED = { ...PILLOW_DIMENSIONS.M, subSectionDividers: true };
 
   it("is input-order independent, byte-identical across calls, and summarises per Section", () => {
-    const a = fitPillow(placements, { size: "M", dims });
-    const b = fitPillow([...placements].reverse(), { size: "M", dims });
+    const a = fitPillow(placements, { size: "M", dims, pillow: WALLED });
+    const b = fitPillow([...placements].reverse(), { size: "M", dims, pillow: WALLED });
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(a.cells.map((c) => `${c.section}/${c.subSection}`)).toEqual(["left/front", "center/middle"]);
     expect(a.sections.center.loftBySubSection).toEqual({ front: 0, middle: 90, back: 0 });

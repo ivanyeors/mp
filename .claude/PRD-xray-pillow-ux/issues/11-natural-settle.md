@@ -6,6 +6,7 @@ Tracker: #212 · Parent: #200
 **Blocked by:** 02, 03. Build before 04 and 05 so they are written once against settled geometry (the fit object is the contract, so they do not change shape if this slips).
 **User stories:** 50–62
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
+**Status:** built (PR #213) — `lib/spatial-fillings/settle.ts`, `__tests__/settle.test.ts`; `fitPillow` judges per column on settled thickness and carries the settle; the layout adds a settled rect per piece; `XrayPillow` draws settled everywhere but the dived Section, with the ghost and the morph.
 
 ## Goal
 
@@ -38,12 +39,21 @@ Fill the center middle and leave the back empty, save, and the x-ray shows what 
 
 ## Acceptance criteria
 
-- [ ] vitest: one pouch in center/middle with front and back empty spreads both ways to its capacity, thins to `V / (w × l')`, never below `minThicknessMm`, and stays inside the Section.
-- [ ] vitest: front and back occupied, middle empty → both spread, meet at one seam split pro rata, and remain two rects; a pouch with capacity smaller than its void leaves the gap at the end the nudge says.
-- [ ] vitest: nothing crosses a Section wall or a Layer; `subSectionDividers: true` returns the input; the pass is input-order independent and byte-identical across two calls.
-- [ ] vitest: `fitPillow` on the settled result reports a lower middle loft and a non-zero back loft for the spill case; a stack `over` on authored rects with an empty back behind it is `compressed` or `ok` once settled.
-- [ ] Configure: author center/middle only, save, reload — the pouch is drawn spanning middle and back; dive into center — it snaps to its cell with a dashed ghost where it will settle; Done — it morphs back.
-- [ ] The shopper preview and **Result** read-only render settled; no edit affordance appears.
-- [ ] Moving a piece into a sub-section a neighbour had settled into pushes that neighbour back to its own cell; the pack list and the fingerprint are unchanged by any of it (test on `placementsExactMatch`).
-- [ ] `xray-pillow.check.ts` extended: settled pieces conform against the Section region; the ghost is a dashed stroke of the same path; the transition goes through `prepareMorph`. Still no `<rect`.
-- [ ] `./scripts/graphify update .` run and committed.
+- [x] vitest: one pouch in center/middle with front and back empty spreads both ways to its capacity, thins to `V / (w × l')`, never below `minThicknessMm`, and stays inside the Section.
+- [x] vitest: front and back occupied, middle empty → both spread, meet at one seam split pro rata, and remain two rects; a pouch with capacity smaller than its void leaves the gap at the far end (its authored position is the anchor; slice 08's nudge will move it).
+- [x] vitest: nothing crosses a Section wall or a Layer; `subSectionDividers: true` returns the input; the pass is input-order independent and byte-identical across two calls.
+- [x] vitest: `fitPillow` on the settled result reports a lower middle loft and a non-zero back loft for the spill case; a stack `compressed` on authored rects with an empty back behind it is `ok` once settled. *Amended:* `over` cannot flip by settling under this model — the fully compressed floor (Σ `minThicknessMm`) is volume-invariant, so a stack whose minimums exceed the budget stays `over` however far it spreads; the test pins that too.
+- [ ] Configure: author center/middle only, save, reload — the pouch is drawn spanning middle and back; dive into center — it snaps to its cell with a dashed ghost where it will settle; Done — it morphs back. *(Browser check for Ivan: wired, not yet seen on a deployed build.)*
+- [x] The shopper preview and **Result** read-only render settled; no edit affordance appears (a read-only x-ray never dives, so it never computes an authored outline).
+- [x] Adding or removing a piece in a sub-section a neighbour had settled into pushes that neighbour back to its own cell (moves arrive with slice 06 and go through the same re-derive); the pack list and the fingerprint are unchanged by any of it (test on `placementsExactMatch`).
+- [x] `xray-pillow.check.ts` extended: settled pieces conform against the Section region; the ghost is a dashed stroke of the same path; the transition goes through `prepareMorph`. Still no `<rect`.
+- [x] `./scripts/graphify update .` run and committed.
+
+## Build notes (2026-09-25)
+
+- **Pipeline as built:** `fitPillow` calls `settlePillow` first and carries the result (`fit.settle`); the layout reads the fit for the squeeze ratios *and* the settle for each piece's settled rect and settled thickness. One memo in `XrayPillow`, as the PRD asked; the renderer never recomputes settle.
+- **Per-column loft.** A sub-section column's stack is every piece whose settled span covers it, one plane per depth (a neighbour's fill that spread in at another plane counts). A piece draws at the tightest ratio of the columns it spans; `loftBySubSection` is what each column then stands at. `CellFit.loftLayers` is the column's plane count (the message reads it); `CellFit.layers` stays the cell's authored Layers (the width fits).
+- **Offers are capped at the void.** A pouch offers `min(capacity, void length)` to a void; a void claimed from both ends splits `void − SEAM_MM` pro rata by the two offers, so the seam is a real 2 mm gap and neither claimant is credited with more than the void.
+- **`over` does not flip.** See the amended criterion: settling lowers the relaxed loft, never the fully compressed floor, so `compressed → ok` is the reachable relief; `over` needs fewer or thinner pouches. Slice 04 should say so in its message.
+- **Views in the renderer.** Pieces are grouped per Section (Section clip inside the silhouette clip); the dived Section adds the cell clip on the same elements, so a piece keeps its tree position across the flip and `MorphPiece` morphs `d` from the outline it had in the other view (`prepareMorph`, crossfade fallback). Authored outlines are computed for the dived Section only, so a read-only x-ray pays for one conform pass, as before.
+- **Mbolster** keeps its one-dimensional layout; slice 09 gives it the same rule along the capsule.

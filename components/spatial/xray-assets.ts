@@ -51,6 +51,8 @@ export const CELL_POLYGONS: Record<CellKey, Pt[]> = M_STAGE.cellPolygons;
 
 /** Three full-height Section regions of the M stage for hover highlight / dive hit areas. */
 export const SECTION_HIT_PATHS: Record<Section, string> = M_STAGE.sectionHitPaths;
+/** The same three regions as polygons — what a settled pouch conforms against (slice 11). */
+export const SECTION_POLYGONS: Record<Section, Pt[]> = M_STAGE.sectionPolygons;
 
 // --- Filling shape (normalized to a 100×100 box) -----------------------------
 // ponytail: one rounded-square pouch for every filling type; color (per

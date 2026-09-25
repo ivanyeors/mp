@@ -41,6 +41,8 @@ export type StageGeometry = {
   cellPolygons: Record<CellKey, Pt[]>;
   /** Three full-height Section regions for hover highlight / dive hit areas. */
   sectionHitPaths: Record<Section, string>;
+  /** The same three regions as polygons: what a settled pouch conforms against (slice 11). */
+  sectionPolygons: Record<Section, Pt[]>;
 };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -92,8 +94,8 @@ function buildGrid(XS: number[], YS: number[]) {
     ];
   }
 
-  function sectionPath(a: number): string {
-    return poly([
+  function sectionPts(a: number): Pt[] {
+    return [
       corner(a, 0),
       ...hEdge(0, a, a + 1),
       corner(a + 1, 0),
@@ -110,7 +112,7 @@ function buildGrid(XS: number[], YS: number[]) {
       ...vEdge(a, 2, 1),
       corner(a, 1),
       ...vEdge(a, 1, 0),
-    ]);
+    ];
   }
 
   const cellClipPaths = {} as Record<CellKey, string>;
@@ -122,12 +124,17 @@ function buildGrid(XS: number[], YS: number[]) {
       cellPolygons[`${section}/${subSection}`] = pts;
     });
   });
-  const sectionHitPaths: Record<Section, string> = {
-    left: sectionPath(0),
-    center: sectionPath(1),
-    right: sectionPath(2),
+  const sectionPolygons: Record<Section, Pt[]> = {
+    left: sectionPts(0),
+    center: sectionPts(1),
+    right: sectionPts(2),
   };
-  return { cellClipPaths, cellPolygons, sectionHitPaths };
+  const sectionHitPaths: Record<Section, string> = {
+    left: poly(sectionPolygons.left),
+    center: poly(sectionPolygons.center),
+    right: poly(sectionPolygons.right),
+  };
+  return { cellClipPaths, cellPolygons, sectionHitPaths, sectionPolygons };
 }
 
 /** The registry outline in view units: x across, y down, front edge at the top. */
