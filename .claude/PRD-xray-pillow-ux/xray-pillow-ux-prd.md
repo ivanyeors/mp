@@ -1,11 +1,11 @@
 # PRD: X-ray pillow UX — true scale, physical fit, cross-section, granular moves
 
 Status: Draft (needs-triage)
-Tracker: #200 (slices #201–#210 and #212, `issues/`)
+Tracker: #200 (slices #201–#210, #212 and #214, `issues/`)
 Source: Ivan's brief (2026-09-20) + a code audit of the x-ray subsystem at `main` @ `d745e83`
 ADRs: `docs/adr/0008-spatial-filling-placements.md` (**Placement** rows are the "where" truth; pack list derived), `docs/adr/0009-xray-filling-visuals.md` (x-ray guardrails: no box cropping, legible piece count, deterministic layout, prepared morphs, one asset pipeline). Slice 01 adds **ADR 0019** (physical fit model: measurements in code, fit derived on read, never persisted; 0019 was the next free number at drafting, so take the next free one when the slice lands).
 Glossary: `CONTEXT.md` — **Placement**, **Section**, **sub-section**, **cell**, **Layer**, **Insert order**, **X-ray editor**, **Filling visual**, **Neck support**, **Staff assist mode**, **Filling Template**, **Size membership**, **Result**, **Composed sellable**, **Product Visualize**
-Decisions taken before drafting: (a) every measurement lives in code, in millimetres, not in the database — Ivan's brief says "embedded in our code base", and ADR 0009 already splits shape (code) from colour (DB) the same way; (b) fit and compression are **derived** from **Placements** plus the registry on every read and never stored, exactly like the **Spatially authored** status; (c) the x-ray stays one component on three surfaces — nothing forks; (d) no physics engine, no WebGL, no soft-body simulation (ADR 0009 still stands); (e) the only schema change in the whole PRD is the optional fine-nudge pair of columns in slice 08, and that slice is gated on evidence from the discrete-move slices; (f) **natural settle** (Ivan, 2026-09-21) is a display-and-fit pass over the authored **Placements** — fill spreads into an empty neighbouring **sub-section** on screen and in the loft arithmetic, but nothing ever rewrites which **cell** a pouch was put in.
+Decisions taken before drafting: (a) every measurement lives in code, in millimetres — Ivan's brief says "embedded in our code base", and ADR 0009 already splits shape (code) from colour (DB) the same way; *amended 25-9-2026:* pillow geometry (outlines, section widths, gusset heights, from the 2018 drawings) stays code-only, while filling pouch and **Neck support** dimensions and the loft allowance ship as code defaults and are editable in Settings (slice 12), the same code-default / database-override split ADR 0009 uses for colour; (b) fit and compression are **derived** from **Placements** plus the registry on every read and never stored, exactly like the **Spatially authored** status; (c) the x-ray stays one component on three surfaces — nothing forks; (d) no physics engine, no WebGL, no soft-body simulation (ADR 0009 still stands); (e) the only schema change in the whole PRD is the optional fine-nudge pair of columns in slice 08, and that slice is gated on evidence from the discrete-move slices; (f) **natural settle** (Ivan, 2026-09-21) is a display-and-fit pass over the authored **Placements** — fill spreads into an empty neighbouring **sub-section** on screen and in the loft arithmetic, but nothing ever rewrites which **cell** a pouch was put in.
 
 ## Problem Statement
 
@@ -56,7 +56,7 @@ From a developer perspective: two new pure modules and one changed one. A **dime
 
 What ships, numbered by slice (the build order, which puts 11 between 3 and 4, is in Further Notes):
 
-1. The dimension registry in code, with Ivan's measurements; glossary entries and ADR 0019; a read-only Dimensions column in **Product Visualize** so an unmeasured filling is visible.
+1. The dimension registry in code, with Ivan's measurements as the defaults; glossary entries and ADR 0019; a read-only Dimensions column in **Product Visualize** so an unmeasured filling is visible.
 2. True-scale rendering: the layout engine draws pouches at their footprint relative to the pillow **Size**, on every surface.
 3. The fit model: width budgets per **Layer**, loft budgets per **cell**, compression limits, fit status.
 4. Compression feedback and error handling in the editor: status rings, loft gauge, refused adds, save-time confirm, phone dock parity, fit per member **Size** on shared templates.
@@ -67,6 +67,7 @@ What ships, numbered by slice (the build order, which puts 11 between 3 and 4, i
 9. Mbolster parity: capsule dimensions, a physical cap, compression feedback, end-on cross-section.
 10. Physical calibration sign-off against real builds.
 11. Natural settle: a pure pass between layout and fit that spreads a pouch into an empty neighbouring **sub-section** of the same **Section** and **Layer**, thinning it by volume; the settled view is the default everywhere, the dived **Section** shows authored cells with a settled ghost, and leaving the dive morphs one into the other.
+12. Dimension settings: the loft allowance, the filling pouch dimensions per size and the **Neck support** dimensions editable in Settings → Products → Product Visualize, as database overrides of the code defaults (row wins, Reset restores the default); pillow geometry stays in code.
 
 ## User Stories
 
@@ -158,6 +159,10 @@ What ships, numbered by slice (the build order, which puts 11 between 3 and 4, i
 60. As a shopper, I want the preview x-ray settled, so that the pillow I see is the pillow I get.
 61. As a developer, I want settle to be a pure display-and-fit pass that writes nothing to **Placements**, so that the pack list, the fingerprint and the authored recipe are untouched.
 62. As **Staff**, I want a product with physical **sub-section** dividers to keep its pouches in their **cells**, so that settle is a fact recorded about the product and not a global assumption.
+63. As **Staff**, I want to set the loft allowance as a percentage in Settings, default 10, so that the side view and the fit budget follow how much the cloth gives without a deploy.
+64. As **Staff**, I want to enter each filling pouch's dimensions per size in Settings, so that a re-measured or new pouch is drawn and budgeted correctly without a code change.
+65. As **Staff**, I want to enter the **Neck support** dimensions per size the same way, so that the accessory is budgeted like a pouch.
+66. As **Staff**, I want to reset any entry to the shipped default and see whether it is a default, configured or unmeasured, so that a fallback pouch is never mistaken for a measured one.
 
 ## Implementation Decisions
 
@@ -175,8 +180,8 @@ Pure, browser-safe. The whole registry and the whole lookup:
 - `POUCH_DIMENSIONS[key]`: width, length, relaxed thickness, fully-compressed thickness, minimum width, orientation. Key = filling family + variant or size, derived from the same `fillingDescriptor` the picker and the colours already use (`"6D (L)"` and `"6D L"` and `"6D Fold" + size L` all resolve to `6d/l`). Aliases are one table (`fold` → `folded`).
 - `NECK_SUPPORT_DIMENSIONS[size]` (XS–L) and `BOLSTER_DIMENSIONS[length]` (short / medium / long: length, diameter).
 - Optional per pouch: `flatLengthMm` / `flatWidthMm`, the fabric's own limit when it stops a spread before the fill reaches its fully compressed thickness. Absent, the registry derives the limit from volume (see Natural settle). Optional per pillow **Size**: `subSectionDividers: boolean` (default false) for a product whose sub-sections are physically walled; settle is off for it. The pillow's protector walls its three **Sections** and nothing else (2018 drawings, Further Notes), so it is `false` for every pillow **Size**.
-- `resolveDims(item)` returns `{ dims, source: "measured" | "fallback" }`. The fallback is the family's default (3D, 6D, 6D+) and, failing that, a generic pouch. Never throws, never returns undefined — the x-ray must not blank on a new **Item**.
-- Values ship as Ivan's measurements (intake table in Further Notes). Until they land the file carries `PLACEHOLDER` values behind a single flag that the self-check refuses in CI; slice 01 is HITL for that reason.
+- `resolveDims(item, effective)` returns `{ dims, source: "configured" | "measured" | "fallback" }` — `configured` when a Settings row overrides the code value (slice 12), `measured` for the code default. The fallback is the family's default (3D, 6D, 6D+) and, failing that, a generic pouch. Never throws, never returns undefined — the x-ray must not blank on a new **Item**.
+- Values ship as Ivan's measurements (intake table in Further Notes) as the code defaults. Slice 12 adds the Settings page that overrides them per environment (`filling_dimension_overrides`, `neck_support_dimension_overrides`, and `site_settings.xray_loft_allowance_pct` for the allowance): row wins, no row = code default, Reset deletes the row. An entry Ivan has not provided yet is *unmeasured* on the page and a hatched fallback in the x-ray, so the intake tables seed but do not block.
 
 ### New deep module — `lib/spatial-fillings/fit.ts`
 
@@ -252,7 +257,7 @@ Pure, deterministic, runs between layout and fit: authored rects in, settled rec
 ### Glossary and ADR (slice 01)
 
 - `CONTEXT.md` gains **Product dimensions**, **Loft**, **Fit status** (`ok` / `compressed` / `over`, always derived), **Cross-section view**, **Nudge**, **Natural settle** (with **Authored** and **Settled** as the two views of one recipe), and amends **Filling visual** (scale now comes from the registry, not `items.size` alone).
-- ADR 0019: measurements in code (mm), fit derived on read and never persisted, the pro-rata compression rule, the advisory-not-blocking error posture, the option of DB-backed dimensions rejected for v1 with the churn condition that would reopen it.
+- ADR 0019: pillow geometry in code (mm, from the drawings); pouch, **Neck support** and loft-allowance values as code defaults with database overrides edited in Settings (the ADR 0009 colour pattern, slice 12); fit derived on read and never persisted; the pro-rata compression rule; the advisory-not-blocking error posture.
 
 ### Performance and mobile
 
@@ -284,7 +289,7 @@ A good test here asserts what the modules return for a given mix and **Size**, n
 - **Physics.** No soft-body, no collision solver, no WebGL, no generated blobs (ADR 0009). The fit model and the settle pass are arithmetic over rectangles, thicknesses and volumes.
 - **Dynamic settle.** No gravity, no head pressure, no sag from one **Layer** into an empty **sub-section** of the **Layer** below, no spread across a **Section** wall. Settle is static and per plane; the calibration slice says whether that is enough.
 - **Designer shapes and the asset pipeline.** The silhouette, the nine cell polygons and the two shapes stay the ADR 0009 placeholders; this PRD scales and places them.
-- **Storing or editing dimensions in the database or in Product Visualize.** Read-only there in v1; code is the source (decision a). Reopen only if the numbers churn.
+- **Editing pillow geometry.** Outlines, section widths and gusset heights come from the 2018 drawings and stay in code; only the pouch and **Neck support** dimensions and the loft allowance are editable (slice 12).
 - **Rules engine.** A rule still selects *which* template; fit is a property of the selected mix, and a template that does not fit its **Size** is a Configure warning, not a rule.
 - **Pack list, COGS, fingerprint, Promote grouping.** All unchanged. Fit, compression, moves within a cell and nudges are visual or assembly concerns and never touch what is picked or how a mix is grouped.
 - **Shopper editing.** The read-only x-ray and cross-section gain no affordance.

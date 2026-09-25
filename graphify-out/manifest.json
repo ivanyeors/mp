@@ -12654,9 +12654,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/01-dimension-registry-glossary-adr.md": {
-    "mtime": 1790309221.2030106,
-    "seen": 1790320067.7631338,
-    "ast_hash": "2d355ac097657775f48ad900f04b8ed6",
+    "mtime": 1790320674.1755974,
+    "seen": 1790320770.609839,
+    "ast_hash": "a5e1d2fa26c194263863b5dd3b86e100",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
@@ -12720,15 +12720,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1789956304.1943142,
-    "seen": 1790320067.763143,
-    "ast_hash": "46b3b34b424eab2669cfd6ef78e64f77",
+    "mtime": 1790320730.5437698,
+    "seen": 1790320770.6098576,
+    "ast_hash": "5a30a18a5ca531e072d64f0acccfb47c",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
-    "mtime": 1790309221.2026386,
-    "seen": 1790320067.7631443,
-    "ast_hash": "2bd057b15f0ea9fb155e17418c188de4",
+    "mtime": 1790320730.543369,
+    "seen": 1790320770.6098588,
+    "ast_hash": "e722369d3e8357de1039f96d0cfee9ff",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/reference/case-outline-l.svg": {
@@ -13209,6 +13209,12 @@
     "mtime": 1790320031.190948,
     "seen": 1790320067.7634892,
     "ast_hash": "39a1c8350110f121cc139468fc453487",
+    "semantic_hash": ""
+  },
+  ".claude/PRD-xray-pillow-ux/issues/12-dimension-settings.md": {
+    "mtime": 1790320730.5314758,
+    "seen": 1790320770.6098557,
+    "ast_hash": "02e93a0a7e10887a841d44ffbbabc1f7",
     "semantic_hash": ""
   }
 }
