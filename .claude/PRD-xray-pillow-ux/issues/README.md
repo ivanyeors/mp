@@ -15,7 +15,7 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | [03](https://github.com/ivanyeors/mp/issues/203) | Fit model — width and loft budgets, compression limits, fit status | AFK | P1 | built (PR #213) | 01, 02 | 8–11, 13, 22 |
 | [04](https://github.com/ivanyeors/mp/issues/204) | Compression feedback and error handling in the editor | AFK | P1 | built (PR #213) | 03, 11 | 12, 14–21 |
 | [05](https://github.com/ivanyeors/mp/issues/205) | Cross-section view — live across / along cut on every surface | AFK | P1 | built (PR #213) | 03, 11 | 23–30 |
-| [06](https://github.com/ivanyeors/mp/issues/206) | Move pieces — select, keyboard and pad moves, Undo | AFK | P1 | not started | 02, 03 | 31–36, 38–40 |
+| [06](https://github.com/ivanyeors/mp/issues/206) | Move pieces — select, keyboard and pad moves, Undo | AFK | P1 | built (PR #213) | 02, 03 | 31–36, 38–40 |
 | [07](https://github.com/ivanyeors/mp/issues/207) | Drag a pouch onto another cell or Layer | AFK | P2 | not started | 06 | 37, 38 |
 | [08](https://github.com/ivanyeors/mp/issues/208) | Fine nudge — persisted mm offsets (optional, gated on 10) | AFK | P2 | not started | 06, 10 | 41–43 |
 | [09](https://github.com/ivanyeors/mp/issues/209) | Mbolster parity — capsule dimensions, physical cap, end-on cut | AFK | P2 | not started | 03, 11 | 44, 45 |

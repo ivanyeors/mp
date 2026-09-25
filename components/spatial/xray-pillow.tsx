@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronsLeft, ChevronsRight, FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 
@@ -30,11 +30,17 @@ import {
   mirrorSection,
   mirrorTarget,
   moveLayer,
+  movePiece,
   removeLayer,
   removePiece,
+  reorderedRef,
+  reorderInLayer,
   setCellArrangement,
+  shiftPieceLayer,
   type Cell,
+  type PieceRef,
 } from "@/lib/configurator/staff-assist";
+import { isTypingTarget, MOVE_ACTIONS, moveKeyFor, type MoveKind } from "@/lib/configurator/move-keys";
 import {
   MAX_LAYERS_PER_CELL,
   MAX_PIECES_PER_CELL,
@@ -363,6 +369,73 @@ export function PieceLabel({ rect, lines }: { rect: PieceRect; lines: string[] }
   );
 }
 
+const MOVE_ICONS: Record<MoveKind, typeof ArrowLeft | null> = {
+  left: ArrowLeft,
+  right: ArrowRight,
+  front: ArrowUp,
+  back: ArrowDown,
+  layerUp: null,
+  layerDown: null,
+  sectionLeft: ChevronsLeft,
+  sectionRight: ChevronsRight,
+};
+
+/**
+ * The move pad (slice 06): the eight moves a selected pouch can make, each the
+ * same action as its key, in the cell panel (desktop) and the dock (phone).
+ * Touch has no keyboard, so every move the keys offer is a button here.
+ */
+export function MovePad({
+  label,
+  compact,
+  onMove,
+  onClear,
+}: {
+  label: string;
+  compact: boolean;
+  onMove: (kind: MoveKind) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div
+      className={`pointer-events-auto flex w-full flex-col gap-0.5 rounded border bg-background/95 p-1 shadow-sm ${compact ? "text-[9px] leading-4" : "text-[11px] leading-5"}`}
+      role="group"
+      aria-label={`Move ${label}`}
+      data-xray-move-pad
+    >
+      <div className="flex items-center gap-1">
+        <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+        <button
+          type="button"
+          className={`${compact ? CHIP_ICON_BUTTON_CLASS : LAYER_ICON_BUTTON_CLASS} hover:bg-accent`}
+          aria-label="Clear selection"
+          onClick={onClear}
+        >
+          <X className={compact ? CHIP_ICON_CLASS : LAYER_ICON_CLASS} />
+        </button>
+      </div>
+      <div className="grid grid-cols-2 gap-0.5">
+        {MOVE_ACTIONS.map((action) => {
+          const Icon = MOVE_ICONS[action.kind];
+          return (
+            <button
+              key={action.kind}
+              type="button"
+              className={`flex items-center justify-center gap-1 rounded border bg-background hover:bg-accent ${compact ? "min-h-5 px-1" : "min-h-11 px-2"}`}
+              aria-label={`${action.label} (${action.key})`}
+              title={`${action.label} · ${action.key}`}
+              onClick={() => onMove(action.kind)}
+            >
+              {Icon ? <Icon className={compact ? CHIP_ICON_CLASS : LAYER_ICON_CLASS} /> : <span className="font-mono">{action.key}</span>}
+              <span className="truncate">{action.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /**
  * One layer row (staff dive): the cell's pieces at one depth, draggable to
  * reorder the cell top→deep. Sits on the cell it controls, so it needs no leader
@@ -508,6 +581,10 @@ export function XrayPillow({
   // click on the cell art), n = that layer exactly, layers.length = a new one.
   const [openLayer, setOpenLayer] = useState<number | null>(null);
   const [hoverSub, setHoverSub] = useState<SubSection | null>(null);
+  // The selected pouch (slice 06): moves act on it; cleared on dive exit, on a
+  // Section switch and by Escape (before the Escape that ends the dive).
+  const [selected, setSelected] = useState<PieceRef | null>(null);
+  const selectedRef = useRef(selected);
   const editable = Boolean(items && onPlacementsChange);
   // Phones: a cell is ~65px tall on a 360px stage, so controls parked ON the
   // cells collide with their neighbours at any font size. Below md the dive
@@ -520,6 +597,9 @@ export function XrayPillow({
   useEffect(() => {
     placementsRef.current = placements;
   }, [placements]);
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
 
   useEffect(() => {
     onDiveChange?.(dived);
@@ -532,6 +612,7 @@ export function XrayPillow({
     setOpenSub(null);
     setOpenLayer(null);
     setHoverSub(null);
+    setSelected(null);
   }, []);
 
   /** Open the add-filling bloom on a cell, targeting one of its layers. */
@@ -547,7 +628,14 @@ export function XrayPillow({
       // A drag in flight owns Escape: dnd-kit cancels the drag with it, and
       // unmounting the dive (and the sortable tree with it) mid-drag both loses
       // the gesture's meaning and tears down hooks React is still committing.
-      if (e.key === "Escape" && !draggingRef.current) endDive();
+      if (e.key === "Escape" && !draggingRef.current) {
+        // A selection is cleared first; the next Escape leaves the dive.
+        if (selectedRef.current) {
+          setSelected(null);
+          return;
+        }
+        endDive();
+      }
     };
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Node | null;
@@ -686,14 +774,117 @@ export function XrayPillow({
     onPlacementsChange?.(result.placements);
   };
 
-  /** The dived cell's fit, for its gauge; undefined while the cell is empty. */
-  const cellFitOf = (subSection: SubSection): CellFit | undefined =>
-    dived ? fit.cells.find((c) => c.section === dived && c.subSection === subSection) : undefined;
-
   const pieceLabel = (itemId: number) => {
     const item = items?.find((i) => i.id === itemId);
     return item ? fillingLabel(item) : `Item #${itemId}`;
   };
+
+  /** The dived cell's fit, for its gauge; undefined while the cell is empty. */
+  const cellFitOf = (subSection: SubSection): CellFit | undefined =>
+    dived ? fit.cells.find((c) => c.section === dived && c.subSection === subSection) : undefined;
+
+  /** The selection, only while the piece still exists (a remove leaves the state behind). */
+  const selectedPiece: (PieceRef & { itemId: number }) | null = useMemo(() => {
+    if (!selected) return null;
+    const p = placements.find((q) => q.section === selected.section && q.subSection === selected.subSection && q.slot === selected.slot);
+    return p ? { ...selected, itemId: p.itemId } : null;
+  }, [selected, placements]);
+  const selectedKey = selectedPiece ? `${selectedPiece.section}/${selectedPiece.subSection}/${selectedPiece.slot}` : null;
+
+  /**
+   * One move of the selected pouch, from a key or the pad: the pure functions
+   * decide (caps first, then the fit), the refusal rides the same toast path
+   * as an add, the selection follows the piece, and Undo is the Mirror pattern
+   * — an inverse applied only while the move is still the last thing that
+   * happened.
+   */
+  const performMove = (kind: MoveKind) => {
+    const ref = selectedPiece;
+    if (!ref || !onPlacementsChange) return;
+    const before = placements;
+    const fitCtx = { size: pillowSize, dims: itemDims, loftAllowance };
+    let next = before;
+    let nextRef: PieceRef = ref;
+    let error: string | null = null;
+    const toCell = (cell: Cell) => {
+      const r = movePiece(before, ref, { cell }, fitCtx);
+      if (r.ok) {
+        next = r.placements;
+        nextRef = r.ref;
+      } else error = r.error;
+    };
+    switch (kind) {
+      case "left":
+      case "right": {
+        const dir = kind === "left" ? -1 : 1;
+        next = reorderInLayer(before, ref, dir);
+        nextRef = reorderedRef(before, ref, dir);
+        break;
+      }
+      case "layerUp":
+      case "layerDown": {
+        const r = shiftPieceLayer(before, ref, kind === "layerUp" ? -1 : 1, fitCtx);
+        if (r.ok) {
+          next = r.placements;
+          nextRef = r.ref;
+        } else error = r.error;
+        break;
+      }
+      case "front":
+      case "back": {
+        const b = SUB_SECTIONS.indexOf(ref.subSection) + (kind === "front" ? -1 : 1);
+        if (b < 0 || b >= SUB_SECTIONS.length) return;
+        toCell({ section: ref.section, subSection: SUB_SECTIONS[b] });
+        break;
+      }
+      case "sectionLeft":
+      case "sectionRight": {
+        const a = SECTIONS.indexOf(ref.section) + (kind === "sectionLeft" ? -1 : 1);
+        if (a < 0 || a >= SECTIONS.length) return;
+        toCell({ section: SECTIONS[a], subSection: ref.subSection });
+        break;
+      }
+    }
+    if (error) {
+      toast.error(error); // cap / fit feedback, the add's path
+      return;
+    }
+    if (next === before) return;
+    onPlacementsChange(next);
+    setSelected(nextRef);
+    toast.success(`Moved ${pieceLabel(ref.itemId)} to ${nextRef.section} ${nextRef.subSection}`, {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          if (placementsRef.current !== next) {
+            toast.error("Undo unavailable — the mix changed after the move");
+            return;
+          }
+          onPlacementsChange(before);
+          setSelected(ref);
+        },
+      },
+    });
+  };
+  const performMoveRef = useRef(performMove);
+  useEffect(() => {
+    performMoveRef.current = performMove;
+  });
+
+  // Keyboard moves (dive, with a selection): the same table as the pad.
+  // Text controls keep their arrows; the page keeps its scroll otherwise.
+  useEffect(() => {
+    if (!dived || !editable || !selectedPiece) return;
+    const onMoveKey = (e: KeyboardEvent) => {
+      if (isTypingTarget(e.target) || draggingRef.current) return;
+      const kind = moveKeyFor(e);
+      if (!kind) return;
+      e.preventDefault();
+      performMoveRef.current(kind);
+    };
+    window.addEventListener("keydown", onMoveKey);
+    return () => window.removeEventListener("keydown", onMoveKey);
+  }, [dived, editable, selectedPiece]);
 
   // Side-by-side chip: collated type label (×count) + remove, floated over the
   // pouch group at its centroid. Stacked cells use the external labels instead.
@@ -1043,6 +1234,31 @@ export function XrayPillow({
               />
             )}
 
+            {/* Selection (slice 06): the authored cell ring and the piece's own
+                outline, together with the settled ghost the dive already draws. */}
+            {selectedPiece && dived === selectedPiece.section && authoredPaths.has(selectedKey!) && (
+              <>
+                <path
+                  d={stage.cellClipPaths[`${selectedPiece.section}/${selectedPiece.subSection}`]}
+                  fill="none"
+                  stroke="white"
+                  strokeOpacity={0.9}
+                  strokeWidth={2}
+                  strokeDasharray="2 3"
+                  vectorEffect="non-scaling-stroke"
+                  data-xray-selected-cell
+                />
+                <path
+                  d={authoredPaths.get(selectedKey!)!}
+                  fill="none"
+                  stroke="#38bdf8"
+                  strokeWidth={3}
+                  vectorEffect="non-scaling-stroke"
+                  data-xray-selected-piece
+                />
+              </>
+            )}
+
             {/* Sub-section dividers are authoring guides, not walls (slice 11):
                 faint, and drawn only in the dive. */}
             {dived &&
@@ -1122,6 +1338,7 @@ export function XrayPillow({
                   ? () => {
                       setDived(section);
                       setOpenSub(null);
+                      setSelected(null);
                     }
                   : undefined
               }
@@ -1162,6 +1379,35 @@ export function XrayPillow({
                     if (full || (e.key !== "Enter" && e.key !== " ")) return;
                     e.preventDefault();
                     openPicker(subSection, null);
+                  }}
+                />
+              );
+            })}
+
+          {/* Pouch hit areas (dived Section only, slice 06): each pouch's own
+              authored outline, above the cell add areas, so a click or a tap
+              on a pouch selects it and one beside it still adds. Focusable, so
+              keyboard users reach the selection too. */}
+          {dived &&
+            editable &&
+            (piecesBySection.get(dived) ?? []).map((p) => {
+              const on = selectedKey === p.key;
+              return (
+                <path
+                  key={`hit-${p.key}`}
+                  d={authoredPaths.get(p.key)!}
+                  clipPath={`url(#${clipId("sil")})`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={on}
+                  aria-label={`${on ? "Selected" : "Select"} ${pieceLabel(p.itemId)} in ${p.section} ${p.subSection}`}
+                  fill="transparent"
+                  style={{ pointerEvents: "auto", cursor: "pointer", outline: "none" }}
+                  onClick={() => setSelected({ section: p.section, subSection: p.subSection, slot: p.slot })}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    setSelected({ section: p.section, subSection: p.subSection, slot: p.slot });
                   }}
                 />
               );
@@ -1234,6 +1480,10 @@ export function XrayPillow({
                   {/* Loft gauge (slice 04): used / max mm and the fit message, on the cell. */}
                   {cellPcs.length > 0 && cellFitOf(subSection) && (
                     <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact />
+                  )}
+                  {/* Move pad (slice 06): only while a piece in THIS cell is selected. */}
+                  {selectedPiece && selectedPiece.subSection === subSection && (
+                    <MovePad label={pieceLabel(selectedPiece.itemId)} compact onMove={performMove} onClear={() => setSelected(null)} />
                   )}
                   {/* ponytail: a side cell's centroid chips share this band; the
                       panel's opaque background and z-20 keep the toggle
@@ -1392,6 +1642,10 @@ export function XrayPillow({
                   {/* Phone parity (slice 04): the same gauge and message in the dock group. */}
                   {cellPcs.length > 0 && cellFitOf(subSection) && (
                     <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact={false} />
+                  )}
+                  {/* Move pad (slice 06) in the dock group: 44px targets, every move the keys have. */}
+                  {selectedPiece && selectedPiece.subSection === subSection && (
+                    <MovePad label={pieceLabel(selectedPiece.itemId)} compact={false} onMove={performMove} onClear={() => setSelected(null)} />
                   )}
                   {!stacked && cellPcs.length > 0 && (
                     <div className="flex flex-wrap gap-1">

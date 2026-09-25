@@ -4548,21 +4548,21 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-dive.check.ts": {
-    "mtime": 1790331745.962586,
-    "seen": 1790332669.5351083,
-    "ast_hash": "8d4d1b9ce1ae02c74a32f05c46302bc8",
+    "mtime": 1790333544.6222441,
+    "seen": 1790333589.3447092,
+    "ast_hash": "d92c0554423b9f6de6853ae6589de000",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
-    "mtime": 1790332216.6618836,
-    "seen": 1790332669.5351145,
-    "ast_hash": "5f13b1a5a698a7208a45bf1fc7f7befa",
+    "mtime": 1790333544.6225145,
+    "seen": 1790333589.3447168,
+    "ast_hash": "cbfdfd34892d010729249f02e69724b3",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1790332136.1861978,
-    "seen": 1790332669.5351155,
-    "ast_hash": "1083a2a4204a43a4f6beed6fac2e8d7e",
+    "mtime": 1790333488.099999,
+    "seen": 1790333589.3447175,
+    "ast_hash": "d350130c5d3f21ef37a9732013132c2e",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -12684,9 +12684,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/06-move-pieces-select-keyboard-pad.md": {
-    "mtime": 1789956264.3940485,
-    "seen": 1790320067.7631383,
-    "ast_hash": "65e3cf3429b26da6431a32940e7f415d",
+    "mtime": 1790333466.7998836,
+    "seen": 1790333589.346286,
+    "ast_hash": "a8985e40f133d441b35698a9336e7c14",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/07-drag-pouch-to-cell-or-layer.md": {
@@ -12720,9 +12720,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1790332231.667937,
-    "seen": 1790332669.5367482,
-    "ast_hash": "aa0b1b29769885b5f5868901a3477707",
+    "mtime": 1790333466.8000367,
+    "seen": 1790333589.3462946,
+    "ast_hash": "0a675a714b2acdefd226c9d580e94387",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -13365,6 +13365,18 @@
     "mtime": 1790332001.3926313,
     "seen": 1790332669.536034,
     "ast_hash": "7bfce09eccf1ffe8908d72eec0b7bfb6",
+    "semantic_hash": ""
+  },
+  "lib/configurator/__tests__/move-keys.test.ts": {
+    "mtime": 1790333395.3882058,
+    "seen": 1790333589.3450804,
+    "ast_hash": "c9b3cdc41850965c01c0a2334d3cc183",
+    "semantic_hash": ""
+  },
+  "lib/configurator/move-keys.ts": {
+    "mtime": 1790333429.6955378,
+    "seen": 1790333589.3450913,
+    "ast_hash": "b8ebfb99dd9c6f46d7beff9f29c4947b",
     "semantic_hash": ""
   }
 }

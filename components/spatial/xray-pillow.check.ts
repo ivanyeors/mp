@@ -89,7 +89,7 @@ assert.match(renderer, /view=\{authored \? "authored" : "settled"\}/, "two views
 assert.match(renderer, /const morph = prepareMorph\(fromD, d\);/, "the settle transition goes through prepareMorph (prepared once per transition, guardrail 4)");
 assert.match(renderer, /setSettleGhost\(fromD\)/, "a degenerate settle pair crossfades");
 assert.match(renderer, /rect=\{p\.section === dived \? p : p\.settled\}/, "labels sit at the settled centroid outside the dive");
-assert.doesNotMatch(renderer, /\bmovePiece\b|settlePillow\(/, "the renderer neither moves placements for settle nor recomputes it — it reads the fit");
+assert.doesNotMatch(renderer, /settlePillow\(/, "the renderer never recomputes settle — it reads the fit (moves go through the lib, slice 06)");
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");
 assert.match(renderer, /layoutPlacements\(placements,/, "deterministic layout engine renders the mix");

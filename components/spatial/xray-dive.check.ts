@@ -146,6 +146,24 @@ assert.match(
 assert.match(renderer, /if \(would\.cell\?\.status === "over"\) \{\s*toast\.error\(fitMessage\(would\.cell, pillowSize\)\);\s*return;/, "over is refused with the numbers on the existing toast path; compressed goes through");
 assert.doesNotMatch(renderer, /would\.cell\?\.status === "compressed"[\s\S]{0,80}return/, "compression is a working state, never a refusal");
 
+// --- Slice 06: select a pouch, move it by key or pad, Undo -------------------
+assert.match(renderer, /const \[selected, setSelected\] = useState<PieceRef \| null>\(null\)/, "selection is renderer state, a piece ref");
+assert.match(renderer, /if \(selectedRef\.current\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
+assert.match(renderer, /setDived\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
+assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,400}onClick=\{\(\) => setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\)\}/, "a pouch's own outline is the focusable, pressable selection target");
+assert.match(renderer, /const kind = moveKeyFor\(e\);/, "keys go through the shared move map");
+assert.match(renderer, /if \(isTypingTarget\(e\.target\) \|\| draggingRef\.current\) return;/, "text controls and a drag in flight keep their keys");
+assert.equal(renderer.match(/<MovePad /g)?.length, 2, "the move pad is mounted once in the cell panel and once in the dock");
+assert.match(renderer, /<MovePad label=\{pieceLabel\(selectedPiece\.itemId\)\} compact=\{false\}/, "the phone dock pad is the 44px one");
+assert.match(renderer, /MOVE_ACTIONS\.map\(/, "the pad's buttons are the key table — a button and a key cannot disagree");
+for (const fn of ["movePiece(before, ref, { cell }, fitCtx)", "reorderInLayer(before, ref, dir)", "shiftPieceLayer(before, ref, kind === \"layerUp\" ? -1 : 1, fitCtx)"]) {
+  assert.ok(renderer.includes(fn), `moves go through the pure lib: ${fn}`);
+}
+assert.match(renderer, /toast\.error\(error\); \/\/ cap \/ fit feedback, the add's path/, "a refused move uses the add's toast path");
+assert.equal(renderer.match(/label: "Undo"/g)?.length, 2, "Undo on the move toast, the Mirror pattern");
+assert.match(renderer, /Undo unavailable — the mix changed after the move/, "a later edit makes the move's Undo unavailable");
+assert.match(renderer, /data-xray-selected-cell[\s\S]{0,400}data-xray-selected-piece/, "selection shows the authored cell ring and the piece outline (the settled ghost is drawn by the dive already)");
+
 // --- Add target = the cell region, not a floating + button --------------------
 // The old picker parked a ~28px + in each band's footer: a tiny thing to aim at,
 // and the bottom one landed under the silhouette's curve. The target is now the

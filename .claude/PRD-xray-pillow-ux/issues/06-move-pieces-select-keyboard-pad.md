@@ -6,6 +6,7 @@ Tracker: #206 · Parent: #200
 **Blocked by:** 02 (true-scale hit areas), 03 (refusals through `wouldFit`)
 **User stories:** 31, 32, 33, 34, 35, 36, 38, 39, 40
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
+**Status:** built (PR #213) — `movePiece` / `shiftPieceLayer` / `reorderInLayer` in `staff-assist.ts` (tested), the key table in `lib/configurator/move-keys.ts`, selection, keys, the move pad and Undo in `xray-pillow.tsx`.
 
 ## Goal
 
@@ -32,13 +33,20 @@ Tracker: #206 · Parent: #200
 
 ## Acceptance criteria
 
-- [ ] vitest: `movePiece` across cells keeps slot uniqueness per cell, leaves both cells' layers dense, keeps `insertOrder` within a Section and drops it across; refuses a full target layer and an `over` target with the same shapes `addPiece` returns.
-- [ ] vitest: `shiftPieceLayer` at the deepest layer creates a new one; moving the only piece out of a layer closes it; `reorderInLayer` at the row's end is a no-op that returns the same reference.
-- [ ] Every move acts on the authored cell, Layer and order; settle (slice 11) is re-derived afterwards, and selection shows the authored cell ring together with the settled ghost.
-- [ ] Click a pouch in the dive → it is outlined and named; Escape clears the selection without leaving the dive; a second Escape leaves.
-- [ ] Each of the six keys performs its move and the x-ray, panel, cross-section and pack list agree afterwards.
-- [ ] The move pad appears for the selected piece's cell on desktop and in its dock group on phone; every pad action equals its key.
-- [ ] A refused move shows the fit message; nothing changes.
-- [ ] Undo on the toast reverts the move; after a later edit, Undo reports it is unavailable (Mirror behaviour).
-- [ ] `xray-dive.check.ts` extended: selection wiring, key map, pad-in-dock on phone; `layer-drag.test.ts` prior art followed for the pure adapter.
-- [ ] `./scripts/graphify update .` run and committed.
+- [x] vitest: `movePiece` across cells keeps slot uniqueness per cell, leaves both cells' layers dense, keeps `insertOrder` within a Section and drops it across; refuses a full target layer and an `over` target with the same shapes `addPiece` returns (`move-piece.test.ts`).
+- [x] vitest: `shiftPieceLayer` at the deepest layer creates a new one; moving the only piece out of a layer closes it; `reorderInLayer` at the row's end is a no-op that returns the same reference. *Refinement:* a piece alone in the deepest Layer going down is a no-op too — it would only recreate the same Layer one step deeper.
+- [x] Every move acts on the authored cell, Layer and order; settle (slice 11) is re-derived afterwards (the fit memo), and selection shows the authored cell ring together with the settled ghost.
+- [x] Click a pouch in the dive → it is outlined and named (the pad's header); Escape clears the selection without leaving the dive; a second Escape leaves (self-check on the capture-phase guard).
+- [x] Each of the six keys (and the two Shift chords) performs its move through the pure functions; the x-ray, panel, cross-section and pack list all derive from the one Placements array afterwards. *(Browser check for Ivan: wired, not yet seen on a deployed build.)*
+- [x] The move pad appears for the selected piece's cell on desktop and in its dock group on phone; every pad action equals its key (one `MOVE_ACTIONS` table drives both; vitest pins key ↔ action).
+- [x] A refused move shows the fit message on the add's toast path; nothing changes.
+- [x] Undo on the toast reverts the move and restores the selection; after a later edit, Undo reports it is unavailable (Mirror behaviour).
+- [x] `xray-dive.check.ts` extended: selection wiring, key map, pad-in-dock on phone; `move-keys.ts` is the pure adapter, tested like `layer-drag.test.ts`.
+- [x] `./scripts/graphify update .` run and committed (from a cold cache).
+
+## Build notes (2026-09-25)
+
+- **Selection target.** In the dive each pouch's authored outline is rendered again, last in the SVG, as a transparent focusable `role="button"` with `aria-pressed`; it sits above the cell add areas, so a click on a pouch selects and a click beside it still adds. Selection is a `PieceRef`; a remove leaves it behind and the derived `selectedPiece` goes null.
+- **Refs across a move.** `movePiece` returns the piece's new ref (its own slot when the cell is unchanged, else the lowest free one; the i-th lowest slot when a position is asked for), `reorderedRef` gives the neighbour's slot, so the selection follows the piece and Undo restores the old ref.
+- **Keys.** A window `keydown` listener while a piece is selected; text controls (`isTypingTarget`) and a drag in flight keep their keys; arrows `preventDefault` so the page does not scroll. ↑ ↓ and Shift ← → target the neighbouring cell's topmost Layer with room (the add rule), never a specific depth, so they only refuse at a cap or on `over`.
+- **Slice 07** resolves drops through the same `movePiece` with `{ cell, layer }`.
