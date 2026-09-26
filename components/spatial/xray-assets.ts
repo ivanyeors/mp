@@ -68,12 +68,12 @@ export const FILLING_SHAPE_PATHS: Record<ShapeId, string> = {
 };
 
 /**
- * Visible air line between the fillings and the shell, in view units — pouch
- * outlines deform to stay this far inside the shell (see conform.ts), so the
- * seam reads at the rounded ends too. Pouch-to-pouch seams stay at the layout
- * GAP; this one is wider so it survives next to the shell's thick outline.
+ * Air line between the fillings and the shell, in view units — pouch outlines
+ * deform to stay this far inside the shell (see conform.ts). A hair (Ivan,
+ * 26-9-2026: the fill presses to the shell, fully stuffed): the shell's own
+ * 3-unit outline covers most of it, so what shows is a thread of seam.
  */
-export const SHELL_SEAM = 4;
+export const SHELL_SEAM = 2;
 
 /** The M silhouette sampled as a polygon, for pouch-conform geometry. */
 export const SILHOUETTE_POLYGON: Pt[] = M_STAGE.silhouettePolygon;

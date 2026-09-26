@@ -4530,9 +4530,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-assets.ts": {
-    "mtime": 1790334481.326732,
-    "seen": 1790334944.6393867,
-    "ast_hash": "5de94ce4608a9c6cbc662c7b0af1d9f5",
+    "mtime": 1790390637.3694377,
+    "seen": 1790391026.5339108,
+    "ast_hash": "88ef2d7b21620a9921f5329031bf75e7",
     "semantic_hash": ""
   },
   "components/spatial/xray-bolster.check.ts": {
@@ -4560,9 +4560,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1790389931.4942503,
-    "seen": 1790390226.4307294,
-    "ast_hash": "eaec524548af77d9e32446111c949e6c",
+    "mtime": 1790390658.1704369,
+    "seen": 1790391026.5339315,
+    "ast_hash": "48f9d388edcd5a91ba227e8f05166c25",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -6006,9 +6006,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/conform.test.ts": {
-    "mtime": 1790389931.4946916,
-    "seen": 1790390226.43217,
-    "ast_hash": "33a4138d4eeae60101737d9793c9ee82",
+    "mtime": 1790390812.210564,
+    "seen": 1790391026.5354216,
+    "ast_hash": "78a91035f754817646731c1e07a1055b",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/morphs.test.ts": {
@@ -6048,9 +6048,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/conform.ts": {
-    "mtime": 1790390056.6096222,
-    "seen": 1790390226.4322524,
-    "ast_hash": "ac7bae03583a9e36f1a113e56366c717",
+    "mtime": 1790390812.2101839,
+    "seen": 1790391026.535462,
+    "ast_hash": "dee25dc8ff59df78c299edb042f3036c",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/core.ts": {
@@ -12660,9 +12660,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
-    "mtime": 1790389773.9971993,
-    "seen": 1790390226.4333932,
-    "ast_hash": "f74301b6c660c08bb7639a7968dfe564",
+    "mtime": 1790391073.2656724,
+    "seen": 1790391108.2836797,
+    "ast_hash": "bffaa9b8739040138033418d77ca1aba",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/03-fit-model.md": {

@@ -70,7 +70,7 @@ import {
   type PieceFitStatus,
   type PillowFit,
 } from "@/lib/spatial-fillings/fit";
-import { GAP, layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
+import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
 import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
@@ -85,6 +85,8 @@ type StageRegions = {
   cells: Record<CellKey, ConformRegion>;
   sections: Record<Section, ConformRegion>;
 };
+/** Seam a pouch keeps from a cell or Section wall: a hair, so neighbours press together (the layout's INSET adds one more). */
+const WALL_SEAM = 0.5;
 const REGIONS_BY_SIZE = new Map<PillowSize, StageRegions>();
 export function stageRegions(stage: StageGeometry): StageRegions {
   let regions = REGIONS_BY_SIZE.get(stage.size);
@@ -93,12 +95,12 @@ export function stageRegions(stage: StageGeometry): StageRegions {
       sil: makeRegion(stage.silhouettePolygon, SHELL_SEAM),
       cells: Object.fromEntries(
         (Object.entries(stage.cellPolygons) as Array<[CellKey, StageGeometry["silhouettePolygon"]]>).map(
-          ([key, poly]) => [key, makeRegion(poly, GAP)],
+          ([key, poly]) => [key, makeRegion(poly, WALL_SEAM)],
         ),
       ) as Record<CellKey, ConformRegion>,
       sections: Object.fromEntries(
         (Object.entries(stage.sectionPolygons) as Array<[Section, StageGeometry["silhouettePolygon"]]>).map(
-          ([section, poly]) => [section, makeRegion(poly, GAP)],
+          ([section, poly]) => [section, makeRegion(poly, WALL_SEAM)],
         ),
       ) as Record<Section, ConformRegion>,
     };
@@ -1362,8 +1364,7 @@ export function XrayPillow({
                 d={`M${x} ${stage.rowY[0]} L${x} ${stage.rowY[3]}`}
                 fill="none"
                 stroke={XRAY_SHELL}
-                strokeWidth={2}
-                strokeOpacity={0.9}
+                strokeWidth={3}
                 vectorEffect="non-scaling-stroke"
                 data-xray-divider-seam
               />

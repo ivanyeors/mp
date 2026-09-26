@@ -135,11 +135,17 @@ const densify = (pts: Pt[], maxSeg = 8): Pt[] => {
 };
 
 /**
- * Pouch outline built in view space for its tract rect. Corner radius follows
- * the SHORT side and grows with compression (aspect ratio), so a squeezed
- * pouch rounds into a capsule instead of squashing its corners sharp — a
- * stretched normalized shape would scale the radii down with the narrow axis.
+ * Pouch outline built in view space for its tract rect. A pouch fills its
+ * compartment (the layout hands it the cell), so it reads as stuffing pressed
+ * into the corners: a modest, constant corner radius on the SHORT side — not
+ * the old compression rounding, which turned every cell-shaped rect into a
+ * capsule with voids at the corners (Ivan, 26-9-2026: no gaps, fully stuffed).
+ * The squeeze itself is told by the dashed stroke and the ↔ mark. A pill (the
+ * Neck support) is always the full capsule — it stretches, its ends stay round.
  */
+/** Corner radius of a stuffed pouch as a share of its short side. */
+export const POUCH_CORNER = 0.18;
+
 export function pouchOutline(rect: PieceRect, arcSamples = 5, shape: ShapeId = "pouch"): Pt[] {
   if (shape === "pill") {
     // The pill IS its rect: since slice 02 the layout hands it the Neck
@@ -150,11 +156,8 @@ export function pouchOutline(rect: PieceRect, arcSamples = 5, shape: ShapeId = "
   }
   const { x, y, w, h } = rect;
   const short = Math.min(w, h);
-  const aspect = Math.max(w, h) / (short || 1);
-  // relaxed pouch ≈ 28% radius; full capsule from ~3:1 compression onward.
-  // A pill is always the full capsule — it stretches, its ends stay round.
-  const t = shape === "pill" ? 1 : Math.min(Math.max((aspect - 1) / 2, 0), 1);
-  const r = (short / 2) * (0.55 + 0.45 * t);
+  // A stuffed pouch: ~18% of the short side; a pill: the full capsule.
+  const r = shape === "pill" ? short / 2 : short * POUCH_CORNER;
   const centers: Pt[] = [
     [x + w - r, y + r],
     [x + w - r, y + h - r],
@@ -206,20 +209,44 @@ export function conformPouchPath(
   return `M${out.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
 }
 
+/** The run of a polygon along a horizontal (axis 0) or vertical (axis 1) line, on the side that contains `at`. */
+function chord(pts: Pt[], axis: 0 | 1, level: number, at: number): [number, number] {
+  const other = axis === 0 ? 1 : 0;
+  const xs: number[] = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const a1 = a[other];
+    const b1 = b[other];
+    if (a1 === b1 || level < Math.min(a1, b1) || level >= Math.max(a1, b1)) continue;
+    const t = (level - a1) / (b1 - a1);
+    xs.push(a[axis] + (b[axis] - a[axis]) * t);
+  }
+  xs.sort((p, q) => p - q);
+  let lo = -Infinity;
+  let hi = Infinity;
+  for (const x of xs) {
+    if (x <= at) lo = x;
+    else {
+      hi = x;
+      break;
+    }
+  }
+  return Number.isFinite(lo) && Number.isFinite(hi) ? [lo, hi] : [at, at];
+}
+
 /**
- * Where a piece's label sits: a rect centred on the conformed outline's area
- * centroid, as large as the outline's bounding box allows around that point.
- * A pouch that fills its compartment is cut by the silhouette's notch or a
- * wall, so its rect's centre can lie off the visible body — the centroid of
- * what is actually drawn never does.
+ * Where a piece's label sits: a rect on the drawn body. A pouch that fills
+ * its compartment is cut by the silhouette's notch or a wall, so its rect's
+ * centre can lie off the visible body — and even the outline's area centroid
+ * can sit where the body is narrow. So: from the centroid, take the
+ * horizontal run of the outline through it and centre on that; then the
+ * vertical run at that x; the rect is those two runs, which the label sizes
+ * to. A full rectangle gives its own rect back.
  */
 export function labelRectOf(d: string): PieceRect {
   const pts = parsePathPolygon(d);
   if (pts.length < 3) return { x: 0, y: 0, w: 0, h: 0 };
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
   let a = 0;
   let cx = 0;
   let cy = 0;
@@ -230,21 +257,20 @@ export function labelRectOf(d: string): PieceRect {
     a += cross;
     cx += (x0 + x1) * cross;
     cy += (y0 + y1) * cross;
-    minX = Math.min(minX, x0);
-    maxX = Math.max(maxX, x0);
-    minY = Math.min(minY, y0);
-    maxY = Math.max(maxY, y0);
   }
   if (Math.abs(a) < 1e-6) {
-    cx = (minX + maxX) / 2;
-    cy = (minY + maxY) / 2;
+    cx = pts.reduce((sum, p) => sum + p[0], 0) / pts.length;
+    cy = pts.reduce((sum, p) => sum + p[1], 0) / pts.length;
   } else {
     cx /= 3 * a;
     cy /= 3 * a;
   }
-  const w = 2 * Math.min(cx - minX, maxX - cx);
-  const h = 2 * Math.min(cy - minY, maxY - cy);
-  return { x: r1(cx - w / 2), y: r1(cy - h / 2), w: r1(w), h: r1(h) };
+  const [l0, r0] = chord(pts, 0, cy, cx);
+  const mx = (l0 + r0) / 2;
+  const [t1, b1] = chord(pts, 1, mx, cy);
+  const my = (t1 + b1) / 2;
+  const [l, r] = chord(pts, 0, my, mx);
+  return { x: r1(l), y: r1(t1), w: r1(r - l), h: r1(b1 - t1) };
 }
 
 /** The Mbolster capsule sampled as a polygon (flat sides + semicircular caps), at the length's stage (slice 09: the diameter sets its height). */

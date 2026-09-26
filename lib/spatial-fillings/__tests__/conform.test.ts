@@ -65,10 +65,13 @@ describe("pouchOutline", () => {
     return Math.max(...xs) - Math.min(...xs);
   };
 
-  it("rounds corners harder the more compressed the pouch", () => {
-    expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 60, h: 60 }))).toBeGreaterThan(20);
-    // 4:1 compression → full capsule: top cap peaks at a point, no flat run
-    expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 20, h: 80 }))).toBeLessThan(2);
+  it("keeps a modest, constant corner radius — stuffing pressed into the compartment's corners", () => {
+    // 18% of the short side each corner: a 60×60 pouch keeps a 60 − 2 × 10.8 flat top…
+    expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 60, h: 60 }))).toBeCloseTo(60 - 2 * 0.18 * 60, 1);
+    // …and a 20×80 one (a squeezed tract) keeps 20 − 2 × 3.6, not a capsule point.
+    expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 20, h: 80 }))).toBeCloseTo(20 - 2 * 0.18 * 20, 1);
+    // A pill is always the full capsule: its top cap peaks at a point.
+    expect(flatTopSpan(pouchOutline({ x: 0, y: 0, w: 20, h: 80 }, 5, "pill"))).toBeLessThan(2);
   });
 
   it("stays inside its rect", () => {
@@ -152,17 +155,20 @@ describe("labelRectOf: a label sits on the drawn body", () => {
     expect(r).toEqual({ x: 10, y: 10, w: 100, h: 50 });
   });
 
-  it("moves toward the mass of a notched outline and stays inside its bounds", () => {
-    // A 100×100 square with its top-right 60×60 cut away (an L): the centroid
-    // sits down-left of the square's centre, and the rect never leaves the body's box.
+  it("sits on the wide arm of a notched outline, inside the body", () => {
+    // A 100×100 square with its top-right 60×60 cut away (an L): the label
+    // lands on the full-width bottom arm, never across the notch.
     const r = labelRectOf("M0 0 L40 0 L40 60 L100 60 L100 100 L0 100 Z");
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h / 2;
-    expect(cx).toBeLessThan(50);
-    expect(cy).toBeGreaterThan(50);
-    expect(r.x).toBeGreaterThanOrEqual(0);
-    expect(r.y).toBeGreaterThanOrEqual(0);
+    expect(r).toEqual({ x: 0, y: 60, w: 100, h: 40 });
+  });
+
+  it("stays on the body beside a notch that the centroid's row runs into", () => {
+    // A tall left lobe with a notch on the right of its upper half: the row
+    // through the centroid is the narrow part, the rect keeps to it.
+    const r = labelRectOf("M0 0 L60 0 L60 50 L100 50 L100 100 L0 100 Z");
     expect(r.x + r.w).toBeLessThanOrEqual(100);
-    expect(r.y + r.h).toBeLessThanOrEqual(100);
+    expect(r.y).toBeGreaterThanOrEqual(0);
+    expect(r.w).toBeGreaterThan(0);
+    expect(r.h).toBeGreaterThan(0);
   });
 });
