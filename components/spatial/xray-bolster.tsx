@@ -178,7 +178,7 @@ export function XrayBolster({
             const subtype = itemSubtypes.get(p.itemId) ?? null;
             const visual = fillingVisual(subtype);
             const squeeze = squeezeOf(p.slot);
-            const d = conformPouchPath(p, [SHELL_REGIONS[length]], 2, visual.shape);
+            const d = conformPouchPath(p, [SHELL_REGIONS[length]], visual.shape);
             return (
               <g key={p.key}>
                 <MorphPiece

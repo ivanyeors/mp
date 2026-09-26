@@ -69,7 +69,7 @@ assert.match(
 );
 assert.match(
   renderer,
-  /paths\.set\(p\.key, conformPouchPath\(p, regions, 2, shape\)\)/,
+  /paths\.set\(p\.key, conformPouchPath\(p, regions, shape\)\)/,
   "conform runs once per piece per geometry change, not once per render",
 );
 assert.match(
@@ -83,7 +83,7 @@ assert.match(
   /const settledRegions = \[SIL_REGION, SECTION_REGIONS\[section\]\];/,
   "settled pieces conform against silhouette ∩ Section, not the cell polygon",
 );
-assert.match(renderer, /conformPouchPath\(p\.settled, settledRegions, 2, shape\)/, "the settled rect is what conforms in the settled view");
+assert.match(renderer, /conformPouchPath\(p\.settled, settledRegions, shape\)/, "the settled rect is what conforms in the settled view");
 assert.match(renderer, /d=\{settledPaths\.get\(p\.key\)!\}\s+fill="none"[\s\S]{0,240}strokeDasharray="5 4"/, "the dive ghost is a dashed stroke of the same settled path");
 assert.match(renderer, /view=\{authored \? "authored" : "settled"\}/, "two views of one recipe: the dived Section is authored, the rest settled");
 assert.match(renderer, /const morph = prepareMorph\(fromD, d\);/, "the settle transition goes through prepareMorph (prepared once per transition, guardrail 4)");

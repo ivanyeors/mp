@@ -770,7 +770,7 @@ export function XrayPillow({
       const settledRegions = [SIL_REGION, SECTION_REGIONS[section]];
       for (const p of list) {
         const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
-        paths.set(p.key, conformPouchPath(p.settled, settledRegions, 2, shape));
+        paths.set(p.key, conformPouchPath(p.settled, settledRegions, shape));
       }
     }
     return paths;
@@ -789,7 +789,7 @@ export function XrayPillow({
       const regions = [SIL_REGION, CELL_REGIONS[key]];
       for (const p of cellPieceList) {
         const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
-        paths.set(p.key, conformPouchPath(p, regions, 2, shape));
+        paths.set(p.key, conformPouchPath(p, regions, shape));
       }
     }
     return paths;

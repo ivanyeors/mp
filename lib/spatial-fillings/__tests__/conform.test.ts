@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   bolsterShellPolygon,
   chaikin,
+  clipToConvex,
   conformPouchPath,
+  insetRing,
   labelRectOf,
   makeRegion,
   nearestOnBoundary,
@@ -122,6 +124,22 @@ describe("conformPouchPath", () => {
     expect(maxTurnDeg(pts)).toBeLessThan(30);
   });
 
+  it("rounds the corners where the pouch meets a wall, not only its own", () => {
+    // Bleeds past the right wall: the two corners the wall makes are fillets too.
+    const pts = pathPoints(conformPouchPath(rect, [region]));
+    expect(maxTurnDeg(pts)).toBeLessThan(30);
+    // …and where the shell has a (sampled, rounded) notch, the pouch wraps it
+    // with no sharp corner anywhere and never leaves the shell.
+    const notchArc: Pt[] = [0, 1, 2, 3, 4, 5, 6].map((k) => {
+      const t = (Math.PI / 2) * (k / 6);
+      return [70 - 10 * Math.cos(t), 30 + 10 * Math.sin(t)];
+    });
+    const notched = makeRegion([[0, 0], [60, 0], ...notchArc, [100, 40], [100, 100], [0, 100]], 2);
+    const inNotch = pathPoints(conformPouchPath({ x: 1, y: 1, w: 98, h: 98 }, [notched]));
+    expect(maxTurnDeg(inNotch)).toBeLessThan(30);
+    for (const p of inNotch) expect(pointInPolygon(p, notched.poly)).toBe(true);
+  });
+
   it("leaves a fully-inside pouch untouched except smoothing", () => {
     const pts = pathPoints(conformPouchPath({ x: 20, y: 20, w: 30, h: 30 }, [region]));
     for (const p of pts) {
@@ -170,5 +188,56 @@ describe("labelRectOf: a label sits on the drawn body", () => {
     expect(r.y).toBeGreaterThanOrEqual(0);
     expect(r.w).toBeGreaterThan(0);
     expect(r.h).toBeGreaterThan(0);
+  });
+});
+
+describe("insetRing / clipToConvex", () => {
+  it("moves a square's edges inward by the seam whichever way it winds", () => {
+    const inward = insetRing(SQUARE, 4);
+    const reversed = insetRing([...SQUARE].reverse(), 4);
+    for (const ring of [inward, reversed]) {
+      expect(ring).toHaveLength(4);
+      for (const [x, y] of ring) {
+        expect([4, 96]).toContainEqual(Math.round(x * 1e6) / 1e6);
+        expect([4, 96]).toContainEqual(Math.round(y * 1e6) / 1e6);
+      }
+    }
+  });
+
+  it("keeps the part of a notched ring inside a rect", () => {
+    const notched: Pt[] = [[0, 0], [60, 0], [60, 40], [100, 40], [100, 100], [0, 100]];
+    const out = clipToConvex(notched, [[50, 20], [120, 20], [120, 80], [50, 80]]);
+    for (const [x, y] of out) {
+      expect(x).toBeGreaterThanOrEqual(50 - 1e-9);
+      expect(x).toBeLessThanOrEqual(100 + 1e-9);
+      expect(y).toBeGreaterThanOrEqual(20 - 1e-9);
+      expect(y).toBeLessThanOrEqual(80 + 1e-9);
+    }
+    expect(out.some(([x, y]) => Math.abs(x - 60) < 1e-9 && Math.abs(y - 40) < 1e-9)).toBe(true); // the notch corner survives
+  });
+});
+
+describe("openRing (opening by the pouch radius)", () => {
+  it("turns a rectangle into a rounded rectangle and never leaves it", async () => {
+    const { openRing } = await import("../opening");
+    const out = openRing([[0, 0], [100, 0], [100, 60], [0, 60]], 10);
+    expect(out.length).toBeGreaterThan(20);
+    for (const [x, y] of out) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(100);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(60);
+    }
+    // the corner cell (0.5, 0.5) is gone — rounded off at radius 10
+    expect(out.some(([x, y]) => x < 2 && y < 2)).toBe(false);
+  });
+
+  it("drops a sliver thinner than the disc and keeps the body", async () => {
+    const { openRing } = await import("../opening");
+    // A 100×60 body with a 6-unit-tall tail sticking out to the right.
+    const withTail: Pt[] = [[0, 0], [100, 0], [100, 27], [160, 27], [160, 33], [100, 33], [100, 60], [0, 60]];
+    const out = openRing(withTail, 10);
+    expect(Math.max(...out.map(([x]) => x))).toBeLessThan(102);
+    expect(Math.max(...out.map(([x]) => x))).toBeGreaterThan(95);
   });
 });
