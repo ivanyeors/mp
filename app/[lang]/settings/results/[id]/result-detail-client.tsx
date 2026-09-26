@@ -1320,7 +1320,6 @@ export default function ResultDetailPage({
                             colorOverrides={colorOverrides}
                             dimensionOverrides={dimensionOverrides}
                             fit={fit}
-                            cutAt={cut}
                             onDiveChange={onDiveChange}
                           />
                           <XrayCrossSection

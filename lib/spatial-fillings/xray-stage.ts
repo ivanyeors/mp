@@ -7,10 +7,10 @@
  * registry outline (the M master scaled to the Size, no neck tab) with the
  * notched FRONT edge at the top; the three Section columns sit at the
  * protector's divider seams; the three sub-section rows are thirds of the
- * body length. The nine cell regions are cut from that grid with the same
- * wavy dividers as before (no straight clip edge that is not a designed
- * divider, ADR 0009 guardrail 1). Pure + browser-safe; one geometry per Size,
- * computed once.
+ * body length. The nine cell regions are cut from that straight grid: the two
+ * column dividers are the protector's seams, the only straight edges the
+ * pillow has (ADR 0009 guardrail 1 allows a designed divider). Pure +
+ * browser-safe; one geometry per Size, computed once.
  */
 
 import { SECTIONS, SUB_SECTIONS, type Section, type SubSection } from "./core";
@@ -48,25 +48,25 @@ export type StageGeometry = {
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const poly = (pts: Pt[]) => `M${pts.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
 
-// --- Generated wavy 3×3 grid (placeholder for designer cell boundaries) ------
-// Outer frame extends past the silhouette so only interior dividers ever show;
-// adjacent cells share identical sampled edge points, so regions tile exactly.
+// --- Straight 3×3 grid -------------------------------------------------------
+// The two vertical dividers ARE the protector's seams (Ivan, 26-9-2026: follow
+// the seam dividers, nothing wavy); the horizontal boundaries are authoring
+// guides with no wall behind them. The outer frame extends past the silhouette
+// so only interior dividers ever show; adjacent cells share identical sampled
+// edge points (STEPS per edge, so the conform pass has vertices to pull), so
+// regions tile exactly.
 
-const AMP = 9;
 const STEPS = 6;
 
 function buildGrid(XS: number[], YS: number[]) {
-  const wave = (t: number, seed: number) => AMP * Math.sin(t * Math.PI * 2 + seed);
-  const dx = (i: number, y: number) => (i > 0 && i < 3 ? wave(y / YS[3], i * 2.1) : 0);
-  const dy = (j: number, x: number) => (j > 0 && j < 3 ? wave(x / XS[3], j * 1.7) : 0);
-  const corner = (i: number, j: number): Pt => [r1(XS[i] + dx(i, YS[j])), r1(YS[j] + dy(j, XS[i]))];
+  const corner = (i: number, j: number): Pt => [r1(XS[i]), r1(YS[j])];
 
   /** Interior samples along vertical divider i between rows j0→j1 (corners excluded). */
   function vEdge(i: number, j0: number, j1: number): Pt[] {
     const pts: Pt[] = [];
     for (let s = 1; s < STEPS; s++) {
       const y = YS[j0] + ((YS[j1] - YS[j0]) * s) / STEPS;
-      pts.push([r1(XS[i] + dx(i, y)), r1(y)]);
+      pts.push([r1(XS[i]), r1(y)]);
     }
     return pts;
   }
@@ -76,7 +76,7 @@ function buildGrid(XS: number[], YS: number[]) {
     const pts: Pt[] = [];
     for (let s = 1; s < STEPS; s++) {
       const x = XS[i0] + ((XS[i1] - XS[i0]) * s) / STEPS;
-      pts.push([r1(x), r1(YS[j] + dy(j, x))]);
+      pts.push([r1(x), r1(YS[j])]);
     }
     return pts;
   }

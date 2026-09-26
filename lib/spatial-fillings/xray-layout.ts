@@ -3,11 +3,14 @@
  * 1–5 pieces per cell. Same placements → identical positions, always — Staff
  * compare the x-ray against the physical build. Pure, no I/O.
  *
- * Slice 02 (ADR 0019): a piece's rect is its registry footprint, `mm × k` for
- * the pillow Size, packed left→right in slot order and centred in its cell —
- * never a share of the cell split by weight. A layer wider than its cell is
- * clamped pro rata for now; slice 03 turns that into compression with a
- * status. Depth is the layer's real thickness, foreshortened.
+ * Slice 02 (ADR 0019): the fit judges every piece at its registry footprint,
+ * `mm × k` for the pillow Size; the DRAWING fills the compartment (Ivan,
+ * 26-9-2026, on the desktop screenshots: a real pillow reads fully stuffed,
+ * so the fill runs to the walls and keeps only the hair of a seam between
+ * pieces whatever the squeeze). A layer's slab is split by the pieces'
+ * footprint widths — their squeezed widths when the fit says so — so a wider
+ * pouch still draws wider than its neighbour. Depth is the layer's real
+ * thickness, foreshortened.
  *
  * Slice 11: every piece also carries its SETTLED rect — the authored rect
  * spread front/back into the empty neighbouring sub-sections the fit's settle
@@ -102,26 +105,21 @@ function footprint(dims: PouchDimensions, k: number): { w: number; h: number } {
 }
 
 /**
- * True-scale pack of one layer: rects at `mm × k`, left→right in slot order,
- * the group centred in the slab; length clamped to the slab (a longer pouch
- * spans it, no error). With a fit (slice 03) each width is its relaxed width
- * × `widthRatio`, so a squeezed layer draws squeezed; a group still wider than
- * the slab (an `over` layer) is clamped pro rata so nothing overflows.
+ * Fill pack of one layer: the slab width, less the seams, is split by each
+ * piece's footprint width (× the fit's squeeze ratio when given), left→right
+ * in slot order, and every piece fills its tract and the slab's length — the
+ * conform pass molds it to the shell. Nothing can overflow: an `over` layer
+ * simply shares the wall-to-wall width, and the fit says it cannot close.
  */
-function packTrueScale(slab: CellFrame, pieces: PouchDimensions[], k: number, widthRatios?: readonly number[]): PieceRect[] {
+function packFill(slab: CellFrame, pieces: PouchDimensions[], k: number, widthRatios?: readonly number[]): PieceRect[] {
   const seams = GAP * (pieces.length - 1);
-  const feet = pieces.map((d, i) => {
-    const f = footprint(d, k);
-    return { w: f.w * (widthRatios?.[i] ?? 1), h: f.h };
-  });
-  const totalW = feet.reduce((sum, f) => sum + f.w, 0);
+  const weights = pieces.map((d, i) => footprint(d, k).w * (widthRatios?.[i] ?? 1));
+  const total = weights.reduce((sum, w) => sum + w, 0) || 1;
   const avail = Math.max(slab.w - seams, 1);
-  const scale = totalW > avail ? avail / totalW : 1;
-  let x = slab.x + (slab.w - (totalW * scale + seams)) / 2;
-  return feet.map((f) => {
-    const w = f.w * scale;
-    const h = Math.min(f.h, slab.h);
-    const rect = { x: r1(x), y: r1(slab.y + (slab.h - h) / 2), w: r1(w), h: r1(h) };
+  let x = slab.x;
+  return weights.map((weight) => {
+    const w = (avail * weight) / total;
+    const rect = { x: r1(x), y: r1(slab.y), w: r1(w), h: r1(slab.h) };
     x += w + GAP;
     return rect;
   });
@@ -162,7 +160,7 @@ export type LayoutContext = {
 
 /**
  * Deterministic layout: fixed cell order, pieces sorted by slot within a cell,
- * each drawn at its registry footprint for the Size (`ctx.stage.k`).
+ * each layer filling its slab by the pieces' registry footprints for the Size.
  */
 export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutContext = {}): PieceLayout[] {
   const stage = ctx.stage ?? M_STAGE();
@@ -197,7 +195,7 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
       );
       // Emit deepest-first so the renderer paints the top layer last (on top).
       for (let d = layers.length - 1; d >= 0; d--) {
-        const rects = packTrueScale(
+        const rects = packFill(
           slabs[d],
           layers[d].map((p) => dimsOf(p.itemId)),
           stage.k,
@@ -291,11 +289,10 @@ export type BolsterLayoutContext = {
 /**
  * Deterministic bolster layout: pieces sorted by slot, packed edge-to-edge in
  * a SINGLE line along the capsule — the physical bolster can't stack a second
- * layer. Footprint-true (slice 09): each pouch `widthMm × k` along the
- * capsule (its settled width, × the fit's ratio, when a fit is given), its
- * short axis across, the group centred; a pack longer than the capsule is
- * clamped pro rata so outlines stay distinct (guardrail 2) — the fit says
- * whether that is compression or overflow.
+ * layer. The line fills the capsule (Ivan, 26-9-2026: a bolster reads fully
+ * stuffed): its length is split by each pouch's settled width × the fit's
+ * ratio, its short axis fills the diameter, the end pouches conform to the
+ * caps — the fit says whether the pack is relaxed, compressed or over.
  */
 export function layoutBolsterPlacements(
   placements: BolsterPlacement[],
@@ -312,7 +309,7 @@ export function layoutBolsterPlacements(
     const d = dimsOf(p.itemId);
     return { ...d, orientation: "across" as const, widthMm: fitOf.get(p.slot)?.settledWidthMm ?? d.widthMm };
   });
-  const rects = packTrueScale(
+  const rects = packFill(
     bolsterFrame(length),
     drawn,
     stage.k,

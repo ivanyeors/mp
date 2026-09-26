@@ -35,7 +35,7 @@ Tracker: #206 · Parent: #200
 
 - [x] vitest: `movePiece` across cells keeps slot uniqueness per cell, leaves both cells' layers dense, keeps `insertOrder` within a Section and drops it across; refuses a full target layer and an `over` target with the same shapes `addPiece` returns (`move-piece.test.ts`).
 - [x] vitest: `shiftPieceLayer` at the deepest layer creates a new one; moving the only piece out of a layer closes it; `reorderInLayer` at the row's end is a no-op that returns the same reference. *Refinement:* a piece alone in the deepest Layer going down is a no-op too — it would only recreate the same Layer one step deeper.
-- [x] Every move acts on the authored cell, Layer and order; settle (slice 11) is re-derived afterwards (the fit memo), and selection shows the authored cell ring together with the settled ghost.
+- [x] Every move acts on the authored cell, Layer and order; settle (slice 11) is re-derived afterwards (the fit memo), and selection outlines the piece over the settled ghost (the dotted cell ring went with the 26-9-2026 review; the pad names the cell).
 - [x] Click a pouch in the dive → it is outlined and named (the pad's header); Escape clears the selection without leaving the dive; a second Escape leaves (self-check on the capture-phase guard).
 - [x] Each of the six keys (and the two Shift chords) performs its move through the pure functions; the x-ray, panel, cross-section and pack list all derive from the one Placements array afterwards. *(Browser check for Ivan: wired, not yet seen on a deployed build.)*
 - [x] The move pad appears for the selected piece's cell on desktop and in its dock group on phone; every pad action equals its key (one `MOVE_ACTIONS` table drives both; vitest pins key ↔ action).

@@ -116,7 +116,6 @@ assert.ok(configure.includes("useFitAtSizes(placements, scopeKeys"), "the chips'
 for (const [surface, { path }] of Object.entries(EDITING_SURFACES)) {
   const src = readFileSync(path, "utf8");
   assert.ok(src.includes("<XrayCrossSection"), `${surface} mounts the cross-section`);
-  assert.ok(/cutAt=\{cut\}/.test(src), `${surface} links the x-ray's cut line to the cross-section's cut`);
   assert.ok(src.includes("useCut()"), `${surface} holds the cut in the shared hook`);
 }
 const configurator = readFileSync(EDITING_SURFACES["configurator (Staff assist mode)"].path, "utf8");

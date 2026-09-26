@@ -2471,7 +2471,6 @@ export function MpConfigClient({
                       pillowSize={pillowDimensions(size).dims.size}
                       loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
                       fit={staffAssist ? assistFit : guestFit}
-                      cutAt={cut}
                       onDiveChange={onDiveChange}
                       // read-only for guests: no items / no change handler → no edit affordances
                       items={staffAssist ? assistItems : undefined}

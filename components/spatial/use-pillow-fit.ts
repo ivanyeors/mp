@@ -78,8 +78,8 @@ export function useFitAtSizes(
 }
 
 /**
- * The cut a host holds (slice 05): the cross-section's controls set it, the
- * x-ray draws it as a dashed line, and an along cut follows the dived Section.
+ * The cut a host holds (slice 05): the cross-section's controls set it and an
+ * along cut follows the dived Section (the x-ray itself draws no cut line).
  * Here rather than beside the cross-section so a page can lazy-load that
  * component and still hold the state statically.
  */

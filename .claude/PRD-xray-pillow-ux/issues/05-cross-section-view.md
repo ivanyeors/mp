@@ -22,7 +22,7 @@ The question a side sleeper asks — are the sides higher than the middle? — i
 - **`components/spatial/xray-cross-section.tsx`** (new): pure SVG from `PillowFit`.
   - **Across** cut (default): left, center, right **Sections** at a chosen **sub-section** (front / middle / back; default middle). Shell drawn as three lenses whose heights are `maxLoftMm[section] × k'` (the centre lens is one inch lower); each **Layer** a rounded slab of its compressed thickness, coloured by family through the same `--xray-fill-*` variables; compressed slabs hatched (an SVG `<pattern>`); an `over` stack drawn through the loft line in red; dashed loft line labelled in mm; each **Section**'s loft in mm beneath it.
   - **Along** cut: front, middle, back of the dived **Section** (center when nothing is dived). A small toggle Across | Along; sub-section tabs for Across.
-  - A dashed cut line on the x-ray marks where the section is taken (rendered by `XrayPillow` from a `cutAt` prop), so the two views are linked.
+  - ~~A dashed cut line on the x-ray marks where the section is taken~~ *Removed 26-9-2026 (Ivan: no dotted seams on the pillow):* the x-ray draws no cut line; the cross-section's own controls say where it is taken, and an along cut still follows the dive.
   - No slab animation in v1 (`ponytail:` one CSS transition if wanted later).
 - **Mounts:**
   - Configurator stage, under the pillow: Staff (full controls) and guest (Across only, no controls) whenever the x-ray is visible.
@@ -33,7 +33,7 @@ The question a side sleeper asks — are the sides higher than the middle? — i
 ## Acceptance criteria
 
 - [x] With a mix that stacks three layers in left and right and one in center, the Across cut at middle shows two tall stacks and one short one, with mm labels that equal `fitPillow`'s per-section loft (vitest on the slab model).
-- [x] Switching the sub-section tab or Along changes the cut and the dashed cut line on the x-ray (one `useCut` per host; the x-ray draws `cutAt`; an Along cut follows the dive through `onDiveChange`).
+- [x] Switching the sub-section tab or Along changes the cut (one `useCut` per host; an Along cut follows the dive through `onDiveChange`). *26-9-2026:* the dashed cut line on the x-ray was removed with the other lines on the pillow.
 - [x] A pouch that settled across middle and back contributes its settled thickness to both columns: the spill case shows two lower columns, not one tall one and a gap (vitest, along cut; the walled control shows the gap).
 - [x] A compressed layer is hatched; an `over` stack pokes above the dashed loft line in red (slab `hatched` / `status` in the model; SVG `<pattern>` and red tint in the component).
 - [x] Adding, removing or moving a piece updates the cross-section with no extra interaction: it renders from the host's fit memo, which changes with the Placements.

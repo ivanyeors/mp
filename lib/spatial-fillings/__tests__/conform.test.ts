@@ -4,6 +4,7 @@ import {
   bolsterShellPolygon,
   chaikin,
   conformPouchPath,
+  labelRectOf,
   makeRegion,
   nearestOnBoundary,
   parsePathPolygon,
@@ -142,5 +143,26 @@ describe("bolsterShellPolygon", () => {
     expect(poly.length).toBeGreaterThan(40);
     expect(pointInPolygon([332, 187], poly)).toBe(true); // view center
     expect(pointInPolygon([10, 187], poly)).toBe(false); // outside the caps
+  });
+});
+
+describe("labelRectOf: a label sits on the drawn body", () => {
+  it("centres on a full rectangle and spans it", () => {
+    const r = labelRectOf("M10 10 L110 10 L110 60 L10 60 Z");
+    expect(r).toEqual({ x: 10, y: 10, w: 100, h: 50 });
+  });
+
+  it("moves toward the mass of a notched outline and stays inside its bounds", () => {
+    // A 100×100 square with its top-right 60×60 cut away (an L): the centroid
+    // sits down-left of the square's centre, and the rect never leaves the body's box.
+    const r = labelRectOf("M0 0 L40 0 L40 60 L100 60 L100 100 L0 100 Z");
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    expect(cx).toBeLessThan(50);
+    expect(cy).toBeGreaterThan(50);
+    expect(r.x).toBeGreaterThanOrEqual(0);
+    expect(r.y).toBeGreaterThanOrEqual(0);
+    expect(r.x + r.w).toBeLessThanOrEqual(100);
+    expect(r.y + r.h).toBeLessThanOrEqual(100);
   });
 });

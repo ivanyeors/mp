@@ -22,7 +22,7 @@ The bolster speaks the same fit language as the pillow: pouches to scale along t
 
 - **Registry:** `BOLSTER_DIMENSIONS[length]` (from slice 01) drives the capsule: `k = capsuleViewLength / lengthMm` per length; the diameter sets the capsule height.
 - **`fitBolster(placements, length, ctx)`** in `fit.ts`: Σ pouch widths along the capsule vs `lengthMm` (`ok` / `compressed` / `over`, pro rata squeeze); per piece, `thicknessMm` vs `diameterMm` (a pouch thicker than the bolster is `over`).
-- **Layout:** footprint-true along the capsule, centred as a group; compression from the fit. Settle in one dimension: pouches spread into the capsule's empty ends by the volume rule, thinning toward the floor.
+- **Layout:** *amended 26-9-2026 (Ivan):* the line of pouches fills the capsule — its length split by the settled, squeezed widths the fit says, its short axis the diameter — so the bolster reads fully stuffed; the fit alone says relaxed, compressed or over. Settle in one dimension: pouches spread into the capsule's empty ends by the volume rule, thinning toward the floor.
 - **Feedback:** capsule ring (amber / red), a length gauge (`520 / 600 mm`), refusal on `over` through `addBolsterPiece`'s toast, the save-time confirm on `/mbolster-config`, Configure and **Result**.
 - **Cross-section:** end-on (a circle of `diameterMm` with the stack inside) beside the capsule, using the slice 05 component with a `bolster` variant.
 - **ADR 0008 amendment:** the Mbolster cap is physical and derived; no slot number is introduced. `validateBolsterPlacements` stays uncapped (fit is advisory, as for the pillow).

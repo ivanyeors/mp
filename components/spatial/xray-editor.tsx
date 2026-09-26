@@ -37,7 +37,6 @@ import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings
 import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { pillowDimensions, type PillowSize } from "@/lib/spatial-fillings/dimensions";
 import type { BolsterFit, PillowFit } from "@/lib/spatial-fillings/fit";
-import type { Cut } from "@/lib/spatial-fillings/cross-section";
 import type { Section } from "@/lib/spatial-fillings/core";
 import type { FillingItem } from "@/components/configurator/staff-assist-panel";
 import type { BolsterPlacement, PillowPlacement } from "@/lib/spatial-fillings/core";
@@ -81,7 +80,6 @@ export function XrayEditor({
   colorOverrides = [],
   dimensionOverrides,
   fit,
-  cutAt,
   onDiveChange,
   className,
 }: {
@@ -97,8 +95,6 @@ export function XrayEditor({
   dimensionOverrides?: DimensionOverridesPayload;
   /** The host's fit (`usePillowFit`), shared with its banner and cross-section; computed by the x-ray when omitted. */
   fit?: PillowFit;
-  /** Where the host's cross-section is taken (slice 05); the x-ray draws the cut line. */
-  cutAt?: Cut;
   onDiveChange?: (section: Section | null) => void;
   className?: string;
 }) {
@@ -114,7 +110,6 @@ export function XrayEditor({
         pillowSize={size}
         loftAllowance={loftAllowance}
         fit={fit}
-        cutAt={cutAt}
         onDiveChange={onDiveChange}
         items={items}
         onPlacementsChange={onPlacementsChange}

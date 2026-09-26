@@ -90,28 +90,28 @@ describe("fitBolster", () => {
   });
 });
 
-describe("bolster true scale", () => {
-  it("draws a pouch at widthMm × k and the capsules differ by their registry lengths", () => {
+describe("bolster layout fills the capsule (the fit stays true-scale)", () => {
+  it("draws a lone pouch wall to wall and the capsules differ by their registry lengths", () => {
     const [p] = layoutBolsterPlacements([piece(1)], "medium", { dims: new Map([resolved(1, { widthMm: 200, lengthMm: 120 })]) });
     const stage = bolsterStage("medium");
-    expect(p.w).toBeCloseTo(200 * stage.k, 1);
-    expect(p.h).toBeCloseTo(Math.min(120 * stage.k, bolsterFrame("medium").h), 1);
+    const frame = bolsterFrame("medium");
+    expect(p.w).toBeCloseTo(frame.w, 1);
+    expect(p.h).toBeCloseTo(frame.h, 1);
     expect(stage.k).toBeCloseTo(560 / BOLSTER_DIMENSIONS.medium.lengthMm, 6);
     expect(bolsterStage("short").heightView).toBeCloseTo(BOLSTER_DIMENSIONS.short.diameterMm * bolsterStage("short").k, 1);
     expect(bolsterStage("long").k).toBeLessThan(bolsterStage("short").k);
   });
 
-  it("draws the settled and squeezed widths the fit says, and three pouches in a long capsule settle into the ends", () => {
+  it("shares the capsule by the settled, squeezed widths the fit says, and three pouches span it end to end", () => {
     const three = [1, 2, 3].map((slot) => piece(slot));
     const fit = fitBolster(three, "long", { dims });
-    const stage = bolsterStage("long");
     const laid = layoutBolsterPlacements(three, "long", { dims, fit });
-    expect(laid[0].w).toBeCloseTo(fit.pieces[0].settledWidthMm * fit.pieces[0].widthRatio * stage.k, 1);
+    const drawnMm = (i: number) => fit.pieces[i].settledWidthMm * fit.pieces[i].widthRatio;
+    expect(laid[0].w / laid[1].w).toBeCloseTo(drawnMm(0) / drawnMm(1), 2);
     expect(laid[0].w).toBeGreaterThan(laid[1].w); // the end pouch spread, the middle one did not
     const frame = bolsterFrame("long");
-    const span = laid[2].x + laid[2].w - laid[0].x;
-    expect(frame.w - span).toBeLessThan((BOLSTER_DIMENSIONS.long.lengthMm - fit.usedMm) * stage.k + 1);
+    expect(laid[2].x + laid[2].w - laid[0].x).toBeCloseTo(frame.w, 0);
     const relaxed = layoutBolsterPlacements(three, "long", { dims });
-    expect(relaxed[0].w).toBeCloseTo(200 * stage.k, 1);
+    expect(relaxed[0].w).toBeCloseTo(relaxed[1].w, 1); // equal widths, equal shares
   });
 });

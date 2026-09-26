@@ -6,7 +6,7 @@ Tracker: #204 · Parent: #200
 **Blocked by:** 03; build after 11 so rings, gauges and messages are written once against settled geometry
 **User stories:** 12, 14, 15, 16, 17, 18, 19, 20, 21
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
-**Status:** built (PR #213) — rings, squeeze marks and the loft gauge in `xray-pillow.tsx`; `wouldFit` refusal on add; `xray-fit-banner.tsx` (banner + one confirm) and `use-pillow-fit.ts` (the host's fit, once) on all three surfaces; fit dots on the Size membership chips.
+**Status:** built (PR #213) — squeeze marks and the loft gauge in `xray-pillow.tsx` (the amber / red cell rings were removed on Ivan's 26-9-2026 review: no lines on the pillow but the two divider seams; the red tint, the gauge and the banner carry the status); `wouldFit` refusal on add; `xray-fit-banner.tsx` (banner + one confirm) and `use-pillow-fit.ts` (the host's fit, once) on all three surfaces; fit dots on the Size membership chips.
 
 ## Goal
 

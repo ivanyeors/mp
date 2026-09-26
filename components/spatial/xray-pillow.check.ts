@@ -88,7 +88,8 @@ assert.match(renderer, /d=\{settledPaths\.get\(p\.key\)!\}\s+fill="none"[\s\S]{0
 assert.match(renderer, /view=\{authored \? "authored" : "settled"\}/, "two views of one recipe: the dived Section is authored, the rest settled");
 assert.match(renderer, /const morph = prepareMorph\(fromD, d\);/, "the settle transition goes through prepareMorph (prepared once per transition, guardrail 4)");
 assert.match(renderer, /setSettleGhost\(fromD\)/, "a degenerate settle pair crossfades");
-assert.match(renderer, /rect=\{p\.section === dived \? p : p\.settled\}/, "labels sit at the settled centroid outside the dive");
+assert.match(renderer, /rect=\{labelRects\.get\(p\.key\) \?\? \(p\.section === dived \? p : p\.settled\)\}/, "labels sit on the drawn body — the conformed outline's centroid — settled outside the dive, authored inside it");
+assert.match(renderer, /const d = \(p\.section === dived \? authoredPaths : settledPaths\)\.get\(p\.key\);\s*if \(d\) out\.set\(p\.key, labelRectOf\(d\)\);/, "the label rect comes from the same conformed path the piece is drawn with");
 assert.doesNotMatch(renderer, /settlePillow\(/, "the renderer never recomputes settle — it reads the fit (moves go through the lib, slice 06)");
 assert.match(renderer, /data-item-subtype/, "pieces tagged by item subtype");
 assert.match(renderer, /var\(\$\{visual\.cssVar\}, \$\{visual\.defaultColor\}\)/, "colors via CSS variables");
@@ -98,18 +99,20 @@ assert.match(renderer, /const stage = useMemo\(\(\) => stageGeometry\(pillowSize
 assert.match(renderer, /const fit = useMemo\(\s*\(\) => fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the fit is computed once per geometry change (slice 03)");
 assert.match(renderer, /layoutPlacements\(placements, \{ stage, dims: itemDims, fit \}\)/, "the layout reads the fit — squeezed widths and thicknesses draw as such");
 assert.doesNotMatch(renderer, /sizeScale|itemScaleMap|SIZE_SCALES/, "the relative size scale is retired");
-// Slice 04: the status ring strokes the cell's own region path — no new element class.
+// Slice 04, as reviewed 26-9-2026: no status rings on the pillow — the only lines
+// on it are the protector's two divider seams (straight, silhouette-clipped).
+assert.doesNotMatch(renderer, /RING_COMPRESSED|`ring-\$\{c\.section\}/, "the amber / red cell rings are gone");
 assert.match(
   renderer,
-  /d=\{stage\.cellClipPaths\[`\$\{c\.section\}\/\$\{c\.subSection\}`\]\}\s+fill="none"\s+stroke=\{c\.status === "over" \? RING_OVER : RING_COMPRESSED\}/,
-  "the cell status ring is a stroke on the existing cell clip path, amber or red",
+  /\{\[stage\.colX\[1\], stage\.colX\[2\]\]\.map\(\(x\) => \(\s*<path[\s\S]{0,400}data-xray-divider-seam/,
+  "the two divider seams are drawn at the Section columns, in the shell stroke",
 );
 assert.match(renderer, /strokeDasharray: status === "ok" \? undefined : "6 3"/, "a squeezed piece draws with a dashed stroke");
 assert.match(renderer, /squeeze\.status === "over" && <path d=\{d\} fill=\{RING_OVER\}/, "a piece in a cell that cannot close is tinted red on its own outline");
 assert.match(renderer, /\.\.\.squeezeLines\(pieceStatuses\.get\(p\.key\)\)/, "the ↕ / ↔ micro-label joins the type label through PieceLabel's size rule");
 assert.match(renderer, /fitProp \?\? fitPillow\(placements, \{ size: pillowSize, dims: itemDims, loftAllowance \}\)/, "the host's fit wins; the x-ray computes its own only when none is passed");
-// Slice 05: the cut line is one dashed path inside the silhouette clip, driven by the host's cut.
-assert.match(renderer, /\{cutAt && \(\s*<path[\s\S]{0,900}data-xray-cut=\{cutAt\.axis\}/, "the cross-section's cut is drawn as a dashed line on the x-ray");
+// Slice 05, as reviewed 26-9-2026: the x-ray draws no cut line (the cross-section's own controls say where it is taken).
+assert.doesNotMatch(renderer, /cutAt|data-xray-cut=/, "no dashed cut line on the x-ray");
 assert.match(renderer, /onDiveChange\?\.\(dived\)/, "the dive is reported so an along cut can follow it");
 assert.match(renderer, /onMouseEnter=\{\(\) => setHovered\(section\)\}/, "Section hover highlight");
 

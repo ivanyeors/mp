@@ -2096,7 +2096,6 @@ function FillingConfigPanel({
                 colorOverrides={colorOverrides}
                 dimensionOverrides={dimensionOverrides}
                 fit={fit}
-                cutAt={cut}
                 onDiveChange={onDiveChange}
               />
               <XrayCrossSection

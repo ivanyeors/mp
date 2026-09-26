@@ -164,7 +164,8 @@ for (const fn of ["movePiece(before, ref, { cell }, fitCtx)", "reorderInLayer(be
 assert.match(renderer, /toast\.error\(error\); \/\/ cap \/ fit feedback, the add's path/, "a refused move uses the add's toast path");
 assert.equal(renderer.match(/label: "Undo"/g)?.length, 2, "Undo on the move toast, the Mirror pattern");
 assert.match(renderer, /Undo unavailable — the mix changed after the move/, "a later edit makes the move's Undo unavailable");
-assert.match(renderer, /data-xray-selected-cell[\s\S]{0,400}data-xray-selected-piece/, "selection shows the authored cell ring and the piece outline (the settled ghost is drawn by the dive already)");
+assert.match(renderer, /data-xray-selected-piece/, "selection outlines the piece (the settled ghost is drawn by the dive already)");
+assert.doesNotMatch(renderer, /data-xray-selected-cell/, "no dotted cell ring around the selection — the pad names the cell (26-9-2026 review)");
 
 // --- Slice 07: drag a pouch onto a cell or a Layer -----------------------------
 assert.equal(renderer.match(/<DragDropProvider/g)?.length, 2, "still one sortable provider per cell — the pouch drag is pointer events, not a nested provider");

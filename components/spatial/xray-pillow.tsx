@@ -54,6 +54,7 @@ import {
 } from "@/lib/spatial-fillings/core";
 import {
   conformPouchPath,
+  labelRectOf,
   makeRegion,
   type ConformRegion,
 } from "@/lib/spatial-fillings/conform";
@@ -71,12 +72,11 @@ import {
 } from "@/lib/spatial-fillings/fit";
 import { GAP, layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
-import type { Cut } from "@/lib/spatial-fillings/cross-section";
 import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 
 // Shell regions pouches deform against: the silhouette (wide seam), each
-// cell's wavy boundary (thin seam, matching the pouch-to-pouch gap) for the
+// cell's boundary (thin seam, matching the pouch-to-pouch gap) for the
 // authored view, and each Section's for the settled view (slice 11: only the
 // Section walls are walls). One set per Size (slice 02), built on first use
 // and shared by every x-ray on the page.
@@ -124,10 +124,10 @@ const MORPH_MS = 320;
 export const XRAY_SHELL = "var(--xray-shell, rgba(255,255,255,0.9))";
 export const XRAY_INTERIOR = "var(--xray-interior, rgba(15,23,42,0.5))";
 const XRAY_VEIL = "var(--xray-veil, rgb(2,6,23))";
-// Fit status paint (slice 04): amber at the compression limit, red when a cell
-// cannot close — the same two colours on the cell ring, the piece tint, the
-// gauge bar and the cross-section.
-const RING_COMPRESSED = "#f59e0b";
+// Fit status paint (slice 04): red when a cell cannot close — the piece tint,
+// the drop refusal and the cross-section share it. (The amber / red cell
+// rings went with Ivan's 26-9-2026 review: no seams on the pillow but the two
+// dividers; the gauge, the banner and the tint carry the status.)
 const RING_OVER = "#ef4444";
 const RELAXED_PIECE: PieceFitStatus = { status: "ok", widthRatio: 1, thicknessRatio: 1 };
 /** A pouch drag in flight (slice 07). */
@@ -576,7 +576,6 @@ export function XrayPillow({
   pillowSize = "M",
   loftAllowance,
   fit: fitProp,
-  cutAt,
   onDiveChange,
   items,
   onPlacementsChange,
@@ -595,8 +594,6 @@ export function XrayPillow({
   loftAllowance?: number;
   /** The host's fit (`usePillowFit`), shared with its banner, confirm and cross-section; computed here when omitted. */
   fit?: PillowFit;
-  /** Where the host's cross-section is taken (slice 05): drawn as a dashed cut line so the two views are linked. */
-  cutAt?: Cut;
   /** The dived Section, as it changes — an along cut follows it. */
   onDiveChange?: (section: Section | null) => void;
   /** Inventory filling Items for the dive editor picker; read-only when omitted. */
@@ -795,7 +792,18 @@ export function XrayPillow({
     }
     return paths;
   }, [piecesByCell, itemSubtypes, stage, dived]);
-  const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
+
+  // Labels sit on the drawn body (the conformed outline's centroid), not on
+  // the rect's centre — a compartment-filling pouch is cut by the notch.
+  const labelRects = useMemo(() => {
+    const out = new Map<string, PieceRect>();
+    for (const p of pieces) {
+      if (p.depth !== 0) continue;
+      const d = (p.section === dived ? authoredPaths : settledPaths).get(p.key);
+      if (d) out.set(p.key, labelRectOf(d));
+    }
+    return out;
+  }, [pieces, dived, authoredPaths, settledPaths]);  const clipId = (key: string) => `${uid}-${key.replace("/", "-")}`;
 
   // Dive keeps the x-ray fixed over the shell (no pan/zoom): neighbors dim and
   // the editor overlay aligns to the dived column in place.
@@ -1344,68 +1352,34 @@ export function XrayPillow({
               );
             })}
 
-            {/* Cell status rings (slice 04): the cell's own region stroked amber
-                when its stack is at the compression limit, red when it cannot
-                close even fully compressed — inside the silhouette clip, in
-                both views, so the problem is on the pillow itself. A stroke on
-                an existing region path, not a new element class. */}
-            {fit.cells.map((c) =>
-              c.status === "ok" ? null : (
-                <path
-                  key={`ring-${c.section}/${c.subSection}`}
-                  d={stage.cellClipPaths[`${c.section}/${c.subSection}`]}
-                  fill="none"
-                  stroke={c.status === "over" ? RING_OVER : RING_COMPRESSED}
-                  strokeWidth={2.5}
-                  strokeOpacity={0.9}
-                  vectorEffect="non-scaling-stroke"
-                />
-              ),
-            )}
-
-            {/* Where the cross-section is taken (slice 05): one dashed cut line,
-                silhouette-clipped, through the sub-section row or the Section
-                column the host's cut names. */}
-            {cutAt && (
+            {/* The protector's two divider seams — the Section walls, the only
+                seams the pillow has (Ivan, 26-9-2026: follow the seam dividers;
+                no status rings, no cut line, no dotted guides). Straight, full
+                height, silhouette-clipped, in the shell's own stroke. */}
+            {[stage.colX[1], stage.colX[2]].map((x) => (
               <path
-                d={
-                  cutAt.axis === "across"
-                    ? `M0 ${(stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection)] + stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection) + 1]) / 2} L${XRAY_VIEW.width} ${(stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection)] + stage.rowY[SUB_SECTIONS.indexOf(cutAt.subSection) + 1]) / 2}`
-                    : `M${(stage.colX[SECTIONS.indexOf(cutAt.section)] + stage.colX[SECTIONS.indexOf(cutAt.section) + 1]) / 2} ${stage.rowY[0]} L${(stage.colX[SECTIONS.indexOf(cutAt.section)] + stage.colX[SECTIONS.indexOf(cutAt.section) + 1]) / 2} ${stage.rowY[3]}`
-                }
+                key={`seam-${x}`}
+                d={`M${x} ${stage.rowY[0]} L${x} ${stage.rowY[3]}`}
                 fill="none"
-                stroke="white"
-                strokeOpacity={0.8}
-                strokeWidth={1.5}
-                strokeDasharray="8 5"
+                stroke={XRAY_SHELL}
+                strokeWidth={2}
+                strokeOpacity={0.9}
                 vectorEffect="non-scaling-stroke"
-                data-xray-cut={cutAt.axis}
+                data-xray-divider-seam
               />
-            )}
+            ))}
 
-            {/* Selection (slice 06): the authored cell ring and the piece's own
-                outline, together with the settled ghost the dive already draws. */}
+            {/* Selection (slice 06): the piece's own outline, together with the
+                settled ghost the dive already draws (the pad names its cell). */}
             {selectedPiece && dived === selectedPiece.section && authoredPaths.has(selectedKey!) && (
-              <>
-                <path
-                  d={stage.cellClipPaths[`${selectedPiece.section}/${selectedPiece.subSection}`]}
-                  fill="none"
-                  stroke="white"
-                  strokeOpacity={0.9}
-                  strokeWidth={2}
-                  strokeDasharray="2 3"
-                  vectorEffect="non-scaling-stroke"
-                  data-xray-selected-cell
-                />
-                <path
-                  d={authoredPaths.get(selectedKey!)!}
-                  fill="none"
-                  stroke="#38bdf8"
-                  strokeWidth={3}
-                  vectorEffect="non-scaling-stroke"
-                  data-xray-selected-piece
-                />
-              </>
+              <path
+                d={authoredPaths.get(selectedKey!)!}
+                fill="none"
+                stroke="#38bdf8"
+                strokeWidth={3}
+                vectorEffect="non-scaling-stroke"
+                data-xray-selected-piece
+              />
             )}
 
             {/* Drag feedback (slice 07): the hovered drop cell highlights in the
@@ -1433,22 +1407,6 @@ export function XrayPillow({
               />
             )}
 
-            {/* Sub-section dividers are authoring guides, not walls (slice 11):
-                faint, and drawn only in the dive. */}
-            {dived &&
-              SUB_SECTIONS.map((subSection) => (
-                <path
-                  key={subSection}
-                  d={stage.cellClipPaths[`${dived}/${subSection}`]}
-                  fill="none"
-                  stroke="white"
-                  strokeOpacity={0.3}
-                  strokeWidth={1}
-                  strokeDasharray="3 3"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ))}
-
             {/* Front-layer labels, at the settled centroid unless the Section is
                 dived. A dived Section on a desktop already names its pieces
                 with the chips sitting on them, so it drops these. */}
@@ -1456,7 +1414,7 @@ export function XrayPillow({
               p.depth === 0 && !(editable && !isMobile && p.section === dived) ? (
                 <PieceLabel
                   key={`label-${p.key}`}
-                  rect={p.section === dived ? p : p.settled}
+                  rect={labelRects.get(p.key) ?? (p.section === dived ? p : p.settled)}
                   lines={[
                     ...pieceLabelLines(itemSubtypes.get(p.itemId) ?? null, itemSizes?.get(p.itemId) ?? null),
                     ...squeezeLines(pieceStatuses.get(p.key)),

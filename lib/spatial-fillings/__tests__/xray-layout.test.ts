@@ -90,7 +90,7 @@ describe("xray layout (ADR 0009 guardrail 3: deterministic)", () => {
     expect(layout[0].itemId).toBe(9);
   });
 
-  it("a wider pouch draws wider than its sibling — its registry width, not a weight", () => {
+  it("a wider pouch draws wider than its sibling — its registry width sets its share of the cell", () => {
     const dims = new Map<number, ResolvedDims>([
       [8, { key: "a", kind: "pouch", source: "measured", measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, widthMm: 80 } }],
       [9, { key: "b", kind: "pouch", source: "measured", measuredOn: "2026-10-01", dims: { ...GENERIC_POUCH, widthMm: 104 } }],

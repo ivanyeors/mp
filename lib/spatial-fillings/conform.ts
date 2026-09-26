@@ -7,12 +7,7 @@
  * deterministic: same inputs, same path.
  */
 
-import {
-  bolsterStage,
-  XRAY_VIEW,
-  type BolsterLength,
-  type PieceRect,
-} from "./xray-layout";
+import { bolsterStage, type BolsterLength, type PieceRect } from "./xray-layout";
 import type { ShapeId } from "./visuals";
 
 export type Pt = [number, number];
@@ -209,6 +204,47 @@ export function conformPouchPath(
   for (let s = 0; s < smoothing; s++) pts = chaikin(pts);
   const out = dedupe(pts.map(([x, y]): Pt => [r1(x), r1(y)]));
   return `M${out.map(([x, y]) => `${x} ${y}`).join(" L")} Z`;
+}
+
+/**
+ * Where a piece's label sits: a rect centred on the conformed outline's area
+ * centroid, as large as the outline's bounding box allows around that point.
+ * A pouch that fills its compartment is cut by the silhouette's notch or a
+ * wall, so its rect's centre can lie off the visible body — the centroid of
+ * what is actually drawn never does.
+ */
+export function labelRectOf(d: string): PieceRect {
+  const pts = parsePathPolygon(d);
+  if (pts.length < 3) return { x: 0, y: 0, w: 0, h: 0 };
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  let a = 0;
+  let cx = 0;
+  let cy = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[(i + 1) % pts.length];
+    const cross = x0 * y1 - x1 * y0;
+    a += cross;
+    cx += (x0 + x1) * cross;
+    cy += (y0 + y1) * cross;
+    minX = Math.min(minX, x0);
+    maxX = Math.max(maxX, x0);
+    minY = Math.min(minY, y0);
+    maxY = Math.max(maxY, y0);
+  }
+  if (Math.abs(a) < 1e-6) {
+    cx = (minX + maxX) / 2;
+    cy = (minY + maxY) / 2;
+  } else {
+    cx /= 3 * a;
+    cy /= 3 * a;
+  }
+  const w = 2 * Math.min(cx - minX, maxX - cx);
+  const h = 2 * Math.min(cy - minY, maxY - cy);
+  return { x: r1(cx - w / 2), y: r1(cy - h / 2), w: r1(w), h: r1(h) };
 }
 
 /** The Mbolster capsule sampled as a polygon (flat sides + semicircular caps), at the length's stage (slice 09: the diameter sets its height). */
