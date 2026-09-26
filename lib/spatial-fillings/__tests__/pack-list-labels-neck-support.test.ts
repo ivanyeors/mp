@@ -173,7 +173,7 @@ describe("Cervical Neck Support", () => {
     expect(priceComposedBuild({ ...base, addonLines: unpriced }).ok).toBe(false);
   });
 
-  it("stays a pill in any tract: full length, round ends, at least ~2:1", () => {
+  it("is a full capsule of its rect: the registry footprint, round ends, no aspect cap (slice 02)", () => {
     const bbox = (pts: Pt[]) => {
       const xs = pts.map(([x]) => x);
       const ys = pts.map(([, y]) => y);
@@ -181,13 +181,17 @@ describe("Cervical Neck Support", () => {
     };
     const square = { x: 0, y: 0, w: 66, h: 66 };
     expect(bbox(pouchOutline(square))).toEqual({ w: 66, h: 66 });
-    const pill = bbox(pouchOutline(square, 5, "pill"));
-    expect(pill.w).toBeCloseTo(66);
-    expect(pill.h).toBeCloseTo(30);
-    // A tall tract gives a tall pill.
+    // The layout hands the pill its real footprint, so the pill fills it —
+    // the old `long / 2.2` cap would have thinned a 300 × 90 Neck support.
+    const wide = bbox(pouchOutline({ x: 0, y: 0, w: 300, h: 90 }, 5, "pill"));
+    expect(wide.w).toBeCloseTo(300);
+    expect(wide.h).toBeCloseTo(90);
     const tall = bbox(pouchOutline({ x: 0, y: 0, w: 40, h: 120 }, 5, "pill"));
     expect(tall.h).toBeCloseTo(120);
-    expect(tall.w).toBeLessThanOrEqual(120 / 2.2 + 1e-6);
+    expect(tall.w).toBeCloseTo(40);
+    // Round ends: the rect's corners are never on the outline.
+    const pts = pouchOutline({ x: 0, y: 0, w: 40, h: 120 }, 5, "pill");
+    expect(pts.some(([x, y]) => Math.hypot(x, y) < 5)).toBe(false);
   });
 
   it("is labelled \"Neck\" inside the piece, in full elsewhere", () => {

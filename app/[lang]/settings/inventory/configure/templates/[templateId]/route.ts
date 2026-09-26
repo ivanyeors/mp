@@ -6,6 +6,7 @@ import { validateFillingOnlyLines } from '@/lib/filling-templates'
 import { normalizeTemplateKeys } from '@/lib/filling-templates/keys'
 import { assertTemplateNameFree, loadTemplateKeys, setTemplateKeys } from '@/lib/filling-templates/membership'
 import { lookupItemCategories, lookupPlacementKinds, rejectFillingLines } from '@/lib/bom-sanitizer'
+import { loadDimensionOverrides } from '@/lib/spatial-fillings/dimension-overrides.server'
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
@@ -98,6 +99,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
     .from('filling_color_overrides')
     .select('subtype,color')
   if (cErr) return NextResponse.json({ error: cErr.message }, { status: 500 })
+  // Slice 02/12: Settings dimension overrides, same route for the same reason.
+  let dimensionOverrides
+  try {
+    dimensionOverrides = await loadDimensionOverrides(admin)
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
+  }
 
   return NextResponse.json({
     ok: true,
@@ -107,6 +115,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ templateId
     placements,
     packList,
     colorOverrides: colorOverrides ?? [],
+    dimensionOverrides,
   })
 }
 

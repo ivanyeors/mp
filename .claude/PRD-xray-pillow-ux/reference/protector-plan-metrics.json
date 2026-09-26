@@ -1,0 +1,202 @@
+{
+ "XS": {
+  "size": "XS-protector",
+  "width": 603.8,
+  "length_total_incl_tab": 352.8,
+  "body_top_line_from_bottom_extreme": 305.7,
+  "tab_length": 47.1,
+  "tab_width": 106.4,
+  "notch_width_at_body_line": [
+   183.5,
+   183.5
+  ],
+  "side_length_max": 291.5,
+  "length_at_lobe_apex": 240.0,
+  "lobe_apex_x": [
+   130,
+   475
+  ],
+  "centre_length_excl_tab": 264.1,
+  "centre_length_incl_tab": 311.2,
+  "wave_concave_depth_at_centre": 41.6,
+  "notch_depth": 80.1,
+  "notch_min_x": [
+   175,
+   430
+  ],
+  "top_edge_crossings_at_body_line": [
+   42.9,
+   65.2,
+   248.7,
+   355.1,
+   538.6,
+   560.9
+  ],
+  "flat_end_edge_length": [
+   135.9,
+   135.9
+  ],
+  "polygon_area_mm2": 154089.0,
+  "centre_gap_between_notches_at_body_line": 106.4
+ },
+ "S": {
+  "size": "S-protector",
+  "width": 646.9,
+  "length_total_incl_tab": 400.1,
+  "body_top_line_from_bottom_extreme": 330.1,
+  "tab_length": 70.0,
+  "tab_width": 127.1,
+  "notch_width_at_body_line": [
+   194.6,
+   194.5
+  ],
+  "side_length_max": 307.2,
+  "length_at_lobe_apex": 243.1,
+  "lobe_apex_x": [
+   160,
+   485
+  ],
+  "centre_length_excl_tab": 289.1,
+  "centre_length_incl_tab": 359.1,
+  "wave_concave_depth_at_centre": 41.0,
+  "notch_depth": 90.9,
+  "notch_min_x": [
+   180,
+   465
+  ],
+  "top_edge_crossings_at_body_line": [
+   42.9,
+   65.3,
+   259.9,
+   387.0,
+   581.5,
+   603.9
+  ],
+  "flat_end_edge_length": [
+   160.7,
+   160.7
+  ],
+  "polygon_area_mm2": 180134.0,
+  "centre_gap_between_notches_at_body_line": 127.1
+ },
+ "M": {
+  "size": "M-protector",
+  "width": 705.9,
+  "length_total_incl_tab": 403.1,
+  "body_top_line_from_bottom_extreme": 330.1,
+  "tab_length": 73.0,
+  "tab_width": 147.0,
+  "notch_width_at_body_line": [
+   211.1,
+   211.1
+  ],
+  "side_length_max": 307.0,
+  "length_at_lobe_apex": 236.1,
+  "lobe_apex_x": [
+   170,
+   535
+  ],
+  "centre_length_excl_tab": 288.8,
+  "centre_length_incl_tab": 361.9,
+  "wave_concave_depth_at_centre": 41.2,
+  "notch_depth": 97.3,
+  "notch_min_x": [
+   195,
+   510
+  ],
+  "top_edge_crossings_at_body_line": [
+   43.0,
+   68.4,
+   279.5,
+   426.4,
+   637.5,
+   662.9
+  ],
+  "flat_end_edge_length": [
+   160.5,
+   160.5
+  ],
+  "polygon_area_mm2": 196644.0,
+  "centre_gap_between_notches_at_body_line": 146.9
+ },
+ "L": {
+  "size": "L-protector",
+  "width": 762.0,
+  "length_total_incl_tab": 435.0,
+  "body_top_line_from_bottom_extreme": 350.0,
+  "tab_length": 85.0,
+  "tab_width": 150.0,
+  "notch_width_at_body_line": [
+   236.9,
+   236.9
+  ],
+  "side_length_max": 321.9,
+  "length_at_lobe_apex": 250.9,
+  "lobe_apex_x": [
+   170,
+   590
+  ],
+  "centre_length_excl_tab": 297.0,
+  "centre_length_incl_tab": 382.0,
+  "wave_concave_depth_at_centre": 53.0,
+  "notch_depth": 104.4,
+  "notch_min_x": [
+   205,
+   560
+  ],
+  "top_edge_crossings_at_body_line": [
+   44.3,
+   69.1,
+   306.0,
+   456.0,
+   692.9,
+   717.7
+  ],
+  "flat_end_edge_length": [
+   159.2,
+   159.2
+  ],
+  "polygon_area_mm2": 220503.0,
+  "centre_gap_between_notches_at_body_line": 150.0
+ },
+ "XL": {
+  "size": "XL-protector",
+  "width": 836.0,
+  "length_total_incl_tab": 457.0,
+  "body_top_line_from_bottom_extreme": 365.2,
+  "tab_length": 91.8,
+  "tab_width": 170.0,
+  "notch_width_at_body_line": [
+   258.2,
+   258.2
+  ],
+  "side_length_max": 341.3,
+  "length_at_lobe_apex": 257.5,
+  "lobe_apex_x": [
+   180,
+   655
+  ],
+  "centre_length_excl_tab": 312.1,
+  "centre_length_incl_tab": 403.9,
+  "wave_concave_depth_at_centre": 53.0,
+  "notch_depth": 119.8,
+  "notch_min_x": [
+   230,
+   605
+  ],
+  "top_edge_crossings_at_body_line": [
+   54.7,
+   74.8,
+   333.0,
+   503.0,
+   761.2,
+   781.2
+  ],
+  "flat_end_edge_length": [
+   172.6,
+   171.3
+  ],
+  "polygon_area_mm2": 251565.0,
+  "centre_gap_between_notches_at_body_line": 170.0
+ }
+}

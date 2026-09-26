@@ -68,6 +68,23 @@ export const MAX_PIECES_PER_CELL = MAX_LAYERS_PER_CELL * MAX_PIECES_PER_LAYER;
 export const SECTIONS: readonly Section[] = ["left", "center", "right"];
 export const SUB_SECTIONS: readonly SubSection[] = ["front", "middle", "back"];
 
+/**
+ * One cell's pieces grouped into Layers, top→deep (`row`, absent = layer 0),
+ * with the numbering COMPACTED so a hole left by a deleted layer never reads
+ * as an empty one. The layout and the fit model group with this so they can
+ * never disagree about which pieces share a plane. Pieces keep their order.
+ */
+export function cellLayerGroups(pieces: readonly PillowPlacement[]): PillowPlacement[][] {
+  const byLayer = new Map<number, PillowPlacement[]>();
+  for (const piece of pieces) {
+    const layer = piece.row ?? 0;
+    const list = byLayer.get(layer);
+    if (list) list.push(piece);
+    else byLayer.set(layer, [piece]);
+  }
+  return [...byLayer.entries()].sort(([a], [b]) => a - b).map(([, list]) => list);
+}
+
 type Validation = { ok: true } | { ok: false; error: string };
 
 /** Map snake_case API/DB rows into lib placements (validate afterwards). */

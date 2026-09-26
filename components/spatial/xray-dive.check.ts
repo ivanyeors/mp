@@ -117,7 +117,7 @@ assert.match(renderer, /aria-disabled=\{empty\}/, "the disabled reason stays key
 // The toast outlives the click, so Undo must be an inverse, not a snapshot.
 assert.match(renderer, /if \(placementsRef\.current !== next\)/, "Undo no-ops once the mix changed after the mirror");
 // Every cell panel is in the DIVED column, so the section bar parks elsewhere.
-assert.match(renderer, /COL_X\[mirrorIdx\]/, "the section bar parks off the dived column, where no panel can reach it");
+assert.match(renderer, /stage\.colX\[mirrorIdx\]/, "the section bar parks off the dived column, where no panel can reach it");
 // Both surfaces, one builder: desktop (compact, on-canvas) + phone dock header.
 assert.equal(renderer.match(/mirrorButton\(dived, (true|false)\)/g)?.length, 2, "mirror CTA mounted on desktop AND the phone dock");
 assert.match(renderer, /data-xray-dive-section-bar/, "desktop gets section-level chrome for it, inside the framed box");
@@ -132,13 +132,65 @@ assert.doesNotMatch(renderer, /animate=\{\{ x/, "dive never pans — the x-ray o
 assert.match(renderer, /setAttribute\("d"/, "morphs write path d only (no layout thrash)");
 assert.doesNotMatch(renderer, /<rect/, "still no box crops (ADR 0009 guardrail 1)");
 
+// --- Slice 04: the fit on the pillow, in the panel, in the dock, at the add ---
+assert.equal(renderer.match(/<LoftGauge/g)?.length, 2, "the loft gauge is mounted once in the desktop panel and once in the phone dock");
+assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pillowSize\} compact \/>/, "the desktop panel gauge is the compact one");
+assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pillowSize\} compact=\{false\} \/>/, "the phone dock gauge is the readable one");
+assert.match(renderer, /role="meter"/, "the gauge is a meter for assistive tech");
+assert.match(renderer, /fitMessage\(cell, size\)/, "the gauge's message is the pure fitMessage — the three numbers and the Size");
+assert.match(
+  renderer,
+  /const would = wouldFit\(placements, \{ kind: "add", cell, itemId, layer \}, \{ size: pillowSize, dims: itemDims, loftAllowance \}\);/,
+  "an add is judged by wouldFit after the caps",
+);
+assert.match(renderer, /if \(would\.cell\?\.status === "over"\) \{\s*toast\.error\(fitMessage\(would\.cell, pillowSize\)\);\s*return;/, "over is refused with the numbers on the existing toast path; compressed goes through");
+assert.doesNotMatch(renderer, /would\.cell\?\.status === "compressed"[\s\S]{0,80}return/, "compression is a working state, never a refusal");
+
+// --- Slice 06: select a pouch, move it by key or pad, Undo -------------------
+assert.match(renderer, /const \[selected, setSelected\] = useState<PieceRef \| null>\(null\)/, "selection is renderer state, a piece ref");
+assert.match(renderer, /if \(selectedRef\.current\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
+assert.match(renderer, /setDived\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
+assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,700}setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\);/, "a pouch's own outline is the focusable, pressable selection target");
+assert.match(renderer, /const kind = moveKeyFor\(e\);/, "keys go through the shared move map");
+assert.equal(renderer.match(/onSelectPiece=\{\(slot\) => setSelected\(/g)?.length, 2, "a layer row's label selects its piece in the panel and in the dock — the rows sit on the pouches");
+assert.match(renderer, /aria-label=\{`Select \$\{label\} in \$\{cell\.section\} \$\{cell\.subSection\}`\}/, "the centroid chip's label selects the piece under it");
+assert.match(renderer, /if \(isTypingTarget\(e\.target\) \|\| draggingRef\.current\) return;/, "text controls and a drag in flight keep their keys");
+assert.equal(renderer.match(/<MovePad /g)?.length, 2, "the move pad is mounted once in the cell panel and once in the dock");
+assert.match(renderer, /<MovePad label=\{pieceLabel\(selectedPiece\.itemId\)\} compact=\{false\}/, "the phone dock pad is the 44px one");
+assert.match(renderer, /MOVE_ACTIONS\.map\(/, "the pad's buttons are the key table — a button and a key cannot disagree");
+for (const fn of ["movePiece(before, ref, { cell }, fitCtx)", "reorderInLayer(before, ref, dir)", "shiftPieceLayer(before, ref, kind === \"layerUp\" ? -1 : 1, fitCtx)"]) {
+  assert.ok(renderer.includes(fn), `moves go through the pure lib: ${fn}`);
+}
+assert.match(renderer, /toast\.error\(error\); \/\/ cap \/ fit feedback, the add's path/, "a refused move uses the add's toast path");
+assert.equal(renderer.match(/label: "Undo"/g)?.length, 2, "Undo on the move toast, the Mirror pattern");
+assert.match(renderer, /Undo unavailable — the mix changed after the move/, "a later edit makes the move's Undo unavailable");
+assert.match(renderer, /data-xray-selected-piece/, "selection outlines the piece (the settled ghost is drawn by the dive already)");
+assert.doesNotMatch(renderer, /data-xray-selected-cell/, "no dotted cell ring around the selection — the pad names the cell (26-9-2026 review)");
+
+// --- Slice 07: drag a pouch onto a cell or a Layer -----------------------------
+assert.equal(renderer.match(/<DragDropProvider/g)?.length, 2, "still one sortable provider per cell — the pouch drag is pointer events, not a nested provider");
+assert.match(renderer, /onPointerDown=\{\(e\) => startDrag\(e, p\)\}\s+onPointerMove=\{moveDrag\}\s+onPointerUp=\{\(e\) => endDrag\(e, false\)\}\s+onPointerCancel=\{\(e\) => endDrag\(e, true\)\}/, "the pouch's own hit path is the drag handle");
+assert.match(renderer, /touchAction: "none"/, "a finger drag on a pouch does not scroll the page");
+assert.match(renderer, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the pointer is captured for the drag");
+assert.match(renderer, /Math\.hypot\(dxPx, dyPx\) < DRAG_THRESHOLD_PX/, "a press becomes a drag only past the threshold — a click still selects");
+assert.match(renderer, /dropTargetFromElement\(document\.elementFromPoint\(e\.clientX, e\.clientY\)\)/, "the drop target is the tagged element under the pointer");
+assert.match(renderer, /const dest = pouchDropDestination\(d\.source, canceled \? null : d\.over, canceled\);/, "the drop resolves through the pure adapter");
+assert.match(renderer, /const r = movePiece\(placements, d\.source, dest, \{ size: pillowSize, dims: itemDims, loftAllowance \}\);/, "a drop is a movePiece — a drag can never do what a key cannot");
+assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
+assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
+assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
+assert.match(renderer, /fill=\{drag\.refused \? RING_OVER : "#38bdf8"\}/, "the hovered cell highlights in the selection blue (visible on the unveiled Section), red when the drop could not close");
+assert.match(renderer, /data-xray-drag-ghost/, "a ghost of the outline follows the pointer");
+assert.match(renderer, /if \(e\.key !== "Escape"\) return;\s*e\.stopPropagation\(\);\s*cancelDrag\(\);/, "Escape mid-drag cancels the drag and keeps the dive open");
+assert.match(renderer, /draggingRef\.current = true; \/\/ Escape now cancels the drag, not the dive/, "the dive's Escape guard stands down during a pouch drag");
+
 // --- Add target = the cell region, not a floating + button --------------------
 // The old picker parked a ~28px + in each band's footer: a tiny thing to aim at,
 // and the bottom one landed under the silhouette's curve. The target is now the
 // cell itself, clipped to the shell so it can never sit outside the pillow.
 assert.match(
   renderer,
-  /d=\{CELL_CLIP_PATHS\[`\$\{dived\}\/\$\{subSection\}`\]\}/,
+  /d=\{stage\.cellClipPaths\[`\$\{dived\}\/\$\{subSection\}`\]\}/,
   "add hit area is the whole cell region",
 );
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "hit area clipped to the silhouette");

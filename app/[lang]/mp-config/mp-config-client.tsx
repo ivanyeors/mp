@@ -165,8 +165,17 @@ import {
 } from "@/lib/configurator/staff-assist";
 import { StaffAssistPanel, type FillingItem } from "@/components/configurator/staff-assist-panel";
 import { XrayPillow } from "@/components/spatial/xray-pillow";
+import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { useCut, XrayCrossSection } from "@/components/spatial/xray-cross-section";
+import { fitPillow } from "@/lib/spatial-fillings/fit";
 import { fillingDescriptor } from "@/lib/spatial-fillings/filling-groups";
-import { SILHOUETTE_PATH } from "@/components/spatial/xray-assets";
+import { stageGeometry } from "@/components/spatial/xray-assets";
+import { pillowDimensions } from "@/lib/spatial-fillings/dimensions";
+import {
+  registryFromPayload,
+  resolveItemDims,
+  type DimensionOverridesPayload,
+} from "@/lib/spatial-fillings/dimension-overrides";
 import {
   flattenToPackList,
   pillowPlacementsToRows,
@@ -202,8 +211,11 @@ function pickDefaultComponent(
 const KEEP_EMAIL: Dispatch<SetStateAction<string>> = () => {};
 const KEEP_ADDRESS: Dispatch<SetStateAction<HoldShippingAddress>> = () => {};
 
-// Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline).
-const PILLOW_PATH = SILHOUETTE_PATH;
+// Silhouette lives in the x-ray asset pipeline (ADR 0009: one asset pipeline) and
+// is the pillow Size's registry outline since slice 02 — the shell and the
+// x-ray share one path, so they cannot misalign.
+const pillowPath = (size: string | null | undefined) =>
+  stageGeometry(pillowDimensions(size).dims.size).silhouettePath;
 
 type Step =
   | "welcome"
@@ -446,6 +458,32 @@ export function MpConfigClient({
   // Product Builder color overrides (slice 11) → CSS vars on the x-ray container;
   // cleared overrides simply vanish and var(x, default) falls back to code defaults.
   const [assistColorOverrides, setAssistColorOverrides] = useState<ColorOverrideRow[]>([]);
+  // Slice 02: Settings dimension overrides ride the same responses as the colours;
+  // the staff panel's rows win once loaded, guests read the shop response.
+  const [assistDimensionOverrides, setAssistDimensionOverrides] = useState<DimensionOverridesPayload | null>(null);
+  const shopDimensionOverrides = shopRecommendation?.dimension_overrides ?? null;
+  const assistRegistry = useMemo(
+    () => registryFromPayload(assistDimensionOverrides ?? shopDimensionOverrides),
+    [assistDimensionOverrides, shopDimensionOverrides],
+  );
+  const assistItemDims = useMemo(() => resolveItemDims(assistItems, assistRegistry), [assistItems, assistRegistry]);
+  // Slice 04: the physical fit of the session mix at the Size on screen —
+  // computed once here and shared by the x-ray, the banner and the hold /
+  // save confirm (and the cross-section, slice 05). The same Size expression
+  // the hold submits with, so the fit is judged against the pillow being held.
+  const previewSize =
+    shopRecommendation?.pillow_product?.size ?? suggestion?.recommended?.size ?? suggestion?.product?.size ?? null;
+  const assistFit = useMemo(
+    () =>
+      fitPillow(assistPlacements, {
+        size: previewSize,
+        dims: assistItemDims,
+        loftAllowance: assistRegistry.loftAllowance,
+      }),
+    [assistPlacements, previewSize, assistItemDims, assistRegistry.loftAllowance],
+  );
+  // Slice 05: where the cross-section is cut; the x-ray draws the line, an along cut follows the dive.
+  const { cut, setCut, onDiveChange } = useCut();
   // RE slice 07: guests read the same filling_color_overrides table via the shop
   // response; staff panel overrides win once loaded.
   const shopColorOverrides = shopRecommendation?.color_overrides;
@@ -1881,6 +1919,8 @@ export function MpConfigClient({
       toast.error("Choose a cover and a case");
       return;
     }
+    // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
+    if (!confirmSaveWithOverCells(assistFit, "Save")) return;
     // Shipping travels only when it is complete. An Assisted customisation has
     // none yet and the customer supplies it at their finish — half an address
     // would fail the server's schema and block an otherwise valid edit.
@@ -1963,6 +2003,9 @@ export function MpConfigClient({
       setFieldErrors(errors);
       return;
     }
+    // Slice 04: a Staff-assisted mix with a cell that cannot close is a
+    // confirm, never a block (ADR 0019) — the same posture as Spatially authored.
+    if (staffAssist && !confirmSaveWithOverCells(assistFit, "Hold")) return;
 
     setHoldSubmitting(true);
     try {
@@ -2055,6 +2098,7 @@ export function MpConfigClient({
     holdFields,
     staffAssist,
     assistPlacements,
+    assistFit,
     sessionFillingTemplateId,
     partner,
     tokenStorageKey,
@@ -2148,8 +2192,28 @@ export function MpConfigClient({
         ...guestFillings.map((f) => [f.item_id, f.size ?? null] as const),
         ...(resumeFinish?.items ?? []).map((i) => [i.id, i.size] as const),
       ]),
+      // Slice 02: the drawn footprint of every guest-visible piece, from the
+      // registry with the shop response's Settings overrides applied.
+      guestItemDims: resolveItemDims(
+        [
+          ...guestFillings.map((f) => ({ id: f.item_id, name: f.name, subtype: f.subtype ?? null, size: f.size ?? null })),
+          ...(resumeFinish?.items ?? []),
+        ],
+        registryFromPayload(shopRecommendation?.dimension_overrides ?? null),
+      ),
+      guestLoftAllowance: registryFromPayload(shopRecommendation?.dimension_overrides ?? null).loftAllowance,
     };
   }, [shopRecommendation, resumeFinish]);
+  // The guest's fit of the recommended (or finished) mix: read-only x-ray and cross-section.
+  const guestFit = useMemo(
+    () =>
+      fitPillow(guestPreview.guestPlacements, {
+        size: previewSize,
+        dims: guestPreview.guestItemDims,
+        loftAllowance: guestPreview.guestLoftAllowance,
+      }),
+    [guestPreview, previewSize],
+  );
 
   // Hold preview uses mp-maker split layout (cover/case card pickers, no fillings/protector).
   if (currentStep === "preview") {
@@ -2170,7 +2234,7 @@ export function MpConfigClient({
       requiredInputsComplete: Boolean(shopRecommendation && size),
       flowRouteUnresolved: routePending,
     });
-    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes } = guestPreview;
+    const { tpl, guestPlacements, guestItemSubtypes, guestItemSizes, guestItemDims, guestLoftAllowance } = guestPreview;
     // Spatial template + reveal gate → read-only x-ray; legacy-flat keeps the text mix.
     // Assisted runs show SIZE ONLY — no filling x-ray (AC3).
     const guestXray = !partnerAssisted && revealNow && previewMixMode(guestPlacements) === "xray";
@@ -2374,12 +2438,12 @@ export function MpConfigClient({
                     xmlns="http://www.w3.org/2000/svg"
                     preserveAspectRatio="xMidYMid meet"
                   >
-                    <path d={PILLOW_PATH} fill="white" />
+                    <path d={pillowPath(size)} fill="white" />
                     {selectedOverlay && (
                       <>
                         <defs>
                           <clipPath id="mp-config-overlay-clip">
-                            <path d={PILLOW_PATH} />
+                            <path d={pillowPath(size)} />
                           </clipPath>
                         </defs>
                         <image
@@ -2391,7 +2455,7 @@ export function MpConfigClient({
                       </>
                     )}
                     <path
-                      d={PILLOW_PATH}
+                      d={pillowPath(size)}
                       fill="none"
                       stroke="white"
                       strokeWidth="3"
@@ -2403,6 +2467,11 @@ export function MpConfigClient({
                       placements={staffAssist ? assistPlacements : guestPlacements}
                       itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
                       itemSizes={staffAssist ? assistItemSizes : guestItemSizes}
+                      itemDims={staffAssist ? assistItemDims : guestItemDims}
+                      pillowSize={pillowDimensions(size).dims.size}
+                      loftAllowance={staffAssist ? assistRegistry.loftAllowance : guestLoftAllowance}
+                      fit={staffAssist ? assistFit : guestFit}
+                      onDiveChange={onDiveChange}
                       // read-only for guests: no items / no change handler → no edit affordances
                       items={staffAssist ? assistItems : undefined}
                       onPlacementsChange={staffAssist ? setAssistPlacements : undefined}
@@ -2415,6 +2484,24 @@ export function MpConfigClient({
                     </div>
                   )}
                 </div>
+                {/* Slice 04: a loaded template or a Size change that no longer
+                    fits is flagged here as well as on the cells. Advisory. */}
+                {staffAssist && xrayVisible && (
+                  <FitBanner fit={assistFit} className="w-full max-w-md text-white [&_p]:text-white/80 [&_li]:text-white/80" />
+                )}
+                {/* Slice 05: the live cut under the pillow — Staff get the
+                    controls, a guest the across cut alone, read-only. */}
+                {xrayVisible && (
+                  <XrayCrossSection
+                    fit={staffAssist ? assistFit : guestFit}
+                    itemSubtypes={staffAssist ? assistItemSubtypes : guestItemSubtypes}
+                    cut={cut}
+                    onCutChange={staffAssist ? setCut : undefined}
+                    colorOverrides={assistColorOverrides.length ? assistColorOverrides : shopColorOverrides ?? []}
+                    themed={false}
+                    className="w-full max-w-[500px] lg:w-[min(97.5vmin,650px)] lg:max-w-none"
+                  />
+                )}
                 {(() => {
                   const sleepPos = measurementData.sleepPositionType[0];
                   const why = record
@@ -2486,6 +2573,7 @@ export function MpConfigClient({
                     onApplySizeTier={applyAssistSizeTier}
                     onItemsChange={setAssistItems}
                     onColorOverridesChange={setAssistColorOverrides}
+                    onDimensionOverridesChange={setAssistDimensionOverrides}
                   />
                 ) : !shopRecommendation ? (
                   <p className="max-w-xs text-center text-xs text-white/80">

@@ -7,6 +7,7 @@ import { getAvailableComponents, validateCustomizationConfig, fetchOverlayMap, i
 import { quoteCustomization } from "@/lib/shop/customization-quote";
 import type { BolsterVariant, ConfigLine, FillingLine } from "@/lib/types/customization";
 import { templateIdsForKey } from "@/lib/filling-templates/membership";
+import { loadDimensionOverrides } from "@/lib/spatial-fillings/dimension-overrides.server";
 import {
   incompleteEngineInputs,
   measurementPrefsToEngineInputs,
@@ -254,6 +255,7 @@ async function handleRecommend(req: Request) {
       const { data: colorOverrides } = await admin
         .from("filling_color_overrides")
         .select("subtype, color");
+      const dimension_overrides = await loadDimensionOverrides(admin);
       const availableFillings = await getAvailableFillings();
 
       return NextResponse.json({
@@ -289,6 +291,7 @@ async function handleRecommend(req: Request) {
         })),
         available_fillings: availableFillings,
         color_overrides: colorOverrides ?? [],
+      dimension_overrides,
         buildable_counts,
         composed_buildable,
       });
@@ -383,6 +386,7 @@ async function handleRecommend(req: Request) {
     const { data: colorOverrides } = await admin
       .from("filling_color_overrides")
       .select("subtype, color");
+    const dimension_overrides = await loadDimensionOverrides(admin);
 
     // Fetch pillow buildable counts; composed uses product_id (kind×size).
     const { data: pillowBuildable } = await admin
@@ -442,6 +446,7 @@ async function handleRecommend(req: Request) {
       })),
       available_fillings: fillings,
       color_overrides: colorOverrides ?? [],
+      dimension_overrides,
       buildable_counts,
       composed_buildable,
     });
