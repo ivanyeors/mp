@@ -152,6 +152,8 @@ assert.match(renderer, /if \(selectedRef\.current\) \{\s*setSelected\(null\);\s*
 assert.match(renderer, /setDived\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
 assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,700}setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\);/, "a pouch's own outline is the focusable, pressable selection target");
 assert.match(renderer, /const kind = moveKeyFor\(e\);/, "keys go through the shared move map");
+assert.equal(renderer.match(/onSelectPiece=\{\(slot\) => setSelected\(/g)?.length, 2, "a layer row's label selects its piece in the panel and in the dock — the rows sit on the pouches");
+assert.match(renderer, /aria-label=\{`Select \$\{label\} in \$\{cell\.section\} \$\{cell\.subSection\}`\}/, "the centroid chip's label selects the piece under it");
 assert.match(renderer, /if \(isTypingTarget\(e\.target\) \|\| draggingRef\.current\) return;/, "text controls and a drag in flight keep their keys");
 assert.equal(renderer.match(/<MovePad /g)?.length, 2, "the move pad is mounted once in the cell panel and once in the dock");
 assert.match(renderer, /<MovePad label=\{pieceLabel\(selectedPiece\.itemId\)\} compact=\{false\}/, "the phone dock pad is the 44px one");
@@ -176,7 +178,7 @@ assert.match(renderer, /const r = movePiece\(placements, d\.source, dest, \{ siz
 assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
 assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
 assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
-assert.match(renderer, /fill=\{drag\.refused \? RING_OVER : "white"\}/, "the hovered cell highlights with the add-target fill, red when the drop could not close");
+assert.match(renderer, /fill=\{drag\.refused \? RING_OVER : "#38bdf8"\}/, "the hovered cell highlights in the selection blue (visible on the unveiled Section), red when the drop could not close");
 assert.match(renderer, /data-xray-drag-ghost/, "a ghost of the outline follows the pointer");
 assert.match(renderer, /if \(e\.key !== "Escape"\) return;\s*e\.stopPropagation\(\);\s*cancelDrag\(\);/, "Escape mid-drag cancels the drag and keeps the dive open");
 assert.match(renderer, /draggingRef\.current = true; \/\/ Escape now cancels the drag, not the dive/, "the dive's Escape guard stands down during a pouch drag");

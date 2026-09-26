@@ -37,7 +37,7 @@ import {
 } from "@/lib/spatial-fillings/conform";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { MorphPiece, PieceLabel, squeezeLines, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
-import { pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
+import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath, SHELL_SEAM, XRAY_VIEW } from "./xray-assets";
 
 // Pouches deform to stay a seam inside the capsule (see conform.ts).
@@ -130,7 +130,8 @@ export function XrayBolster({
     return { status, widthRatio: f.widthRatio, thicknessRatio };
   };
 
-  const itemLabel = (i: FillingItem) => (i.subtype ? `${i.name} (${i.subtype})` : i.name);
+  // Same label as the pillow editor's chips, so one pouch reads the same on both surfaces.
+  const itemLabel = (i: FillingItem) => fillingLabel(i);
   const pieceLabel = (itemId: number) => {
     const item = items?.find((i) => i.id === itemId);
     return item ? itemLabel(item) : `Item #${itemId}`;

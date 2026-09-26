@@ -162,18 +162,19 @@ function AllowanceEditor({
           Loft allowance
         </label>
         <div className="flex items-center gap-1">
-          <Input
-            id="loft-allowance"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={LOFT_ALLOWANCE_MAX_PCT}
-            step={1}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="w-20"
-            aria-invalid={!valid}
-          />
+          <div className="w-20">
+            <Input
+              id="loft-allowance"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={LOFT_ALLOWANCE_MAX_PCT}
+              step={1}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              aria-invalid={!valid}
+            />
+          </div>
           <span className="text-sm text-muted-foreground">%</span>
         </div>
         <SourceBadge source={storedPct === null ? "default" : "configured"} />
@@ -317,18 +318,22 @@ function MmInput({
   label: string;
   optional?: boolean;
 }) {
+  // The number Input wraps itself in a size-contained container, which adds
+  // nothing to a table cell's intrinsic width — so the width lives on a plain
+  // block around it, or the cells shrink under the inputs and they overlap.
   return (
-    <Input
-      type="number"
-      inputMode="numeric"
-      min={1}
-      step={1}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-20"
-      aria-label={label}
-      placeholder={optional ? "–" : undefined}
-    />
+    <div className="w-16">
+      <Input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        placeholder={optional ? "–" : undefined}
+      />
+    </div>
   );
 }
 
@@ -354,12 +359,12 @@ function PouchRow({
         <div>{row.label}</div>
         <code className="text-[10px] text-muted-foreground">{row.key}</code>
       </TableCell>
-      <TableCell><MmInput value={draft.width_mm} onChange={set("width_mm")} label={`${row.label} width mm`} /></TableCell>
-      <TableCell><MmInput value={draft.length_mm} onChange={set("length_mm")} label={`${row.label} length mm`} /></TableCell>
-      <TableCell><MmInput value={draft.thickness_mm} onChange={set("thickness_mm")} label={`${row.label} thickness mm`} /></TableCell>
-      <TableCell><MmInput value={draft.min_thickness_mm} onChange={set("min_thickness_mm")} label={`${row.label} minimum thickness mm`} /></TableCell>
-      <TableCell><MmInput value={draft.min_width_mm} onChange={set("min_width_mm")} label={`${row.label} minimum width mm`} /></TableCell>
-      <TableCell>
+      <TableCell className="px-1"><MmInput value={draft.width_mm} onChange={set("width_mm")} label={`${row.label} width mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.length_mm} onChange={set("length_mm")} label={`${row.label} length mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.thickness_mm} onChange={set("thickness_mm")} label={`${row.label} thickness mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.min_thickness_mm} onChange={set("min_thickness_mm")} label={`${row.label} minimum thickness mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.min_width_mm} onChange={set("min_width_mm")} label={`${row.label} minimum width mm`} /></TableCell>
+      <TableCell className="px-1">
         <select
           value={draft.orientation}
           onChange={(e) => setDraft((d) => ({ ...d, orientation: e.target.value as "across" | "along" }))}
@@ -370,8 +375,8 @@ function PouchRow({
           <option value="along">along</option>
         </select>
       </TableCell>
-      <TableCell><MmInput value={draft.flat_length_mm} onChange={set("flat_length_mm")} label={`${row.label} flat length mm`} optional /></TableCell>
-      <TableCell><MmInput value={draft.flat_width_mm} onChange={set("flat_width_mm")} label={`${row.label} flat width mm`} optional /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.flat_length_mm} onChange={set("flat_length_mm")} label={`${row.label} flat length mm`} optional /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.flat_width_mm} onChange={set("flat_width_mm")} label={`${row.label} flat width mm`} optional /></TableCell>
       <TableCell>
         <SourceBadge source={row.source} />
         {row.measuredOn && <div className="text-[10px] text-muted-foreground mt-1">{row.measuredOn}</div>}
@@ -483,10 +488,10 @@ function NeckRow({
   return (
     <TableRow>
       <TableCell className="font-medium">{row.size}</TableCell>
-      <TableCell><MmInput value={draft.width_mm} onChange={set("width_mm")} label={`Neck support ${row.size} width mm`} /></TableCell>
-      <TableCell><MmInput value={draft.length_mm} onChange={set("length_mm")} label={`Neck support ${row.size} length mm`} /></TableCell>
-      <TableCell><MmInput value={draft.thickness_mm} onChange={set("thickness_mm")} label={`Neck support ${row.size} thickness mm`} /></TableCell>
-      <TableCell><MmInput value={draft.min_thickness_mm} onChange={set("min_thickness_mm")} label={`Neck support ${row.size} minimum thickness mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.width_mm} onChange={set("width_mm")} label={`Neck support ${row.size} width mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.length_mm} onChange={set("length_mm")} label={`Neck support ${row.size} length mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.thickness_mm} onChange={set("thickness_mm")} label={`Neck support ${row.size} thickness mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.min_thickness_mm} onChange={set("min_thickness_mm")} label={`Neck support ${row.size} minimum thickness mm`} /></TableCell>
       <TableCell>
         <SourceBadge source={row.source} />
         {row.measuredOn && <div className="text-[10px] text-muted-foreground mt-1">{row.measuredOn}</div>}

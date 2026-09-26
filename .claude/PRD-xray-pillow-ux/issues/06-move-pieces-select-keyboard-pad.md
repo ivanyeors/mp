@@ -24,7 +24,7 @@ Tracker: #206 · Parent: #200
   - `movePiece(placements, ref, to: { cell, layer?, index? })` → `{ ok, placements } | { ok: false, error }`. Re-slots in the target (lowest free slot), compacts layers in source and target, keeps `insertOrder` when the **Section** is unchanged and drops it otherwise; refuses when the target layer is full or `wouldFit` says `over`.
   - `shiftPieceLayer(placements, ref, ±1)`: adjacent layer, a new one below the deepest if needed; compaction closes the one left behind.
   - `reorderInLayer(placements, ref, ±1)`: swap slots with the neighbour in that layer.
-- **Selection** in `XrayPillow`: `selected: PieceRef | null`; click / tap a pouch in the dive to select (ring + label chip); cleared on dive exit and on Escape (before the dive-exit Escape, same capture-phase guard as the drag). Pouches get `tabIndex` and `role="button"` in the dive so keyboard users can reach them.
+- **Selection** in `XrayPillow`: `selected: PieceRef | null`; click / tap a pouch in the dive to select (ring + label chip) — its layer-row label and its centroid chip select too, since they sit over the outline; cleared on dive exit and on Escape (before the dive-exit Escape, same capture-phase guard as the drag). Pouches get `tabIndex` and `role="button"` in the dive so keyboard users can reach them.
 - **Keyboard** (dive, with a selection): ← → `reorderInLayer`; ↑ ↓ move to front / back **sub-section**; `[` `]` layer up / down; Shift + ← → move to the neighbouring **Section**. All through the pure functions.
 - **Move pad**: six buttons with the same actions, in the cell panel (desktop) and in the cell's dock group (phone), shown only while a piece in that cell is selected. 44 px targets on phone (the layer-row scale).
 - **Refusal** uses the slice 04 toast path with `fitMessage`; a legacy-cap refusal keeps its message.
@@ -46,7 +46,7 @@ Tracker: #206 · Parent: #200
 
 ## Build notes (2026-09-25)
 
-- **Selection target.** In the dive each pouch's authored outline is rendered again, last in the SVG, as a transparent focusable `role="button"` with `aria-pressed`; it sits above the cell add areas, so a click on a pouch selects and a click beside it still adds. Selection is a `PieceRef`; a remove leaves it behind and the derived `selectedPiece` goes null.
+- **Selection target.** In the dive each pouch's authored outline is rendered again, last in the SVG, as a transparent focusable `role="button"` with `aria-pressed`; it sits above the cell add areas, so a click on a pouch selects and a click beside it still adds. The HTML overlay covers much of a stacked cell (layer rows, the centroid chip), so each row label and chip label is a `button` with the same `aria-pressed` that selects its piece. Selection is a `PieceRef`; a remove leaves it behind and the derived `selectedPiece` goes null.
 - **Refs across a move.** `movePiece` returns the piece's new ref (its own slot when the cell is unchanged, else the lowest free one; the i-th lowest slot when a position is asked for), `reorderedRef` gives the neighbour's slot, so the selection follows the piece and Undo restores the old ref.
 - **Keys.** A window `keydown` listener while a piece is selected; text controls (`isTypingTarget`) and a drag in flight keep their keys; arrows `preventDefault` so the page does not scroll. ↑ ↓ and Shift ← → target the neighbouring cell's topmost Layer with room (the add rule), never a specific depth, so they only refuse at a cap or on `over`.
 - **Slice 07** resolves drops through the same `movePiece` with `{ cell, layer }`.

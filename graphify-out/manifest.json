@@ -4542,15 +4542,15 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-bolster.tsx": {
-    "mtime": 1790334630.2248974,
-    "seen": 1790334944.639389,
-    "ast_hash": "910f3f165aed80a05225268b5cb46601",
+    "mtime": 1790388610.416444,
+    "seen": 1790389022.9770937,
+    "ast_hash": "ea3dd36e9984025c6a63d8eb86fbc9e5",
     "semantic_hash": ""
   },
   "components/spatial/xray-dive.check.ts": {
-    "mtime": 1790333997.9301357,
-    "seen": 1790334037.6706345,
-    "ast_hash": "aa11fd715b90108c0ae3b83a30f2ecc7",
+    "mtime": 1790388714.6093738,
+    "seen": 1790389022.9770977,
+    "ast_hash": "eae0ec412a4c44ee6344c817a8c4f4ed",
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.check.ts": {
@@ -4560,9 +4560,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1790334630.2246864,
-    "seen": 1790334944.6393988,
-    "ast_hash": "34f2ce1a786b878895408846003479a6",
+    "mtime": 1790388599.8640232,
+    "seen": 1790389022.9771106,
+    "ast_hash": "c2c586aa5c1ee21bcbb51c852561bdfc",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -12684,15 +12684,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/06-move-pieces-select-keyboard-pad.md": {
-    "mtime": 1790333466.7998836,
-    "seen": 1790333589.346286,
-    "ast_hash": "a8985e40f133d441b35698a9336e7c14",
+    "mtime": 1790389052.4491854,
+    "seen": 1790389092.5994122,
+    "ast_hash": "730b443deac3c554d702e4a15a1b3cc4",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/07-drag-pouch-to-cell-or-layer.md": {
-    "mtime": 1790333932.5280504,
-    "seen": 1790334037.6734653,
-    "ast_hash": "75526cbd8175881ad31740a77169bd10",
+    "mtime": 1790389052.449466,
+    "seen": 1790389092.5994143,
+    "ast_hash": "a73701fa2bbb8ec11a7cf105986916bb",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/08-fine-nudge-persisted-offsets.md": {
@@ -13260,9 +13260,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/dimensions-section.tsx": {
-    "mtime": 1790327578.55186,
-    "seen": 1790327817.4985147,
-    "ast_hash": "73382b8e2dacbeaf7bc047f3d3d0137a",
+    "mtime": 1790388850.8890753,
+    "seen": 1790389022.9762628,
+    "ast_hash": "92dcaeb1f54d5f277a389e558063668a",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/dimension-overrides.test.ts": {

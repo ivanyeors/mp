@@ -475,9 +475,11 @@ function LayerRow({
   dropCell,
   pieces,
   full,
+  selectedSlot,
   onAdd,
   onRemoveLayer,
   onRemovePiece,
+  onSelectPiece,
 }: {
   id: string;
   index: number;
@@ -486,9 +488,13 @@ function LayerRow({
   dropCell: string;
   pieces: Array<{ slot: number; label: string }>;
   full: boolean;
+  /** The selected piece's slot when it is in this cell (slice 06): its label reads pressed. */
+  selectedSlot: number | null;
   onAdd: () => void;
   onRemoveLayer: () => void;
   onRemovePiece: (slot: number) => void;
+  /** A row's label selects its piece — the rows sit ON the pouches, so the outline under them cannot be reached. */
+  onSelectPiece: (slot: number) => void;
 }) {
   const { ref, isDragging, handleRef } = useSortable<HTMLDivElement>({ id, index });
   return (
@@ -506,8 +512,19 @@ function LayerRow({
           Labels truncate instead; the phone dock has the width to wrap. */}
       <div className="flex min-w-0 flex-1 items-center gap-1 max-md:flex-wrap">
         {pieces.map((piece) => (
-          <span key={piece.slot} className="flex min-w-0 items-center gap-0.5 rounded bg-muted pl-1.5">
-            <span className="truncate max-md:max-w-28">{piece.label}</span>
+          <span
+            key={piece.slot}
+            className={`flex min-w-0 items-center gap-0.5 rounded pl-1.5 ${piece.slot === selectedSlot ? "bg-sky-400/30 ring-1 ring-sky-400" : "bg-muted"}`}
+          >
+            <button
+              type="button"
+              className="truncate max-md:max-w-28"
+              aria-pressed={piece.slot === selectedSlot}
+              aria-label={`Select ${piece.label} in layer ${depth + 1}`}
+              onClick={() => onSelectPiece(piece.slot)}
+            >
+              {piece.label}
+            </button>
             <button
               type="button"
               className={`${LAYER_ICON_BUTTON_CLASS} hover:bg-destructive/20`}
@@ -1011,12 +1028,20 @@ export function XrayPillow({
   const pieceChip = (cell: Cell, itemId: number, slots: number[]) => {
     const label = pieceLabel(itemId);
     const lastSlot = slots[slots.length - 1];
+    const on = selectedPiece?.subSection === cell.subSection && slots.includes(selectedPiece.slot);
     return (
-      <span className={`flex items-center gap-0.5 px-1 ${CHIP_CLASS}`}>
-        <span className="max-w-24 truncate">
+      <span className={`flex items-center gap-0.5 px-1 ${CHIP_CLASS} ${on ? "ring-1 ring-sky-400" : ""}`}>
+        {/* The chip sits on the pouch, so its label is the selection target there (slice 06). */}
+        <button
+          type="button"
+          className="max-w-24 truncate"
+          aria-pressed={on}
+          aria-label={`Select ${label} in ${cell.section} ${cell.subSection}`}
+          onClick={() => setSelected({ section: cell.section, subSection: cell.subSection, slot: on ? selectedPiece!.slot : slots[0] })}
+        >
           {label}
           {slots.length > 1 ? ` ×${slots.length}` : ""}
-        </span>
+        </button>
         <button
           type="button"
           className={`${CHIP_ICON_BUTTON_CLASS} hover:bg-destructive/20`}
@@ -1383,14 +1408,15 @@ export function XrayPillow({
               </>
             )}
 
-            {/* Drag feedback (slice 07): the hovered drop cell highlights with
-                the add-target fill — red when the fit says the drop could not
-                close — and a ghost of the pouch's outline follows the pointer. */}
+            {/* Drag feedback (slice 07): the hovered drop cell highlights in the
+                selection blue — red when the fit says the drop could not close —
+                and a ghost of the pouch's outline follows the pointer. (Blue, not
+                the add-target white: white is invisible on the unveiled Section.) */}
             {drag?.active && drag.over && (
               <path
                 d={stage.cellClipPaths[`${drag.over.section}/${drag.over.subSection}`]}
-                fill={drag.refused ? RING_OVER : "white"}
-                fillOpacity={drag.refused ? 0.25 : 0.14}
+                fill={drag.refused ? RING_OVER : "#38bdf8"}
+                fillOpacity={drag.refused ? 0.25 : 0.18}
                 data-xray-drop-hover={drag.refused ? "refused" : "ok"}
               />
             )}
@@ -1683,6 +1709,8 @@ export function XrayPillow({
                           dropCell={`${cell.section}/${cell.subSection}`}
                           full={layer.length >= MAX_PIECES_PER_LAYER}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
+                          selectedSlot={selectedPiece?.subSection === subSection ? selectedPiece.slot : null}
+                          onSelectPiece={(slot) => setSelected({ section: cell.section, subSection: cell.subSection, slot })}
                           onAdd={() => openPicker(subSection, depth)}
                           onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
                           onRemovePiece={(slot) =>
@@ -1849,6 +1877,8 @@ export function XrayPillow({
                           dropCell={`${cell.section}/${cell.subSection}`}
                           full={layer.length >= MAX_PIECES_PER_LAYER}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
+                          selectedSlot={selectedPiece?.subSection === subSection ? selectedPiece.slot : null}
+                          onSelectPiece={(slot) => setSelected({ section: cell.section, subSection: cell.subSection, slot })}
                           onAdd={() => openPicker(subSection, depth)}
                           onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
                           onRemovePiece={(slot) =>
