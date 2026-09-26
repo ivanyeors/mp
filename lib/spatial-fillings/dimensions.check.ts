@@ -78,9 +78,14 @@ assert.match(route, /min_thickness_mm <= d\.thickness_mm/, "the route enforces m
 assert.match(route, /min_width_mm <= d\.width_mm/, "the route enforces min width ≤ width");
 assert.match(route, /LOFT_ALLOWANCE_MAX_PCT/, "the allowance is capped");
 assert.doesNotMatch(route, /PILLOW_DIMENSIONS|pillow_dimension|section_widths_mm|gusset_|full_mm|back_mm/, "pillow geometry has no write path");
-const migration = readFileSync("supabase/migrations/20260925090000_dimension_overrides.sql", "utf8");
+const migration = readFileSync("supabase/migrations/20260926044403_dimension_overrides.sql", "utf8");
 assert.match(migration, /min_thickness_mm <= thickness_mm/, "the database enforces min thickness ≤ thickness");
-assert.match(migration, /enable row level security/, "override tables are service-role only");
+assert.match(migration, /enable row level security/, "override tables have row level security");
+// A policy with no TO clause applies to every role — anon included — so each
+// policy names the service role and the public API roles lose their grants.
+assert.equal(migration.match(/for all to service_role using \(true\) with check \(true\)/g)?.length, 2, "both policies are service role only");
+assert.equal(migration.match(/revoke all on \w+ from anon, authenticated;/g)?.length, 2, "anon and authenticated get no grants on either table");
+assert.doesNotMatch(migration, /\nfor all using \(true\)/, "no policy open to every role");
 
 // --- Glossary and ADR --------------------------------------------------------
 const glossary = readFileSync("CONTEXT.md", "utf8");

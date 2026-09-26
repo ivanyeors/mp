@@ -3,6 +3,8 @@
 -- support dimensions are data here, on the filling_color_overrides pattern:
 -- a row wins, no row = the code default in lib/spatial-fillings/dimensions.ts.
 -- The loft allowance lives in site_settings under 'xray_loft_allowance_pct'.
+-- Access is service role only (the settings route and the x-ray hosts use the
+-- admin client), matching filling_color_overrides as it stands in production.
 
 create table if not exists filling_dimension_overrides (
   key               text primary key,            -- registry key, e.g. '6d/l', '6d/folded/m'
@@ -29,7 +31,11 @@ alter table filling_dimension_overrides enable row level security;
 
 drop policy if exists "Service role full access filling_dimension_overrides" on filling_dimension_overrides;
 create policy "Service role full access filling_dimension_overrides" on filling_dimension_overrides
-for all using (true) with check (true);
+for all to service_role using (true) with check (true);
+
+-- Read and written only by server code through the service role; the public
+-- API roles get nothing, not even the default table grants.
+revoke all on filling_dimension_overrides from anon, authenticated;
 
 create table if not exists neck_support_dimension_overrides (
   size              text primary key check (size in ('XS', 'S', 'M', 'L')),
@@ -51,4 +57,8 @@ alter table neck_support_dimension_overrides enable row level security;
 
 drop policy if exists "Service role full access neck_support_dimension_overrides" on neck_support_dimension_overrides;
 create policy "Service role full access neck_support_dimension_overrides" on neck_support_dimension_overrides
-for all using (true) with check (true);
+for all to service_role using (true) with check (true);
+
+-- Read and written only by server code through the service role; the public
+-- API roles get nothing, not even the default table grants.
+revoke all on neck_support_dimension_overrides from anon, authenticated;

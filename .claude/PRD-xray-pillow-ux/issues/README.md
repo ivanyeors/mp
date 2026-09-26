@@ -83,4 +83,4 @@ graph TD
 
 ## Schema
 
-Slice 12 carries an additive migration (`20260925090000_dimension_overrides.sql`: `filling_dimension_overrides`, `neck_support_dimension_overrides`) and slice 08 an optional one (`offset_x_mm`, `offset_y_mm`, additive and nullable). Apply with `supabase db push` in the same sitting as the merge, never the MCP apply.
+Slice 12 carries an additive migration (`20260926044403_dimension_overrides.sql`: `filling_dimension_overrides`, `neck_support_dimension_overrides`) and slice 08 an optional one (`offset_x_mm`, `offset_y_mm`, additive and nullable). *Applied 26-9-2026* through the Supabase connector at Ivan's request; the file was renamed from `20260925090000` to the version the database recorded, and its two policies were limited to the service role (they named no role, which opens a table to anon) with the anon and authenticated grants revoked — `filling_color_overrides` is service role only in production too. Slice 08's migration, if it lands, follows the same rule: the file carries the version the database records.
