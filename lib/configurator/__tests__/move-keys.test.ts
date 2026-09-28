@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isTypingTarget, MOVE_ACTIONS, moveKeyFor } from "@/lib/configurator/move-keys";
+import { isTypingTarget, MOVE_ACTIONS, moveKeyFor, NUDGE_STEP_MM, nudgeKeyFor } from "@/lib/configurator/move-keys";
 
 describe("moveKeyFor", () => {
   it("maps the six keys and the two Shift chords, and nothing else", () => {
@@ -41,5 +41,21 @@ describe("moveKeyFor", () => {
     expect(isTypingTarget({ tagName: "DIV", isContentEditable: true } as unknown as EventTarget)).toBe(true);
     expect(isTypingTarget({ tagName: "path" } as unknown as EventTarget)).toBe(false);
     expect(isTypingTarget(null)).toBe(false);
+  });
+});
+
+describe("nudgeKeyFor", () => {
+  it("maps Alt + arrows to a step in mm, and nothing else", () => {
+    expect(nudgeKeyFor({ key: "ArrowLeft", altKey: true })).toEqual({ xMm: -NUDGE_STEP_MM, yMm: 0 });
+    expect(nudgeKeyFor({ key: "ArrowRight", altKey: true })).toEqual({ xMm: NUDGE_STEP_MM, yMm: 0 });
+    expect(nudgeKeyFor({ key: "ArrowUp", altKey: true })).toEqual({ xMm: 0, yMm: -NUDGE_STEP_MM });
+    expect(nudgeKeyFor({ key: "ArrowDown", altKey: true })).toEqual({ xMm: 0, yMm: NUDGE_STEP_MM });
+    expect(nudgeKeyFor({ key: "ArrowLeft" })).toBeNull();
+    expect(nudgeKeyFor({ key: "ArrowLeft", altKey: true, shiftKey: true })).toBeNull();
+    expect(nudgeKeyFor({ key: "[", altKey: true })).toBeNull();
+  });
+
+  it("never collides with a move key", () => {
+    for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]) expect(moveKeyFor({ key, altKey: true })).toBeNull();
   });
 });

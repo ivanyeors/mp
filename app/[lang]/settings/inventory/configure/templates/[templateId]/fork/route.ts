@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth/admin'
 import { lookupPlacementKinds } from '@/lib/bom-sanitizer'
 import {
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -35,6 +36,8 @@ const PlacementRowSchema = z.object({
   item_id: z.number().int().positive(),
   row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
   insert_order: z.number().int().min(1).nullable().optional(),
+  offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+  offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
 })
 
 const ForkSchema = z.object({
@@ -118,7 +121,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId
   // pre-spatial template forks into something with the same derived pack list.
   const placementTable = kind === 'bolster' ? 'bolster_template_placements' : 'filling_template_placements'
   const placementCols =
-    kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id,row_index,insert_order'
+    kind === 'bolster' ? 'slot,item_id' : 'section,sub_section,slot,item_id,row_index,insert_order,offset_x_mm,offset_y_mm'
 
   let sourceRows: Array<Record<string, unknown>>
   if (parsed.data.placements) {
@@ -140,6 +143,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ templateId
             item_id: r.item_id,
             row_index: r.row_index ?? null,
             insert_order: r.insert_order ?? null,
+            offset_x_mm: r.offset_x_mm ?? null,
+            offset_y_mm: r.offset_y_mm ?? null,
           },
     )
   } else {

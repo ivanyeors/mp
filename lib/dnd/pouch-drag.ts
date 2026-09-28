@@ -62,19 +62,21 @@ export function pouchDropDestination(
  * the whole move vocabulary (the move pad went with Ivan's 27-9-2026 review):
  *
  * - a layer row → that Layer (`pouchDropDestination`);
- * - a cell with two or more Layers → `chooseLayer`: the renderer blooms a
- *   Layer picker at the drop point (a stacked cell has no one obvious depth);
- * - a side-by-side cell (one Layer, or empty) → straight in, at the drop's
- *   position in the row (`index`) when one is given;
- * - its own side-by-side cell → a reorder within the Layer, or nothing when
- *   the drop lands back at the pouch's own position.
+ * - another cell with two or more Layers → `chooseLayer`: the renderer blooms
+ *   a Layer picker at the drop point (a stacked cell has no one obvious depth);
+ * - another side-by-side cell (one Layer, or empty) → straight in, at the
+ *   drop's position in the row (`index`) when one is given;
+ * - its own cell → `nudge`: the pouch goes where it was dropped, within the
+ *   free space its cell leaves it (slice 08, 28-9-2026) — or, in a
+ *   side-by-side row, a reorder when the drop passes a neighbour.
  *
  * `layerCount` counts the target cell's Layers as drawn (the pouch included
  * when it is its own cell); `sourceIndex` is the pouch's position in its Layer.
  */
 export type PouchDropPlan =
   | { kind: "move"; to: PouchDropDestination & { index?: number } }
-  | { kind: "chooseLayer"; cell: Cell };
+  | { kind: "chooseLayer"; cell: Cell }
+  | { kind: "nudge" };
 
 export function planPouchDrop(
   source: PieceRef & { depth: number },
@@ -88,12 +90,14 @@ export function planPouchDrop(
     return to ? { kind: "move", to } : null;
   }
   const cell: Cell = { section: target.section, subSection: target.subSection };
-  if (ctx.layerCount >= 2) return { kind: "chooseLayer", cell };
   const same = target.section === source.section && target.subSection === source.subSection;
   if (same) {
-    if (ctx.index === undefined || ctx.index === ctx.sourceIndex) return null;
-    return { kind: "move", to: { cell, layer: source.depth, index: ctx.index } };
+    if (ctx.layerCount <= 1 && ctx.index !== undefined && ctx.index !== ctx.sourceIndex) {
+      return { kind: "move", to: { cell, layer: source.depth, index: ctx.index } };
+    }
+    return { kind: "nudge" };
   }
+  if (ctx.layerCount >= 2) return { kind: "chooseLayer", cell };
   return { kind: "move", to: ctx.index === undefined ? { cell, layer: null } : { cell, layer: null, index: ctx.index } };
 }
 

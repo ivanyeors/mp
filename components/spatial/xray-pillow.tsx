@@ -31,6 +31,7 @@ import {
   mirrorTarget,
   moveLayer,
   movePiece,
+  nudgePiece,
   removeLayer,
   removePiece,
   reorderedRef,
@@ -40,7 +41,7 @@ import {
   type Cell,
   type PieceRef,
 } from "@/lib/configurator/staff-assist";
-import { isTypingTarget, moveKeyFor, type MoveKind } from "@/lib/configurator/move-keys";
+import { isTypingTarget, moveKeyFor, nudgeKeyFor, type MoveKind } from "@/lib/configurator/move-keys";
 import {
   dropIndex,
   dropTargetFromElement,
@@ -815,12 +816,21 @@ export function XrayPillow({
    * piece, and Undo is the Mirror pattern — an inverse applied only while the
    * move is still the last thing that happened.
    */
-  const commitMove = (before: PillowPlacement[], next: PillowPlacement[], ref: PieceRef & { itemId: number }, nextRef: PieceRef) => {
+  const commitMove = (
+    before: PillowPlacement[],
+    next: PillowPlacement[],
+    ref: PieceRef & { itemId: number },
+    nextRef: PieceRef,
+    nudged = false,
+  ) => {
     onPlacementsChange?.(next);
     setSelected(nextRef);
     // A dive follows the pouch across Sections, so it stays in view, selected.
     if (dived && nextRef.section !== dived) setDived(nextRef.section);
-    toast.success(`Moved ${pieceLabel(ref.itemId)} to ${nextRef.section} ${nextRef.subSection}`, {
+    const label = pieceLabel(ref.itemId);
+    // One toast id: a run of nudges or moves updates one toast (its Undo the latest), never a stack.
+    toast.success(nudged ? `Moved ${label} within ${nextRef.section} ${nextRef.subSection}` : `Moved ${label} to ${nextRef.section} ${nextRef.subSection}`, {
+      id: "xray-move",
       action: {
         label: "Undo",
         onClick: () => {
@@ -833,6 +843,23 @@ export function XrayPillow({
         },
       },
     });
+  };
+
+  /**
+   * Put a pouch at a top-left corner in its cell (slice 08): clamped to the
+   * room its neighbours leave it (the layout's range), stored as mm from home,
+   * so what is saved is what is drawn. Nothing when it has no room to move.
+   */
+  const nudgeTo = (ref: PieceRef & { itemId: number }, x: number, y: number) => {
+    const p = rectByKey.get(`${ref.section}/${ref.subSection}/${ref.slot}`);
+    if (!p || !onPlacementsChange) return;
+    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+    const before = placements;
+    const next = nudgePiece(before, ref, {
+      xMm: (clamp(x, p.range.minX, p.range.maxX) - p.home.x) / stage.k,
+      yMm: (clamp(y, p.range.minY, p.range.maxY) - p.home.y) / stage.k,
+    });
+    if (next !== before) commitMove(before, next, ref, ref, true);
   };
 
   /**
@@ -893,9 +920,16 @@ export function XrayPillow({
     if (next === before) return;
     commitMove(before, next, ref, nextRef);
   };
+  const nudgeBy = (step: { xMm: number; yMm: number }) => {
+    const ref = selectedPiece;
+    const p = ref && rectByKey.get(`${ref.section}/${ref.subSection}/${ref.slot}`);
+    if (ref && p) nudgeTo(ref, p.x + step.xMm * stage.k, p.y + step.yMm * stage.k);
+  };
+  const nudgeByRef = useRef(nudgeBy);
   const performMoveRef = useRef(performMove);
   useEffect(() => {
     performMoveRef.current = performMove;
+    nudgeByRef.current = nudgeBy;
   });
 
   // --- Pouch drag (slices 06/07) -----------------------------------------------
@@ -991,6 +1025,12 @@ export function XrayPillow({
     const sourceIndex = (layers[0] ?? []).findIndex((q) => sameRef(q, d.source));
     const plan = planPouchDrop(d.source, over, { layerCount: layers.length, index, sourceIndex: sourceIndex < 0 ? undefined : sourceIndex }, canceled);
     if (!plan) return;
+    if (plan.kind === "nudge") {
+      // Its own cell: the pouch goes where its ghost was let go, within the free space.
+      const p = rectByKey.get(d.key);
+      if (p) nudgeTo(d.source, d.x - d.grabX - p.w / 2, d.y - d.grabY - p.h / 2);
+      return;
+    }
     if (plan.kind === "chooseLayer") {
       const box = rootRef.current?.getBoundingClientRect();
       draggingRef.current = true; // the picker owns Escape until it closes
@@ -1106,6 +1146,12 @@ export function XrayPillow({
     if (!dived || !editable || !selectedPiece) return;
     const onMoveKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target) || draggingRef.current) return;
+      const step = nudgeKeyFor(e);
+      if (step) {
+        e.preventDefault();
+        nudgeByRef.current(step);
+        return;
+      }
       const kind = moveKeyFor(e);
       if (!kind) return;
       e.preventDefault();

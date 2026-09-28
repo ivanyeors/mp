@@ -51,7 +51,7 @@ export async function loadResumeFinish(
 
   const { data: placements } = await admin
     .from("result_filling_placements")
-    .select("section, sub_section, slot, item_id, row_index")
+    .select("section, sub_section, slot, item_id, row_index, offset_x_mm, offset_y_mm")
     .eq("result_id", id)
     .order("slot");
 

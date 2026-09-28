@@ -73,19 +73,31 @@ const cell = (slot: number, itemId: number, row?: number): PillowPlacement => ({
   ...(row === undefined ? {} : { row }),
 });
 
-describe("layoutPlacements fills the compartment (the fit stays true-scale)", () => {
-  it("draws one pouch wall to wall in its cell, a hair inside the walls, whatever its footprint", () => {
+describe("layoutPlacements draws true scale (28-9-2026: a small filling reads small)", () => {
+  it("draws one pouch at its footprint × k, centred in its cell", () => {
     const stage = stageGeometry("M");
     const dims = new Map([[1, resolved({ widthMm: 150, lengthMm: 90, orientation: "across" })]]);
     const [p] = layoutPlacements([cell(1, 1)], { stage, dims });
     const frame = cellFrame("center", "middle", stage);
-    expect(p.x).toBeCloseTo(frame.x, 1);
-    expect(p.y).toBeCloseTo(frame.y, 1);
-    expect(p.w).toBeCloseTo(frame.w, 1);
-    expect(p.h).toBeCloseTo(frame.h, 1);
+    expect(p.w).toBeCloseTo(150 * stage.k, 0);
+    expect(p.h).toBeCloseTo(90 * stage.k, 0);
+    expect(p.x + p.w / 2).toBeCloseTo(frame.x + frame.w / 2, 0);
+    expect(p.y + p.h / 2).toBeCloseTo(frame.y + frame.h / 2, 0);
   });
 
-  it("splits a shared layer by the pouches' footprint widths, a seam apart, and fills the cell", () => {
+  it("a small pouch draws smaller than a large one by their registry sizes, and neither fills the cell", () => {
+    const stage = stageGeometry("M");
+    const dims = new Map([
+      [1, resolved({ widthMm: 100, lengthMm: 90 })],
+      [2, resolved({ widthMm: 50, lengthMm: 45 })],
+    ]);
+    const [large, small] = [1, 2].map((id) => layoutPlacements([cell(1, id)], { stage, dims })[0]);
+    expect(small.w / large.w).toBeCloseTo(0.5, 1);
+    expect(small.h / large.h).toBeCloseTo(0.5, 1);
+    expect(large.w).toBeLessThan(cellFrame("center", "middle", stage).w);
+  });
+
+  it("sits a shared layer side by side, a seam apart, the row centred", () => {
     const stage = stageGeometry("M");
     const dims = new Map([
       [1, resolved({ widthMm: 100, lengthMm: 90 })],
@@ -95,7 +107,7 @@ describe("layoutPlacements fills the compartment (the fit stays true-scale)", ()
     const frame = cellFrame("center", "middle", stage);
     expect(a.w / b.w).toBeCloseTo(100 / 80, 1);
     expect(b.x - (a.x + a.w)).toBeLessThanOrEqual(1.5);
-    expect(a.w + b.w + (b.x - (a.x + a.w))).toBeCloseTo(frame.w, 0);
+    expect((a.x + b.x + b.w) / 2).toBeCloseTo(frame.x + frame.w / 2, 0);
   });
 
   it("weighs a pouch that lies along the Section by its length across", () => {
@@ -124,21 +136,46 @@ describe("layoutPlacements fills the compartment (the fit stays true-scale)", ()
     expect(big.w / small.w).toBeCloseTo(2, 1);
   });
 
-  it("the cell sets the drawn size, so the same pouch draws differently per Size", () => {
+  it("the Size sets the scale, so the same pouch draws larger on XS than on XL", () => {
     const dims = new Map([[1, resolved({ widthMm: 150, lengthMm: 90 })]]);
     const [xs] = layoutPlacements([cell(1, 1)], { stage: stageGeometry("XS"), dims });
     const [xl] = layoutPlacements([cell(1, 1)], { stage: stageGeometry("XL"), dims });
-    expect(xs.w).toBeCloseTo(cellFrame("center", "middle", stageGeometry("XS")).w, 1);
-    expect(xl.w).toBeCloseTo(cellFrame("center", "middle", stageGeometry("XL")).w, 1);
-    expect(xs.h).toBeGreaterThan(xl.h); // XS is the longer body per stage height
+    expect(xs.w).toBeCloseTo(150 * stageGeometry("XS").k, 0);
+    expect(xl.w).toBeCloseTo(150 * stageGeometry("XL").k, 0);
+    expect(xs.w).toBeGreaterThan(xl.w);
   });
 
-  it("fills the cell height whatever the pouch length", () => {
+  it("cuts a pouch longer than its cell to the cell", () => {
     const stage = stageGeometry("M");
     const dims = new Map([[1, resolved({ widthMm: 100, lengthMm: 400 })]]);
     const [p] = layoutPlacements([cell(1, 1)], { stage, dims });
     const frame = cellFrame("center", "middle", stage);
     expect(p.h).toBeCloseTo(frame.h, 0);
+  });
+
+  it("moves a pouch by its fine offset from home, and clamps it to the free space in its cell", () => {
+    const stage = stageGeometry("M");
+    const dims = new Map([[1, resolved({ widthMm: 60, lengthMm: 50 })]]);
+    const [home] = layoutPlacements([cell(1, 1)], { stage, dims });
+    const [moved] = layoutPlacements([{ ...cell(1, 1), offsetXMm: -10, offsetYMm: 5 }], { stage, dims });
+    expect(moved.x - home.x).toBeCloseTo(-10 * stage.k, 0);
+    expect(moved.y - home.y).toBeCloseTo(5 * stage.k, 0);
+    expect({ x: home.home.x, y: home.home.y }).toEqual({ x: home.x, y: home.y });
+    const [far] = layoutPlacements([{ ...cell(1, 1), offsetXMm: -200, offsetYMm: 200 }], { stage, dims });
+    const frame = cellFrame("center", "middle", stage);
+    expect(far.x).toBeCloseTo(frame.x, 0);
+    expect(far.y + far.h).toBeCloseTo(frame.y + frame.h, 0);
+    expect(far.x).toBeCloseTo(far.range.minX, 1);
+    expect(far.y).toBeCloseTo(far.range.maxY, 1);
+  });
+
+  it("a pouch nudged into its neighbour pushes it along — order and seams hold", () => {
+    const stage = stageGeometry("M");
+    const dims = new Map([[1, resolved({ widthMm: 50, lengthMm: 50 })]]);
+    const [a, b] = layoutPlacements([{ ...cell(1, 1), offsetXMm: 150 }, cell(2, 1)], { stage, dims }).sort((p, q) => p.slot - q.slot);
+    const frame = cellFrame("center", "middle", stage);
+    expect(b.x).toBeGreaterThanOrEqual(a.x + a.w);
+    expect(b.x + b.w).toBeLessThanOrEqual(frame.x + frame.w + 0.1);
   });
 
   it("offsets deeper layers by the thickness above them, and keeps the deepest slab in the cell", () => {

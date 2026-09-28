@@ -83,18 +83,18 @@ describe("planPouchDrop", () => {
     });
   });
 
-  it("asks for a Layer when the cell is stacked, its own cell included", () => {
+  it("asks for a Layer when another cell is stacked", () => {
     expect(planPouchDrop(source, center, { layerCount: 2, index: 0 })).toEqual({ kind: "chooseLayer", cell: { section: "center", subSection: "middle" } });
-    expect(planPouchDrop(source, own, { layerCount: 3 })).toEqual({ kind: "chooseLayer", cell: { section: "left", subSection: "front" } });
   });
 
-  it("reorders within its own side-by-side Layer, and is null back at its own position", () => {
+  it("in its own cell: reorders past a neighbour in a side-by-side row, else nudges to the drop point", () => {
     expect(planPouchDrop(source, own, { layerCount: 1, index: 2, sourceIndex: 0 })).toEqual({
       kind: "move",
       to: { cell: { section: "left", subSection: "front" }, layer: 0, index: 2 },
     });
-    expect(planPouchDrop(source, own, { layerCount: 1, index: 0, sourceIndex: 0 })).toBeNull();
-    expect(planPouchDrop(source, own, { layerCount: 1 })).toBeNull();
+    expect(planPouchDrop(source, own, { layerCount: 1, index: 0, sourceIndex: 0 })).toEqual({ kind: "nudge" });
+    expect(planPouchDrop(source, own, { layerCount: 1 })).toEqual({ kind: "nudge" });
+    expect(planPouchDrop(source, own, { layerCount: 3, index: 2, sourceIndex: 0 })).toEqual({ kind: "nudge" });
   });
 
   it("keeps the row target and the cancel of pouchDropDestination", () => {

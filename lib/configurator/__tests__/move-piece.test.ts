@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   addPiece,
   cellLayers,
+  mirrorSection,
   movePiece,
+  nudgePiece,
   reorderedRef,
   reorderInLayer,
   shiftPieceLayer,
@@ -172,5 +174,33 @@ describe("reorderInLayer", () => {
     expect(reorderedRef(base, ref("left", "front", 2), 1)).toEqual(ref("left", "front", 2));
     // Pieces on another Layer of the same cell are not neighbours.
     expect(reorderInLayer(base, ref("left", "middle", 1), 1)).toBe(base);
+  });
+});
+
+describe("fine offsets (slice 08)", () => {
+  const base = [at("left", "middle", 1, 7, { offsetXMm: -30, offsetYMm: 10 }), at("left", "middle", 2, 8)];
+
+  it("nudgePiece sets, rounds and bounds the offset, and drops it at home", () => {
+    const moved = nudgePiece(base, ref("left", "middle", 2), { xMm: 12.4, yMm: -900 });
+    expect(moved.find((p) => p.slot === 2)).toEqual(at("left", "middle", 2, 8, { offsetXMm: 12, offsetYMm: -200 }));
+    const home = nudgePiece(base, ref("left", "middle", 1), { xMm: 0, yMm: 0.2 });
+    expect(home.find((p) => p.slot === 1)).toEqual(at("left", "middle", 1, 7));
+    expect(nudgePiece(base, ref("left", "middle", 1), { xMm: -30, yMm: 10 })).toBe(base);
+    expect(placementsExactMatch(moved, base)).toBe(true);
+  });
+
+  it("a move keeps the offset inside its cell and resets it in a new one", () => {
+    const layer = movePiece(base, ref("left", "middle", 1), { cell: { section: "left", subSection: "middle" }, layer: 1 });
+    expect(layer.ok && layer.placements.find((p) => p.itemId === 7)?.offsetXMm).toBe(-30);
+    const away = movePiece(base, ref("left", "middle", 1), { cell: { section: "center", subSection: "front" } });
+    const p = away.ok ? away.placements.find((q) => q.itemId === 7) : undefined;
+    expect(p && "offsetXMm" in p).toBe(false);
+    expect(p && "offsetYMm" in p).toBe(false);
+  });
+
+  it("a mirror flips the offset across the centre line", () => {
+    const mirrored = mirrorSection(base, "left").find((p) => p.section === "right" && p.itemId === 7);
+    expect(mirrored?.offsetXMm).toBe(30);
+    expect(mirrored?.offsetYMm).toBe(10);
   });
 });
