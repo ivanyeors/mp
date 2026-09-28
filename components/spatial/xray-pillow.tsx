@@ -81,7 +81,7 @@ import {
 } from "@/lib/spatial-fillings/fit";
 import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
-import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 
 // Shell regions pouches deform against: the silhouette (wide seam), each
@@ -855,9 +855,11 @@ export function XrayPillow({
     if (!p || !onPlacementsChange) return;
     const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
     const before = placements;
+    // Stored as M millimetres (the reference Size), as the layout reads them.
+    const f = sizeFactors(PILLOW_DIMENSIONS[pillowSize]);
     const next = nudgePiece(before, ref, {
-      xMm: (clamp(x, p.range.minX, p.range.maxX) - p.home.x) / stage.k,
-      yMm: (clamp(y, p.range.minY, p.range.maxY) - p.home.y) / stage.k,
+      xMm: (clamp(x, p.range.minX, p.range.maxX) - p.home.x) / (stage.k * f.across),
+      yMm: (clamp(y, p.range.minY, p.range.maxY) - p.home.y) / (stage.k * f.along),
     });
     if (next !== before) commitMove(before, next, ref, ref, true);
   };

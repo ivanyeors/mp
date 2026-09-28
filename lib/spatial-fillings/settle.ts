@@ -29,7 +29,7 @@ import {
   type SubSection,
 } from "./core";
 import {
-  GENERIC_POUCH,
+  dimsAtSize,
   pillowDimensions,
   SEAM_MM,
   type PillowDimensions,
@@ -191,7 +191,7 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
   const pillow = ctx.pillow ?? pillowDimensions(ctx.size).dims;
   const cellLen = pillow.lengthMm / 3;
   const active = !pillow.subSectionDividers;
-  const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
+  const dimsOf = dimsAtSize(ctx.dims, pillow);
   const pieces: PieceSettle[] = [];
   for (const section of SECTIONS) {
     const layersByCol = SUB_SECTIONS.map((subSection) =>

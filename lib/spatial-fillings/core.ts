@@ -33,7 +33,8 @@ export type PillowPlacement = {
   /**
    * Fine position (X-ray pillow UX slice 08): how far, in mm, the pouch sits
    * from its home in the cell — +x toward the right of the pillow, +y toward
-   * the back. undefined = at home (centred in the free space). Only a pouch
+   * the back — in Size M millimetres, like every pouch dimension (the other
+   * Sizes scale it, `sizeFactors`). undefined = at home (centred in the free space). Only a pouch
    * smaller than its compartment has anywhere to go; the layout clamps it to
    * the cell. Visual only: out of the pack list and the fingerprint, like `row`.
    */

@@ -136,13 +136,20 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     expect(big.w / small.w).toBeCloseTo(2, 1);
   });
 
-  it("the Size sets the scale, so the same pouch draws larger on XS than on XL", () => {
+  it("a pouch keeps its proportion to the pillow at every Size — the stage is the pillow, the pouch scales with it", () => {
     const dims = new Map([[1, resolved({ widthMm: 150, lengthMm: 90 })]]);
-    const [xs] = layoutPlacements([cell(1, 1)], { stage: stageGeometry("XS"), dims });
-    const [xl] = layoutPlacements([cell(1, 1)], { stage: stageGeometry("XL"), dims });
-    expect(xs.w).toBeCloseTo(150 * stageGeometry("XS").k, 0);
-    expect(xl.w).toBeCloseTo(150 * stageGeometry("XL").k, 0);
-    expect(xs.w).toBeGreaterThan(xl.w);
+    const at = (size: "XS" | "M" | "XL") => {
+      const stage = stageGeometry(size);
+      const [p] = layoutPlacements([cell(1, 1)], { stage, dims });
+      const body = stage.rowY[3] - stage.rowY[0];
+      return { w: p.w / XRAY_VIEW.width, h: p.h / body };
+    };
+    const m = at("M");
+    expect(m.w).toBeCloseTo(150 / PILLOW_DIMENSIONS.M.widthMm, 2);
+    for (const size of ["XS", "XL"] as const) {
+      expect(at(size).w).toBeCloseTo(m.w, 2);
+      expect(at(size).h).toBeCloseTo(m.h, 2);
+    }
   });
 
   it("cuts a pouch longer than its cell to the cell", () => {
@@ -167,6 +174,18 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     expect(far.y + far.h).toBeCloseTo(frame.y + frame.h, 0);
     expect(far.x).toBeCloseTo(far.range.minX, 1);
     expect(far.y).toBeCloseTo(far.range.maxY, 1);
+  });
+
+  it("an offset is M millimetres: it moves a pouch the same fraction of the pillow at every Size", () => {
+    const dims = new Map([[1, resolved({ widthMm: 60, lengthMm: 50 })]]);
+    const shift = (size: "XS" | "M" | "XL") => {
+      const stage = stageGeometry(size);
+      const [home] = layoutPlacements([cell(1, 1)], { stage, dims });
+      const [moved] = layoutPlacements([{ ...cell(1, 1), offsetXMm: 20 }], { stage, dims });
+      return (moved.x - home.x) / XRAY_VIEW.width;
+    };
+    expect(shift("XS")).toBeCloseTo(shift("M"), 3);
+    expect(shift("XL")).toBeCloseTo(shift("M"), 3);
   });
 
   it("a pouch nudged into its neighbour pushes it along — order and seams hold", () => {

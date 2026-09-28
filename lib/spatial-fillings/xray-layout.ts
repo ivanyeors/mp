@@ -27,7 +27,16 @@ import {
   type Section,
   type SubSection,
 } from "./core";
-import { BOLSTER_DIMENSIONS, GENERIC_POUCH, type BolsterDimensions, type PouchDimensions, type ResolvedDims } from "./dimensions";
+import {
+  BOLSTER_DIMENSIONS,
+  dimsAtSize,
+  GENERIC_POUCH,
+  PILLOW_DIMENSIONS,
+  sizeFactors,
+  type BolsterDimensions,
+  type PouchDimensions,
+  type ResolvedDims,
+} from "./dimensions";
 import type { BolsterFit, CellFit, PillowFit } from "./fit";
 import type { PieceSettle } from "./settle";
 import { stageGeometry, XRAY_VIEW, type StageGeometry } from "./xray-stage";
@@ -226,7 +235,9 @@ export type LayoutContext = {
  */
 export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutContext = {}): PieceLayout[] {
   const stage = ctx.stage ?? M_STAGE();
-  const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
+  // The pouch as it sits in this Size (M is the reference): the same door the fit and settle use.
+  const dimsOf = dimsAtSize(ctx.dims, PILLOW_DIMENSIONS[stage.size]);
+  const sizeF = sizeFactors(PILLOW_DIMENSIONS[stage.size]);
   const settleOf = new Map<string, PieceSettle>();
   if (ctx.fit?.settle.active) for (const s of ctx.fit.settle.pieces) settleOf.set(s.key, s);
   const out: PieceLayout[] = [];
@@ -262,7 +273,8 @@ export function layoutPlacements(placements: PillowPlacement[], ctx: LayoutConte
           layers[d].map((p) => dimsOf(p.itemId)),
           stage.k,
           cellFit?.layers[d]?.pieces.map((p) => p.widthRatio),
-          layers[d].map((p) => ({ x: p.offsetXMm ?? 0, y: p.offsetYMm ?? 0 })),
+          // Offsets are M millimetres too, so a pouch pushed to the edge stays at the edge at every Size.
+          layers[d].map((p) => ({ x: (p.offsetXMm ?? 0) * sizeF.across, y: (p.offsetYMm ?? 0) * sizeF.along })),
         );
         layers[d].forEach((piece, idx) => {
           const key = `${section}/${subSection}/${piece.slot}`;

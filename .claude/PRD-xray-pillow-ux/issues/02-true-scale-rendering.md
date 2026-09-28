@@ -41,3 +41,12 @@ One pouch in a cell is drawn as one pouch, with room around it. Five 6D L across
 - [x] `sizeScale` / `SIZE_SCALES` / `itemScaleMap` no longer exist; `grep` finds no caller.
 - [x] Shopper preview gains no edit affordance (read-only detection unchanged).
 - [x] `./scripts/graphify update .` run and committed.
+
+## Revision (2026-09-28): fillings scale with the pillow Size
+
+Ivan: compartments and Neck support must be relative to the pillow Size — XS and XL scale their fillings too, shown on the same pillow view. Built as one door, `dimsAtSize(dims, pillow)` in `dimensions.ts`, which `fitPillow`, `settlePillow` and `layoutPlacements` all read pouch dimensions through, so the drawing and the budgets cannot scale apart:
+
+- **Reference Size M.** Every pouch and Neck support entry — code default or Settings row — is the piece in a Size M pillow (Product Visualize now says so). `sizeFactors(pillow)` gives each Size's ratios to M from the drawings: across = pillow width, along = body length, thickness = side gusset. `pouchAtSize` applies them per axis by orientation (min width, min thickness and the flat limits follow). M is identity, so no M number changed.
+- **Why this is the cheap, exact form for the x-ray.** The stage is the pillow at every Size (`k = view width / pillow width`), so a scaled pouch draws at `w_M × (W/W_M) × (view/W) = w_M × view/W_M` — a Size-independent fraction of the pillow. XS and XL read alike, as the pillows do, and only the Section dividers (from the drawings) move. The factors are three divisions per Size; `dimsAtSize` memoises per item per fit.
+- **Fit.** Thickness scales with the gusset exactly as the loft budget does, so a stack that fits at M fits at every Size by loft; width can still differ where a Size's Section proportions do (XS's centre is 195 of 604 mm, M's 260 of 706). `fitAtSizes`' dots therefore mostly agree across a template's Size membership.
+- **Offsets** (slice 08) are M millimetres too, so a pouch pushed to the outer edge stays there at every Size.

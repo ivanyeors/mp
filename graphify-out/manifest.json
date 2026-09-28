@@ -4560,9 +4560,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-pillow.tsx": {
-    "mtime": 1790597789.8271189,
-    "seen": 1790598224.962486,
-    "ast_hash": "4edb1618fa5a2b78b4acd089a820c9dc",
+    "mtime": 1790598596.6357439,
+    "seen": 1790598812.5406113,
+    "ast_hash": "02cab633c6c5a89351ebbba0b9b071b7",
     "semantic_hash": ""
   },
   "components/team-switcher.tsx": {
@@ -6054,9 +6054,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/core.ts": {
-    "mtime": 1790597560.1323962,
-    "seen": 1790598224.9634213,
-    "ast_hash": "4696b724a9e8c6b8e8ef892633e7a774",
+    "mtime": 1790598596.649434,
+    "seen": 1790598812.541552,
+    "ast_hash": "21bcebddf7f16d1acd1ec91b9f58ddee",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/filling-groups.check.ts": {
@@ -6096,9 +6096,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/xray-layout.ts": {
-    "mtime": 1790597647.1906972,
-    "seen": 1790598224.9634404,
-    "ast_hash": "59ac92d0075e610fa5ebf0c9e063b068",
+    "mtime": 1790598596.6383884,
+    "seen": 1790598812.541582,
+    "ast_hash": "eeeba20f6f4da5c9a905ea85ac2bac8a",
     "semantic_hash": ""
   },
   "lib/whatsapp/__tests__/partner-notify.test.ts": {
@@ -8166,9 +8166,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1790509089.513911,
-    "seen": 1790510199.8681753,
-    "ast_hash": "ce6bc1fabeae2f4f5c22ab9f7b126cb9",
+    "mtime": 1790598701.0379865,
+    "seen": 1790598812.5430932,
+    "ast_hash": "8fe480a1bd223fa3221273b06a442fcf",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -12660,9 +12660,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/02-true-scale-rendering.md": {
-    "mtime": 1790598084.024003,
-    "seen": 1790598224.964094,
-    "ast_hash": "2e0800724d5709ecb75f8469d15e4c4f",
+    "mtime": 1790598701.0384383,
+    "seen": 1790598812.5430312,
+    "ast_hash": "6c4cf7c631af6fd71b3f15f1005415a9",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/03-fit-model.md": {
@@ -13218,9 +13218,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/dimensions.test.ts": {
-    "mtime": 1790509089.857911,
-    "seen": 1790510199.867365,
-    "ast_hash": "a4c12c973c93e36e0fdcbfa22e82183d",
+    "mtime": 1790598556.811316,
+    "seen": 1790598812.5415335,
+    "ast_hash": "01cdbda840e664f61ab6cea851a3edd2",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/dimensions.check.ts": {
@@ -13230,9 +13230,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/dimensions.ts": {
-    "mtime": 1790509089.857911,
-    "seen": 1790510199.8673906,
-    "ast_hash": "cf5692d04d46ec3cf2f5b6cf512f4f15",
+    "mtime": 1790598443.755771,
+    "seen": 1790598812.5415578,
+    "ast_hash": "0c9a9ec70de02f2c880dedf2ef09b3f3",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/silhouette-master.ts": {
@@ -13260,9 +13260,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/dimensions-section.tsx": {
-    "mtime": 1790509089.513911,
-    "seen": 1790510199.8659978,
-    "ast_hash": "92dcaeb1f54d5f277a389e558063668a",
+    "mtime": 1790598566.7042313,
+    "seen": 1790598812.540077,
+    "ast_hash": "e2c7b2b0addd75815c1888359711696f",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/dimension-overrides.test.ts": {
@@ -13284,9 +13284,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/xray-stage.test.ts": {
-    "mtime": 1790597703.8636005,
-    "seen": 1790598224.9634135,
-    "ast_hash": "ccabb7d6c420ad1b8d6faf4421d73ef7",
+    "mtime": 1790598638.0414069,
+    "seen": 1790598812.5415444,
+    "ast_hash": "28b307c44abc6ad8323beb6420ebb562",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/dimension-overrides.server.ts": {
@@ -13302,15 +13302,15 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/fit.test.ts": {
-    "mtime": 1790509089.857911,
-    "seen": 1790510199.8673658,
-    "ast_hash": "8fc5347223bea7516e608386b8f4887e",
+    "mtime": 1790598533.5608473,
+    "seen": 1790598812.5415354,
+    "ast_hash": "3f0f8533b17f4f19a4a67278970b1c07",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/fit.ts": {
-    "mtime": 1790509089.857911,
-    "seen": 1790510199.8673956,
-    "ast_hash": "e6f18df88e54b9f8273134a8105b359b",
+    "mtime": 1790598450.2402,
+    "seen": 1790598812.541562,
+    "ast_hash": "6396269486e21018750323c52e493bd5",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/settle.test.ts": {
@@ -13320,9 +13320,9 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/settle.ts": {
-    "mtime": 1790509089.857911,
-    "seen": 1790510199.8674011,
-    "ast_hash": "5e129641060cd12c657fbb31cb78b420",
+    "mtime": 1790598450.2518504,
+    "seen": 1790598812.5415666,
+    "ast_hash": "87dbfca7081f8f84802e53ceff968c87",
     "semantic_hash": ""
   },
   "components/spatial/use-pillow-fit.ts": {

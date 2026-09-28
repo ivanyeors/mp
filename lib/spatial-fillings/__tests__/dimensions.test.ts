@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   CODE_REGISTRY,
+  dimsAtSize,
   GENERIC_POUCH,
   LOFT_ALLOWANCE,
   NECK_SUPPORT_FALLBACK,
@@ -12,8 +13,10 @@ import {
   formatDims,
   maxLoftMm,
   pillowDimensions,
+  pouchAtSize,
   pouchKey,
   resolveDims,
+  sizeFactors,
   type DimensionRegistry,
 } from "../dimensions";
 import {
@@ -150,5 +153,45 @@ describe("resolveDims", () => {
   it("ships with no placeholder posing as a measurement", () => {
     expect(PLACEHOLDER_DIMENSIONS).toBe(false);
     expect(formatDims(GENERIC_POUCH)).toBe("180 × 140 × 45 mm");
+  });
+});
+
+describe("fillings scale with the pillow Size (M is the reference)", () => {
+  const d = { ...GENERIC_POUCH, widthMm: 200, minWidthMm: 160, lengthMm: 100, thicknessMm: 50, minThicknessMm: 30, flatLengthMm: 180 };
+
+  it("M is identity: the entered millimetres are the M pouch", () => {
+    expect(sizeFactors(PILLOW_DIMENSIONS.M)).toEqual({ across: 1, along: 1, thickness: 1 });
+    expect(pouchAtSize(d, sizeFactors(PILLOW_DIMENSIONS.M))).toBe(d);
+  });
+
+  it("scales across by the pillow width, along by the body length, height by the side gusset", () => {
+    for (const size of PILLOW_SIZES) {
+      const p = PILLOW_DIMENSIONS[size];
+      const s = pouchAtSize(d, sizeFactors(p));
+      expect(s.widthMm).toBeCloseTo((200 * p.widthMm) / PILLOW_DIMENSIONS.M.widthMm, 0);
+      expect(s.lengthMm).toBeCloseTo((100 * p.lengthMm) / PILLOW_DIMENSIONS.M.lengthMm, 0);
+      expect(s.thicknessMm).toBeCloseTo((50 * p.gusset.fullMm) / PILLOW_DIMENSIONS.M.gusset.fullMm, 0);
+      expect(s.minThicknessMm).toBeLessThanOrEqual(s.thicknessMm);
+      expect(s.minWidthMm).toBeLessThanOrEqual(s.widthMm);
+    }
+    const xs = pouchAtSize(d, sizeFactors(PILLOW_DIMENSIONS.XS));
+    const xl = pouchAtSize(d, sizeFactors(PILLOW_DIMENSIONS.XL));
+    expect(xs.widthMm).toBeLessThan(200);
+    expect(xl.widthMm).toBeGreaterThan(200);
+  });
+
+  it("a pouch lying along the Section scales its width by the length ratio", () => {
+    const along = pouchAtSize({ ...d, orientation: "along" }, { across: 2, along: 3, thickness: 1 });
+    expect(along.widthMm).toBe(600);
+    expect(along.lengthMm).toBe(200);
+    expect(along.flatLengthMm).toBe(360);
+  });
+
+  it("dimsAtSize reads every item through the Size, the generic pouch for an absent id, once per item", () => {
+    const map = new Map([[1, { key: "k", kind: "pouch" as const, source: "measured" as const, measuredOn: "2026-10-01", dims: d }]]);
+    const at = dimsAtSize(map, PILLOW_DIMENSIONS.XL);
+    expect(at(1)).toBe(at(1));
+    expect(at(1).widthMm).toBeGreaterThan(200);
+    expect(at(99).widthMm).toBeGreaterThan(GENERIC_POUCH.widthMm);
   });
 });

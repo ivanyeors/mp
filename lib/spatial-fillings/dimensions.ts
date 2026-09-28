@@ -145,6 +145,81 @@ export const PILLOW_DIMENSIONS: Readonly<Record<PillowSize, PillowDimensions>> =
   ]),
 ) as Record<PillowSize, PillowDimensions>;
 
+/**
+ * The reference pillow Size (28-9-2026): pouch and Neck support dimensions —
+ * code defaults and Settings rows alike — describe the piece as it sits in a
+ * Size M pillow. One recipe serves several Sizes (CONTEXT.md, Size
+ * membership), and the fillings are cut to the pillow, so every other Size
+ * scales them by its own proportions to M (`sizeFactors`).
+ */
+export const REFERENCE_SIZE: PillowSize = "M";
+
+/** How a Size's pillow compares with the reference, per axis. */
+export type SizeFactors = {
+  /** Left ↔ right: the pillow width ratio. */
+  across: number;
+  /** Front ↔ back: the body length ratio. */
+  along: number;
+  /** Height: the side gusset ratio — the loft budget scales the same, so a fit reads alike at every Size. */
+  thickness: number;
+};
+
+/**
+ * One Size's factors against the reference pillow, from the drawings. On the
+ * x-ray the stage is the pillow at every Size (k = view width / pillow
+ * width), so a pouch scaled by these draws at the same fraction of its
+ * pillow whatever the Size — the XS and XL views read alike, as the pillows
+ * do — while the fit budgets real millimetres at the Size.
+ */
+export function sizeFactors(pillow: Pick<PillowDimensions, "widthMm" | "lengthMm" | "gusset">): SizeFactors {
+  const ref = PILLOW_DIMENSIONS[REFERENCE_SIZE];
+  return {
+    across: pillow.widthMm / ref.widthMm,
+    along: pillow.lengthMm / ref.lengthMm,
+    thickness: pillow.gusset.fullMm / ref.gusset.fullMm,
+  };
+}
+
+/** A pouch (or Neck support) at a Size: its reference dimensions × the Size's factors, per axis by orientation. */
+export function pouchAtSize(d: PouchDimensions, f: SizeFactors): PouchDimensions {
+  if (f.across === 1 && f.along === 1 && f.thickness === 1) return d;
+  // The width axis is the long one: across the Section unless the pouch lies along it.
+  const wf = d.orientation === "along" ? f.along : f.across;
+  const lf = d.orientation === "along" ? f.across : f.along;
+  return {
+    ...d,
+    widthMm: round1(d.widthMm * wf),
+    minWidthMm: round1(d.minWidthMm * wf),
+    lengthMm: round1(d.lengthMm * lf),
+    thicknessMm: round1(d.thicknessMm * f.thickness),
+    minThicknessMm: round1(d.minThicknessMm * f.thickness),
+    ...(d.flatWidthMm === undefined ? {} : { flatWidthMm: round1(d.flatWidthMm * wf) }),
+    ...(d.flatLengthMm === undefined ? {} : { flatLengthMm: round1(d.flatLengthMm * lf) }),
+  };
+}
+
+/**
+ * item id → the piece as it sits in this pillow, generic pouch for an absent
+ * id. The one door the fit, the settle and the layout read dimensions
+ * through, so the drawing and the budget can never scale differently.
+ * Memoised per reader: O(items) per fit, not per piece.
+ */
+export function dimsAtSize(
+  dims: ReadonlyMap<number, ResolvedDims> | undefined,
+  pillow: Pick<PillowDimensions, "widthMm" | "lengthMm" | "gusset">,
+): (itemId: number) => PouchDimensions {
+  const f = sizeFactors(pillow);
+  const memo = new Map<number, PouchDimensions>();
+  return (itemId) => {
+    let d = memo.get(itemId);
+    if (!d) {
+      d = pouchAtSize(dims?.get(itemId)?.dims ?? GENERIC_POUCH, f);
+      memo.set(itemId, d);
+    }
+    return d;
+  };
+}
+
 export function isPillowSize(value: string | null | undefined): value is PillowSize {
   return (PILLOW_SIZES as readonly string[]).includes(String(value ?? "").toUpperCase());
 }
