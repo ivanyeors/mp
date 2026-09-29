@@ -12696,9 +12696,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/08-fine-nudge-persisted-offsets.md": {
-    "mtime": 1790598084.0238304,
-    "seen": 1790598224.9641006,
-    "ast_hash": "408b8472072cffacd4106a334db13fe7",
+    "mtime": 1790645219.468634,
+    "seen": 1790645350.4717627,
+    "ast_hash": "08de1f4774c137c07aca25bf0041c1e9",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/09-mbolster-parity.md": {
@@ -12708,9 +12708,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/10-physical-calibration-signoff.md": {
-    "mtime": 1790509089.4975655,
-    "seen": 1790510199.868139,
-    "ast_hash": "bad3481f20495a9bf83f3d6716e0eba9",
+    "mtime": 1790645224.85214,
+    "seen": 1790645350.4717667,
+    "ast_hash": "44d97d904fff8efb1d1d0465ac33fd02",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
@@ -12720,9 +12720,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/README.md": {
-    "mtime": 1790509089.4975655,
-    "seen": 1790510199.868143,
-    "ast_hash": "1f8abb4a298e66ccb586960abb229ad7",
+    "mtime": 1790645219.468089,
+    "seen": 1790645350.4717731,
+    "ast_hash": "d1c9556e53ddfb6dc7c6080d6efe8062",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/xray-pillow-ux-prd.md": {
@@ -13314,15 +13314,15 @@
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/settle.test.ts": {
-    "mtime": 1790509089.857911,
-    "seen": 1790510199.867372,
-    "ast_hash": "23f80e1d3d87d20ff7c9353328aeaf9f",
+    "mtime": 1790645190.5509515,
+    "seen": 1790645350.4700494,
+    "ast_hash": "6fc60eaba940a64868007f98f95965c4",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/settle.ts": {
-    "mtime": 1790598450.2518504,
-    "seen": 1790598812.5415666,
-    "ast_hash": "87dbfca7081f8f84802e53ceff968c87",
+    "mtime": 1790645139.581397,
+    "seen": 1790645350.4701207,
+    "ast_hash": "19d3e77c8ff0990673a4cdbf9a2c3536",
     "semantic_hash": ""
   },
   "components/spatial/use-pillow-fit.ts": {

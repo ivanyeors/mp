@@ -11,15 +11,15 @@ Tracer-bullet breakdown of the PRD (`../xray-pillow-ux-prd.md`). Slice 11 (natur
 | # | Title | Type | Pri | Status | Blocked by | User stories |
 |---|-------|------|-----|--------|------------|--------------|
 | [01](https://github.com/ivanyeors/mp/issues/201) | Dimension registry, glossary and ADR 0019 — real measurements in code | HITL | P1 | code half built (PR #213); Ivan's pouch / Neck support numbers pending | none | 5–7, 49 |
-| [02](https://github.com/ivanyeors/mp/issues/202) | True-scale rendering — pouches at their footprint relative to the pillow Size | AFK | P1 | built (PR #213) | 01 | 1–4, 46, 47 |
+| [02](https://github.com/ivanyeors/mp/issues/202) | True-scale rendering — pouches at their footprint relative to the pillow Size | AFK | P1 | built (PR #213); true scale again and Size-relative from M (PR #215) | 01 | 1–4, 46, 47 |
 | [03](https://github.com/ivanyeors/mp/issues/203) | Fit model — width and loft budgets, compression limits, fit status | AFK | P1 | built (PR #213) | 01, 02 | 8–11, 13, 22 |
 | [04](https://github.com/ivanyeors/mp/issues/204) | Compression feedback and error handling in the editor | AFK | P1 | built (PR #213) | 03, 11 | 12, 14–21 |
 | [05](https://github.com/ivanyeors/mp/issues/205) | Cross-section view — live across / along cut on every surface | AFK | P1 | built (PR #213) | 03, 11 | 23–30 |
-| [06](https://github.com/ivanyeors/mp/issues/206) | Move pieces — select, keyboard and pad moves, Undo | AFK | P1 | built (PR #213) | 02, 03 | 31–36, 38–40 |
-| [07](https://github.com/ivanyeors/mp/issues/207) | Drag a pouch onto another cell or Layer | AFK | P2 | built (PR #213) | 06 | 37, 38 |
-| [08](https://github.com/ivanyeors/mp/issues/208) | Fine nudge — persisted mm offsets (optional, gated on 10) | AFK | P2 | not started | 06, 10 | 41–43 |
-| [09](https://github.com/ivanyeors/mp/issues/209) | Mbolster parity — capsule dimensions, physical cap, end-on cut | AFK | P2 | not started | 03, 11 | 44, 45 |
-| [10](https://github.com/ivanyeors/mp/issues/210) | Physical calibration sign-off | HITL | P1 | ready for sign-off (PR #213) | 01–07, 09, 11 | 48 |
+| [06](https://github.com/ivanyeors/mp/issues/206) | Move pieces — select, keyboard moves, Undo | AFK | P1 | built (PR #213); move pad retired for the drag (PR #215) | 02, 03 | 31–36, 38–40 |
+| [07](https://github.com/ivanyeors/mp/issues/207) | Drag a pouch onto another cell or Layer | AFK | P2 | built (PR #213); every move, any Section, Layer sunburst (PR #215) | 06 | 37, 38 |
+| [08](https://github.com/ivanyeors/mp/issues/208) | Fine nudge — persisted mm offsets | AFK | P2 | built ahead of 10 at Ivan's request (PR #215); migration applied | 06 | 41–43 |
+| [09](https://github.com/ivanyeors/mp/issues/209) | Mbolster parity — capsule dimensions, physical cap, end-on cut | AFK | P2 | built (PR #213); bolster measurements pending | 03, 11 | 44, 45 |
+| [10](https://github.com/ivanyeors/mp/issues/210) | Physical calibration sign-off | HITL | P1 | ready for sign-off; needs Ivan's measurements (01) | 01–09, 11 | 48 |
 | [11](https://github.com/ivanyeors/mp/issues/212) | Natural settle — fill spreads into an empty neighbouring sub-section, on screen and in the loft arithmetic | AFK | P1 | built (PR #213) | 02, 03 | 50–62 |
 | [12](https://github.com/ivanyeors/mp/issues/214) | Dimension settings — loft allowance, pouch and Neck support dimensions editable in Settings | AFK | P1 | built (PR #213) | 01 | 63–66 |
 
@@ -64,8 +64,8 @@ graph TD
   s06 --> s10
   s07 --> s10
   s09 --> s10
-  s10 -. decision .-> s08
   s06 --> s08
+  s08 --> s10
 ```
 
 ## Suggested order
@@ -74,13 +74,15 @@ graph TD
 2. **Spine:** 03, then 11 (settle sits between the fit model and the surfaces that display it), then 04 and 05 in parallel (different files: the renderer panel vs a new component).
 3. **Moves:** 06, then 07.
 4. **Bolster:** 09 any time after 03.
-5. **Close:** 10. It decides 08.
+5. **Close:** 10. (08 was meant to wait on it; Ivan asked for it on 28-9-2026, so 10 now checks it instead of deciding it.)
 
 ## HITL notes
 
 - **Slice 01:** the pillow table is filled from the drawings; the pouch, Neck support and Mbolster tables in the PRD's Further Notes seed the code defaults. Once slice 12 ships, an entry Ivan has not provided is *unmeasured* in Settings and a fallback in the x-ray, and he types it in there — the tables seed but do not block.
-- **Slice 10:** a ruler, three real builds, a Staff member who has not read the PR, a tablet and a phone. Its outcome opens or closes slice 08.
+- **Slice 10:** a ruler, three real builds, a Staff member who has not read the PR, a tablet and a phone. Enter pouch and Neck support sizes as they sit in a **Size M** pillow; the other Sizes scale from M (PR #215).
 
 ## Schema
 
-Slice 12 carries an additive migration (`20260925090000_dimension_overrides.sql`: `filling_dimension_overrides`, `neck_support_dimension_overrides`) and slice 08 an optional one (`offset_x_mm`, `offset_y_mm`, additive and nullable). Apply with `supabase db push` in the same sitting as the merge, never the MCP apply.
+Slice 12 carries `20260925090000_dimension_overrides.sql` (`filling_dimension_overrides`, `neck_support_dimension_overrides`) and slice 08 `20260928090000_filling_placement_offsets.sql` (`offset_x_mm`, `offset_y_mm`, additive and nullable). Both are applied to production, and the migration history matches the repo filenames (28-9-2026).
+
+Prefer `supabase db push`. If a migration must go through the Supabase connector instead, the connector records it under its own timestamp: rename that `supabase_migrations.schema_migrations` row to the file's version in the same sitting, or the next `db push` will stop on the mismatch.

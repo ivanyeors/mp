@@ -24,19 +24,19 @@ The registry is typed by a person, the compression rule is a simplification, and
 - [ ] Front and back filled, middle empty: confirm the two pouches meet near where the render puts the seam.
 
 **Scale (slice 02)**
-- [ ] Lay one 6D L in an open Size M chamber; photograph from above; compare the footprint to the x-ray's. Repeat for 3D S in XS and 6D+ (Folded) in XL.
+- [ ] Lay one 6D L in an open Size M chamber; photograph from above; compare the footprint to the x-ray's. Repeat for 3D S in XS and 6D+ (Folded) in XL. *(Since PR #215 the entered sizes are the Size M piece and XS / XL scale from M by the pillow's proportions, so the XS and XL photos test that scaling rule too.)*
 - [ ] Neck support L in a premium L: footprint across the Section matches.
 
 **Moves (slice 06 / 07)**
-- [ ] A Staff member who has not read the PR moves a pouch to the other Section, up a layer and to the outside of its row by keyboard, by pad and by drag, on a desktop and on a phone, without instruction. Note anything they had to be told.
-- [ ] Decide slice 08: was cell × Layer × order enough to describe every build the team wanted? Record the answer on this issue; slice 08 opens only on a no.
+- [ ] A Staff member who has not read the PR moves a pouch to the other Section, into another Layer (the drop's Layer sunburst), to the outside of its row and within its cell's free space, by drag and by keyboard, on a desktop and on a phone, without instruction. Note anything they had to be told. *(The move pad was retired 27-9-2026; the drag carries every move.)*
+- [ ] Slice 08 was built ahead of this sign-off (Ivan, 28-9-2026). Check it instead: nudge a small pouch to the outer edge on the x-ray, build it, and confirm the photo matches — including where the gap sits when it cannot fill an empty neighbouring compartment.
 
 **Cross-section (slice 05)**
 - [ ] The build team reads the Across cut for a side-sleep build and describes what they will assemble; compare to what the x-ray author intended.
 - [ ] Guest preview on a phone: the cut is readable at 360 px wide.
 
 **Device pass**
-- [ ] In-store tablet (Safari) and an Android phone: rings, gauges, pad, drag and cross-section all usable; no page scroll during a drag.
+- [ ] In-store tablet (Safari) and an Android phone: gauges, drag (including the Layer sunburst) and cross-section all usable; no page scroll during a drag.
 
 **Numbers**
 - [ ] Every value changed during calibration is committed to `dimensions.ts` with the date, `PLACEHOLDER_DIMENSIONS` is false, and the outcome is posted as a comment on the PRD issue.

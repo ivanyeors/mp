@@ -32,11 +32,11 @@ Record "pushed to the outer edge" as a few millimetres, deterministic, persisted
 
 - [x] The migration is additive and nullable; existing rows read back unchanged.
 - [x] vitest: a nudge that would cross the cell boundary or the shell seam is clamped; the clamp is deterministic.
-- [ ] vitest: with a void larger than the pouch's spread capacity, a back nudge puts the gap at the front and a front nudge puts it at the back; with a void it can fill, the settled rect is the same for every nudge.
+- [x] vitest: with a void larger than the pouch's spread capacity, a back nudge puts the gap at the front and a front nudge puts it at the back; with a void it can fill, the settled rect is the same for every nudge.
 - [x] vitest: fingerprint and exact-match are byte-identical with and without offsets; the pack list ignores them.
 - [x] `npx tsx lib/spatial-fillings/api-contract.check.ts` asserts the two columns on every pillow **Placement** reader.
-- [ ] Alt + arrows and the Fine toggle nudge the selected piece 5 mm and the value persists through save and reload on Configure, **Result** assign and a Staff-assist hold.
-- [ ] `./scripts/graphify update .` run and committed.
+- [ ] Alt + arrows (and a drop inside the pouch's own cell — there is no Fine toggle, the pad went 27-9) nudge the selected piece and the value persists through save and reload on Configure, **Result** assign and a Staff-assist hold. *(Wired: every reader and writer carries the columns and the migration is applied. Browser check for Ivan on a deployed build.)*
+- [x] `./scripts/graphify update .` run and committed.
 
 ## Build notes (2026-09-28)
 
@@ -44,5 +44,5 @@ Record "pushed to the outer edge" as a few millimetres, deterministic, persisted
 - **Offset = mm from home, clamped to the room the neighbours leave.** Each `PieceLayout` carries `home` (its un-nudged corner) and `range` (the corners it may take); a pouch moved into a neighbour pushes it along, so slot order and seams hold. The renderer stores what it draws: a drop or Alt + arrow clamps to `range` before `nudgePiece` writes mm.
 - **Interaction.** No pad and no Fine toggle (the pad went 27-9): a pouch dropped back in its own cell goes where it was let go (`planPouchDrop` → `nudge`); in a side-by-side row a drop that passes a neighbour is still a reorder. Alt + arrows nudge 5 mm (`nudgeKeyFor`). One toast id for moves and nudges, so a run of nudges updates one toast whose Undo is the latest.
 - **Moves and mirror.** `movePiece` keeps the offset inside its cell (a Layer change) and drops it in a new cell; `mirrorSection` negates x, so a pouch pushed to the left's outer edge lands at the right's.
-- **Settled view.** Settle still spreads a pouch into an empty neighbouring sub-section by volume (slice 11), from its true-size, nudged rect — so a small pouch no longer fills its compartment, and it spreads only as far as its capacity allows. The anchor rule in this slice's scope (the nudge deciding which end the gap sits at) is not yet wired into `settlePillow`; the settled rect simply grows from where the pouch sits.
+- **Settled view.** Settle spreads a pouch into an empty neighbouring sub-section by volume (slice 11), from its true-size, nudged rect, so a small pouch no longer fills its compartment. *Built 29-9:* the nudge is the anchor. `anchorAlong` turns the front ↔ back offset into where the pouch sits in its cell's free length (0 front wall, ½ home, 1 back wall), and `offerBothWays` weights the front and back voids by it. A pouch pushed back spreads back and leaves the gap in front, and the other way round; at home it is exactly the old pro rata split; a pouch that can fill both voids fills both whatever the nudge. A pouch as long as its cell has no free length and stays at home.
 - **Contract.** `api-contract.check.ts` now requires `offset_x_mm, offset_y_mm` beside `row_index` in every pillow Placement reader and a `MAX_OFFSET_MM` zod gate on every write path; it also pins fingerprint / exact-match invariance and the row round-trip. (It also exempts the reconfigure route's template read, which only feeds `decideFillingAssign` — that assertion was failing on the branch before this slice.)

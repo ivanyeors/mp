@@ -31,6 +31,7 @@ import {
 import {
   dimsAtSize,
   pillowDimensions,
+  sizeFactors,
   SEAM_MM,
   type PillowDimensions,
   type PillowSize,
@@ -110,19 +111,44 @@ export function settledThicknessMm(d: PouchDimensions, settledLength: number): n
   return Math.max(Math.min(d.minThicknessMm, d.thicknessMm), (d.thicknessMm * along) / settledLength);
 }
 
-/** Split one capacity between the void in front and the void behind: pro rata by length, the overflow to the other side. */
-function offerBothWays(capacity: number, lenFront: number, lenBack: number): [number, number] {
-  const total = lenFront + lenBack;
-  if (total <= 0) return [0, 0];
-  let front = Math.min(lenFront, (capacity * lenFront) / total);
-  let back = Math.min(lenBack, (capacity * lenBack) / total);
+/**
+ * Split one capacity between the void in front and the void behind: pro rata
+ * by length, weighted by the pouch's anchor, the overflow to the other side.
+ * `anchor` is where the pouch sits in its own cell front → back (0 at the
+ * front wall, 1 at the back, ½ at home), from its fine offset (slice 08): a
+ * pouch pushed back spreads mostly back and leaves the gap at the front, and
+ * the other way round. At home it is the plain pro rata split; a pouch that
+ * can fill both voids fills both whatever its anchor.
+ */
+export function offerBothWays(capacity: number, lenFront: number, lenBack: number, anchor = 0.5): [number, number] {
+  if (lenFront + lenBack <= 0) return [0, 0];
+  const wF = lenFront * (1 - anchor);
+  const wB = lenBack * anchor;
+  const total = wF + wB;
+  // A lone void weighted to zero (pushed hard against it) still takes the capacity via the overflow below.
+  let front = total > 0 ? Math.min(lenFront, (capacity * wF) / total) : 0;
+  let back = total > 0 ? Math.min(lenBack, (capacity * wB) / total) : 0;
   front = Math.min(lenFront, front + Math.max(capacity - front - back, 0));
   back = Math.min(lenBack, back + Math.max(capacity - front - back, 0));
   return [front, back];
 }
 
+/**
+ * Where a pouch sits along its own cell, 0 (front wall) … 1 (back wall), ½ at
+ * home: its fine front ↔ back offset over the free length the cell leaves it
+ * (offset and lengths in the Size's mm). A pouch as long as its cell has no
+ * free length and sits at home.
+ */
+export function anchorAlong(offsetMm: number, cellLengthMm: number, alongMm: number): number {
+  const free = cellLengthMm - alongMm;
+  if (free <= EPS || !offsetMm) return 0.5;
+  return Math.min(Math.max(0.5 + offsetMm / free, 0), 1);
+}
+
 type Work = {
   p: PillowPlacement;
+  /** Where it sits along its cell (`anchorAlong`): which void its spread favours. */
+  anchor: number;
   col: number;
   depth: number;
   dims: PouchDimensions;
@@ -153,7 +179,7 @@ function settlePlane(plane: (Work[] | null)[], cellLen: number): void {
     if (!ws) return;
     const lenF = voidBefore(c) * cellLen;
     const lenB = voidAfter(c) * cellLen;
-    for (const w of ws) [w.offerFront, w.offerBack] = offerBothWays(w.capacity, lenF, lenB);
+    for (const w of ws) [w.offerFront, w.offerBack] = offerBothWays(w.capacity, lenF, lenB, w.anchor);
   });
   // 2. Each void is shared by the columns touching it; the column's offer is its furthest-reaching piece.
   let i = 0;
@@ -192,6 +218,8 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
   const cellLen = pillow.lengthMm / 3;
   const active = !pillow.subSectionDividers;
   const dimsOf = dimsAtSize(ctx.dims, pillow);
+  // Offsets are Size M millimetres, like every pouch dimension; the settle works in this Size's.
+  const alongScale = sizeFactors(pillow).along;
   const pieces: PieceSettle[] = [];
   for (const section of SECTIONS) {
     const layersByCol = SUB_SECTIONS.map((subSection) =>
@@ -208,6 +236,7 @@ export function settlePillow(placements: PillowPlacement[], ctx: SettleContext):
               const dims = dimsOf(p.itemId);
               return {
                 p,
+                anchor: anchorAlong((p.offsetYMm ?? 0) * alongScale, cellLen, alongMm(dims)),
                 col,
                 depth,
                 dims,
