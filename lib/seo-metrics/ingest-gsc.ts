@@ -6,6 +6,7 @@ import {
   type GscDimension,
   type GscRow,
 } from "@/lib/google/search-console";
+import { addDays } from "@/lib/seo-metrics/dates";
 
 /**
  * Daily Search Console snapshot into `seo_daily_metrics` (slice 01,
@@ -52,11 +53,7 @@ export type SeoMetricsStore = {
   upsert(rows: SeoMetricRow[]): Promise<void>;
 };
 
-export function addDays(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+export { addDays };
 
 /**
  * Start from a few days before the newest stored date so settling days are

@@ -16,10 +16,10 @@ User stories covered: 2, 4, 13, 14, 15, 19
 
 ## Acceptance criteria
 
-- [ ] Numbers match the GSC UI for the same range (±1% from rounding)
-- [ ] No chart averages averages (covered by tests in `aggregate`)
-- [ ] Partial-data region visible on the daily and weekly views
-- [ ] Empty state when no data has been ingested yet
+- [ ] (after backfill) Numbers match the GSC UI for the same range (±1% from rounding)
+- [x] No chart averages averages (covered by tests in `aggregate`)
+- [x] Partial-data region visible on the daily and weekly views
+- [x] Empty state when no data has been ingested yet
 
 ## Blocked by
 
