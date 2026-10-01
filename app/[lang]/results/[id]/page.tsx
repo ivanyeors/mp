@@ -28,6 +28,7 @@ import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
+import { trackGaEventOnce } from "@/lib/analytics/ga-events";
 
 type BuildSummary = {
   fillingTemplateName: string | null;
@@ -228,6 +229,28 @@ function ResultStatusPage() {
       if (data.needsTopUp && data.checkoutUrl) {
         window.location.href = data.checkoutUrl as string;
         return;
+      }
+      // GA4 purchase: the hold was captured into an Order (this path also runs
+      // after a top-up Checkout returns). Once per order in this browser.
+      const value = result?.final_amount ?? result?.authorized_amount;
+      if (typeof value === "number") {
+        const transactionId = data.orderNumber ? String(data.orderNumber) : `result-${id}`;
+        trackGaEventOnce(`purchase:${transactionId}`, {
+          name: "purchase",
+          params: {
+            transaction_id: transactionId,
+            value,
+            currency: result?.currency ?? "SGD",
+            items: [
+              {
+                item_id: `result-${result?.product_type ?? "custom"}`,
+                item_name: result?.product_type === "bolster" ? "Custom bolster" : "Custom pillow",
+                price: value,
+                quantity: 1,
+              },
+            ],
+          },
+        });
       }
       setActionMessage(
         data.orderNumber

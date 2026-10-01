@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useI18n } from "@/lib/i18n/use-i18n";
 import { type ApptType } from "@/lib/appointments/appt-type";
 import { cn } from "@/lib/utils";
+import { trackGaEvent } from "@/lib/analytics/ga-events";
 
 type Location = { id: string; name: string; type: string; address: string };
 type Slot = { id: string; startIso: string; endIso: string };
@@ -170,6 +171,10 @@ export function BookingFlow({ type }: { type: ApptType }) {
         const body = await res.json().catch(() => null);
         setConfirmedEventId(body?.eventId ?? null);
         setConfirmed(location);
+        trackGaEvent({
+          name: "book_appointment",
+          params: { location_id: String(locationId), location_name: location?.name, appointment_type: type },
+        });
         return;
       }
       if (res.status === 409) {

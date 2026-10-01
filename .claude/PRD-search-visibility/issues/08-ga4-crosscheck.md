@@ -22,3 +22,14 @@ User stories covered: 21
 ## Blocked by
 
 None
+
+## Implementation notes (AFK part done)
+
+- `lib/analytics/ga-events.ts`: typed `trackGaEvent` / `trackGaEventThen` (waits up to 800 ms for gtag's callback before a redirect) / `trackGaEventOnce` (a localStorage flag, so a refreshed confirmation page doesn't double count). Falls back to a dataLayer push when only GTM is loaded. No PII in any params.
+- Wired:
+  - `generate_lead`: mp-config and mbolster-config hold submit, before the Stripe or status redirect
+  - `book_appointment`: booking-flow confirm
+  - `begin_checkout`: shop checkout submit, with items
+  - `purchase`: shop confirmation (once per `order_number`) and Result accept → capture (once per order)
+- Left out: the staff/assisted deferred submit, so in-store entries don't inflate web conversions; and the Data API ingest + side-by-side view (needs `GA4_PROPERTY_ID` and the property from `GA4-SETUP.md`).
+- OPS (`GA4-SETUP.md` §5): mark the four events as Key events in GA4 Admin once they show in DebugView.

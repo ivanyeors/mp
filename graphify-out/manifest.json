@@ -1770,9 +1770,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/mbolster-config/mbolster-config-client.tsx": {
-    "mtime": 1790863378.2846556,
-    "seen": 1790863435.0190887,
-    "ast_hash": "2c87931dd49f69d9d938de4968e07980",
+    "mtime": 1790866307.4848297,
+    "seen": 1790866380.9234402,
+    "ast_hash": "038d124e6fccf0854dc7272d91d89ff9",
     "semantic_hash": ""
   },
   "app/[lang]/mbolster-config/page.tsx": {
@@ -1812,9 +1812,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/mp-config-client.tsx": {
-    "mtime": 1790863378.2846556,
-    "seen": 1790863435.0190992,
-    "ast_hash": "c51760d8f08d84d3e40b2a9dfa10e589",
+    "mtime": 1790866307.4888296,
+    "seen": 1790866380.9234557,
+    "ast_hash": "6316efa928c8a6a6558a52212ebbb937",
     "semantic_hash": ""
   },
   "app/[lang]/mp-config/page.tsx": {
@@ -1908,9 +1908,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/results/[id]/page.tsx": {
-    "mtime": 1790212158.9082065,
-    "seen": 1790863435.0191288,
-    "ast_hash": "87900350658533d2d8d3ebdaae8ae3e7",
+    "mtime": 1790866307.4888296,
+    "seen": 1790866380.9234939,
+    "ast_hash": "a1eeb630674dc1e1ec0882d5e7332797",
     "semantic_hash": ""
   },
   "app/[lang]/results/layout.tsx": {
@@ -2334,9 +2334,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/shop/checkout/confirmation/page.tsx": {
-    "mtime": 1790212158.9180608,
-    "seen": 1790863435.0193284,
-    "ast_hash": "fe3594695e780095193fa9bf371331a8",
+    "mtime": 1790866307.4888296,
+    "seen": 1790866380.9237404,
+    "ast_hash": "002ec86c30154888cdb5cfdedf986927",
     "semantic_hash": ""
   },
   "app/[lang]/shop/checkout/layout.tsx": {
@@ -2346,9 +2346,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/shop/checkout/page.tsx": {
-    "mtime": 1790212158.9180608,
-    "seen": 1790863435.0193307,
-    "ast_hash": "efc4dcf0cfe43b73d57d67a417156fe7",
+    "mtime": 1790866307.4888296,
+    "seen": 1790866380.923745,
+    "ast_hash": "a38b866ebea78dbc2a03b0dbd8860420",
     "semantic_hash": ""
   },
   "app/[lang]/shop/error.tsx": {
@@ -4482,9 +4482,9 @@
     "semantic_hash": ""
   },
   "components/slide-in-pages/booking-flow.tsx": {
-    "mtime": 1790212158.942093,
-    "seen": 1790863435.0197756,
-    "ast_hash": "fd1d338aacc2e388b649495cd1524312",
+    "mtime": 1790866307.4888296,
+    "seen": 1790866380.9246404,
+    "ast_hash": "3949aa5fa09d4713bf545bb0f7a06161",
     "semantic_hash": ""
   },
   "components/slide-in-pages/booking-pills.tsx": {
@@ -13488,9 +13488,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/08-ga4-crosscheck.md": {
-    "mtime": 1790327718.2891657,
-    "seen": 1790863435.021235,
-    "ast_hash": "39ddb58b15de3638065ab28a06c74775",
+    "mtime": 1790866341.9139724,
+    "seen": 1790866380.9267256,
+    "ast_hash": "f1b13b41dd6064054375afe81842d37d",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/09-content-audit.md": {
@@ -13719,6 +13719,18 @@
     "mtime": 1790866026.980813,
     "seen": 1790866120.350538,
     "ast_hash": "726c4e3351268b612755ef8cf86101ad",
+    "semantic_hash": ""
+  },
+  "lib/analytics/__tests__/ga-events.test.ts": {
+    "mtime": 1790866165.8288212,
+    "seen": 1790866380.9249208,
+    "ast_hash": "5e283c7d1e33e5b0265ba091fdb50c49",
+    "semantic_hash": ""
+  },
+  "lib/analytics/ga-events.ts": {
+    "mtime": 1790866155.9888206,
+    "seen": 1790866380.9249465,
+    "ast_hash": "c3c92a1a6e5753214b350b79978655ed",
     "semantic_hash": ""
   }
 }
