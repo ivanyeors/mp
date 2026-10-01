@@ -1,14 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bucket, Delta, Totals } from "@/lib/seo-metrics/aggregate";
 import { CHANNEL_LABELS } from "@/lib/analytics/ai-referrers";
-import { getChannelMix, getCrawlerActivity, getSearchVisibility } from "./seo-actions";
+import {
+  ANNOTATION_CATEGORIES,
+  ANNOTATION_CATEGORY_LABELS,
+  type Annotation,
+} from "@/lib/seo-metrics/annotations";
+import {
+  createSeoAnnotation,
+  deleteSeoAnnotation,
+  getChannelMix,
+  getCrawlerActivity,
+  getSeoAnnotations,
+  getSearchVisibility,
+} from "./seo-actions";
 
 const SeoTrendVisx = dynamic(() => import("./SeoTrendVisx").then((m) => m.SeoTrendVisx), { ssr: false });
 const ChannelMixVisx = dynamic(() => import("./ChannelMixVisx").then((m) => m.ChannelMixVisx), { ssr: false });
@@ -25,8 +39,99 @@ const PURPOSE_LABELS = {
   unknown: "Unknown",
 } as const;
 
+/** Annotations in range + add form (slice 05). */
+export function AnnotationsPanel({ annotations, onChange }: { annotations: Annotation[]; onChange: () => void }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [label, setLabel] = useState("");
+  const [category, setCategory] = useState<string>("seo");
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const add = () =>
+    startTransition(async () => {
+      const r = await createSeoAnnotation({ date, label, category, url });
+      if (!r.ok) return setError(r.error);
+      setError(null);
+      setLabel("");
+      setUrl("");
+      onChange();
+    });
+  const remove = (id: string) =>
+    startTransition(async () => {
+      const r = await deleteSeoAnnotation(id);
+      if (!r.ok) return setError(r.error);
+      setError(null);
+      onChange();
+    });
+
+  return (
+    <div className="space-y-3">
+      {annotations.length ? (
+        <ul className="divide-y rounded-md border text-xs">
+          {[...annotations].reverse().map((a) => (
+            <li key={a.id} className="flex items-center gap-3 px-2 py-1.5">
+              <span className="w-[4.75rem] shrink-0 tabular-nums text-muted-foreground">{a.date}</span>
+              <span className="hidden w-28 shrink-0 text-muted-foreground sm:inline">{ANNOTATION_CATEGORY_LABELS[a.category]}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {a.url ? (
+                  <a href={a.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                    {a.label}
+                  </a>
+                ) : (
+                  a.label
+                )}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0"
+                disabled={pending}
+                onClick={() => remove(a.id)}
+                aria-label={`Delete annotation: ${a.label}`}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="text-xs text-muted-foreground">No annotations in this range.</div>
+      )}
+      <form
+        className="grid gap-2 sm:grid-cols-[9rem_9rem_1fr_1fr_auto]"
+        onSubmit={(e) => {
+          e.preventDefault();
+          add();
+        }}
+      >
+        <Input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} aria-label="Date" />
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          aria-label="Category"
+          className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+        >
+          {ANNOTATION_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {ANNOTATION_CATEGORY_LABELS[c]}
+            </option>
+          ))}
+        </select>
+        <Input value={label} maxLength={120} placeholder="What happened, e.g. Honeycombers listicle live" onChange={(e) => setLabel(e.target.value)} aria-label="Label" />
+        <Input type="url" value={url} placeholder="Link (optional)" onChange={(e) => setUrl(e.target.value)} aria-label="Link" />
+        <Button type="submit" disabled={pending || !label.trim()}>
+          Add
+        </Button>
+      </form>
+      {error ? <div className="text-xs text-destructive">{error}</div> : null}
+    </div>
+  );
+}
+
 /** Presentational: AI crawler activity (slice 04). */
-export function CrawlerPanel({ crawlers }: { crawlers: Crawlers }) {
+export function CrawlerPanel({ crawlers, annotations }: { crawlers: Crawlers; annotations?: Annotation[] }) {
   if (!crawlers.hasData) {
     return (
       <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
@@ -59,6 +164,7 @@ export function CrawlerPanel({ crawlers }: { crawlers: Crawlers }) {
         granularity={crawlers.granularity}
         formatValue={fmtCount}
         height={150}
+        annotations={annotations}
       />
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full min-w-[560px] text-xs tabular-nums">
@@ -99,10 +205,10 @@ const sgd = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD",
 const rate = (num: number, den: number) => (den > 0 ? `${((num / den) * 100).toFixed(1)}%` : "—");
 
 /** Presentational: visits by channel + per-channel funnel. */
-export function ChannelMixPanel({ mix }: { mix: Mix }) {
+export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: Annotation[] }) {
   return (
     <div className="space-y-4">
-      <ChannelMixVisx buckets={mix.buckets} granularity={mix.granularity} />
+      <ChannelMixVisx buckets={mix.buckets} granularity={mix.granularity} annotations={annotations} />
       {mix.aiSources.length ? (
         <div className="text-xs text-muted-foreground">
           AI assistants:{" "}
@@ -259,7 +365,15 @@ function points(buckets: Bucket[], key: keyof Totals) {
 }
 
 /** Presentational: everything below the header once data is loaded. */
-export function VisibilityPanel({ data, loading }: { data: Visibility; loading: boolean }) {
+export function VisibilityPanel({
+  data,
+  loading,
+  annotations,
+}: {
+  data: Visibility;
+  loading: boolean;
+  annotations?: Annotation[];
+}) {
   return (
     <div className={`space-y-6 transition-opacity ${loading ? "opacity-60" : ""}`}>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -283,11 +397,11 @@ export function VisibilityPanel({ data, loading }: { data: Visibility; loading: 
       <div className="grid gap-6 lg:grid-cols-2">
         <figure className="space-y-1">
           <figcaption className="text-sm font-medium">Clicks</figcaption>
-          <SeoTrendVisx label="Clicks" points={points(data.buckets, "clicks")} granularity={data.granularity} formatValue={fmtCount} />
+          <SeoTrendVisx label="Clicks" points={points(data.buckets, "clicks")} granularity={data.granularity} formatValue={fmtCount} annotations={annotations} />
         </figure>
         <figure className="space-y-1">
           <figcaption className="text-sm font-medium">Impressions</figcaption>
-          <SeoTrendVisx label="Impressions" points={points(data.buckets, "impressions")} granularity={data.granularity} formatValue={fmtCount} />
+          <SeoTrendVisx label="Impressions" points={points(data.buckets, "impressions")} granularity={data.granularity} formatValue={fmtCount} annotations={annotations} />
         </figure>
       </div>
       <figure className="space-y-1">
@@ -300,7 +414,7 @@ export function VisibilityPanel({ data, loading }: { data: Visibility; loading: 
           granularity={data.granularity}
           formatValue={fmtPos}
           invert
-          height={160}
+          height={160} annotations={annotations}
         />
       </figure>
 
@@ -344,6 +458,9 @@ export function SearchVisibilityCard() {
   const [data, setData] = useState<Visibility | null>(null);
   const [mix, setMix] = useState<Mix | null>(null);
   const [mixError, setMixError] = useState<string | null>(null);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotationsVersion, setAnnotationsVersion] = useState(0);
+  const refreshAnnotations = useCallback(() => setAnnotationsVersion((v) => v + 1), []);
   const [crawlers, setCrawlers] = useState<Crawlers | null>(null);
   const [crawlersError, setCrawlersError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -351,6 +468,19 @@ export function SearchVisibilityCard() {
   const requestKey = `${range}|${granularity}`;
   const [settledKey, setSettledKey] = useState<string | null>(null);
   const loading = settledKey !== requestKey;
+
+  useEffect(() => {
+    let cancelled = false;
+    getSeoAnnotations({ range, granularity })
+      .then((a) => {
+        if (!cancelled) setAnnotations(a);
+      })
+      // Markers are context, not data: a failure leaves the charts unannotated, not broken.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [range, granularity, annotationsVersion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -435,7 +565,7 @@ export function SearchVisibilityCard() {
             it current after that. Setup steps: <code className="rounded bg-muted px-1">.claude/PRD-search-visibility/GOOGLE-ACCESS-SETUP.md</code>.
           </div>
         ) : (
-          <VisibilityPanel data={data} loading={loading} />
+          <VisibilityPanel data={data} loading={loading} annotations={annotations} />
         )}
 
         <section className="space-y-3 border-t pt-6">
@@ -446,7 +576,7 @@ export function SearchVisibilityCard() {
           {mixError ? (
             <p className="text-sm text-destructive">{mixError}</p>
           ) : mix ? (
-            <ChannelMixPanel mix={mix} />
+            <ChannelMixPanel mix={mix} annotations={annotations} />
           ) : (
             <Skeleton className="h-[260px]" />
           )}
@@ -462,10 +592,21 @@ export function SearchVisibilityCard() {
           {crawlersError ? (
             <div className="text-sm text-destructive">{crawlersError}</div>
           ) : crawlers ? (
-            <CrawlerPanel crawlers={crawlers} />
+            <CrawlerPanel crawlers={crawlers} annotations={annotations} />
           ) : (
             <Skeleton className="h-[220px]" />
           )}
+        </section>
+
+        <section className="space-y-3 border-t pt-6">
+          <div>
+            <h3 className="text-sm font-medium">Annotations</h3>
+            <div className="text-xs text-muted-foreground">
+              Log what shipped or happened (a content merge, a listicle, a site change). It shows as a marker on every chart
+              above, so a change in a trend can be traced to its cause.
+            </div>
+          </div>
+          <AnnotationsPanel annotations={annotations} onChange={refreshAnnotations} />
         </section>
       </CardContent>
     </Card>

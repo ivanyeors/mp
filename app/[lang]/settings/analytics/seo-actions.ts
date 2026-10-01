@@ -14,6 +14,7 @@ import {
 import { addDays } from "@/lib/seo-metrics/dates";
 import { buildChannelMix, singaporeDate, type MixVisit } from "@/lib/analytics/channel-mix";
 import { buildCrawlerActivity, type CrawlerHitRow } from "@/lib/analytics/crawler-activity";
+import { validateAnnotation, type Annotation, type AnnotationInput } from "@/lib/seo-metrics/annotations";
 import { GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
 
 // ponytail: do not `export type { X }` from "use server" — see actions.ts
@@ -167,4 +168,40 @@ export async function getCrawlerActivity(input: { range: string; granularity: st
     hasData: rows.length > 0,
     ...buildCrawlerActivity({ rows, from, to, previousFrom: prev.from, granularity }),
   };
+}
+
+/** Annotations overlapping the selected range (slice 05). Charts start on the Monday before `from`. */
+export async function getSeoAnnotations(input: { range: string; granularity: string }): Promise<Annotation[]> {
+  await assertAdmin("analytics");
+  const days = RANGE_DAYS[input.range as keyof typeof RANGE_DAYS] ?? RANGE_DAYS["3m"];
+  const granularity: Granularity = input.granularity === "day" ? "day" : "week";
+  const to = singaporeDate(new Date().toISOString());
+  const from = bucketStart(addDays(to, -(days - 1)), granularity);
+  const { data, error } = await supabaseAdmin()
+    .from("seo_annotations")
+    .select("id, date, label, category, url")
+    .gte("date", from)
+    .lte("date", to)
+    .order("date", { ascending: true });
+  if (error) throw new Error(`Annotations: ${error.message}`);
+  return (data ?? []) as Annotation[];
+}
+
+export async function createSeoAnnotation(input: AnnotationInput): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await assertAdmin("analytics");
+  const parsed = validateAnnotation(input);
+  if (!parsed.ok) return parsed;
+  const { error } = await supabaseAdmin()
+    .from("seo_annotations")
+    .insert({ ...parsed.value, created_by: ctx.email });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function deleteSeoAnnotation(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  await assertAdmin("analytics");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "Unknown annotation." };
+  const { error } = await supabaseAdmin().from("seo_annotations").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }

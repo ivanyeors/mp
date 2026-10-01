@@ -10,6 +10,7 @@ import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
 import { ParentSize } from "@visx/responsive";
 import { format } from "date-fns";
+import { AnnotationMarkers, type ChartAnnotation } from "./AnnotationMarkers";
 
 export type SeoTrendPoint = { start: string; value: number | null; partial: boolean };
 
@@ -22,6 +23,7 @@ type Props = {
   /** Average position: 1 is best, so the axis runs best-at-top. */
   invert?: boolean;
   height?: number;
+  annotations?: ChartAnnotation[];
 };
 
 const tooltipStyles: CSSProperties = {
@@ -39,7 +41,7 @@ const tooltipStyles: CSSProperties = {
 
 const toDate = (iso: string) => new Date(`${iso}T00:00:00`);
 
-function Chart({ width, height, label, points, granularity, formatValue, invert }: Props & { width: number; height: number }) {
+function Chart({ width, height, label, points, granularity, formatValue, invert, annotations }: Props & { width: number; height: number }) {
   const narrow = width < 420;
   const margin = narrow ? { top: 14, right: 18, bottom: 28, left: 44 } : { top: 16, right: 24, bottom: 30, left: 56 };
   const innerWidth = Math.max(10, width - margin.left - margin.right);
@@ -147,6 +149,8 @@ function Chart({ width, height, label, points, granularity, formatValue, invert 
           />
           {/* Hit target spans the whole plot, not just the 2px line. */}
           <rect width={innerWidth} height={innerHeight} fill="transparent" onPointerMove={handleMove} onPointerLeave={hideTooltip} />
+          {/* Markers sit above the hit target so their own <title> tooltips work. */}
+          <AnnotationMarkers annotations={annotations} xScale={xScale} innerWidth={innerWidth} innerHeight={innerHeight} />
         </Group>
       </svg>
       {tooltipData ? (

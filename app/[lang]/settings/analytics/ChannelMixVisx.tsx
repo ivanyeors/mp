@@ -10,6 +10,7 @@ import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { localPoint } from "@visx/event";
 import { ParentSize } from "@visx/responsive";
 import { format } from "date-fns";
+import { AnnotationMarkers, type ChartAnnotation } from "./AnnotationMarkers";
 import { MIX_SERIES, MIX_SERIES_LABELS, type MixBucket, type MixSeries } from "@/lib/analytics/channel-mix";
 
 /**
@@ -46,9 +47,9 @@ const tooltipStyles: CSSProperties = {
 const toDate = (iso: string) => new Date(`${iso}T00:00:00`);
 const int = new Intl.NumberFormat("en-SG");
 
-type Props = { buckets: MixBucket[]; granularity: "day" | "week"; height?: number };
+type Props = { buckets: MixBucket[]; granularity: "day" | "week"; height?: number; annotations?: ChartAnnotation[] };
 
-function Chart({ width, height, buckets, granularity }: Props & { width: number; height: number }) {
+function Chart({ width, height, buckets, granularity, annotations }: Props & { width: number; height: number }) {
   const narrow = width < 420;
   const margin = narrow ? { top: 8, right: 18, bottom: 28, left: 40 } : { top: 8, right: 24, bottom: 30, left: 52 };
   const innerWidth = Math.max(10, width - margin.left - margin.right);
@@ -143,6 +144,7 @@ function Chart({ width, height, buckets, granularity }: Props & { width: number;
             tickLabelProps={() => ({ fill: "var(--muted-foreground)", fontSize: narrow ? 10 : 11, textAnchor: "middle" })}
           />
           <rect width={innerWidth} height={innerHeight} fill="transparent" onPointerMove={handleMove} onPointerLeave={hideTooltip} />
+          <AnnotationMarkers annotations={annotations} xScale={xScale} innerWidth={innerWidth} innerHeight={innerHeight} />
         </Group>
       </svg>
       {tooltipData ? (

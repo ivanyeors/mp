@@ -13470,9 +13470,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/05-annotations.md": {
-    "mtime": 1790327134.938871,
-    "seen": 1790863435.021232,
-    "ast_hash": "e6a02359acf69caf9859fae9228d2512",
+    "mtime": 1790865450.7020273,
+    "seen": 1790865544.9935436,
+    "ast_hash": "f63a3679813454245396a964532d36f7",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/06-target-queries.md": {
@@ -13560,21 +13560,21 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SearchVisibilityCard.tsx": {
-    "mtime": 1790865082.353256,
-    "seen": 1790865197.644333,
-    "ast_hash": "7d7ecc4b11a31b7921404e7e0f56fabc",
+    "mtime": 1790865418.2864718,
+    "seen": 1790865544.9915423,
+    "ast_hash": "9632614c0dbe8b7909b3167a8c9e3c9d",
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SeoTrendVisx.tsx": {
-    "mtime": 1790864182.2387145,
-    "seen": 1790864533.0892224,
-    "ast_hash": "ab5917fbfa0bfebd7b600a6f26182a5e",
+    "mtime": 1790865301.5176847,
+    "seen": 1790865544.991544,
+    "ast_hash": "f72529a6f188a8dccee79ae006fcba20",
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/seo-actions.ts": {
-    "mtime": 1790865082.3527572,
-    "seen": 1790865197.6443455,
-    "ast_hash": "08b036d87b9a3b0d604e8636db02234c",
+    "mtime": 1790865290.1935701,
+    "seen": 1790865544.99155,
+    "ast_hash": "102a91ff9b966146228c3bf19bb0b5f2",
     "semantic_hash": ""
   },
   "lib/seo-metrics/__tests__/aggregate.test.ts": {
@@ -13596,9 +13596,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/ChannelMixVisx.tsx": {
-    "mtime": 1790864850.7938912,
-    "seen": 1790864934.8152921,
-    "ast_hash": "85a42ed3e44b6a7109549d4e853caeed",
+    "mtime": 1790865301.518029,
+    "seen": 1790865544.9915261,
+    "ast_hash": "534efcf35577138e0fc91a6207c3481a",
     "semantic_hash": ""
   },
   "lib/analytics/__tests__/ai-referrers.test.ts": {
@@ -13653,6 +13653,30 @@
     "mtime": 1790865023.2074316,
     "seen": 1790865197.6463385,
     "ast_hash": "e325cdc08dd6f85f6fbc87f3be17858c",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/analytics/AnnotationMarkers.tsx": {
+    "mtime": 1790865310.3398273,
+    "seen": 1790865544.9915223,
+    "ast_hash": "9b2f51b389bf03c5269d2f0f7d20defa",
+    "semantic_hash": ""
+  },
+  "lib/seo-metrics/__tests__/annotations.test.ts": {
+    "mtime": 1790865271.5047681,
+    "seen": 1790865544.9929185,
+    "ast_hash": "26500debf1b5f08d376be305d7397d71",
+    "semantic_hash": ""
+  },
+  "lib/seo-metrics/annotations.ts": {
+    "mtime": 1790865271.5043614,
+    "seen": 1790865544.992923,
+    "ast_hash": "6f0329d2278e9eb0fe3be7e9aabdc68d",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260925110000_seo_annotations.sql": {
+    "mtime": 1790865271.496768,
+    "seen": 1790865544.993262,
+    "ast_hash": "34f522ad3bcca4182d7605d66ae2e02c",
     "semantic_hash": ""
   }
 }
