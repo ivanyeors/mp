@@ -7,6 +7,7 @@ import {
   type GscRow,
 } from "@/lib/google/search-console";
 import { addDays } from "@/lib/seo-metrics/dates";
+import { queryPageKey } from "@/lib/seo-metrics/keys";
 
 /**
  * Daily Search Console snapshot into `seo_daily_metrics` (slice 01,
@@ -23,12 +24,14 @@ export const INITIAL_DAYS = 30;
 /** GSC keeps 16 months; asking for older dates returns nothing. */
 export const MAX_HISTORY_DAYS = 486;
 
-export type SeoDimension = "total" | "query" | "page" | "country" | "device";
+export type SeoDimension = "total" | "query" | "page" | "query_page" | "country" | "device";
 
 const DIMENSIONS: Record<SeoDimension, GscDimension[]> = {
   total: ["date"],
   query: ["date", "query"],
   page: ["date", "page"],
+  // Which page ranks for which query: target-query ranking URL and cannibalisation (slices 06, 09).
+  query_page: ["date", "query", "page"],
   country: ["date", "country"],
   device: ["date", "device"],
 };
@@ -54,6 +57,7 @@ export type SeoMetricsStore = {
 };
 
 export { addDays };
+export { queryPageKey, splitQueryPageKey, QUERY_PAGE_SEPARATOR } from "@/lib/seo-metrics/keys";
 
 /**
  * Start from a few days before the newest stored date so settling days are
@@ -70,7 +74,7 @@ export function toMetricRows(dimension: SeoDimension, rows: GscRow[]): SeoMetric
     date: r.keys[0],
     source: GSC_SOURCE,
     dimension,
-    key: dimension === "total" ? "" : (r.keys[1] ?? ""),
+    key: dimension === "total" ? "" : dimension === "query_page" ? queryPageKey(r.keys[1] ?? "", r.keys[2] ?? "") : (r.keys[1] ?? ""),
     clicks: r.clicks,
     impressions: r.impressions,
     position_sum: r.position * r.impressions,

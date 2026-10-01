@@ -14,10 +14,16 @@ User stories covered: 5, 6
 
 ## Acceptance criteria
 
-- [ ] Watchlist position matches GSC for the same query and range
-- [ ] Movers ignore rows below the impression threshold
-- [ ] Shows "not ranking" instead of a blank when a query has no data
+- [ ] (after backfill) Watchlist position matches GSC for the same query and range
+- [x] Movers ignore rows below the impression threshold (30 across both periods)
+- [x] Shows "not ranking" instead of a blank when a query has no data
 
 ## Blocked by
 
 Slice 01
+
+## Implementation notes
+
+- The ingest gained a `query_page` dimension (date × query × page, keyed `query<TAB>page`). It gives each target search its ranking URL, and flags **competing pages**: other pages taking ≥ 20% of a query's impressions. Those flags feed slice 09's consolidation map.
+- Movers sum in the database via `seo_metric_rollup()` (service role only), so no long-range query pages thousands of daily rows.
+- Matching is exact, against GSC's lower-cased query text.

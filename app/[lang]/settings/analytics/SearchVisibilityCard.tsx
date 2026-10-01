@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
-import { ArrowDownRight, ArrowUpRight, Minus, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,10 @@ import {
   getChannelMix,
   getCrawlerActivity,
   getSeoAnnotations,
+  getSearchQueries,
   getSearchVisibility,
+  addTargetQuery,
+  removeTargetQuery,
 } from "./seo-actions";
 
 const SeoTrendVisx = dynamic(() => import("./SeoTrendVisx").then((m) => m.SeoTrendVisx), { ssr: false });
@@ -38,6 +41,196 @@ const PURPOSE_LABELS = {
   search_engine: "Search engine",
   unknown: "Unknown",
 } as const;
+
+type Queries = Awaited<ReturnType<typeof getSearchQueries>>;
+type MoverRow = Queries["queryMovers"]["gainers"][number];
+
+/** Show a URL as its path, so the column stays readable. */
+function shortPath(url: string): string {
+  try {
+    const u = new URL(url);
+    return decodeURIComponent(u.pathname.replace(/^\/(en-US|zh-CN)(?=\/|$)/, "")) || "/";
+  } catch {
+    return url;
+  }
+}
+
+function PositionChange({ position, previous }: { position: number | null; previous: number | null }) {
+  if (position === null) return <span className="text-muted-foreground">not ranking</span>;
+  const change = previous === null ? null : position - previous;
+  const Icon = change === null || Math.abs(change) < 0.05 ? null : change < 0 ? ArrowUpRight : ArrowDownRight;
+  // Lower position = better, so a negative change is good.
+  const tone = change !== null && change < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="font-medium">{fmtPos(position)}</span>
+      {Icon && change !== null ? (
+        <span className="inline-flex items-center text-muted-foreground">
+          <Icon className={`size-3 ${tone}`} aria-hidden />
+          {Math.abs(change).toFixed(1)}
+          <span className="sr-only">{change < 0 ? " better" : " worse"}</span>
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+function MoversList({ title, rows, isPage }: { title: string; rows: MoverRow[]; isPage: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className="mb-1 text-xs font-medium">{title}</div>
+      {rows.length ? (
+        <ul className="divide-y rounded-md border text-xs">
+          {rows.map((m) => (
+            <li key={m.key} className="flex items-center gap-2 px-2 py-1.5">
+              <span className="min-w-0 flex-1 truncate" title={m.key}>
+                {isPage ? shortPath(m.key) : m.key}
+              </span>
+              <span className="shrink-0 tabular-nums">
+                {m.deltaClicks > 0 ? "+" : ""}
+                {int.format(m.deltaClicks)}
+              </span>
+              <span className="w-16 shrink-0 text-right tabular-nums text-muted-foreground">
+                {int.format(m.previousClicks)} → {int.format(m.clicks)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="text-xs text-muted-foreground">None this period.</div>
+      )}
+    </div>
+  );
+}
+
+/** Target-query watchlist + biggest movers (slice 06). */
+export function QueriesPanel({ queries, onChange }: { queries: Queries; onChange: () => void }) {
+  const [moversOf, setMoversOf] = useState<"queries" | "pages">("queries");
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const movers = moversOf === "queries" ? queries.queryMovers : queries.pageMovers;
+
+  const add = () =>
+    startTransition(async () => {
+      const r = await addTargetQuery(draft);
+      if (!r.ok) return setError(r.error);
+      setError(null);
+      setDraft("");
+      onChange();
+    });
+  const remove = (q: string) =>
+    startTransition(async () => {
+      const r = await removeTargetQuery(q);
+      if (!r.ok) return setError(r.error);
+      setError(null);
+      onChange();
+    });
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="text-sm font-medium">Target searches</div>
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full min-w-[640px] text-xs tabular-nums">
+            <thead className="bg-muted text-left">
+              <tr>
+                <th className="px-2 py-1.5 font-medium">Search</th>
+                <th className="px-2 py-1.5 font-medium">Position</th>
+                <th className="px-2 py-1.5 font-medium">12 weeks</th>
+                <th className="px-2 py-1.5 text-right font-medium">Clicks</th>
+                <th className="px-2 py-1.5 text-right font-medium">Impressions</th>
+                <th className="px-2 py-1.5 font-medium">Ranking page</th>
+                <th className="px-2 py-1.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {queries.watchlist.map((w) => (
+                <tr key={w.query} className="border-t">
+                  <td className="px-2 py-1.5">{w.query}</td>
+                  <td className="px-2 py-1.5">
+                    <PositionChange position={w.position} previous={w.previousPosition} />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Sparkline values={w.spark} invert />
+                  </td>
+                  <td className="px-2 py-1.5 text-right">{int.format(w.clicks)}</td>
+                  <td className="px-2 py-1.5 text-right">{int.format(w.impressions)}</td>
+                  <td className="max-w-[16rem] px-2 py-1.5">
+                    {w.topPage ? (
+                      <span className="flex items-center gap-1">
+                        <span className="truncate" title={w.topPage}>
+                          {shortPath(w.topPage)}
+                        </span>
+                        {w.competingPages.length ? (
+                          <span
+                            className="inline-flex shrink-0 items-center gap-0.5 text-muted-foreground"
+                            title={`Also ranking: ${w.competingPages.map(shortPath).join(", ")}`}
+                          >
+                            <AlertTriangle className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />+{w.competingPages.length}{" "}
+                            competing
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-1 py-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7"
+                      disabled={pending}
+                      onClick={() => remove(w.query)}
+                      aria-label={`Stop tracking ${w.query}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            add();
+          }}
+        >
+          <Input value={draft} maxLength={120} placeholder="Track another search, e.g. orthopedic pillow singapore" onChange={(e) => setDraft(e.target.value)} aria-label="Search to track" />
+          <Button type="submit" disabled={pending || draft.trim().length < 2}>
+            Track
+          </Button>
+        </form>
+        {error ? <div className="text-xs text-destructive">{error}</div> : null}
+        <div className="text-xs text-muted-foreground">
+          Exact-match Search Console queries. &ldquo;Competing&rdquo; means another of our pages takes at least 20% of that
+          search&apos;s impressions: candidates for merging.
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-sm font-medium">Biggest movers vs previous period</div>
+          <Tabs value={moversOf} onValueChange={(v) => setMoversOf(v === "pages" ? "pages" : "queries")}>
+            <TabsList>
+              <TabsTrigger value="queries">Searches</TabsTrigger>
+              <TabsTrigger value="pages">Pages</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <MoversList title="Gaining clicks" rows={movers.gainers} isPage={moversOf === "pages"} />
+          <MoversList title="Losing clicks" rows={movers.losers} isPage={moversOf === "pages"} />
+        </div>
+        <div className="text-xs text-muted-foreground">Ignores rows with under 30 impressions across both periods.</div>
+      </div>
+    </div>
+  );
+}
 
 /** Annotations in range + add form (slice 05). */
 export function AnnotationsPanel({ annotations, onChange }: { annotations: Annotation[]; onChange: () => void }) {
@@ -461,6 +654,9 @@ export function SearchVisibilityCard() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotationsVersion, setAnnotationsVersion] = useState(0);
   const refreshAnnotations = useCallback(() => setAnnotationsVersion((v) => v + 1), []);
+  const [queries, setQueries] = useState<Queries | null>(null);
+  const [queriesVersion, setQueriesVersion] = useState(0);
+  const refreshQueries = useCallback(() => setQueriesVersion((v) => v + 1), []);
   const [crawlers, setCrawlers] = useState<Crawlers | null>(null);
   const [crawlersError, setCrawlersError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -481,6 +677,20 @@ export function SearchVisibilityCard() {
       cancelled = true;
     };
   }, [range, granularity, annotationsVersion]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSearchQueries({ range })
+      .then((q) => {
+        if (!cancelled) setQueries(q);
+      })
+      .catch(() => {
+        if (!cancelled) setQueries(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range, queriesVersion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -565,7 +775,10 @@ export function SearchVisibilityCard() {
             it current after that. Setup steps: <code className="rounded bg-muted px-1">.claude/PRD-search-visibility/GOOGLE-ACCESS-SETUP.md</code>.
           </div>
         ) : (
-          <VisibilityPanel data={data} loading={loading} annotations={annotations} />
+          <div className="space-y-6">
+            <VisibilityPanel data={data} loading={loading} annotations={annotations} />
+            {queries?.hasData ? <QueriesPanel queries={queries} onChange={refreshQueries} /> : null}
+          </div>
         )}
 
         <section className="space-y-3 border-t pt-6">

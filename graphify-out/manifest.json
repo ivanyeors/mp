@@ -13410,15 +13410,15 @@
     "semantic_hash": ""
   },
   "lib/seo-metrics/__tests__/ingest-gsc.test.ts": {
-    "mtime": 1790329146.0454504,
-    "seen": 1790863435.0205903,
-    "ast_hash": "620501aa087e4bfc79749cbfc6c40b94",
+    "mtime": 1790865629.296661,
+    "seen": 1790865939.80898,
+    "ast_hash": "8b45ba8ee7850a310c475e5141e495a7",
     "semantic_hash": ""
   },
   "lib/seo-metrics/ingest-gsc.ts": {
-    "mtime": 1790863942.6801665,
-    "seen": 1790864533.0918822,
-    "ast_hash": "55a5cb19614e51a8e93712cdd908b94c",
+    "mtime": 1790865684.0429108,
+    "seen": 1790865939.8089886,
+    "ast_hash": "785135260729d0c766017f222fde7ddf",
     "semantic_hash": ""
   },
   "scripts/gsc-backfill.ts": {
@@ -13428,9 +13428,9 @@
     "semantic_hash": ""
   },
   "supabase/migrations/20260925090000_seo_daily_metrics.sql": {
-    "mtime": 1790329111.2698596,
-    "seen": 1790863435.0209463,
-    "ast_hash": "031d888222e2efd62afd9e60d0767e6e",
+    "mtime": 1790865640.7548919,
+    "seen": 1790865939.809387,
+    "ast_hash": "bb7e810a53d97cfce9c79a420d391c09",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/GA4-SETUP.md": {
@@ -13476,9 +13476,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/06-target-queries.md": {
-    "mtime": 1790327134.938924,
-    "seen": 1790863435.0212328,
-    "ast_hash": "de40e80a0dc90cf5d35488289639517a",
+    "mtime": 1790865880.778277,
+    "seen": 1790865939.8096683,
+    "ast_hash": "da4a663f6f84097434fec999c67cc794",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/07-manual-imports.md": {
@@ -13560,9 +13560,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SearchVisibilityCard.tsx": {
-    "mtime": 1790865418.2864718,
-    "seen": 1790865544.9915423,
-    "ast_hash": "9632614c0dbe8b7909b3167a8c9e3c9d",
+    "mtime": 1790865754.7493505,
+    "seen": 1790865939.807546,
+    "ast_hash": "bf008df9e3fa97df18a5cd5fdc7f01c2",
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SeoTrendVisx.tsx": {
@@ -13572,9 +13572,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/seo-actions.ts": {
-    "mtime": 1790865290.1935701,
-    "seen": 1790865544.99155,
-    "ast_hash": "102a91ff9b966146228c3bf19bb0b5f2",
+    "mtime": 1790865710.7589421,
+    "seen": 1790865939.8075547,
+    "ast_hash": "6383dd78ec07b8dd4c14cf1e8f099a83",
     "semantic_hash": ""
   },
   "lib/seo-metrics/__tests__/aggregate.test.ts": {
@@ -13677,6 +13677,30 @@
     "mtime": 1790865271.496768,
     "seen": 1790865544.993262,
     "ast_hash": "34f522ad3bcca4182d7605d66ae2e02c",
+    "semantic_hash": ""
+  },
+  "lib/seo-metrics/__tests__/queries.test.ts": {
+    "mtime": 1790865671.2727919,
+    "seen": 1790865939.8089824,
+    "ast_hash": "36884e992b4928f505aa40105160d906",
+    "semantic_hash": ""
+  },
+  "lib/seo-metrics/keys.ts": {
+    "mtime": 1790865684.0430534,
+    "seen": 1790865939.8089902,
+    "ast_hash": "f7d4463362f84985840bfe149bb34de7",
+    "semantic_hash": ""
+  },
+  "lib/seo-metrics/queries.ts": {
+    "mtime": 1790865684.0434134,
+    "seen": 1790865939.8089912,
+    "ast_hash": "a02f67e783bba25b3e8e48bcdab88d70",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260925120000_seo_target_queries.sql": {
+    "mtime": 1790865640.75679,
+    "seen": 1790865939.8093913,
+    "ast_hash": "d19b4aef10ef949d0c786111ec0cdea8",
     "semantic_hash": ""
   }
 }

@@ -11,7 +11,7 @@
 create table if not exists seo_daily_metrics (
   date date not null,
   source text not null,          -- gsc_web | gsc_genai | bing_ai | ga4
-  dimension text not null,       -- total | query | page | country | device
+  dimension text not null,       -- total | query | page | query_page | country | device
   key text not null default '',  -- '' for total
   clicks integer not null default 0,
   impressions integer not null default 0,

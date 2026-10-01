@@ -15,6 +15,15 @@ import { addDays } from "@/lib/seo-metrics/dates";
 import { buildChannelMix, singaporeDate, type MixVisit } from "@/lib/analytics/channel-mix";
 import { buildCrawlerActivity, type CrawlerHitRow } from "@/lib/analytics/crawler-activity";
 import { validateAnnotation, type Annotation, type AnnotationInput } from "@/lib/seo-metrics/annotations";
+import { splitQueryPageKey } from "@/lib/seo-metrics/keys";
+import {
+  buildMovers,
+  buildWatchlist,
+  normalizeQuery,
+  SPARK_WEEKS,
+  type KeyDaily,
+  type KeyTotals,
+} from "@/lib/seo-metrics/queries";
 import { GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
 
 // ponytail: do not `export type { X }` from "use server" — see actions.ts
@@ -202,6 +211,87 @@ export async function deleteSeoAnnotation(id: string): Promise<{ ok: true } | { 
   await assertAdmin("analytics");
   if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "Unknown annotation." };
   const { error } = await supabaseAdmin().from("seo_annotations").delete().eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+async function rollup(source: string, dimension: string, from: string, to: string): Promise<KeyTotals[]> {
+  const admin = supabaseAdmin();
+  const rows = await fetchAllPages<{ key: string; clicks: number; impressions: number; position_sum: number }>((a, b) =>
+    admin.rpc("seo_metric_rollup", { p_source: source, p_dimension: dimension, p_from: from, p_to: to }).range(a, b),
+  );
+  return rows.map((r) => ({ ...r, clicks: Number(r.clicks), impressions: Number(r.impressions), position_sum: Number(r.position_sum) }));
+}
+
+/** Target-query watchlist + biggest movers for queries and pages (slice 06). */
+export async function getSearchQueries(input: { range: string }) {
+  await assertAdmin("analytics");
+  const days = RANGE_DAYS[input.range as keyof typeof RANGE_DAYS] ?? RANGE_DAYS["3m"];
+  const today = new Date().toISOString().slice(0, 10);
+  const from = addDays(today, -(days - 1));
+  const prev = previousPeriod(from, today);
+  const admin = supabaseAdmin();
+
+  const { data: targetRows, error } = await admin
+    .from("seo_target_queries")
+    .select("query")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(`Target queries: ${error.message}`);
+  const targets = (targetRows ?? []).map((r) => r.query as string);
+
+  const [queries, previousQueries, pages, previousPages, queryPages] = await Promise.all([
+    rollup(GSC_SOURCE, "query", from, today),
+    rollup(GSC_SOURCE, "query", prev.from, prev.to),
+    rollup(GSC_SOURCE, "page", from, today),
+    rollup(GSC_SOURCE, "page", prev.from, prev.to),
+    rollup(GSC_SOURCE, "query_page", from, today),
+  ]);
+
+  const sparkFrom = addDays(today, -(SPARK_WEEKS * 7 + 6));
+  const daily = targets.length
+    ? await fetchAllPages<KeyDaily>((a, b) =>
+        admin
+          .from("seo_daily_metrics")
+          .select("date, key, clicks, impressions, position_sum")
+          .eq("source", GSC_SOURCE)
+          .eq("dimension", "query")
+          .in("key", targets)
+          .gte("date", sparkFrom)
+          .order("date", { ascending: true })
+          .range(a, b),
+      )
+    : [];
+
+  const targetSet = new Set(targets);
+  return {
+    hasData: queries.length > 0 || previousQueries.length > 0,
+    watchlist: buildWatchlist({
+      targets,
+      current: queries.filter((q) => targetSet.has(q.key)),
+      previous: previousQueries.filter((q) => targetSet.has(q.key)),
+      daily,
+      queryPages: queryPages.filter((qp) => targetSet.has(splitQueryPageKey(qp.key).query)),
+      today,
+    }),
+    queryMovers: buildMovers(queries, previousQueries),
+    pageMovers: buildMovers(pages, previousPages),
+  };
+}
+
+export async function addTargetQuery(raw: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await assertAdmin("analytics");
+  const query = normalizeQuery(raw ?? "");
+  if (query.length < 2 || query.length > 120) return { ok: false, error: "Use 2–120 characters." };
+  const { error } = await supabaseAdmin()
+    .from("seo_target_queries")
+    .upsert({ query, created_by: ctx.email }, { onConflict: "query", ignoreDuplicates: true });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+export async function removeTargetQuery(query: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  await assertAdmin("analytics");
+  const { error } = await supabaseAdmin().from("seo_target_queries").delete().eq("query", normalizeQuery(query));
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

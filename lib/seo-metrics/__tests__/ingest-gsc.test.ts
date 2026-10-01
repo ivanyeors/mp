@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createGscClient, GSC_ROW_LIMIT, type GscRow } from "@/lib/google/search-console";
 import {
   planWindow,
+  queryPageKey,
+  splitQueryPageKey,
   runGscIngest,
   toMetricRows,
   type SeoMetricRow,
@@ -52,6 +54,12 @@ describe("toMetricRows", () => {
   });
 });
 
+describe("queryPageKey", () => {
+  it("round-trips query and page", () => {
+    expect(splitQueryPageKey(queryPageKey("custom pillow", "https://x/y?a=1"))).toEqual({ query: "custom pillow", page: "https://x/y?a=1" });
+  });
+});
+
 describe("createGscClient", () => {
   it("follows startRow pagination until a short page, and encodes the property id", async () => {
     const calls: { url: string; startRow: number }[] = [];
@@ -85,9 +93,9 @@ describe("createGscClient", () => {
 describe("runGscIngest", () => {
   const client = {
     async queryAll({ dimensions }: { dimensions: string[] }) {
-      return dimensions.length === 1
-        ? [row(["2026-09-24"]), row(["2026-09-25"])]
-        : [row(["2026-09-24", `${dimensions[1]}-a`]), row(["2026-09-24", `${dimensions[1]}-b`])];
+      if (dimensions.length === 1) return [row(["2026-09-24"]), row(["2026-09-25"])];
+      if (dimensions.length === 3) return [row(["2026-09-24", "custom pillow", "https://custom.mpillow.com/en-US/mp-config"])];
+      return [row(["2026-09-24", `${dimensions[1]}-a`]), row(["2026-09-24", `${dimensions[1]}-b`])];
     },
   };
 
@@ -95,10 +103,11 @@ describe("runGscIngest", () => {
     const { store, rows } = memoryStore("2026-09-24");
     const first = await runGscIngest(store, client, { today: "2026-09-25" });
     expect(first.startDate).toBe("2026-09-21");
-    expect(first.rows).toEqual({ total: 2, query: 2, page: 2, country: 2, device: 2 });
-    expect(rows.size).toBe(10);
+    expect(first.rows).toEqual({ total: 2, query: 2, page: 2, query_page: 1, country: 2, device: 2 });
+    expect(rows.size).toBe(11);
+    expect([...rows.keys()]).toContain("2026-09-24|gsc_web|query_page|custom pillow\thttps://custom.mpillow.com/en-US/mp-config");
 
     await runGscIngest(store, client, { today: "2026-09-25" });
-    expect(rows.size).toBe(10);
+    expect(rows.size).toBe(11);
   });
 });
