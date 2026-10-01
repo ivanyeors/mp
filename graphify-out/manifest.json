@@ -13458,9 +13458,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/03-ai-referrals.md": {
-    "mtime": 1790327134.9387445,
-    "seen": 1790863435.02123,
-    "ast_hash": "99ce164458616c46eff01bf5d2cb3209",
+    "mtime": 1790864883.9573886,
+    "seen": 1790864934.817347,
+    "ast_hash": "05b8d39e40c69a485477ab7703e8ec6e",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/04-ai-crawler-hits.md": {
@@ -13560,9 +13560,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SearchVisibilityCard.tsx": {
-    "mtime": 1790864182.2367034,
-    "seen": 1790864533.0892203,
-    "ast_hash": "74ca3cdf591cbc4ab6cac11ad3e2bbd2",
+    "mtime": 1790864850.7930934,
+    "seen": 1790864934.8153045,
+    "ast_hash": "47a4d4d65228957025f4d3086caa210c",
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SeoTrendVisx.tsx": {
@@ -13572,9 +13572,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/seo-actions.ts": {
-    "mtime": 1790864056.6502812,
-    "seen": 1790864533.0892308,
-    "ast_hash": "b3e6bbf4cd28d64ea9eb9e9c75edbfbf",
+    "mtime": 1790864708.960511,
+    "seen": 1790864934.8153317,
+    "ast_hash": "e68ec3f418c2170baf9232ee4cdc43d7",
     "semantic_hash": ""
   },
   "lib/seo-metrics/__tests__/aggregate.test.ts": {
@@ -13593,6 +13593,36 @@
     "mtime": 1790863942.6681159,
     "seen": 1790864533.0918796,
     "ast_hash": "345a50dee1c3048de5619bc1c0f6f95d",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/analytics/ChannelMixVisx.tsx": {
+    "mtime": 1790864850.7938912,
+    "seen": 1790864934.8152921,
+    "ast_hash": "85a42ed3e44b6a7109549d4e853caeed",
+    "semantic_hash": ""
+  },
+  "lib/analytics/__tests__/ai-referrers.test.ts": {
+    "mtime": 1790864615.071097,
+    "seen": 1790864934.8160083,
+    "ast_hash": "aa3e5479a9ac889a3eebc72f2fcbb0df",
+    "semantic_hash": ""
+  },
+  "lib/analytics/__tests__/channel-mix.test.ts": {
+    "mtime": 1790864691.212202,
+    "seen": 1790864934.8160102,
+    "ast_hash": "f34e5155dcbc743fdef0abaf56b1e4a2",
+    "semantic_hash": ""
+  },
+  "lib/analytics/ai-referrers.ts": {
+    "mtime": 1790864627.5948067,
+    "seen": 1790864934.8160121,
+    "ast_hash": "9bb989a5eb807e8665d24f2c335416ed",
+    "semantic_hash": ""
+  },
+  "lib/analytics/channel-mix.ts": {
+    "mtime": 1790864691.2116911,
+    "seen": 1790864934.8160136,
+    "ast_hash": "5935a699c8f4272381d05d0d5d7982eb",
     "semantic_hash": ""
   }
 }

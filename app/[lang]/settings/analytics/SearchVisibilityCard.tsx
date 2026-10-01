@@ -7,11 +7,75 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bucket, Delta, Totals } from "@/lib/seo-metrics/aggregate";
-import { getSearchVisibility } from "./seo-actions";
+import { CHANNEL_LABELS } from "@/lib/analytics/ai-referrers";
+import { getChannelMix, getSearchVisibility } from "./seo-actions";
 
 const SeoTrendVisx = dynamic(() => import("./SeoTrendVisx").then((m) => m.SeoTrendVisx), { ssr: false });
+const ChannelMixVisx = dynamic(() => import("./ChannelMixVisx").then((m) => m.ChannelMixVisx), { ssr: false });
 
 type Visibility = Awaited<ReturnType<typeof getSearchVisibility>>;
+type Mix = Awaited<ReturnType<typeof getChannelMix>>;
+
+const sgd = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", maximumFractionDigits: 0 });
+const rate = (num: number, den: number) => (den > 0 ? `${((num / den) * 100).toFixed(1)}%` : "—");
+
+/** Presentational: visits by channel + per-channel funnel. */
+export function ChannelMixPanel({ mix }: { mix: Mix }) {
+  return (
+    <div className="space-y-4">
+      <ChannelMixVisx buckets={mix.buckets} granularity={mix.granularity} />
+      {mix.aiSources.length ? (
+        <div className="text-xs text-muted-foreground">
+          AI assistants:{" "}
+          {mix.aiSources.map((a, i) => (
+            <span key={a.source}>
+              {i ? " · " : null}
+              <span className="text-foreground">{a.source}</span> {int.format(a.visits)} visits
+              {a.orders ? `, ${int.format(a.orders)} orders` : null}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full min-w-[560px] text-xs tabular-nums">
+          <thead className="bg-muted text-left">
+            <tr>
+              <th className="px-2 py-1.5 font-medium">Channel</th>
+              <th className="px-2 py-1.5 text-right font-medium">Visits</th>
+              <th className="px-2 py-1.5 text-right font-medium">Share</th>
+              <th className="px-2 py-1.5 text-right font-medium" title="Visits that opened mp-config or mbolster-config">
+                Configurator
+              </th>
+              <th className="px-2 py-1.5 text-right font-medium">Orders</th>
+              <th className="px-2 py-1.5 text-right font-medium">Visit → order</th>
+              <th className="px-2 py-1.5 text-right font-medium">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mix.funnel.map((r) => (
+              <tr key={r.channel} className="border-t">
+                <td className="px-2 py-1.5">{CHANNEL_LABELS[r.channel]}</td>
+                <td className="px-2 py-1.5 text-right">{int.format(r.visits)}</td>
+                <td className="px-2 py-1.5 text-right">{rate(r.visits, mix.totalVisits)}</td>
+                <td className="px-2 py-1.5 text-right">
+                  {int.format(r.configuratorVisits)}{" "}
+                  <span className="text-muted-foreground">({rate(r.configuratorVisits, r.visits)})</span>
+                </td>
+                <td className="px-2 py-1.5 text-right">{int.format(r.orders)}</td>
+                <td className="px-2 py-1.5 text-right">{rate(r.orders, r.visits)}</td>
+                <td className="px-2 py-1.5 text-right">{r.revenue ? sgd.format(r.revenue) : "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        From first-party visit tracking (since Jul 2026). AI apps often send no referrer, so those visits count as Direct:
+        read the AI assistant figure as a minimum. Orders are last-touch: the visit that paid.
+      </div>
+    </div>
+  );
+}
 
 const RANGES = [
   { value: "28d", label: "28 days" },
@@ -199,6 +263,8 @@ export function SearchVisibilityCard() {
   const [range, setRange] = useState<string>("3m");
   const [granularity, setGranularity] = useState<"day" | "week">("week");
   const [data, setData] = useState<Visibility | null>(null);
+  const [mix, setMix] = useState<Mix | null>(null);
+  const [mixError, setMixError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Loading is derived: the request key we last settled differs from the one on screen.
   const requestKey = `${range}|${granularity}`;
@@ -207,6 +273,15 @@ export function SearchVisibilityCard() {
 
   useEffect(() => {
     let cancelled = false;
+    getChannelMix({ range, granularity })
+      .then((m) => {
+        if (cancelled) return;
+        setMix(m);
+        setMixError(null);
+      })
+      .catch((e) => {
+        if (!cancelled) setMixError(e instanceof Error ? e.message : "Failed to load");
+      });
     getSearchVisibility({ range, granularity })
       .then((d) => {
         if (cancelled) return;
@@ -227,9 +302,10 @@ export function SearchVisibilityCard() {
   return (
     <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
-        <CardTitle>Search visibility</CardTitle>
+        <CardTitle>Search &amp; AI visibility</CardTitle>
         <CardDescription>
-          Google web search (Search Console), synced daily. The last 3 days are partial: Google keeps revising them.
+          Google web search from Search Console (synced daily; the last 3 days are partial while Google revises them), and
+          first-party visits by channel.
           {data?.lastDate ? ` Latest data: ${data.lastDate}.` : null}
         </CardDescription>
         <CardAction className="col-start-1 row-start-3 flex w-full flex-wrap gap-2 sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto sm:justify-end">
@@ -271,6 +347,20 @@ export function SearchVisibilityCard() {
         ) : (
           <VisibilityPanel data={data} loading={loading} />
         )}
+
+        <section className="space-y-3 border-t pt-6">
+          <div>
+            <h3 className="text-sm font-medium">Visits by channel</h3>
+            <div className="text-xs text-muted-foreground">Where visits came from, with AI assistants as their own channel.</div>
+          </div>
+          {mixError ? (
+            <p className="text-sm text-destructive">{mixError}</p>
+          ) : mix ? (
+            <ChannelMixPanel mix={mix} />
+          ) : (
+            <Skeleton className="h-[260px]" />
+          )}
+        </section>
       </CardContent>
     </Card>
   );
