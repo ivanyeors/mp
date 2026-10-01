@@ -13,9 +13,15 @@ User stories covered: 32
 
 ## Acceptance criteria
 
-- [ ] Only approved reviews shown
-- [ ] Topic tagging falls back gracefully when fewer than 3 matches exist
+- [x] Only approved store reviews (rating ≥ 4) and Google reviews passing the existing display filter
+- [x] Shows however many on-topic matches exist (up to 4) and hides the section at zero. It never pads with off-topic reviews.
 
 ## Blocked by
 
 None
+
+## Implementation notes
+
+- Keyword matching per guide topic (`lib/seo/topic-reviews.ts`, tested). Names are shortened to first name + last initial.
+- The guides route renders per request, so the loader is wrapped in `unstable_cache` with a 1-hour revalidate. It fails soft: no quotes, never an error.
+- Consolidated blog posts (slice 10) can reuse `getTopicReviews` once they exist.

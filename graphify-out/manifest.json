@@ -1746,9 +1746,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/guides/[topic]/page.tsx": {
-    "mtime": 1790212158.9044673,
-    "seen": 1790863435.0190837,
-    "ast_hash": "7e91b2aeba503347dbb1e0a3e40b0151",
+    "mtime": 1790866792.811051,
+    "seen": 1790866887.185687,
+    "ast_hash": "0fff8b5ccde66bdb70f08396512e415e",
     "semantic_hash": ""
   },
   "app/[lang]/layout.tsx": {
@@ -13512,9 +13512,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/12-review-backed-hubs.md": {
-    "mtime": 1790327134.9393113,
-    "seen": 1790863435.0212386,
-    "ast_hash": "48f6fbb0f2751618bfcbd2bb4810193c",
+    "mtime": 1790866792.811335,
+    "seen": 1790866887.1906366,
+    "ast_hash": "259e1410005a55a9d83836eda19d8075",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/13-merchant-feed.md": {
@@ -13755,6 +13755,24 @@
     "mtime": 1790866452.9054227,
     "seen": 1790866579.3559325,
     "ast_hash": "10d4f9d77f04e7a615d76de748201217",
+    "semantic_hash": ""
+  },
+  "lib/seo/__tests__/topic-reviews.test.ts": {
+    "mtime": 1790866628.4070628,
+    "seen": 1790866887.1889787,
+    "ast_hash": "a3d87c1437132810db9ecd5620617038",
+    "semantic_hash": ""
+  },
+  "lib/seo/topic-reviews-loader.ts": {
+    "mtime": 1790866792.8106503,
+    "seen": 1790866887.189024,
+    "ast_hash": "11edf6521d341ecc0a1bf23a32b98e87",
+    "semantic_hash": ""
+  },
+  "lib/seo/topic-reviews.ts": {
+    "mtime": 1790866628.4038515,
+    "seen": 1790866887.1890268,
+    "ast_hash": "8e4e62f87b00fe98f37854ef9ae46c82",
     "semantic_hash": ""
   }
 }
