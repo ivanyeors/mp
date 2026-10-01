@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "lib/blogs.ts": {
-    "mtime": 1790212159.1263347,
-    "seen": 1790863435.0201209,
-    "ast_hash": "abb2e62971c79369d451a7d4c8ec983d",
+    "mtime": 1790866452.9178991,
+    "seen": 1790866579.3542907,
+    "ast_hash": "8f75e3431bd18cb94aba354d1aaa8508",
     "semantic_hash": ""
   },
   "lib/bom-sanitizer/__tests__/bom-sanitizer.test.ts": {
@@ -1230,9 +1230,9 @@
     "semantic_hash": ""
   },
   "lib/seo/jsonld-article.ts": {
-    "mtime": 1790212159.1405292,
-    "seen": 1790863435.020598,
-    "ast_hash": "b3a88f2813e4f2396c7459cb18169d92",
+    "mtime": 1790866452.9193041,
+    "seen": 1790866579.3551686,
+    "ast_hash": "14944e1420742349c9ce4bf8d48bf3d0",
     "semantic_hash": ""
   },
   "lib/seo/jsonld-organization.ts": {
@@ -1716,9 +1716,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/blog/[slug]/page.tsx": {
-    "mtime": 1790212158.9042375,
-    "seen": 1790863435.0190783,
-    "ast_hash": "e8dff9504c5a0ab7a5b04968d5d490e7",
+    "mtime": 1790866481.119043,
+    "seen": 1790866579.352134,
+    "ast_hash": "14b02d4df3d5bcdb243c069811427dff",
     "semantic_hash": ""
   },
   "app/[lang]/blog/layout.tsx": {
@@ -2430,15 +2430,15 @@
     "semantic_hash": ""
   },
   "app/api/blogs/[id]/route.ts": {
-    "mtime": 1790866038.533393,
-    "seen": 1790866120.3490565,
-    "ast_hash": "54c65eafb436c5b2c1896d9bce040a5d",
+    "mtime": 1790866505.8802714,
+    "seen": 1790866579.3527012,
+    "ast_hash": "3a783f0160660079801798e8f60027ab",
     "semantic_hash": ""
   },
   "app/api/blogs/route.ts": {
-    "mtime": 1790866043.5651317,
-    "seen": 1790866120.349059,
-    "ast_hash": "6c25e4c1deb418ec64a557bc70db8079",
+    "mtime": 1790866452.9187822,
+    "seen": 1790866579.3527067,
+    "ast_hash": "21cd11ceffc93ecd3c1f072a5449972a",
     "semantic_hash": ""
   },
   "app/api/cron/appointment-reminders/route.ts": {
@@ -13542,9 +13542,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/17-blog-hygiene.md": {
-    "mtime": 1790327172.0815268,
-    "seen": 1790863435.0212438,
-    "ast_hash": "dd43a3af7cec25fce23649c2e742c6c7",
+    "mtime": 1790866505.8808117,
+    "seen": 1790866579.3565624,
+    "ast_hash": "ae48857d854037c1c4a48d29023f3b75",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/README.md": {
@@ -13731,6 +13731,30 @@
     "mtime": 1790866155.9888206,
     "seen": 1790866380.9249465,
     "ast_hash": "c3c92a1a6e5753214b350b79978655ed",
+    "semantic_hash": ""
+  },
+  "lib/__tests__/blog-content-merge.test.ts": {
+    "mtime": 1790866434.4035017,
+    "seen": 1790866579.35372,
+    "ast_hash": "0c7cecbfb95cfa56e0872b73756c8fd2",
+    "semantic_hash": ""
+  },
+  "lib/blog-content-merge.ts": {
+    "mtime": 1790866434.3978655,
+    "seen": 1790866579.3542876,
+    "ast_hash": "1798cca9e6422ea585e7eeb7389cd6bd",
+    "semantic_hash": ""
+  },
+  "lib/seo/__tests__/jsonld-article.test.ts": {
+    "mtime": 1790866481.1288915,
+    "seen": 1790866579.3551526,
+    "ast_hash": "5c1ac5e11f1547a60e9d8cd36c4ad6ae",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260925130000_blog_content_updated_at.sql": {
+    "mtime": 1790866452.9054227,
+    "seen": 1790866579.3559325,
+    "ast_hash": "10d4f9d77f04e7a615d76de748201217",
     "semantic_hash": ""
   }
 }

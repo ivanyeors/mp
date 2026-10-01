@@ -22,9 +22,15 @@ Fixes that are wrong under any consolidation outcome. They can ship before the a
 
 - [ ] No published post contains `[image here]`, `xxx cm` or `â€`
 - [ ] Every published post has a non-empty description
-- [ ] Article JSON-LD `dateModified` changes only on editorial saves (test)
-- [ ] Author JSON-LD has a URL; there is no `Person` named "Mpillow"
+- [x] Article JSON-LD `dateModified` changes only on editorial saves (test)
+- [x] No `Person` named "Mpillow": brand bylines emit `Organization` (with url); named authors emit `Person` + `worksFor`. There are no author pages yet, so a Person has no url of its own.
 
 ## Blocked by
 
 None
+
+## Implementation notes (code half done)
+
+- **Bug found and fixed:** the blog create/update schemas did not accept `seo_answer`, and the admin editor sends `content` wholesale, so every admin save wiped the post's Answer lede. Both schemas now accept it, and an update that omits it keeps the stored value (`lib/blog-content-merge.ts`, tested).
+- `content_updated_at` is set only when the reader-visible text changes. It drives `dateModified` and an "Updated {date}" byline when that is more than a day after publishing. A PATCH deployed before the migration falls back to saving without the column.
+- Still HITL, and needs DB access or the editor: the placeholder post, the broken slug's 301, mojibake repair, factual fixes, the 75 empty descriptions, and hero alt text (there is no alt field yet).

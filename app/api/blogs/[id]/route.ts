@@ -4,7 +4,8 @@ import { blogPostUrls, pingIndexNow } from "@/lib/seo/indexnow";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
-import { getAdminBlogPostById } from "@/lib/blogs";
+import { getAdminBlogPostById, type BlogLocalizedContent } from "@/lib/blogs";
+import { isEditorialChange, preserveSeoAnswer } from "@/lib/blog-content-merge";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,8 @@ const UpdateBlogSchema = z.object({
         description: z.string().optional().default(""),
         body: z.string().optional().default(""),
         seo_keywords: z.array(z.string()).optional().default([]),
+        // Answer lede (CONTEXT.md). Optional: omitted on update keeps the stored value.
+        seo_answer: z.string().max(1000).optional(),
     })).optional(),
     image_url: z.string().nullable().optional(),
     media_asset_id: z.string().uuid().nullable().optional(),
@@ -50,18 +53,36 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
     const updates: Record<string, unknown> = { ...parsed.data };
 
+    if (parsed.data.content) {
+        const { data: existing } = await supabaseAdmin()
+            .from("blog_posts")
+            .select("content")
+            .eq("id", id)
+            .maybeSingle();
+        const before = (existing?.content ?? null) as Record<string, BlogLocalizedContent> | null;
+        const content = preserveSeoAnswer(before, parsed.data.content);
+        updates.content = content;
+        // Only real text edits move Article dateModified (slice 17).
+        if (isEditorialChange(before, content)) updates.content_updated_at = new Date().toISOString();
+    }
+
     // Auto-set published_at when publishing for the first time
     if (parsed.data.status === "published" && !parsed.data.published_at) {
         updates.published_at = new Date().toISOString();
     }
 
     const admin = supabaseAdmin();
-    const { data, error } = await admin
+    let { data, error } = await admin
         .from("blog_posts")
         .update(updates)
         .eq("id", id)
         .select("*")
         .single();
+    // Deployed before 20260925130000 is applied: save without the new column rather than fail.
+    if (error && "content_updated_at" in updates && /content_updated_at/.test(error.message)) {
+        delete updates.content_updated_at;
+        ({ data, error } = await admin.from("blog_posts").update(updates).eq("id", id).select("*").single());
+    }
 
     if (error) {
         const isDup = /duplicate key|unique/i.test(error.message);
