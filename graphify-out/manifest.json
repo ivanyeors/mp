@@ -2004,9 +2004,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/blogs/actions.ts": {
-    "mtime": 1790212158.910254,
-    "seen": 1790863435.019159,
-    "ast_hash": "be88f0a710269883c0ccb612f839cc70",
+    "mtime": 1790866038.5344217,
+    "seen": 1790866120.3488584,
+    "ast_hash": "003f508acf5ac54d6b3bdd8e8d57e949",
     "semantic_hash": ""
   },
   "app/[lang]/settings/blogs/page.tsx": {
@@ -2430,15 +2430,15 @@
     "semantic_hash": ""
   },
   "app/api/blogs/[id]/route.ts": {
-    "mtime": 1790212158.9195042,
-    "seen": 1790863435.0193613,
-    "ast_hash": "327d9697bed57f6427d792fb22bcccb1",
+    "mtime": 1790866038.533393,
+    "seen": 1790866120.3490565,
+    "ast_hash": "54c65eafb436c5b2c1896d9bce040a5d",
     "semantic_hash": ""
   },
   "app/api/blogs/route.ts": {
-    "mtime": 1790212158.9195042,
-    "seen": 1790863435.0193636,
-    "ast_hash": "cb3501d1710a2a1285c2c3778166911b",
+    "mtime": 1790866043.5651317,
+    "seen": 1790866120.349059,
+    "ast_hash": "6c25e4c1deb418ec64a557bc70db8079",
     "semantic_hash": ""
   },
   "app/api/cron/appointment-reminders/route.ts": {
@@ -13530,9 +13530,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/15-bing-indexnow.md": {
-    "mtime": 1790327134.939516,
-    "seen": 1790863435.021242,
-    "ast_hash": "b787646feb6ddb6d2ff0ebb2504252e1",
+    "mtime": 1790866067.893646,
+    "seen": 1790866120.351354,
+    "ast_hash": "d55f8bac0ea564199adb73e47748090b",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/16-earned-mentions.md": {
@@ -13701,6 +13701,24 @@
     "mtime": 1790865640.75679,
     "seen": 1790865939.8093913,
     "ast_hash": "d19b4aef10ef949d0c786111ec0cdea8",
+    "semantic_hash": ""
+  },
+  "app/indexnow-key.txt/route.ts": {
+    "mtime": 1790866026.9855707,
+    "seen": 1790866120.3493102,
+    "ast_hash": "d6921927c01d7994df9cdfc8c5fe3247",
+    "semantic_hash": ""
+  },
+  "lib/seo/__tests__/indexnow.test.ts": {
+    "mtime": 1790866026.993838,
+    "seen": 1790866120.3505294,
+    "ast_hash": "408d664e4334e22624950ce697e138e0",
+    "semantic_hash": ""
+  },
+  "lib/seo/indexnow.ts": {
+    "mtime": 1790866026.980813,
+    "seen": 1790866120.350538,
+    "ast_hash": "726c4e3351268b612755ef8cf86101ad",
     "semantic_hash": ""
   }
 }

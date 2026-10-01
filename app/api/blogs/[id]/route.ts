@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
+import { blogPostUrls, pingIndexNow } from "@/lib/seo/indexnow";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
@@ -79,6 +80,11 @@ export async function PATCH(req: Request, { params }: RouteParams) {
             urls: typeof imageUrl === "string" && imageUrl.startsWith("http") ? [imageUrl] : [],
             assetIds: parsed.data.media_asset_id ? [parsed.data.media_asset_id] : [],
         }).catch(() => {});
+    }
+
+    // Published or just unpublished: tell IndexNow engines (Bing → Copilot / ChatGPT search).
+    if (data?.slug && (data.status === "published" || parsed.data.status === "unpublished")) {
+        after(() => pingIndexNow(blogPostUrls(data.slug as string)));
     }
 
     return NextResponse.json({ ok: true, row: data });

@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
+import { blogPostUrls, pingIndexNow } from "@/lib/seo/indexnow";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
@@ -64,6 +65,10 @@ export async function POST(req: Request) {
             { error: isDup ? "A post with this slug already exists" : error.message },
             { status: isDup ? 409 : 500 }
         );
+    }
+
+    if (data?.slug && data.status === "published") {
+        after(() => pingIndexNow(blogPostUrls(data.slug as string)));
     }
 
     const imageUrl = parsed.data.image_url;
