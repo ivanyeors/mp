@@ -8,13 +8,92 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bucket, Delta, Totals } from "@/lib/seo-metrics/aggregate";
 import { CHANNEL_LABELS } from "@/lib/analytics/ai-referrers";
-import { getChannelMix, getSearchVisibility } from "./seo-actions";
+import { getChannelMix, getCrawlerActivity, getSearchVisibility } from "./seo-actions";
 
 const SeoTrendVisx = dynamic(() => import("./SeoTrendVisx").then((m) => m.SeoTrendVisx), { ssr: false });
 const ChannelMixVisx = dynamic(() => import("./ChannelMixVisx").then((m) => m.ChannelMixVisx), { ssr: false });
 
 type Visibility = Awaited<ReturnType<typeof getSearchVisibility>>;
 type Mix = Awaited<ReturnType<typeof getChannelMix>>;
+type Crawlers = Awaited<ReturnType<typeof getCrawlerActivity>>;
+
+const PURPOSE_LABELS = {
+  training: "Model training",
+  ai_search: "AI search index",
+  user_fetch: "Live fetch for a user",
+  search_engine: "Search engine",
+  unknown: "Unknown",
+} as const;
+
+/** Presentational: AI crawler activity (slice 04). */
+export function CrawlerPanel({ crawlers }: { crawlers: Crawlers }) {
+  if (!crawlers.hasData) {
+    return (
+      <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+        No crawler hits recorded yet. Counting starts once the <code className="rounded bg-muted px-1">ai_crawler_hits</code>{" "}
+        migration is applied and the next deploy is live; AI crawlers usually show up within days.
+      </div>
+    );
+  }
+  const change =
+    crawlers.previousAiHits > 0 ? (crawlers.aiHits - crawlers.previousAiHits) / crawlers.previousAiHits : null;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+        <div>
+          <div className="text-xs text-muted-foreground">AI crawler hits</div>
+          <div className="text-xl font-semibold tabular-nums">{int.format(crawlers.aiHits)}</div>
+          <div className="text-xs text-muted-foreground">
+            {change === null ? "No previous data" : `${change >= 0 ? "+" : ""}${(change * 100).toFixed(0)}% vs prev. period`}
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-muted-foreground">/llms.txt fetches</div>
+          <div className="text-xl font-semibold tabular-nums">{int.format(crawlers.llmsTxtHits)}</div>
+          <div className="text-xs text-muted-foreground">Bots reading our AI guide</div>
+        </div>
+      </div>
+      <SeoTrendVisx
+        label="AI crawler hits"
+        points={crawlers.buckets}
+        granularity={crawlers.granularity}
+        formatValue={fmtCount}
+        height={150}
+      />
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full min-w-[560px] text-xs tabular-nums">
+          <thead className="bg-muted text-left">
+            <tr>
+              <th className="px-2 py-1.5 font-medium">Crawler</th>
+              <th className="px-2 py-1.5 font-medium">Purpose</th>
+              <th className="px-2 py-1.5 text-right font-medium">Hits</th>
+              <th className="px-2 py-1.5 text-right font-medium">Prev. period</th>
+              <th className="px-2 py-1.5 font-medium">Most fetched</th>
+            </tr>
+          </thead>
+          <tbody>
+            {crawlers.bots.map((b) => (
+              <tr key={b.bot} className={`border-t ${b.purpose === "search_engine" ? "text-muted-foreground" : ""}`}>
+                <td className="px-2 py-1.5">
+                  {b.bot} <span className="text-muted-foreground">· {b.operator}</span>
+                </td>
+                <td className="px-2 py-1.5">{PURPOSE_LABELS[b.purpose]}</td>
+                <td className="px-2 py-1.5 text-right">{int.format(b.hits)}</td>
+                <td className="px-2 py-1.5 text-right">{int.format(b.previousHits)}</td>
+                <td className="px-2 py-1.5">{b.topPaths.map((p) => `${p.pathGroup} (${int.format(p.hits)})`).join(", ") || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        Identified by user agent, not verified against each operator&apos;s IP ranges. Search-index and live-fetch bots
+        (OAI-SearchBot, PerplexityBot, ChatGPT-User, Claude-User) are the ones that lead to citations. Search engines are
+        listed for comparison and left out of the chart.
+      </div>
+    </div>
+  );
+}
 
 const sgd = new Intl.NumberFormat("en-SG", { style: "currency", currency: "SGD", maximumFractionDigits: 0 });
 const rate = (num: number, den: number) => (den > 0 ? `${((num / den) * 100).toFixed(1)}%` : "—");
@@ -265,6 +344,8 @@ export function SearchVisibilityCard() {
   const [data, setData] = useState<Visibility | null>(null);
   const [mix, setMix] = useState<Mix | null>(null);
   const [mixError, setMixError] = useState<string | null>(null);
+  const [crawlers, setCrawlers] = useState<Crawlers | null>(null);
+  const [crawlersError, setCrawlersError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Loading is derived: the request key we last settled differs from the one on screen.
   const requestKey = `${range}|${granularity}`;
@@ -273,6 +354,15 @@ export function SearchVisibilityCard() {
 
   useEffect(() => {
     let cancelled = false;
+    getCrawlerActivity({ range, granularity })
+      .then((c) => {
+        if (cancelled) return;
+        setCrawlers(c);
+        setCrawlersError(null);
+      })
+      .catch((e) => {
+        if (!cancelled) setCrawlersError(e instanceof Error ? e.message : "Failed to load");
+      });
     getChannelMix({ range, granularity })
       .then((m) => {
         if (cancelled) return;
@@ -359,6 +449,22 @@ export function SearchVisibilityCard() {
             <ChannelMixPanel mix={mix} />
           ) : (
             <Skeleton className="h-[260px]" />
+          )}
+        </section>
+
+        <section className="space-y-3 border-t pt-6">
+          <div>
+            <h3 className="text-sm font-medium">AI crawlers</h3>
+            <div className="text-xs text-muted-foreground">
+              Bots from AI companies fetching our pages: the earliest sign of being picked up by AI answers.
+            </div>
+          </div>
+          {crawlersError ? (
+            <div className="text-sm text-destructive">{crawlersError}</div>
+          ) : crawlers ? (
+            <CrawlerPanel crawlers={crawlers} />
+          ) : (
+            <Skeleton className="h-[220px]" />
           )}
         </section>
       </CardContent>

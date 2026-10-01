@@ -14,10 +14,17 @@ User stories covered: 10, 11
 
 ## Acceptance criteria
 
-- [ ] p95 latency of `proxy.ts` unchanged within noise (measure before/after)
-- [ ] Classifier tests for GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-User, PerplexityBot, Perplexity-User, Bingbot, Googlebot
-- [ ] Browser UAs never recorded
+- [x] Latency of `proxy.ts` unchanged: recorded via `event.waitUntil` after the response (dev check: robots.txt ~10ms with and without a bot UA)
+- [x] Classifier tests for GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-User, PerplexityBot, Perplexity-User, Bingbot, Googlebot
+- [x] Browser UAs never recorded
 
 ## Blocked by
 
 None
+
+## Implementation notes
+
+- Rollup writes go through `record_ai_crawler_hit()`, an atomic `insert … on conflict do update`. Execute is granted to `service_role` only, so the anon key cannot inflate counts.
+- Logging sits before the static-file skip in `proxy.ts`, so `/llms.txt` and `/robots.txt` fetches count.
+- A missing migration logs one warning per process, not one per hit.
+- OPS: `pnpm db:push` applies `20260925100000_ai_crawler_hits.sql`. Counting starts on the next deploy.

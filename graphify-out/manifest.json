@@ -6132,9 +6132,9 @@
     "semantic_hash": ""
   },
   "proxy.ts": {
-    "mtime": 1790212159.4233358,
-    "seen": 1790863435.0207558,
-    "ast_hash": "91b7052572a802b1adeef5c30fed28db",
+    "mtime": 1790865023.2209783,
+    "seen": 1790865197.6461003,
+    "ast_hash": "f3eb026d9aa405bd19fd2d85a0e69758",
     "semantic_hash": ""
   },
   "public/sw.js": {
@@ -13464,9 +13464,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/04-ai-crawler-hits.md": {
-    "mtime": 1790327134.938809,
-    "seen": 1790863435.0212312,
-    "ast_hash": "69a8aa76a30a3f1d4d55e31f63f179f9",
+    "mtime": 1790865161.0587015,
+    "seen": 1790865197.6466758,
+    "ast_hash": "5979ace8c3fcfe658f5f2f5b00ebff3d",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/05-annotations.md": {
@@ -13560,9 +13560,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SearchVisibilityCard.tsx": {
-    "mtime": 1790864850.7930934,
-    "seen": 1790864934.8153045,
-    "ast_hash": "47a4d4d65228957025f4d3086caa210c",
+    "mtime": 1790865082.353256,
+    "seen": 1790865197.644333,
+    "ast_hash": "7d7ecc4b11a31b7921404e7e0f56fabc",
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/SeoTrendVisx.tsx": {
@@ -13572,9 +13572,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/analytics/seo-actions.ts": {
-    "mtime": 1790864708.960511,
-    "seen": 1790864934.8153317,
-    "ast_hash": "e68ec3f418c2170baf9232ee4cdc43d7",
+    "mtime": 1790865082.3527572,
+    "seen": 1790865197.6443455,
+    "ast_hash": "08b036d87b9a3b0d604e8636db02234c",
     "semantic_hash": ""
   },
   "lib/seo-metrics/__tests__/aggregate.test.ts": {
@@ -13623,6 +13623,36 @@
     "mtime": 1790864691.2116911,
     "seen": 1790864934.8160136,
     "ast_hash": "5935a699c8f4272381d05d0d5d7982eb",
+    "semantic_hash": ""
+  },
+  "lib/analytics/__tests__/ai-crawlers.test.ts": {
+    "mtime": 1790865023.2275467,
+    "seen": 1790865197.6451104,
+    "ast_hash": "cdaf7670a141792615b968931d3880e2",
+    "semantic_hash": ""
+  },
+  "lib/analytics/__tests__/crawler-activity.test.ts": {
+    "mtime": 1790865056.604238,
+    "seen": 1790865197.6451166,
+    "ast_hash": "a26b2fe7a5fef5cfc43a17e7c5dc4998",
+    "semantic_hash": ""
+  },
+  "lib/analytics/ai-crawlers.ts": {
+    "mtime": 1790865056.5986073,
+    "seen": 1790865197.6451182,
+    "ast_hash": "98f9518a494b2aa246f8a6acf461112d",
+    "semantic_hash": ""
+  },
+  "lib/analytics/crawler-activity.ts": {
+    "mtime": 1790865056.6007552,
+    "seen": 1790865197.645126,
+    "ast_hash": "c8ef7cd86d5f27487db91fdccc240774",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260925100000_ai_crawler_hits.sql": {
+    "mtime": 1790865023.2074316,
+    "seen": 1790865197.6463385,
+    "ast_hash": "e325cdc08dd6f85f6fbc87f3be17858c",
     "semantic_hash": ""
   }
 }

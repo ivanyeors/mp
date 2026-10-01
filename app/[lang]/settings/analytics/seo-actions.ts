@@ -13,6 +13,7 @@ import {
 } from "@/lib/seo-metrics/aggregate";
 import { addDays } from "@/lib/seo-metrics/dates";
 import { buildChannelMix, singaporeDate, type MixVisit } from "@/lib/analytics/channel-mix";
+import { buildCrawlerActivity, type CrawlerHitRow } from "@/lib/analytics/crawler-activity";
 import { GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
 
 // ponytail: do not `export type { X }` from "use server" — see actions.ts
@@ -134,5 +135,36 @@ export async function getChannelMix(input: { range: string; granularity: string 
       to,
       granularity,
     }),
+  };
+}
+
+/** AI crawler activity from the proxy.ts rollup (slice 04). */
+export async function getCrawlerActivity(input: { range: string; granularity: string }) {
+  await assertAdmin("analytics");
+
+  const days = RANGE_DAYS[input.range as keyof typeof RANGE_DAYS] ?? RANGE_DAYS["3m"];
+  const granularity: Granularity = input.granularity === "day" ? "day" : "week";
+  const to = singaporeDate(new Date().toISOString());
+  const from = addDays(to, -(days - 1));
+  const prev = previousPeriod(from, to);
+  const since = prev.from < bucketStart(from, granularity) ? prev.from : bucketStart(from, granularity);
+
+  const admin = supabaseAdmin();
+  const rows = await fetchAllPages<CrawlerHitRow>((a, b) =>
+    admin
+      .from("ai_crawler_hits")
+      .select("date, bot, path_group, hits")
+      .gte("date", since)
+      .lte("date", to)
+      .order("date", { ascending: true })
+      .range(a, b),
+  );
+
+  return {
+    from,
+    to,
+    granularity,
+    hasData: rows.length > 0,
+    ...buildCrawlerActivity({ rows, from, to, previousFrom: prev.from, granularity }),
   };
 }
