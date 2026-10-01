@@ -32,6 +32,7 @@ import {
   type PillowPlacementRow,
 } from "@/lib/spatial-fillings/core";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 
 const TIER_LABEL: Record<(typeof PILLOW_TIERS)[number], string> = {
   basic: "Basic",
@@ -69,6 +70,7 @@ export function StaffAssistPanel({
   onApplySizeTier,
   onItemsChange,
   onColorOverridesChange,
+  onDimensionOverridesChange,
 }: {
   current: SizeTier;
   /** Live session mix, edited on the x-ray — the thing a save publishes. */
@@ -83,6 +85,8 @@ export function StaffAssistPanel({
   onItemsChange?: (items: FillingItem[]) => void;
   /** Product Builder color overrides, surfaced for the x-ray CSS vars (slice 11). */
   onColorOverridesChange?: (overrides: ColorOverrideRow[]) => void;
+  /** Settings dimension overrides, surfaced for the true-scale x-ray (slice 02). */
+  onDimensionOverridesChange?: (overrides: DimensionOverridesPayload | null) => void;
 }) {
   const [gate, setGate] = useState<ConfirmGateState>({ pending: null });
   const [applying, setApplying] = useState(false);
@@ -100,6 +104,7 @@ export function StaffAssistPanel({
           templates?: TemplateRow[];
           items?: FillingItem[];
           colorOverrides?: ColorOverrideRow[];
+          dimensionOverrides?: DimensionOverridesPayload;
         }) => {
           if (cancelled) return;
           // A neck support is for premium pillows only — basic never offers it.
@@ -110,6 +115,7 @@ export function StaffAssistPanel({
           setItems(offered);
           onItemsChange?.(offered);
           onColorOverridesChange?.(d.colorOverrides ?? []);
+          onDimensionOverridesChange?.(d.dimensionOverrides ?? null);
         },
       )
       .catch(() => {
@@ -118,6 +124,7 @@ export function StaffAssistPanel({
           setItems([]);
           onItemsChange?.([]);
           onColorOverridesChange?.([]);
+          onDimensionOverridesChange?.(null);
         }
       });
     return () => {

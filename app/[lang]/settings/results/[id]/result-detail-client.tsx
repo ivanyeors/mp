@@ -20,16 +20,41 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { XrayEditor } from "@/components/spatial/xray-editor";
+import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/skeleton";
+import { confirmSaveWithBolsterFit, confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { useBolsterFit, useCut, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
+import type { BolsterLength } from "@/lib/spatial-fillings/xray-layout";
 import { XrayPackList } from "@/components/spatial/xray-pack-list";
 import { InsertOrderList } from "@/components/spatial/insert-order-list";
 import { fillingLabel, NECK_SUPPORT, PLACEABLE_ITEMS_OR } from "@/lib/spatial-fillings/filling-groups";
+
+/**
+ * The x-ray editor and the cross-section load on demand, as on the Configure
+ * card: the editor drags in @dnd-kit and the sunburst picker, both sit inside
+ * the collapsed assign section, and importing them statically put that weight
+ * in this route's first load and past its bundle budget. `ssr: false` — they
+ * are interactive client editors with nothing to render on the server.
+ */
+const XrayEditor = dynamic(
+  () => import("@/components/spatial/xray-editor").then((m) => m.XrayEditor),
+  { ssr: false, loading: () => <Skeleton className="aspect-[664/374] w-full rounded-lg" /> },
+);
+const XrayCrossSection = dynamic(
+  () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
+  { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
+);
+const BolsterCrossSection = dynamic(
+  () => import("@/components/spatial/xray-cross-section").then((m) => m.BolsterCrossSection),
+  { ssr: false, loading: () => <Skeleton className="h-40 w-full rounded-lg" /> },
+);
 import {
   isSpatiallyAuthored,
   looksLikeLegacyImport,
   unauthoredReason,
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 import { BolsterCompartmentList, type BolsterListItem } from "@/components/spatial/bolster-compartment-list";
 import {
   bolsterPlacementsToRows,
@@ -296,6 +321,7 @@ export default function ResultDetailPage({
   const [bolsterMix, setBolsterMix] = useState<BolsterPlacement[]>([]);
   const [templateHadPlacements, setTemplateHadPlacements] = useState(true);
   const [colorOverrides, setColorOverrides] = useState<ColorOverrideRow[]>([]);
+  const [dimensionOverrides, setDimensionOverrides] = useState<DimensionOverridesPayload | undefined>(undefined);
   const [templateLegacyLines, setTemplateLegacyLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [templateNotes, setTemplateNotes] = useState("");
   const [fillingItems, setFillingItems] = useState<BolsterListItem[]>(seed.fillingItems);
@@ -571,6 +597,7 @@ export default function ResultDetailPage({
         // Product Builder colours for the x-ray — same server route as Configure,
         // because filling_color_overrides is service-role-only under RLS.
         setColorOverrides((payload?.colorOverrides ?? []) as ColorOverrideRow[]);
+        setDimensionOverrides((payload?.dimensionOverrides ?? undefined) as DimensionOverridesPayload | undefined);
       } catch {
         setPlacements([]);
         setBolsterMix([]);
@@ -717,6 +744,15 @@ export default function ResultDetailPage({
         : fillingItems.filter((i) => !NECK_SUPPORT.test(i.name)),
     [fillingItems, productType, assignTier],
   );
+  // Slice 04: the physical fit of the assignment at its Size — one object for
+  // the x-ray, the banner, the save confirm and the cross-section.
+  const fit = usePillowFit(placements, assignSize, pickerItems, dimensionOverrides);
+  // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
+  const { cut, setCut, onDiveChange } = useCut();
+  const { itemSubtypes: pickerItemSubtypes } = useItemMaps(pickerItems, dimensionOverrides);
+  // Slice 09: the Mbolster's fit at the assigned length, for the confirm and the end-on cut.
+  const bolsterLength = (["short", "medium", "long"] as const).find((l) => l === assignLength) ?? "medium";
+  const bolsterFit = useBolsterFit(bolsterMix, bolsterLength as BolsterLength, pickerItems, dimensionOverrides);
 
   const refreshSuggestion = useCallback(async () => {
     if (!id) return;
@@ -1275,20 +1311,35 @@ export default function ResultDetailPage({
                               </p>
                             </div>
                           )}
+                          <FitBanner fit={fit} />
                           <XrayEditor
                             placements={placements}
                             onPlacementsChange={setPlacements}
                             items={pickerItems}
+                            pillowSize={assignSize}
+                            colorOverrides={colorOverrides}
+                            dimensionOverrides={dimensionOverrides}
+                            fit={fit}
+                            onDiveChange={onDiveChange}
+                          />
+                          <XrayCrossSection
+                            fit={fit}
+                            cut={cut}
+                            onCutChange={setCut}
+                            itemSubtypes={pickerItemSubtypes}
                             colorOverrides={colorOverrides}
                           />
                         </>
                       ) : (
                         // Mbolster: single compartment — ordered list, no cap, never the 3×3 grid.
-                        <BolsterCompartmentList
-                          value={bolsterMix}
-                          onChange={setBolsterMix}
-                          items={pickerItems}
-                        />
+                        <>
+                          <BolsterCompartmentList
+                            value={bolsterMix}
+                            onChange={setBolsterMix}
+                            items={pickerItems}
+                          />
+                          <BolsterCrossSection fit={bolsterFit} itemSubtypes={pickerItemSubtypes} colorOverrides={colorOverrides} />
+                        </>
                       )}
                       <div className="rounded-md border bg-muted/30 p-3 text-sm">
                         <div className="text-xs text-muted-foreground mb-1">Derived pack list</div>
@@ -1313,7 +1364,15 @@ export default function ResultDetailPage({
                     </div>
                   )}
 
-                  <Button onClick={assign} disabled={assigning || !fillingTemplateId}>
+                  <Button
+                    onClick={() => {
+                      // Slice 04: a cell that cannot close is a confirm, never a block (ADR 0019).
+                      if (productType === "pillow" && !confirmSaveWithOverCells(fit, "Save assignment")) return;
+                      if (productType === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save assignment")) return;
+                      void assign();
+                    }}
+                    disabled={assigning || !fillingTemplateId}
+                  >
                     {assigning ? "Assigning…" : "Save assignment"}
                   </Button>
                 </CollapsibleContent>

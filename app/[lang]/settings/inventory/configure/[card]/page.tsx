@@ -39,6 +39,10 @@ import {
   unauthoredReason,
 } from "@/lib/spatial-fillings/authoring";
 import type { ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
+import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
+import { confirmSaveWithOverCells, FitBanner } from "@/components/spatial/xray-fit-banner";
+import { useBolsterFit, useCut, useFitAtSizes, useItemMaps, usePillowFit } from "@/components/spatial/use-pillow-fit";
+import { confirmSaveWithBolsterFit } from "@/components/spatial/xray-fit-banner";
 import {
   bolsterPlacementsToRows,
   pillowPlacementsToRows,
@@ -86,6 +90,14 @@ const XrayEditor = dynamic(
 const XrayBolsterEditor = dynamic(
   () => import("@/components/spatial/xray-editor").then((m) => m.XrayBolsterEditor),
   { ssr: false, loading: () => <EditorSkeleton className="aspect-[4/3]" /> },
+);
+const XrayCrossSection = dynamic(
+  () => import("@/components/spatial/xray-cross-section").then((m) => m.XrayCrossSection),
+  { ssr: false, loading: () => <EditorSkeleton className="h-40" /> },
+);
+const BolsterCrossSection = dynamic(
+  () => import("@/components/spatial/xray-cross-section").then((m) => m.BolsterCrossSection),
+  { ssr: false, loading: () => <EditorSkeleton className="h-40" /> },
 );
 const XrayPackList = dynamic(
   () => import("@/components/spatial/xray-pack-list").then((m) => m.XrayPackList),
@@ -557,6 +569,8 @@ export default function ConfigureCardPage() {
   };
 
   const [cardColorOverrides, setCardColorOverrides] = useState<ColorOverrideRow[]>([]);
+  // Slice 02: Settings dimension overrides ride the same list response.
+  const [cardDimensionOverrides, setCardDimensionOverrides] = useState<DimensionOverridesPayload | undefined>(undefined);
 
   const loadFillingTemplates = useCallback(async (kind: "pillow" | "bolster", key: string) => {
     const url = settingsPath(
@@ -574,6 +588,9 @@ export default function ConfigureCardPage() {
     // defaults while the configurator shows Product Builder colours).
     if (payload?.colorOverrides) {
       setCardColorOverrides(payload.colorOverrides as ColorOverrideRow[]);
+    }
+    if (payload?.dimensionOverrides) {
+      setCardDimensionOverrides(payload.dimensionOverrides as DimensionOverridesPayload);
     }
     // Fold Section coverage and size membership onto each row so the call sites
     // keep the same shape and only the badge and the scope strip know about them.
@@ -1033,6 +1050,7 @@ export default function ConfigureCardPage() {
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
                   colorOverrides={cardColorOverrides}
+                  dimensionOverrides={cardDimensionOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1239,6 +1257,7 @@ export default function ConfigureCardPage() {
                   loadFillingTemplates={loadFillingTemplates}
                   deleteTemplateById={deleteTemplateById}
                   colorOverrides={cardColorOverrides}
+                  dimensionOverrides={cardDimensionOverrides}
                 />
               </TabsContent>
             </Tabs>
@@ -1364,6 +1383,7 @@ function FillingConfigPanel({
   loadFillingTemplates,
   deleteTemplateById,
   colorOverrides,
+  dimensionOverrides,
 }: {
   kind: "pillow" | "bolster";
   templateKey: string;
@@ -1373,6 +1393,8 @@ function FillingConfigPanel({
   deleteTemplateById: (templateId: number) => Promise<void>;
   /** Global per-subtype x-ray colours, owned by the card (not per-template). */
   colorOverrides: ColorOverrideRow[];
+  /** Settings dimension overrides, owned by the card the same way (slice 02). */
+  dimensionOverrides?: DimensionOverridesPayload;
 }) {
   const [templates, setTemplates] = useState<FillingTemplateRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | "">("");
@@ -1585,6 +1607,9 @@ function FillingConfigPanel({
       toast.error(`A new Filling Template must apply to ${templateKeyLabel(kind, templateKey)}`);
       return;
     }
+    // Slice 04 / 09: a cell that cannot close, or a bolster that cannot fit, is a confirm, never a block (ADR 0019).
+    if (kind === "pillow" && !confirmSaveWithOverCells(fit, "Save")) return;
+    if (kind === "bolster" && !confirmSaveWithBolsterFit(bolsterFit, "Save")) return;
     setSaving(true);
     setDeleteConfirm(false);
     try {
@@ -1788,6 +1813,17 @@ function FillingConfigPanel({
         })),
     [items, templateKey, kind],
   );
+  // Slice 04: the physical fit of the recipe at this card's Size — one object
+  // for the x-ray, the banner, the save confirm and the cross-section — and
+  // its status at every Size it is shared with, for the membership chips.
+  const fit = usePillowFit(placements, templateKey, gridItems, dimensionOverrides);
+  const fitBySize = useFitAtSizes(placements, scopeKeys, gridItems, dimensionOverrides);
+  // Slice 05: the cross-section beside the pack list, cut where the x-ray's line says.
+  const { cut, setCut, onDiveChange } = useCut();
+  const { itemSubtypes: gridItemSubtypes } = useItemMaps(gridItems, dimensionOverrides);
+  // Slice 09: the Mbolster's fit at this card's length (a pillow card's empty mix costs nothing).
+  const bolsterLength = BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium";
+  const bolsterFit = useBolsterFit(bolsterMix, bolsterLength, gridItems, dimensionOverrides);
   // Templates whose Placements sit in one Section: the 2026-07-24 backfill's
   // fill-cells-in-order spread, never laid out by a person (CONTEXT.md).
   const unauthoredCount = useMemo(() => templates.filter(isUnauthoredTemplate).length, [templates]);
@@ -1960,6 +1996,7 @@ function FillingConfigPanel({
         keys={scopeKeys}
         currentKey={templateKey}
         disabled={saving}
+        fitBySize={kind === "pillow" ? fitBySize : undefined}
         onChange={(next) => {
           // An armed delete counts the sizes it would remove, so changing them
           // must disarm it rather than leave a stale count on a live button.
@@ -2050,10 +2087,22 @@ function FillingConfigPanel({
                   </p>
                 </div>
               )}
+              <FitBanner fit={fit} className="mb-3" />
               <XrayEditor
                 placements={placements}
                 onPlacementsChange={setPlacements}
                 items={gridItems}
+                pillowSize={templateKey}
+                colorOverrides={colorOverrides}
+                dimensionOverrides={dimensionOverrides}
+                fit={fit}
+                onDiveChange={onDiveChange}
+              />
+              <XrayCrossSection
+                fit={fit}
+                cut={cut}
+                onCutChange={setCut}
+                itemSubtypes={gridItemSubtypes}
                 colorOverrides={colorOverrides}
               />
             </Section>
@@ -2063,11 +2112,14 @@ function FillingConfigPanel({
             <Section title="Single compartment (ordered mix — no piece cap)">
               <XrayBolsterEditor
                 placements={bolsterMix}
-                length={BOLSTER_LENGTHS.find((l) => l === templateKey) ?? "medium"}
+                length={bolsterLength}
                 onPlacementsChange={setBolsterMix}
                 items={gridItems}
                 colorOverrides={colorOverrides}
+                dimensionOverrides={dimensionOverrides}
+                fit={bolsterFit}
               />
+              <BolsterCrossSection fit={bolsterFit} itemSubtypes={gridItemSubtypes} colorOverrides={colorOverrides} />
             </Section>
           )}
           <div className="space-y-3">

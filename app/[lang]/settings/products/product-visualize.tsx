@@ -30,6 +30,7 @@ import {
   type ColorOverrideRow,
   type EffectiveFillingColor,
 } from "@/lib/spatial-fillings/color-overrides";
+import { DimensionsSection } from "./dimensions-section";
 import type { OverlayFit, OverlayMappingItem } from "@/lib/product-builder/overlays";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
@@ -142,6 +143,8 @@ export function ProductVisualize() {
       )}
 
       <FillingVisualsSection settingsPath={settingsPath} />
+
+      <DimensionsSection settingsPath={settingsPath} />
     </div>
   );
 }

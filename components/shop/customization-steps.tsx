@@ -7,6 +7,7 @@ import {
   Loader2,
   ShoppingCart,
 } from "lucide-react";
+import type { DimensionOverridesPayload } from "@/lib/spatial-fillings/dimension-overrides";
 
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/i18n/currencies";
@@ -84,6 +85,8 @@ export interface RecommendationResponseData {
   }[];
   /** RE slice 07: filling color overrides so guest x-ray matches staff assist. */
   color_overrides?: ColorOverrideRow[];
+  /** Settings dimension overrides for the true-scale x-ray (slice 02). */
+  dimension_overrides?: DimensionOverridesPayload;
   /** Buildable units for the recommended composed sellable (size×tier or bolster length). */
   composed_buildable?: number;
   buildable_counts?: Record<string, number>;
