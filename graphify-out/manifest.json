@@ -8166,9 +8166,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1790959449.0483875,
-    "seen": 1790959565.15577,
-    "ast_hash": "034523fa3bec71cb5634a57aaac7f9ad",
+    "mtime": 1790960351.1259844,
+    "seen": 1790960516.8333492,
+    "ast_hash": "ac7367b5ba51acdf2aa84c84f548593c",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -13908,69 +13908,69 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/cards.test.ts": {
-    "mtime": 1790959423.6872954,
-    "seen": 1790959565.154829,
-    "ast_hash": "0ecd54ef86bcfb2241e62928608dd484",
+    "mtime": 1790960290.1728468,
+    "seen": 1790960516.8323097,
+    "ast_hash": "0058c6a94561174e0bad929830331cc3",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/draft-reply.test.ts": {
-    "mtime": 1790959423.68658,
-    "seen": 1790959565.1548312,
-    "ast_hash": "59b6a74ce5e3c430b04eccb3c5c0adfd",
+    "mtime": 1790960252.2833562,
+    "seen": 1790960516.8323119,
+    "ast_hash": "0fe4e506e883cfdcadbab1f0e94df239",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/fake-supabase.ts": {
-    "mtime": 1790958374.8513572,
-    "seen": 1790958817.374507,
-    "ast_hash": "a1e0af800e47406020f5582f7b9dab46",
+    "mtime": 1790960017.4580343,
+    "seen": 1790960516.8323135,
+    "ast_hash": "15df9357c290e5f5b881b7dcd27529c5",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/google-sync.test.ts": {
-    "mtime": 1790959509.0600717,
-    "seen": 1790959565.154834,
-    "ast_hash": "a4d7b89241fbee9a8772d44906d9e39b",
+    "mtime": 1790960324.1889179,
+    "seen": 1790960516.8323152,
+    "ast_hash": "99f98499295756a5961ad1f28c94eec4",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/reply-rules.test.ts": {
-    "mtime": 1790959423.6869574,
-    "seen": 1790959565.1548355,
-    "ast_hash": "cde3afa3f6ab7f8ba0c88d3b596c4968",
+    "mtime": 1790960252.2829335,
+    "seen": 1790960516.8323169,
+    "ast_hash": "c21f045782895adddf3bab61216a3814",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/telegram-handler.test.ts": {
-    "mtime": 1790958287.4582531,
-    "seen": 1790958817.37451,
-    "ast_hash": "c79a3209319f54826cc2792df63984f1",
+    "mtime": 1790960290.1733868,
+    "seen": 1790960516.832321,
+    "ast_hash": "e91b42e4546f6577013b5ac5bfb2225d",
     "semantic_hash": ""
   },
   "lib/reviews/cards.ts": {
-    "mtime": 1790959434.848335,
-    "seen": 1790959565.1548402,
-    "ast_hash": "154324441e8f0cb82dde32a94df96523",
+    "mtime": 1790960120.0709743,
+    "seen": 1790960516.8323228,
+    "ast_hash": "951732ea9f3da7b06834b1b4597b990e",
     "semantic_hash": ""
   },
   "lib/reviews/draft-reply.ts": {
-    "mtime": 1790959344.6868057,
-    "seen": 1790959565.1548417,
-    "ast_hash": "1dbf750fbb2ea6cd2f916fa0f113c605",
+    "mtime": 1790960051.0291483,
+    "seen": 1790960516.8323245,
+    "ast_hash": "bfa739cdf061e9263f75cf6cd2aa1495",
     "semantic_hash": ""
   },
   "lib/reviews/google-actions.ts": {
-    "mtime": 1790958305.3427389,
-    "seen": 1790958817.374513,
-    "ast_hash": "74a4adbdac8cd0317aa05eb9f16c98fd",
+    "mtime": 1790960196.5570698,
+    "seen": 1790960516.8323257,
+    "ast_hash": "17b0be648c73f5f46462c34b33a268eb",
     "semantic_hash": ""
   },
   "lib/reviews/google-reviews.ts": {
-    "mtime": 1790957654.1862154,
-    "seen": 1790958817.3745146,
-    "ast_hash": "ac495c53c89656ba55cb4b29dc344618",
+    "mtime": 1790960017.454356,
+    "seen": 1790960516.8323264,
+    "ast_hash": "20fdd2fdbcc8ca8195987670b4fa217e",
     "semantic_hash": ""
   },
   "lib/reviews/google-sync.ts": {
-    "mtime": 1790959434.8456035,
-    "seen": 1790959565.1548455,
-    "ast_hash": "da28bc551f51cb06e5d26a93a721dadc",
+    "mtime": 1790960326.3702803,
+    "seen": 1790960516.8323276,
+    "ast_hash": "68e5ded4374a7ec41de048b07a8c4249",
     "semantic_hash": ""
   },
   "lib/reviews/pubsub.ts": {
@@ -13980,9 +13980,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/reply-rules.ts": {
-    "mtime": 1790959362.4161897,
-    "seen": 1790959565.1548479,
-    "ast_hash": "6ab53303af286d8d4385e8695f90904a",
+    "mtime": 1790960310.0241168,
+    "seen": 1790960516.8323305,
+    "ast_hash": "9f338b28d124b6ceb328bba39feb1460",
     "semantic_hash": ""
   },
   "lib/reviews/shop-reviews.ts": {
@@ -14040,15 +14040,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-google-review-replies/OPS-CHECKLIST.md": {
-    "mtime": 1790958508.7982662,
-    "seen": 1790958817.3750498,
-    "ast_hash": "b8387c8812c30f5d6b2f1245caba1030",
+    "mtime": 1790960351.1246576,
+    "seen": 1790960516.8329656,
+    "ast_hash": "5bd8454f38c8c80118b2f92c7b9df329",
     "semantic_hash": ""
   },
   ".claude/PRD-google-review-replies/google-review-replies-prd.md": {
-    "mtime": 1790959449.047212,
-    "seen": 1790959565.1554065,
-    "ast_hash": "e5cffffc65a3bd6b156880307cb50fc0",
+    "mtime": 1790960351.1227722,
+    "seen": 1790960516.8329668,
+    "ast_hash": "8b8ccaa6f308690a8fb519a26e52302a",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/reply-style.test.ts": {
@@ -14061,6 +14061,12 @@
     "mtime": 1790959327.602315,
     "seen": 1790959565.1548488,
     "ast_hash": "d3a503c7b66f4e0406b3e2015fc9a5fb",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261002070000_google_review_reopen.sql": {
+    "mtime": 1790960013.2743556,
+    "seen": 1790960516.8328857,
+    "ast_hash": "d3af7163c76ceaee770aeca2e9dfe176",
     "semantic_hash": ""
   }
 }

@@ -5,7 +5,7 @@ import {
   getBusinessProfileConfig,
   type BusinessProfileClient,
 } from "@/lib/google/business-profile";
-import { draftReviewReply } from "@/lib/reviews/draft-reply";
+import { draftInputFor, draftReviewReply } from "@/lib/reviews/draft-reply";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
 import {
   GOOGLE_REVIEW_COLUMNS,
@@ -138,12 +138,7 @@ export async function redraftGoogleReview(
   }
 
   const draft = deps.draft ?? draftReviewReply;
-  const result = await draft({
-    starRating: row.star_rating,
-    comment: row.comment,
-    reviewerName: row.reviewer_name,
-    reviewerIsAnonymous: row.reviewer_is_anonymous,
-  });
+  const result = await draft(draftInputFor(row));
   const patch = result.ok
     ? {
         draft_reply: result.reply,

@@ -156,4 +156,6 @@ export const GOOGLE_REVIEW_DEFAULTS: Row = {
   telegram_chat_id: null,
   telegram_message_id: null,
   last_error: null,
+  reopened_at: null,
+  reopened_from_rating: null,
 };

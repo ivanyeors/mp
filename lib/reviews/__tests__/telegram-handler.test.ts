@@ -35,7 +35,10 @@ vi.mock("@/lib/telegram/bot-api", () => ({
   replyInChat: h.replyInChat,
   sendGroupCard: vi.fn(),
 }));
-vi.mock("@/lib/reviews/draft-reply", () => ({ draftReviewReply: h.draft }));
+vi.mock("@/lib/reviews/draft-reply", async (orig) => ({
+  ...(await orig<typeof import("@/lib/reviews/draft-reply")>()),
+  draftReviewReply: h.draft,
+}));
 vi.mock("@/lib/google/business-profile", async (orig) => ({
   ...(await orig<typeof import("@/lib/google/business-profile")>()),
   getBusinessProfileConfig: () => ({ location: "accounts/1/locations/2", clientId: "c", clientSecret: "s", refreshToken: "r" }),

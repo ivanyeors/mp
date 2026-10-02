@@ -37,6 +37,8 @@ function row(overrides: Partial<GoogleReviewRow> = {}): GoogleReviewRow {
     telegram_chat_id: null,
     telegram_message_id: null,
     last_error: null,
+    reopened_at: null,
+    reopened_from_rating: null,
     created_at: "2026-10-01T02:01:00Z",
     updated_at: "2026-10-01T02:01:00Z",
     ...overrides,
@@ -98,6 +100,62 @@ describe("Google review card", () => {
     expect(
       renderGoogleReviewCard(row({ star_rating: 1, status: "posted", posted_reply: "Sorry", acted_by_name: "Ivan" })).text,
     ).not.toContain("SERVICE RECOVERY");
+  });
+
+  it("warns when a recovery reply does not send them to WhatsApp", () => {
+    const missing = renderGoogleReviewCard(row({ star_rating: 1, draft_reply: "We're so sorry about the delay." }));
+    expect(missing.text).toMatch(/⚠️ Doesn't ask them to WhatsApp us on \+65 8780 5311/);
+    const given = renderGoogleReviewCard(
+      row({ star_rating: 1, draft_reply: "We're so sorry. Please message us on WhatsApp at +65 8780 5311." }),
+    );
+    expect(given.text).not.toContain("⚠️");
+  });
+
+  it("shows a reopened review with the reply on Google now, and Replace instead of Post", () => {
+    const card = renderGoogleReviewCard(
+      row({
+        star_rating: 2,
+        reopened_at: "2026-10-02T08:00:00Z",
+        reopened_from_rating: 5,
+        google_reply: "Thank you, Jane!",
+        draft_reply: "We're sorry it got worse, Jane. Please message us on WhatsApp at +65 8780 5311.",
+      }),
+    );
+    expect(card.text).toContain("🔄 REOPENED — the rating changed from 5★ to 2★ after it was answered.");
+    expect(card.text).toContain("💬 Our reply on Google now (Replace swaps it for the new one):\nThank you, Jane!");
+    expect(card.text).toContain("tap Replace reply");
+    expect(buttons(card)[0].text).toBe("✅ Replace reply");
+    expect(parseReviewCallback(buttons(card)[0].callback_data)).toMatchObject({ action: "post" });
+  });
+
+  it("says a review was edited when the earlier rating is unknown, and drops the banner once settled", () => {
+    const open = renderGoogleReviewCard(row({ reopened_at: "2026-10-02T08:00:00Z", google_reply: "Thanks!" }));
+    expect(open.text).toContain("🔄 REOPENED — the reviewer edited this review after it was answered.");
+    const skippedBefore = renderGoogleReviewCard(row({ reopened_at: "2026-10-02T08:00:00Z", reopened_from_rating: 4, star_rating: 1 }));
+    expect(skippedBefore.text).toContain("🔄 REOPENED — the rating changed from 4★ to 1★.");
+    expect(buttons(skippedBefore)[0].text).toBe("✅ Post reply");
+    const done = renderGoogleReviewCard(
+      row({ reopened_at: "2026-10-02T08:00:00Z", status: "posted", posted_reply: "Sorry", acted_by_name: "Ivan" }),
+    );
+    expect(done.text).not.toContain("REOPENED");
+  });
+
+  it("always fits Telegram's 4096 characters, however much is on it", () => {
+    const card = renderGoogleReviewCard(
+      row({
+        star_rating: 1,
+        comment: "x".repeat(5000),
+        reopened_at: "2026-10-02T08:00:00Z",
+        reopened_from_rating: 5,
+        google_reply: "g".repeat(2000),
+        draft_reply: `Visit www.mpillow.com, call 9123 4567, email a@b.co, 10% off, full refund ${"y".repeat(1400)}`,
+        last_error: "e".repeat(2000),
+      }),
+    );
+    expect(card.text.length).toBeLessThanOrEqual(4096);
+    // The review is clipped harder; the draft being approved is never cut.
+    expect(card.text).toContain("Service recovery reply, drafted by Claude");
+    expect(card.text).toContain("y".repeat(1400));
   });
 
   it("has no Post button without a draft and says why", () => {

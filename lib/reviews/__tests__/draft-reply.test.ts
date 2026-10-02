@@ -4,8 +4,10 @@ import {
   REVIEW_REPLY_MODEL,
   REVIEW_REPLY_SYSTEM_PROMPT,
   buildReviewPrompt,
+  draftInputFor,
   draftReviewReply,
 } from "@/lib/reviews/draft-reply";
+import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 
 /**
  * The drafting call is one Messages request. These pin its shape — model,
@@ -68,10 +70,48 @@ describe("draftReviewReply", () => {
     expect(recovery).toMatch(/never dispute their account/);
     expect(recovery).toMatch(/one concrete next step/);
     expect(recovery).toMatch(/re-adjustment visit/);
-    expect(recovery).toMatch(/Support page on our website/);
+    expect(recovery).toMatch(/Always ask them to message us on WhatsApp at \+65 8780 5311/);
     expect(recovery).toMatch(/No promotion/);
+    // The staffed sales line only — never the automated appointment sender.
+    expect(REVIEW_REPLY_SYSTEM_PROMPT).not.toContain("8809 7571");
     // Compensation stays out of every public reply, recovery included.
     expect(REVIEW_REPLY_SYSTEM_PROMPT).toMatch(/No discounts, vouchers, refunds, free items or any other incentive or compensation/);
+  });
+
+  it("tells Claude when a review changed after it was answered, with the reply it replaces", () => {
+    const prompt = buildReviewPrompt({
+      ...review,
+      update: { previousRating: 5, previousReply: "Thank you, Ben!" },
+    });
+    expect(prompt).toContain("Update: the reviewer changed their rating from 5 to 2 stars after it was answered.");
+    expect(prompt).toContain("<our_previous_reply>\nThank you, Ben!\n</our_previous_reply>");
+    expect(buildReviewPrompt({ ...review, update: { previousRating: null, previousReply: "Thanks!" } })).toContain(
+      "Update: the reviewer edited this review after it was answered.",
+    );
+    const skipped = buildReviewPrompt({ ...review, update: { previousRating: 4, previousReply: null } });
+    expect(skipped).toContain("Update: the reviewer changed their rating from 4 to 2 stars.");
+    expect(skipped).not.toContain("<our_previous_reply>");
+    expect(buildReviewPrompt(review)).not.toContain("Update:");
+  });
+
+  it("builds the draft input from a stored row, history included only when reopened", () => {
+    const row = {
+      star_rating: 2,
+      comment: "Worse now",
+      reviewer_name: "Ben",
+      reviewer_is_anonymous: false,
+      google_reply: "Thank you, Ben!",
+      reopened_at: "2026-10-02T08:00:00Z",
+      reopened_from_rating: 5,
+    } as GoogleReviewRow;
+    expect(draftInputFor(row)).toEqual({
+      starRating: 2,
+      comment: "Worse now",
+      reviewerName: "Ben",
+      reviewerIsAnonymous: false,
+      update: { previousRating: 5, previousReply: "Thank you, Ben!" },
+    });
+    expect(draftInputFor({ ...row, reopened_at: null }).update).toBeNull();
   });
 
   it("does not leak an anonymous reviewer's name", () => {

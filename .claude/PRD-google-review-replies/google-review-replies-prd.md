@@ -32,13 +32,16 @@ are posted — so that is where review work should land.
      excuses, never disputing their account), the impact on them acknowledged, one concrete next
      step from what Mpillow actually does (a re-adjustment visit for fit or comfort, a stuffing
      check under the 10-year warranty for wear, the team looking into it personally for anything
-     else), and a request to contact support through the website's Support page. No promotion,
-     no promised outcome, and no refunds or compensation in public.
+     else), and **always** a request to message us on WhatsApp at the staffed support number
+     (`lib/contact.ts` — never the automated appointment sender). No promotion, no promised
+     outcome, and no refunds, freebies or compensation in public.
 
    Every type forbids links / phone numbers / incentives (Google rejects promotional replies) and
    treats the review text as data, not instructions. The card flags 1–2★ reviews with a
    **SERVICE RECOVERY** line so someone also follows up with the customer personally, and warns
-   if any reply promises a refund or compensation.
+   if any reply promises a refund or compensation, or if a recovery reply (Claude's or a
+   person's) does not give the WhatsApp number. That number is the one phone number a reply may
+   carry without a warning.
 3. **Telegram card.** The review and draft are posted to the measurements group as a **Review
    card** headed `⭐ GOOGLE MAPS REVIEW`, with **Post reply / Redraft / Skip**. Website reviews get a
    `🛍 SHOP REVIEW · mpillow website` card with **Approve / Reject** and no reply affordance.
@@ -72,6 +75,10 @@ are posted — so that is where review work should land.
     real next step and tells me how to reach the team — not a thank-you or a sales pitch.
 12. As a review manager, if a reviewer edits a 5★ review down to 2★ before we reply, the open
     card's draft is replaced with a service-recovery one (my own wording is never overwritten).
+13. As a review manager, if a reviewer changes their rating into another reply type after we
+    answered — 5★ down to 2★, or 2★ back up to 5★ after a recovery — the review comes back as a
+    fresh card showing our current reply on Google, with a draft that acknowledges the change;
+    **Replace reply** swaps ours for it.
 
 ## Implementation decisions
 
@@ -100,11 +107,24 @@ are posted — so that is where review work should land.
 - **Link codes.** 8 characters from an unambiguous alphabet, single use, 72-hour expiry, stored
   only as a sha256; `/link` attempts are rate-limited per Telegram user.
 
+## Reopening
+
+A settled review — `posted`, `skipped`, `replied_elsewhere` or `backlog` — whose rating moves into
+another reply type goes back to `new` with `reopened_at` and `reopened_from_rating` set
+(migration `20261002070000_google_review_reopen.sql`), and is carded again like a new review: a
+fresh card (the old one is edited to point at it), a draft written with the previous rating and
+the reply currently on Google as context, and Post labelled **Replace reply** because Google's
+reply endpoint replaces the existing reply. Edits within the same reply type (5★ → 4★, 1★ → 2★)
+do not reopen. A review we have never stored is carded if it was edited after its reply within
+the notify window (its earlier rating is unknown), and the notify window runs from a review's
+last change, so an old review its author just edited counts as fresh.
+
 ## States (`google_reviews.status`)
 
 `new` (stored, no card) → `pending` (card waiting) → `posting` → `posted`; `pending → skipped`;
-`pending → replied_elsewhere` (a reply appeared on Google that we did not send); `backlog` (first
-seen outside the notify window).
+`pending → replied_elsewhere` (a reply appeared on Google that is new since we last looked and not
+ours); `backlog` (last changed outside the notify window when first seen); settled states →
+`new` on a reopen.
 
 ## Out of scope (v1)
 

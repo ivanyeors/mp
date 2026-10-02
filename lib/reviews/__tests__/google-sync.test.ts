@@ -11,7 +11,7 @@ import type { BusinessProfileClient, GbpReview } from "@/lib/google/business-pro
 const h = vi.hoisted(() => ({ db: null as unknown as ReturnType<typeof createFakeSupabase>, tables: {} as Record<string, Row[]> }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.db }));
 
-const { syncGoogleReviews, initialStatus, NOTIFY_WINDOW_DAYS } = await import("@/lib/reviews/google-sync");
+const { syncGoogleReviews, initialState, NOTIFY_WINDOW_DAYS } = await import("@/lib/reviews/google-sync");
 
 const LOCATION = "accounts/1/locations/2";
 const NOW = new Date("2026-10-02T08:00:00Z");
@@ -83,7 +83,7 @@ describe("syncGoogleReviews", () => {
 
   it("records old and already-answered reviews without a card", async () => {
     const summary = await run([
-      review("old", { createTime: daysAgo(NOTIFY_WINDOW_DAYS + 1) }),
+      review("old", { createTime: daysAgo(NOTIFY_WINDOW_DAYS + 30), updateTime: daysAgo(NOTIFY_WINDOW_DAYS + 1) }),
       review("answered", { reviewReply: { comment: "Thanks from the owner", updateTime: daysAgo(1) } }),
     ]);
     expect(summary).toMatchObject({ inserted: 2, backlog: 1, carded: 0 });
@@ -207,10 +207,161 @@ describe("syncGoogleReviews", () => {
   });
 });
 
-describe("initialStatus", () => {
-  it("only fresh, unanswered reviews get a card", () => {
-    expect(initialStatus(review("a"), NOW)).toBe("new");
-    expect(initialStatus(review("a", { createTime: daysAgo(30) }), NOW)).toBe("backlog");
-    expect(initialStatus(review("a", { reviewReply: { comment: "hi" } }), NOW)).toBe("replied_elsewhere");
+describe("initialState", () => {
+  const old = { createTime: daysAgo(400), updateTime: daysAgo(400) };
+
+  it("cards fresh, unanswered reviews and records old ones as backlog", () => {
+    expect(initialState(review("a"), NOW)).toEqual({ status: "new", reopened: false });
+    expect(initialState(review("a", old), NOW)).toEqual({ status: "backlog", reopened: false });
+  });
+
+  it("counts an old review its author just edited as fresh", () => {
+    expect(initialState(review("a", { createTime: daysAgo(400), updateTime: daysAgo(1) }), NOW)).toEqual({
+      status: "new",
+      reopened: false,
+    });
+  });
+
+  it("cards an answered review only when it was edited after the reply, recently", () => {
+    const answered = { reviewReply: { comment: "Thanks!", updateTime: daysAgo(3) } };
+    expect(initialState(review("a", { ...answered, updateTime: daysAgo(3) }), NOW).status).toBe("replied_elsewhere");
+    expect(initialState(review("a", { ...answered, updateTime: daysAgo(1) }), NOW)).toEqual({
+      status: "new",
+      reopened: true,
+    });
+    expect(
+      initialState(review("a", { ...old, reviewReply: { comment: "Thanks!", updateTime: daysAgo(500) } }), NOW).status,
+    ).toBe("replied_elsewhere");
+  });
+});
+
+describe("reopening a review whose rating changed reply type", () => {
+  const OUR_REPLY = "Thank you, Jane!";
+
+  /** First run cards r1 (message 101); then a review manager posts the draft. */
+  async function postedFiveStar() {
+    await run([review("r1")]);
+    Object.assign(byName("r1")!, {
+      status: "posted",
+      posted_reply: OUR_REPLY,
+      posted_at: daysAgo(1),
+      google_reply: OUR_REPLY,
+      google_reply_updated_at: daysAgo(1),
+      acted_by_name: "Ivan",
+    });
+    vi.clearAllMocks();
+  }
+  const answered = { reviewReply: { comment: OUR_REPLY, updateTime: daysAgo(1) } };
+
+  it("drops 5★ → 2★ after we replied: a new service-recovery card that replaces our reply", async () => {
+    await postedFiveStar();
+    draft.mockResolvedValueOnce({
+      ok: true,
+      reply: "We're sorry it got worse, Jane. Please message us on WhatsApp at +65 8780 5311.",
+      model: "claude-opus-5-5",
+    });
+    const summary = await run([
+      review("r1", { ...answered, starRating: "TWO", comment: "Flattened after a month", updateTime: daysAgo(0) }),
+    ]);
+
+    expect(summary).toMatchObject({ reopened: 1, carded: 1 });
+    expect(draft).toHaveBeenCalledWith(
+      expect.objectContaining({ starRating: 2, update: { previousRating: 5, previousReply: OUR_REPLY } }),
+    );
+    expect(byName("r1")).toMatchObject({
+      status: "pending",
+      reopened_from_rating: 5,
+      telegram_message_id: 102,
+      posted_reply: OUR_REPLY,
+    });
+
+    const card = send.mock.calls[0] as unknown as [string, Markup];
+    expect(card[0]).toContain("🛟 SERVICE RECOVERY");
+    expect(card[0]).toContain("🔄 REOPENED — the rating changed from 5★ to 2★ after it was answered.");
+    expect(card[0]).toContain(`💬 Our reply on Google now (Replace swaps it for the new one):\n${OUR_REPLY}`);
+    expect(card[1].inline_keyboard.flat()[0].text).toBe("✅ Replace reply");
+    // The old card stays as history and points at the new one.
+    expect(edit).toHaveBeenCalledWith(
+      101,
+      expect.stringContaining("🔄 Reopened in a new card below — the rating changed from 5★ to 2★."),
+    );
+  });
+
+  it("improves 2★ → 5★ after a recovery reply: a new thank-you card", async () => {
+    await run([review("r1", { starRating: "TWO" })]);
+    Object.assign(byName("r1")!, { status: "posted", posted_reply: "Sorry", google_reply: "Sorry" });
+    vi.clearAllMocks();
+    const summary = await run([
+      review("r1", { reviewReply: { comment: "Sorry", updateTime: daysAgo(1) }, starRating: "FIVE", updateTime: daysAgo(0) }),
+    ]);
+
+    expect(summary.reopened).toBe(1);
+    expect(draft).toHaveBeenCalledWith(
+      expect.objectContaining({ starRating: 5, update: { previousRating: 2, previousReply: "Sorry" } }),
+    );
+    const text = String((send.mock.calls[0] as unknown[])[0]);
+    expect(text).toContain("the rating changed from 2★ to 5★");
+    expect(text).toContain("Thank-you reply, drafted by Claude");
+    expect(text).not.toContain("SERVICE RECOVERY");
+  });
+
+  it("leaves a posted review alone when an edit keeps the same reply type", async () => {
+    await postedFiveStar();
+    const summary = await run([review("r1", { ...answered, starRating: "FOUR", updateTime: daysAgo(0) })]);
+    expect(summary).toMatchObject({ reopened: 0, carded: 0 });
+    expect(byName("r1")).toMatchObject({ status: "posted", star_rating: 4 });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("reopens a skipped review, and a backlog one that never had a card", async () => {
+    await run([review("r1")]);
+    Object.assign(byName("r1")!, { status: "skipped" });
+    await run([
+      review("old", { createTime: daysAgo(400), updateTime: daysAgo(400), starRating: "FOUR" }),
+    ]);
+    expect(byName("old")?.status).toBe("backlog");
+    vi.clearAllMocks();
+
+    const summary = await run([
+      review("r1", { starRating: "ONE", updateTime: daysAgo(0) }),
+      review("old", { createTime: daysAgo(400), updateTime: daysAgo(0), starRating: "TWO" }),
+    ]);
+    expect(summary).toMatchObject({ reopened: 2, carded: 2 });
+    const texts = send.mock.calls.map((c) => String((c as unknown[])[0]));
+    expect(texts.some((t) => t.includes("the rating changed from 5★ to 1★."))).toBe(true);
+    expect(texts.some((t) => t.includes("the rating changed from 4★ to 2★."))).toBe(true);
+  });
+
+  it("cards a review first seen already edited after it was answered", async () => {
+    const summary = await run([
+      review("r9", { reviewReply: { comment: "Thanks!", updateTime: daysAgo(5) }, starRating: "ONE", updateTime: daysAgo(0) }),
+    ]);
+    expect(summary).toMatchObject({ reopened: 1, carded: 1 });
+    expect(String((send.mock.calls[0] as unknown[])[0])).toContain(
+      "🔄 REOPENED — the reviewer edited this review after it was answered.",
+    );
+  });
+
+  it("keeps a reopened card open when the reply on Google is someone else's and has not changed", async () => {
+    const theirReply = { reviewReply: { comment: "Thanks!", updateTime: daysAgo(5) } };
+    await run([review("r9", { ...theirReply, starRating: "ONE", updateTime: daysAgo(1) })]);
+    expect(byName("r9")).toMatchObject({ status: "pending", posted_reply: null });
+
+    await run([review("r9", { ...theirReply, starRating: "ONE", comment: "Also rude staff", updateTime: daysAgo(0) })]);
+    expect(byName("r9")).toMatchObject({ status: "pending", comment: "Also rude staff" });
+  });
+
+  it("keeps a reopened card open while Google still shows our old reply, and closes it when a new one appears", async () => {
+    await postedFiveStar();
+    await run([review("r1", { ...answered, starRating: "TWO", updateTime: daysAgo(0) })]);
+    expect(byName("r1")?.status).toBe("pending");
+
+    await run([review("r1", { ...answered, starRating: "TWO", comment: "Still flat", updateTime: daysAgo(0) })]);
+    expect(byName("r1")?.status).toBe("pending");
+
+    await run([
+      review("r1", { reviewReply: { comment: "Replied in Maps", updateTime: daysAgo(0) }, starRating: "TWO", updateTime: daysAgo(0) }),
+    ]);
+    expect(byName("r1")?.status).toBe("replied_elsewhere");
   });
 });

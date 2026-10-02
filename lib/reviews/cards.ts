@@ -16,7 +16,10 @@ import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
 export const GOOGLE_CARD_HEADER = "⭐ GOOGLE MAPS REVIEW";
 export const SHOP_CARD_HEADER = "🛍 SHOP REVIEW · mpillow website";
 
-const MAX_REVIEW_CHARS = 1200;
+/** Telegram's hard limit for a message; a longer card is never delivered. */
+const TELEGRAM_MAX_CHARS = 4096;
+const MAX_ERROR_CHARS = 300;
+const MAX_CURRENT_REPLY_CHARS = 600;
 
 export type Card = { text: string; replyMarkup?: InlineKeyboardMarkup };
 
@@ -87,9 +90,9 @@ function clip(text: string, max: number): string {
   return text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
 }
 
-function quoted(text: string | null | undefined, empty: string): string {
+function quoted(text: string | null | undefined, empty: string, max = 1200): string {
   const t = text?.trim();
-  return t ? `“${clip(t, MAX_REVIEW_CHARS)}”` : empty;
+  return t ? `“${clip(t, max)}”` : empty;
 }
 
 function reviewerLabel(row: Pick<GoogleReviewRow, "reviewer_name" | "reviewer_is_anonymous">): string {
@@ -108,19 +111,44 @@ function editedLine(row: GoogleReviewRow): string | null {
 
 const SETTLED: GoogleReviewRow["status"][] = ["posting", "posted", "skipped", "replied_elsewhere"];
 
+/** Why a settled review is back: the rating moved into another reply type. */
+function reopenedLine(row: GoogleReviewRow): string {
+  const from = row.reopened_from_rating;
+  const change =
+    from && row.star_rating && from !== row.star_rating
+      ? `the rating changed from ${from}★ to ${row.star_rating}★`
+      : "the reviewer edited this review";
+  return `🔄 REOPENED — ${change}${row.google_reply ? " after it was answered" : ""}.`;
+}
+
+/**
+ * The card for a Google review in its current state. A long review is clipped
+ * harder until the whole card fits Telegram's limit, so the card always sends.
+ */
 export function renderGoogleReviewCard(row: GoogleReviewRow): Card {
+  let card = renderGoogleCardWithin(row, 1200);
+  for (const reviewChars of [600, 200]) {
+    if (card.text.length <= TELEGRAM_MAX_CHARS) break;
+    card = renderGoogleCardWithin(row, reviewChars);
+  }
+  return card;
+}
+
+function renderGoogleCardWithin(row: GoogleReviewRow, reviewChars: number): Card {
   const style = replyStyleFor(row.star_rating);
+  const open = !SETTLED.includes(row.status);
   const lines: string[] = [
     GOOGLE_CARD_HEADER,
     `${starLine(row.star_rating)} · ${reviewerLabel(row)}`,
   ];
   // A 1–2★ review is a customer to win back, not just a reply to post.
-  if (style === "service_recovery" && !SETTLED.includes(row.status)) {
+  if (style === "service_recovery" && open) {
     lines.push("🛟 SERVICE RECOVERY — reply soon, and follow up with this customer personally if you can identify them.");
   }
+  if (row.reopened_at && open) lines.push(reopenedLine(row));
   const posted = formatCardDate(row.review_created_at);
   if (posted) lines.push(`Posted ${posted}`);
-  lines.push("", quoted(row.comment, "(Rating only — no written review)"));
+  lines.push("", quoted(row.comment, "(Rating only — no written review)", reviewChars));
   const edited = editedLine(row);
   if (edited) lines.push(edited);
   lines.push("");
@@ -150,29 +178,36 @@ export function renderGoogleReviewCard(row: GoogleReviewRow): Card {
   }
 
   // new / pending / backlog: waiting on a review manager.
+  // A reopened review usually already has a reply on Google; posting replaces it.
+  const replacing = !!row.google_reply;
+  if (replacing) {
+    lines.push("💬 Our reply on Google now (Replace swaps it for the new one):", clip(row.google_reply ?? "", MAX_CURRENT_REPLY_CHARS), "");
+  }
   if (row.draft_reply) {
     const heading =
       row.draft_source === "staff"
         ? `✍️ Reply written by ${row.acted_by_name ?? "a review manager"}:`
         : `✍️ ${REPLY_STYLE_NAMES[style]} reply, drafted by Claude:`;
     lines.push(heading, row.draft_reply);
-    for (const warning of replyWarnings(row.draft_reply)) lines.push(`⚠️ ${warning}`);
+    for (const warning of replyWarnings(row.draft_reply, { style })) lines.push(`⚠️ ${warning}`);
   } else {
-    lines.push(`✍️ No draft yet${row.draft_error ? ` — ${row.draft_error}` : ""}.`);
+    lines.push(`✍️ No draft yet${row.draft_error ? ` — ${clip(row.draft_error, MAX_ERROR_CHARS)}` : ""}.`);
   }
-  if (row.last_error) lines.push(`❌ Last attempt failed: ${row.last_error}`);
+  if (row.last_error) lines.push(`❌ Last attempt failed: ${clip(row.last_error, MAX_ERROR_CHARS)}`);
   lines.push(
     "",
-    row.draft_reply
-      ? "👉 Review managers: tap Post to publish this reply on Google Maps, or reply to this message with your own wording to replace the draft."
-      : "👉 Review managers: reply to this message with the wording to post, or tap Redraft.",
+    !row.draft_reply
+      ? "👉 Review managers: reply to this message with the wording to post, or tap Redraft."
+      : replacing
+        ? "👉 Review managers: tap Replace reply to swap our reply on Google Maps for this one, or reply to this message with your own wording to replace the draft."
+        : "👉 Review managers: tap Post to publish this reply on Google Maps, or reply to this message with your own wording to replace the draft.",
   );
 
   const buttons = [
     ...(row.draft_reply
       ? [
           {
-            text: "✅ Post reply",
+            text: replacing ? "✅ Replace reply" : "✅ Post reply",
             callback_data: encodeReviewCallback({
               source: "google",
               action: "post",

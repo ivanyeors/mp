@@ -14,6 +14,21 @@ describe("reply rules", () => {
     expect(replyWarnings("Here is a voucher for 15% off")).toHaveLength(1);
   });
 
+  it("expects our WhatsApp support line, but still flags any other number", () => {
+    expect(replyWarnings("Please WhatsApp us on +65 8780 5311.")).toEqual([]);
+    expect(replyWarnings("Please WhatsApp us on 8780 5311.")).toEqual([]);
+    // The automated appointment sender: nobody reads messages sent to it.
+    expect(replyWarnings("Message +65 8809 7571")).toEqual([expect.stringMatching(/other than our WhatsApp support line/)]);
+  });
+
+  it("flags a service-recovery reply that does not send them to WhatsApp", () => {
+    expect(replyWarnings("We're truly sorry about the delay.", { style: "service_recovery" })).toEqual([
+      expect.stringMatching(/Doesn't ask them to WhatsApp us on \+65 8780 5311/),
+    ]);
+    expect(replyWarnings("Sorry — WhatsApp us at +65 8780 5311.", { style: "service_recovery" })).toEqual([]);
+    expect(replyWarnings("Thank you so much!", { style: "thank_you" })).toEqual([]);
+  });
+
   it("warns when a recovery reply promises compensation in public", () => {
     expect(replyWarnings("We will refund your purchase in full.")).toEqual([
       expect.stringMatching(/refund or compensation/),

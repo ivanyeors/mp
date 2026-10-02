@@ -354,8 +354,8 @@ The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) fo
 _Avoid_: auto-posting a draft; a card that keeps its buttons after someone acted
 
 **Reply type**:
-Which kind of reply a **Google review** gets, chosen from its star rating in code (`lib/reviews/reply-style.ts`), never by the model: **Thank-you** (4–5★), **Constructive** (3★ or no rating), **Service recovery** (1–2★ — apologise for the specific problem, own it, offer one concrete next step, move it to support; no promotion and no compensation in public). A 1–2★ **Review card** is flagged SERVICE RECOVERY so someone also follows up with the customer personally.
-_Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply
+Which kind of reply a **Google review** gets, chosen from its star rating in code (`lib/reviews/reply-style.ts`), never by the model: **Thank-you** (4–5★), **Constructive** (3★ or no rating), **Service recovery** (1–2★ — apologise for the specific problem, own it, offer one concrete next step, and always ask them to message us on the staffed support WhatsApp; no promotion and no compensation in public). A 1–2★ **Review card** is flagged SERVICE RECOVERY so someone also follows up with the customer personally. When the rating later moves into another type — after we answered, skipped, or never carded it — the review **reopens** as a fresh card whose reply replaces the one on Google.
+_Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply; giving the automated appointment WhatsApp line in a reply
 
 **Telegram operator**:
 A person allowed to press buttons on **Review cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Two roles: **Review manager** (replies on Google and moderates **Shop reviews**) and **Shop moderator** (**Shop reviews** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
