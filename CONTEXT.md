@@ -339,6 +339,24 @@ _Avoid_: mutating `rma_requests.status` without appending an event (status is a 
 The eligibility period, `site_settings.rma_return_window_days` (default **30**), measured from `orders.delivered_at`. Only delivered orders within the window are returnable.
 _Avoid_: measuring the window from order/ship date
 
+## Reviews (PRD-google-review-replies)
+
+**Google review**:
+A review of the business on Google Maps, read through the Google Business Profile API and kept as a `google_reviews` row keyed by its resource name. The only kind of review that gets a public reply from us.
+_Avoid_: the Places API testimonials on the landing page (`lib/google/places-reviews.ts` — Google's top five, read-only, never stored)
+
+**Shop review**:
+A review a signed-in **Customer** leaves on a **Storefront product** (`product_reviews`). Starts `pending`; a **Shop moderator** approves it onto the product page or rejects it. No public reply.
+_Avoid_: "product review" when the source matters on a Telegram card — the card says SHOP REVIEW
+
+**Review card**:
+The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft, and nothing reaches Google until someone taps Post on the version they are looking at.
+_Avoid_: auto-posting a draft; a card that keeps its buttons after someone acted
+
+**Telegram operator**:
+A person allowed to press buttons on **Review cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Two roles: **Review manager** (replies on Google and moderates **Shop reviews**) and **Shop moderator** (**Shop reviews** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
+_Avoid_: assuming an operator is **Staff** (an `admin_users` row) or a measuring staff member (`mp_staff`) — three separate lists; an operator needs no back-office login
+
 ## Relationships
 
 - An **Item** may be a **Sellable item** when it has an MSRP

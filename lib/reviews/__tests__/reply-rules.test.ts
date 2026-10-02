@@ -1,0 +1,28 @@
+import { describe, expect, it } from "vitest";
+import { MAX_REPLY_CHARS, checkReplyText, normalizeReplyText, replyWarnings } from "@/lib/reviews/reply-rules";
+
+describe("reply rules", () => {
+  it("passes a plain, specific reply without warnings", () => {
+    expect(replyWarnings("Thank you, Jane! We're glad the adjustable height suits your side sleeping.")).toEqual([]);
+  });
+
+  it("warns on links, phone numbers, emails and incentives", () => {
+    expect(replyWarnings("See https://mpillow.com")).toHaveLength(1);
+    expect(replyWarnings("Visit mpillow.com")).toHaveLength(1);
+    expect(replyWarnings("Call us on +65 8809 7571")).toHaveLength(1);
+    expect(replyWarnings("Email hello@mpillow.com")).toEqual(expect.arrayContaining([expect.stringMatching(/email/)]));
+    expect(replyWarnings("Here is a voucher for 15% off")).toHaveLength(1);
+  });
+
+  it("strips wrapping quotes but keeps inner ones", () => {
+    expect(normalizeReplyText('  "Thanks for visiting!"  ')).toBe("Thanks for visiting!");
+    expect(normalizeReplyText("“Thanks!”")).toBe("Thanks!");
+    expect(normalizeReplyText('"Our "fit" session" ok')).toBe('"Our "fit" session" ok');
+  });
+
+  it("refuses empty and over-long replies", () => {
+    expect(checkReplyText("   ")).toEqual({ ok: false, error: "The reply is empty." });
+    expect(checkReplyText("a".repeat(MAX_REPLY_CHARS + 1)).ok).toBe(false);
+    expect(checkReplyText("Thanks!")).toEqual({ ok: true, text: "Thanks!" });
+  });
+});

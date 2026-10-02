@@ -15,6 +15,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Row = Record<string, unknown>;
 
 const h = vi.hoisted(() => ({
+  after: vi.fn(),
+  notify: vi.fn(),
   getAuthUser: vi.fn(),
   link: vi.fn(),
   requireAdmin: vi.fn(),
@@ -23,6 +25,11 @@ const h = vi.hoisted(() => ({
   writes: [] as { op: string; table: string }[],
 }));
 
+vi.mock("next/server", async (orig) => ({
+  ...(await orig<typeof import("next/server")>()),
+  after: h.after,
+}));
+vi.mock("@/lib/reviews/shop-reviews", () => ({ notifyNewShopReview: h.notify }));
 vi.mock("@/lib/auth/user", () => ({ getAuthUser: h.getAuthUser }));
 vi.mock("@/lib/auth/customer-identity", () => ({ linkCustomerToAuthUser: h.link }));
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: h.requireAdmin }));
@@ -52,7 +59,8 @@ vi.mock("@/lib/supabase/server", () => ({
         maybeSingle: async () => ({ ...result(), data: result().data?.[0] ?? null }),
         insert: (row: Row) => {
           h.inserted.push(row);
-          rows = [row];
+          // The database assigns the id; the route reads it back for the Telegram card.
+          rows = [{ id: "r-inserted", ...row }];
           return b;
         },
         single: async () => ({ ...result(), data: result().data?.[0] ?? null }),
@@ -137,6 +145,7 @@ describe("POST /api/shop/reviews", () => {
     const res = await post({ product_id: PRODUCT, author_name: "Ada", rating: 5 });
     expect(res.status).toBe(401);
     expect(h.inserted).toHaveLength(0);
+    expect(h.after).not.toHaveBeenCalled();
   });
 
   it("refuses someone else's order_id", async () => {
@@ -169,6 +178,16 @@ describe("POST /api/shop/reviews", () => {
     });
     expect(res.status).toBe(201);
     expect(h.inserted[0]).toMatchObject({ customer_id: CUSTOMER, order_id: MY_ORDER, status: "pending" });
+  });
+
+  it("posts a moderation card to Telegram after responding, not before", async () => {
+    h.getAuthUser.mockResolvedValue({ id: "auth-1", email: "me@x.test" });
+    const res = await post({ product_id: PRODUCT, author_name: "Ada", rating: 5 });
+    expect(res.status).toBe(201);
+    expect(h.notify).not.toHaveBeenCalled();
+    expect(h.after).toHaveBeenCalledOnce();
+    await h.after.mock.calls[0][0]();
+    expect(h.notify).toHaveBeenCalledWith("r-inserted");
   });
 
   it("caps the body length", async () => {
