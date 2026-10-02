@@ -7,6 +7,7 @@
 import {
   MAX_LAYERS_PER_CELL,
   MAX_PIECES_PER_CELL,
+  MAX_OFFSET_MM,
   MAX_PIECES_PER_LAYER,
   placementsExactMatch,
   SECTIONS,
@@ -326,9 +327,12 @@ export function movePiece(
   }
   const slot = staying ? moving.slot : freeSlot(without, to.cell);
   const sameSection = ref.section === to.cell.section;
-  const { insertOrder, ...rest } = moving;
+  // A fine offset is a position in the cell it was set in: a new cell starts at home.
+  const { insertOrder, offsetXMm, offsetYMm, ...rest } = moving;
   const placed: PillowPlacement = {
     ...rest,
+    ...(staying && offsetXMm !== undefined ? { offsetXMm } : {}),
+    ...(staying && offsetYMm !== undefined ? { offsetYMm } : {}),
     section: to.cell.section,
     subSection: to.cell.subSection,
     slot,
@@ -490,8 +494,31 @@ export function mirrorSection(placements: PillowPlacement[], from: Section): Pil
   if (source.length === 0) return placements; // an empty source would silently CLEAR the other side
   return [
     ...placements.filter((p) => p.section !== to),
-    ...source.map((p) => ({ ...p, section: to })),
+    // Across the mirror plane: a pouch pushed to one side's outer edge lands at the other's.
+    ...source.map((p) => (p.offsetXMm ? { ...p, section: to, offsetXMm: -p.offsetXMm } : { ...p, section: to })),
   ];
+}
+
+/**
+ * Set a pouch's fine position in its cell (slice 08): mm from home, rounded,
+ * bounded by MAX_OFFSET_MM; 0 drops the field so an un-nudged pouch stays
+ * byte-identical to one that never moved. Returns the input when nothing
+ * changes. The layout clamps the drawn pouch to its cell whatever is stored.
+ */
+export function nudgePiece(placements: PillowPlacement[], ref: PieceRef, offset: { xMm: number; yMm: number }): PillowPlacement[] {
+  const bound = (v: number) => Math.max(-MAX_OFFSET_MM, Math.min(MAX_OFFSET_MM, Math.round(v))) || 0;
+  const x = bound(offset.xMm);
+  const y = bound(offset.yMm);
+  const i = placements.findIndex((p) => inCell(p, ref) && p.slot === ref.slot);
+  if (i < 0) return placements;
+  const p = placements[i];
+  if ((p.offsetXMm ?? 0) === x && (p.offsetYMm ?? 0) === y) return placements;
+  const rest: PillowPlacement = { ...p };
+  delete rest.offsetXMm;
+  delete rest.offsetYMm;
+  const next = [...placements];
+  next[i] = { ...rest, ...(x ? { offsetXMm: x } : {}), ...(y ? { offsetYMm: y } : {}) };
+  return next;
 }
 
 // --- Mbolster session mix (single compartment, no cap in v1 — ADR 0008) ------

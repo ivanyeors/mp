@@ -1,7 +1,9 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import { classifyCrawler, recordCrawlerHit } from "@/lib/analytics/ai-crawlers";
 import { DEFAULT_LOCALE, isSupportedLocale, LOCALE_COOKIE_NAME, type Locale } from "@/lib/i18n/locales";
 import { getLocaleFromPathname, withLocale } from "@/lib/i18n/routing";
 import { refreshSupabaseSession } from "@/lib/supabase/middleware";
+import { supabaseAdmin } from "@/lib/supabase/server";
 
 const CURRENCY_COOKIE = "mp_currency";
 // Retired shared-OTP admin session cookie (#39). Cleared on next navigation so
@@ -36,8 +38,16 @@ function pickLocaleFromAcceptLanguage(headerValue: string | null): Locale {
 const LEGACY_HOST = "work.mpillow.com";
 const CANONICAL_ORIGIN = "https://custom.mpillow.com";
 
-export async function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
+
+  // AI crawler hits (PRD-search-visibility slice 04). Before the static-file
+  // skip so /llms.txt and /robots.txt count; recorded after the response via
+  // waitUntil, so a slow or failing write never delays or breaks the request.
+  const crawler = classifyCrawler(request.headers.get("user-agent"));
+  if (crawler && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    event.waitUntil(recordCrawlerHit(supabaseAdmin(), crawler, pathname));
+  }
 
   // Domain migration: proxy runs before next.config redirects, so host
   // cutover must live here or locale 307 wins and work. never 301s.

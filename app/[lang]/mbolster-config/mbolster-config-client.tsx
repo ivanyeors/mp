@@ -127,6 +127,7 @@ import {
 import { soleCaseId } from "@/lib/configurator/preference-policy";
 import { StaffAssistBolsterPanel } from "@/components/configurator/staff-assist-bolster-panel";
 import { sessionTemplateId, type LoadedTemplate } from "@/lib/configurator/staff-assist";
+import { trackGaEventThen } from "@/lib/analytics/ga-events";
 
 type Step = "welcome" | "height" | "sleep-position" | "recommendation" | "preview";
 type SleepPosition = "side" | "stomach" | "other";
@@ -968,7 +969,20 @@ export function MbolsterConfigClient({
       } catch {
         // private mode — nothing was stored
       }
-      window.location.href = next as string;
+      // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
+      trackGaEventThen(
+        {
+          name: "generate_lead",
+          params: {
+            product_type: "bolster",
+            ...(typeof data.authorizedAmount === "number" ? { value: data.authorizedAmount } : {}),
+            ...(data.currency ? { currency: String(data.currency) } : {}),
+          },
+        },
+        () => {
+          window.location.href = next as string;
+        },
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
       setHoldSubmitting(false);

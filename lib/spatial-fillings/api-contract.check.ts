@@ -9,6 +9,9 @@ import { readFileSync } from "node:fs";
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
+  pillowPlacementsToRows,
+  placementsExactMatch,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -148,6 +151,8 @@ const DEPTH_IRRELEVANT: Record<string, string> = {
     "template rows feed placementsExactMatch only; canonicalizePlacements drops row",
   "app/api/results/[id]/assign/route.ts":
     "template rows feed decideFillingAssign only; canonicalizePlacements drops row",
+  "app/api/results/[id]/reconfigure/route.ts":
+    "template rows feed decideFillingAssign only; canonicalizePlacements drops row",
   "lib/results/assign-prep.ts": "selects item_id alone for derivePackList",
   "app/api/results/[id]/route.ts": "selects item_id alone for the pack list",
 };
@@ -188,6 +193,13 @@ for (const path of trackedFiles) {
       `${path} must select row_index: pillow Placement rows carry x-ray stack depth. ` +
         `If depth genuinely cannot affect this reader, add it to DEPTH_IRRELEVANT with a reason. (found: ${cols})`,
     );
+    // Slice 08: the fine offsets ride with the depth — every reader that draws
+    // or copies a stacked cell must also carry where each pouch sits in it.
+    assert.ok(
+      cols.includes("offset_x_mm") && cols.includes("offset_y_mm"),
+      `${path} must select offset_x_mm and offset_y_mm beside row_index: a pouch's fine position ` +
+        `is part of the x-ray, and Promote / hold / assign copy these rows verbatim. (found: ${cols})`,
+    );
   }
 }
 assert.ok(scanned >= 6, `expected to scan the known pillow placement readers, scanned ${scanned}`);
@@ -215,6 +227,45 @@ for (const path of [
       `${path} must not hardcode its row_index bound (found: ${bound})`,
     );
   }
+}
+
+// The fine offsets (slice 08): every write path shape-gates both, from the one
+// constant the DB check mirrors.
+for (const path of [
+  "app/[lang]/settings/inventory/configure/templates/[templateId]/route.ts",
+  "app/[lang]/settings/inventory/configure/templates/[templateId]/fork/route.ts",
+  "app/api/mp-config/assist/route.ts",
+  "app/api/results/[id]/assign/route.ts",
+  "app/api/results/[id]/reconfigure/route.ts",
+  "app/api/results/hold/route.ts",
+]) {
+  const src = readFileSync(path, "utf8");
+  for (const col of ["offset_x_mm", "offset_y_mm"]) {
+    assert.match(
+      src,
+      new RegExp(`${col}: z\\.number\\(\\)\\.int\\(\\)\\.min\\(-MAX_OFFSET_MM\\)\\.max\\(MAX_OFFSET_MM\\)`),
+      `${path} shape-gates ${col} from MAX_OFFSET_MM`,
+    );
+  }
+}
+const migration = readFileSync("supabase/migrations/20260928090000_filling_placement_offsets.sql", "utf8");
+assert.equal(
+  migration.match(/abs\(offset_[xy]_mm\) <= (\d+)/g)?.every((m) => m.endsWith(` ${MAX_OFFSET_MM}`)),
+  true,
+  "the DB offset bound is MAX_OFFSET_MM",
+);
+
+// Offsets are visual: the fingerprint and exact match ignore them.
+{
+  const plain = rowsToPillowPlacements(payload);
+  const nudged = plain.map((p, i) => (i === 0 ? { ...p, offsetXMm: -40, offsetYMm: 12 } : p));
+  assert.equal(fingerprintPlacements(nudged), fingerprintPlacements(plain), "a nudge never changes the fingerprint");
+  assert.equal(placementsExactMatch(nudged, plain), true, "a nudge never breaks an exact template match");
+  assert.deepEqual(
+    rowsToPillowPlacements(pillowPlacementsToRows(nudged)),
+    nudged,
+    "offsets round-trip through the row mapping",
+  );
 }
 
 console.log("api-contract.check: all assertions passed");

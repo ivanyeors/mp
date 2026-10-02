@@ -1,0 +1,35 @@
+# Slice 08 — GA4 property confirmation + Data API cross-check
+
+Type: OPS + AFK
+Parent: PRD `search-visibility` (`.claude/PRD-search-visibility/search-visibility-prd.md`)
+Triage: needs-triage
+User stories covered: 21
+
+## What to build
+
+- **Decision:** no existing GA4 property. OPS follows `../GA4-SETUP.md`: new property, direct gtag via `NEXT_PUBLIC_GA_MEASUREMENT_ID`, audit then retire GTM `GTM-TPB9LV2`, `Default + AI` channel group, internal-traffic filter, unwanted-referral list, Search Console link, 14-month retention
+- AFK: `lib/analytics/ga-events.ts`, a typed `trackGaEvent()` wrapper over `window.gtag` (no-op when absent, e.g. in dev). Fire `generate_lead` (Result submitted), `book_appointment`, `begin_checkout`, `purchase` (once per `transaction_id`, from the Order total). No PII in params.
+- AFK: make the journey tracker's `mp_page_view` / `mp_section_view` dataLayer pushes also work under direct gtag, or drop them if first-party ingest already covers them
+- AFK: optional `lib/google/ga4-data.ts` `runReport` ingest of sessions/conversions by channel → `seo_daily_metrics` (`source` = `ga4`)
+- Show GA4 vs first-party AI-assistant sessions side by side as a sanity check
+
+## Acceptance criteria
+
+- [ ] GA4 realtime shows `custom.mpillow.com` pageviews, one `collect` hit per page view (no GTM double-count)
+- [ ] The 4 key events appear in DebugView with correct values; `purchase` fires once per order
+- [ ] GA4 and first-party session counts are within an explained tolerance
+
+## Blocked by
+
+None
+
+## Implementation notes (AFK part done)
+
+- `lib/analytics/ga-events.ts`: typed `trackGaEvent` / `trackGaEventThen` (waits up to 800 ms for gtag's callback before a redirect) / `trackGaEventOnce` (a localStorage flag, so a refreshed confirmation page doesn't double count). Falls back to a dataLayer push when only GTM is loaded. No PII in any params.
+- Wired:
+  - `generate_lead`: mp-config and mbolster-config hold submit, before the Stripe or status redirect
+  - `book_appointment`: booking-flow confirm
+  - `begin_checkout`: shop checkout submit, with items
+  - `purchase`: shop confirmation (once per `order_number`) and Result accept → capture (once per order)
+- Left out: the staff/assisted deferred submit, so in-store entries don't inflate web conversions; and the Data API ingest + side-by-side view (needs `GA4_PROPERTY_ID` and the property from `GA4-SETUP.md`).
+- OPS (`GA4-SETUP.md` §5): mark the four events as Key events in GA4 Admin once they show in DebugView.

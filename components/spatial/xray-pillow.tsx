@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronsLeft, ChevronsRight, FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
+import { FlipHorizontal2, GripVertical, Layers, Plus, Trash2, X } from "lucide-react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 
@@ -31,6 +31,7 @@ import {
   mirrorTarget,
   moveLayer,
   movePiece,
+  nudgePiece,
   removeLayer,
   removePiece,
   reorderedRef,
@@ -40,8 +41,16 @@ import {
   type Cell,
   type PieceRef,
 } from "@/lib/configurator/staff-assist";
-import { isTypingTarget, MOVE_ACTIONS, moveKeyFor, type MoveKind } from "@/lib/configurator/move-keys";
-import { dropTargetFromElement, pouchDropDestination, type PouchDropTarget } from "@/lib/dnd/pouch-drag";
+import { isTypingTarget, moveKeyFor, nudgeKeyFor, type MoveKind } from "@/lib/configurator/move-keys";
+import {
+  dropIndex,
+  dropTargetFromElement,
+  layerChoices,
+  planPouchDrop,
+  pouchDropDestination,
+  resolveLayerChoice,
+  type PouchDropTarget,
+} from "@/lib/dnd/pouch-drag";
 import {
   MAX_LAYERS_PER_CELL,
   MAX_PIECES_PER_CELL,
@@ -72,7 +81,7 @@ import {
 } from "@/lib/spatial-fillings/fit";
 import { layoutPlacements, type PieceLayout, type PieceRect } from "@/lib/spatial-fillings/xray-layout";
 import { stageGeometry, type StageGeometry } from "@/lib/spatial-fillings/xray-stage";
-import type { PillowSize, ResolvedDims } from "@/lib/spatial-fillings/dimensions";
+import { PILLOW_DIMENSIONS, sizeFactors, type PillowSize, type ResolvedDims } from "@/lib/spatial-fillings/dimensions";
 import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray-assets";
 
 // Shell regions pouches deform against: the silhouette (wide seam), each
@@ -139,15 +148,28 @@ type PouchDrag = {
   pointerId: number;
   startX: number;
   startY: number;
-  /** Pointer travel in view units — the ghost's offset. */
-  dx: number;
-  dy: number;
+  /** Where on the pouch it was picked up, in view units from its centre (0 from a label). */
+  grabX: number;
+  grabY: number;
+  /** The pointer in view units — the ghost follows it, the drop position reads it. */
+  x: number;
+  y: number;
   active: boolean;
   over: PouchDropTarget | null;
   /** The hovered target would leave its cell unable to close. */
   refused: boolean;
 };
+/** A stacked cell a pouch was dropped on: the Layer picker blooms at the drop point. */
+type LayerPick = {
+  source: PieceRef & { depth: number; itemId: number };
+  cell: Cell;
+  /** Drop point, in % of the editor box. */
+  left: string;
+  top: string;
+};
 const DRAG_THRESHOLD_PX = 6;
+const sameRef = (p: PieceRef, q: PieceRef) => p.section === q.section && p.subSection === q.subSection && p.slot === q.slot;
+const sameCellRef = (p: Cell, q: Cell) => p.section === q.section && p.subSection === q.subSection;
 
 /** `↕ 78 %` / `↔ 85 %` beside the type label when the piece draws squeezed. */
 export const squeezeLines = (ps: PieceFitStatus | undefined): string[] => {
@@ -389,73 +411,6 @@ export function PieceLabel({ rect, lines }: { rect: PieceRect; lines: string[] }
   );
 }
 
-const MOVE_ICONS: Record<MoveKind, typeof ArrowLeft | null> = {
-  left: ArrowLeft,
-  right: ArrowRight,
-  front: ArrowUp,
-  back: ArrowDown,
-  layerUp: null,
-  layerDown: null,
-  sectionLeft: ChevronsLeft,
-  sectionRight: ChevronsRight,
-};
-
-/**
- * The move pad (slice 06): the eight moves a selected pouch can make, each the
- * same action as its key, in the cell panel (desktop) and the dock (phone).
- * Touch has no keyboard, so every move the keys offer is a button here.
- */
-export function MovePad({
-  label,
-  compact,
-  onMove,
-  onClear,
-}: {
-  label: string;
-  compact: boolean;
-  onMove: (kind: MoveKind) => void;
-  onClear: () => void;
-}) {
-  return (
-    <div
-      className={`pointer-events-auto flex w-full flex-col gap-0.5 rounded border bg-background/95 p-1 shadow-sm ${compact ? "text-[9px] leading-4" : "text-[11px] leading-5"}`}
-      role="group"
-      aria-label={`Move ${label}`}
-      data-xray-move-pad
-    >
-      <div className="flex items-center gap-1">
-        <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
-        <button
-          type="button"
-          className={`${compact ? CHIP_ICON_BUTTON_CLASS : LAYER_ICON_BUTTON_CLASS} hover:bg-accent`}
-          aria-label="Clear selection"
-          onClick={onClear}
-        >
-          <X className={compact ? CHIP_ICON_CLASS : LAYER_ICON_CLASS} />
-        </button>
-      </div>
-      <div className="grid grid-cols-2 gap-0.5">
-        {MOVE_ACTIONS.map((action) => {
-          const Icon = MOVE_ICONS[action.kind];
-          return (
-            <button
-              key={action.kind}
-              type="button"
-              className={`flex items-center justify-center gap-1 rounded border bg-background hover:bg-accent ${compact ? "min-h-5 px-1" : "min-h-11 px-2"}`}
-              aria-label={`${action.label} (${action.key})`}
-              title={`${action.label} · ${action.key}`}
-              onClick={() => onMove(action.kind)}
-            >
-              {Icon ? <Icon className={compact ? CHIP_ICON_CLASS : LAYER_ICON_CLASS} /> : <span className="font-mono">{action.key}</span>}
-              <span className="truncate">{action.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /**
  * One layer row (staff dive): the cell's pieces at one depth, draggable to
  * reorder the cell top→deep. Sits on the cell it controls, so it needs no leader
@@ -482,6 +437,7 @@ function LayerRow({
   onRemoveLayer,
   onRemovePiece,
   onSelectPiece,
+  pieceDragHandle,
 }: {
   id: string;
   index: number;
@@ -497,6 +453,8 @@ function LayerRow({
   onRemovePiece: (slot: number) => void;
   /** A row's label selects its piece — the rows sit ON the pouches, so the outline under them cannot be reached. */
   onSelectPiece: (slot: number) => void;
+  /** The label is also the piece's drag handle — press and drag it anywhere on the pillow. */
+  pieceDragHandle: (slot: number) => React.DOMAttributes<Element>;
 }) {
   const { ref, isDragging, handleRef } = useSortable<HTMLDivElement>({ id, index });
   return (
@@ -520,10 +478,11 @@ function LayerRow({
           >
             <button
               type="button"
-              className="truncate max-md:max-w-28"
+              className="cursor-grab truncate active:cursor-grabbing max-md:max-w-28"
               aria-pressed={piece.slot === selectedSlot}
-              aria-label={`Select ${piece.label} in layer ${depth + 1}`}
+              aria-label={`Select ${piece.label} in layer ${depth + 1} — drag to move`}
               onClick={() => onSelectPiece(piece.slot)}
+              {...pieceDragHandle(piece.slot)}
             >
               {piece.label}
             </button>
@@ -629,6 +588,7 @@ export function XrayPillow({
   // provider (the layer rows own one per cell for their sort).
   const [drag, setDrag] = useState<PouchDrag | null>(null);
   const dragRef = useRef<PouchDrag | null>(null);
+  const [layerPick, setLayerPick] = useState<LayerPick | null>(null);
   const justDraggedRef = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
   const editable = Boolean(items && onPlacementsChange);
@@ -720,6 +680,7 @@ export function XrayPillow({
     () => layoutPlacements(placements, { stage, dims: itemDims, fit }),
     [placements, stage, itemDims, fit],
   );
+  const rectByKey = useMemo(() => new Map(pieces.map((pl) => [pl.key, pl] as const)), [pieces]);
   /** piece key → its own squeeze (slice 04): dashed stroke, red tint and the ↕ / ↔ micro-label read this. */
   const pieceStatuses = useMemo(
     () => new Map(pieces.map((p) => [p.key, pieceFitStatus(fit, p, p.depth)] as const)),
@@ -848,15 +809,28 @@ export function XrayPillow({
   }, [selected, placements]);
   const selectedKey = selectedPiece ? `${selectedPiece.section}/${selectedPiece.subSection}/${selectedPiece.slot}` : null;
 
+  const fitCtx = { size: pillowSize, dims: itemDims, loftAllowance };
+
   /**
-   * Write a successful move (key, pad or drag): the selection follows the
+   * Write a successful move (key or drag): the selection follows the
    * piece, and Undo is the Mirror pattern — an inverse applied only while the
    * move is still the last thing that happened.
    */
-  const commitMove = (before: PillowPlacement[], next: PillowPlacement[], ref: PieceRef & { itemId: number }, nextRef: PieceRef) => {
+  const commitMove = (
+    before: PillowPlacement[],
+    next: PillowPlacement[],
+    ref: PieceRef & { itemId: number },
+    nextRef: PieceRef,
+    nudged = false,
+  ) => {
     onPlacementsChange?.(next);
     setSelected(nextRef);
-    toast.success(`Moved ${pieceLabel(ref.itemId)} to ${nextRef.section} ${nextRef.subSection}`, {
+    // A dive follows the pouch across Sections, so it stays in view, selected.
+    if (dived && nextRef.section !== dived) setDived(nextRef.section);
+    const label = pieceLabel(ref.itemId);
+    // One toast id: a run of nudges or moves updates one toast (its Undo the latest), never a stack.
+    toast.success(nudged ? `Moved ${label} within ${nextRef.section} ${nextRef.subSection}` : `Moved ${label} to ${nextRef.section} ${nextRef.subSection}`, {
+      id: "xray-move",
       action: {
         label: "Undo",
         onClick: () => {
@@ -872,7 +846,26 @@ export function XrayPillow({
   };
 
   /**
-   * One move of the selected pouch, from a key or the pad: the pure functions
+   * Put a pouch at a top-left corner in its cell (slice 08): clamped to the
+   * room its neighbours leave it (the layout's range), stored as mm from home,
+   * so what is saved is what is drawn. Nothing when it has no room to move.
+   */
+  const nudgeTo = (ref: PieceRef & { itemId: number }, x: number, y: number) => {
+    const p = rectByKey.get(`${ref.section}/${ref.subSection}/${ref.slot}`);
+    if (!p || !onPlacementsChange) return;
+    const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+    const before = placements;
+    // Stored as M millimetres (the reference Size), as the layout reads them.
+    const f = sizeFactors(PILLOW_DIMENSIONS[pillowSize]);
+    const next = nudgePiece(before, ref, {
+      xMm: (clamp(x, p.range.minX, p.range.maxX) - p.home.x) / (stage.k * f.across),
+      yMm: (clamp(y, p.range.minY, p.range.maxY) - p.home.y) / (stage.k * f.along),
+    });
+    if (next !== before) commitMove(before, next, ref, ref, true);
+  };
+
+  /**
+   * One move of the selected pouch, from a key: the pure functions
    * decide (caps first, then the fit), the refusal rides the same toast path
    * as an add, the selection follows the piece.
    */
@@ -880,7 +873,6 @@ export function XrayPillow({
     const ref = selectedPiece;
     if (!ref || !onPlacementsChange) return;
     const before = placements;
-    const fitCtx = { size: pillowSize, dims: itemDims, loftAllowance };
     let next = before;
     let nextRef: PieceRef = ref;
     let error: string | null = null;
@@ -930,30 +922,55 @@ export function XrayPillow({
     if (next === before) return;
     commitMove(before, next, ref, nextRef);
   };
+  const nudgeBy = (step: { xMm: number; yMm: number }) => {
+    const ref = selectedPiece;
+    const p = ref && rectByKey.get(`${ref.section}/${ref.subSection}/${ref.slot}`);
+    if (ref && p) nudgeTo(ref, p.x + step.xMm * stage.k, p.y + step.yMm * stage.k);
+  };
+  const nudgeByRef = useRef(nudgeBy);
   const performMoveRef = useRef(performMove);
   useEffect(() => {
     performMoveRef.current = performMove;
+    nudgeByRef.current = nudgeBy;
   });
 
-  // --- Pouch drag (slice 07) --------------------------------------------------
-  // A press on a pouch's hit path starts a candidate drag; it becomes a drag
-  // once the pointer travels DRAG_THRESHOLD_PX (a click still selects). While
-  // dragging, the element under the pointer names the drop target (the nine
-  // cell regions, the layer rows, the add-layer button — all tagged), the
-  // hovered cell highlights (red when the fit says the drop cannot close), a
-  // ghost of the outline follows the pointer, and the drop resolves through
-  // `pouchDropDestination` → `movePiece`: a drag can never do what a key cannot.
-  const startDrag = (e: React.PointerEvent<SVGPathElement>, p: PieceLayout) => {
+  // --- Pouch drag (slices 06/07) -----------------------------------------------
+  // The drag IS the move vocabulary (the move pad went with Ivan's 27-9-2026
+  // review; the keys stay). A press on a pouch — its outline on the pillow, or
+  // its label chip / layer-row label, which sit over it — starts a candidate
+  // drag; it becomes a drag once the pointer travels DRAG_THRESHOLD_PX (a click
+  // still selects). While dragging, the element under the pointer names the
+  // drop target (the nine cell regions of every Section, the layer rows, the
+  // add-layer button — all tagged), the hovered cell highlights (red when the
+  // fit says it cannot close) and a ghost of the outline follows the pointer.
+  // On release `planPouchDrop` decides: a side-by-side cell takes the pouch at
+  // the drop's position in the row (its own cell: a reorder), a stacked cell
+  // blooms a Layer picker, a layer row is that Layer — all through `movePiece`.
+  /** Client px → view units, through the SVG's own transform (letterboxing included). */
+  const toView = (clientX: number, clientY: number) => {
+    const m = svgRef.current?.getScreenCTM();
+    if (!m) return { x: 0, y: 0 };
+    const inv = m.inverse();
+    return { x: inv.a * clientX + inv.c * clientY + inv.e, y: inv.b * clientX + inv.d * clientY + inv.f };
+  };
+  const startDrag = (e: React.PointerEvent<Element>, ref: PieceRef, fromPouch: boolean) => {
     if (!editable || e.button !== 0) return;
+    const key = `${ref.section}/${ref.subSection}/${ref.slot}`;
+    const p = rectByKey.get(key);
+    if (!p) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    justDraggedRef.current = false;
+    const at = toView(e.clientX, e.clientY);
     const d: PouchDrag = {
       source: { section: p.section, subSection: p.subSection, slot: p.slot, depth: p.depth, itemId: p.itemId },
-      key: p.key,
+      key,
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
-      dx: 0,
-      dy: 0,
+      grabX: fromPouch ? at.x - (p.x + p.w / 2) : 0,
+      grabY: fromPouch ? at.y - (p.y + p.h / 2) : 0,
+      x: at.x,
+      y: at.y,
       active: false,
       over: null,
       refused: false,
@@ -961,43 +978,150 @@ export function XrayPillow({
     dragRef.current = d;
     setDrag(d);
   };
-  const moveDrag = (e: React.PointerEvent<SVGPathElement>) => {
+  const moveDrag = (e: React.PointerEvent<Element>) => {
     const d = dragRef.current;
     if (!d || d.pointerId !== e.pointerId) return;
-    const dxPx = e.clientX - d.startX;
-    const dyPx = e.clientY - d.startY;
-    if (!d.active && Math.hypot(dxPx, dyPx) < DRAG_THRESHOLD_PX) return;
+    if (!d.active && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < DRAG_THRESHOLD_PX) return;
     if (!d.active) {
       draggingRef.current = true; // Escape now cancels the drag, not the dive
       setSelected({ section: d.source.section, subSection: d.source.subSection, slot: d.source.slot });
     }
-    const box = svgRef.current?.getBoundingClientRect();
-    const scale = box && box.width > 0 ? XRAY_VIEW.width / box.width : 1;
     const over = dropTargetFromElement(document.elementFromPoint(e.clientX, e.clientY));
     const dest = pouchDropDestination(d.source, over);
     const refused = dest
-      ? wouldFit(placements, { kind: "move", from: d.source, to: dest }, { size: pillowSize, dims: itemDims, loftAllowance }).cell?.status === "over"
+      ? wouldFit(placements, { kind: "move", from: d.source, to: dest }, fitCtx).cell?.status === "over"
       : false;
-    const next: PouchDrag = { ...d, active: true, dx: dxPx * scale, dy: dyPx * scale, over, refused };
+    const next: PouchDrag = { ...d, ...toView(e.clientX, e.clientY), active: true, over, refused };
     dragRef.current = next;
     setDrag(next);
   };
-  const endDrag = (e: React.PointerEvent<SVGPathElement>, canceled: boolean) => {
+  const endDrag = (e: React.PointerEvent<Element>, canceled: boolean, onTap?: () => void) => {
     const d = dragRef.current;
     if (!d || d.pointerId !== e.pointerId) return;
     dragRef.current = null;
     setDrag(null);
-    if (!d.active) return; // a click: the hit path's onClick selects
+    if (!d.active) {
+      // A click: the element's onClick selects — except a finger on a pouch,
+      // whose click the touchstart guard below suppresses; the tap acts here.
+      if (!canceled && e.pointerType === "touch") onTap?.();
+      return;
+    }
     draggingRef.current = false;
-    justDraggedRef.current = true; // the click that follows the drop must not re-select the old ref
-    const dest = pouchDropDestination(d.source, canceled ? null : d.over, canceled);
-    if (!dest) return;
-    const r = movePiece(placements, d.source, dest, { size: pillowSize, dims: itemDims, loftAllowance });
+    justDraggedRef.current = !canceled; // the click that follows the drop must not re-select the old ref
+    const over = canceled ? null : d.over;
+    const cell = over && { section: over.section, subSection: over.subSection };
+    const layers = cell ? cellLayers(placements, cell) : [];
+    // The drop's position in a side-by-side row, among the row's other pouches.
+    const row = (layers[0] ?? []).filter((q) => !sameRef(q, d.source));
+    const index =
+      cell && layers.length <= 1
+        ? dropIndex(
+            row.flatMap((q) => {
+              const r = rectByKey.get(`${q.section}/${q.subSection}/${q.slot}`);
+              return r ? [{ cx: r.x + r.w / 2, cy: r.y + r.h / 2, h: r.h }] : [];
+            }),
+            d.x - d.grabX,
+            d.y - d.grabY,
+          )
+        : undefined;
+    const sourceIndex = (layers[0] ?? []).findIndex((q) => sameRef(q, d.source));
+    const plan = planPouchDrop(d.source, over, { layerCount: layers.length, index, sourceIndex: sourceIndex < 0 ? undefined : sourceIndex }, canceled);
+    if (!plan) return;
+    if (plan.kind === "nudge") {
+      // Its own cell: the pouch goes where its ghost was let go, within the free space.
+      const p = rectByKey.get(d.key);
+      if (p) nudgeTo(d.source, d.x - d.grabX - p.w / 2, d.y - d.grabY - p.h / 2);
+      return;
+    }
+    if (plan.kind === "chooseLayer") {
+      const box = rootRef.current?.getBoundingClientRect();
+      draggingRef.current = true; // the picker owns Escape until it closes
+      setLayerPick({
+        source: d.source,
+        cell: plan.cell,
+        left: box && box.width > 0 ? `${((e.clientX - box.left) / box.width) * 100}%` : "50%",
+        top: box && box.height > 0 ? `${((e.clientY - box.top) / box.height) * 100}%` : "50%",
+      });
+      return;
+    }
+    // A reorder within its own Layer changes no fit — like the arrow keys, it is never refused for one.
+    const reorder = sameCellRef(plan.to.cell, d.source) && plan.to.layer === d.source.depth;
+    const r = movePiece(placements, d.source, plan.to, reorder ? undefined : fitCtx);
     if (!r.ok) {
       toast.error(r.error); // cap / fit feedback, the add's path
       return;
     }
     commitMove(placements, r.placements, d.source, r.ref);
+  };
+  /** Pointer handlers that make an element a handle for one pouch's drag. */
+  const dragHandle = (ref: PieceRef, fromPouch = false, onTap?: () => void) => ({
+    onPointerDown: (e: React.PointerEvent<Element>) => startDrag(e, ref, fromPouch),
+    onPointerMove: moveDrag,
+    onPointerUp: (e: React.PointerEvent<Element>) => endDrag(e, false, onTap),
+    onPointerCancel: (e: React.PointerEvent<Element>) => endDrag(e, true),
+  });
+  // `touch-action: none` does not reach SVG shapes in Chromium, so a finger
+  // drag on a pouch panned the page and cancelled the drag. A non-passive
+  // touchstart on the pouch hit paths only (React's is passive) keeps the page
+  // scrollable from anywhere else on the pillow.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !editable) return;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.target instanceof Element && e.target.closest("[data-pouch-hit]")) e.preventDefault();
+    };
+    svg.addEventListener("touchstart", onTouchStart, { passive: false });
+    return () => svg.removeEventListener("touchstart", onTouchStart);
+  }, [editable]);
+  /** A tap on a pouch on the pillow: select it, diving into its Section first. */
+  const tapPouch = (ref: PieceRef, inDive: boolean) => {
+    if (!inDive && !justDraggedRef.current) {
+      setDived(ref.section);
+      setOpenSub(null);
+    }
+    selectPiece(ref);
+  };
+  /** Select a pouch — unless this is the click a drop just released. */
+  const selectPiece = (ref: PieceRef) => {
+    if (justDraggedRef.current) {
+      justDraggedRef.current = false;
+      return;
+    }
+    setSelected(ref);
+  };
+
+  // The Layer picker for a drop on a stacked cell: its Layers top → deep, the
+  // pouch's own and full ones disabled, then a new Layer under the deepest.
+  const layerPickSizes = layerPick ? cellLayers(placements, layerPick.cell).map((l) => l.length) : [];
+  const layerPickOwn = layerPick && sameCellRef(layerPick.source, layerPick.cell) ? layerPick.source.depth : null;
+  const layerPickTree = layerChoices(layerPickSizes, layerPickOwn, { maxLayers: MAX_LAYERS_PER_CELL, maxPerLayer: MAX_PIECES_PER_LAYER });
+  const closeLayerPick = useCallback(() => {
+    draggingRef.current = false;
+    setLayerPick(null);
+  }, []);
+  // Escape closes the picker and leaves the pouch where it was (capture phase,
+  // ahead of the dive's own guard, which stands down through draggingRef).
+  useEffect(() => {
+    if (!layerPick) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      closeLayerPick();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [layerPick, closeLayerPick]);
+  const dropIntoLayer = (choice: string) => {
+    const pick = layerPick;
+    closeLayerPick();
+    if (!pick) return;
+    const layer = resolveLayerChoice(choice, layerPickSizes, layerPickOwn);
+    const r = movePiece(placements, pick.source, { cell: pick.cell, layer }, fitCtx);
+    if (!r.ok) {
+      toast.error(r.error);
+      return;
+    }
+    commitMove(placements, r.placements, pick.source, r.ref);
   };
   const cancelDrag = useCallback(() => {
     if (!dragRef.current) return;
@@ -1018,12 +1142,18 @@ export function XrayPillow({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [drag?.active, cancelDrag]);
 
-  // Keyboard moves (dive, with a selection): the same table as the pad.
+  // Keyboard moves (dive, with a selection): the same moves a drag makes.
   // Text controls keep their arrows; the page keeps its scroll otherwise.
   useEffect(() => {
     if (!dived || !editable || !selectedPiece) return;
     const onMoveKey = (e: KeyboardEvent) => {
       if (isTypingTarget(e.target) || draggingRef.current) return;
+      const step = nudgeKeyFor(e);
+      if (step) {
+        e.preventDefault();
+        nudgeByRef.current(step);
+        return;
+      }
       const kind = moveKeyFor(e);
       if (!kind) return;
       e.preventDefault();
@@ -1039,15 +1169,18 @@ export function XrayPillow({
     const label = pieceLabel(itemId);
     const lastSlot = slots[slots.length - 1];
     const on = selectedPiece?.subSection === cell.subSection && slots.includes(selectedPiece.slot);
+    // The chip sits on its pouches, so it picks one of them up: the selected one, else the first.
+    const ref: PieceRef = { section: cell.section, subSection: cell.subSection, slot: on ? selectedPiece!.slot : slots[0] };
     return (
       <span className={`flex items-center gap-0.5 px-1 ${CHIP_CLASS} ${on ? "ring-1 ring-sky-400" : ""}`}>
         {/* The chip sits on the pouch, so its label is the selection target there (slice 06). */}
         <button
           type="button"
-          className="max-w-24 truncate"
+          className="max-w-24 cursor-grab truncate active:cursor-grabbing"
           aria-pressed={on}
-          aria-label={`Select ${label} in ${cell.section} ${cell.subSection}`}
-          onClick={() => setSelected({ section: cell.section, subSection: cell.subSection, slot: on ? selectedPiece!.slot : slots[0] })}
+          aria-label={`Select ${label} in ${cell.section} ${cell.subSection} — drag to move`}
+          onClick={() => selectPiece(ref)}
+          {...dragHandle(ref)}
         >
           {label}
           {slots.length > 1 ? ` ×${slots.length}` : ""}
@@ -1206,7 +1339,6 @@ export function XrayPillow({
     </button>
   );
 
-  const rectByKey = new Map(pieces.map((pl) => [pl.key, pl] as const));
 
   // Side-by-side cells keep centroid chips (collated per type); stacked cells
   // list their per-piece labels in the cell's own control panel instead.
@@ -1371,7 +1503,7 @@ export function XrayPillow({
             ))}
 
             {/* Selection (slice 06): the piece's own outline, together with the
-                settled ghost the dive already draws (the pad names its cell). */}
+                settled ghost the dive already draws. */}
             {selectedPiece && dived === selectedPiece.section && authoredPaths.has(selectedKey!) && (
               <path
                 d={authoredPaths.get(selectedKey!)!}
@@ -1395,10 +1527,10 @@ export function XrayPillow({
                 data-xray-drop-hover={drag.refused ? "refused" : "ok"}
               />
             )}
-            {drag?.active && authoredPaths.has(drag.key) && (
+            {drag?.active && (authoredPaths.get(drag.key) ?? settledPaths.get(drag.key)) && rectByKey.has(drag.key) && (
               <path
-                d={authoredPaths.get(drag.key)!}
-                transform={`translate(${drag.dx} ${drag.dy})`}
+                d={(authoredPaths.get(drag.key) ?? settledPaths.get(drag.key))!}
+                transform={`translate(${drag.x - drag.grabX - (rectByKey.get(drag.key)!.x + rectByKey.get(drag.key)!.w / 2)} ${drag.y - drag.grabY - (rectByKey.get(drag.key)!.y + rectByKey.get(drag.key)!.h / 2)})`}
                 fill="white"
                 fillOpacity={0.35}
                 stroke="#38bdf8"
@@ -1517,45 +1649,46 @@ export function XrayPillow({
               );
             })}
 
-          {/* Pouch hit areas (dived Section only, slice 06): each pouch's own
-              authored outline, above the cell add areas, so a click or a tap
-              on a pouch selects it and one beside it still adds. Focusable, so
-              keyboard users reach the selection too. */}
-          {dived &&
-            editable &&
-            (piecesBySection.get(dived) ?? []).map((p) => {
-              const on = selectedKey === p.key;
-              return (
-                <path
-                  key={`hit-${p.key}`}
-                  d={authoredPaths.get(p.key)!}
-                  clipPath={`url(#${clipId("sil")})`}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={on}
-                  aria-label={`${on ? "Selected" : "Select"} ${pieceLabel(p.itemId)} in ${p.section} ${p.subSection}`}
-                  fill="transparent"
-                  // touch-action none: a finger drag on a pouch must not scroll the page instead.
-                  style={{ pointerEvents: "auto", cursor: drag?.active ? "grabbing" : "grab", outline: "none", touchAction: "none" }}
-                  onClick={() => {
-                    if (justDraggedRef.current) {
-                      justDraggedRef.current = false;
-                      return;
-                    }
-                    setSelected({ section: p.section, subSection: p.subSection, slot: p.slot });
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key !== "Enter" && e.key !== " ") return;
-                    e.preventDefault();
-                    setSelected({ section: p.section, subSection: p.subSection, slot: p.slot });
-                  }}
-                  onPointerDown={(e) => startDrag(e, p)}
-                  onPointerMove={moveDrag}
-                  onPointerUp={(e) => endDrag(e, false)}
-                  onPointerCancel={(e) => endDrag(e, true)}
-                />
-              );
-            })}
+          {/* Pouch hit areas (slices 06/07): every pouch's own outline — the
+              dived Section's authored one, every other Section's settled one —
+              above the cell add areas, so a press on a pouch picks it up, a
+              tap selects it (diving into its Section first) and a tap beside
+              it still adds. Focusable in the dive, so keyboard users reach the
+              selection too. Deepest-first, so the top Layer wins the hit. */}
+          {editable &&
+            sectionsInUse.flatMap((section) =>
+              (piecesBySection.get(section) ?? []).map((p) => {
+                const inDive = section === dived;
+                const d = (inDive ? authoredPaths : settledPaths).get(p.key);
+                if (!d) return null;
+                const on = selectedKey === p.key;
+                const ref = { section: p.section, subSection: p.subSection, slot: p.slot };
+                return (
+                  <path
+                    key={`hit-${p.key}`}
+                    d={d}
+                    clipPath={`url(#${clipId("sil")})`}
+                    role="button"
+                    tabIndex={inDive ? 0 : -1}
+                    aria-pressed={on}
+                    aria-label={`${on ? "Selected" : "Select"} ${pieceLabel(p.itemId)} in ${p.section} ${p.subSection} — drag to move`}
+                    fill="transparent"
+                    // touch-action none: a finger drag on a pouch must not scroll the page instead.
+                    style={{ pointerEvents: "auto", cursor: drag?.active ? "grabbing" : "grab", outline: "none", touchAction: "none" }}
+                    onMouseEnter={() => setHovered(section)}
+                    onMouseLeave={() => setHovered((h) => (h === section ? null : h))}
+                    onClick={() => tapPouch(ref, inDive)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter" && e.key !== " ") return;
+                      e.preventDefault();
+                      setSelected({ section: p.section, subSection: p.subSection, slot: p.slot });
+                    }}
+                    data-pouch-hit
+                    {...dragHandle(ref, true, () => tapPouch(ref, inDive))}
+                  />
+                );
+              }),
+            )}
 
           {/* Drop targets while a pouch is dragged (slice 07): the nine cell
               regions of every Section, so a drop can cross Sections. The
@@ -1643,10 +1776,6 @@ export function XrayPillow({
                   {cellPcs.length > 0 && cellFitOf(subSection) && (
                     <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact />
                   )}
-                  {/* Move pad (slice 06): only while a piece in THIS cell is selected. */}
-                  {selectedPiece && selectedPiece.subSection === subSection && (
-                    <MovePad label={pieceLabel(selectedPiece.itemId)} compact onMove={performMove} onClear={() => setSelected(null)} />
-                  )}
                   {/* ponytail: a side cell's centroid chips share this band; the
                       panel's opaque background and z-20 keep the toggle
                       readable. Tighten the chips to max-w-16 if it ever bites. */}
@@ -1669,7 +1798,8 @@ export function XrayPillow({
                           full={layer.length >= MAX_PIECES_PER_LAYER}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
                           selectedSlot={selectedPiece?.subSection === subSection ? selectedPiece.slot : null}
-                          onSelectPiece={(slot) => setSelected({ section: cell.section, subSection: cell.subSection, slot })}
+                          onSelectPiece={(slot) => selectPiece({ section: cell.section, subSection: cell.subSection, slot })}
+                          pieceDragHandle={(slot) => dragHandle({ section: cell.section, subSection: cell.subSection, slot })}
                           onAdd={() => openPicker(subSection, depth)}
                           onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
                           onRemovePiece={(slot) =>
@@ -1736,6 +1866,36 @@ export function XrayPillow({
         </div>
       )}
 
+      {/* Layer picker: a pouch dropped on a stacked cell asks which Layer, in
+          a bloom at the drop point (phones: centred, like the add picker, so it
+          cannot run off the screen edge). A side-by-side cell never asks. */}
+      {layerPick && (
+        <div
+          className="absolute z-40 -translate-x-1/2 -translate-y-1/2"
+          style={{
+            ...(isMobile ? { left: "50%", top: "50%" } : { left: layerPick.left, top: layerPick.top }),
+            width: isMobile ? 240 : 190,
+            pointerEvents: "auto",
+          }}
+          data-xray-layer-pick
+        >
+          <SunburstMenu
+            open
+            root={layerPickTree}
+            display="text"
+            size={isMobile ? 240 : 190}
+            ringWidth={isMobile ? 52 : 50}
+            holeRadius={isMobile ? 26 : 18}
+            centerIcon={Layers}
+            ariaLabel={`Move ${pieceLabel(layerPick.source.itemId)} into which layer of ${layerPick.cell.section} ${layerPick.cell.subSection}?`}
+            onOpenChange={(o) => {
+              if (!o) closeLayerPick();
+            }}
+            onSelect={(leaf) => dropIntoLayer(leaf.id)}
+          />
+        </div>
+      )}
+
       {/* Phones have no hover cue that the sections are tappable: say so, in the
           gap under the pillow, until a section is dived. */}
       {editable && isMobile && !dived && (
@@ -1743,7 +1903,7 @@ export function XrayPillow({
           className="pointer-events-none absolute inset-x-0 top-full text-center text-[11px] leading-4 text-white/70"
           aria-hidden
         >
-          Tap a section to edit its fillings
+          Tap a section to edit · drag a pouch to move it
         </p>
       )}
 
@@ -1808,10 +1968,6 @@ export function XrayPillow({
                   {cellPcs.length > 0 && cellFitOf(subSection) && (
                     <LoftGauge cell={cellFitOf(subSection)!} size={pillowSize} compact={false} />
                   )}
-                  {/* Move pad (slice 06) in the dock group: 44px targets, every move the keys have. */}
-                  {selectedPiece && selectedPiece.subSection === subSection && (
-                    <MovePad label={pieceLabel(selectedPiece.itemId)} compact={false} onMove={performMove} onClear={() => setSelected(null)} />
-                  )}
                   {!stacked && cellPcs.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {sideChips
@@ -1837,7 +1993,8 @@ export function XrayPillow({
                           full={layer.length >= MAX_PIECES_PER_LAYER}
                           pieces={layer.map((p) => ({ slot: p.slot, label: pieceLabel(p.itemId) }))}
                           selectedSlot={selectedPiece?.subSection === subSection ? selectedPiece.slot : null}
-                          onSelectPiece={(slot) => setSelected({ section: cell.section, subSection: cell.subSection, slot })}
+                          onSelectPiece={(slot) => selectPiece({ section: cell.section, subSection: cell.subSection, slot })}
+                          pieceDragHandle={(slot) => dragHandle({ section: cell.section, subSection: cell.subSection, slot })}
                           onAdd={() => openPicker(subSection, depth)}
                           onRemoveLayer={() => onPlacementsChange?.(removeLayer(placements, cell, depth))}
                           onRemovePiece={(slot) =>

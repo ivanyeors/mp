@@ -6,7 +6,7 @@ Tracker: #206 · Parent: #200
 **Blocked by:** 02 (true-scale hit areas), 03 (refusals through `wouldFit`)
 **User stories:** 31, 32, 33, 34, 35, 36, 38, 39, 40
 **Labels:** `enhancement`, `needs-triage`, `P1`, `area:admin`, `area:storefront`
-**Status:** built (PR #213) — `movePiece` / `shiftPieceLayer` / `reorderInLayer` in `staff-assist.ts` (tested), the key table in `lib/configurator/move-keys.ts`, selection, keys, the move pad and Undo in `xray-pillow.tsx`.
+**Status:** built (PR #213); the move pad was retired 27-9-2026 in favour of the drag (see 07) — `movePiece` / `shiftPieceLayer` / `reorderInLayer` in `staff-assist.ts` (tested), the key table in `lib/configurator/move-keys.ts`, selection, keys, the move pad and Undo in `xray-pillow.tsx`.
 
 ## Goal
 

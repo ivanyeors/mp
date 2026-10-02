@@ -4,7 +4,7 @@ import { addPiece, removePiece } from "@/lib/configurator/staff-assist";
 import { placementsExactMatch, type PillowPlacement } from "../core";
 import { GENERIC_POUCH, PILLOW_DIMENSIONS, SEAM_MM, type PouchDimensions, type ResolvedDims } from "../dimensions";
 import { fitPillow } from "../fit";
-import { alongMm, settlePillow, settledThicknessMm, spreadCapacityMm, type PieceSettle } from "../settle";
+import { alongMm, anchorAlong, offerBothWays, settlePillow, settledThicknessMm, spreadCapacityMm, type PieceSettle } from "../settle";
 import { cellFrame, layoutPlacements } from "../xray-layout";
 import { stageGeometry } from "../xray-stage";
 
@@ -161,6 +161,62 @@ describe("settlePillow", () => {
     // Removing it again gives the void back (slice 06 adds moves; a move is a remove + add).
     const removed = removePiece(added.placements, { section: "center", subSection: "back" }, 1);
     expect(find(settlePillow(removed, { size: "M", dims }).pieces, "center/middle/1").spreadBackMm).toBeGreaterThan(0);
+  });
+});
+
+describe("the nudge anchors the gap (slice 08)", () => {
+  // 60 mm along in a 110 mm cell: 50 mm to move in. Capacity 60 × (45/25 − 1) = 48 mm, less than the 220 mm of void.
+  const short = new Map([resolved(1, { ...SPREADER, lengthMm: 60 })]);
+  // Capacity 60 × (90/15 − 1) = 300 mm: fills both voids.
+  const filler = new Map([resolved(1, { ...SPREADER, lengthMm: 60, thicknessMm: 90, minThicknessMm: 15 })]);
+  const alone = (offsetYMm: number | undefined, d: typeof short) =>
+    settlePillow([{ ...at("center", "middle", 1, 1), ...(offsetYMm === undefined ? {} : { offsetYMm }) }], { size: "M", dims: d }).pieces[0];
+
+  it("anchorAlong: home is ½, the cell's walls are 0 and 1, a pouch as long as its cell stays home", () => {
+    expect(anchorAlong(0, CELL, 60)).toBe(0.5);
+    expect(anchorAlong(25, CELL, 60)).toBe(1);
+    expect(anchorAlong(-25, CELL, 60)).toBe(0);
+    expect(anchorAlong(12.5, CELL, 60)).toBeCloseTo(0.75, 6);
+    expect(anchorAlong(40, CELL, 140)).toBe(0.5);
+  });
+
+  it("offerBothWays at home is the plain pro rata split, and a lone void still takes the capacity whatever the anchor", () => {
+    expect(offerBothWays(48, 110, 110)).toEqual([24, 24]);
+    expect(offerBothWays(48, 110, 110, 0.5)).toEqual([24, 24]);
+    expect(offerBothWays(48, 110, 0, 1)).toEqual([48, 0]);
+    expect(offerBothWays(48, 0, 110, 0)).toEqual([0, 48]);
+  });
+
+  it("with a void larger than the spread capacity: a back nudge leaves the gap at the front, a front nudge at the back", () => {
+    const home = alone(undefined, short);
+    expect(home.spreadFrontMm).toBeCloseTo(24, 1);
+    expect(home.spreadBackMm).toBeCloseTo(24, 1);
+    const back = alone(25, short);
+    expect(back.spreadFrontMm).toBe(0);
+    expect(back.spreadBackMm).toBeCloseTo(48, 1);
+    const front = alone(-25, short);
+    expect(front.spreadFrontMm).toBeCloseTo(48, 1);
+    expect(front.spreadBackMm).toBe(0);
+    // Part way: favours the side it leans to, the same total either way.
+    const lean = alone(10, short);
+    expect(lean.spreadBackMm).toBeGreaterThan(lean.spreadFrontMm);
+    expect(lean.spreadFrontMm + lean.spreadBackMm).toBeCloseTo(48, 1);
+  });
+
+  it("with a void it can fill, the settled spread is the same for every nudge", () => {
+    for (const off of [undefined, -25, -10, 10, 25]) {
+      const s = alone(off, filler);
+      expect(s.spreadFrontMm).toBeCloseTo(CELL, 1);
+      expect(s.spreadBackMm).toBeCloseTo(CELL, 1);
+    }
+  });
+
+  it("draws it that way: a back-nudged pouch's settled rect reaches the back and stops short of the front", () => {
+    const stage = stageGeometry("M");
+    const placements = [{ ...at("center", "middle", 1, 1), offsetYMm: 25 }];
+    const [p] = layoutPlacements(placements, { stage, dims: short, fit: fitPillow(placements, { size: "M", dims: short }) });
+    expect(p.settled.y).toBeCloseTo(p.y, 1); // nothing spread forward: the gap is in front
+    expect(p.settled.y + p.settled.h).toBeCloseTo(p.y + p.h + 48 * stage.k, 0);
   });
 });
 

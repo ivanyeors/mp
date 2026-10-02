@@ -1,10 +1,11 @@
 /**
  * The keyboard map for moving a selected pouch in the x-ray dive (X-ray pillow
- * UX slice 06), and the move pad's actions — one table, so a pad button and a
- * key can never disagree. Pure, like `layerDragDestination`.
+ * UX slice 06) — the keyboard twin of the pouch drag (the on-screen move pad
+ * was retired 27-9-2026). Pure, like `layerDragDestination`.
  *
  * ← → reorder in the Layer · ↑ ↓ to the front / back sub-section ·
- * [ ] one Layer up / down · Shift + ← → to the neighbouring Section.
+ * [ ] one Layer up / down · Shift + ← → to the neighbouring Section ·
+ * Alt + arrows nudge it NUDGE_STEP_MM within its cell (`nudgeKeyFor`).
  */
 
 export type MoveKind =
@@ -19,7 +20,7 @@ export type MoveKind =
 
 export type MoveAction = { kind: MoveKind; label: string; key: string };
 
-/** Pad order: reorder, sub-section, Layer, Section — two per row. */
+/** Every move, with its key: reorder, sub-section, Layer, Section. */
 export const MOVE_ACTIONS: readonly MoveAction[] = [
   { kind: "left", label: "Left in layer", key: "←" },
   { kind: "right", label: "Right in layer", key: "→" },
@@ -57,4 +58,27 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   if (!target || typeof (target as { tagName?: unknown }).tagName !== "string") return false;
   const el = target as unknown as { tagName: string; isContentEditable?: boolean };
   return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true;
+}
+
+/** One Alt + arrow step of the fine nudge (slice 08), mm. */
+export const NUDGE_STEP_MM = 5;
+
+/**
+ * The fine nudge a keydown asks for — Alt + an arrow moves the selected pouch
+ * NUDGE_STEP_MM within its cell (+x right, +y toward the back) — or null.
+ */
+export function nudgeKeyFor(e: { key: string; shiftKey?: boolean; altKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }): { xMm: number; yMm: number } | null {
+  if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return null;
+  switch (e.key) {
+    case "ArrowLeft":
+      return { xMm: -NUDGE_STEP_MM, yMm: 0 };
+    case "ArrowRight":
+      return { xMm: NUDGE_STEP_MM, yMm: 0 };
+    case "ArrowUp":
+      return { xMm: 0, yMm: -NUDGE_STEP_MM };
+    case "ArrowDown":
+      return { xMm: 0, yMm: NUDGE_STEP_MM };
+    default:
+      return null;
+  }
 }

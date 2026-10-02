@@ -22,6 +22,8 @@ export type BlogPostRow = {
     published_at: string | null;
     created_at: string;
     updated_at: string;
+    /** Set only on editorial edits (slice 17); null = unchanged since publishing. */
+    content_updated_at?: string | null;
     labels: string[];
 };
 
@@ -39,6 +41,7 @@ export type BlogPost = {
     published_at: string | null;
     created_at: string;
     updated_at: string;
+    content_updated_at: string | null;
     seo_keywords: string[];
     seo_answer?: string;
     labels: string[];
@@ -62,6 +65,7 @@ function resolveLocale(row: BlogPostRow, locale: string): BlogPost {
         published_at: row.published_at,
         created_at: row.created_at,
         updated_at: row.updated_at,
+        content_updated_at: row.content_updated_at ?? null,
         seo_keywords: loc?.seo_keywords ?? [],
         labels: row.labels ?? [],
     };
