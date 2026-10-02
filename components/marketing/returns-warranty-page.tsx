@@ -14,6 +14,7 @@ import {
   SUPPORT_WHATSAPP_URL,
 } from "@/lib/contact";
 import { Badge } from "@/components/ui/badge";
+import { DeliveryEstimator } from "@/components/shop/delivery-estimator";
 import {
   Card,
   CardContent,
@@ -193,7 +194,14 @@ export async function ReturnsWarrantyPage({ params }: ReturnsWarrantyPageProps) 
               for fulfilment.
             </li>
             <li>You will receive another notification when your order has shipped.</li>
+            <li>
+              We deliver across Singapore and Southeast Asia through our courier partners. Delivery
+              rates depend on your address and are shown at checkout — or check yours below.
+            </li>
           </ul>
+          <div className="max-w-xl rounded-xl border p-4 md:p-5">
+            <DeliveryEstimator locale={locale} profile="pillow" />
+          </div>
         </section>
 
         <section id="refunds" className="scroll-mt-24 space-y-4">

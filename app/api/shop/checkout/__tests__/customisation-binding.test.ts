@@ -15,6 +15,7 @@ const h = vi.hoisted(() => ({
   inserts: [] as Array<{ table: string; row: unknown }>,
   sessionsCreate: vi.fn(),
   loadComposedSellable: vi.fn(),
+  quoteShippingMethods: vi.fn(),
 }));
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined }) }));
@@ -91,6 +92,9 @@ vi.mock("@/lib/ecommerce/tax", async (orig) => ({
 vi.mock("@/lib/stripe/client", () => ({
   getStripe: () => ({ checkout: { sessions: { create: h.sessionsCreate } } }),
 }));
+// Live (Easyship) shipping is priced by the quote service, faked here; flat methods never call it.
+vi.mock("@/lib/shipping/quote", () => ({ quoteShippingMethods: h.quoteShippingMethods }));
+vi.mock("@/lib/shipping/settings", () => ({ readShippingSettings: async () => ({}) }));
 
 const { POST: checkout } = await import("@/app/api/shop/checkout/route");
 const { POST: customize } = await import("@/app/api/shop/customize/route");
@@ -414,6 +418,87 @@ describe("POST /api/shop/checkout — a customised line is bound to its build", 
     const res = await post([{ variant_id: PILLOW_VARIANT, quantity: 1, customization_id: CONFIG }]);
     expect(res.status).toBe(400);
     expect(h.sessionsCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/shop/checkout — live Easyship shipping", () => {
+  const liveMethod = {
+    id: SHIPPING,
+    slug: "standard",
+    base_rate: 8,
+    free_above: null,
+    content: { "en-US": { name: "Standard" } },
+    currency: "SGD",
+    countries: ["SG"],
+    rate_source: "easyship",
+    easyship_strategy: "cheapest",
+  };
+  const option = {
+    method: liveMethod,
+    amount: 7.5,
+    is_free: false,
+    currency: "SGD",
+    source: "easyship",
+    courier: { service_id: "cs_ninja", name: "Ninja Van Standard", umbrella_name: "Ninja Van" },
+    carrier_cost: 6.42,
+    min_days: 2,
+    max_days: 4,
+  };
+
+  it("charges the re-priced live rate and records the courier on the order", async () => {
+    h.tables.shipping_methods = liveMethod;
+    h.quoteShippingMethods.mockResolvedValue({ options: [option], rates: null });
+    const res = await post([{ variant_id: ACCESSORY_VARIANT, quantity: 2 }]);
+    expect(res.status).toBe(200);
+
+    const [, input] = h.quoteShippingMethods.mock.calls[0];
+    expect(input.lines).toEqual([
+      expect.objectContaining({ product_type: "accessory", quantity: 2, unit_value: 12, currency: "SGD" }),
+    ]);
+    expect(input.destination).toMatchObject({ country: "SG", postal_code: "123456" });
+
+    expect(ordersInserted()[0].row).toMatchObject({
+      shipping_amount: 7.5,
+      shipping_courier: "Ninja Van Standard",
+    });
+    // What the courier costs us stays off `orders`, which customers can read.
+    expect(ordersInserted()[0].row).not.toHaveProperty("shipping_carrier_cost");
+    expect(h.inserts.find((i) => i.table === "order_shipments")?.row).toEqual({
+      order_id: "order-1",
+      courier_service_id: "cs_ninja",
+      quoted_carrier_cost: 6.42,
+    });
+    expect(h.sessionsCreate.mock.calls[0][0].shipping_options[0].shipping_rate_data).toMatchObject({
+      fixed_amount: { amount: 750, currency: "sgd" },
+      display_name: "Standard — Ninja Van Standard",
+    });
+  });
+
+  it("refuses an address no courier on the method serves, before any write", async () => {
+    h.tables.shipping_methods = liveMethod;
+    h.quoteShippingMethods.mockResolvedValue({ options: [], rates: null });
+    const res = await post([{ variant_id: ACCESSORY_VARIANT, quantity: 1 }]);
+    expect(res.status).toBe(400);
+    expect(ordersInserted()).toHaveLength(0);
+    expect(h.sessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("refuses a method that does not deliver to the address's country", async () => {
+    h.tables.shipping_methods = { ...liveMethod, rate_source: "flat", countries: ["MY"] };
+    const res = await post([{ variant_id: ACCESSORY_VARIANT, quantity: 1 }]);
+    expect(res.status).toBe(400);
+    expect(ordersInserted()).toHaveLength(0);
+  });
+
+  it("leaves a flat method's pricing and the courier columns alone", async () => {
+    h.tables.shipping_methods = { ...liveMethod, rate_source: "flat" };
+    const res = await post([{ variant_id: ACCESSORY_VARIANT, quantity: 1 }]);
+    expect(res.status).toBe(200);
+    expect(h.quoteShippingMethods).not.toHaveBeenCalled();
+    const order = ordersInserted()[0].row as Record<string, unknown>;
+    expect(order.shipping_amount).toBe(8);
+    expect(order).not.toHaveProperty("shipping_courier");
+    expect(h.inserts.some((i) => i.table === "order_shipments")).toBe(false);
   });
 });
 
