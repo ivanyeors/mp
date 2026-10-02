@@ -68,7 +68,7 @@ export default async function BlogPostPage({ params }: Props) {
         description: post.description,
         imageUrl: post.image_url,
         publishedAt: post.published_at,
-        updatedAt: post.updated_at,
+        contentUpdatedAt: post.content_updated_at,
         author: post.author,
     });
 
@@ -126,6 +126,21 @@ export default async function BlogPostPage({ params }: Props) {
                             })}
                         </time>
                     )}
+                    {/* Editorial updates only, and only when they land on a later day (slice 17). */}
+                    {post.content_updated_at &&
+                        (!post.published_at ||
+                            Date.parse(post.content_updated_at) - Date.parse(post.published_at) > 86_400_000) && (
+                            <span>
+                                {locale.startsWith("zh") ? "更新于 " : "Updated "}
+                                <time dateTime={post.content_updated_at}>
+                                    {new Date(post.content_updated_at).toLocaleDateString(locale, {
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                    })}
+                                </time>
+                            </span>
+                        )}
                 </div>
             </header>
 
