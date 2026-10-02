@@ -4,6 +4,7 @@ import {
   bucketStart,
   compareTotals,
   previousPeriod,
+  sumBuckets,
   summarize,
   type DailyTotal,
 } from "@/lib/seo-metrics/aggregate";
@@ -88,5 +89,38 @@ describe("compareTotals", () => {
 describe("previousPeriod", () => {
   it("returns the equal-length window just before", () => {
     expect(previousPeriod("2026-09-01", "2026-09-28")).toEqual({ from: "2026-08-04", to: "2026-08-31" });
+  });
+});
+
+describe("sumBuckets", () => {
+  it("sums per week and nulls buckets outside the imported span", () => {
+    const out = sumBuckets(
+      [
+        { date: "2026-09-09", value: 2 },
+        { date: "2026-09-10", value: 3 },
+        { date: "2026-09-15", value: 1 },
+      ],
+      { from: "2026-08-31", to: "2026-09-27", granularity: "week", firstDate: "2026-09-09", lastDate: "2026-09-16" },
+    );
+    expect(out.map((b) => [b.start, b.value])).toEqual([
+      ["2026-08-31", null], // before the export starts
+      ["2026-09-07", 5],
+      ["2026-09-14", 1],
+      ["2026-09-21", null], // after it ends
+    ]);
+    expect(out.every((b) => !b.partial)).toBe(true);
+  });
+
+  it("keeps zero days inside the span as 0", () => {
+    const out = sumBuckets([{ date: "2026-09-07", value: 0 }], {
+      from: "2026-09-07", to: "2026-09-08", granularity: "day", firstDate: "2026-09-07", lastDate: "2026-09-08",
+    });
+    expect(out.map((b) => b.value)).toEqual([0, 0]);
+  });
+
+  it("is all null when nothing has been imported", () => {
+    expect(
+      sumBuckets([], { from: "2026-09-07", to: "2026-09-08", granularity: "day", firstDate: null, lastDate: null }).map((b) => b.value),
+    ).toEqual([null, null]);
   });
 });

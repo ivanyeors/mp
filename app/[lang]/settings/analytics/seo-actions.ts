@@ -7,6 +7,7 @@ import {
   bucketize,
   compareTotals,
   previousPeriod,
+  sumBuckets,
   summarize,
   type DailyTotal,
   type Granularity,
@@ -24,7 +25,9 @@ import {
   type KeyDaily,
   type KeyTotals,
 } from "@/lib/seo-metrics/queries";
-import { GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
+import { createSupabaseSeoMetricsStore, GSC_SOURCE } from "@/lib/seo-metrics/ingest-gsc";
+import { parseReport, REPORT_LABELS, siteMismatchWarning } from "@/lib/seo-metrics/csv-import";
+import { getSiteOrigin } from "@/lib/site-url";
 
 // ponytail: do not `export type { X }` from "use server" — see actions.ts
 
@@ -294,4 +297,147 @@ export async function removeTargetQuery(query: string): Promise<{ ok: true } | {
   const { error } = await supabaseAdmin().from("seo_target_queries").delete().eq("query", normalizeQuery(query));
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+const MAX_IMPORT_FILES = 12;
+const MAX_IMPORT_BYTES = 2_000_000;
+
+/**
+ * Upload Search Console "Generative AI" and Bing "AI Performance" exports (slice 07).
+ * Files are sent as text; re-uploading overlapping dates overwrites, never duplicates.
+ */
+export async function importAiReports(files: { name: string; text: string }[]) {
+  await assertAdmin("analytics");
+  if (!Array.isArray(files) || !files.length) return { ok: false as const, error: "Choose at least one CSV file." };
+  if (files.length > MAX_IMPORT_FILES) return { ok: false as const, error: `Upload at most ${MAX_IMPORT_FILES} files at once.` };
+
+  const importDate = singaporeDate(new Date().toISOString());
+  // Filters.csv labels the period of the Pages/Countries/Devices totals in the same upload.
+  let period: string | undefined;
+  for (const f of files) {
+    const p = parseReport(f.text ?? "", { importDate });
+    if (p.ok && p.kind === "gsc_genai_filters") period = p.period;
+  }
+
+  const store = createSupabaseSeoMetricsStore(supabaseAdmin());
+  const results: { name: string; ok: boolean; label?: string; rows?: number; skipped?: number; error?: string; warning?: string }[] = [];
+  const host = new URL(getSiteOrigin()).host;
+  for (const f of files) {
+    const name = String(f.name ?? "file").slice(0, 120);
+    if ((f.text?.length ?? 0) > MAX_IMPORT_BYTES) {
+      results.push({ name, ok: false, error: "File is larger than 2 MB." });
+      continue;
+    }
+    const parsed = parseReport(f.text ?? "", { importDate, period });
+    if (!parsed.ok) {
+      results.push({ name, ok: false, error: parsed.error });
+      continue;
+    }
+    try {
+      if (parsed.rows.length) await store.upsert(parsed.rows);
+      results.push({
+        name,
+        ok: true,
+        label: REPORT_LABELS[parsed.kind],
+        rows: parsed.rows.length,
+        skipped: parsed.skipped,
+        warning: siteMismatchWarning(name, host) ?? undefined,
+      });
+    } catch (e) {
+      results.push({ name, ok: false, error: e instanceof Error ? e.message : "Save failed" });
+    }
+  }
+  return { ok: true as const, results };
+}
+
+async function latestImport(source: string, dimension: string) {
+  const { data } = await supabaseAdmin()
+    .from("seo_daily_metrics")
+    .select("date, synced_at, extra")
+    .eq("source", source)
+    .eq("dimension", dimension)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data as { date: string; synced_at: string; extra: Record<string, unknown> | null } | null;
+}
+
+/** Imported AI-answer visibility: Google AI Overviews / AI Mode impressions and Bing Copilot citations (slice 07). */
+export async function getAiAnswers(input: { range: string; granularity: string }) {
+  await assertAdmin("analytics");
+  const days = RANGE_DAYS[input.range as keyof typeof RANGE_DAYS] ?? RANGE_DAYS["3m"];
+  const granularity: Granularity = input.granularity === "day" ? "day" : "week";
+  const to = singaporeDate(new Date().toISOString());
+  const from = addDays(to, -(days - 1));
+  const chartFrom = bucketStart(from, granularity);
+  const admin = supabaseAdmin();
+
+  const earliest = async (source: string) => {
+    const { data } = await admin
+      .from("seo_daily_metrics")
+      .select("date")
+      .eq("source", source)
+      .eq("dimension", "total")
+      .order("date", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    return (data?.date as string | undefined) ?? null;
+  };
+
+  const series = async (source: "gsc_genai" | "bing_ai") => {
+    const [rows, latest, firstDate] = await Promise.all([
+      fetchAllPages<{ date: string; impressions: number; extra: { cited_pages?: number } | null }>((a, b) =>
+        admin
+          .from("seo_daily_metrics")
+          .select("date, impressions, extra")
+          .eq("source", source)
+          .eq("dimension", "total")
+          .gte("date", chartFrom)
+          .lte("date", to)
+          .order("date", { ascending: true })
+          .range(a, b),
+      ),
+      latestImport(source, "total"),
+      earliest(source),
+    ]);
+    const inRange = rows.filter((r) => r.date >= from);
+    return {
+      lastDate: latest?.date ?? null,
+      importedAt: latest?.synced_at ?? null,
+      total: inRange.reduce((s, r) => s + r.impressions, 0),
+      citedPagesPeak: Math.max(0, ...inRange.map((r) => Number(r.extra?.cited_pages ?? 0))),
+      points: sumBuckets(
+        rows.map((r) => ({ date: r.date, value: r.impressions })),
+        { from: chartFrom, to, granularity, firstDate, lastDate: latest?.date ?? null },
+      ),
+    };
+  };
+
+  const [google, bing, pagesLatest] = await Promise.all([
+    series("gsc_genai"),
+    series("bing_ai"),
+    latestImport("gsc_genai", "page_period"),
+  ]);
+
+  let topPages: { page: string; impressions: number }[] = [];
+  if (pagesLatest) {
+    const { data } = await admin
+      .from("seo_daily_metrics")
+      .select("key, impressions")
+      .eq("source", "gsc_genai")
+      .eq("dimension", "page_period")
+      .eq("date", pagesLatest.date)
+      .order("impressions", { ascending: false })
+      .limit(10);
+    topPages = (data ?? []).map((r) => ({ page: r.key as string, impressions: Number(r.impressions) }));
+  }
+
+  return {
+    granularity,
+    google,
+    bing,
+    topPages: pagesLatest
+      ? { importedOn: pagesLatest.date, period: String(pagesLatest.extra?.period ?? ""), rows: topPages }
+      : null,
+  };
 }

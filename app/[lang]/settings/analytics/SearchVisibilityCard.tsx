@@ -21,8 +21,10 @@ import {
   getChannelMix,
   getCrawlerActivity,
   getSeoAnnotations,
+  getAiAnswers,
   getSearchQueries,
   getSearchVisibility,
+  importAiReports,
   addTargetQuery,
   removeTargetQuery,
 } from "./seo-actions";
@@ -43,6 +45,161 @@ const PURPOSE_LABELS = {
 } as const;
 
 type Queries = Awaited<ReturnType<typeof getSearchQueries>>;
+type AiAnswers = Awaited<ReturnType<typeof getAiAnswers>>;
+type ImportResult = Extract<Awaited<ReturnType<typeof importAiReports>>, { ok: true }>["results"][number];
+
+function importedNote(lastDate: string | null, importedAt: string | null) {
+  if (!lastDate) return "Not imported yet";
+  return `Data through ${lastDate}${importedAt ? ` · uploaded ${importedAt.slice(0, 10)}` : ""}`;
+}
+
+/** Imported AI-answer reports + upload (slice 07). */
+export function AiAnswersPanel({
+  ai,
+  annotations,
+  onImported,
+}: {
+  ai: AiAnswers | null;
+  annotations?: Annotation[];
+  onImported: () => void;
+}) {
+  const [results, setResults] = useState<ImportResult[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const upload = (list: FileList | null) => {
+    if (!list?.length) return;
+    startTransition(async () => {
+      const files = await Promise.all([...list].map(async (f) => ({ name: f.name, text: await f.text() })));
+      const r = await importAiReports(files);
+      if (!r.ok) {
+        setError(r.error);
+        setResults(null);
+        return;
+      }
+      setError(null);
+      setResults(r.results);
+      onImported();
+    });
+  };
+
+  const hasAny = !!ai && (ai.google.lastDate || ai.bing.lastDate);
+  return (
+    <div className="space-y-4">
+      {ai && hasAny ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <figure className="space-y-1">
+            <figcaption>
+              <div className="text-sm font-medium">Google AI Overviews &amp; AI Mode · impressions</div>
+              <div className="text-xs text-muted-foreground">
+                {int.format(ai.google.total)} in range · {importedNote(ai.google.lastDate, ai.google.importedAt)}
+              </div>
+            </figcaption>
+            <SeoTrendVisx
+              label="AI impressions"
+              points={ai.google.points}
+              granularity={ai.granularity}
+              formatValue={fmtCount}
+              height={150}
+              annotations={annotations}
+            />
+          </figure>
+          <figure className="space-y-1">
+            <figcaption>
+              <div className="text-sm font-medium">Bing Copilot · citations</div>
+              <div className="text-xs text-muted-foreground">
+                {int.format(ai.bing.total)} in range · {importedNote(ai.bing.lastDate, ai.bing.importedAt)}
+              </div>
+            </figcaption>
+            <SeoTrendVisx
+              label="Citations"
+              points={ai.bing.points}
+              granularity={ai.granularity}
+              formatValue={fmtCount}
+              height={150}
+              annotations={annotations}
+            />
+          </figure>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          No AI-answer reports imported yet. Neither Google nor Bing offers these through an API, so upload the exports below.
+        </div>
+      )}
+
+      {ai?.topPages?.rows.length ? (
+        <div className="space-y-1">
+          <div className="text-xs font-medium">
+            Pages shown in Google AI answers{" "}
+            <span className="font-normal text-muted-foreground">
+              ({ai.topPages.period || "export period"}, uploaded {ai.topPages.importedOn})
+            </span>
+          </div>
+          <ul className="divide-y rounded-md border text-xs">
+            {ai.topPages.rows.map((p) => (
+              <li key={p.page} className="flex items-center gap-2 px-2 py-1.5">
+                <span className="min-w-0 flex-1 truncate" title={p.page}>
+                  {shortPath(p.page)}
+                </span>
+                {/\/zh-CN(\/|$)/.test(p.page) ? (
+                  <span className="shrink-0 rounded bg-muted px-1 text-[10px] text-muted-foreground">中文</span>
+                ) : null}
+                <span className="shrink-0 tabular-nums">{int.format(p.impressions)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="space-y-2 rounded-md border p-3">
+        <label className="block text-xs font-medium" htmlFor="ai-report-upload">
+          Upload exports (select several CSVs at once)
+        </label>
+        <input
+          id="ai-report-upload"
+          type="file"
+          accept=".csv,text/csv"
+          multiple
+          disabled={pending}
+          onChange={(e) => {
+            upload(e.target.files);
+            e.target.value = "";
+          }}
+          className="block w-full text-xs file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-xs"
+        />
+        <div className="text-xs text-muted-foreground">
+          Google: Search Console → Performance → Generative AI → Export (all files, including Filters.csv). Bing: Webmaster
+          Tools → AI Performance → Export. Re-uploading overlapping dates replaces them.
+        </div>
+        {pending ? <div className="text-xs text-muted-foreground">Importing…</div> : null}
+        {error ? <div className="text-xs text-destructive">{error}</div> : null}
+        {results ? (
+          <ul className="space-y-1 text-xs">
+            {results.map((r) => (
+              <li key={r.name}>
+                <span className="font-medium">{r.name}</span>:{" "}
+                {r.ok ? (
+                  <span>
+                    {r.label}, {int.format(r.rows ?? 0)} rows
+                    {r.skipped ? `, ${r.skipped} skipped` : ""}
+                    {r.warning ? (
+                      <span className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+                        <AlertTriangle className="size-3 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+                        {r.warning}
+                      </span>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="text-destructive">{r.error}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 type MoverRow = Queries["queryMovers"]["gainers"][number];
 
 /** Show a URL as its path, so the column stays readable. */
@@ -657,6 +814,9 @@ export function SearchVisibilityCard() {
   const [queries, setQueries] = useState<Queries | null>(null);
   const [queriesVersion, setQueriesVersion] = useState(0);
   const refreshQueries = useCallback(() => setQueriesVersion((v) => v + 1), []);
+  const [ai, setAi] = useState<AiAnswers | null>(null);
+  const [aiVersion, setAiVersion] = useState(0);
+  const refreshAi = useCallback(() => setAiVersion((v) => v + 1), []);
   const [crawlers, setCrawlers] = useState<Crawlers | null>(null);
   const [crawlersError, setCrawlersError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -691,6 +851,19 @@ export function SearchVisibilityCard() {
       cancelled = true;
     };
   }, [range, queriesVersion]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAiAnswers({ range, granularity })
+      .then((a) => {
+        if (!cancelled) setAi(a);
+      })
+      // Before the migration is applied the panel still offers the upload.
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [range, granularity, aiVersion]);
 
   useEffect(() => {
     let cancelled = false;
@@ -793,6 +966,16 @@ export function SearchVisibilityCard() {
           ) : (
             <Skeleton className="h-[260px]" />
           )}
+        </section>
+
+        <section className="space-y-3 border-t pt-6">
+          <div>
+            <h3 className="text-sm font-medium">AI answers</h3>
+            <div className="text-xs text-muted-foreground">
+              How often Google&apos;s AI features and Bing Copilot showed or cited our pages, from report exports.
+            </div>
+          </div>
+          <AiAnswersPanel ai={ai} annotations={annotations} onImported={refreshAi} />
         </section>
 
         <section className="space-y-3 border-t pt-6">

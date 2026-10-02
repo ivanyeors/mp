@@ -126,3 +126,30 @@ export function previousPeriod(from: string, to: string): { from: string; to: st
   const days = Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
   return { from: addDays(from, -days), to: addDays(from, -1) };
 }
+
+/**
+ * Daily counts (e.g. imported AI impressions or citations) summed per bucket.
+ * Buckets outside the imported span [firstDate, lastDate] are null, not 0:
+ * "no export covers this" is not the same as zero appearances. Imports are
+ * settled data, so nothing is flagged partial; the panel states the span.
+ */
+export function sumBuckets(
+  rows: { date: string; value: number }[],
+  opts: { from: string; to: string; granularity: Granularity; firstDate: string | null; lastDate: string | null },
+): { start: string; value: number | null; partial: boolean }[] {
+  const sums = new Map<string, number>();
+  for (const r of rows) {
+    if (r.date < opts.from || r.date > opts.to) continue;
+    const key = bucketStart(r.date, opts.granularity);
+    sums.set(key, (sums.get(key) ?? 0) + r.value);
+  }
+  const step = opts.granularity === "day" ? 1 : 7;
+  const out: { start: string; value: number | null; partial: boolean }[] = [];
+  for (let start = bucketStart(opts.from, opts.granularity); start <= opts.to; start = addDays(start, step)) {
+    const end = addDays(start, step - 1);
+    const covered =
+      opts.firstDate !== null && opts.lastDate !== null && end >= opts.firstDate && start <= opts.lastDate;
+    out.push({ start, value: covered ? (sums.get(start) ?? 0) : null, partial: false });
+  }
+  return out;
+}

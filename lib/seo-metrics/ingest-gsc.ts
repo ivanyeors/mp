@@ -36,10 +36,13 @@ const DIMENSIONS: Record<SeoDimension, GscDimension[]> = {
   device: ["date", "device"],
 };
 
+/** Whole-period snapshots from manual imports (csv-import.ts); never in daily rollups. */
+export type PeriodDimension = "page_period" | "country_period" | "device_period";
+
 export type SeoMetricRow = {
   date: string;
   source: string;
-  dimension: SeoDimension;
+  dimension: SeoDimension | PeriodDimension;
   /** Empty string for `total`, so the unique key never contains NULL. */
   key: string;
   clicks: number;
@@ -49,6 +52,8 @@ export type SeoMetricRow = {
    * recompute an impression-weighted position exactly: Σposition_sum / Σimpressions.
    */
   position_sum: number;
+  /** Source-specific fields, e.g. Bing cited_pages or a snapshot's period label. */
+  extra?: Record<string, unknown>;
 };
 
 export type SeoMetricsStore = {
