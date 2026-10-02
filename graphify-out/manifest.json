@@ -12708,9 +12708,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/10-physical-calibration-signoff.md": {
-    "mtime": 1790645224.85214,
-    "seen": 1790645350.4717667,
-    "ast_hash": "44d97d904fff8efb1d1d0465ac33fd02",
+    "mtime": 1790921133.533311,
+    "seen": 1790921325.7120907,
+    "ast_hash": "ded3bcdc5863f8e645e435a81beea56f",
     "semantic_hash": ""
   },
   ".claude/PRD-xray-pillow-ux/issues/11-natural-settle.md": {
@@ -13260,9 +13260,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/products/dimensions-section.tsx": {
-    "mtime": 1790598566.7042313,
-    "seen": 1790598812.540077,
-    "ast_hash": "e2c7b2b0addd75815c1888359711696f",
+    "mtime": 1790920621.0914278,
+    "seen": 1790921325.7089546,
+    "ast_hash": "df77342abb84a0f4ed5efad2e89e411f",
     "semantic_hash": ""
   },
   "lib/spatial-fillings/__tests__/dimension-overrides.test.ts": {
@@ -13332,9 +13332,9 @@
     "semantic_hash": ""
   },
   "components/spatial/xray-cross-section.tsx": {
-    "mtime": 1790509089.517911,
-    "seen": 1790510199.8664794,
-    "ast_hash": "be8b38fdef66e12f1e143c15b501f048",
+    "mtime": 1790921038.1762533,
+    "seen": 1790921325.7096643,
+    "ast_hash": "51675a29bbc57c4991d5f8e50f89cfbd",
     "semantic_hash": ""
   },
   "components/spatial/xray-fit-banner.tsx": {
@@ -13407,6 +13407,36 @@
     "mtime": 1790597452.0963187,
     "seen": 1790598224.9636846,
     "ast_hash": "676cf7cc645687e52673d4244083a96d",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/products/calibration/calibration-sheet-view.tsx": {
+    "mtime": 1790920927.9467187,
+    "seen": 1790921325.708949,
+    "ast_hash": "76ca20d8599f9d1ae66f2ccbcf9e02de",
+    "semantic_hash": ""
+  },
+  "app/[lang]/settings/products/calibration/page.tsx": {
+    "mtime": 1790920600.7502792,
+    "seen": 1790921325.708951,
+    "ast_hash": "10c647615e61a416c42d146b3bd651c8",
+    "semantic_hash": ""
+  },
+  "components/spatial/xray-cross-section.test.tsx": {
+    "mtime": 1790921115.6294775,
+    "seen": 1790921325.709662,
+    "ast_hash": "a3bbd6fe83a045968bcaabc936d1ce78",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/__tests__/calibration.test.ts": {
+    "mtime": 1790920879.2128096,
+    "seen": 1790921325.7107193,
+    "ast_hash": "80fc76d6c98ff48d943453f5d1218757",
+    "semantic_hash": ""
+  },
+  "lib/spatial-fillings/calibration.ts": {
+    "mtime": 1790920879.211444,
+    "seen": 1790921325.7107465,
+    "ast_hash": "444b049e5973273b9b70330cf006c8c3",
     "semantic_hash": ""
   }
 }

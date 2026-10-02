@@ -93,7 +93,16 @@ export function DimensionsSection({ settingsPath }: { settingsPath: (path: strin
           Enter pouch and Neck support sizes as they sit in a <strong>Size M</strong> pillow:
           the other Sizes scale them by their own proportions (width by the pillow width,
           length by its length, thickness by its gusset height), so a filling keeps its
-          place in every pillow from XS to XL.
+          place in every pillow from XS to XL.{" "}
+          <a
+            href={settingsPath("/settings/products/calibration")}
+            target="_blank"
+            rel="noopener"
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Open the calibration sheet
+          </a>{" "}
+          to check these numbers against a real build.
         </p>
       </div>
       {loading || !payload ? (

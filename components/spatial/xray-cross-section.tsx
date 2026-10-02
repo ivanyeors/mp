@@ -26,9 +26,30 @@ import { XRAY_INTERIOR_VAR, XRAY_SHELL_VAR, XRAY_THEME } from "./xray-theme";
 
 export const CROSS_SECTION_VIEW = { width: 664, height: 220 } as const;
 
+/**
+ * Text and spacing for the two layouts. The drawing scales to its container,
+ * so at a phone's ~330 px the 664-unit view halves every label — the 9-unit
+ * "max … mm" drew at 4–5 px (slice 10's 360 px check). Phones draw a narrower
+ * view with larger type instead, ~10–13 px on screen, and put the status on a
+ * line of its own so it fits a narrow column.
+ */
+type CutLayout = {
+  width: number;
+  height: number;
+  padTop: number;
+  padBottom: number;
+  maxFont: number;
+  labelFont: number;
+  valueFont: number;
+  labelDy: number;
+  valueDy: number;
+  /** The status ("compressed" / "cannot close") on its own line, at this offset; inline when null. */
+  statusDy: number | null;
+};
+const LAYOUT: CutLayout = { ...CROSS_SECTION_VIEW, padTop: 22, padBottom: 30, maxFont: 9, labelFont: 11, valueFont: 10, labelDy: 13, valueDy: 25, statusDy: null };
+const COMPACT_LAYOUT: CutLayout = { width: 380, height: 250, padTop: 26, padBottom: 54, maxFont: 12, labelFont: 15, valueFont: 14, labelDy: 17, valueDy: 33, statusDy: 49 };
+
 const PAD_X = 8;
-const PAD_TOP = 22;
-const PAD_BOTTOM = 30;
 const COLUMN_GAP = 14;
 const SLAB_INSET = 8;
 const OVER = "#ef4444";
@@ -37,6 +58,10 @@ const OVER = "#ef4444";
 export { useCut } from "./use-pillow-fit";
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/** "compressed" / "cannot close" after a separator, or nothing when the column fits. */
+const statusSuffix = (status: string, sep: string) =>
+  status === "compressed" ? `${sep}compressed` : status === "over" ? `${sep}cannot close` : "";
 
 /** A rounded slab as a path (no rects on the x-ray family of drawings). */
 function slabPath(x: number, y: number, w: number, h: number): string {
@@ -112,16 +137,20 @@ export function CrossSectionSvg({
   fit,
   cut,
   itemSubtypes,
+  compact = false,
 }: {
   fit: PillowFit;
   cut: Cut;
   itemSubtypes: ReadonlyMap<number, string | null>;
+  /** Phones: the narrower view with larger type (`COMPACT_LAYOUT`). */
+  compact?: boolean;
 }) {
   const uid = useId();
   const columns = crossSectionSlabs(fit, cut);
-  const { width, height } = CROSS_SECTION_VIEW;
-  const baseline = height - PAD_BOTTOM;
-  const plotH = baseline - PAD_TOP;
+  const L = compact ? COMPACT_LAYOUT : LAYOUT;
+  const { width, height } = L;
+  const baseline = height - L.padBottom;
+  const plotH = baseline - L.padTop;
   // One vertical scale for every column, with headroom for an over stack.
   const tallest = Math.max(1, ...columns.map((c) => Math.max(c.maxLoftMm, c.loftMm)));
   const ky = plotH / (tallest * 1.12);
@@ -194,16 +223,23 @@ export function CrossSectionSvg({
               strokeDasharray="6 4"
               vectorEffect="non-scaling-stroke"
             />
-            <text x={r1(x0 + w - 2)} y={r1(loftY - 3)} textAnchor="end" fontSize={9} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
+            <text x={r1(x0 + w - 2)} y={r1(loftY - 3)} textAnchor="end" fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
               max {Math.round(col.maxLoftMm)} mm
             </text>
             {/* The column and what it stands at. */}
-            <text x={r1(x0 + w / 2)} y={baseline + 13} textAnchor="middle" fontSize={11} fontWeight={600} fill={XRAY_SHELL_VAR} className="select-none capitalize">
+            <text x={r1(x0 + w / 2)} y={baseline + L.labelDy} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={XRAY_SHELL_VAR} className="select-none capitalize">
               {col.label}
             </text>
-            <text x={r1(x0 + w / 2)} y={baseline + 25} textAnchor="middle" fontSize={10} fill={col.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
-              {col.slabs.length === 0 ? "empty" : `${Math.round(col.loftMm)} mm${col.status === "compressed" ? " · compressed" : col.status === "over" ? " · cannot close" : ""}`}
+            <text x={r1(x0 + w / 2)} y={baseline + L.valueDy} textAnchor="middle" fontSize={L.valueFont} fill={col.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
+              {col.slabs.length === 0
+                ? "empty"
+                : `${Math.round(col.loftMm)} mm${L.statusDy === null ? statusSuffix(col.status, " · ") : ""}`}
             </text>
+            {L.statusDy !== null && col.slabs.length > 0 && col.status !== "ok" && (
+              <text x={r1(x0 + w / 2)} y={baseline + L.statusDy} textAnchor="middle" fontSize={L.valueFont} fill={col.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none">
+                {statusSuffix(col.status, "")}
+              </text>
+            )}
           </g>
         );
       })}
@@ -238,7 +274,7 @@ export function XrayCrossSection({
   const body = (
     <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel>
       {onCutChange && <CutControls cut={cut} onCutChange={onCutChange} />}
-      <CrossSectionSvg fit={fit} cut={cut} itemSubtypes={itemSubtypes} />
+      <CrossSectionSvg fit={fit} cut={cut} itemSubtypes={itemSubtypes} compact={isMobile} />
     </div>
   );
   if (collapsible && isMobile) {
@@ -264,20 +300,30 @@ export function XrayCrossSection({
  * stands at along the capsule. Same fit language as the pillow: hatched when
  * compressed, red through the shell when it cannot fit.
  */
-export function BolsterCrossSectionSvg({ fit, itemSubtypes }: { fit: BolsterFit; itemSubtypes: ReadonlyMap<number, string | null> }) {
+export function BolsterCrossSectionSvg({
+  fit,
+  itemSubtypes,
+  compact = false,
+}: {
+  fit: BolsterFit;
+  itemSubtypes: ReadonlyMap<number, string | null>;
+  /** Phones: the narrower view with larger type, as for the pillow. */
+  compact?: boolean;
+}) {
   const uid = useId();
-  const { width, height } = CROSS_SECTION_VIEW;
+  const L = compact ? COMPACT_LAYOUT : LAYOUT;
+  const { width, height, padTop, padBottom } = L;
   const hatchId = `${uid}-bhatch`;
   const thickest = fit.pieces.reduce<BolsterFit["pieces"][number] | null>(
     (best, p) => (best === null || p.settledThicknessMm > best.settledThicknessMm ? p : best),
     null,
   );
   const tallest = Math.max(fit.diameterMm, thickest?.settledThicknessMm ?? 0, 1);
-  const plotH = height - PAD_TOP - PAD_BOTTOM;
+  const plotH = height - padTop - padBottom;
   const ky = plotH / (tallest * 1.12);
   const r = (fit.diameterMm * ky) / 2;
   const cx = width / 2;
-  const cy = PAD_TOP + plotH / 2;
+  const cy = padTop + plotH / 2;
   const slabH = thickest ? thickest.settledThicknessMm * ky : 0;
   const slabW = Math.max(r * 1.4, 1);
   const status = thickest?.thicknessStatus ?? "ok";
@@ -312,17 +358,22 @@ export function BolsterCrossSectionSvg({ fit, itemSubtypes }: { fit: BolsterFit;
           {status === "over" && <path d={slabPath(cx - slabW / 2, cy - slabH / 2, slabW, Math.max(slabH, 1))} fill={OVER} fillOpacity={0.35} />}
         </g>
       )}
-      <text x={r1(cx + r + 6)} y={r1(cy - r + 4)} fontSize={9} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
+      <text x={r1(cx + r + 6)} y={r1(cy - r + 4)} fontSize={L.maxFont} fill={XRAY_SHELL_VAR} className="select-none tabular-nums">
         Ø {Math.round(fit.diameterMm)} mm
       </text>
-      <text x={cx} y={PAD_TOP + plotH + 13} textAnchor="middle" fontSize={11} fontWeight={600} fill={XRAY_SHELL_VAR} className="select-none">
+      <text x={cx} y={padTop + plotH + L.labelDy} textAnchor="middle" fontSize={L.labelFont} fontWeight={600} fill={XRAY_SHELL_VAR} className="select-none">
         end-on · {fit.length}
       </text>
-      <text x={cx} y={PAD_TOP + plotH + 25} textAnchor="middle" fontSize={10} fill={fit.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
+      <text x={cx} y={padTop + plotH + L.valueDy} textAnchor="middle" fontSize={L.valueFont} fill={fit.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none tabular-nums">
         {fit.pieces.length === 0
           ? "empty"
-          : `${thickest ? `${Math.round(thickest.settledThicknessMm)} mm thick` : ""} · ${Math.round(fit.usedMm)} / ${Math.round(fit.lengthMm)} mm along${fit.status === "compressed" ? " · compressed" : fit.status === "over" ? " · cannot fit" : ""}`}
+          : `${thickest ? `${Math.round(thickest.settledThicknessMm)} mm thick` : ""} · ${Math.round(fit.usedMm)} / ${Math.round(fit.lengthMm)} mm along${L.statusDy === null ? (fit.status === "compressed" ? " · compressed" : fit.status === "over" ? " · cannot fit" : "") : ""}`}
       </text>
+      {L.statusDy !== null && fit.pieces.length > 0 && fit.status !== "ok" && (
+        <text x={cx} y={padTop + plotH + L.statusDy} textAnchor="middle" fontSize={L.valueFont} fill={fit.status === "over" ? OVER : XRAY_SHELL_VAR} className="select-none">
+          {fit.status === "compressed" ? "compressed" : "cannot fit"}
+        </text>
+      )}
     </svg>
   );
 }
@@ -345,7 +396,7 @@ export function BolsterCrossSection({
   const isMobile = useIsMobile();
   const body = (
     <div className={`space-y-2 rounded-lg p-2 ${themed ? XRAY_THEME : ""}`} style={xrayColorVarStyle(colorOverrides)} data-xray-cross-section-panel="bolster">
-      <BolsterCrossSectionSvg fit={fit} itemSubtypes={itemSubtypes} />
+      <BolsterCrossSectionSvg fit={fit} itemSubtypes={itemSubtypes} compact={isMobile} />
     </div>
   );
   if (collapsible && isMobile) {

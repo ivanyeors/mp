@@ -12,6 +12,24 @@ Tracker: #210 · Parent: #200
 
 The registry is typed by a person, the compression rule is a simplification, and the only oracle is a pillow on a bench. Tests prove the arithmetic; this proves the numbers.
 
+## Calibration sheet (built 2-10-2026)
+
+**Settings → Products → Product Visualize → Dimensions → "Open the calibration sheet"** (`/settings/products/calibration`, `page-builder` permission). It lists the x-ray's prediction for every bench check below with an empty column for the ruler reading, and prints on its own (A4 landscape; the Settings shell is hidden in print). It reads Settings on every load, so print it once the Size M measurements are in; until then a red banner names every entry still on a fallback size. The numbers come from `calibrationSheet` (`lib/spatial-fillings/calibration.ts`, tested), which calls the same fit, settle and Size scaling the x-ray draws with.
+
+- Loft budget per Size (side / centre).
+- The default Filling Templates for S, M and L (every tier with a default): loft at each Section's middle against its max.
+- Layers until it cannot close: per pouch, per Size, side and centre, filled front-to-back, first Layer that squeezes / that cannot close.
+- Five 6D L in one Section (side by side and stacked), with the x-ray's message.
+- Settle: one pouch alone in centre middle of an M (spread each way, length and thickness relaxed → settled), and where two 6D L meet with the middle empty.
+- Footprints of every pouch and Neck support at every Size.
+
+## Software checks run 2-10-2026 (Chromium phone emulation, not a real device)
+
+- Touch drag of a pouch across Sections at 360 and 390 px: moves, page never scrolls during the drag.
+- Touch drop on a stacked cell: the Layer sunburst opens (wedges ≥ 44 px, measured 86), a tap on a wedge moves the pouch to that Layer, no scroll.
+- Cross-section at 360 px: **failed, then fixed.** The 664-unit drawing scaled to ~330 px drew the "max … mm" labels at 4–5 px. Phones now draw a 380-unit view with larger type (smallest label ~13 px on screen at 360 px, the status on its own line); desktop is unchanged (`xray-cross-section.test.tsx` pins both, the bolster cut too).
+- Still for a person: Safari on the in-store tablet and a real Android phone.
+
 ## Checklist
 
 **Loft (slice 03 / 04)**
@@ -33,7 +51,7 @@ The registry is typed by a person, the compression rule is a simplification, and
 
 **Cross-section (slice 05)**
 - [ ] The build team reads the Across cut for a side-sleep build and describes what they will assemble; compare to what the x-ray author intended.
-- [ ] Guest preview on a phone: the cut is readable at 360 px wide.
+- [ ] Guest preview on a phone: the cut is readable at 360 px wide. *(Passes in Chromium phone emulation since 2-10-2026; confirm on a real phone.)*
 
 **Device pass**
 - [ ] In-store tablet (Safari) and an Android phone: gauges, drag (including the Layer sunburst) and cross-section all usable; no page scroll during a drag.
