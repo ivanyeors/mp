@@ -115,10 +115,12 @@ for (const [name, src] of [
 ] as const) {
   assert.doesNotMatch(src, /<CardAction[^>]*row-start-3/, `${name}: CardAction placement belongs to the Card primitive`);
 }
-// Search card: its seven tabs get their own row; the range strip can shrink
-// (so it collapses to a menu on a phone) and delta badges wrap as whole pieces
+// Search card: its seven tabs get their own row; on a phone the range strip is a
+// full-width row, with short labels while the header is narrow (so it stays tabs,
+// not a menu), and delta badges wrap as whole pieces
 assert.doesNotMatch(visibility, /<CardAction/);
-assert.match(visibility, /<Tabs value=\{range\} onValueChange=\{setRange\} className="min-w-0 flex-1">/);
+assert.match(visibility, /<Tabs value=\{range\} onValueChange=\{setRange\} className="w-full sm:min-w-0 sm:flex-1">/);
+assert.match(visibility, /<span className="@2xl\/card-header:hidden">\{r\.short\}<\/span>/);
 assert.match(visibility, /inline-flex flex-wrap items-center gap-x-1 text-xs/);
 
 // general touch targets; shipping stacks; tag × always visible; pagination wrap

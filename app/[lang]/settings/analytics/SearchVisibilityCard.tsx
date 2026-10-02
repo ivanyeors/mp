@@ -612,12 +612,14 @@ export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: 
   );
 }
 
+// `short` is shown while the card header is under 42rem: five full labels plus
+// Weekly/Daily need ~580px, and without room the strip collapses to a menu.
 const RANGES = [
-  { value: "28d", label: "28 days" },
-  { value: "3m", label: "3 months" },
-  { value: "6m", label: "6 months" },
-  { value: "12m", label: "12 months" },
-  { value: "16m", label: "16 months" },
+  { value: "28d", label: "28 days", short: "28D" },
+  { value: "3m", label: "3 months", short: "3M" },
+  { value: "6m", label: "6 months", short: "6M" },
+  { value: "12m", label: "12 months", short: "12M" },
+  { value: "16m", label: "16 months", short: "16M" },
 ] as const;
 
 const int = new Intl.NumberFormat("en-SG");
@@ -913,20 +915,21 @@ export function SearchVisibilityCard() {
           {data?.lastDate ? ` Latest data: ${data.lastDate}.` : null}
         </CardDescription>
         {/* Not a CardAction: seven tabs beside the description squeeze it to a sliver below
-            ~1280px, so they get their own row. The range strip takes the rest of the row and
-            collapses to a menu when it cannot fit (phones). */}
-        <div className="flex min-w-0 gap-2">
-          <Tabs value={range} onValueChange={setRange} className="min-w-0 flex-1">
-            <TabsList>
+            ~1280px, so they get their own row. On a phone each strip is a full-width row of its
+            own, like the other analytics cards' tabs. */}
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+          <Tabs value={range} onValueChange={setRange} className="w-full sm:min-w-0 sm:flex-1">
+            <TabsList className="w-full sm:w-fit">
               {RANGES.map((r) => (
-                <TabsTrigger key={r.value} value={r.value}>
-                  {r.label}
+                <TabsTrigger key={r.value} value={r.value} aria-label={r.label}>
+                  <span className="@2xl/card-header:hidden">{r.short}</span>
+                  <span className="hidden @2xl/card-header:inline">{r.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
-          <Tabs value={granularity} onValueChange={(v) => setGranularity(v === "day" ? "day" : "week")}>
-            <TabsList>
+          <Tabs value={granularity} onValueChange={(v) => setGranularity(v === "day" ? "day" : "week")} className="w-full sm:w-auto">
+            <TabsList className="w-full sm:w-fit">
               <TabsTrigger value="week">Weekly</TabsTrigger>
               <TabsTrigger value="day">Daily</TabsTrigger>
             </TabsList>
