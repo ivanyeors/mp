@@ -540,7 +540,7 @@ export function ProductConfigurationCard() {
     <Card className="gap-4 py-4 sm:gap-6 sm:py-6">
       <CardHeader className="gap-3 px-4 sm:gap-2 sm:px-6">
         <CardTitle>Product Configuration</CardTitle>
-        <CardAction className="col-start-1 row-start-3 w-full sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto">
+        <CardAction>
           <Select
             value={selectedTemplateId ? String(selectedTemplateId) : undefined}
             onValueChange={(v) => setSelectedTemplateId(v ? Number(v) : null)}

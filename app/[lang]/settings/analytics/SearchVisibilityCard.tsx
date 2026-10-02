@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bucket, Delta, Totals } from "@/lib/seo-metrics/aggregate";
@@ -612,12 +612,14 @@ export function ChannelMixPanel({ mix, annotations }: { mix: Mix; annotations?: 
   );
 }
 
+// `short` is shown while the card header is under 42rem: five full labels plus
+// Weekly/Daily need ~580px, and without room the strip collapses to a menu.
 const RANGES = [
-  { value: "28d", label: "28 days" },
-  { value: "3m", label: "3 months" },
-  { value: "6m", label: "6 months" },
-  { value: "12m", label: "12 months" },
-  { value: "16m", label: "16 months" },
+  { value: "28d", label: "28 days", short: "28D" },
+  { value: "3m", label: "3 months", short: "3M" },
+  { value: "6m", label: "6 months", short: "6M" },
+  { value: "12m", label: "12 months", short: "12M" },
+  { value: "16m", label: "16 months", short: "16M" },
 ] as const;
 
 const int = new Intl.NumberFormat("en-SG");
@@ -676,10 +678,11 @@ function DeltaBadge({ delta, metric }: { delta: Delta; metric: Metric }) {
   const tone =
     delta.direction === "better" ? "text-emerald-600 dark:text-emerald-400" : delta.direction === "worse" ? "text-red-600 dark:text-red-400" : "text-muted-foreground";
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+    // Wraps as whole pieces: in a half-width phone tile "vs prev. period" drops to its own line.
+    <span className="inline-flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
       <Icon className={`size-3.5 ${tone}`} aria-hidden />
-      <span className="tabular-nums text-foreground">{metric.formatDelta(delta.value)}</span>
-      <span>
+      <span className="whitespace-nowrap tabular-nums text-foreground">{metric.formatDelta(delta.value)}</span>
+      <span className="whitespace-nowrap">
         vs prev. period
         <span className="sr-only"> ({delta.direction})</span>
       </span>
@@ -911,23 +914,27 @@ export function SearchVisibilityCard() {
           first-party visits by channel.
           {data?.lastDate ? ` Latest data: ${data.lastDate}.` : null}
         </CardDescription>
-        <CardAction className="col-start-1 row-start-3 flex w-full flex-wrap gap-2 sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto sm:justify-end">
-          <Tabs value={range} onValueChange={setRange}>
-            <TabsList>
+        {/* Not a CardAction: seven tabs beside the description squeeze it to a sliver below
+            ~1280px, so they get their own row. On a phone each strip is a full-width row of its
+            own, like the other analytics cards' tabs. */}
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+          <Tabs value={range} onValueChange={setRange} className="w-full sm:min-w-0 sm:flex-1">
+            <TabsList className="w-full sm:w-fit">
               {RANGES.map((r) => (
-                <TabsTrigger key={r.value} value={r.value}>
-                  {r.label}
+                <TabsTrigger key={r.value} value={r.value} aria-label={r.label}>
+                  <span className="@2xl/card-header:hidden">{r.short}</span>
+                  <span className="hidden @2xl/card-header:inline">{r.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
-          <Tabs value={granularity} onValueChange={(v) => setGranularity(v === "day" ? "day" : "week")}>
-            <TabsList>
+          <Tabs value={granularity} onValueChange={(v) => setGranularity(v === "day" ? "day" : "week")} className="w-full sm:w-auto">
+            <TabsList className="w-full sm:w-fit">
               <TabsTrigger value="week">Weekly</TabsTrigger>
               <TabsTrigger value="day">Daily</TabsTrigger>
             </TabsList>
           </Tabs>
-        </CardAction>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6 px-4 sm:px-6">
         {error ? (
