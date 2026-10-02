@@ -78,7 +78,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
         .eq("id", id)
         .select("*")
         .single();
-    // Deployed before 20260925130000 is applied: save without the new column rather than fail.
+    // Deployed before 20261002050000 is applied: save without the new column rather than fail.
     if (error && "content_updated_at" in updates && /content_updated_at/.test(error.message)) {
         delete updates.content_updated_at;
         ({ data, error } = await admin.from("blog_posts").update(updates).eq("id", id).select("*").single());
