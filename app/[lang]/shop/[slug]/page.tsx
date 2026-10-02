@@ -9,10 +9,13 @@ import type { Product } from "@/lib/types/ecommerce";
 
 interface Props {
   params: Promise<{ lang: string; slug: string }>;
+  /** `?variant=<id>` preselects a size (Merchant Center landing links, PRD-search-visibility slice 13). */
+  searchParams: Promise<{ variant?: string | string[] }>;
 }
 
-export default async function ProductDetailPage({ params }: Props) {
+export default async function ProductDetailPage({ params, searchParams }: Props) {
   const { lang, slug } = await params;
+  const { variant } = await searchParams;
   const product = await getProductBySlug(slug);
 
   if (!product || product.status !== "active") {
@@ -46,6 +49,7 @@ export default async function ProductDetailPage({ params }: Props) {
   return (
     <ProductDetailClient
       product={product}
+      initialVariantId={typeof variant === "string" ? variant : undefined}
       relatedProducts={relatedProducts}
       lang={lang}
       answerLede={answerLede}

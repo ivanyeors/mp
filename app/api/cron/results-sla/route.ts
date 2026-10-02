@@ -21,6 +21,7 @@ import {
 } from "@/lib/sla-reminders";
 import { runShopifyOrderMirrorCatchup } from "@/lib/shopify/order-mirror-catchup";
 import { runGaSync } from "@/lib/analytics/journey/ga-sync";
+import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 import {
   parsePaymentReminderSettings,
@@ -416,6 +417,15 @@ export async function GET(req: Request) {
     gaSync = { ok: false, error: e instanceof Error ? e.message : "ga sync failed" };
   }
 
+  // Chain: Search Console snapshot → seo_daily_metrics (PRD-search-visibility
+  // slice 01). No-op until the GOOGLE_SEARCH_CONSOLE_* / service-account env is set.
+  let gscIngest: Awaited<ReturnType<typeof runGscIngestFromEnv>> | { ok: false; error: string };
+  try {
+    gscIngest = await runGscIngestFromEnv(admin);
+  } catch (e) {
+    gscIngest = { ok: false, error: e instanceof Error ? e.message : "gsc ingest failed" };
+  }
+
   // Chain: Pre-order restock emails when inventory recovered (slice 07).
   // Manual ops: GET/POST /api/cron/preorder-restock with CRON_SECRET.
   let preOrderRestock:
@@ -436,6 +446,7 @@ export async function GET(req: Request) {
     settings,
     catchup,
     gaSync,
+    gscIngest,
     preOrderRestock,
   });
 }

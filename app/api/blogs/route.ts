@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
+import { blogPostUrls, pingIndexNow } from "@/lib/seo/indexnow";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { touchLastUsed } from "@/lib/media-assets";
@@ -16,6 +17,8 @@ const CreateBlogSchema = z.object({
         description: z.string().optional().default(""),
         body: z.string().optional().default(""),
         seo_keywords: z.array(z.string()).optional().default([]),
+        // Answer lede (CONTEXT.md). Optional: omitted on update keeps the stored value.
+        seo_answer: z.string().max(1000).optional(),
     })).default({}),
     image_url: z.string().nullable().optional().default(null),
     media_asset_id: z.string().uuid().nullable().optional().default(null),
@@ -64,6 +67,10 @@ export async function POST(req: Request) {
             { error: isDup ? "A post with this slug already exists" : error.message },
             { status: isDup ? 409 : 500 }
         );
+    }
+
+    if (data?.slug && data.status === "published") {
+        after(() => pingIndexNow(blogPostUrls(data.slug as string)));
     }
 
     const imageUrl = parsed.data.image_url;

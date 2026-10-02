@@ -34,6 +34,7 @@ import type {
   LocalizedShippingContent,
   CustomerAddress,
 } from "@/lib/types/ecommerce";
+import { trackGaEventThen } from "@/lib/analytics/ga-events";
 
 const NEW_ADDRESS = "new";
 
@@ -366,7 +367,27 @@ export default function CheckoutPage() {
         // cancel_url and the browser back button both land on this page, and
         // the cart must still be there so they can review it or retry. The
         // confirmation page clears it once the paid order is confirmed.
-        window.location.href = data.checkout_url ?? data.url;
+        const checkoutUrl: string = data.checkout_url ?? data.url;
+        trackGaEventThen(
+          {
+            name: "begin_checkout",
+            params: {
+              value: total,
+              currency,
+              ...(couponCode ? { coupon: couponCode } : {}),
+              items: items.map((item) => ({
+                item_id: item.variantId,
+                item_name: item.productTitle,
+                ...(item.variantTitle ? { item_variant: item.variantTitle } : {}),
+                price: item.price,
+                quantity: item.quantity,
+              })),
+            },
+          },
+          () => {
+            window.location.href = checkoutUrl;
+          },
+        );
       } else {
         throw new Error("No checkout URL returned from server.");
       }

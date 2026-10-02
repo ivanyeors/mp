@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { blogPostUrls, pingIndexNow } from "@/lib/seo/indexnow";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { assertAdmin } from "@/lib/auth/admin";
 
@@ -33,5 +35,6 @@ export async function updateBlogStatus(id: string, status: "draft" | "published"
 
   if (error) throw new Error(error.message);
   revalidatePath("/settings/blogs");
+  if (data?.slug && status !== "draft") after(() => pingIndexNow(blogPostUrls(data.slug as string)));
   return { ok: true, row: data };
 }

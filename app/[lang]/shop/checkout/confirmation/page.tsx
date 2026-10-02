@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Order } from "@/lib/types/ecommerce";
 import { formatCurrency as formatPrice } from "@/lib/i18n/currencies";
+import { trackGaEventOnce } from "@/lib/analytics/ga-events";
 
 // ---------------------------------------------------------------------------
 // Confirmation Page
@@ -43,6 +44,28 @@ export default function OrderConfirmationPage() {
       })
       .then((data: { ok: boolean; order: Order }) => {
         setOrder(data.order);
+        // GA4 purchase, once per order in this browser: the page can be refreshed or bookmarked.
+        const o = data.order;
+        if (!["cancelled", "refunded", "payment_failed"].includes(o.status)) {
+          trackGaEventOnce(`purchase:${o.order_number}`, {
+            name: "purchase",
+            params: {
+              transaction_id: o.order_number,
+              value: Number(o.total),
+              currency: o.currency,
+              shipping: Number(o.shipping_amount ?? 0),
+              tax: Number(o.tax_amount ?? 0),
+              ...(o.coupon_code ? { coupon: o.coupon_code } : {}),
+              items: (o.items ?? []).map((it) => ({
+                item_id: it.variant_id ?? it.sku,
+                item_name: it.product_title,
+                ...(it.variant_title ? { item_variant: it.variant_title } : {}),
+                price: Number(it.unit_price),
+                quantity: it.quantity,
+              })),
+            },
+          });
+        }
         // Payment went through and the order was confirmed for this Stripe
         // session, so the local cart is spent. Clearing it here (instead of
         // before the Stripe redirect) keeps the items available if the shopper

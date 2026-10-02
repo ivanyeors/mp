@@ -186,6 +186,7 @@ import {
 import { xrayColorVarStyle, type ColorOverrideRow } from "@/lib/spatial-fillings/color-overrides";
 import type { ResumeFinish } from "@/lib/results/resume-finish";
 import type { StaffEditResult } from "@/lib/results/staff-edit";
+import { trackGaEventThen } from "@/lib/analytics/ga-events";
 
 type MeasureKey = "shoulderLength" | "neckToBack" | "headToBack" | "neckLength";
 
@@ -2070,7 +2071,20 @@ export function MpConfigClient({
       // customer goes straight to the status page to wait for Staff.
       const next = data.checkoutUrl ?? data.statusUrl;
       if (!next) throw new Error("Missing checkout URL");
-      window.location.href = next as string;
+      // GA4 key event: a Result was submitted (GA4-SETUP.md §5).
+      trackGaEventThen(
+        {
+          name: "generate_lead",
+          params: {
+            product_type: "pillow",
+            ...(typeof data.authorizedAmount === "number" ? { value: data.authorizedAmount } : {}),
+            ...(data.currency ? { currency: String(data.currency) } : {}),
+          },
+        },
+        () => {
+          window.location.href = next as string;
+        },
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to authorize");
       setHoldSubmitting(false);
