@@ -33,6 +33,7 @@ import {
 } from "./core";
 import {
   BOLSTER_DIMENSIONS,
+  dimsAtSize,
   GENERIC_POUCH,
   LOFT_ALLOWANCE,
   maxLoftMm,
@@ -401,7 +402,8 @@ export function fitPillow(placements: PillowPlacement[], ctx: FitContext): Pillo
   const pillow = ctx.pillow ?? pillowDimensions(ctx.size).dims;
   const allowance = ctx.loftAllowance ?? LOFT_ALLOWANCE;
   const budget = maxLoftMm(pillow.gusset, allowance);
-  const dimsOf = (itemId: number): PouchDimensions => ctx.dims?.get(itemId)?.dims ?? GENERIC_POUCH;
+  // Pouches scale to the Size (M is the reference), as the settle and the layout read them.
+  const dimsOf = dimsAtSize(ctx.dims, pillow);
   const settle = settlePillow(placements, { size: ctx.size, dims: ctx.dims, pillow });
   const cells: CellFit[] = [];
   const sections = {} as Record<Section, SectionFit>;

@@ -131,7 +131,7 @@ describe("fitPillow", () => {
   it("reports over when a stack cannot fit even compressed", () => {
     const thick = new Map([resolved(9, { thicknessMm: 80, minThicknessMm: 60 })]);
     const stack = [0, 1, 2].map((row) => at("center", "middle", row + 1, 9, row));
-    const fit = fitPillow(stack, { size: "XS", dims: thick });
+    const fit = fitPillow(stack, { size: "M", dims: thick });
     expect(fit.status).toBe("over");
     expect(fit.cells[0].loftMm).toBe(180);
     expect(fit.sections.center.status).toBe("over");
@@ -254,21 +254,25 @@ describe("feedback helpers (slice 04)", () => {
 
   it("overCells lists only the cells that cannot close, in cell order", () => {
     const four = [0, 1, 2, 3].map((row) => at("center", "middle", row + 1, 1, row));
-    const mix = [...four, at("left", "front", 1, 2), ...[0, 1, 2, 3].map((row) => at("left", "back", row + 1, 1, row))];
-    const fit = fitPillow(mix, { size: "XS", dims, pillow: { ...PILLOW_DIMENSIONS.XS, subSectionDividers: true } });
+    // Four 80 mm planes (min 40) close nowhere in the centre (160 > 140.8); five fail a side (200 > 168.3).
+    const mix = [...four, at("left", "front", 1, 2), ...[0, 1, 2, 3, 4].map((row) => at("left", "back", row + 1, 1, row))];
+    const fit = fitPillow(mix, { size: "M", dims, pillow: WALLED });
     expect(overCells(fit).map((c) => `${c.section}/${c.subSection}`)).toEqual(["left/back", "center/middle"]);
-    expect(overCells(fitPillow([at("left", "front", 1, 2)], { size: "XS", dims }))).toEqual([]);
+    expect(overCells(fitPillow([at("left", "front", 1, 2)], { size: "M", dims }))).toEqual([]);
   });
 
-  it("fitAtSizes judges the same recipe per Size: green at M, red at XS", () => {
-    // 3 × 80 mm (min 40) in a side cell. Settled (the neighbours are empty),
-    // each spreads its 140 mm into the void and thins to 40: 120 ≤ M's 168.3
-    // side budget and XL's 223.3, > XS's 111.1 — over even fully compressed.
+  it("fitAtSizes judges the same recipe per Size — and reads alike, as the pouches scale with the pillow", () => {
+    // 3 × 80 mm (min 40, at M) in a side cell: each Size scales the pouches'
+    // thickness by its gusset, as its loft budget scales, so the stack that
+    // fits at M fits at XS and XL too (28-9-2026: fillings are cut to the pillow).
     const stack = [0, 1, 2].map((row) => at("left", "middle", row + 1, 1, row));
     const by = fitAtSizes(stack, ["XS", "M", "xl"], { dims });
-    expect(by.XS).toBe("over");
+    expect(by.XS).toBe("ok");
     expect(by.M).toBe("ok");
     expect(by.xl).toBe("ok");
+    const xs = fitPillow(stack, { size: "XS", dims }).cells[0];
+    const m = fitPillow(stack, { size: "M", dims }).cells[0];
+    expect(xs.loftMm / xs.maxLoftMm).toBeCloseTo(m.loftMm / m.maxLoftMm, 1);
     // Walled, nothing spreads: 240 relaxed > 168.3 at M → compressed there too.
     const walled = fitAtSizes(stack, ["M"], { dims, pillow: WALLED });
     expect(walled.M).toBe("compressed");

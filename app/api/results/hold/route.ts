@@ -54,6 +54,7 @@ import { getPublicOrigin } from "@/lib/site-url";
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
   placementKind,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
@@ -101,6 +102,8 @@ const AssistFillingSchema = z.object({
         // result_filling_placements with depth NULL.
         row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
         insert_order: z.number().int().min(1).nullable().optional(),
+        offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+        offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
       }),
     )
     .min(1),

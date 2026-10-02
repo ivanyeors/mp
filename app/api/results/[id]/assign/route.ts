@@ -12,6 +12,7 @@ import { decideFillingAssign } from "@/lib/results/filling-assign";
 import {
   derivePackList,
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -62,6 +63,8 @@ const AssignSchema = z.object({
         // five times larger now that a layer holds several pieces.
         row_index: z.number().int().min(0).max(MAX_LAYERS_PER_CELL - 1).nullable().optional(),
         insert_order: z.number().int().min(1).nullable().optional(),
+        offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+        offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
       }),
     )
     .optional(),
@@ -207,7 +210,7 @@ export async function POST(
       ? rowsToBolsterPlacements(rows.map((r) => ({ slot: r.slot, item_id: r.item_id })))
       : rowsToPillowPlacements(rows as PillowPlacementRow[]);
 
-  let placementRows: Array<{ section: string; sub_section: string; slot: number; item_id: number; row_index?: number | null; insert_order?: number | null }> | null =
+  let placementRows: Array<{ section: string; sub_section: string; slot: number; item_id: number; row_index?: number | null; insert_order?: number | null; offset_x_mm?: number | null; offset_y_mm?: number | null }> | null =
     input.placements ?? null;
   let tplPlacementRows: Array<PillowPlacementRow | BolsterPlacementRow> = [];
   if (placementRows) {
@@ -480,6 +483,8 @@ export async function POST(
               item_id: r.item_id,
               row_index: r.row_index ?? null,
               insert_order: r.insert_order ?? null,
+              offset_x_mm: r.offset_x_mm ?? null,
+              offset_y_mm: r.offset_y_mm ?? null,
             },
       ),
     );

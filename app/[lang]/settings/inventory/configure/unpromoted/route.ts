@@ -46,7 +46,7 @@ const RESULT_TABLE: Record<Kind, string> = {
 // silently flattens every cell to side-by-side in the new catalog template.
 // Harmless on the two fingerprint reads — canonicalizePlacements drops `row`.
 const ROW_COLS: Record<Kind, string> = {
-  pillow: 'section, sub_section, slot, item_id, row_index, insert_order',
+  pillow: 'section, sub_section, slot, item_id, row_index, insert_order, offset_x_mm, offset_y_mm',
   bolster: 'slot, item_id',
 }
 

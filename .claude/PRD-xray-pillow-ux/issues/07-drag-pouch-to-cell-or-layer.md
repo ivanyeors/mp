@@ -42,3 +42,13 @@ Pick up a pouch and put it where it goes. A drag can never do anything a keystro
 - **Drop targets are tags, not registrations.** The nine cell regions exist only while a drag is active (transparent, silhouette-clipped, hit-testable) so a drop can cross Sections; each layer row carries `data-drop-cell` + `data-drop-layer`, and the add-layer button `data-drop-layer={layers.length}` for a new Layer.
 - **Feedback** reuses the slice 04 vocabulary: the hovered cell takes the selection blue at low opacity, red with `RING_OVER` when `wouldFit` says the drop could not close; a ghost of the authored outline follows the pointer inside the silhouette clip.
 - **Selection follows the drag**: the dragged piece is selected when the drag activates, `commitMove` (shared with keys and the pad) moves the selection to the new ref and offers the same Undo; the click that follows a drop is swallowed once so it cannot re-select the stale ref.
+
+## Revision (2026-09-27): the drag replaces the move pad
+
+Ivan's review: keep the moves, lose the pad. The eight-button move pad (slice 06) is gone from the cell panel and the phone dock; the keys stay. The drag now carries every move:
+
+- **Any Section, no dive needed.** Every pouch's outline is a drag handle — the dived Section's authored one, every other Section's settled one. A tap on a pouch outside the dive dives into its Section and selects it. The centroid chips and layer-row labels that sit over pouches are handles too.
+- **Side-by-side cells take the pouch straight in**, at the drop's position in the row (`dropIndex`); a drop in its own row is a reorder (← → on the keys), never fit-refused.
+- **Stacked cells ask which Layer** in a sunburst at the drop point (phones: centred): Top layer … Layer n, then New layer; its own and full Layers are disabled. Escape or a click away leaves the pouch where it was. `planPouchDrop`, `layerChoices` and `resolveLayerChoice` in `lib/dnd/pouch-drag.ts` are pure and tested.
+- **Touch.** `touch-action: none` does not reach SVG shapes in Chromium, so a finger drag panned the page and cancelled the drag; a non-passive `touchstart` on the pouch hit paths holds the page still (only there — the pillow still scrolls the page elsewhere), and the tap is handled on pointer-up.
+- A drop into another Section while dived follows the pouch there, so it stays selected and in view.

@@ -150,14 +150,12 @@ assert.doesNotMatch(renderer, /would\.cell\?\.status === "compressed"[\s\S]{0,80
 assert.match(renderer, /const \[selected, setSelected\] = useState<PieceRef \| null>\(null\)/, "selection is renderer state, a piece ref");
 assert.match(renderer, /if \(selectedRef\.current\) \{\s*setSelected\(null\);\s*return;\s*\}\s*endDive\(\);/, "Escape clears the selection first; the next Escape leaves the dive");
 assert.match(renderer, /setDived\(section\);\s*setOpenSub\(null\);\s*setSelected\(null\);/, "switching Sections drops the selection");
-assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,700}setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\);/, "a pouch's own outline is the focusable, pressable selection target");
+assert.match(renderer, /aria-pressed=\{on\}[\s\S]{0,1400}setSelected\(\{ section: p\.section, subSection: p\.subSection, slot: p\.slot \}\);/, "a pouch's own outline is the focusable, pressable selection target");
 assert.match(renderer, /const kind = moveKeyFor\(e\);/, "keys go through the shared move map");
-assert.equal(renderer.match(/onSelectPiece=\{\(slot\) => setSelected\(/g)?.length, 2, "a layer row's label selects its piece in the panel and in the dock — the rows sit on the pouches");
-assert.match(renderer, /aria-label=\{`Select \$\{label\} in \$\{cell\.section\} \$\{cell\.subSection\}`\}/, "the centroid chip's label selects the piece under it");
+assert.equal(renderer.match(/onSelectPiece=\{\(slot\) => selectPiece\(/g)?.length, 2, "a layer row's label selects its piece in the panel and in the dock — the rows sit on the pouches");
+assert.match(renderer, /aria-label=\{`Select \$\{label\} in \$\{cell\.section\} \$\{cell\.subSection\} — drag to move`\}/, "the centroid chip's label selects the piece under it");
 assert.match(renderer, /if \(isTypingTarget\(e\.target\) \|\| draggingRef\.current\) return;/, "text controls and a drag in flight keep their keys");
-assert.equal(renderer.match(/<MovePad /g)?.length, 2, "the move pad is mounted once in the cell panel and once in the dock");
-assert.match(renderer, /<MovePad label=\{pieceLabel\(selectedPiece\.itemId\)\} compact=\{false\}/, "the phone dock pad is the 44px one");
-assert.match(renderer, /MOVE_ACTIONS\.map\(/, "the pad's buttons are the key table — a button and a key cannot disagree");
+assert.doesNotMatch(renderer, /MovePad|MOVE_ACTIONS/, "no move pad — the drag is the move UI (27-9-2026 review); the keys stay");
 for (const fn of ["movePiece(before, ref, { cell }, fitCtx)", "reorderInLayer(before, ref, dir)", "shiftPieceLayer(before, ref, kind === \"layerUp\" ? -1 : 1, fitCtx)"]) {
   assert.ok(renderer.includes(fn), `moves go through the pure lib: ${fn}`);
 }
@@ -169,13 +167,20 @@ assert.doesNotMatch(renderer, /data-xray-selected-cell/, "no dotted cell ring ar
 
 // --- Slice 07: drag a pouch onto a cell or a Layer -----------------------------
 assert.equal(renderer.match(/<DragDropProvider/g)?.length, 2, "still one sortable provider per cell — the pouch drag is pointer events, not a nested provider");
-assert.match(renderer, /onPointerDown=\{\(e\) => startDrag\(e, p\)\}\s+onPointerMove=\{moveDrag\}\s+onPointerUp=\{\(e\) => endDrag\(e, false\)\}\s+onPointerCancel=\{\(e\) => endDrag\(e, true\)\}/, "the pouch's own hit path is the drag handle");
+assert.match(renderer, /onPointerDown: \(e: React\.PointerEvent<Element>\) => startDrag\(e, ref, fromPouch\),\s+onPointerMove: moveDrag,\s+onPointerUp: \(e: React\.PointerEvent<Element>\) => endDrag\(e, false, onTap\),\s+onPointerCancel: \(e: React\.PointerEvent<Element>\) => endDrag\(e, true\),/, "one set of pointer handlers makes an element a pouch's drag handle");
+assert.match(renderer, /\{\.\.\.dragHandle\(ref, true, \(\) => tapPouch\(ref, inDive\)\)\}/, "the pouch's own hit path is the drag handle, in every Section");
+assert.match(renderer, /\{\.\.\.dragHandle\(ref\)\}/, "the centroid chip over a pouch picks it up too");
+assert.match(renderer, /\{\.\.\.pieceDragHandle\(piece\.slot\)\}/, "a layer row's label picks its pouch up too");
+assert.match(renderer, /const plan = planPouchDrop\(/, "the drop resolves through the pure planner");
+assert.match(renderer, /if \(plan\.kind === "chooseLayer"\)/, "a stacked cell asks which Layer; a side-by-side one does not");
+assert.match(renderer, /<SunburstMenu\s+open\s+root=\{layerPickTree\}/, "the Layer picker is a sunburst at the drop point");
+assert.match(renderer, /resolveLayerChoice\(choice, layerPickSizes, layerPickOwn\)/, "a picked Layer maps to movePiece's lifted-out indices");
 assert.match(renderer, /touchAction: "none"/, "a finger drag on a pouch does not scroll the page");
+assert.match(renderer, /svg\.addEventListener\("touchstart", onTouchStart, \{ passive: false \}\)/, "…and since touch-action does not reach SVG shapes, a non-passive touchstart on the pouches holds the page still");
 assert.match(renderer, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the pointer is captured for the drag");
-assert.match(renderer, /Math\.hypot\(dxPx, dyPx\) < DRAG_THRESHOLD_PX/, "a press becomes a drag only past the threshold — a click still selects");
+assert.match(renderer, /Math\.hypot\(e\.clientX - d\.startX, e\.clientY - d\.startY\) < DRAG_THRESHOLD_PX/, "a press becomes a drag only past the threshold — a click still selects");
 assert.match(renderer, /dropTargetFromElement\(document\.elementFromPoint\(e\.clientX, e\.clientY\)\)/, "the drop target is the tagged element under the pointer");
-assert.match(renderer, /const dest = pouchDropDestination\(d\.source, canceled \? null : d\.over, canceled\);/, "the drop resolves through the pure adapter");
-assert.match(renderer, /const r = movePiece\(placements, d\.source, dest, \{ size: pillowSize, dims: itemDims, loftAllowance \}\);/, "a drop is a movePiece — a drag can never do what a key cannot");
+assert.match(renderer, /const r = movePiece\(placements, d\.source, plan\.to, reorder \? undefined : fitCtx\);/, "a drop is a movePiece — a drag can never do what a key cannot");
 assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
 assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
 assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
@@ -195,7 +200,7 @@ assert.match(
 );
 assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\("sil"\)\}\)`\}/, "hit area clipped to the silhouette");
 assert.match(renderer, /<SunburstMenu\s+open\b/, "the cell opens the bloom — the menu has no trigger of its own");
-assert.equal(renderer.match(/<SunburstMenu/g)?.length, 1, "one picker, mounted at the cell you opened");
+assert.equal(renderer.match(/<SunburstMenu/g)?.length, 2, "one add picker at the cell you opened, one Layer picker at the drop point");
 const sunburst = readFileSync(join(process.cwd(), "components", "ui", "sunburst-menu.tsx"), "utf8");
 assert.match(sunburst, /open: openProp/, "SunburstMenu accepts a controlled open for external triggers");
 assert.match(sunburst, /onOpenChangeRef\.current\?\.\(next\)/, "a controlled parent still hears an internal close");

@@ -7,6 +7,7 @@ import { isBolsterLength } from "@/lib/results/composed-sellable";
 import { lookupPlacementKinds } from "@/lib/bom-sanitizer";
 import {
   MAX_LAYERS_PER_CELL,
+  MAX_OFFSET_MM,
   rowsToBolsterPlacements,
   rowsToPillowPlacements,
   validateBolsterPlacements,
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
     // (shop/customize, mp-basic/recommend) renders it stacked. See
     // spatial-fillings/api-contract.check.ts for the render-path reader list.
     const cols =
-      tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index,insert_order";
+      tpl.kind === "bolster" ? "slot,item_id" : "section,sub_section,slot,item_id,row_index,insert_order,offset_x_mm,offset_y_mm";
     const { data: placements, error: pErr } = await admin
       .from(table)
       .select(cols)
@@ -159,6 +160,8 @@ const PlacementRowSchema = z.object({
     .nullable()
     .optional(),
   insert_order: z.number().int().min(1).nullable().optional(),
+  offset_x_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
+  offset_y_mm: z.number().int().min(-MAX_OFFSET_MM).max(MAX_OFFSET_MM).nullable().optional(),
 });
 
 const SaveSchema = z
@@ -300,6 +303,8 @@ export async function POST(req: NextRequest) {
           item_id: r.item_id,
           row_index: r.row_index ?? null,
           insert_order: r.insert_order ?? null,
+          offset_x_mm: r.offset_x_mm ?? null,
+          offset_y_mm: r.offset_y_mm ?? null,
         },
   );
   const { error: delErr } = await admin.from(table).delete().eq("template_id", templateId);

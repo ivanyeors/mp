@@ -125,7 +125,7 @@ export async function loadAssignedBuild(
   } else {
     const { data: snapRows, error: snapErr } = await admin
       .from(isBolster ? "result_bolster_filling_placements" : "result_filling_placements")
-      .select(isBolster ? "slot, item_id" : "section, sub_section, slot, item_id, row_index")
+      .select(isBolster ? "slot, item_id" : "section, sub_section, slot, item_id, row_index, offset_x_mm, offset_y_mm")
       .eq("result_id", row.id)
       .order("slot");
     if (snapErr) return { ok: false, error: snapErr.message };
