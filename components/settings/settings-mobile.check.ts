@@ -101,6 +101,26 @@ assert.match(journey, /h-8 w-\[140px\] min-h-8 text-xs sm:w-\[180px\]/);
 assert.match(journey, /h-8 w-\[110px\] min-h-8 text-xs sm:w-\[130px\]/);
 assert.match(journey, /top-\[calc\(0\.5rem\+var\(--safe-top\)\)\]/);
 
+// analytics card headers: the Card primitive stacks a CardAction under the
+// title + description on a phone. Callers pinning it to row 3 themselves left
+// column 2 free, and auto-placement put the description there as a sliver.
+const card = read("components/ui/card.tsx");
+assert.match(card, /has-data-\[slot=card-action\]:grid-cols-1 sm:has-data-\[slot=card-action\]:grid-cols-\[1fr_auto\]/);
+assert.match(card, /"self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end"/);
+const visibility = read("app/[lang]/settings/analytics/SearchVisibilityCard.tsx");
+for (const [name, src] of [
+  ["AnalyticsClient", analytics],
+  ["ProductConfigurationCard", read("app/[lang]/settings/analytics/ProductConfigurationCard.tsx")],
+  ["SearchVisibilityCard", visibility],
+] as const) {
+  assert.doesNotMatch(src, /<CardAction[^>]*row-start-3/, `${name}: CardAction placement belongs to the Card primitive`);
+}
+// Search card: its seven tabs get their own row; the range strip can shrink
+// (so it collapses to a menu on a phone) and delta badges wrap as whole pieces
+assert.doesNotMatch(visibility, /<CardAction/);
+assert.match(visibility, /<Tabs value=\{range\} onValueChange=\{setRange\} className="min-w-0 flex-1">/);
+assert.match(visibility, /inline-flex flex-wrap items-center gap-x-1 text-xs/);
+
 // general touch targets; shipping stacks; tag × always visible; pagination wrap
 assert.match(general, /min-h-11 min-w-11/);
 assert.match(shipping, /flex-col gap-3 sm:flex-row/);

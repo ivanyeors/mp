@@ -15,12 +15,17 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+// With a CardAction the header is one column on a phone (title, description,
+// then the action at full width) and two from `sm` (action top-right). The
+// phone column is minmax(0,1fr) so a wide action cannot push it past the card
+// edge. Don't pin the action to a later row from the caller: that leaves
+// column 2 free, and auto-placement puts the description there as a sliver.
 function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-header"
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-1 sm:has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
         className
       )}
       {...props}
@@ -53,7 +58,7 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-action"
       className={cn(
-        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        "self-start sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:justify-self-end",
         className
       )}
       {...props}

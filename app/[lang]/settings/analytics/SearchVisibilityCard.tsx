@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { AlertTriangle, ArrowDownRight, ArrowUpRight, Minus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Bucket, Delta, Totals } from "@/lib/seo-metrics/aggregate";
@@ -676,10 +676,11 @@ function DeltaBadge({ delta, metric }: { delta: Delta; metric: Metric }) {
   const tone =
     delta.direction === "better" ? "text-emerald-600 dark:text-emerald-400" : delta.direction === "worse" ? "text-red-600 dark:text-red-400" : "text-muted-foreground";
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+    // Wraps as whole pieces: in a half-width phone tile "vs prev. period" drops to its own line.
+    <span className="inline-flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
       <Icon className={`size-3.5 ${tone}`} aria-hidden />
-      <span className="tabular-nums text-foreground">{metric.formatDelta(delta.value)}</span>
-      <span>
+      <span className="whitespace-nowrap tabular-nums text-foreground">{metric.formatDelta(delta.value)}</span>
+      <span className="whitespace-nowrap">
         vs prev. period
         <span className="sr-only"> ({delta.direction})</span>
       </span>
@@ -911,8 +912,11 @@ export function SearchVisibilityCard() {
           first-party visits by channel.
           {data?.lastDate ? ` Latest data: ${data.lastDate}.` : null}
         </CardDescription>
-        <CardAction className="col-start-1 row-start-3 flex w-full flex-wrap gap-2 sm:col-start-2 sm:row-start-1 sm:row-span-2 sm:w-auto sm:justify-end">
-          <Tabs value={range} onValueChange={setRange}>
+        {/* Not a CardAction: seven tabs beside the description squeeze it to a sliver below
+            ~1280px, so they get their own row. The range strip takes the rest of the row and
+            collapses to a menu when it cannot fit (phones). */}
+        <div className="flex min-w-0 gap-2">
+          <Tabs value={range} onValueChange={setRange} className="min-w-0 flex-1">
             <TabsList>
               {RANGES.map((r) => (
                 <TabsTrigger key={r.value} value={r.value}>
@@ -927,7 +931,7 @@ export function SearchVisibilityCard() {
               <TabsTrigger value="day">Daily</TabsTrigger>
             </TabsList>
           </Tabs>
-        </CardAction>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6 px-4 sm:px-6">
         {error ? (
