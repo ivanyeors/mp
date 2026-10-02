@@ -664,6 +664,17 @@ export function SectionEditor({ section, onSave, onCancel, onDirtyChange }: Sect
           </>
         );
 
+      case "delivery_estimator":
+        return (
+          <>
+            <Field label="Title"><Input value={get("title")} onChange={(e) => set("title", e.target.value)} placeholder="Delivery to your door" /></Field>
+            <Field label="Subtitle"><Textarea value={get("subtitle")} onChange={(e) => set("subtitle", e.target.value)} rows={2} /></Field>
+            <p className="text-xs text-muted-foreground">
+              Rates and couriers come from Settings → Shipping. Empty fields use the default copy for the language.
+            </p>
+          </>
+        );
+
       case "featured_products":
         return (
           <>

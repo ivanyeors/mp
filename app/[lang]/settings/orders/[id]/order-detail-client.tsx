@@ -69,6 +69,7 @@ import {
 import { CELLS } from "@/lib/spatial-fillings/cells";
 import type { PillowPlacementRow } from "@/lib/spatial-fillings/core";
 import { isResultCustomisedOrder } from "@/lib/results/post-delivery-refund";
+import { EasyshipFulfilment } from "./easyship-fulfilment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1424,7 +1425,11 @@ export default function OrderDetailPage({
                                 Fulfillment
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-3">
+                            <EasyshipFulfilment
+                                order={order}
+                                onChanged={() => Promise.all([fetchOrder(), fetchTimeline()])}
+                            />
                             <Dialog open={fulfillOpen} onOpenChange={setFulfillOpen}>
                                 <DialogTrigger asChild>
                                     <Button size="sm" variant="outline" className="w-full">

@@ -114,12 +114,24 @@ export default async function AccountOrderDetailPage({
             <Truck className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
             <div className="min-w-0">
               <p className="text-sm font-medium">Your order is on its way</p>
+              {order.shipping_courier ? (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Courier:{" "}
+                  <span className="font-medium text-foreground">{order.shipping_courier}</span>
+                </p>
+              ) : null}
               <p className="mt-0.5 text-sm text-muted-foreground">
                 Tracking number:{" "}
                 <span className="font-medium text-foreground">
                   {order.tracking_number}
                 </span>
               </p>
+              {order.shipping_tracking_status ? (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Latest update:{" "}
+                  <span className="font-medium text-foreground">{order.shipping_tracking_status}</span>
+                </p>
+              ) : null}
               {order.tracking_url ? (
                 <a
                   href={order.tracking_url}

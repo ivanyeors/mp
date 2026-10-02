@@ -18,7 +18,8 @@ export type CustomSectionType =
   | "custom_rich_text"
   | "featured_products"
   | "shop_cta"
-  | "faq";
+  | "faq"
+  | "delivery_estimator";
 
 export type SectionType = BuiltInSectionType | CustomSectionType;
 
@@ -144,6 +145,12 @@ export interface ShopCtaContent {
   buttonUrl?: string; // defaults to /shop
 }
 
+/** Live delivery rates by postal code; title/subtitle fall back to the shop.delivery messages. */
+export interface DeliveryEstimatorContent {
+  title?: string;
+  subtitle?: string;
+}
+
 /** Placement only — Q&A copy lives in Settings → Page FAQs (`home` surface). */
 export type FaqContent = Record<string, never>;
 
@@ -163,5 +170,10 @@ export const CUSTOM_SECTION_TEMPLATES: Array<{
     type: "faq",
     label: "Page FAQs",
     description: "Home FAQs from Settings → FAQ → Page FAQs (home surface)",
+  },
+  {
+    type: "delivery_estimator",
+    label: "Delivery Estimator",
+    description: "Shoppers enter a postal code and see live delivery rates (Settings → Shipping)",
   },
 ];

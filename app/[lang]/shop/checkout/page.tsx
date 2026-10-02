@@ -34,6 +34,12 @@ import type {
   LocalizedShippingContent,
   CustomerAddress,
 } from "@/lib/types/ecommerce";
+import type { ShippingQuoteOptionView } from "@/lib/shipping/types";
+import {
+  formatDeliveryWindow,
+  isPostalReady,
+  useShippingQuote,
+} from "@/lib/shop/use-shipping-quote";
 import { trackGaEventThen } from "@/lib/analytics/ga-events";
 
 const NEW_ADDRESS = "new";
@@ -77,8 +83,32 @@ const COUNTRY_OPTIONS = [
   { code: "BN", label: "Brunei" },
 ];
 
-function getShippingContent(method: ShippingMethod, lang: string): LocalizedShippingContent {
-  return method.content[lang] ?? method.content["en"] ?? { name: method.slug };
+function getShippingContent(
+  content: ShippingMethod["content"],
+  slug: string,
+  lang: string,
+): LocalizedShippingContent {
+  return content[lang] ?? content["en-US"] ?? content["en"] ?? { name: slug };
+}
+
+/**
+ * A shipping method as the checkout lists it. Until there is a postal code the
+ * list comes from the country's methods, and a live (Easyship) method has no
+ * price yet — it is `pending` and cannot be chosen. With a postal code, every
+ * option comes from the live quote for this cart and address.
+ */
+interface DisplayOption {
+  id: string;
+  slug: string;
+  content: ShippingMethod["content"];
+  currency: string;
+  /** Before free_above; null while a live price is pending. */
+  price: number | null;
+  free_above: number | null;
+  courier: ShippingQuoteOptionView["courier"];
+  min_days: number | null;
+  max_days: number | null;
+  pending: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,7 +120,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const lang = (params?.lang as string) ?? "en";
 
-  const { items, subtotal, couponCode, couponDiscount, couponFreeShipping } = useCart();
+  const { items, subtotal, couponCode, couponDiscount, couponFreeShipping, hydrated } = useCart();
   const { isConverted } = useCurrency();
 
   // Form state
@@ -125,12 +155,14 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>(NEW_ADDRESS);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
 
-  // Redirect if cart is empty
+  // Redirect if cart is empty — once the cart has loaded from storage. This
+  // effect runs before the provider's hydration effect, so on a full page load
+  // (a refresh, or Stripe's cancel_url) `items` is still [] here.
   useEffect(() => {
-    if (items.length === 0) {
+    if (hydrated && items.length === 0) {
       router.replace(`/${lang}/shop`);
     }
-  }, [items.length, lang, router]);
+  }, [hydrated, items.length, lang, router]);
 
   // Load the signed-in shopper's saved addresses; preselect the default.
   useEffect(() => {
@@ -158,23 +190,69 @@ export default function CheckoutPage() {
     };
   }, []);
 
-  // Fetch shipping methods when country changes
+  // Fetch the country's shipping methods (flat prices) when the country changes.
   useEffect(() => {
     if (!form.country) return;
 
     setShippingLoading(true);
-    setSelectedShipping("");
 
     fetch(`/api/shop/shipping?country=${form.country}`)
       .then((res) => res.json())
-      .then((data: { rows?: ShippingMethod[] }) => {
-        const methods = data.rows ?? [];
-        setShippingMethods(methods);
-        if (methods.length > 0) setSelectedShipping(methods[0].id);
-      })
+      .then((data: { rows?: ShippingMethod[] }) => setShippingMethods(data.rows ?? []))
       .catch(() => setShippingMethods([]))
       .finally(() => setShippingLoading(false));
   }, [form.country]);
+
+  // Live rates for this cart once there is a postal code (debounced while typing).
+  const postalReady = isPostalReady(form.postal_code);
+  const quote = useShippingQuote(
+    items.length > 0
+      ? {
+          items: items.map((item) => ({ variant_id: item.variantId, quantity: item.quantity })),
+          country: form.country,
+          postalCode: form.postal_code,
+        }
+      : null,
+  );
+
+  // The live quote once one has come back for this address; the country's list until then.
+  const useQuote =
+    postalReady && quote.ready && !quote.error && (quote.options.length > 0 || !quote.loading);
+  const displayOptions: DisplayOption[] =
+    useQuote
+      ? quote.options.map((o) => ({
+          id: o.method_id,
+          slug: o.slug,
+          content: o.content,
+          currency: o.currency,
+          price: o.price,
+          free_above: o.free_above,
+          courier: o.courier,
+          min_days: o.min_days,
+          max_days: o.max_days,
+          pending: false,
+        }))
+      : shippingMethods.map((m) => {
+          const live = (m.rate_source ?? "flat") === "easyship";
+          return {
+            id: m.id,
+            slug: m.slug,
+            content: m.content,
+            currency: m.currency,
+            price: live ? null : m.base_rate,
+            free_above: m.free_above,
+            courier: null,
+            min_days: null,
+            max_days: null,
+            pending: live,
+          };
+        });
+
+  // The shopper's choice while it is still offered, else the first choosable method.
+  const selectableIds = displayOptions.filter((o) => !o.pending).map((o) => o.id);
+  const chosenShipping = selectableIds.includes(selectedShipping)
+    ? selectedShipping
+    : (selectableIds[0] ?? "");
 
   const [checkoutDiscount, setCheckoutDiscount] = useState(couponDiscount);
   const [checkoutFreeShipping, setCheckoutFreeShipping] = useState(couponFreeShipping);
@@ -250,13 +328,15 @@ export default function CheckoutPage() {
   }, [couponCode, subtotal, items, form.email, couponDiscount, couponFreeShipping]);
 
   // Derived values
-  const selectedMethod = shippingMethods.find((m) => m.id === selectedShipping) ?? null;
+  const selectedMethod =
+    displayOptions.find((o) => o.id === chosenShipping && !o.pending) ?? null;
   const currency = items[0]?.currency ?? "SGD";
+  const isFreeFor = (o: DisplayOption) => o.free_above != null && subtotal >= o.free_above;
   const shippingCost =
     selectedMethod
-      ? checkoutFreeShipping || (selectedMethod.free_above != null && subtotal >= selectedMethod.free_above)
+      ? checkoutFreeShipping || isFreeFor(selectedMethod)
         ? 0
-        : selectedMethod.base_rate
+        : (selectedMethod.price ?? 0)
       : 0;
   const total = Math.max(0, subtotal + shippingCost - checkoutDiscount);
 
@@ -278,7 +358,10 @@ export default function CheckoutPage() {
     if (!form.city.trim()) next.city = "City is required";
     if (!form.postal_code.trim()) next.postal_code = "Postal code is required";
     if (!form.country) next.country = "Country is required";
-    if (!selectedShipping) next.shipping_method = "Please select a shipping method";
+    if (!chosenShipping) next.shipping_method = "Please select a shipping method";
+    else if (postalReady && quote.loading) {
+      next.shipping_method = "Updating shipping rates for your address — try again in a moment";
+    }
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -334,7 +417,7 @@ export default function CheckoutPage() {
           country: form.country,
           phone: form.phone || undefined,
         },
-        shipping_method_id: selectedShipping,
+        shipping_method_id: chosenShipping,
         coupon_code: couponCode ?? undefined,
         referral_code: referralCode.trim() || undefined,
         locale: lang,
@@ -849,42 +932,56 @@ export default function CheckoutPage() {
 
             {/* Shipping method */}
             <section id="shipping-method" data-section="shipping-method">
-              <h2 className="text-lg font-semibold mb-4">Shipping Method</h2>
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Shipping Method</h2>
+                {postalReady && quote.loading && (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Updating rates…
+                  </span>
+                )}
+              </div>
 
-              {shippingLoading ? (
+              {shippingLoading && displayOptions.length === 0 ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                   <Loader2 className="size-4 animate-spin" />
                   Loading shipping options…
                 </div>
-              ) : shippingMethods.length === 0 ? (
+              ) : displayOptions.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">
-                  No shipping methods available for the selected country.
+                  {postalReady && quote.ready
+                    ? "No delivery options for this address yet. Check the postal code, or contact us and we'll arrange it."
+                    : "No shipping methods available for the selected country."}
                 </p>
               ) : (
                 <div className="flex flex-col gap-3">
-                  {shippingMethods.map((method) => {
-                    const content = getShippingContent(method, lang);
+                  {displayOptions.map((option) => {
+                    const content = getShippingContent(option.content, option.slug, lang);
                     const isFree =
-                      method.free_above != null && subtotal >= method.free_above;
-                    const cost = isFree ? 0 : method.base_rate;
-                    const isSelected = selectedShipping === method.id;
+                      !option.pending && (checkoutFreeShipping || isFreeFor(option) || option.price === 0);
+                    const isSelected = chosenShipping === option.id;
+                    const eta =
+                      formatDeliveryWindow(option.min_days, option.max_days) ?? content.estimated_days;
 
                     return (
                       <label
-                        key={method.id}
-                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors ${
-                          isSelected
-                            ? "border-primary bg-primary/5"
-                            : "border-input hover:bg-accent/50"
+                        key={option.id}
+                        className={`flex items-start gap-3 rounded-lg border p-4 transition-colors ${
+                          option.pending
+                            ? "cursor-not-allowed border-dashed border-input opacity-70"
+                            : isSelected
+                              ? "cursor-pointer border-primary bg-primary/5"
+                              : "cursor-pointer border-input hover:bg-accent/50"
                         }`}
                       >
                         <input
                           type="radio"
                           name="shipping_method"
-                          value={method.id}
+                          value={option.id}
                           checked={isSelected}
+                          disabled={option.pending}
                           onChange={() => {
-                            setSelectedShipping(method.id);
+                            setSelectedShipping(option.id);
                             if (errors.shipping_method) {
                               setErrors((prev) => ({
                                 ...prev,
@@ -897,21 +994,35 @@ export default function CheckoutPage() {
                         <div className="flex flex-1 items-start justify-between gap-2 min-w-0">
                           <div className="min-w-0">
                             <p className="text-sm font-medium">{content.name}</p>
+                            {option.courier && (
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                via {option.courier.name}
+                              </p>
+                            )}
                             {content.description && (
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {content.description}
                               </p>
                             )}
-                            {content.estimated_days && (
+                            {eta && !option.pending && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{eta}</p>
+                            )}
+                            {option.pending && (
                               <p className="text-xs text-muted-foreground mt-0.5">
-                                {content.estimated_days}
+                                {!postalReady
+                                  ? "Enter your postal code to see the live courier rate."
+                                  : quote.loading
+                                    ? "Getting the live courier rate…"
+                                    : "The live rate is unavailable right now. Please try again shortly."}
                               </p>
                             )}
                           </div>
                           <span className="shrink-0 text-sm font-semibold">
-                            {isFree
-                              ? "Free"
-                              : <PriceDisplay price={cost} currency={method.currency} className="inline text-sm" />}
+                            {option.pending
+                              ? "—"
+                              : isFree
+                                ? "Free"
+                                : <PriceDisplay price={option.price ?? 0} currency={option.currency} className="inline text-sm" />}
                           </span>
                         </div>
                       </label>
@@ -920,6 +1031,9 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {postalReady && quote.error && (
+                <p className="text-xs text-muted-foreground mt-2">{quote.error}</p>
+              )}
               {errors.shipping_method && (
                 <p className="text-xs text-destructive mt-2">
                   {errors.shipping_method}
