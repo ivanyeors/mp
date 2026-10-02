@@ -13804,5 +13804,11 @@
     "seen": 1790909156.3642488,
     "ast_hash": "f6029fdded3be90f21d2878cdb01855c",
     "semantic_hash": ""
+  },
+  "supabase/migrations/20261002000000_analytics_tables_server_only.sql": {
+    "mtime": 1790909779.2448153,
+    "seen": 1790909829.696976,
+    "ast_hash": "53d67afb97458e9e011c0980b1862967",
+    "semantic_hash": ""
   }
 }
