@@ -8166,9 +8166,9 @@
     "semantic_hash": ""
   },
   "CONTEXT.md": {
-    "mtime": 1790958466.5782638,
-    "seen": 1790958817.3754265,
-    "ast_hash": "6f6f485ef69ea3fd0cfd43ba1b7140f8",
+    "mtime": 1790959449.0483875,
+    "seen": 1790959565.15577,
+    "ast_hash": "034523fa3bec71cb5634a57aaac7f9ad",
     "semantic_hash": ""
   },
   "LLM.md": {
@@ -13908,15 +13908,15 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/cards.test.ts": {
-    "mtime": 1790958150.982245,
-    "seen": 1790958817.3745046,
-    "ast_hash": "60650a9295965c944472b209b9490094",
+    "mtime": 1790959423.6872954,
+    "seen": 1790959565.154829,
+    "ast_hash": "0ecd54ef86bcfb2241e62928608dd484",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/draft-reply.test.ts": {
-    "mtime": 1790958194.7702477,
-    "seen": 1790958817.374506,
-    "ast_hash": "2900853c26d2ca295f632aacfd326217",
+    "mtime": 1790959423.68658,
+    "seen": 1790959565.1548312,
+    "ast_hash": "59b6a74ce5e3c430b04eccb3c5c0adfd",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/fake-supabase.ts": {
@@ -13926,15 +13926,15 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/google-sync.test.ts": {
-    "mtime": 1790958237.957675,
-    "seen": 1790958817.3745081,
-    "ast_hash": "7c93f018199f956e528f26b524189d6f",
+    "mtime": 1790959509.0600717,
+    "seen": 1790959565.154834,
+    "ast_hash": "a4d7b89241fbee9a8772d44906d9e39b",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/reply-rules.test.ts": {
-    "mtime": 1790958156.7342453,
-    "seen": 1790958817.3745093,
-    "ast_hash": "764fa3f31227c70c7112514c8568ed30",
+    "mtime": 1790959423.6869574,
+    "seen": 1790959565.1548355,
+    "ast_hash": "cde3afa3f6ab7f8ba0c88d3b596c4968",
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/telegram-handler.test.ts": {
@@ -13944,15 +13944,15 @@
     "semantic_hash": ""
   },
   "lib/reviews/cards.ts": {
-    "mtime": 1790957679.986217,
-    "seen": 1790958817.374511,
-    "ast_hash": "3e3bf5fbe5bcd3e11dbba11cf1a9ff7c",
+    "mtime": 1790959434.848335,
+    "seen": 1790959565.1548402,
+    "ast_hash": "154324441e8f0cb82dde32a94df96523",
     "semantic_hash": ""
   },
   "lib/reviews/draft-reply.ts": {
-    "mtime": 1790957628.002214,
-    "seen": 1790958817.3745122,
-    "ast_hash": "dc134ba9f03c75461863731171c0ec82",
+    "mtime": 1790959344.6868057,
+    "seen": 1790959565.1548417,
+    "ast_hash": "1dbf750fbb2ea6cd2f916fa0f113c605",
     "semantic_hash": ""
   },
   "lib/reviews/google-actions.ts": {
@@ -13968,9 +13968,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/google-sync.ts": {
-    "mtime": 1790957776.3302228,
-    "seen": 1790958817.3745158,
-    "ast_hash": "b9196d3474e940705255c11645218f42",
+    "mtime": 1790959434.8456035,
+    "seen": 1790959565.1548455,
+    "ast_hash": "da28bc551f51cb06e5d26a93a721dadc",
     "semantic_hash": ""
   },
   "lib/reviews/pubsub.ts": {
@@ -13980,9 +13980,9 @@
     "semantic_hash": ""
   },
   "lib/reviews/reply-rules.ts": {
-    "mtime": 1790957607.5142126,
-    "seen": 1790958817.3745174,
-    "ast_hash": "e007e6eef940bb1a00b79178e600c68d",
+    "mtime": 1790959362.4161897,
+    "seen": 1790959565.1548479,
+    "ast_hash": "6ab53303af286d8d4385e8695f90904a",
     "semantic_hash": ""
   },
   "lib/reviews/shop-reviews.ts": {
@@ -14046,9 +14046,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-google-review-replies/google-review-replies-prd.md": {
-    "mtime": 1790958508.7782662,
-    "seen": 1790958817.3750508,
-    "ast_hash": "029ff345853e5d31748f1c6e197536f5",
+    "mtime": 1790959449.047212,
+    "seen": 1790959565.1554065,
+    "ast_hash": "e5cffffc65a3bd6b156880307cb50fc0",
+    "semantic_hash": ""
+  },
+  "lib/reviews/__tests__/reply-style.test.ts": {
+    "mtime": 1790959403.0383193,
+    "seen": 1790959565.1548376,
+    "ast_hash": "1311814afbbd3cec8e799d833d667874",
+    "semantic_hash": ""
+  },
+  "lib/reviews/reply-style.ts": {
+    "mtime": 1790959327.602315,
+    "seen": 1790959565.1548488,
+    "ast_hash": "d3a503c7b66f4e0406b3e2015fc9a5fb",
     "semantic_hash": ""
   }
 }

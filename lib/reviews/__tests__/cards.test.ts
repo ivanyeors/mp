@@ -78,6 +78,28 @@ describe("Google review card", () => {
     expect(parseReviewCallback(buttons(card)[0].callback_data)).toMatchObject({ action: "post", version: 3 });
   });
 
+  it("labels the reply type of Claude's draft", () => {
+    expect(renderGoogleReviewCard(row()).text).toContain("✍️ Thank-you reply, drafted by Claude:");
+    expect(renderGoogleReviewCard(row({ star_rating: 3 })).text).toContain("✍️ Constructive reply, drafted by Claude:");
+    expect(renderGoogleReviewCard(row({ draft_source: "staff", acted_by_name: "Ivan" })).text).toContain(
+      "✍️ Reply written by Ivan:",
+    );
+  });
+
+  it("flags a 1–2★ review for service recovery while it is open", () => {
+    const open = renderGoogleReviewCard(row({ star_rating: 2 }));
+    expect(open.text.split("\n").slice(0, 3)).toEqual([
+      GOOGLE_CARD_HEADER,
+      "★★☆☆☆ 2/5 · Jane Tan",
+      "🛟 SERVICE RECOVERY — reply soon, and follow up with this customer personally if you can identify them.",
+    ]);
+    expect(open.text).toContain("✍️ Service recovery reply, drafted by Claude:");
+    expect(renderGoogleReviewCard(row({ star_rating: 4 })).text).not.toContain("SERVICE RECOVERY");
+    expect(
+      renderGoogleReviewCard(row({ star_rating: 1, status: "posted", posted_reply: "Sorry", acted_by_name: "Ivan" })).text,
+    ).not.toContain("SERVICE RECOVERY");
+  });
+
   it("has no Post button without a draft and says why", () => {
     const card = renderGoogleReviewCard(row({ draft_reply: null, draft_error: "ANTHROPIC_API_KEY is not set" }));
     expect(card.text).toContain("No draft yet — ANTHROPIC_API_KEY is not set");

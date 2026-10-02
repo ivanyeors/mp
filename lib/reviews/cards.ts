@@ -1,6 +1,7 @@
 import type { InlineKeyboardMarkup } from "@/lib/telegram/bot-api";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { replyWarnings } from "@/lib/reviews/reply-rules";
+import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
 
 /**
  * Telegram cards for reviews. Pure: given a row, the text and buttons a card
@@ -105,11 +106,18 @@ function editedLine(row: GoogleReviewRow): string | null {
   return `✏️ Edited by the reviewer · ${formatCardDate(row.review_updated_at)}`;
 }
 
+const SETTLED: GoogleReviewRow["status"][] = ["posting", "posted", "skipped", "replied_elsewhere"];
+
 export function renderGoogleReviewCard(row: GoogleReviewRow): Card {
+  const style = replyStyleFor(row.star_rating);
   const lines: string[] = [
     GOOGLE_CARD_HEADER,
     `${starLine(row.star_rating)} · ${reviewerLabel(row)}`,
   ];
+  // A 1–2★ review is a customer to win back, not just a reply to post.
+  if (style === "service_recovery" && !SETTLED.includes(row.status)) {
+    lines.push("🛟 SERVICE RECOVERY — reply soon, and follow up with this customer personally if you can identify them.");
+  }
   const posted = formatCardDate(row.review_created_at);
   if (posted) lines.push(`Posted ${posted}`);
   lines.push("", quoted(row.comment, "(Rating only — no written review)"));
@@ -143,11 +151,11 @@ export function renderGoogleReviewCard(row: GoogleReviewRow): Card {
 
   // new / pending / backlog: waiting on a review manager.
   if (row.draft_reply) {
-    const who =
+    const heading =
       row.draft_source === "staff"
-        ? `written by ${row.acted_by_name ?? "a review manager"}`
-        : "drafted by Claude";
-    lines.push(`✍️ Suggested reply (${who}):`, row.draft_reply);
+        ? `✍️ Reply written by ${row.acted_by_name ?? "a review manager"}:`
+        : `✍️ ${REPLY_STYLE_NAMES[style]} reply, drafted by Claude:`;
+    lines.push(heading, row.draft_reply);
     for (const warning of replyWarnings(row.draft_reply)) lines.push(`⚠️ ${warning}`);
   } else {
     lines.push(`✍️ No draft yet${row.draft_error ? ` — ${row.draft_error}` : ""}.`);

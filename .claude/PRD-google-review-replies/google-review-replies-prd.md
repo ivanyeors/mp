@@ -23,10 +23,22 @@ are posted — so that is where review work should land.
    and stores them in `google_reviews`. A daily catch-up runs from the `results-sla` cron, because
    Pub/Sub delivery is not guaranteed.
 2. **Claude drafts.** Each new review gets a reply drafted by Claude (Claude Opus 5.5, effort
-   `medium`, server-side refusal fallback on). The prompt carries Mpillow facts only, adapts to the
-   rating (4–5★: thank + soft invitation to book a fitting; ≤3★: acknowledge, no sales, invite
-   direct contact), forbids links / phone numbers / incentives (Google rejects promotional
-   replies), and treats the review text as data, not instructions.
+   `medium`, server-side refusal fallback on). The **reply type** is chosen from the star rating in
+   code (`lib/reviews/reply-style.ts`) and named in the request:
+   - **Thank-you** (4–5★): thank them specifically, one soft invitation to book a fitting.
+   - **Constructive** (3★, or no rating): acknowledge what fell short, invite direct contact, no
+     selling.
+   - **Service recovery** (1–2★): a sincere apology naming the specific problem, ownership (no
+     excuses, never disputing their account), the impact on them acknowledged, one concrete next
+     step from what Mpillow actually does (a re-adjustment visit for fit or comfort, a stuffing
+     check under the 10-year warranty for wear, the team looking into it personally for anything
+     else), and a request to contact support through the website's Support page. No promotion,
+     no promised outcome, and no refunds or compensation in public.
+
+   Every type forbids links / phone numbers / incentives (Google rejects promotional replies) and
+   treats the review text as data, not instructions. The card flags 1–2★ reviews with a
+   **SERVICE RECOVERY** line so someone also follows up with the customer personally, and warns
+   if any reply promises a refund or compensation.
 3. **Telegram card.** The review and draft are posted to the measurements group as a **Review
    card** headed `⭐ GOOGLE MAPS REVIEW`, with **Post reply / Redraft / Skip**. Website reviews get a
    `🛍 SHOP REVIEW · mpillow website` card with **Approve / Reject** and no reply affordance.
@@ -56,6 +68,10 @@ are posted — so that is where review work should land.
    my Telegram ID; chatting under a card does nothing.
 10. As the business, a reply never contains links, phone numbers, discounts or personal details
     unless a person deliberately types them — and the card warns when it does.
+11. As an unhappy 1–2★ reviewer, I get a reply that apologises for my specific problem, offers a
+    real next step and tells me how to reach the team — not a thank-you or a sales pitch.
+12. As a review manager, if a reviewer edits a 5★ review down to 2★ before we reply, the open
+    card's draft is replaced with a service-recovery one (my own wording is never overwritten).
 
 ## Implementation decisions
 

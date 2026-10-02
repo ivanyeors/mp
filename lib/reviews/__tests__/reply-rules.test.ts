@@ -14,6 +14,14 @@ describe("reply rules", () => {
     expect(replyWarnings("Here is a voucher for 15% off")).toHaveLength(1);
   });
 
+  it("warns when a recovery reply promises compensation in public", () => {
+    expect(replyWarnings("We will refund your purchase in full.")).toEqual([
+      expect.stringMatching(/refund or compensation/),
+    ]);
+    expect(replyWarnings("A complimentary re-adjustment is yours.")).toHaveLength(1);
+    expect(replyWarnings("Please feel free to message our support team.")).toEqual([]);
+  });
+
   it("strips wrapping quotes but keeps inner ones", () => {
     expect(normalizeReplyText('  "Thanks for visiting!"  ')).toBe("Thanks for visiting!");
     expect(normalizeReplyText("“Thanks!”")).toBe("Thanks!");

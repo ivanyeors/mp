@@ -9,6 +9,7 @@ import {
 } from "@/lib/google/business-profile";
 import { draftReviewReply } from "@/lib/reviews/draft-reply";
 import { renderGoogleReviewCard } from "@/lib/reviews/cards";
+import { replyStyleFor } from "@/lib/reviews/reply-style";
 import { editGroupCard, sendGroupCard } from "@/lib/telegram/bot-api";
 import { GOOGLE_REVIEW_COLUMNS, type GoogleReviewRow } from "@/lib/reviews/google-reviews";
 
@@ -50,6 +51,8 @@ export type ReviewSyncSummary = {
   backlog: number;
   updated: number;
   repliedElsewhere: number;
+  /** Open cards whose rating moved into another reply type, redrafted to match. */
+  redrafted: number;
   recovered: number;
   carded: number;
 };
@@ -103,6 +106,49 @@ function changedFields(row: GoogleReviewRow, fields: ReviewFields): Partial<Revi
 }
 
 /**
+ * Asks Claude for a draft of the reply type the row's rating calls for and
+ * stores it, guarded on the draft version it replaces. With "withdraw", a
+ * failed draft also clears the old one: it was written for a different rating,
+ * and a thank-you must never be one tap from posting under a 1★ review.
+ */
+async function writeClaudeDraft(
+  row: GoogleReviewRow,
+  draft: typeof draftReviewReply,
+  onFailure: "keep" | "withdraw",
+): Promise<GoogleReviewRow> {
+  const result = await draft({
+    starRating: row.star_rating,
+    comment: row.comment,
+    reviewerName: row.reviewer_name,
+    reviewerIsAnonymous: row.reviewer_is_anonymous,
+  });
+  const patch = result.ok
+    ? {
+        draft_reply: result.reply,
+        draft_source: "claude" as const,
+        draft_version: row.draft_version + 1,
+        draft_error: null,
+      }
+    : onFailure === "withdraw"
+      ? {
+          draft_reply: null,
+          draft_source: null,
+          draft_version: row.draft_version + 1,
+          draft_error: `the rating changed, so the earlier draft was withdrawn (${result.error})`,
+        }
+      : { draft_error: result.error };
+  const { data } = await supabaseAdmin()
+    .from("google_reviews")
+    .update(patch)
+    .eq("id", row.id)
+    .eq("status", "pending")
+    .eq("draft_version", row.draft_version)
+    .select(GOOGLE_REVIEW_COLUMNS)
+    .maybeSingle();
+  return (data as GoogleReviewRow | null) ?? row;
+}
+
+/**
  * Drafts (if needed) and posts the card for one row. Claims a `new` row first
  * so concurrent runs cannot both send it. Returns true when a card went out.
  */
@@ -127,29 +173,7 @@ export async function deliverGoogleReviewCard(
     current = claimed as GoogleReviewRow;
   }
 
-  if (!current.draft_reply) {
-    const result = await draft({
-      starRating: current.star_rating,
-      comment: current.comment,
-      reviewerName: current.reviewer_name,
-      reviewerIsAnonymous: current.reviewer_is_anonymous,
-    });
-    const patch = result.ok
-      ? {
-          draft_reply: result.reply,
-          draft_source: "claude" as const,
-          draft_version: current.draft_version + 1,
-          draft_error: null,
-        }
-      : { draft_error: result.error };
-    const { data: drafted } = await admin
-      .from("google_reviews")
-      .update(patch)
-      .eq("id", current.id)
-      .select(GOOGLE_REVIEW_COLUMNS)
-      .maybeSingle();
-    if (drafted) current = drafted as GoogleReviewRow;
-  }
+  if (!current.draft_reply) current = await writeClaudeDraft(current, draft, "keep");
 
   const card = renderGoogleReviewCard(current);
   const sent = await send(card.text, card.replyMarkup);
@@ -171,6 +195,7 @@ async function refreshCard(row: GoogleReviewRow, edit: typeof editGroupCard): Pr
 export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<ReviewSyncSummary> {
   const now = deps.now ?? new Date();
   const edit = deps.edit ?? editGroupCard;
+  const draft = deps.draft ?? draftReviewReply;
   const summary: ReviewSyncSummary = {
     ok: true,
     fetched: 0,
@@ -178,6 +203,7 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
     backlog: 0,
     updated: 0,
     repliedElsewhere: 0,
+    redrafted: 0,
     recovered: 0,
     carded: 0,
   };
@@ -240,8 +266,21 @@ export async function syncGoogleReviews(deps: ReviewSyncDeps = {}): Promise<Revi
     if (error) throw new Error(error.message);
     summary.updated += 1;
     if (answeredElsewhere) summary.repliedElsewhere += 1;
+
+    let current = updated as GoogleReviewRow | null;
+    // The reviewer moved the rating into another reply type (say 5★ → 2★):
+    // Claude's draft no longer fits. A review manager's own wording stays —
+    // the card's service-recovery banner tells them to reconsider it.
+    const restyled =
+      current?.status === "pending" &&
+      current.draft_source !== "staff" &&
+      replyStyleFor(row.star_rating) !== replyStyleFor(current.star_rating);
+    if (current && restyled) {
+      current = await writeClaudeDraft(current, draft, "withdraw");
+      summary.redrafted += 1;
+    }
     // An open card shows the reviewer's edit (or that it was answered elsewhere).
-    if (updated && row.status === "pending") await refreshCard(updated as GoogleReviewRow, edit);
+    if (current && row.status === "pending") await refreshCard(current, edit);
   }
 
   // A Post that died mid-flight: hand the card back so someone can tap again.

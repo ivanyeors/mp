@@ -353,6 +353,10 @@ _Avoid_: "product review" when the source matters on a Telegram card — the car
 The Telegram message in the measurements group (`MP_CONFIG_TELEGRAM_CHAT_ID`) for one **Google review** or **Shop review**. Its first line names the source. A Google card carries Claude's suggested reply and Post / Redraft / Skip; a review manager's reply to the card replaces the draft, and nothing reaches Google until someone taps Post on the version they are looking at.
 _Avoid_: auto-posting a draft; a card that keeps its buttons after someone acted
 
+**Reply type**:
+Which kind of reply a **Google review** gets, chosen from its star rating in code (`lib/reviews/reply-style.ts`), never by the model: **Thank-you** (4–5★), **Constructive** (3★ or no rating), **Service recovery** (1–2★ — apologise for the specific problem, own it, offer one concrete next step, move it to support; no promotion and no compensation in public). A 1–2★ **Review card** is flagged SERVICE RECOVERY so someone also follows up with the customer personally.
+_Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply
+
 **Telegram operator**:
 A person allowed to press buttons on **Review cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Two roles: **Review manager** (replies on Google and moderates **Shop reviews**) and **Shop moderator** (**Shop reviews** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
 _Avoid_: assuming an operator is **Staff** (an `admin_users` row) or a measuring staff member (`mp_staff`) — three separate lists; an operator needs no back-office login

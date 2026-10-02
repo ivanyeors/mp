@@ -27,6 +27,12 @@ const CHECKS: { pattern: RegExp; warning: string }[] = [
     pattern: /\b(discount|promo(tion)?s?|vouchers?|coupons?|\d+\s?% off|free gifts?|cashback)\b/i,
     warning: "Mentions a discount or incentive — Google treats that as a policy violation.",
   },
+  {
+    // Service-recovery replies are where this creeps in. Make it right in
+    // private; a public promise reads as an incentive and sets a precedent.
+    pattern: /\b(refund(s|ed)?|reimburs\w*|compensat\w*|complimentary|free of charge|on the house)\b/i,
+    warning: "Promises a refund or compensation in public — settle that privately instead.",
+  },
 ];
 
 export function replyWarnings(text: string): string[] {

@@ -40,7 +40,8 @@ function client(reviews: GbpReview[]): BusinessProfileClient {
 const draft = vi.fn(async () => ({ ok: true as const, reply: "Thank you, Jane!", model: "claude-opus-5-5" }));
 let messageId = 100;
 const send = vi.fn(async () => ({ chatId: -1001279910218, messageId: (messageId += 1) }));
-const edit = vi.fn(async () => true);
+type Markup = { inline_keyboard: { text: string }[][] };
+const edit = vi.fn<(messageId: number, text: string, markup?: Markup) => Promise<boolean>>(async () => true);
 
 const rows = () => (h.tables.google_reviews ?? []) as Row[];
 const byName = (id: string) => rows().find((r) => r.review_name === `${LOCATION}/reviews/${id}`);
@@ -136,6 +137,51 @@ describe("syncGoogleReviews", () => {
     await run([review("r1", { comment: "Even better after a week", updateTime: daysAgo(0) })]);
     expect(byName("r1")).toMatchObject({ status: "pending", comment: "Even better after a week" });
     expect(edit).toHaveBeenCalledWith(101, expect.stringContaining("Even better after a week"), expect.anything());
+  });
+
+  it("redrafts an open card when the reviewer drops the rating into service recovery", async () => {
+    await run([review("r1")]);
+    draft.mockResolvedValueOnce({ ok: true, reply: "We're sorry the fit let you down, Jane.", model: "claude-opus-5-5" });
+    const summary = await run([review("r1", { starRating: "TWO", comment: "Neck hurts now", updateTime: daysAgo(0) })]);
+
+    expect(summary.redrafted).toBe(1);
+    expect(draft).toHaveBeenLastCalledWith(expect.objectContaining({ starRating: 2, comment: "Neck hurts now" }));
+    expect(byName("r1")).toMatchObject({
+      status: "pending",
+      draft_reply: "We're sorry the fit let you down, Jane.",
+      draft_version: 2,
+    });
+    const text = String(edit.mock.calls.at(-1)?.[1]);
+    expect(text).toContain("🛟 SERVICE RECOVERY");
+    expect(text).toContain("Service recovery reply, drafted by Claude");
+  });
+
+  it("withdraws a draft that no longer fits when the redraft fails", async () => {
+    await run([review("r1")]);
+    draft.mockResolvedValueOnce({ ok: false, error: "Claude is rate-limited" } as never);
+    await run([review("r1", { starRating: "ONE", updateTime: daysAgo(0) })]);
+
+    expect(byName("r1")).toMatchObject({ draft_reply: null, draft_version: 2 });
+    expect(String(byName("r1")?.draft_error)).toMatch(/rating changed/);
+    const markup = edit.mock.calls.at(-1)?.[2];
+    expect(markup?.inline_keyboard.flat().map((b) => b.text)).not.toContain("✅ Post reply");
+  });
+
+  it("keeps a review manager's own wording when the rating changes", async () => {
+    await run([review("r1")]);
+    Object.assign(byName("r1")!, { draft_reply: "Thanks from Ivan", draft_source: "staff" });
+    const summary = await run([review("r1", { starRating: "TWO", updateTime: daysAgo(0) })]);
+
+    expect(summary.redrafted).toBe(0);
+    expect(byName("r1")?.draft_reply).toBe("Thanks from Ivan");
+    expect(String(edit.mock.calls.at(-1)?.[1])).toContain("🛟 SERVICE RECOVERY");
+  });
+
+  it("does not redraft when an edit keeps the same reply type", async () => {
+    await run([review("r1")]);
+    const summary = await run([review("r1", { starRating: "FOUR", updateTime: daysAgo(0) })]);
+    expect(summary.redrafted).toBe(0);
+    expect(draft).toHaveBeenCalledOnce();
   });
 
   it("hands a post that died mid-flight back to the review managers", async () => {
