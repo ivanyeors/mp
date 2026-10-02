@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Copy, KeyRound, Loader2, UserPlus } from "lucide-react";
+import { Copy, KeyRound, Loader2, Send, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ export function TelegramAccessTab({ initialRows }: { initialRows?: TelegramOpera
   const [adding, setAdding] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [issued, setIssued] = useState<IssuedCode | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -129,6 +130,24 @@ export function TelegramAccessTab({ initialRows }: { initialRows?: TelegramOpera
     }
   }
 
+  async function sendPreview() {
+    setPreviewing(true);
+    try {
+      const res = await fetch("/api/staff/telegram-operators/preview", { method: "POST" });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.error ? `Telegram: ${payload.error}` : "Preview failed");
+      }
+      toast.success(
+        `Sent ${payload.sent} preview messages to the measurements group${payload.usedClaude ? ", with replies drafted by Claude" : ""}.`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Preview failed");
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -156,6 +175,20 @@ export function TelegramAccessTab({ initialRows }: { initialRows?: TelegramOpera
           ))}
         </ul>
       </div>
+
+      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1 text-sm">
+          <p className="font-medium">Preview in Telegram</p>
+          <p className="text-muted-foreground">
+            Sends sample review cards to the measurements group so everyone sees how they will look. Tapping a
+            button on them tells each person whether they are set up. Nothing is posted to Google.
+          </p>
+        </div>
+        <Button variant="outline" onClick={sendPreview} disabled={previewing} className="shrink-0">
+          {previewing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+          Send preview
+        </Button>
+      </Card>
 
       <Card className="p-4">
         <form onSubmit={add} className="flex flex-col gap-3 sm:flex-row sm:items-end">

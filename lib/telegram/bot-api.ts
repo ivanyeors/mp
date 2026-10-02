@@ -41,22 +41,32 @@ async function callTelegram<T>(
   }
 }
 
-/** Posts a card to the measurements group. Returns the message id, or null. */
-export async function sendGroupCard(
+/** Posts a message to the measurements group, reporting why when it can't. */
+export async function sendGroupMessage(
   text: string,
   replyMarkup?: InlineKeyboardMarkup,
-): Promise<{ chatId: number; messageId: number } | null> {
+): Promise<{ ok: true; chatId: number; messageId: number } | { ok: false; error: string }> {
   const res = await callTelegram<{ message_id: number }>("sendMessage", {
     chat_id: MP_CONFIG_TELEGRAM_CHAT_ID,
     text,
     reply_markup: replyMarkup,
     link_preview_options: { is_disabled: true },
   });
+  if (!res.ok) return { ok: false, error: res.error };
+  return { ok: true, chatId: MP_CONFIG_TELEGRAM_CHAT_ID, messageId: res.result.message_id };
+}
+
+/** Posts a card to the measurements group. Returns the message id, or null. */
+export async function sendGroupCard(
+  text: string,
+  replyMarkup?: InlineKeyboardMarkup,
+): Promise<{ chatId: number; messageId: number } | null> {
+  const res = await sendGroupMessage(text, replyMarkup);
   if (!res.ok) {
     console.error("[telegram] send card failed", res.error);
     return null;
   }
-  return { chatId: MP_CONFIG_TELEGRAM_CHAT_ID, messageId: res.result.message_id };
+  return { chatId: res.chatId, messageId: res.messageId };
 }
 
 /**

@@ -6,12 +6,14 @@ import {
   replyInGroup,
 } from "@/lib/telegram/bot-api";
 import { authorizeTelegramAction, redeemTelegramLinkCode } from "@/lib/telegram/operators";
-import { TELEGRAM_ROLE_LABELS, type TelegramAction } from "@/lib/telegram/roles";
+import { TELEGRAM_ROLE_LABELS, type TelegramAction, type TelegramRole } from "@/lib/telegram/roles";
 import { isRateLimited } from "@/lib/rate-limit";
 import {
   GOOGLE_CARD_HEADER,
+  PREVIEW_REVIEW_ID,
   REVIEW_CALLBACK_PREFIX,
   parseReviewCallback,
+  type ReviewCallback,
   renderGoogleReviewCard,
   renderShopReviewCard,
 } from "@/lib/reviews/cards";
@@ -90,7 +92,7 @@ function deniedMessage(
 async function authorize(
   user: TelegramUser,
   action: TelegramAction,
-): Promise<{ ok: true; actor: Actor } | { ok: false; message: string; linked: boolean }> {
+): Promise<{ ok: true; actor: Actor; role: TelegramRole } | { ok: false; message: string; linked: boolean }> {
   const auth = await authorizeTelegramAction(user.id, action);
   if (!auth.ok) {
     return {
@@ -99,8 +101,20 @@ async function authorize(
       message: deniedMessage(auth.reason, action, user, auth.operator?.role),
     };
   }
-  return { ok: true, actor: { telegramUserId: user.id, name: auth.operator.display_name } };
+  return {
+    ok: true,
+    actor: { telegramUserId: user.id, name: auth.operator.display_name },
+    role: auth.operator.role,
+  };
 }
+
+const PREVIEW_EFFECT: Record<ReviewCallback["action"], string> = {
+  post: "publish the reply on Google Maps",
+  redraft: "ask Claude for a new draft",
+  skip: "close the card without replying",
+  approve: "show the review on the product page",
+  reject: "hide the review from the shop",
+};
 
 async function showGoogleCard(row: GoogleReviewRow | undefined, messageId: number): Promise<void> {
   if (!row) return;
@@ -120,6 +134,17 @@ async function handleCallback(cq: NonNullable<ReviewTelegramUpdate["callback_que
   const auth = await authorize(cq.from, action);
   if (!auth.ok) {
     await answerCallback(cq.id, auth.message, true);
+    return;
+  }
+
+  // A preview card (lib/reviews/preview.ts): the permission check above is the
+  // whole point — tell them they passed, and do nothing.
+  if (parsed.id === PREVIEW_REVIEW_ID) {
+    await answerCallback(
+      cq.id,
+      `✅ You're set up as ${auth.actor.name} (${TELEGRAM_ROLE_LABELS[auth.role]}). On a real review, this button would ${PREVIEW_EFFECT[parsed.action]}.`,
+      true,
+    );
     return;
   }
 

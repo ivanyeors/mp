@@ -88,6 +88,22 @@ Apply `supabase/migrations/20261002060000_google_review_replies.sql` and
 4. The first sync after setup posts cards for unanswered reviews from the last 14 days; older ones
    are recorded as `backlog` without a card.
 
+## 9. Preview the cards in Telegram
+
+Settings → Staff Management → Telegram access → **Send preview** posts sample cards to the
+measurements group: a thank-you, a constructive and a service-recovery reply, a reopened review, a
+card after Post, and a shop review. Nothing is stored or posted to Google, and every card says
+PREVIEW. Tapping a button on a preview card tells that person whether they are set up, and as
+what — a quick check after everyone has sent `/link`. With `ANTHROPIC_API_KEY` set, the sample
+replies are real Claude drafts.
+
+From a terminal instead (needs `TELEGRAM_BOT_TOKEN` in `.env.local`):
+
+```bash
+npx tsx --env-file=.env.local scripts/telegram-review-preview.ts             # send to the group
+npx tsx --env-file=.env.local scripts/telegram-review-preview.ts --dry-run   # print, send nothing
+```
+
 ## Troubleshooting
 
 - **Tapping a button says "not set up"** — the message shows the person's Telegram ID; add them in

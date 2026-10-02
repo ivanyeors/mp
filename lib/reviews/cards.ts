@@ -31,6 +31,13 @@ export type Card = { text: string; replyMarkup?: InlineKeyboardMarkup };
 
 export const REVIEW_CALLBACK_PREFIX = "rv:";
 
+/**
+ * The id on every button of a preview card (lib/reviews/preview.ts). It never
+ * matches a review; the Telegram handler answers a tap on it with the tapper's
+ * access instead of acting.
+ */
+export const PREVIEW_REVIEW_ID = "00000000-0000-4000-8000-000000000000";
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ReviewCallback =

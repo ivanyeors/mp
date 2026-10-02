@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createFakeSupabase, GOOGLE_REVIEW_DEFAULTS, type Row } from "./fake-supabase";
 import { hashLinkCode } from "@/lib/telegram/link-codes";
-import { GOOGLE_CARD_HEADER, encodeReviewCallback } from "@/lib/reviews/cards";
+import { GOOGLE_CARD_HEADER, PREVIEW_REVIEW_ID, encodeReviewCallback } from "@/lib/reviews/cards";
 
 /**
  * The Telegram side of review cards: who may press what (RBAC), that a Post
@@ -197,6 +197,37 @@ describe("Post reply", () => {
     expect(review()).toMatchObject({ status: "pending", last_error: expect.stringMatching(/violates policy/) });
     expect(h.replyInGroup).toHaveBeenCalledWith(expect.stringMatching(/❌ Google did not take the reply/), 77);
     expect(lastEditText()).toContain("❌ Last attempt failed");
+  });
+});
+
+describe("preview cards", () => {
+  const preview = (action: "post" | "approve") =>
+    action === "post"
+      ? encodeReviewCallback({ source: "google", action: "post", id: PREVIEW_REVIEW_ID, version: 1 })
+      : encodeReviewCallback({ source: "shop", action: "approve", id: PREVIEW_REVIEW_ID });
+
+  it("tells a set-up review manager they are set up, and does nothing", async () => {
+    await tap(IVAN, preview("post"));
+    expect(lastAlert()).toEqual([
+      "cq1",
+      "✅ You're set up as Ivan (Review manager). On a real review, this button would publish the reply on Google Maps.",
+      true,
+    ]);
+    expect(h.updateReply).not.toHaveBeenCalled();
+    expect(h.editGroupCard).not.toHaveBeenCalled();
+    expect(review().status).toBe("pending");
+  });
+
+  it("runs the real permission check first", async () => {
+    await tap(STRANGER, preview("post"));
+    expect(lastAlert()?.[1]).toContain("Your Telegram ID: 999");
+    await tap(SAM, preview("post"));
+    expect(lastAlert()?.[1]).toMatch(/Only review managers/);
+    await tap(SAM, preview("approve"));
+    expect(lastAlert()?.[1]).toBe(
+      "✅ You're set up as Sam (Shop moderator). On a real review, this button would show the review on the product page.",
+    );
+    expect(h.tables.product_reviews[0].status).toBe("pending");
   });
 });
 

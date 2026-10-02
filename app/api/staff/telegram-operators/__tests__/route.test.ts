@@ -13,14 +13,17 @@ const h = vi.hoisted(() => ({
   tables: {} as Record<string, Record<string, unknown>[]>,
   requireAdminContext: vi.fn(),
   audit: vi.fn(),
+  preview: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => h.db }));
 vi.mock("@/lib/auth/admin", () => ({ requireAdminContext: h.requireAdminContext }));
 vi.mock("@/lib/auth/audit", () => ({ recordAdminAction: h.audit }));
+vi.mock("@/lib/reviews/preview", () => ({ sendReviewCardPreview: h.preview }));
 
 const collection = await import("@/app/api/staff/telegram-operators/route");
 const item = await import("@/app/api/staff/telegram-operators/[id]/route");
+const preview = await import("@/app/api/staff/telegram-operators/preview/route");
 
 const ADMIN = { userId: "u1", email: "sg@mpillow.com", role: "owner", isBootstrap: false };
 const OP_ID = "6b6b6b6b-1111-4222-8333-444455556666";
@@ -110,6 +113,23 @@ describe("Telegram access API", () => {
       "telegram_operator.unlink",
       "telegram_operator.delete",
     ]);
+  });
+
+  it("sends the Telegram preview for owners/admins only, and reports Telegram's answer", async () => {
+    h.preview.mockResolvedValueOnce({ ok: true, sent: 7, total: 7, usedClaude: true });
+    let res = await preview.POST();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, sent: 7, total: 7, usedClaude: true });
+    expect(h.audit).toHaveBeenCalledWith(expect.objectContaining({ action: "telegram_operator.preview" }));
+
+    h.preview.mockResolvedValueOnce({ ok: false, sent: 0, total: 7, usedClaude: false, error: "TELEGRAM_BOT_TOKEN is not set" });
+    res = await preview.POST();
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toBe("TELEGRAM_BOT_TOKEN is not set");
+
+    h.requireAdminContext.mockRejectedValueOnce(NextResponse.json({ error: "Forbidden" }, { status: 403 }));
+    expect((await preview.POST()).status).toBe(403);
+    expect(h.preview).toHaveBeenCalledTimes(2);
   });
 
   it("404s an unknown or malformed id", async () => {

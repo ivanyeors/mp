@@ -52,6 +52,10 @@ are posted — so that is where review work should land.
    buttons, with a role each: **Review manager** (Google replies + shop moderation) or **Shop
    moderator** (shop only). People bind their Telegram account by sending `/link CODE` (a one-time
    code from that tab) to the bot.
+6. **Preview.** **Send preview** on the same tab (or `scripts/telegram-review-preview.ts`) posts
+   sample cards of every kind to the group, rendered by the production card code and marked
+   PREVIEW. Their buttons carry an id that matches no review, so a tap only runs the permission
+   check and answers with the tapper's access — nothing is stored or posted.
 
 ## User stories
 
