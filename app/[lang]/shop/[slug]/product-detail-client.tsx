@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Package, Check, Truck, ShieldCheck, RotateCcw } from "lucide-react";
+import { ShoppingCart, Package, Check, ShieldCheck, RotateCcw } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,6 +25,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 import { PriceDisplay } from "@/components/shop/price-display";
+import { DeliveryEstimator } from "@/components/shop/delivery-estimator";
+import { DEFAULT_LOCALE, isSupportedLocale } from "@/lib/i18n/locales";
 import { VariantSelector } from "@/components/shop/variant-selector";
 import { QuantitySelector } from "@/components/shop/quantity-selector";
 import { ProductGrid } from "@/components/shop/product-grid";
@@ -465,10 +467,20 @@ export function ProductDetailClient({
 
             {/* Trust signals */}
             <div className="flex flex-col gap-2 pt-1 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Truck className="size-4 shrink-0" />
-                <span>Free shipping over S$150</span>
-              </div>
+              {/* Free-shipping threshold and live delivery rates, from the shipping methods (was a hardcoded S$150). */}
+              <DeliveryEstimator
+                locale={isSupportedLocale(lang) ? lang : DEFAULT_LOCALE}
+                variantId={selectedVariant?.id}
+                profile={
+                  product.product_type === "bolster"
+                    ? "bolster"
+                    : product.product_type === "accessory"
+                      ? "accessory"
+                      : "pillow"
+                }
+                compact
+                className="rounded-lg border p-3"
+              />
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-4 shrink-0" />
                 <span>30-day satisfaction guarantee</span>

@@ -31,7 +31,16 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
+import type { EasyshipStrategy, ShippingRateSource } from "@/lib/types/ecommerce";
+import { apiErrorMessage, EasyshipPanel } from "./easyship-panel";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
@@ -53,6 +62,12 @@ export type ShippingMethod = {
     countries: string[];
     is_active: boolean;
     position: number;
+    rate_source?: ShippingRateSource;
+    easyship_strategy?: EasyshipStrategy;
+    easyship_courier_service_id?: string | null;
+    markup_percent?: number;
+    markup_fixed?: number;
+    rate_rounding?: number;
 };
 
 type ShippingForm = {
@@ -61,6 +76,12 @@ type ShippingForm = {
     free_above: string;
     countries: string;
     is_active: boolean;
+    rate_source: ShippingRateSource;
+    easyship_strategy: EasyshipStrategy;
+    easyship_courier_service_id: string;
+    markup_percent: string;
+    markup_fixed: string;
+    rate_rounding: string;
     en: LocaleContent;
     zh: LocaleContent;
 };
@@ -71,6 +92,20 @@ const LOCALES = [
     { key: "en-US", label: "English", short: "en" },
     { key: "zh-CN", label: "中文", short: "zh" },
 ] as const;
+
+const STRATEGY_LABELS: Record<EasyshipStrategy, string> = {
+    cheapest: "Cheapest courier",
+    fastest: "Fastest courier",
+    best_value: "Best value (Easyship ranking)",
+    courier: "A specific courier",
+};
+
+const ROUNDING_OPTIONS = [
+    { value: "0", label: "No rounding" },
+    { value: "0.1", label: "Up to the next 0.10" },
+    { value: "0.5", label: "Up to the next 0.50" },
+    { value: "1", label: "Up to the next 1.00" },
+];
 
 const COMMON_COUNTRIES = [
     "MY", "SG", "ID", "TH", "PH", "BN", "VN", "MM", "KH", "LA",
@@ -102,6 +137,12 @@ function methodToForm(m: ShippingMethod): ShippingForm {
         free_above: m.free_above !== null ? String(m.free_above) : "",
         countries: (m.countries ?? []).join(", "),
         is_active: m.is_active,
+        rate_source: m.rate_source ?? "flat",
+        easyship_strategy: m.easyship_strategy ?? "cheapest",
+        easyship_courier_service_id: m.easyship_courier_service_id ?? "",
+        markup_percent: String(m.markup_percent ?? 0),
+        markup_fixed: String(m.markup_fixed ?? 0),
+        rate_rounding: String(m.rate_rounding ?? 0),
         en: { name: en.name ?? "", description: en.description ?? "", estimated_days: en.estimated_days ?? "" },
         zh: { name: zh.name ?? "", description: zh.description ?? "", estimated_days: zh.estimated_days ?? "" },
     };
@@ -111,8 +152,14 @@ const DEFAULT_FORM: ShippingForm = {
     slug: "",
     base_rate: "",
     free_above: "",
-    countries: "MY",
+    countries: "SG",
     is_active: true,
+    rate_source: "flat",
+    easyship_strategy: "cheapest",
+    easyship_courier_service_id: "",
+    markup_percent: "0",
+    markup_fixed: "0",
+    rate_rounding: "0",
     en: { name: "", description: "", estimated_days: "" },
     zh: { name: "", description: "", estimated_days: "" },
 };
@@ -135,9 +182,26 @@ function formToPayload(form: ShippingForm): Record<string, unknown> {
         content,
         base_rate: parseFloat(form.base_rate) || 0,
         free_above: form.free_above !== "" ? parseFloat(form.free_above) : null,
-        countries: countries.length > 0 ? countries : ["MY"],
+        countries: countries.length > 0 ? countries : ["SG"],
         is_active: form.is_active,
+        rate_source: form.rate_source,
+        easyship_strategy: form.easyship_strategy,
+        easyship_courier_service_id: form.easyship_courier_service_id.trim() || null,
+        markup_percent: parseFloat(form.markup_percent) || 0,
+        markup_fixed: parseFloat(form.markup_fixed) || 0,
+        rate_rounding: parseFloat(form.rate_rounding) || 0,
     };
+}
+
+/** "Live · cheapest courier · +10% +S$1.00, rounded up to 0.50" for the method card. */
+function liveRateSummary(m: ShippingMethod): string {
+    const parts = [STRATEGY_LABELS[m.easyship_strategy ?? "cheapest"].toLowerCase()];
+    const pct = Number(m.markup_percent ?? 0);
+    const fixed = Number(m.markup_fixed ?? 0);
+    if (pct) parts.push(`${pct > 0 ? "+" : ""}${pct}%`);
+    if (fixed) parts.push(`${fixed > 0 ? "+" : "−"}${formatCurrency(Math.abs(fixed), m.currency)}`);
+    if (Number(m.rate_rounding ?? 0) > 0) parts.push(`rounded up to ${Number(m.rate_rounding).toFixed(2)}`);
+    return parts.join(" · ");
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
@@ -183,6 +247,9 @@ export default function SettingsShippingPage({
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<ShippingForm>(DEFAULT_FORM);
 
+    // Methods | Easyship
+    const [tab, setTab] = useState("methods");
+
     // Delete dialog state
     const [deleteTarget, setDeleteTarget] = useState<ShippingMethod | null>(null);
     const [deleting, setDeleting] = useState(false);
@@ -225,7 +292,7 @@ export default function SettingsShippingPage({
     };
 
     // ── Form field helpers ──
-    const setField = (field: keyof Omit<ShippingForm, "en" | "zh">, value: string | boolean) =>
+    const setField = <K extends keyof Omit<ShippingForm, "en" | "zh">>(field: K, value: ShippingForm[K]) =>
         setForm((prev) => ({ ...prev, [field]: value }));
 
     const setLocale = (
@@ -256,9 +323,7 @@ export default function SettingsShippingPage({
             });
             const json = await res.json();
             if (!res.ok) {
-                setError(
-                    typeof json.error === "string" ? json.error : "Failed to save."
-                );
+                setError(apiErrorMessage(json.error, "Failed to save."));
             } else {
                 setSheetOpen(false);
                 await fetchMethods();
@@ -293,93 +358,119 @@ export default function SettingsShippingPage({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight">
-                        Shipping Methods
+                        Shipping
                     </h1>
                     <p className="text-muted-foreground mt-1 text-sm">
-                        Configure shipping options, rates, and delivery areas.
+                        Shipping methods and delivery areas, with live courier rates and labels through Easyship.
                     </p>
                 </div>
-                <Button size="sm" onClick={openCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Method
-                </Button>
-            </div>
-
-            {/* Content */}
-            {loading ? (
-                <div className="flex items-center justify-center py-24">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-            ) : methods.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-14 text-center">
-                    <Truck className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                        No shipping methods yet. Add your first shipping option.
-                    </p>
-                    <Button size="sm" className="mt-4" onClick={openCreate}>
+                {tab === "methods" && (
+                    <Button size="sm" onClick={openCreate}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add Method
                     </Button>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {methods.map((method) => (
-                        <Card key={method.id}>
-                            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
-                                {/* Info */}
-                                <div className="min-w-0 flex-1 space-y-2">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className="font-medium">
-                                            {getMethodName(method)}
-                                        </span>
-                                        <Badge
-                                            variant={method.is_active ? "default" : "secondary"}
-                                        >
-                                            {method.is_active ? "Active" : "Inactive"}
-                                        </Badge>
-                                    </div>
+                )}
+            </div>
 
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        <span className="font-medium text-foreground">
-                                            {formatCurrency(method.base_rate, method.currency)}
-                                        </span>
-                                        <span>
-                                            {method.free_above !== null
-                                                ? `Free above ${formatCurrency(method.free_above, method.currency)}`
-                                                : "No free shipping"}
-                                        </span>
-                                        <span className="font-mono text-xs">{method.slug}</span>
-                                    </div>
+            <Tabs value={tab} onValueChange={setTab}>
+                <TabsList>
+                    <TabsTrigger value="methods">Methods</TabsTrigger>
+                    <TabsTrigger value="easyship">Easyship</TabsTrigger>
+                </TabsList>
 
-                                    {method.countries && method.countries.length > 0 && (
-                                        <CountryBadges countries={method.countries} />
-                                    )}
-                                </div>
+                <TabsContent value="easyship" className="pt-4">
+                    <EasyshipPanel />
+                </TabsContent>
 
-                                {/* Actions */}
-                                <div className="flex shrink-0 gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => openEdit(method)}
-                                    >
-                                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => setDeleteTarget(method)}
-                                    >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            )}
+                <TabsContent value="methods" className="pt-4">
+                    {/* Content */}
+                    {loading ? (
+                        <div className="flex items-center justify-center py-24">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : methods.length === 0 ? (
+                        <div className="rounded-xl border border-dashed p-14 text-center">
+                            <Truck className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+                            <p className="text-sm font-medium text-muted-foreground">
+                                No shipping methods yet. Add your first shipping option.
+                            </p>
+                            <Button size="sm" className="mt-4" onClick={openCreate}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Method
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {methods.map((method) => (
+                                <Card key={method.id}>
+                                    <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+                                        {/* Info */}
+                                        <div className="min-w-0 flex-1 space-y-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="font-medium">
+                                                    {getMethodName(method)}
+                                                </span>
+                                                <Badge
+                                                    variant={method.is_active ? "default" : "secondary"}
+                                                >
+                                                    {method.is_active ? "Active" : "Inactive"}
+                                                </Badge>
+                                                {method.rate_source === "easyship" && (
+                                                    <Badge variant="outline">Live · Easyship</Badge>
+                                                )}
+                                            </div>
+
+                                            {method.rate_source === "easyship" && (
+                                                <p className="text-sm text-muted-foreground">
+                                                    {liveRateSummary(method)}
+                                                </p>
+                                            )}
+
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                                <span className="font-medium text-foreground">
+                                                    {method.rate_source === "easyship"
+                                                        ? `Fallback ${formatCurrency(method.base_rate, method.currency)}`
+                                                        : formatCurrency(method.base_rate, method.currency)}
+                                                </span>
+                                                <span>
+                                                    {method.free_above !== null
+                                                        ? `Free above ${formatCurrency(method.free_above, method.currency)}`
+                                                        : "No free shipping"}
+                                                </span>
+                                                <span className="font-mono text-xs">{method.slug}</span>
+                                            </div>
+
+                                            {method.countries && method.countries.length > 0 && (
+                                                <CountryBadges countries={method.countries} />
+                                            )}
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex shrink-0 gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openEdit(method)}
+                                            >
+                                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                                Edit
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                onClick={() => setDeleteTarget(method)}
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </TabsContent>
+            </Tabs>
 
             {/* ── Edit / Create Sheet ── */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -473,10 +564,120 @@ export default function SettingsShippingPage({
                             </p>
                         </div>
 
+                        {/* Pricing source */}
+                        <div className="space-y-4 rounded-lg border p-4">
+                            <div className="space-y-1.5">
+                                <Label>Pricing</Label>
+                                <Select
+                                    value={form.rate_source}
+                                    onValueChange={(v) => setField("rate_source", v as ShippingRateSource)}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="flat">Flat rate</SelectItem>
+                                        <SelectItem value="easyship">Live rate (Easyship)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground">
+                                    {form.rate_source === "easyship"
+                                        ? "Priced per cart and address from Easyship's couriers. Set up the connection in the Easyship tab."
+                                        : "Everyone in the method's countries pays the same rate."}
+                                </p>
+                            </div>
+
+                            {form.rate_source === "easyship" && (
+                                <>
+                                    <div className="space-y-1.5">
+                                        <Label>Courier</Label>
+                                        <Select
+                                            value={form.easyship_strategy}
+                                            onValueChange={(v) => setField("easyship_strategy", v as EasyshipStrategy)}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {(Object.keys(STRATEGY_LABELS) as EasyshipStrategy[]).map((k) => (
+                                                    <SelectItem key={k} value={k}>
+                                                        {STRATEGY_LABELS[k]}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {form.easyship_strategy === "courier" && (
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="easyship_courier_service_id">Courier service id</Label>
+                                            <Input
+                                                id="easyship_courier_service_id"
+                                                value={form.easyship_courier_service_id}
+                                                onChange={(e) => setField("easyship_courier_service_id", e.target.value)}
+                                                placeholder="Copy one from Easyship → Test a quote"
+                                                className="font-mono text-base md:text-sm"
+                                            />
+                                            <p className="text-xs text-muted-foreground">
+                                                The method is hidden for addresses this courier does not serve.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="markup_percent">Markup (%)</Label>
+                                            <Input
+                                                id="markup_percent"
+                                                type="number"
+                                                step="1"
+                                                value={form.markup_percent}
+                                                onChange={(e) => setField("markup_percent", e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="markup_fixed">Markup ({CURRENCY_SYMBOL})</Label>
+                                            <Input
+                                                id="markup_fixed"
+                                                type="number"
+                                                step="0.5"
+                                                value={form.markup_fixed}
+                                                onChange={(e) => setField("markup_fixed", e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <p className="-mt-2 text-xs text-muted-foreground">
+                                        Negative values subsidise shipping; the price never goes below zero.
+                                    </p>
+
+                                    <div className="space-y-1.5">
+                                        <Label>Rounding</Label>
+                                        <Select
+                                            value={form.rate_rounding}
+                                            onValueChange={(v) => setField("rate_rounding", v)}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ROUNDING_OPTIONS.map((o) => (
+                                                    <SelectItem key={o.value} value={o.value}>
+                                                        {o.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                         {/* Rates */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label htmlFor="base_rate">Base rate ({CURRENCY_SYMBOL})</Label>
+                                <Label htmlFor="base_rate">
+                                    {form.rate_source === "easyship" ? "Fallback rate" : "Base rate"} ({CURRENCY_SYMBOL})
+                                </Label>
                                 <Input
                                     id="base_rate"
                                     type="number"
@@ -486,6 +687,11 @@ export default function SettingsShippingPage({
                                     onChange={(e) => setField("base_rate", e.target.value)}
                                     placeholder="e.g. 8.00"
                                 />
+                                {form.rate_source === "easyship" && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Charged when live rates are off or Easyship is unreachable.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-1.5">

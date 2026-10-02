@@ -28,6 +28,7 @@ export const SECTION_TYPE_LABELS: Record<string, string> = {
   featured_products: "Featured Products",
   shop_cta: "Shop CTA Banner",
   faq: "Page FAQs",
+  delivery_estimator: "Delivery Estimator",
 };
 
 export function sectionTitle(section: LandingSection): string {

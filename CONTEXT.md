@@ -361,6 +361,38 @@ _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freeb
 A person allowed to press buttons on **Review cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Two roles: **Review manager** (replies on Google and moderates **Shop reviews**) and **Shop moderator** (**Shop reviews** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
 _Avoid_: assuming an operator is **Staff** (an `admin_users` row) or a measuring staff member (`mp_staff`) — three separate lists; an operator needs no back-office login
 
+## Shipping (ADR 0020)
+
+**Shipping method**:
+A row in `shipping_methods` a shopper picks at checkout (e.g. Standard, Express), scoped to `countries`. Its **Rate source** decides how it is priced; `free_above` and free-shipping coupons apply to either source. Edited in Settings → Shipping → Methods.
+_Avoid_: "courier" (a method may be served by different couriers per address)
+
+**Rate source**:
+How a **Shipping method** is priced: `flat` (its `base_rate`, the same for every address in its countries) or `easyship` (a **Live rate**). An Easyship method keeps `base_rate` as its **Fallback rate**.
+
+**Live rate**:
+The price of an Easyship **Shipping method** for one cart to one postal code: Easyship's courier price for the courier the method's strategy picks (`cheapest`, `fastest`, `best_value`, or one pinned **Courier service**), plus the method's markup, rounded up to its increment. Quoted by the server from the **Variants** in the database — never from a client price — and cached as a **Rate quote**.
+_Avoid_: treating it as a stored price on the method; showing a live rate the checkout route would not charge
+
+**Fallback rate**:
+An Easyship method's `base_rate`, charged when live rates cannot be fetched (no token, live rates switched off, Easyship down, wrong currency). A method Easyship answered for but no allowed courier serves is not given a fallback — it is hidden for that address.
+
+**Rate quote**:
+One Easyship rates answer for one destination postal code and set of **Parcels**, stored in `shipping_rate_quotes` for the settings' TTL. The checkout page and the checkout route hash the same parcels to the same quote, which is how the shopper is charged exactly the rate they were shown.
+
+**Parcel** (shipping):
+One box a courier prices. Every pillow, bolster or bundle unit is its own parcel sized by its **Package profile**; accessories ride in the first box, or share one accessory box. Built by the pure `buildParcels`.
+
+**Package profile**:
+The box dimensions and packed weight per product type (pillow, bolster, accessory) in Settings → Shipping → Easyship. A **Variant**'s own `weight_grams` wins over the profile weight; the box dimensions always come from the profile.
+
+**Courier service**:
+One Easyship service (e.g. "Ninja Van Standard"), identified by its Easyship id. The one a shopper paid for is recorded with the **Order shipment**; Staff may choose another when buying the label.
+
+**Order shipment**:
+An **Order**'s Easyship shipment in `order_shipments` (one per order): the **Courier service** chosen at checkout and what it was quoted at, the label, and what the label cost. Server-only — what a courier costs us is never on `orders`, which customers read. The courier's name and its latest tracking status are on `orders`, because customers see those.
+_Avoid_: putting carrier cost or label URLs on `orders`
+
 ## Relationships
 
 - An **Item** may be a **Sellable item** when it has an MSRP
