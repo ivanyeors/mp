@@ -2292,9 +2292,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/shop/[slug]/page.tsx": {
-    "mtime": 1790212158.91764,
-    "seen": 1790863435.0193121,
-    "ast_hash": "71e9588d78c0c689ea9befb7303bcf8d",
+    "mtime": 1790908865.829737,
+    "seen": 1790909156.3619294,
+    "ast_hash": "79a0c6d7ab90f1af12bf796e72c03811",
     "semantic_hash": ""
   },
   "app/[lang]/shop/[slug]/pdp-page-faq.check.ts": {
@@ -2304,9 +2304,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/shop/[slug]/product-detail-client.tsx": {
-    "mtime": 1790212158.91764,
-    "seen": 1790863435.0193167,
-    "ast_hash": "655174a77d0c7074ea51891f10fb339b",
+    "mtime": 1790908865.8306136,
+    "seen": 1790909156.3619385,
+    "ast_hash": "4972694055acd106d6a37842848b57a9",
     "semantic_hash": ""
   },
   "app/[lang]/shop/[slug]/product-reviews.tsx": {
@@ -13512,9 +13512,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/13-merchant-feed.md": {
-    "mtime": 1790327718.288864,
-    "seen": 1790863435.0212393,
-    "ast_hash": "55896994915650465358270b684ec039",
+    "mtime": 1790909078.1250067,
+    "seen": 1790909156.3662262,
+    "ast_hash": "6f60647e581ef01e51fb25e0356fb2ee",
     "semantic_hash": ""
   },
   ".claude/PRD-search-visibility/issues/14-gbp-reviews.md": {
@@ -13785,6 +13785,24 @@
     "mtime": 1790908463.5168052,
     "seen": 1790908725.5548515,
     "ast_hash": "97ff8d9514aaae0b57ad801521634ccd",
+    "semantic_hash": ""
+  },
+  "app/api/merchant-feed/route.ts": {
+    "mtime": 1790908989.0917394,
+    "seen": 1790909156.3622067,
+    "ast_hash": "46032125a14bdd0f28c46553d3022040",
+    "semantic_hash": ""
+  },
+  "lib/merchant/__tests__/feed.test.ts": {
+    "mtime": 1790908975.604811,
+    "seen": 1790909156.3642466,
+    "ast_hash": "e718806aecce374870b5abc4937bb841",
+    "semantic_hash": ""
+  },
+  "lib/merchant/feed.ts": {
+    "mtime": 1790908975.6043532,
+    "seen": 1790909156.3642488,
+    "ast_hash": "f6029fdded3be90f21d2878cdb01855c",
     "semantic_hash": ""
   }
 }

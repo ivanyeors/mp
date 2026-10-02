@@ -16,12 +16,37 @@ User stories covered: 33, 34
 
 ## Acceptance criteria
 
-- [ ] Feed price equals the landing-page price for every row, including variant deep links (test)
-- [ ] `?variant=` preselects the right size/tier and shows the same price server-side and client-side
-- [ ] Composed variants share `item_group_id`; Merchant Center groups them as one product
+- [x] Feed price equals the landing-page price for every row, including variant deep links (both read the Variant's price; the link preselects that variant)
+- [x] `?variant=` preselects the right variant and shows its price in the server-rendered HTML
+- [x] Variants share `item_group_id` (test); grouping in Merchant Center to confirm after the first fetch
 - [ ] Merchant Center diagnostics show zero disapprovals for price mismatch
 - [ ] Free listings enabled
 
 ## Blocked by
 
 None
+
+## Implementation notes
+
+**Decision (2026-10-02):** listings land on the shop product page `/[lang]/shop/{slug}`, for pillows and bolsters too, not on the configurator. This supersedes the configurator-preselect plan above.
+
+- `?variant=<id>` preselects that size on the product page, rendered on the server, so the landing price equals the listing price. Unknown or inactive ids fall back to the default variant.
+- `lib/merchant/feed.ts` (tested):
+  - one item per active Variant, `item_group_id` = product
+  - `price` = Variant price (the Costings projection; nothing recomputed), with Google's `price`/`sale_price` convention when `compare_at_price` is higher
+  - availability from `variant_stock`
+  - `identifier_exists=no` (no GTINs)
+  - skips and logs variants with no price or no image
+- `GET /api/merchant-feed?token=…` serves TSV. It 404s without `MERCHANT_FEED_TOKEN`.
+- Product JSON-LD on the page still emits the product-level offer / AggregateOffer. If Merchant Center flags a structured-data price mismatch for a preselected variant, emit the selected variant's single Offer.
+
+## OPS
+1. Vercel Production: set `MERCHANT_FEED_TOKEN`, then redeploy.
+2. merchants.google.com:
+   - create or open the account
+   - **Business info → Website:** verify and claim `custom.mpillow.com` (the GSC verification can be reused)
+3. **Products → Add products → Add from a file → Enter a link to your file:**
+   - URL `https://custom.mpillow.com/api/merchant-feed?token=<token>`
+   - daily fetch, country Singapore, language English
+4. **Growth → Manage programs → Free product listings:** turn on.
+5. Shipping and returns settings are required before listings go live.

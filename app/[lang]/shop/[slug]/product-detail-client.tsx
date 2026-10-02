@@ -79,9 +79,12 @@ function getCategoryName(product: Product, lang: string): string {
   );
 }
 
-function getDefaultVariant(product: Product): ProductVariant | null {
+function getDefaultVariant(product: Product, preferredId?: string): ProductVariant | null {
   const active = product.variants?.filter((v) => v.is_active) ?? [];
-  return active[0] ?? product.variants?.[0] ?? null;
+  // A linked variant (e.g. from a Merchant Center listing) wins when it is still on sale,
+  // so the landing page shows that listing's exact price. Unknown ids fall back silently.
+  const preferred = preferredId ? active.find((v) => v.id === preferredId) : undefined;
+  return preferred ?? active[0] ?? product.variants?.[0] ?? null;
 }
 
 function getStockStatus(variant: ProductVariant | null): "in_stock" | "low_stock" | "out_of_stock" {
@@ -98,6 +101,8 @@ interface ProductDetailClientProps {
   relatedProducts: Product[];
   lang: string;
   answerLede?: string | null;
+  /** Variant to preselect from `?variant=`; ignored unless it is an active variant of this product. */
+  initialVariantId?: string;
   /** Server-rendered Page FAQ (after tabs). Null/empty when surface has no visible items. */
   pageFaq?: React.ReactNode;
 }
@@ -107,13 +112,14 @@ export function ProductDetailClient({
   relatedProducts,
   lang,
   answerLede,
+  initialVariantId,
   pageFaq,
 }: ProductDetailClientProps) {
   const { addItem } = useCart();
   const isMobile = useIsMobile();
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    getDefaultVariant(product)
+    getDefaultVariant(product, initialVariantId)
   );
   const [quantity, setQuantity] = useState(1);
   const [mainImageIndex, setMainImageIndex] = useState(0);
