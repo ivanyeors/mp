@@ -13998,9 +13998,9 @@
     "semantic_hash": ""
   },
   "lib/shipping/settings.ts": {
-    "mtime": 1791000828.1806464,
-    "seen": 1791000961.9839559,
-    "ast_hash": "ff6d2777e6ac3088e728a0c85c84b328",
+    "mtime": 1791003379.5522516,
+    "seen": 1791003479.360362,
+    "ast_hash": "6163cb2be5143211b4e669c966110621",
     "semantic_hash": ""
   },
   "lib/shipping/types.ts": {
@@ -14466,9 +14466,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shipping-couriers/issues/05-drop-columns.md": {
-    "mtime": 1791002148.9173753,
-    "seen": 1791002194.15255,
-    "ast_hash": "84d96cb9d1e2f92ca82d92c0f484e27c",
+    "mtime": 1791003455.6147432,
+    "seen": 1791003479.360824,
+    "ast_hash": "c316ae3842e56cbf142697850608e2c5",
     "semantic_hash": ""
   },
   "lib/seo/__tests__/jsonld-serialize.test.ts": {
@@ -14493,6 +14493,12 @@
     "mtime": 1791003017.1592555,
     "seen": 1791003043.950665,
     "ast_hash": "60c67e33e4c0922175d04c5293adf8d5",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261003130000_shipping_settings_drop_legacy_columns.sql": {
+    "mtime": 1791003379.5593822,
+    "seen": 1791003479.3606021,
+    "ast_hash": "55f1ac748a992a4cb6294ce588fe016c",
     "semantic_hash": ""
   }
 }
