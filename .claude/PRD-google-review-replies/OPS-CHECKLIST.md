@@ -47,8 +47,23 @@ again, and it reads the five newest reviews. A "0 quota" error means step 1 is n
 
 ## 5. Claude
 
-Vercel env `ANTHROPIC_API_KEY` (an Anthropic API key for the workspace that should be billed).
-Without it, cards still arrive — with "No draft yet" — and staff can reply with their own wording.
+Prod uses Workload Identity Federation — no API key in Vercel. The function's `x-vercel-oidc-token`
+is exchanged for a short-lived Anthropic token.
+
+1. Claude Console → Settings → **Workload identity** → **Connect workload** → **Custom OIDC**:
+   - Issuer URL `https://oidc.vercel.com/ivanyeors-projects` (JWKS: discovery)
+   - Match: audience `https://vercel.com/ivanyeors-projects`,
+     subject prefix `owner:ivanyeors-projects:project:mp-inv:environment:production`,
+     claim `project_id` = `prj_74SAGUQsw4QgeSqWVIwDAopbt0p9`
+   - Scope `workspace:developer`, token lifetime 3600 s, service account for the workspace to bill.
+2. Vercel env (plain, not secret): `ANTHROPIC_FEDERATION_RULE_ID` (`fdrl_…`),
+   `ANTHROPIC_ORGANIZATION_ID`, `ANTHROPIC_SERVICE_ACCOUNT_ID` (`svac_…`),
+   `ANTHROPIC_WORKSPACE_ID` (`wrkspc_…`). Redeploy. Do not set `ANTHROPIC_API_KEY` in prod — the
+   SDK prefers it and federation is bypassed.
+3. Denied exchanges show the reason under Workload identity → authentication history.
+
+Local scripts (`scripts/*.ts`) have no Vercel token: put an `ANTHROPIC_API_KEY` in `.env.local`.
+Without either, cards still arrive — with "No draft yet" — and staff can reply with their own wording.
 
 ## 6. Pub/Sub (real-time)
 
@@ -94,7 +109,7 @@ Settings → Staff Management → Telegram access → **Send preview** posts sam
 measurements group: a thank-you, a constructive and a service-recovery reply, a reopened review, a
 card after Post, and a shop review. Nothing is stored or posted to Google, and every card says
 PREVIEW. Tapping a button on a preview card tells that person whether they are set up, and as
-what — a quick check after everyone has sent `/link`. With `ANTHROPIC_API_KEY` set, the sample
+what — a quick check after everyone has sent `/link`. With Claude configured (§5), the sample
 replies are real Claude drafts.
 
 From a terminal instead (needs `TELEGRAM_BOT_TOKEN` in `.env.local`):

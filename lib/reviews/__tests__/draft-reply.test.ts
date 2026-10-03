@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type Anthropic from "@anthropic-ai/sdk";
 import {
+  CLAUDE_NOT_CONFIGURED,
   REVIEW_REPLY_MODEL,
   REVIEW_REPLY_SYSTEM_PROMPT,
   buildReviewPrompt,
+  claudeConfigured,
   draftInputFor,
   draftReviewReply,
 } from "@/lib/reviews/draft-reply";
@@ -136,9 +138,13 @@ describe("draftReviewReply", () => {
     expect(await draftReviewReply(review, { client: broken.client })).toEqual({ ok: false, error: "socket hang up" });
   });
 
-  it("explains a missing API key instead of throwing", async () => {
+  it("explains missing credentials instead of throwing", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "");
-    expect(await draftReviewReply(review)).toEqual({ ok: false, error: "ANTHROPIC_API_KEY is not set" });
+    vi.stubEnv("ANTHROPIC_FEDERATION_RULE_ID", "");
+    expect(claudeConfigured()).toBe(false);
+    expect(await draftReviewReply(review)).toEqual({ ok: false, error: CLAUDE_NOT_CONFIGURED });
+    vi.stubEnv("ANTHROPIC_FEDERATION_RULE_ID", "fdrl_test");
+    expect(claudeConfigured()).toBe(true);
     vi.unstubAllEnvs();
   });
 });
