@@ -30,6 +30,9 @@ import {
   renameInventoryItem,
   setItemsPrimaryImage,
   getItemImageUrls,
+  setComposedProductImage,
+  getComposedProductImageUrls,
+  type ComposedProductSlug,
 } from "./actions";
 import { ImagePicker } from "@/components/ui/image-picker";
 import { toast } from "sonner";
@@ -160,9 +163,11 @@ export default function InventoryPage() {
   const [customPillowLines, setCustomPillowLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [customBolsterLines, setCustomBolsterLines] = useState<Array<{ item_id: number; quantity: number }>>([]);
   const [addDrawerOpen, setAddDrawerOpen] = useState(false);
+  const [composedImageUrls, setComposedImageUrls] = useState<Partial<Record<ComposedProductSlug, string>>>({});
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
+    void getComposedProductImageUrls().then(setComposedImageUrls).catch(() => {});
     const [
       { data: itemsData },
       { data: balancesData },
@@ -804,7 +809,12 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
       </div>
 
       <section className="space-y-2">
-        <div className="text-sm text-muted-foreground">Select pillows</div>
+        <ComposedSectionHeading
+          label="Select pillows"
+          slug="mpillow-basic"
+          imageUrls={composedImageUrls}
+          setImageUrls={setComposedImageUrls}
+        />
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {['XS','S','M','L','XL'].map(sz => {
             const available = Number(buildable[sz] ?? 0);
@@ -839,7 +849,12 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
       </section>
 
       <section className="space-y-2">
-        <div className="text-sm text-muted-foreground">Select premium pillows</div>
+        <ComposedSectionHeading
+          label="Select premium pillows"
+          slug="mpillow-premium"
+          imageUrls={composedImageUrls}
+          setImageUrls={setComposedImageUrls}
+        />
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {['XS','S','M','L','XL'].map(sz => {
             const available = Number(premiumBuildable[sz] ?? 0);
@@ -868,7 +883,12 @@ const handleDeleteItem = useCallback(async (itemId: number) => {
 
       {/* Bolster variants */}
       <section className="space-y-2">
-        <div className="text-sm text-muted-foreground">Select bolsters</div>
+        <ComposedSectionHeading
+          label="Select bolsters"
+          slug="mbolster"
+          imageUrls={composedImageUrls}
+          setImageUrls={setComposedImageUrls}
+        />
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           {(() => {
             const available = Number(buildableBolsterShort ?? 0);
@@ -2299,27 +2319,16 @@ function ShopifyAdminDrawer({ open, onOpenChange, items, onSynced }: {
 }
 */
 
-/** One image for every size of a same-name item; it becomes the base image of its shop product. */
-function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
+/** Image button + Clear; `save` persists the choice and resolves once it is stored. */
+function BaseImageControl({ name, current, title, save }: {
   name: string;
-  itemIds: number[];
-  imageUrls: Record<number, string>;
-  setImageUrls: Dispatch<SetStateAction<Record<number, string>>>;
+  current: string | undefined;
+  title: string;
+  save: (assetId: string | null, url: string | null) => Promise<unknown>;
 }) {
-  const current = itemIds.map((id) => imageUrls[id]).find(Boolean);
   const apply = (assetId: string | null, url: string | null) =>
-    setItemsPrimaryImage({ itemIds, assetId })
-      .then(() => {
-        setImageUrls((prev) => {
-          const next = { ...prev };
-          for (const id of itemIds) {
-            if (url) next[id] = url;
-            else delete next[id];
-          }
-          return next;
-        });
-        toast.success(url ? "Image set — shop product updated" : "Image cleared");
-      })
+    save(assetId, url)
+      .then(() => toast.success(url ? "Image set — shop product updated" : "Image cleared"))
       .catch((error: unknown) =>
         toast.error(error instanceof Error ? error.message : "Failed to update image"),
       );
@@ -2331,7 +2340,7 @@ function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
           size="sm"
           variant="outline"
           aria-label={`${current ? "Change" : "Set"} image for ${name}`}
-          title="Item image — also the base image on its shop product"
+          title={title}
           className={current ? "overflow-hidden p-0" : undefined}
         >
           {current ? (
@@ -2347,6 +2356,63 @@ function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
           Clear
         </Button>
       )}
+    </div>
+  );
+}
+
+/** One image for every size of a same-name item; it becomes the base image of its shop product. */
+function FamilyImageControl({ name, itemIds, imageUrls, setImageUrls }: {
+  name: string;
+  itemIds: number[];
+  imageUrls: Record<number, string>;
+  setImageUrls: Dispatch<SetStateAction<Record<number, string>>>;
+}) {
+  return (
+    <BaseImageControl
+      name={name}
+      current={itemIds.map((id) => imageUrls[id]).find(Boolean)}
+      title="Item image — also the base image on its shop product"
+      save={(assetId, url) =>
+        setItemsPrimaryImage({ itemIds, assetId }).then(() =>
+          setImageUrls((prev) => {
+            const next = { ...prev };
+            for (const id of itemIds) {
+              if (url) next[id] = url;
+              else delete next[id];
+            }
+            return next;
+          }),
+        )
+      }
+    />
+  );
+}
+
+/** Section heading with the base image of the pillow/bolster shop product it sells. */
+function ComposedSectionHeading({ label, slug, imageUrls, setImageUrls }: {
+  label: string;
+  slug: ComposedProductSlug;
+  imageUrls: Partial<Record<ComposedProductSlug, string>>;
+  setImageUrls: Dispatch<SetStateAction<Partial<Record<ComposedProductSlug, string>>>>;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="text-sm text-muted-foreground">{label}</div>
+      <BaseImageControl
+        name={label}
+        current={imageUrls[slug]}
+        title="Base image of this shop product"
+        save={(assetId) =>
+          setComposedProductImage({ slug, assetId }).then(({ url }) =>
+            setImageUrls((prev) => {
+              const next = { ...prev };
+              if (url) next[slug] = url;
+              else delete next[slug];
+              return next;
+            }),
+          )
+        }
+      />
     </div>
   );
 }
