@@ -64,7 +64,7 @@ function errorMessage(body: unknown, status: number): string {
 export async function easyshipRequest<T = unknown>(
   config: EasyshipConfig,
   path: string,
-  init: { method?: "GET" | "POST" | "DELETE"; body?: unknown; timeoutMs?: number } = {},
+  init: { method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown; timeoutMs?: number } = {},
   fetchImpl: typeof fetch = fetch,
 ): Promise<T> {
   const controller = new AbortController();
