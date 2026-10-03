@@ -12,6 +12,8 @@ import {
 import { buildParcels } from "@/lib/shipping/parcels";
 import { deliveryWindow, normalizeEasyshipRates, pickRate, priceLiveRate } from "@/lib/shipping/rates";
 import { missingOriginFields } from "@/lib/shipping/settings";
+import { readSenderAddress } from "@/lib/easyship/store";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
 import type {
   CourierRate,
   Parcel,
@@ -33,7 +35,8 @@ export function normalizePostalCode(postal: string): string {
  * the cache; street lines are left out because rates are by postal code.
  */
 export function quoteCacheKey(input: {
-  settings: Pick<ShippingSettings, "origin_address" | "incoterms" | "insure_shipments">;
+  settings: Pick<ShippingSettings, "incoterms" | "insure_shipments">;
+  origin: Pick<EasyshipAddress, "country_alpha2" | "postal_code">;
   destination: ShippingDestination;
   parcels: Parcel[];
   currency: string;
@@ -41,8 +44,8 @@ export function quoteCacheKey(input: {
   const fingerprint = {
     v: 1,
     origin: [
-      (input.settings.origin_address.country_alpha2 ?? "").toUpperCase(),
-      normalizePostalCode(input.settings.origin_address.postal_code ?? ""),
+      input.origin.country_alpha2.toUpperCase(),
+      normalizePostalCode(input.origin.postal_code ?? ""),
     ],
     to: [input.destination.country.toUpperCase(), normalizePostalCode(input.destination.postal_code)],
     incoterms: input.settings.incoterms,
@@ -61,6 +64,8 @@ export function quoteCacheKey(input: {
 
 export interface FetchRatesInput {
   settings: ShippingSettings;
+  /** The ship-from address; undefined reads the default sender from the courier account doc. */
+  origin?: EasyshipAddress | null;
   destination: ShippingDestination;
   parcels: Parcel[] | null;
   currency: string;
@@ -89,7 +94,23 @@ export async function fetchCourierRates(
   if (!config) {
     return { ok: false, reason: "not_configured", message: "EASYSHIP_API_TOKEN is not set" };
   }
-  const missing = missingOriginFields(input.settings.origin_address);
+  let origin = input.origin;
+  if (origin === undefined) {
+    try {
+      origin = await readSenderAddress();
+    } catch (err) {
+      console.error("[shipping] Could not read the sender address:", err);
+      return { ok: false, reason: "error", message: "The sender address could not be read" };
+    }
+  }
+  if (!origin) {
+    return {
+      ok: false,
+      reason: "invalid_origin",
+      message: "No default sender address: set one in Settings → Shipping → Couriers → Addresses",
+    };
+  }
+  const missing = missingOriginFields(origin);
   if (missing.length > 0) {
     return {
       ok: false,
@@ -104,6 +125,7 @@ export async function fetchCourierRates(
   const now = input.now ?? new Date();
   const cacheKey = quoteCacheKey({
     settings: input.settings,
+    origin,
     destination: input.destination,
     parcels: input.parcels,
     currency: input.currency,
@@ -129,6 +151,7 @@ export async function fetchCourierRates(
       config,
       ratesRequestBody({
         settings: input.settings,
+        origin,
         destination: input.destination,
         parcels: input.parcels,
         currency: input.currency,

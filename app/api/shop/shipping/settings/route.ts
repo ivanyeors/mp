@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getSiteOrigin } from "@/lib/site-url";
 import { easyshipConfig } from "@/lib/shipping/easyship";
+import { readSenderAddress } from "@/lib/easyship/store";
 import { missingOriginFields, parseShippingSettings, ShippingSettingsSchema } from "@/lib/shipping/settings";
 import type { ShippingSettings } from "@/lib/shipping/types";
 
@@ -18,12 +19,15 @@ export type ShippingSettingsResponse = {
     environment: "sandbox" | "production" | null;
     webhookSecretConfigured: boolean;
     webhookUrl: string;
+    /** A default sender address exists on Couriers › Addresses. */
+    hasSender: boolean;
     missingOrigin: string[];
   };
 };
 
 async function respond(settings: ShippingSettings) {
   const config = easyshipConfig();
+  const sender = await readSenderAddress();
   const body: ShippingSettingsResponse = {
     ok: true,
     settings,
@@ -32,7 +36,8 @@ async function respond(settings: ShippingSettings) {
       environment: config?.environment ?? null,
       webhookSecretConfigured: Boolean(process.env.EASYSHIP_WEBHOOK_SECRET?.trim()),
       webhookUrl: `${getSiteOrigin()}/api/shipping/easyship/webhook`,
-      missingOrigin: missingOriginFields(settings.origin_address),
+      hasSender: sender !== null,
+      missingOrigin: sender ? missingOriginFields(sender) : [],
     },
   };
   return NextResponse.json(body);

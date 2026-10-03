@@ -26,6 +26,7 @@ type EasyshipStatus = {
     environment: "sandbox" | "production" | null;
     webhookSecretConfigured: boolean;
     webhookUrl: string;
+    hasSender: boolean;
     missingOrigin: string[];
 };
 
@@ -35,7 +36,6 @@ type SettingsPayload = { ok: true; settings: ShippingSettings; easyship: Easyshi
 type PackageForm = Record<"length_cm" | "width_cm" | "height_cm" | "weight_grams", string>;
 
 type FormState = {
-    origin: Record<OriginField, string>;
     packages: Record<PackageType, PackageForm>;
     incoterms: "DDU" | "DDP";
     insure_shipments: boolean;
@@ -64,21 +64,6 @@ type TestResult =
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ORIGIN_FIELDS = [
-    { key: "contact_name", label: "Contact name", required: true },
-    { key: "company_name", label: "Company", required: false },
-    { key: "contact_phone", label: "Phone", required: true },
-    { key: "contact_email", label: "Email", required: true },
-    { key: "line_1", label: "Address line 1", required: true },
-    { key: "line_2", label: "Address line 2", required: false },
-    { key: "city", label: "City", required: true },
-    { key: "state", label: "State / region", required: false },
-    { key: "postal_code", label: "Postal code", required: true },
-    { key: "country_alpha2", label: "Country (ISO code)", required: true },
-] as const;
-
-type OriginField = (typeof ORIGIN_FIELDS)[number]["key"];
-
 const PACKAGE_LABELS: Record<PackageType, { title: string; hint: string }> = {
     pillow: { title: "Pillow", hint: "One box per pillow (bundles box as a pillow)" },
     bolster: { title: "Bolster", hint: "One box per bolster" },
@@ -93,10 +78,6 @@ const VOLUMETRIC_DIVISOR = 5000;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toForm(s: ShippingSettings): FormState {
-    const origin = Object.fromEntries(
-        ORIGIN_FIELDS.map((f) => [f.key, String(s.origin_address[f.key] ?? "")]),
-    ) as Record<OriginField, string>;
-    if (!origin.country_alpha2) origin.country_alpha2 = "SG";
     const pkg = (p: ShippingSettings["packages"][PackageType]): PackageForm => ({
         length_cm: String(p.length_cm),
         width_cm: String(p.width_cm),
@@ -104,7 +85,6 @@ function toForm(s: ShippingSettings): FormState {
         weight_grams: String(p.weight_grams),
     });
     return {
-        origin,
         packages: { pillow: pkg(s.packages.pillow), bolster: pkg(s.packages.bolster), accessory: pkg(s.packages.accessory) },
         incoterms: s.incoterms,
         insure_shipments: s.insure_shipments,
@@ -124,13 +104,7 @@ function toPayload(f: FormState) {
         height_cm: num(p.height_cm),
         weight_grams: Math.round(num(p.weight_grams)),
     });
-    const origin = Object.fromEntries(
-        Object.entries(f.origin)
-            .map(([k, v]) => [k, v.trim()])
-            .filter(([k, v]) => v !== "" || ORIGIN_FIELDS.find((o) => o.key === k)?.required),
-    );
     return {
-        origin_address: origin,
         packages: { pillow: pkg(f.packages.pillow), bolster: pkg(f.packages.bolster), accessory: pkg(f.packages.accessory) },
         incoterms: f.incoterms,
         insure_shipments: f.insure_shipments,
@@ -174,7 +148,7 @@ function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail?:
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function EasyshipPanel() {
+export function EasyshipPanel({ onShowAddresses }: { onShowAddresses: () => void }) {
     const [status, setStatus] = useState<EasyshipStatus | null>(null);
     const [form, setForm] = useState<FormState | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
@@ -225,8 +199,6 @@ export function EasyshipPanel() {
         );
     }
 
-    const setOrigin = (key: OriginField, value: string) =>
-        setForm((prev) => (prev ? { ...prev, origin: { ...prev.origin, [key]: value } } : prev));
     const setPackage = (type: PackageType, key: keyof PackageForm, value: string) =>
         setForm((prev) =>
             prev
@@ -340,37 +312,26 @@ export function EasyshipPanel() {
                                 </>
                             }
                         />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Ship-from */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Ship-from address</CardTitle>
-                    <CardDescription>Where couriers collect parcels. Used for every quote and label.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        {ORIGIN_FIELDS.map((f) => (
-                            <div key={f.key} className="space-y-1.5">
-                                <Label htmlFor={`origin-${f.key}`}>
-                                    {f.label}
-                                    {f.required && <span className="text-destructive"> *</span>}
-                                </Label>
-                                <Input
-                                    id={`origin-${f.key}`}
-                                    value={form.origin[f.key]}
-                                    onChange={(e) =>
-                                        setOrigin(
-                                            f.key,
-                                            f.key === "country_alpha2" ? e.target.value.toUpperCase().slice(0, 2) : e.target.value,
-                                        )
-                                    }
-                                    className="text-base md:text-sm"
-                                />
-                            </div>
-                        ))}
+                        <StatusRow
+                            ok={status.hasSender && status.missingOrigin.length === 0}
+                            label={status.hasSender ? "Sender address" : "No default sender address"}
+                            detail={
+                                <>
+                                    {status.hasSender
+                                        ? status.missingOrigin.length === 0
+                                            ? "Quotes and labels ship from the default sender address."
+                                            : `Missing: ${status.missingOrigin.join(", ")}.`
+                                        : "Live methods are not quoted until one is set."}{" "}
+                                    <button
+                                        type="button"
+                                        onClick={onShowAddresses}
+                                        className="text-primary hover:underline"
+                                    >
+                                        Open Addresses
+                                    </button>
+                                </>
+                            }
+                        />
                     </div>
                 </CardContent>
             </Card>
