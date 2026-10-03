@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Truck, Loader2, Save } from "lucide-react";
+import Link from "next/link";
+import { Plus, Pencil, Trash2, Truck, Loader2, Save, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency, CURRENCY_CONFIG, BASE_CURRENCY } from "@/lib/i18n/currencies";
 import type { EasyshipStrategy, ShippingRateSource } from "@/lib/types/ecommerce";
-import { apiErrorMessage, EasyshipPanel } from "./easyship-panel";
+import { apiErrorMessage } from "./couriers/easyship-panel";
 
 const CURRENCY_SYMBOL = CURRENCY_CONFIG[BASE_CURRENCY].symbol;
 
@@ -96,7 +97,7 @@ const LOCALES = [
 const STRATEGY_LABELS: Record<EasyshipStrategy, string> = {
     cheapest: "Cheapest courier",
     fastest: "Fastest courier",
-    best_value: "Best value (Easyship ranking)",
+    best_value: "Best value",
     courier: "A specific courier",
 };
 
@@ -230,10 +231,22 @@ function CountryBadges({ countries }: { countries: string[] }) {
 /** The `/api/shop/shipping?include_inactive=1` payload the page mounts with. */
 export type ShippingInitialData = { ok: true; rows: ShippingMethod[] };
 
+/** Courier account status for the Couriers card; `boxes` is null when the account doc could not be read. */
+export type CouriersStatus = { environment: "sandbox" | "production" | null; boxes: number | null; href: string };
+
+function couriersSummary(c: CouriersStatus): string {
+    if (!c.environment) return "Not connected";
+    const parts = ["Connected", c.environment === "production" ? "Production" : "Sandbox"];
+    if (c.boxes !== null) parts.push(`${c.boxes} box${c.boxes === 1 ? "" : "es"}`);
+    return parts.join(" · ");
+}
+
 export default function SettingsShippingPage({
     initialData,
+    couriers,
 }: {
     initialData?: ShippingInitialData;
+    couriers: CouriersStatus;
 }) {
     const [methods, setMethods] = useState<ShippingMethod[]>(initialData?.rows ?? []);
     const [loading, setLoading] = useState(!initialData);
@@ -246,9 +259,6 @@ export default function SettingsShippingPage({
     const [sheetOpen, setSheetOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [form, setForm] = useState<ShippingForm>(DEFAULT_FORM);
-
-    // Methods | Easyship
-    const [tab, setTab] = useState("methods");
 
     // Delete dialog state
     const [deleteTarget, setDeleteTarget] = useState<ShippingMethod | null>(null);
@@ -361,116 +371,117 @@ export default function SettingsShippingPage({
                         Shipping
                     </h1>
                     <p className="text-muted-foreground mt-1 text-sm">
-                        Shipping methods and delivery areas, with live courier rates and labels through Easyship.
+                        Shipping methods and delivery areas, with live courier rates and labels.
                     </p>
                 </div>
-                {tab === "methods" && (
-                    <Button size="sm" onClick={openCreate}>
+                <Button size="sm" onClick={openCreate}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Method
+                </Button>
+            </div>
+
+            {/* Couriers */}
+            <Link href={couriers.href} className="block">
+                <Card className="transition-colors hover:bg-accent/50">
+                    <CardContent className="flex items-center gap-3 py-4">
+                        <Truck className="h-5 w-5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                            <p className="font-medium">Couriers</p>
+                            <p className="text-sm text-muted-foreground">{couriersSummary(couriers)}</p>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1 text-sm font-medium">
+                            Manage <ChevronRight className="h-4 w-4" />
+                        </span>
+                    </CardContent>
+                </Card>
+            </Link>
+
+            {/* Content */}
+            {loading ? (
+                <div className="flex items-center justify-center py-24">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+            ) : methods.length === 0 ? (
+                <div className="rounded-xl border border-dashed p-14 text-center">
+                    <Truck className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                        No shipping methods yet. Add your first shipping option.
+                    </p>
+                    <Button size="sm" className="mt-4" onClick={openCreate}>
                         <Plus className="mr-2 h-4 w-4" />
                         Add Method
                     </Button>
-                )}
-            </div>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {methods.map((method) => (
+                        <Card key={method.id}>
+                            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+                                {/* Info */}
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="font-medium">
+                                            {getMethodName(method)}
+                                        </span>
+                                        <Badge
+                                            variant={method.is_active ? "default" : "secondary"}
+                                        >
+                                            {method.is_active ? "Active" : "Inactive"}
+                                        </Badge>
+                                        {method.rate_source === "easyship" && (
+                                            <Badge variant="outline">Live rate</Badge>
+                                        )}
+                                    </div>
 
-            <Tabs value={tab} onValueChange={setTab}>
-                <TabsList>
-                    <TabsTrigger value="methods">Methods</TabsTrigger>
-                    <TabsTrigger value="easyship">Easyship</TabsTrigger>
-                </TabsList>
+                                    {method.rate_source === "easyship" && (
+                                        <p className="text-sm text-muted-foreground">
+                                            {liveRateSummary(method)}
+                                        </p>
+                                    )}
 
-                <TabsContent value="easyship" className="pt-4">
-                    <EasyshipPanel />
-                </TabsContent>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                        <span className="font-medium text-foreground">
+                                            {method.rate_source === "easyship"
+                                                ? `Fallback ${formatCurrency(method.base_rate, method.currency)}`
+                                                : formatCurrency(method.base_rate, method.currency)}
+                                        </span>
+                                        <span>
+                                            {method.free_above !== null
+                                                ? `Free above ${formatCurrency(method.free_above, method.currency)}`
+                                                : "No free shipping"}
+                                        </span>
+                                        <span className="font-mono text-xs">{method.slug}</span>
+                                    </div>
 
-                <TabsContent value="methods" className="pt-4">
-                    {/* Content */}
-                    {loading ? (
-                        <div className="flex items-center justify-center py-24">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : methods.length === 0 ? (
-                        <div className="rounded-xl border border-dashed p-14 text-center">
-                            <Truck className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                            <p className="text-sm font-medium text-muted-foreground">
-                                No shipping methods yet. Add your first shipping option.
-                            </p>
-                            <Button size="sm" className="mt-4" onClick={openCreate}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Method
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {methods.map((method) => (
-                                <Card key={method.id}>
-                                    <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
-                                        {/* Info */}
-                                        <div className="min-w-0 flex-1 space-y-2">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <span className="font-medium">
-                                                    {getMethodName(method)}
-                                                </span>
-                                                <Badge
-                                                    variant={method.is_active ? "default" : "secondary"}
-                                                >
-                                                    {method.is_active ? "Active" : "Inactive"}
-                                                </Badge>
-                                                {method.rate_source === "easyship" && (
-                                                    <Badge variant="outline">Live · Easyship</Badge>
-                                                )}
-                                            </div>
+                                    {method.countries && method.countries.length > 0 && (
+                                        <CountryBadges countries={method.countries} />
+                                    )}
+                                </div>
 
-                                            {method.rate_source === "easyship" && (
-                                                <p className="text-sm text-muted-foreground">
-                                                    {liveRateSummary(method)}
-                                                </p>
-                                            )}
-
-                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                                <span className="font-medium text-foreground">
-                                                    {method.rate_source === "easyship"
-                                                        ? `Fallback ${formatCurrency(method.base_rate, method.currency)}`
-                                                        : formatCurrency(method.base_rate, method.currency)}
-                                                </span>
-                                                <span>
-                                                    {method.free_above !== null
-                                                        ? `Free above ${formatCurrency(method.free_above, method.currency)}`
-                                                        : "No free shipping"}
-                                                </span>
-                                                <span className="font-mono text-xs">{method.slug}</span>
-                                            </div>
-
-                                            {method.countries && method.countries.length > 0 && (
-                                                <CountryBadges countries={method.countries} />
-                                            )}
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div className="flex shrink-0 gap-2">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => openEdit(method)}
-                                            >
-                                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                                                Edit
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                onClick={() => setDeleteTarget(method)}
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                </TabsContent>
-            </Tabs>
+                                {/* Actions */}
+                                <div className="flex shrink-0 gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openEdit(method)}
+                                    >
+                                        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() => setDeleteTarget(method)}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
 
             {/* ── Edit / Create Sheet ── */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -577,12 +588,12 @@ export default function SettingsShippingPage({
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="flat">Flat rate</SelectItem>
-                                        <SelectItem value="easyship">Live rate (Easyship)</SelectItem>
+                                        <SelectItem value="easyship">Live courier rate</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground">
                                     {form.rate_source === "easyship"
-                                        ? "Priced per cart and address from Easyship's couriers. Set up the connection in the Easyship tab."
+                                        ? "Priced per cart and address from live courier rates. Set up the connection in Shipping › Couriers."
                                         : "Everyone in the method's countries pays the same rate."}
                                 </p>
                             </div>
@@ -615,7 +626,7 @@ export default function SettingsShippingPage({
                                                 id="easyship_courier_service_id"
                                                 value={form.easyship_courier_service_id}
                                                 onChange={(e) => setField("easyship_courier_service_id", e.target.value)}
-                                                placeholder="Copy one from Easyship → Test a quote"
+                                                placeholder="Copy one from Couriers → Test a quote"
                                                 className="font-mono text-base md:text-sm"
                                             />
                                             <p className="text-xs text-muted-foreground">
@@ -689,7 +700,7 @@ export default function SettingsShippingPage({
                                 />
                                 {form.rate_source === "easyship" && (
                                     <p className="text-xs text-muted-foreground">
-                                        Charged when live rates are off or Easyship is unreachable.
+                                        Charged when live rates are off or the courier account is unreachable.
                                     </p>
                                 )}
                             </div>

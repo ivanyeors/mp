@@ -25,6 +25,7 @@ import {
 } from "@/lib/easyship/schema";
 import type { SyncAction, SyncReport } from "@/lib/easyship/sync-report";
 import { ShippingRulesEditor } from "./shipping-rules-editor";
+import { EasyshipPanel } from "./easyship-panel";
 
 export type SyncView = {
   last_at: string | null;
@@ -85,8 +86,8 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
     if (r.settings) setSettings(r.settings);
     if (r.sync) setSync(r.sync);
     if (r.report) {
-      if (r.report.ok) toast.success("Saved and synced to Easyship");
-      else toast.error("Saved, but some Easyship steps failed — see the report");
+      if (r.report.ok) toast.success("Saved and synced");
+      else toast.error("Saved, but some sync steps failed — see the report");
     }
   };
 
@@ -113,7 +114,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
       const r = await call("GET", undefined, "?live=1");
       if (!r.live) throw new Error("No live snapshot returned");
       setSettings(importFromLive(r.live, endpoint ? new URL(endpoint).origin : null));
-      toast.success("Imported from Easyship — review, then Save & sync");
+      toast.success("Imported from courier account — review, then Save & sync");
     });
 
   const spin = (kind: typeof busy) => (busy === kind ? <Loader2 className="h-4 w-4 animate-spin" /> : null);
@@ -122,15 +123,15 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Easyship</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Couriers</h1>
           <p className="text-sm text-muted-foreground">
-            Saved here, pushed to Easyship on every save. This page is the source of truth.
+            Saved here, pushed to the courier account on every save. This page is the source of truth.
             {sync.easyship_company_id ? ` Account ${sync.easyship_company_id}.` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={importLive} disabled={!!busy}>
-            {spin("import") ?? <Download className="h-4 w-4" />} Import from Easyship
+            {spin("import") ?? <Download className="h-4 w-4" />} Import from courier account
           </Button>
           <Button variant="outline" onClick={syncNow} disabled={!!busy || !seeded}>
             {spin("sync") ?? <RefreshCw className="h-4 w-4" />} Sync now
@@ -144,21 +145,26 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
       {!seeded && (
         <Card>
           <CardContent className="py-4 text-sm text-muted-foreground">
-            Nothing saved yet. Import from Easyship to start from the live account, or fill the tabs in and save.
+            Nothing saved yet. Import from courier account to start from the live account, or fill the tabs in and save.
           </CardContent>
         </Card>
       )}
 
       <SyncReportCard sync={sync} />
 
-      <Tabs defaultValue="tracking">
+      <Tabs defaultValue="connection">
         <TabsList>
-          <TabsTrigger value="tracking">Tracking</TabsTrigger>
+          <TabsTrigger value="connection">Connection</TabsTrigger>
           <TabsTrigger value="addresses">Addresses <Count n={settings.addresses.length} /></TabsTrigger>
           <TabsTrigger value="boxes">Boxes <Count n={settings.boxes.length} /></TabsTrigger>
-          <TabsTrigger value="rules">Shipping rules <Count n={settings.shipping_rules.length} /></TabsTrigger>
+          <TabsTrigger value="rules">Rules <Count n={settings.shipping_rules.length} /></TabsTrigger>
+          <TabsTrigger value="tracking">Tracking</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="connection" className="mt-4">
+          <EasyshipPanel />
+        </TabsContent>
 
         <TabsContent value="tracking" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -272,7 +278,7 @@ function TrackingCard({
         <div>
           <h2 className="font-medium">{isEmail ? "Tracking email" : "Tracking page"}</h2>
           <p className="text-xs text-muted-foreground">
-            {isEmail ? "Status update emails Easyship sends your customers." : "The public trackmyshipment.co page."}
+            {isEmail ? "Status update emails the courier account sends your customers." : "The public trackmyshipment.co page."}
           </p>
         </div>
 
@@ -419,8 +425,8 @@ function AddressesSection({ addresses, update }: { addresses: EasyshipAddress[];
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Default sender, return, pickup and billing addresses. Matched to Easyship by line 1 + postal code + company;
-        other addresses in the Easyship account are left alone.
+        Default sender, return, pickup and billing addresses. Matched to the courier account by line 1 + postal code +
+        company; other addresses there are left alone.
       </p>
       {addresses.map((a, i) => (
         <Card key={i}>
@@ -488,7 +494,7 @@ function BoxesSection({ boxes, update }: { boxes: EasyshipSettings["boxes"]; upd
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Your custom boxes (courier flat-rate boxes are Easyship&apos;s). A box removed here is deleted in Easyship on sync.
+        Your custom boxes (courier flat-rate boxes are built in). A box removed here is deleted from the courier account on sync.
       </p>
       {boxes.map((b, i) => (
         <Card key={i}>

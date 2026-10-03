@@ -304,7 +304,7 @@ export function EasyshipPanel() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-                        Easyship connection
+                        Courier connection
                         {status.environment && (
                             <Badge variant={status.environment === "production" ? "default" : "secondary"}>
                                 {status.environment === "production" ? "Production" : "Sandbox"}
@@ -324,7 +324,7 @@ export function EasyshipPanel() {
                             detail={
                                 status.tokenConfigured
                                     ? "EASYSHIP_API_TOKEN is set."
-                                    : "Set EASYSHIP_API_TOKEN (Easyship → Connect → API Integrations), then redeploy."
+                                    : "Set EASYSHIP_API_TOKEN (in your Easyship dashboard: Connect → API Integrations), then redeploy."
                             }
                         />
                         <StatusRow
@@ -355,9 +355,9 @@ export function EasyshipPanel() {
                             </Label>
                             <p className="text-xs text-muted-foreground">
                                 {canEnable || form.easyship_enabled
-                                    ? "Methods set to “Live rate (Easyship)” quote the courier price for each cart and address. Off: they charge their fallback rate."
+                                    ? "Methods set to “Live courier rate” quote the courier price for each cart and address. Off: they charge their fallback rate."
                                     : !status.tokenConfigured
-                                      ? "Connect Easyship first (API token)."
+                                      ? "Connect the courier account first (API token)."
                                       : `Complete the ship-from address first: ${missingOrigin.join(", ")}.`}
                             </p>
                         </div>
@@ -504,7 +504,7 @@ export function EasyshipPanel() {
                         <p className="text-xs text-muted-foreground">9404.90 covers pillows and cushions.</p>
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="item_category">Easyship item category</Label>
+                        <Label htmlFor="item_category">Courier item category</Label>
                         <Input
                             id="item_category"
                             value={form.item_category}
@@ -564,7 +564,7 @@ export function EasyshipPanel() {
             <div className="flex justify-end">
                 <Button onClick={handleSave} disabled={saving}>
                     {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {saving ? "Saving…" : "Save Easyship settings"}
+                    {saving ? "Saving…" : "Save connection settings"}
                 </Button>
             </div>
 
@@ -652,7 +652,7 @@ export function EasyshipPanel() {
                         <div className="space-y-4">
                             {testResult.rates.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
-                                    Easyship returned no couriers for this destination and parcel.
+                                    No couriers quoted for this destination and parcel.
                                 </p>
                             ) : (
                                 <div className="overflow-x-auto rounded-lg border">

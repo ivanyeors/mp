@@ -6,6 +6,10 @@ import {
 
 const GROUPS: BreadcrumbNavGroup[] = [
   {
+    label: "Store",
+    items: [{ href: "/settings/shipping", label: "Shipping" }],
+  },
+  {
     label: "Landing Site",
     items: [
       // URL-nested child (like Product Builder → Rules Engine).
@@ -36,6 +40,14 @@ describe("buildSettingsBreadcrumbs", () => {
       "Admin Panel",
       "Partners",
       "Partner Commissions",
+    ]);
+  });
+
+  it("nests Couriers under Shipping without a nav entry of its own", () => {
+    expect(labels("/settings/shipping/couriers")).toEqual([
+      "Admin Panel",
+      "Shipping",
+      "Couriers",
     ]);
   });
 

@@ -90,7 +90,7 @@ export async function fetchCourierRates(
     return { ok: false, reason: "not_configured", message: "EASYSHIP_API_TOKEN is not set" };
   }
   if (!input.settings.easyship_enabled) {
-    return { ok: false, reason: "disabled", message: "Easyship is turned off in Settings → Shipping" };
+    return { ok: false, reason: "disabled", message: "Live rates are turned off in Settings → Shipping → Couriers" };
   }
   const missing = missingOriginFields(input.settings.origin_address);
   if (missing.length > 0) {
