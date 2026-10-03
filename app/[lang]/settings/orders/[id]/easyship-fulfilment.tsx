@@ -37,7 +37,7 @@ function transit(r: CourierRate): string {
 
 /**
  * The Easyship half of the order's Fulfillment card: what the shopper chose, the
- * label once bought, and "Ship with Easyship" — today's rates for this order's
+ * label once bought, and "Buy courier label" — today's rates for this order's
  * parcels, the courier the shopper paid for preselected, one click to buy.
  */
 export function EasyshipFulfilment({
@@ -195,14 +195,14 @@ export function EasyshipFulfilment({
                     disabled={shipment?.purchase_pending === true}
                 >
                     <Truck className="mr-2 h-4 w-4" />
-                    {shipment?.purchase_pending ? "Label purchase in progress…" : "Ship with Easyship"}
+                    {shipment?.purchase_pending ? "Label purchase in progress…" : "Buy courier label"}
                 </Button>
             ) : null}
 
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Ship with Easyship</DialogTitle>
+                        <DialogTitle>Buy courier label</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3 py-2">
                         {loadingRates ? (
@@ -261,7 +261,7 @@ export function EasyshipFulfilment({
                             </div>
                         )}
                         <p className="text-xs text-muted-foreground">
-                            Buying the label charges your Easyship account. When tracking is available the order
+                            Buying the label charges your courier account. When tracking is available the order
                             is marked shipped and the customer gets the shipping email.
                         </p>
                     </div>

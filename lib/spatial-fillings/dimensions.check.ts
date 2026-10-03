@@ -62,9 +62,9 @@ if (unmeasured.length) {
   console.warn(`dimensions.check: ${unmeasured.length} entries still resolve as fallback (Ivan's measurements pending):\n  ${unmeasured.join("\n  ")}`);
 }
 
-// --- Product Visualize: the Dimensions section (slice 12) --------------------
-const page = readFileSync("app/[lang]/settings/products/product-visualize.tsx", "utf8");
-assert.match(page, /<DimensionsSection settingsPath=\{settingsPath\} \/>/, "Product Visualize mounts the Dimensions section");
+// --- Products › Dimensions tab (slice 12) ------------------------------------
+const page = readFileSync("app/[lang]/settings/products/products-client.tsx", "utf8");
+assert.match(page, /<DimensionsSection settingsPath=\{to\} \/>/, "Products mounts the Dimensions tab");
 const section = readFileSync("app/[lang]/settings/products/dimensions-section.tsx", "utf8");
 assert.match(section, /Unmeasured/, "an unmeasured entry is labelled, never presented as measured");
 assert.match(section, /Use default/, "Reset restores the code default");

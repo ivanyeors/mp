@@ -5,6 +5,7 @@ import {
   driveErrorStatus,
   listFolder,
   listSharedDrives,
+  searchFiles,
 } from "@/lib/media-assets/drive";
 
 export const runtime = "nodejs";
@@ -17,8 +18,22 @@ export async function GET(req: Request) {
   const driveId = sp.get("driveId")?.trim() || undefined;
   const folderId = sp.get("folderId")?.trim() || undefined;
   const pageToken = sp.get("pageToken")?.trim() || undefined;
+  const search = sp.get("q")?.trim() || undefined;
+  const kindParam = sp.get("kind");
+  const kind = kindParam === "image" || kindParam === "video" || kindParam === "pdf" ? kindParam : undefined;
 
   try {
+    if (search) {
+      const listing = await searchFiles({ text: search, kind, driveId, pageToken });
+      return NextResponse.json({
+        ok: true,
+        mode: "search",
+        items: listing.items,
+        nextPageToken: listing.nextPageToken,
+      });
+    }
+
+
     if (!driveId && !folderId) {
       const drives = await listSharedDrives();
       return NextResponse.json({ ok: true, mode: "drives", drives });

@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { syncVariantPricesFromCostings } from "@/lib/shop/price-sync";
+import { syncItemImageToProducts } from "@/lib/ecommerce/item-image-sync";
 
 
 function slugify(str: string): string {
@@ -161,6 +162,15 @@ export async function publishAccessoryFamily(
   }
 
   await syncVariantPricesFromCostings(product.id).catch(() => {});
+
+  const { data: imaged } = await admin
+    .from("items")
+    .select("id, primary_media_asset_id")
+    .in("id", sorted.map((i) => i.id))
+    .not("primary_media_asset_id", "is", null);
+  for (const it of imaged ?? []) {
+    await syncItemImageToProducts(admin, it.id, null, it.primary_media_asset_id).catch(() => {});
+  }
 
   return {
     ok: true,

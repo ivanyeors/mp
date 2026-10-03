@@ -10,7 +10,7 @@ change it, and the registered webhook pointed at a URL that did not exist.
 
 ## Decision
 
-The platform is the source of truth (ADR 0020). Staff edit on `/settings/integrations/easyship`;
+The platform is the source of truth (ADR 0021). Staff edit on `/settings/integrations/easyship`;
 every save pushes to Easyship and stores a per-step report. Agents use the same endpoint with a
 bearer token (`.claude/skills/easyship/SKILL.md`).
 

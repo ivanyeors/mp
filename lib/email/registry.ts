@@ -85,6 +85,10 @@ const ORDER_LABELS: Record<EmailTemplateName, string> = {
   order_confirmation: "Order confirmed",
   payment_receipt: "Payment receipt",
   shipping: "Order shipped",
+  tracking_out_for_delivery: "Out for delivery",
+  tracking_delivery_attempt: "Delivery attempt missed",
+  tracking_delivered: "Order delivered",
+  tracking_exception: "Delivery problem",
   refund: "Refund issued",
 };
 

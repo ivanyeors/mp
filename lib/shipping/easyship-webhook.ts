@@ -52,6 +52,8 @@ export interface EasyshipWebhookEvent {
   labelUrl: string | null;
   /** The courier status for tracking events, e.g. "In Transit to Customer", "Delivered". */
   status: string | null;
+  /** The latest checkpoint as "message — location", from checkpoint events only. */
+  checkpoint: string | null;
 }
 
 const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -63,7 +65,9 @@ const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ?
 export function parseEasyshipEvent(body: unknown): EasyshipWebhookEvent | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
-  const data = (b.data && typeof b.data === "object" ? b.data : {}) as Record<string, unknown>;
+  // 2023-01 payloads nest under `tracking_status` instead of `data`.
+  const raw = b.data ?? b.tracking_status;
+  const data = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const eventType = text(b.event_type);
   const shipmentId = text(data.easyship_shipment_id) ?? text(b.resource_id);
   if (!eventType || !shipmentId) return null;
@@ -74,10 +78,37 @@ export function parseEasyshipEvent(body: unknown): EasyshipWebhookEvent | null {
     trackingUrl: text(data.tracking_page_url),
     labelUrl: text(data.label_url),
     status: text(data.status),
+    checkpoint: latestCheckpoint(data.checkpoints),
   };
+}
+
+function latestCheckpoint(list: unknown): string | null {
+  if (!Array.isArray(list)) return null;
+  const time = (c: Record<string, unknown>) => Date.parse(String(c.checkpoint_time ?? "")) || 0;
+  const latest = list
+    .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+    .reduce<Record<string, unknown> | null>((a, c) => (!a || time(c) >= time(a) ? c : a), null);
+  const message = text(latest?.message);
+  if (!latest || !message) return null;
+  const place = text(latest.location) ?? ([text(latest.city), text(latest.country_name)].filter(Boolean).join(", ") || null);
+  return place ? `${message} — ${place}` : message;
 }
 
 /** Easyship reports a finished delivery as "Delivered"; anything else is still on its way. */
 export function isDeliveredStatus(status: string | null | undefined): boolean {
   return (status ?? "").trim().toLowerCase().replace(/[^a-z]/g, "") === "delivered";
+}
+
+export type TrackingStatusKey = "in_transit" | "out_for_delivery" | "unsuccessful_delivery_attempt" | "delivered" | "exception";
+
+/** Maps a courier status string to the status a customer can be emailed about. Null for anything else. */
+export function trackingStatusKey(status: string | null | undefined): TrackingStatusKey | null {
+  const s = (status ?? "").toLowerCase().replace(/[^a-z]/g, "");
+  // ponytail: keyword match on Easyship's free-text status; switch to its status ids if one is misfiled
+  if (s === "delivered") return "delivered";
+  if (s.includes("outfordelivery")) return "out_for_delivery";
+  if (s.includes("attempt") || s.includes("faileddelivery")) return "unsuccessful_delivery_attempt";
+  if (s.includes("exception") || s.includes("lost") || s.includes("returned") || s.includes("liquidated")) return "exception";
+  if (s.includes("transit")) return "in_transit";
+  return null;
 }

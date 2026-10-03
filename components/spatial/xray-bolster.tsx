@@ -36,7 +36,7 @@ import {
   makeRegion,
 } from "@/lib/spatial-fillings/conform";
 import type { ResolvedDims } from "@/lib/spatial-fillings/dimensions";
-import { MorphPiece, PieceLabel, squeezeLines, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
+import { FitWarning, MorphPiece, PieceLabel, squeezeLines, XRAY_INTERIOR, XRAY_SHELL } from "./xray-pillow";
 import { fillingLabel, pieceLabelLines } from "@/lib/spatial-fillings/filling-groups";
 import { bolsterCapsulePath, SHELL_SEAM, XRAY_VIEW } from "./xray-assets";
 
@@ -71,11 +71,11 @@ export function BolsterGauge({ fit, label }: { fit: BolsterFit; label: (itemId: 
           {Math.round(fit.usedMm)} / {Math.round(fit.lengthMm)} mm
         </span>
         {fit.status !== "ok" && <span className={`capitalize ${tone}`}>{fit.status}</span>}
+        {fit.status !== "ok" && <FitWarning status={fit.status} message={bolsterFitMessage(fit, label)} className="ml-auto" />}
       </div>
       <div className="h-1 w-full overflow-hidden rounded bg-muted">
         <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
       </div>
-      {fit.status !== "ok" && <div className="text-muted-foreground">{bolsterFitMessage(fit, label)}</div>}
     </div>
   );
 }
@@ -142,16 +142,8 @@ export function XrayBolster({
       toast.error("Unknown filling item");
       return;
     }
-    // Slice 09: the physical cap. A pack that could not fit even fully
-    // squeezed is refused with the numbers; one that merely compresses is
-    // allowed — the ring turns amber. Advisory, no slot count.
-    const next = addBolsterPiece(placements, itemId);
-    const would = fitBolster(next, length, { dims: itemDims });
-    if (would.status === "over") {
-      toast.error(bolsterFitMessage(would, pieceLabel));
-      return;
-    }
-    onPlacementsChange?.(next);
+    // Fit never refuses: an overfull pack turns its ring red and the gauge warns.
+    onPlacementsChange?.(addBolsterPiece(placements, itemId));
   };
 
   return (

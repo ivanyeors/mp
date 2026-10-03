@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getSiteOrigin } from "@/lib/site-url";
 import { easyshipConfig } from "@/lib/shipping/easyship";
+import { readSenderAddress } from "@/lib/easyship/store";
 import { missingOriginFields, parseShippingSettings, ShippingSettingsSchema } from "@/lib/shipping/settings";
 import type { ShippingSettings } from "@/lib/shipping/types";
 
@@ -18,12 +19,19 @@ export type ShippingSettingsResponse = {
     environment: "sandbox" | "production" | null;
     webhookSecretConfigured: boolean;
     webhookUrl: string;
+    /** A default sender address exists on Couriers › Addresses. */
+    hasSender: boolean;
     missingOrigin: string[];
   };
 };
 
 async function respond(settings: ShippingSettings) {
   const config = easyshipConfig();
+  // A failed courier-doc read shows as "no sender" instead of failing the whole response.
+  const sender = await readSenderAddress().catch((err) => {
+    console.error("[shipping] Could not read the sender address:", err);
+    return null;
+  });
   const body: ShippingSettingsResponse = {
     ok: true,
     settings,
@@ -32,7 +40,8 @@ async function respond(settings: ShippingSettings) {
       environment: config?.environment ?? null,
       webhookSecretConfigured: Boolean(process.env.EASYSHIP_WEBHOOK_SECRET?.trim()),
       webhookUrl: `${getSiteOrigin()}/api/shipping/easyship/webhook`,
-      missingOrigin: missingOriginFields(settings.origin_address),
+      hasSender: sender !== null,
+      missingOrigin: sender ? missingOriginFields(sender) : [],
     },
   };
   return NextResponse.json(body);
@@ -59,15 +68,6 @@ export async function PUT(req: Request) {
   const parsed = ShippingSettingsSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-
-  // Live rates need a complete ship-from address; refuse to switch them on without one.
-  const missing = missingOriginFields(parsed.data.origin_address);
-  if (parsed.data.easyship_enabled && missing.length > 0) {
-    return NextResponse.json(
-      { error: `Complete the ship-from address before turning on live rates (missing: ${missing.join(", ")})` },
-      { status: 400 },
-    );
   }
 
   const { data, error } = await supabaseAdmin()

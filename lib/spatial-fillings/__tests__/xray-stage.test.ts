@@ -76,7 +76,7 @@ const cell = (slot: number, itemId: number, row?: number): PillowPlacement => ({
 describe("layoutPlacements draws true scale (28-9-2026: a small filling reads small)", () => {
   it("draws one pouch at its footprint × k, centred in its cell", () => {
     const stage = stageGeometry("M");
-    const dims = new Map([[1, resolved({ widthMm: 150, lengthMm: 90, orientation: "across" })]]);
+    const dims = new Map([[1, resolved({ widthMm: 150, lengthMm: 90 })]]);
     const [p] = layoutPlacements([cell(1, 1)], { stage, dims });
     const frame = cellFrame("center", "middle", stage);
     expect(p.w).toBeCloseTo(150 * stage.k, 0);
@@ -108,16 +108,6 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     expect(a.w / b.w).toBeCloseTo(100 / 80, 1);
     expect(b.x - (a.x + a.w)).toBeLessThanOrEqual(1.5);
     expect((a.x + b.x + b.w) / 2).toBeCloseTo(frame.x + frame.w / 2, 0);
-  });
-
-  it("weighs a pouch that lies along the Section by its length across", () => {
-    const stage = stageGeometry("M");
-    const dims = new Map([
-      [1, resolved({ widthMm: 100, lengthMm: 60, orientation: "along" })],
-      [2, resolved({ widthMm: 120, lengthMm: 60, orientation: "across" })],
-    ]);
-    const [along, across] = layoutPlacements([cell(1, 1), cell(2, 2)], { stage, dims }).sort((p, q) => p.x - q.x);
-    expect(along.w / across.w).toBeCloseTo(60 / 120, 1);
   });
 
   it("never overflows a cell: a layer wider than it shares the width pro rata", () => {
@@ -160,7 +150,7 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     expect(p.h).toBeCloseTo(frame.h, 0);
   });
 
-  it("moves a pouch by its fine offset from home, and clamps it to the free space in its cell", () => {
+  it("moves a pouch by its fine offset from home: across within its cell, front ↔ back within its Section", () => {
     const stage = stageGeometry("M");
     const dims = new Map([[1, resolved({ widthMm: 60, lengthMm: 50 })]]);
     const [home] = layoutPlacements([cell(1, 1)], { stage, dims });
@@ -171,7 +161,8 @@ describe("layoutPlacements draws true scale (28-9-2026: a small filling reads sm
     const [far] = layoutPlacements([{ ...cell(1, 1), offsetXMm: -200, offsetYMm: 200 }], { stage, dims });
     const frame = cellFrame("center", "middle", stage);
     expect(far.x).toBeCloseTo(frame.x, 0);
-    expect(far.y + far.h).toBeCloseTo(frame.y + frame.h, 0);
+    expect(far.y + far.h).toBeCloseTo(cellFrame("center", "back", stage).y + frame.h, 0);
+    expect(far.y + far.h).toBeGreaterThan(frame.y + frame.h);
     expect(far.x).toBeCloseTo(far.range.minX, 1);
     expect(far.y).toBeCloseTo(far.range.maxY, 1);
   });

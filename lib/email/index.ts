@@ -82,6 +82,9 @@ interface OrderRow {
   } | null;
   tracking_number?: string | null;
   tracking_url?: string | null;
+  shipping_courier?: string | null;
+  shipping_min_days?: number | null;
+  shipping_max_days?: number | null;
   items?: Array<{
     product_title: string;
     variant_title?: string | null;
@@ -99,7 +102,7 @@ interface OrderRow {
 /** Convert a persisted order (with items) into the neutral email payload. */
 export function buildOrderEmailData(
   order: OrderRow,
-  extra?: { refundAmount?: number | null }
+  extra?: { refundAmount?: number | null; trackingCheckpoint?: string | null }
 ): OrderEmailData {
   const rawItems = order.items ?? order.order_items ?? [];
   const addr = order.shipping_address ?? null;
@@ -132,6 +135,10 @@ export function buildOrderEmailData(
       : null,
     trackingNumber: order.tracking_number ?? null,
     trackingUrl: order.tracking_url ?? null,
+    courierName: order.shipping_courier ?? null,
+    minDays: order.shipping_min_days ?? null,
+    maxDays: order.shipping_max_days ?? null,
+    trackingCheckpoint: extra?.trackingCheckpoint ?? null,
     refundAmount: extra?.refundAmount ?? null,
   };
 }
@@ -242,6 +249,31 @@ export async function sendShippingEmail(
     template: "shipping",
     to: order.email,
     data: buildOrderEmailData(order),
+    admin,
+  });
+}
+
+const TRACKING_TEMPLATE = {
+  in_transit: "shipping",
+  out_for_delivery: "tracking_out_for_delivery",
+  unsuccessful_delivery_attempt: "tracking_delivery_attempt",
+  delivered: "tracking_delivered",
+  exception: "tracking_exception",
+} as const satisfies Record<string, EmailTemplateName>;
+
+/** Send the email for a courier status (idempotent; "in transit" is the shipped email). */
+export async function sendTrackingEmail(
+  orderId: string,
+  status: keyof typeof TRACKING_TEMPLATE,
+  order: OrderRow,
+  admin?: SupabaseClient,
+  checkpoint?: string | null
+): Promise<void> {
+  await dispatchOrderEmail({
+    orderId,
+    template: TRACKING_TEMPLATE[status],
+    to: order.email,
+    data: buildOrderEmailData(order, { trackingCheckpoint: checkpoint }),
     admin,
   });
 }

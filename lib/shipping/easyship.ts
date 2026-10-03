@@ -1,9 +1,9 @@
 import type {
   Parcel,
   ShippingDestination,
-  ShippingOriginAddress,
   ShippingSettings,
 } from "@/lib/shipping/types";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
 
 /**
  * Easyship Public API client (https://developers.easyship.com).
@@ -111,7 +111,7 @@ function clean<T extends Record<string, unknown>>(obj: T): T {
   ) as T;
 }
 
-export function originAddressBody(origin: Partial<ShippingOriginAddress>) {
+export function originAddressBody(origin: EasyshipAddress) {
   return clean({
     contact_name: origin.contact_name,
     company_name: origin.company_name,
@@ -191,14 +191,15 @@ export function parcelsBody(parcels: Parcel[], settings: ShippingSettings, origi
 
 export function ratesRequestBody(input: {
   settings: ShippingSettings;
+  origin: EasyshipAddress;
   destination: ShippingDestination;
   parcels: Parcel[];
   currency: string;
 }) {
   const { settings } = input;
-  const originCountry = (settings.origin_address.country_alpha2 ?? "SG").toUpperCase();
+  const originCountry = input.origin.country_alpha2.toUpperCase();
   return {
-    origin_address: originAddressBody(settings.origin_address),
+    origin_address: originAddressBody(input.origin),
     destination_address: destinationAddressBody(input.destination),
     incoterms: settings.incoterms,
     insurance: { is_insured: settings.insure_shipments },
@@ -212,6 +213,7 @@ export function ratesRequestBody(input: {
 
 export function shipmentRequestBody(input: {
   settings: ShippingSettings;
+  origin: EasyshipAddress;
   destination: ShippingDestination;
   contact: { name: string; email: string; phone?: string | null };
   parcels: Parcel[];
@@ -220,9 +222,9 @@ export function shipmentRequestBody(input: {
   courierName?: string | null;
 }) {
   const { settings } = input;
-  const originCountry = (settings.origin_address.country_alpha2 ?? "SG").toUpperCase();
+  const originCountry = input.origin.country_alpha2.toUpperCase();
   return {
-    origin_address: originAddressBody(settings.origin_address),
+    origin_address: originAddressBody(input.origin),
     destination_address: destinationAddressBody(input.destination, input.contact),
     incoterms: settings.incoterms,
     insurance: { is_insured: settings.insure_shipments },
@@ -288,6 +290,9 @@ export interface ParsedShipment {
   courierServiceId: string | null;
   totalCharge: number | null;
   currency: string | null;
+  /** Courier transit days from the label's rate. */
+  minDays: number | null;
+  maxDays: number | null;
 }
 
 type Obj = Record<string, unknown>;
@@ -319,6 +324,8 @@ export function parseShipment(raw: unknown): ParsedShipment | null {
   const rates = Array.isArray(s.rates) ? (s.rates.map(obj).filter(Boolean) as Obj[]) : [];
   const rate = rates[0] ?? null;
   const charge = rate?.total_charge ?? s.total_charge;
+  const days = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.round(v) : null);
+  const minDays = days(rate?.min_delivery_time);
 
   return {
     shipmentId,
@@ -331,5 +338,7 @@ export function parseShipment(raw: unknown): ParsedShipment | null {
     courierServiceId: text(service?.id) ?? text(s.courier_id),
     totalCharge: typeof charge === "number" && Number.isFinite(charge) ? Math.round(charge * 100) / 100 : null,
     currency: text(rate?.currency) ?? text(s.currency),
+    minDays,
+    maxDays: days(rate?.max_delivery_time) ?? minDays,
   };
 }

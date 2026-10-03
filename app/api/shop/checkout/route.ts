@@ -575,7 +575,7 @@ export async function POST(req: Request) {
     const option = options[0];
     if (!option) {
       return NextResponse.json(
-        { error: "No courier on this shipping method delivers to this address. Please choose another method." },
+        { error: "This shipping method is not available for this address right now. Please choose another method." },
         { status: 400 },
       );
     }

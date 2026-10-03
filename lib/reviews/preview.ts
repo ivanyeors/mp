@@ -6,7 +6,7 @@ import {
   renderShopReviewCard,
   type Card,
 } from "@/lib/reviews/cards";
-import { draftInputFor, draftReviewReply } from "@/lib/reviews/draft-reply";
+import { claudeConfigured, draftInputFor, draftReviewReply } from "@/lib/reviews/draft-reply";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { inboxPreviewCard } from "@/lib/social-inbox/preview";
 import { sendGroupMessage } from "@/lib/telegram/bot-api";
@@ -20,9 +20,9 @@ import { sendGroupMessage } from "@/lib/telegram/bot-api";
  * Nothing here touches the database or Google. Every card opens with a PREVIEW
  * line so nobody mistakes it for a real review, and its buttons carry
  * PREVIEW_REVIEW_ID: the Telegram handler answers a tap, or a reply to the
- * card, with the person's access instead of acting. With an
- * ANTHROPIC_API_KEY the Google replies are real Claude drafts of the samples;
- * without one, sample text is used and the card says so.
+ * card, with the person's access instead of acting. With Claude configured
+ * (see draft-reply.ts) the Google replies are real Claude drafts of the
+ * samples; without it, sample text is used and the card says so.
  */
 
 export const PREVIEW_INTRO = [
@@ -152,7 +152,7 @@ export async function buildReviewCardPreview(
 ): Promise<{ cards: PreviewCard[]; usedClaude: boolean; draftErrors: string[] }> {
   const now = opts.now ?? new Date();
   const draft =
-    opts.draft === undefined ? (process.env.ANTHROPIC_API_KEY?.trim() ? draftReviewReply : null) : opts.draft;
+    opts.draft === undefined ? (claudeConfigured() ? draftReviewReply : null) : opts.draft;
   const draftErrors: string[] = [];
 
   const samples = googleSamples(now);

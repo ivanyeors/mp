@@ -18,7 +18,6 @@ import {
   type Section,
   type SubSection,
 } from "@/lib/spatial-fillings/core";
-import { fitMessage, wouldFit, type FitContext } from "@/lib/spatial-fillings/fit";
 
 export const PILLOW_SIZES = ["XS", "S", "M", "L", "XL"] as const;
 export const PILLOW_TIERS = ["basic", "premium"] as const;
@@ -295,15 +294,12 @@ function writeLayerOrder(placements: PillowPlacement[], cell: Cell, order: Pillo
  * compacts the Layers of both cells, keeps `insertOrder` while the Section is
  * unchanged and drops it otherwise (the assembly sequence never names a pouch
  * that left). Refuses with `addPiece`'s shapes when the target Layer is full
- * or the cell is at its cap, and — given a fit context — when the move would
- * leave the target cell unable to close (`wouldFit` says `over`; `compressed`
- * is allowed, as for an add).
+ * or the cell is at its cap. Fit never refuses: an overfull cell only warns.
  */
 export function movePiece(
   placements: PillowPlacement[],
   ref: PieceRef,
   to: MoveTarget,
-  fitCtx?: FitContext,
 ): MoveResult {
   const moving = placements.find((p) => inCell(p, ref) && p.slot === ref.slot);
   if (!moving) return { ok: false, error: `No piece at ${ref.section} ${ref.subSection} slot ${ref.slot}` };
@@ -320,10 +316,6 @@ export function movePiece(
   }
   if (!staying && without.filter((p) => inCell(p, to.cell)).length >= MAX_PIECES_PER_CELL) {
     return { ok: false, error: `Max ${MAX_PIECES_PER_CELL} pieces per cell` };
-  }
-  if (fitCtx) {
-    const would = wouldFit(placements, { kind: "move", from: ref, to: { cell: to.cell, layer: at } }, fitCtx);
-    if (would.cell?.status === "over") return { ok: false, error: fitMessage(would.cell, fitCtx.size ?? "M") };
   }
   const slot = staying ? moving.slot : freeSlot(without, to.cell);
   const sameSection = ref.section === to.cell.section;
@@ -359,7 +351,7 @@ export function movePiece(
  * a new one under the deepest when needed; the Layer it leaves closes up if
  * empty. Already at the top going up is a no-op that returns the input.
  */
-export function shiftPieceLayer(placements: PillowPlacement[], ref: PieceRef, dir: 1 | -1, fitCtx?: FitContext): MoveResult {
+export function shiftPieceLayer(placements: PillowPlacement[], ref: PieceRef, dir: 1 | -1): MoveResult {
   const moving = placements.find((p) => inCell(p, ref) && p.slot === ref.slot);
   if (!moving) return { ok: false, error: `No piece at ${ref.section} ${ref.subSection} slot ${ref.slot}` };
   const depth = layerOf(moving);
@@ -372,7 +364,7 @@ export function shiftPieceLayer(placements: PillowPlacement[], ref: PieceRef, di
   // Leaving a Layer alone shifts the deeper ones up by one on compaction, so
   // the piece lands one deeper than its old index only when the Layer stays.
   const landing = dir === 1 && alone ? target - 1 : target;
-  return movePiece(placements, ref, { cell: ref, layer: landing }, fitCtx);
+  return movePiece(placements, ref, { cell: ref, layer: landing });
 }
 
 /**
@@ -503,7 +495,7 @@ export function mirrorSection(placements: PillowPlacement[], from: Section): Pil
  * Set a pouch's fine position in its cell (slice 08): mm from home, rounded,
  * bounded by MAX_OFFSET_MM; 0 drops the field so an un-nudged pouch stays
  * byte-identical to one that never moved. Returns the input when nothing
- * changes. The layout clamps the drawn pouch to its cell whatever is stored.
+ * changes. The layout clamps the drawn pouch (across: its cell; front ↔ back: its Section).
  */
 export function nudgePiece(placements: PillowPlacement[], ref: PieceRef, offset: { xMm: number; yMm: number }): PillowPlacement[] {
   const bound = (v: number) => Math.max(-MAX_OFFSET_MM, Math.min(MAX_OFFSET_MM, Math.round(v))) || 0;

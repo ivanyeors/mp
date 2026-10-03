@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { oidcFederationProvider } from "@anthropic-ai/sdk/lib/credentials/oidc-federation";
+import { getVercelOidcToken } from "@vercel/oidc";
 import { SUPPORT_WHATSAPP_DISPLAY } from "@/lib/contact";
 import type { GoogleReviewRow } from "@/lib/reviews/google-reviews";
 import { checkReplyText } from "@/lib/reviews/reply-rules";
@@ -19,6 +21,12 @@ import { REPLY_STYLE_NAMES, replyStyleFor } from "@/lib/reviews/reply-style";
  * request; the system prompt defines what each type must do. Service recovery
  * always sends the customer to the staffed WhatsApp line (lib/contact.ts — the
  * sales number, never the automated appointment sender).
+ *
+ * Credentials: an ANTHROPIC_API_KEY (local scripts), or on Vercel the OIDC
+ * federation rule (ANTHROPIC_FEDERATION_RULE_ID + ORGANIZATION/SERVICE_ACCOUNT/
+ * WORKSPACE ids) that swaps the function's x-vercel-oidc-token for a short-lived
+ * Anthropic token — no long-lived secret in prod. The SDK prefers the key when
+ * both are set.
  */
 
 export const REVIEW_REPLY_MODEL = "claude-opus-5-5";
@@ -118,10 +126,33 @@ export type DraftResult = { ok: true; reply: string; model: string } | { ok: fal
 
 let cachedClient: Anthropic | null = null;
 
+/** True when Claude can be called: an API key, or a Vercel OIDC federation rule. */
+export function claudeConfigured(): boolean {
+  return !!(process.env.ANTHROPIC_API_KEY?.trim() || process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim());
+}
+
+export const CLAUDE_NOT_CONFIGURED = "Claude is not configured (ANTHROPIC_API_KEY or ANTHROPIC_FEDERATION_RULE_ID)";
+
 function defaultClient(): Anthropic | null {
-  if (!process.env.ANTHROPIC_API_KEY?.trim()) return null;
+  if (!claudeConfigured()) return null;
+  const federationRuleId = process.env.ANTHROPIC_FEDERATION_RULE_ID?.trim();
   // Bounded wall clock for a serverless function: 45s × (2 retries + 1).
-  cachedClient ??= new Anthropic({ timeout: 45_000, maxRetries: 2 });
+  cachedClient ??= new Anthropic({
+    timeout: 45_000,
+    maxRetries: 2,
+    credentials: federationRuleId
+      ? oidcFederationProvider({
+          // Per exchange, inside a request: Vercel re-mints its per-invocation token with Anthropic as the audience.
+          identityTokenProvider: () => getVercelOidcToken({ audience: "https://api.anthropic.com" }),
+          federationRuleId,
+          organizationId: process.env.ANTHROPIC_ORGANIZATION_ID ?? "",
+          serviceAccountId: process.env.ANTHROPIC_SERVICE_ACCOUNT_ID,
+          workspaceId: process.env.ANTHROPIC_WORKSPACE_ID,
+          baseURL: "https://api.anthropic.com",
+          fetch,
+        })
+      : undefined,
+  });
   return cachedClient;
 }
 
@@ -130,7 +161,7 @@ export async function draftReviewReply(
   opts?: { client?: Anthropic },
 ): Promise<DraftResult> {
   const client = opts?.client ?? defaultClient();
-  if (!client) return { ok: false, error: "ANTHROPIC_API_KEY is not set" };
+  if (!client) return { ok: false, error: CLAUDE_NOT_CONFIGURED };
 
   try {
     const response = await client.beta.messages.create({
@@ -162,7 +193,7 @@ export async function draftReviewReply(
       return { ok: false, error: "Claude is rate-limited right now — the next sync will try again" };
     }
     if (error instanceof Anthropic.AuthenticationError) {
-      return { ok: false, error: "ANTHROPIC_API_KEY was rejected" };
+      return { ok: false, error: "Anthropic rejected the credentials" };
     }
     if (error instanceof Anthropic.APIError) {
       return { ok: false, error: `Claude API error ${error.status ?? ""}: ${error.message}`.trim() };
