@@ -3726,8 +3726,8 @@
     "semantic_hash": ""
   },
   "components/marketing/faq-page.tsx": {
-    "mtime": 1791001399.8150403,
-    "seen": 1791001598.375351,
+    "mtime": 1791001680.0055497,
+    "seen": 1791002481.427416,
     "ast_hash": "6e635351480311273a44225ff20da849",
     "semantic_hash": ""
   },
@@ -4206,8 +4206,8 @@
     "semantic_hash": ""
   },
   "components/seo/json-ld-script.tsx": {
-    "mtime": 1791001399.8153653,
-    "seen": 1791001598.375406,
+    "mtime": 1791001680.0056481,
+    "seen": 1791002481.4274812,
     "ast_hash": "1a33ed4a7fa36e9639144f7fb6593386",
     "semantic_hash": ""
   },
@@ -6114,14 +6114,14 @@
     "semantic_hash": ""
   },
   "next.config.ts": {
-    "mtime": 1791001399.8470595,
-    "seen": 1791001598.3760588,
+    "mtime": 1791001680.0283737,
+    "seen": 1791002481.428303,
     "ast_hash": "25abafc407a56ff761a9377109b05a40",
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1791001432.3818266,
-    "seen": 1791001598.3760588,
+    "mtime": 1791002456.1840954,
+    "seen": 1791002481.428304,
     "ast_hash": "6fe6707b90ffec800b41cdb4c06c0b69",
     "semantic_hash": ""
   },
@@ -14106,8 +14106,8 @@
     "semantic_hash": ""
   },
   "lib/reviews/__tests__/draft-reply.test.ts": {
-    "mtime": 1791001469.7157845,
-    "seen": 1791001598.375859,
+    "mtime": 1791002456.183237,
+    "seen": 1791002481.4280498,
     "ast_hash": "685b14add505f7184f7225eb72db2b01",
     "semantic_hash": ""
   },
@@ -14148,8 +14148,8 @@
     "semantic_hash": ""
   },
   "lib/reviews/draft-reply.ts": {
-    "mtime": 1791001469.7148924,
-    "seen": 1791001598.375865,
+    "mtime": 1791002456.1836028,
+    "seen": 1791002481.428071,
     "ast_hash": "a9541a96ccc70a8c7b4be220b8d51603",
     "semantic_hash": ""
   },
@@ -14250,9 +14250,9 @@
     "semantic_hash": ""
   },
   ".claude/PRD-google-review-replies/OPS-CHECKLIST.md": {
-    "mtime": 1791001469.7159526,
-    "seen": 1791001598.376263,
-    "ast_hash": "0e4b966bfac2f8474e72fd807f185665",
+    "mtime": 1791002456.6908436,
+    "seen": 1791002481.428509,
+    "ast_hash": "8007214304c729c0612460f877e9b1ca",
     "semantic_hash": ""
   },
   ".claude/PRD-google-review-replies/google-review-replies-prd.md": {
@@ -14274,8 +14274,8 @@
     "semantic_hash": ""
   },
   "lib/reviews/preview.ts": {
-    "mtime": 1791001469.715335,
-    "seen": 1791001598.3758678,
+    "mtime": 1791002456.183827,
+    "seen": 1791002481.428075,
     "ast_hash": "8286dd7fbe7a509d6615a5eae7071319",
     "semantic_hash": ""
   },
@@ -14376,20 +14376,20 @@
     "semantic_hash": ""
   },
   "lib/seo/__tests__/jsonld-serialize.test.ts": {
-    "mtime": 1791001399.8464055,
-    "seen": 1791001598.375921,
+    "mtime": 1791001680.0282018,
+    "seen": 1791002481.428159,
     "ast_hash": "4ba83d2906c5ff6e5a4aa6d503f31dce",
     "semantic_hash": ""
   },
   "lib/seo/jsonld-serialize.ts": {
-    "mtime": 1791001399.846577,
-    "seen": 1791001598.37593,
+    "mtime": 1791001680.0282786,
+    "seen": 1791002481.4281669,
     "ast_hash": "4c1bb76b5a43d78eb55081c351d01d8c",
     "semantic_hash": ""
   },
   "supabase/migrations/20261003033500_dimension_overrides_service_role_only.sql": {
-    "mtime": 1791001399.8483195,
-    "seen": 1791001598.376207,
+    "mtime": 1791001680.029673,
+    "seen": 1791002481.4284601,
     "ast_hash": "a5dcb085bc4798a65bbf25eb8545df79",
     "semantic_hash": ""
   },
@@ -14397,6 +14397,12 @@
     "mtime": 1789315176.8237453,
     "seen": 1791001598.375015,
     "ast_hash": "ac8e189f6b5d31e60b2ae6231d52859f",
+    "semantic_hash": ""
+  },
+  "scripts/google-reviews-backfill.ts": {
+    "mtime": 1791002456.7269773,
+    "seen": 1791002481.4283159,
+    "ast_hash": "60c67e33e4c0922175d04c5293adf8d5",
     "semantic_hash": ""
   }
 }
