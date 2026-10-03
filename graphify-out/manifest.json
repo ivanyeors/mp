@@ -1632,9 +1632,9 @@
     "semantic_hash": ""
   },
   "lib/types/ecommerce.ts": {
-    "mtime": 1790991721.3837373,
-    "seen": 1790998160.446613,
-    "ast_hash": "6770c1e4075bcb1c708e652ce62ad3e4",
+    "mtime": 1791000752.2037609,
+    "seen": 1791000961.984052,
+    "ast_hash": "4e5cf692c763917315665b890c9bebb1",
     "semantic_hash": ""
   },
   "lib/types/landing-sections.ts": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/page.tsx": {
-    "mtime": 1790998928.4939673,
-    "seen": 1790999094.945478,
-    "ast_hash": "55cf51cbb4ea033804d031ed826de2ea",
+    "mtime": 1791000812.5168378,
+    "seen": 1791000961.983092,
+    "ast_hash": "ca123e883a06eb3732c48c28b1b3b311",
     "semantic_hash": ""
   },
   "app/[lang]/settings/staff-management/page.tsx": {
@@ -2778,9 +2778,9 @@
     "semantic_hash": ""
   },
   "app/api/shop/checkout/route.ts": {
-    "mtime": 1790991721.2411945,
-    "seen": 1790998160.445763,
-    "ast_hash": "e0eea3c112a37c519faf59554a37641b",
+    "mtime": 1791000752.1999643,
+    "seen": 1791000961.983219,
+    "ast_hash": "69108b4cdd95d8bf6c48cd1b3144d6bd",
     "semantic_hash": ""
   },
   "app/api/shop/coupons/[id]/route.ts": {
@@ -9798,9 +9798,9 @@
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/shipping-client.tsx": {
-    "mtime": 1790998943.97579,
-    "seen": 1790999094.945479,
-    "ast_hash": "304d939a154e28e54a2741228c8c9236",
+    "mtime": 1791000812.517004,
+    "seen": 1791000961.983093,
+    "ast_hash": "ec4a62d3a0a9f15f52d6d54b19a85f38",
     "semantic_hash": ""
   },
   "app/[lang]/settings/staff-management/staff-management-client.tsx": {
@@ -13884,21 +13884,21 @@
     "semantic_hash": ""
   },
   "app/api/shop/shipping/quote/route.ts": {
-    "mtime": 1790991721.2451,
-    "seen": 1790998160.445793,
-    "ast_hash": "744ed268d4e9025cae5a6e1beeb37512",
+    "mtime": 1791000752.2003837,
+    "seen": 1791000961.983252,
+    "ast_hash": "0178561607e61d7eff0225769611a203",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/settings/route.ts": {
-    "mtime": 1790991721.2453105,
-    "seen": 1790998160.445794,
-    "ast_hash": "92bbc9157b06648076f3077d893a8de0",
+    "mtime": 1791000760.3928185,
+    "seen": 1791000961.983253,
+    "ast_hash": "48c1f64f76c51de902795acc273afceb",
     "semantic_hash": ""
   },
   "app/api/shop/shipping/settings/test/route.ts": {
-    "mtime": 1790991721.2453995,
-    "seen": 1790998160.445795,
-    "ast_hash": "6a20dd96563997f7c3a1dad2f94fe9be",
+    "mtime": 1791000824.5445461,
+    "seen": 1791000961.983254,
+    "ast_hash": "a48d198a6985b0089aab416e547ba22e",
     "semantic_hash": ""
   },
   "components/sections/landing/delivery-estimator-section.tsx": {
@@ -13920,27 +13920,27 @@
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/easyship.test.ts": {
-    "mtime": 1790991721.3734758,
-    "seen": 1790998160.446495,
-    "ast_hash": "9075861aa72e789d6e9587d49f327ebb",
+    "mtime": 1791000767.7483253,
+    "seen": 1791000961.983947,
+    "ast_hash": "50854edf0f51e31a70c40ce3f007fc13",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/order-shipment.test.ts": {
-    "mtime": 1790991721.37355,
-    "seen": 1790998160.446496,
-    "ast_hash": "44cfaff19248d2c15a85387a5325ccb6",
+    "mtime": 1791000843.3454087,
+    "seen": 1791000961.983947,
+    "ast_hash": "f18552c4b6eeb8a3b8f8970f734bcd69",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/parcels.test.ts": {
-    "mtime": 1790991721.3736145,
-    "seen": 1790998160.446497,
-    "ast_hash": "f225fbdfe8ac8a29dfe8f7f2508b825c",
+    "mtime": 1791000812.5188627,
+    "seen": 1791000961.983948,
+    "ast_hash": "c7cf2ed6bd806a04c3aa89e9512ed5f5",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/quote.test.ts": {
-    "mtime": 1790991721.3736835,
-    "seen": 1790998160.446497,
-    "ast_hash": "25243367d682168144e2f2bff99bfa66",
+    "mtime": 1791000925.4249446,
+    "seen": 1791000961.983949,
+    "ast_hash": "2fbbe596407ce2dd9cf46295c6cebf39",
     "semantic_hash": ""
   },
   "lib/shipping/__tests__/rates.test.ts": {
@@ -13956,9 +13956,9 @@
     "semantic_hash": ""
   },
   "lib/shipping/easyship.ts": {
-    "mtime": 1790991721.3739703,
-    "seen": 1790998160.4465,
-    "ast_hash": "3d57a259a1e677c269c754b12c94f8c4",
+    "mtime": 1791000752.2568953,
+    "seen": 1791000961.983951,
+    "ast_hash": "e00734cc0a5c24c764dc7b234a638507",
     "semantic_hash": ""
   },
   "lib/shipping/lines.ts": {
@@ -13974,21 +13974,21 @@
     "semantic_hash": ""
   },
   "lib/shipping/order-shipment.ts": {
-    "mtime": 1790991721.3741434,
-    "seen": 1790998160.446502,
-    "ast_hash": "e16c412751598f84c049e965e00519ce",
+    "mtime": 1791000824.5446305,
+    "seen": 1791000961.983953,
+    "ast_hash": "e2fe837f8e678793e09f84d59d7667ed",
     "semantic_hash": ""
   },
   "lib/shipping/parcels.ts": {
-    "mtime": 1790991721.3741937,
-    "seen": 1790998160.446503,
-    "ast_hash": "fd37ab7ad7199c1d3b8a36cda2b3860c",
+    "mtime": 1791000812.5193155,
+    "seen": 1791000961.983954,
+    "ast_hash": "8c1e4586ee9d2ae2d94614ad2dae75bc",
     "semantic_hash": ""
   },
   "lib/shipping/quote.ts": {
-    "mtime": 1790998954.364631,
-    "seen": 1790999094.946222,
-    "ast_hash": "432111f8cf21e68def8e00c66da28b70",
+    "mtime": 1791000812.5194347,
+    "seen": 1791000961.983954,
+    "ast_hash": "a0a3af8051528cf1187dce0b60d25beb",
     "semantic_hash": ""
   },
   "lib/shipping/rates.ts": {
@@ -13998,21 +13998,21 @@
     "semantic_hash": ""
   },
   "lib/shipping/settings.ts": {
-    "mtime": 1790991721.374371,
-    "seen": 1790998160.446508,
-    "ast_hash": "67eda57c8e0e7b15e99f3dca29d3ab1d",
+    "mtime": 1791000828.1806464,
+    "seen": 1791000961.9839559,
+    "ast_hash": "ff6d2777e6ac3088e728a0c85c84b328",
     "semantic_hash": ""
   },
   "lib/shipping/types.ts": {
-    "mtime": 1790991721.3744237,
-    "seen": 1790998160.4465091,
-    "ast_hash": "4b3710e575d33e34d50c8f7484fac93a",
+    "mtime": 1791000824.5442739,
+    "seen": 1791000961.983957,
+    "ast_hash": "705ebc20c3b35ea2c8d583c81dbf1f94",
     "semantic_hash": ""
   },
   "lib/shop/use-shipping-quote.ts": {
-    "mtime": 1790991721.3762088,
-    "seen": 1790998160.446528,
-    "ast_hash": "2d0e5fb7aba861bb13e8c546915d93d1",
+    "mtime": 1791000752.2035494,
+    "seen": 1791000961.983975,
+    "ast_hash": "8c00ab7b036144acd9f55749999842be",
     "semantic_hash": ""
   },
   "supabase/migrations/20261002090000_easyship_shipping.sql": {
@@ -14022,9 +14022,9 @@
     "semantic_hash": ""
   },
   "docs/adr/0020-easyship-live-shipping-rates.md": {
-    "mtime": 1790991721.2764196,
-    "seen": 1790998160.447275,
-    "ast_hash": "88f65b037c639b35f51d1c7ce95388db",
+    "mtime": 1791000752.2014222,
+    "seen": 1791000961.984811,
+    "ast_hash": "5746265ff8f353541dbbe7c1c8dee12d",
     "semantic_hash": ""
   },
   "docs/easyship-setup.md": {
@@ -14292,9 +14292,9 @@
     "semantic_hash": ""
   },
   "app/api/settings/easyship/route.ts": {
-    "mtime": 1790991721.23952,
-    "seen": 1790998160.4457521,
-    "ast_hash": "e9ad30b3c0f7537be9124a83e1fbeb5d",
+    "mtime": 1791000812.517489,
+    "seen": 1791000961.983207,
+    "ast_hash": "1711b4023e25f6971a457bb1f2c9ee84",
     "semantic_hash": ""
   },
   "lib/auth/bearer-or-admin.ts": {
@@ -14304,9 +14304,9 @@
     "semantic_hash": ""
   },
   "lib/easyship/__tests__/sync.test.ts": {
-    "mtime": 1790991721.3428993,
-    "seen": 1790998160.446184,
-    "ast_hash": "fc0bdcecc08a121e5d051c76e53ba085",
+    "mtime": 1791000812.5179577,
+    "seen": 1791000961.983666,
+    "ast_hash": "c6b9fe6259e82a971721c024d057190b",
     "semantic_hash": ""
   },
   "lib/easyship/client.ts": {
@@ -14316,15 +14316,15 @@
     "semantic_hash": ""
   },
   "lib/easyship/schema.ts": {
-    "mtime": 1790991721.3431199,
-    "seen": 1790998160.4461849,
-    "ast_hash": "f27ee4a97994389926a25c295b58d038",
+    "mtime": 1791000812.518232,
+    "seen": 1791000961.983667,
+    "ast_hash": "53d69fb01fec362b5b4691d08f14d437",
     "semantic_hash": ""
   },
   "lib/easyship/store.ts": {
-    "mtime": 1790991721.3432567,
-    "seen": 1790998160.446186,
-    "ast_hash": "bbb9604beca2c0cbf3c68b982d01c941",
+    "mtime": 1791000824.544475,
+    "seen": 1791000961.9836679,
+    "ast_hash": "1378de64461c66ae59466d7014bec453",
     "semantic_hash": ""
   },
   "lib/easyship/sync-report.ts": {
@@ -14340,21 +14340,15 @@
     "semantic_hash": ""
   },
   ".claude/PRD-easyship-settings-sync/easyship-settings-sync-prd.md": {
-    "mtime": 1790991721.1745179,
-    "seen": 1790998160.446835,
-    "ast_hash": "89a9555e611d96dfec89e995f79b5471",
+    "mtime": 1791000752.1989198,
+    "seen": 1791000961.984257,
+    "ast_hash": "9c9fe8dce0d7a877cb0f6757e6201559",
     "semantic_hash": ""
   },
   ".claude/skills/easyship/SKILL.md": {
     "mtime": 1790991721.2035959,
     "seen": 1790998160.447102,
     "ast_hash": "2597ce1bc8de7e907e44ab006e21bee1",
-    "semantic_hash": ""
-  },
-  "docs/adr/0020-easyship-settings-source-of-truth.md": {
-    "mtime": 1790991721.276567,
-    "seen": 1790998160.447275,
-    "ast_hash": "9da4dd510fabde45b3d88abd8b453314",
     "semantic_hash": ""
   },
   ".claude/PRD-shipping-couriers/issues/01-couriers-page-nav-brand.md": {
@@ -14400,21 +14394,21 @@
     "semantic_hash": ""
   },
   ".claude/PRD-shipping-couriers/shipping-couriers-prd.md": {
-    "mtime": 1790991716.675478,
-    "seen": 1790998160.4470358,
-    "ast_hash": "22be4cbb147679fb88d724298e1f44ef",
+    "mtime": 1791000752.1991363,
+    "seen": 1791000961.98444,
+    "ast_hash": "f528d212a3161c3cd53e8a07b0ada2bb",
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/couriers/easyship-client.tsx": {
-    "mtime": 1790998880.511155,
-    "seen": 1790999094.945476,
-    "ast_hash": "89b7298e26fb75f42a0adfb5d63f7223",
+    "mtime": 1791000812.5163593,
+    "seen": 1791000961.983088,
+    "ast_hash": "3879146b66da6c3a7284aeaac151e7be",
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/couriers/easyship-panel.tsx": {
-    "mtime": 1790998888.8246136,
-    "seen": 1790999094.945476,
-    "ast_hash": "3930f6ab601657512b7206ac67c98671",
+    "mtime": 1791000881.1645398,
+    "seen": 1791000961.983089,
+    "ast_hash": "f5f1c5cf15e65fe281374f28663ad9cb",
     "semantic_hash": ""
   },
   "app/[lang]/settings/shipping/couriers/page.tsx": {
@@ -14427,6 +14421,36 @@
     "mtime": 1790998895.284429,
     "seen": 1790999094.945478,
     "ast_hash": "0f83d6f0b066a1799d7cf7f3385a0bed",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261003120000_shipping_rate_source_default_live.sql": {
+    "mtime": 1791000752.2039323,
+    "seen": 1791000961.9842079,
+    "ast_hash": "4e48a7f5dce17879a092be386eb31f3e",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261003120100_courier_sender_address_seed.sql": {
+    "mtime": 1791000752.2574978,
+    "seen": 1791000961.9842088,
+    "ast_hash": "04d25026cc05f0060f4a65875f8d4d44",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261003120200_courier_boxes_seed.sql": {
+    "mtime": 1791000812.5198054,
+    "seen": 1791000961.98421,
+    "ast_hash": "a8ef9b715a73721f4b42f09ae0fd30e7",
+    "semantic_hash": ""
+  },
+  "docs/adr/0021-easyship-settings-source-of-truth.md": {
+    "mtime": 1791000752.201488,
+    "seen": 1791000961.984812,
+    "ast_hash": "9da4dd510fabde45b3d88abd8b453314",
+    "semantic_hash": ""
+  },
+  "docs/adr/0022-live-shipping-has-no-fallback.md": {
+    "mtime": 1791000752.2016556,
+    "seen": 1791000961.984813,
+    "ast_hash": "333778dd6db59e7e077b2d2d73c791b4",
     "semantic_hash": ""
   }
 }
