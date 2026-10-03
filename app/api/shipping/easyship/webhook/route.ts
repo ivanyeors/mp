@@ -8,6 +8,7 @@ import {
   verifyEasyshipSignature,
 } from "@/lib/shipping/easyship-webhook";
 import { applyShipmentToOrder } from "@/lib/shipping/order-shipment";
+import { readEasyshipConfig } from "@/lib/easyship/store";
 
 export const runtime = "nodejs";
 
@@ -16,12 +17,14 @@ export const runtime = "nodejs";
  * Integrations → Webhooks) for `shipment.label.created`, `shipment.label.failed`
  * and `shipment.tracking.status.changed`.
  *
- * Fails closed: without EASYSHIP_WEBHOOK_SECRET nothing is accepted. Every write
+ * Fails closed: without a secret (EASYSHIP_WEBHOOK_SECRET, else the one captured
+ * when Settings → Easyship registered the webhook) nothing is accepted. Every write
  * is idempotent — a repeated label event changes nothing and sends no second
  * email; a repeated "Delivered" never moves `delivered_at`.
  */
 export async function POST(req: Request) {
-  const secret = process.env.EASYSHIP_WEBHOOK_SECRET?.trim();
+  const secret =
+    process.env.EASYSHIP_WEBHOOK_SECRET?.trim() || (await readEasyshipConfig()).sync.webhook_secret_token?.trim();
   if (!secret) {
     return NextResponse.json({ error: "Easyship webhooks are not configured" }, { status: 503 });
   }

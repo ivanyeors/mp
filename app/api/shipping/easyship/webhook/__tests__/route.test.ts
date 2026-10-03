@@ -129,6 +129,13 @@ describe("POST /api/shipping/easyship/webhook", () => {
     expect(h.updates).toHaveLength(0);
   });
 
+  it("verifies with the secret captured by the settings sync when the env var is unset", async () => {
+    vi.stubEnv("EASYSHIP_WEBHOOK_SECRET", "");
+    h.tables.api_configs = { slug: "easyship", config: { sync: { webhook_secret_token: "whsec_synced" } } };
+    expect((await send(labelCreated, signature("whsec_synced"))).status).toBe(200);
+    expect((await send(labelCreated, signature(SECRET))).status).toBe(401);
+  });
+
   it("rejects a missing or forged signature", async () => {
     expect((await send(labelCreated, null)).status).toBe(401);
     expect((await send(labelCreated, signature("not-the-secret"))).status).toBe(401);
