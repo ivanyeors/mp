@@ -94,7 +94,6 @@ import { FILLING_SHAPE_PATHS, SHELL_SEAM, XRAY_VIEW, type CellKey } from "./xray
 // and shared by every x-ray on the page.
 type StageRegions = {
   sil: ConformRegion;
-  cells: Record<CellKey, ConformRegion>;
   sections: Record<Section, ConformRegion>;
 };
 /** Seam a pouch keeps from a cell or Section wall: a hair, so neighbours press together (the layout's INSET adds one more). */
@@ -105,11 +104,6 @@ export function stageRegions(stage: StageGeometry): StageRegions {
   if (!regions) {
     regions = {
       sil: makeRegion(stage.silhouettePolygon, SHELL_SEAM),
-      cells: Object.fromEntries(
-        (Object.entries(stage.cellPolygons) as Array<[CellKey, StageGeometry["silhouettePolygon"]]>).map(
-          ([key, poly]) => [key, makeRegion(poly, WALL_SEAM)],
-        ),
-      ) as Record<CellKey, ConformRegion>,
       sections: Object.fromEntries(
         (Object.entries(stage.sectionPolygons) as Array<[Section, StageGeometry["silhouettePolygon"]]>).map(
           ([section, poly]) => [section, makeRegion(poly, WALL_SEAM)],
@@ -795,10 +789,10 @@ export function XrayPillow({
   const authoredPaths = useMemo(() => {
     const paths = new Map<string, string>();
     if (!dived) return paths;
-    const { sil: SIL_REGION, cells: CELL_REGIONS } = stageRegions(stage);
+    const { sil: SIL_REGION, sections: SECTION_REGIONS } = stageRegions(stage);
+    const regions = [SIL_REGION, SECTION_REGIONS[dived]];
     for (const [key, cellPieceList] of piecesByCell) {
       if (!key.startsWith(`${dived}/`)) continue;
-      const regions = [SIL_REGION, CELL_REGIONS[key]];
       for (const p of cellPieceList) {
         const shape = fillingVisual(itemSubtypes.get(p.itemId) ?? null).shape;
         paths.set(p.key, conformPouchPath(p, regions, shape));
@@ -897,22 +891,38 @@ export function XrayPillow({
   };
 
   /**
-   * Put a pouch at a top-left corner in its cell (slice 08): clamped to the
-   * room its neighbours leave it (the layout's range), stored as mm from home,
-   * so what is saved is what is drawn. Nothing when it has no room to move.
+   * Put a pouch at a top-left corner (slice 08): across, within the room its
+   * neighbours leave it; front ↔ back, anywhere in its Section — the
+   * sub-section follows its centre. Stored as mm from that cell's home, so
+   * what is saved is what is drawn.
    */
   const nudgeTo = (ref: PieceRef & { itemId: number }, x: number, y: number) => {
     const p = rectByKey.get(`${ref.section}/${ref.subSection}/${ref.slot}`);
     if (!p || !onPlacementsChange) return;
     const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
+    const cx = clamp(x, p.range.minX, p.range.maxX);
+    const cy = clamp(y, p.range.minY, p.range.maxY);
+    const from = SUB_SECTIONS.indexOf(ref.subSection);
+    const to = Math.min(Math.max(stage.rowY.findLastIndex((rowY) => rowY <= cy + p.h / 2), 0), SUB_SECTIONS.length - 1);
     const before = placements;
+    let next = before;
+    let nextRef: PieceRef = ref;
+    if (to !== from) {
+      const r = movePiece(before, ref, { cell: { section: ref.section, subSection: SUB_SECTIONS[to] }, layer: null });
+      if (!r.ok) {
+        toast.error(r.error); // cap feedback, the add's path
+        return;
+      }
+      next = r.placements;
+      nextRef = r.ref;
+    }
     // Stored as M millimetres (the reference Size), as the layout reads them.
     const f = sizeFactors(PILLOW_DIMENSIONS[pillowSize]);
-    const next = nudgePiece(before, ref, {
-      xMm: (clamp(x, p.range.minX, p.range.maxX) - p.home.x) / (stage.k * f.across),
-      yMm: (clamp(y, p.range.minY, p.range.maxY) - p.home.y) / (stage.k * f.along),
+    next = nudgePiece(next, nextRef, {
+      xMm: (cx - p.home.x) / (stage.k * f.across),
+      yMm: (cy - (p.home.y + stage.rowY[to] - stage.rowY[from])) / (stage.k * f.along),
     });
-    if (next !== before) commitMove(before, next, ref, ref, true);
+    if (next !== before) commitMove(before, next, ref, nextRef, to === from);
   };
 
   /**
@@ -1093,6 +1103,12 @@ export function XrayPillow({
         left: box && box.width > 0 ? `${((e.clientX - box.left) / box.width) * 100}%` : "50%",
         top: box && box.height > 0 ? `${((e.clientY - box.top) / box.height) * 100}%` : "50%",
       });
+      return;
+    }
+    // Into an empty sub-section of its own Section: it lands where it was let go, not at home.
+    if (plan.to.cell.section === d.source.section && row.length === 0 && layers.length === 0) {
+      const p = rectByKey.get(d.key);
+      if (p) nudgeTo(d.source, d.x - d.grabX - p.w / 2, d.y - d.grabY - p.h / 2);
       return;
     }
     const r = movePiece(placements, d.source, plan.to);

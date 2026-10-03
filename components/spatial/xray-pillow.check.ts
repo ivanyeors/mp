@@ -64,8 +64,8 @@ assert.match(renderer, /clipPath=\{`url\(#\$\{clipId\(section\)\}\)`\}/, "nested
 assert.match(renderer, /clipPath=\{authored \? `url\(#\$\{clipId\(key\)\}\)` : undefined\}/, "the dived Section adds the cell clip inside the Section clip");
 assert.match(
   renderer,
-  /const regions = \[SIL_REGION, CELL_REGIONS\[key\]\];/,
-  "pouch geometry deforms to the silhouette and cell (rounded, no cut corners)",
+  /const regions = \[SIL_REGION, SECTION_REGIONS\[dived\]\];/,
+  "pouch geometry deforms to the silhouette and Section (rounded, no cut corners; free front ↔ back)",
 );
 assert.match(
   renderer,

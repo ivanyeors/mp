@@ -215,7 +215,6 @@ type PouchDraft = {
   thickness_mm: string;
   min_thickness_mm: string;
   min_width_mm: string;
-  orientation: "across" | "along";
   flat_length_mm: string;
   flat_width_mm: string;
 };
@@ -227,7 +226,6 @@ function pouchDraft(row: PouchCatalogEntry): PouchDraft {
     thickness_mm: String(row.dims.thicknessMm),
     min_thickness_mm: String(row.dims.minThicknessMm),
     min_width_mm: String(row.dims.minWidthMm),
-    orientation: row.dims.orientation,
     flat_length_mm: row.dims.flatLengthMm ? String(row.dims.flatLengthMm) : "",
     flat_width_mm: row.dims.flatWidthMm ? String(row.dims.flatWidthMm) : "",
   };
@@ -263,7 +261,6 @@ function pouchBody(key: string, d: PouchDraft): { body: Body } | { error: string
       thickness_mm,
       min_thickness_mm,
       min_width_mm,
-      orientation: d.orientation,
       flat_length_mm,
       flat_width_mm,
     },
@@ -283,9 +280,8 @@ function PouchTable({
     <div className="space-y-2">
       <h4 className="text-sm font-semibold">Filling pouches</h4>
       <p className="text-xs text-muted-foreground">
-        Width is the long axis, length the short one; thickness relaxed and fully compressed;
-        minimum width when squeezed. Orientation says whether the long axis lies across the
-        section (left ↔ right) or along it (front ↔ back). Flat length / width are optional: the
+        Width runs across the section (left ↔ right), length along it (front ↔ back); thickness
+        relaxed and fully compressed; minimum width when squeezed. Flat length / width are optional: the
         fabric’s own limit when it stops a spread before the fill is fully compressed.
       </p>
       <Table>
@@ -297,7 +293,6 @@ function PouchTable({
             <TableHead>Thickness</TableHead>
             <TableHead>Min thick.</TableHead>
             <TableHead>Min width</TableHead>
-            <TableHead>Orientation</TableHead>
             <TableHead>Flat L</TableHead>
             <TableHead>Flat W</TableHead>
             <TableHead>Status</TableHead>
@@ -377,17 +372,6 @@ function PouchRow({
       <TableCell className="px-1"><MmInput value={draft.thickness_mm} onChange={set("thickness_mm")} label={`${row.label} thickness mm`} /></TableCell>
       <TableCell className="px-1"><MmInput value={draft.min_thickness_mm} onChange={set("min_thickness_mm")} label={`${row.label} minimum thickness mm`} /></TableCell>
       <TableCell className="px-1"><MmInput value={draft.min_width_mm} onChange={set("min_width_mm")} label={`${row.label} minimum width mm`} /></TableCell>
-      <TableCell className="px-1">
-        <select
-          value={draft.orientation}
-          onChange={(e) => setDraft((d) => ({ ...d, orientation: e.target.value as "across" | "along" }))}
-          className="h-9 rounded-md border bg-transparent px-2 text-sm"
-          aria-label={`${row.label} orientation`}
-        >
-          <option value="across">across</option>
-          <option value="along">along</option>
-        </select>
-      </TableCell>
       <TableCell className="px-1"><MmInput value={draft.flat_length_mm} onChange={set("flat_length_mm")} label={`${row.label} flat length mm`} optional /></TableCell>
       <TableCell className="px-1"><MmInput value={draft.flat_width_mm} onChange={set("flat_width_mm")} label={`${row.label} flat width mm`} optional /></TableCell>
       <TableCell>
@@ -420,27 +404,25 @@ function PouchRow({
   );
 }
 
-type NeckDraft = { width_mm: string; length_mm: string; thickness_mm: string; min_thickness_mm: string };
+type NeckDraft = { length_mm: string; radius_mm: string; min_radius_mm: string };
 
 function neckDraft(row: NeckCatalogEntry): NeckDraft {
   return {
-    width_mm: String(row.dims.widthMm),
     length_mm: String(row.dims.lengthMm),
-    thickness_mm: String(row.dims.thicknessMm),
-    min_thickness_mm: String(row.dims.minThicknessMm),
+    radius_mm: String(row.dims.radiusMm),
+    min_radius_mm: String(row.dims.minRadiusMm),
   };
 }
 
 function neckBody(size: string, d: NeckDraft): { body: Body } | { error: string } {
-  const width_mm = toMm(d.width_mm);
   const length_mm = toMm(d.length_mm);
-  const thickness_mm = toMm(d.thickness_mm);
-  const min_thickness_mm = toMm(d.min_thickness_mm);
-  if (!width_mm || !length_mm || !thickness_mm || !min_thickness_mm) {
+  const radius_mm = toMm(d.radius_mm);
+  const min_radius_mm = toMm(d.min_radius_mm);
+  if (!length_mm || !radius_mm || !min_radius_mm) {
     return { error: "Every measurement must be a whole number of millimetres" };
   }
-  if (min_thickness_mm > thickness_mm) return { error: "Min thickness cannot exceed thickness" };
-  return { body: { size, width_mm, length_mm, thickness_mm, min_thickness_mm } };
+  if (min_radius_mm > radius_mm) return { error: "Min radius cannot exceed radius" };
+  return { body: { size, length_mm, radius_mm, min_radius_mm } };
 }
 
 function NeckTable({
@@ -455,14 +437,16 @@ function NeckTable({
   return (
     <div className="space-y-2">
       <h4 className="text-sm font-semibold">Cervical Neck support</h4>
+      <p className="text-xs text-muted-foreground">
+        A roll, like a mini bolster: length end to end (left ↔ right), radius relaxed and fully squashed.
+      </p>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Size</TableHead>
-            <TableHead>Width</TableHead>
             <TableHead>Length</TableHead>
-            <TableHead>Thickness</TableHead>
-            <TableHead>Min thick.</TableHead>
+            <TableHead>Radius</TableHead>
+            <TableHead>Min radius</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -470,7 +454,7 @@ function NeckTable({
         <TableBody>
           {rows.map((row) => (
             <NeckRow
-              key={`${row.size}-${row.source}-${row.measuredOn ?? ""}-${row.dims.widthMm}-${row.dims.thicknessMm}`}
+              key={`${row.size}-${row.source}-${row.measuredOn ?? ""}-${row.dims.lengthMm}-${row.dims.radiusMm}-${row.dims.minRadiusMm}`}
               row={row}
               onSave={onSave}
               onReset={onReset}
@@ -501,10 +485,9 @@ function NeckRow({
   return (
     <TableRow>
       <TableCell className="font-medium">{row.size}</TableCell>
-      <TableCell className="px-1"><MmInput value={draft.width_mm} onChange={set("width_mm")} label={`Neck support ${row.size} width mm`} /></TableCell>
       <TableCell className="px-1"><MmInput value={draft.length_mm} onChange={set("length_mm")} label={`Neck support ${row.size} length mm`} /></TableCell>
-      <TableCell className="px-1"><MmInput value={draft.thickness_mm} onChange={set("thickness_mm")} label={`Neck support ${row.size} thickness mm`} /></TableCell>
-      <TableCell className="px-1"><MmInput value={draft.min_thickness_mm} onChange={set("min_thickness_mm")} label={`Neck support ${row.size} minimum thickness mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.radius_mm} onChange={set("radius_mm")} label={`Neck support ${row.size} radius mm`} /></TableCell>
+      <TableCell className="px-1"><MmInput value={draft.min_radius_mm} onChange={set("min_radius_mm")} label={`Neck support ${row.size} minimum radius mm`} /></TableCell>
       <TableCell>
         <SourceBadge source={row.source} />
         {row.measuredOn && <div className="text-[10px] text-muted-foreground mt-1">{row.measuredOn}</div>}

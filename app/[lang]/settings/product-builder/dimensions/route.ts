@@ -81,7 +81,6 @@ const PouchSchema = z
     thickness_mm: mm,
     min_thickness_mm: mm,
     min_width_mm: mm,
-    orientation: z.enum(['across', 'along']),
     flat_length_mm: optionalMm,
     flat_width_mm: optionalMm,
   })
@@ -98,14 +97,13 @@ const NeckSchema = z
   .object({
     kind: z.literal('neck'),
     size: z.enum(['XS', 'S', 'M', 'L']),
-    width_mm: mm,
     length_mm: mm,
-    thickness_mm: mm,
-    min_thickness_mm: mm,
+    radius_mm: mm,
+    min_radius_mm: mm,
   })
-  .refine((d) => d.min_thickness_mm <= d.thickness_mm, {
-    message: 'Fully compressed thickness cannot exceed the relaxed thickness',
-    path: ['min_thickness_mm'],
+  .refine((d) => d.min_radius_mm <= d.radius_mm, {
+    message: 'Fully squashed radius cannot exceed the relaxed radius',
+    path: ['min_radius_mm'],
   })
 
 const AllowanceSchema = z.object({
@@ -131,10 +129,19 @@ export async function POST(req: NextRequest) {
     void _kind
     ;({ error } = await admin
       .from('filling_dimension_overrides')
-      .upsert({ ...row, flat_length_mm: row.flat_length_mm ?? null, flat_width_mm: row.flat_width_mm ?? null }, { onConflict: 'key' }))
+      .upsert(
+        { ...row, orientation: 'across', flat_length_mm: row.flat_length_mm ?? null, flat_width_mm: row.flat_width_mm ?? null },
+        { onConflict: 'key' },
+      ))
   } else if (body.kind === 'neck') {
-    const { kind: _kind, ...row } = body
-    void _kind
+    // The roll's footprint: width = its length, length and thickness = its diameter.
+    const row = {
+      size: body.size,
+      width_mm: body.length_mm,
+      length_mm: 2 * body.radius_mm,
+      thickness_mm: 2 * body.radius_mm,
+      min_thickness_mm: 2 * body.min_radius_mm,
+    }
     ;({ error } = await admin.from('neck_support_dimension_overrides').upsert(row, { onConflict: 'size' }))
   } else {
     ;({ error } = await admin

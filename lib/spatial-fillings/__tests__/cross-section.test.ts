@@ -28,21 +28,19 @@ describe("crossSectionSlabs", () => {
     at("center", "middle", 1, 1),
   ];
 
-  it("across at middle shows two tall stacks and one short one, with mm that equal the fit's per-Section loft", () => {
+  it("along the left Section shows the middle stack, with mm that equal the fit's per-sub-section loft", () => {
     const fit = fitPillow(sideSleep, { size: "M", dims, pillow: WALLED });
-    const cols = crossSectionSlabs(fit, DEFAULT_CUT);
-    expect(cols.map((c) => c.key)).toEqual(["left", "center", "right"]);
-    expect(cols.map((c) => c.slabs.length)).toEqual([3, 1, 3]);
+    const cols = crossSectionSlabs(fit, { section: "left" });
+    expect(cols.map((c) => c.key)).toEqual(["front", "middle", "back"]);
+    expect(cols.map((c) => c.slabs.length)).toEqual([0, 3, 0]);
     for (const c of cols) {
       expect(sum(c.slabs.map((s) => s.heightMm))).toBeCloseTo(c.loftMm, 1);
-      expect(c.loftMm).toBe(fit.sections[c.key as "left"].loftBySubSection.middle);
-      expect(c.widthMm).toBe(fit.sections[c.key as "left"].widthMm);
-      expect(c.maxLoftMm).toBe(fit.sections[c.key as "left"].maxLoftMm);
+      expect(c.loftMm).toBe(fit.sections.left.loftBySubSection[c.key]);
+      expect(c.maxLoftMm).toBe(fit.sections.left.maxLoftMm);
     }
-    expect(cols[0].loftMm).toBeGreaterThan(cols[1].loftMm);
-    expect(cols[2].loftMm).toBe(cols[0].loftMm);
+    expect(cols[1].loftMm).toBeGreaterThan(crossSectionSlabs(fit, DEFAULT_CUT)[1].loftMm);
     // Deepest plane at the bottom.
-    expect(cols[0].slabs.map((s) => s.depth)).toEqual([2, 1, 0]);
+    expect(cols[1].slabs.map((s) => s.depth)).toEqual([2, 1, 0]);
   });
 
   it("never exceeds the loft line unless the column is over, and hatches compressed slabs", () => {
@@ -56,13 +54,13 @@ describe("crossSectionSlabs", () => {
     expect(over.status).toBe("over");
     expect(sum(over.slabs.map((s) => s.heightMm))).toBeGreaterThan(over.maxLoftMm);
     expect(over.slabs.every((s) => s.status === "over")).toBe(true);
-    const relaxed = crossSectionSlabs(fitPillow([at("left", "front", 1, 1)], { size: "M", dims, pillow: WALLED }), { axis: "across", subSection: "front" })[0];
+    const relaxed = crossSectionSlabs(fitPillow([at("left", "front", 1, 1)], { size: "M", dims, pillow: WALLED }), { section: "left" })[0];
     expect(relaxed.slabs).toEqual([{ depth: 0, heightMm: 45, itemId: 1, status: "ok", hatched: false }]);
   });
 
   it("a pouch settled across middle and back contributes its settled thickness to both columns", () => {
     const fit = fitPillow([at("center", "middle", 1, 1)], { size: "M", dims });
-    const along: Cut = { axis: "along", section: "center" };
+    const along: Cut = { section: "center" };
     const cols = crossSectionSlabs(fit, along);
     expect(cols.map((c) => c.key)).toEqual(["front", "middle", "back"]);
     expect(cols.map((c) => c.widthMm)).toEqual([fit.settle.cellLengthMm, fit.settle.cellLengthMm, fit.settle.cellLengthMm]);
@@ -78,12 +76,11 @@ describe("crossSectionSlabs", () => {
 
   it("colours a plane by the piece that sets its thickness and labels the cut", () => {
     const fit = fitPillow([at("left", "front", 1, 1), at("left", "front", 2, 2)], { size: "M", dims, pillow: WALLED });
-    const [left] = crossSectionSlabs(fit, { axis: "across", subSection: "front" });
+    const [left] = crossSectionSlabs(fit, { section: "left" });
     expect(left.slabs).toHaveLength(1);
     expect(left.slabs[0].itemId).toBe(2);
     expect(left.slabs[0].heightMm).toBe(60);
-    expect(cutLabel(DEFAULT_CUT)).toBe("across · middle");
-    expect(cutLabel({ axis: "along", section: "right" })).toBe("along · right");
+    expect(cutLabel(DEFAULT_CUT)).toBe("along · center");
   });
 
   it("is deterministic for a given fit", () => {

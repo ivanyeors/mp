@@ -125,14 +125,14 @@ describe("resolveDims", () => {
   it("resolves a Neck support to its size or the fallback", () => {
     const neck = resolveDims({ name: "Cervical Neck Support", category: "accessories", size: "S" });
     expect(neck.kind).toBe("neck");
-    expect(neck.dims.widthMm).toBe(NECK_SUPPORT_FALLBACK.widthMm);
+    expect(neck.dims).toMatchObject({ widthMm: NECK_SUPPORT_FALLBACK.lengthMm, thicknessMm: 2 * NECK_SUPPORT_FALLBACK.radiusMm });
     expect(neck.source).toBe("fallback");
     const measured: DimensionRegistry = {
       ...CODE_REGISTRY,
-      neck: { S: { widthMm: 280, lengthMm: 80, thicknessMm: 45, minThicknessMm: 25, measuredOn: "2026-09-30" } },
+      neck: { S: { lengthMm: 280, radiusMm: 22, minRadiusMm: 12, measuredOn: "2026-09-30" } },
     };
     const r = resolveDims({ name: "Cervical Neck Support", category: "accessories", size: "S" }, measured);
-    expect(r).toMatchObject({ source: "measured", measuredOn: "2026-09-30", dims: { widthMm: 280, minWidthMm: 280 } });
+    expect(r).toMatchObject({ source: "measured", measuredOn: "2026-09-30", dims: { widthMm: 280, minWidthMm: 280, lengthMm: 44, thicknessMm: 44, minThicknessMm: 24 } });
   });
 
   it("reads a registry with rows applied: exact key, then the key without its size, then the family", () => {
@@ -141,12 +141,12 @@ describe("resolveDims", () => {
       neck: {},
       configured: new Set(["6d/folded"]),
       pouches: {
-        "6d/l": { widthMm: 210, lengthMm: 150, thicknessMm: 50, minThicknessMm: 28, minWidthMm: 180, orientation: "across", measuredOn: "2026-10-01" },
-        "6d/folded": { widthMm: 150, lengthMm: 120, thicknessMm: 70, minThicknessMm: 40, minWidthMm: 130, orientation: "along", measuredOn: null },
+        "6d/l": { widthMm: 210, lengthMm: 150, thicknessMm: 50, minThicknessMm: 28, minWidthMm: 180, measuredOn: "2026-10-01" },
+        "6d/folded": { widthMm: 150, lengthMm: 120, thicknessMm: 70, minThicknessMm: 40, minWidthMm: 130, measuredOn: null },
       },
     };
     expect(resolveDims({ name: "filling", subtype: "6D (L)" }, registry)).toMatchObject({ source: "measured", dims: { widthMm: 210 } });
-    expect(resolveDims({ name: "6D Fold", size: "M" }, registry)).toMatchObject({ key: "6d/folded/m", source: "configured", dims: { orientation: "along" } });
+    expect(resolveDims({ name: "6D Fold", size: "M" }, registry)).toMatchObject({ key: "6d/folded/m", source: "configured", dims: { widthMm: 150 } });
     expect(resolveDims({ name: "filling", subtype: "6D (Round)" }, registry).source).toBe("fallback");
   });
 
@@ -178,13 +178,6 @@ describe("fillings scale with the pillow Size (M is the reference)", () => {
     const xl = pouchAtSize(d, sizeFactors(PILLOW_DIMENSIONS.XL));
     expect(xs.widthMm).toBeLessThan(200);
     expect(xl.widthMm).toBeGreaterThan(200);
-  });
-
-  it("a pouch lying along the Section scales its width by the length ratio", () => {
-    const along = pouchAtSize({ ...d, orientation: "along" }, { across: 2, along: 3, thickness: 1 });
-    expect(along.widthMm).toBe(600);
-    expect(along.lengthMm).toBe(200);
-    expect(along.flatLengthMm).toBe(360);
   });
 
   it("dimsAtSize reads every item through the Size, the generic pouch for an absent id, once per item", () => {

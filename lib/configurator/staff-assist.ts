@@ -495,7 +495,7 @@ export function mirrorSection(placements: PillowPlacement[], from: Section): Pil
  * Set a pouch's fine position in its cell (slice 08): mm from home, rounded,
  * bounded by MAX_OFFSET_MM; 0 drops the field so an un-nudged pouch stays
  * byte-identical to one that never moved. Returns the input when nothing
- * changes. The layout clamps the drawn pouch to its cell whatever is stored.
+ * changes. The layout clamps the drawn pouch (across: its cell; front ↔ back: its Section).
  */
 export function nudgePiece(placements: PillowPlacement[], ref: PieceRef, offset: { xMm: number; yMm: number }): PillowPlacement[] {
   const bound = (v: number) => Math.max(-MAX_OFFSET_MM, Math.min(MAX_OFFSET_MM, Math.round(v))) || 0;
