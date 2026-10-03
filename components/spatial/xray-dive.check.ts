@@ -138,13 +138,10 @@ assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pill
 assert.match(renderer, /<LoftGauge cell=\{cellFitOf\(subSection\)!\} size=\{pillowSize\} compact=\{false\} \/>/, "the phone dock gauge is the readable one");
 assert.match(renderer, /role="meter"/, "the gauge is a meter for assistive tech");
 assert.match(renderer, /fitMessage\(cell, size\)/, "the gauge's message is the pure fitMessage — the three numbers and the Size");
-assert.match(
-  renderer,
-  /const would = wouldFit\(placements, \{ kind: "add", cell, itemId, layer \}, \{ size: pillowSize, dims: itemDims, loftAllowance \}\);/,
-  "an add is judged by wouldFit after the caps",
-);
-assert.match(renderer, /if \(would\.cell\?\.status === "over"\) \{\s*toast\.error\(fitMessage\(would\.cell, pillowSize\)\);\s*return;/, "over is refused with the numbers on the existing toast path; compressed goes through");
-assert.doesNotMatch(renderer, /would\.cell\?\.status === "compressed"[\s\S]{0,80}return/, "compression is a working state, never a refusal");
+assert.doesNotMatch(renderer, /status === "over"\) \{\s*toast\.error/, "fit never refuses an add or a move — it warns");
+assert.match(renderer, /<FitWarning status=\{cell\.status\} message=\{fitMessage\(cell, size\)\}/, "the gauge's fit message lives in its warning tooltip");
+assert.equal(renderer.match(/warning=\{layerWarning\(subSection, depth\)\}/g)?.length, 2, "each layer row warns with its own width message, in the panel and in the dock");
+assert.match(renderer, /layerFitMessage\(cell, layer\)/, "a row's tooltip is the pure per-layer message");
 
 // --- Slice 06: select a pouch, move it by key or pad, Undo -------------------
 assert.match(renderer, /const \[selected, setSelected\] = useState<PieceRef \| null>\(null\)/, "selection is renderer state, a piece ref");
@@ -156,10 +153,10 @@ assert.equal(renderer.match(/onSelectPiece=\{\(slot\) => selectPiece\(/g)?.lengt
 assert.match(renderer, /aria-label=\{`Select \$\{label\} in \$\{cell\.section\} \$\{cell\.subSection\} — drag to move`\}/, "the centroid chip's label selects the piece under it");
 assert.match(renderer, /if \(isTypingTarget\(e\.target\) \|\| draggingRef\.current\) return;/, "text controls and a drag in flight keep their keys");
 assert.doesNotMatch(renderer, /MovePad|MOVE_ACTIONS/, "no move pad — the drag is the move UI (27-9-2026 review); the keys stay");
-for (const fn of ["movePiece(before, ref, { cell }, fitCtx)", "reorderInLayer(before, ref, dir)", "shiftPieceLayer(before, ref, kind === \"layerUp\" ? -1 : 1, fitCtx)"]) {
+for (const fn of ["movePiece(before, ref, { cell })", "reorderInLayer(before, ref, dir)", "shiftPieceLayer(before, ref, kind === \"layerUp\" ? -1 : 1)"]) {
   assert.ok(renderer.includes(fn), `moves go through the pure lib: ${fn}`);
 }
-assert.match(renderer, /toast\.error\(error\); \/\/ cap \/ fit feedback, the add's path/, "a refused move uses the add's toast path");
+assert.match(renderer, /toast\.error\(error\); \/\/ cap feedback, the add's path/, "a refused move uses the add's toast path");
 assert.equal(renderer.match(/label: "Undo"/g)?.length, 2, "Undo on the move toast, the Mirror pattern");
 assert.match(renderer, /Undo unavailable — the mix changed after the move/, "a later edit makes the move's Undo unavailable");
 assert.match(renderer, /data-xray-selected-piece/, "selection outlines the piece (the settled ghost is drawn by the dive already)");
@@ -180,11 +177,11 @@ assert.match(renderer, /svg\.addEventListener\("touchstart", onTouchStart, \{ pa
 assert.match(renderer, /e\.currentTarget\.setPointerCapture\(e\.pointerId\)/, "the pointer is captured for the drag");
 assert.match(renderer, /Math\.hypot\(e\.clientX - d\.startX, e\.clientY - d\.startY\) < DRAG_THRESHOLD_PX/, "a press becomes a drag only past the threshold — a click still selects");
 assert.match(renderer, /dropTargetFromElement\(document\.elementFromPoint\(e\.clientX, e\.clientY\)\)/, "the drop target is the tagged element under the pointer");
-assert.match(renderer, /const r = movePiece\(placements, d\.source, plan\.to, reorder \? undefined : fitCtx\);/, "a drop is a movePiece — a drag can never do what a key cannot");
+assert.match(renderer, /const r = movePiece\(placements, d\.source, plan\.to\);/, "a drop is a movePiece — a drag can never do what a key cannot");
 assert.match(renderer, /data-drop-cell=\{`\$\{section\}\/\$\{subSection\}`\}/, "the nine cell regions are drop targets while dragging (any Section)");
 assert.match(renderer, /data-drop-cell=\{dropCell\}\s+data-drop-layer=\{depth\}/, "each layer row is a depth target");
 assert.match(renderer, /data-drop-layer=\{layers\.length\}/, "the add-layer button is the new-Layer target");
-assert.match(renderer, /fill=\{drag\.refused \? RING_OVER : "#38bdf8"\}/, "the hovered cell highlights in the selection blue (visible on the unveiled Section), red when the drop could not close");
+assert.match(renderer, /fill=\{drag\.overfull \? RING_OVER : "#38bdf8"\}/, "the hovered cell highlights in the selection blue (visible on the unveiled Section), red when the drop would leave it overfull");
 assert.match(renderer, /data-xray-drag-ghost/, "a ghost of the outline follows the pointer");
 assert.match(renderer, /if \(e\.key !== "Escape"\) return;\s*e\.stopPropagation\(\);\s*cancelDrag\(\);/, "Escape mid-drag cancels the drag and keeps the dive open");
 assert.match(renderer, /draggingRef\.current = true; \/\/ Escape now cancels the drag, not the dive/, "the dive's Escape guard stands down during a pouch drag");
@@ -258,3 +255,8 @@ assert.match(
 );
 
 console.log("xray-dive.check: all assertions passed");
+
+// --- Controls slot: a host can park the dive controls beside the pillow ------
+assert.match(renderer, /createPortal\(<div data-xray-dive-dock>\{diveControls\(""\)\}<\/div>, controlsSlot!\)/, "slotted controls are the dock's own render, portalled into the host's slot");
+assert.match(renderer, /controlsSlot\?\.contains\(target\)/, "a click in the slot is not 'outside' — it never ends the dive");
+assert.match(renderer, /const slotted = Boolean\(controlsSlot\) && !isMobile;/, "phones keep the dock under the pillow");

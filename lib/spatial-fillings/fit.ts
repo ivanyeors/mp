@@ -561,18 +561,25 @@ export function wouldFit(
  * for a loft problem; the same shape per Layer for a width problem; `fits` otherwise.
  */
 export function fitMessage(cell: CellFit, size: string): string {
-  const where = `${cell.section} · ${cell.subSection}${cell.settledInto.length ? ` (settled into ${cell.settledInto.join(" and ")})` : ""}`;
+  const where = cellWhere(cell);
   const loftStatus = cell.relaxedLoftMm <= cell.maxLoftMm ? "ok" : cell.minLoftMm <= cell.maxLoftMm ? "compressed" : "over";
   if (loftStatus !== "ok") {
     const n = cell.loftLayers;
     return `${where}: ${n} ${n === 1 ? "layer needs" : "layers need"} ${Math.round(cell.relaxedLoftMm)} mm relaxed, ${Math.round(cell.minLoftMm)} mm fully compressed; Size ${size} holds ${Math.round(cell.maxLoftMm)} mm`;
   }
   const layer = cell.layers.find((l) => l.status !== "ok");
-  if (layer) {
-    const n = layer.pieces.length;
-    return `${where} layer ${layer.depth + 1}: ${n} ${n === 1 ? "piece needs" : "pieces need"} ${Math.round(layer.relaxedMm)} mm relaxed, ${Math.round(layer.minMm)} mm fully squeezed; the ${cell.section} Section is ${Math.round(layer.availableMm)} mm wide`;
-  }
+  if (layer) return layerFitMessage(cell, layer);
   return `${where}: fits`;
+}
+
+function cellWhere(cell: CellFit): string {
+  return `${cell.section} · ${cell.subSection}${cell.settledInto.length ? ` (settled into ${cell.settledInto.join(" and ")})` : ""}`;
+}
+
+/** One Layer's width problem: `"center · back layer 1: 2 pieces need 332 mm relaxed, …"`. */
+export function layerFitMessage(cell: CellFit, layer: LayerFit): string {
+  const n = layer.pieces.length;
+  return `${cellWhere(cell)} layer ${layer.depth + 1}: ${n} ${n === 1 ? "piece needs" : "pieces need"} ${Math.round(layer.relaxedMm)} mm relaxed, ${Math.round(layer.minMm)} mm fully squeezed; the ${cell.section} Section is ${Math.round(layer.availableMm)} mm wide`;
 }
 
 // --- Feedback helpers (slice 04) ----------------------------------------------
