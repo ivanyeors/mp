@@ -68,7 +68,7 @@ export function ShippingRulesEditor({
         if (j.reference) setReference(j.reference);
         else throw new Error(typeof j.error === "string" ? j.error : "no reference");
       })
-      .catch((e) => !cancelled && toast.error(`Easyship reference data unavailable: ${e instanceof Error ? e.message : e}`));
+      .catch((e) => !cancelled && toast.error(`Courier reference data unavailable: ${e instanceof Error ? e.message : e}`));
     return () => { cancelled = true; };
   }, []);
 
@@ -92,7 +92,7 @@ export function ShippingRulesEditor({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Rules run in priority order (lower first) when Easyship quotes a shipment. Matched to Easyship by name; a rule
+        Rules run in priority order (lower first) when the courier account quotes a shipment. Matched there by name; a rule
         whose conditions or actions change is recreated there.
       </p>
 
@@ -337,7 +337,7 @@ function OptionInput({
       const options = refOptions(field.ref!, reference);
       if (!options.length) {
         return (
-          <Labeled label={label} hint="Easyship id">
+          <Labeled label={label} hint="Courier account id">
             <Input value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value || undefined)} />
           </Labeled>
         );

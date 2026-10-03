@@ -1,9 +1,9 @@
 import type {
   Parcel,
   ShippingDestination,
-  ShippingOriginAddress,
   ShippingSettings,
 } from "@/lib/shipping/types";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
 
 /**
  * Easyship Public API client (https://developers.easyship.com).
@@ -111,7 +111,7 @@ function clean<T extends Record<string, unknown>>(obj: T): T {
   ) as T;
 }
 
-export function originAddressBody(origin: Partial<ShippingOriginAddress>) {
+export function originAddressBody(origin: EasyshipAddress) {
   return clean({
     contact_name: origin.contact_name,
     company_name: origin.company_name,
@@ -191,14 +191,15 @@ export function parcelsBody(parcels: Parcel[], settings: ShippingSettings, origi
 
 export function ratesRequestBody(input: {
   settings: ShippingSettings;
+  origin: EasyshipAddress;
   destination: ShippingDestination;
   parcels: Parcel[];
   currency: string;
 }) {
   const { settings } = input;
-  const originCountry = (settings.origin_address.country_alpha2 ?? "SG").toUpperCase();
+  const originCountry = input.origin.country_alpha2.toUpperCase();
   return {
-    origin_address: originAddressBody(settings.origin_address),
+    origin_address: originAddressBody(input.origin),
     destination_address: destinationAddressBody(input.destination),
     incoterms: settings.incoterms,
     insurance: { is_insured: settings.insure_shipments },
@@ -212,6 +213,7 @@ export function ratesRequestBody(input: {
 
 export function shipmentRequestBody(input: {
   settings: ShippingSettings;
+  origin: EasyshipAddress;
   destination: ShippingDestination;
   contact: { name: string; email: string; phone?: string | null };
   parcels: Parcel[];
@@ -220,9 +222,9 @@ export function shipmentRequestBody(input: {
   courierName?: string | null;
 }) {
   const { settings } = input;
-  const originCountry = (settings.origin_address.country_alpha2 ?? "SG").toUpperCase();
+  const originCountry = input.origin.country_alpha2.toUpperCase();
   return {
-    origin_address: originAddressBody(settings.origin_address),
+    origin_address: originAddressBody(input.origin),
     destination_address: destinationAddressBody(input.destination, input.contact),
     incoterms: settings.incoterms,
     insurance: { is_insured: settings.insure_shipments },

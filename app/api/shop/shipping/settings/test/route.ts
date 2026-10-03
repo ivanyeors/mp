@@ -4,6 +4,8 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { readShippingMethods } from "@/lib/shop/shipping-methods";
 import { buildParcels } from "@/lib/shipping/parcels";
+import type { TypeBoxes } from "@/lib/shipping/types";
+import { readTypeBoxes } from "@/lib/easyship/store";
 import { fetchCourierRates, priceMethod } from "@/lib/shipping/quote";
 import { parseShippingSettings, ShippingSettingsSchema } from "@/lib/shipping/settings";
 import type { ShippingMethod } from "@/lib/types/ecommerce";
@@ -19,7 +21,7 @@ const TestSchema = z.object({
   }),
   profile: z.enum(["pillow", "bolster", "accessory"]).default("pillow"),
   quantity: z.number().int().min(1).max(10).default(1),
-  /** The unsaved form, so Staff can try a box size before saving it. Defaults to the saved row. */
+  /** The unsaved form, so Staff can try settings before saving them. Defaults to the saved row. Boxes are always the saved doc's. */
   settings: ShippingSettingsSchema.optional(),
 });
 
@@ -45,11 +47,15 @@ export async function POST(req: Request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     settings = parseShippingSettings(data as Record<string, unknown> | null);
   }
-  // A test is a test: run it even while live rates are switched off for shoppers.
-  const testSettings = { ...settings, easyship_enabled: true };
 
   const methods = ((await readShippingMethods(false, destination.country).catch(() => [])) as ShippingMethod[]);
   const currency = methods.find((m) => m.rate_source === "easyship")?.currency ?? methods[0]?.currency ?? "SGD";
+  let boxes: TypeBoxes;
+  try {
+    boxes = await readTypeBoxes();
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Could not read courier boxes" }, { status: 500 });
+  }
   const parcels = buildParcels(
     [
       {
@@ -61,11 +67,11 @@ export async function POST(req: Request) {
         description: "Test parcel",
       },
     ],
-    testSettings.packages,
+    boxes,
   );
 
   const rates = await fetchCourierRates(admin, {
-    settings: testSettings,
+    settings,
     destination,
     parcels,
     currency,

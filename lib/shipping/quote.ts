@@ -12,6 +12,8 @@ import {
 import { buildParcels } from "@/lib/shipping/parcels";
 import { deliveryWindow, normalizeEasyshipRates, pickRate, priceLiveRate } from "@/lib/shipping/rates";
 import { missingOriginFields } from "@/lib/shipping/settings";
+import { readSenderAddress, readTypeBoxes } from "@/lib/easyship/store";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
 import type {
   CourierRate,
   Parcel,
@@ -20,6 +22,7 @@ import type {
   ShippingDestination,
   ShippingQuoteOption,
   ShippingSettings,
+  TypeBoxes,
 } from "@/lib/shipping/types";
 
 /** Postal codes compare without spaces or case, so "s 123 456" and "S123456" share a quote. */
@@ -33,7 +36,8 @@ export function normalizePostalCode(postal: string): string {
  * the cache; street lines are left out because rates are by postal code.
  */
 export function quoteCacheKey(input: {
-  settings: Pick<ShippingSettings, "origin_address" | "incoterms" | "insure_shipments">;
+  settings: Pick<ShippingSettings, "incoterms" | "insure_shipments">;
+  origin: Pick<EasyshipAddress, "country_alpha2" | "postal_code">;
   destination: ShippingDestination;
   parcels: Parcel[];
   currency: string;
@@ -41,8 +45,8 @@ export function quoteCacheKey(input: {
   const fingerprint = {
     v: 1,
     origin: [
-      (input.settings.origin_address.country_alpha2 ?? "").toUpperCase(),
-      normalizePostalCode(input.settings.origin_address.postal_code ?? ""),
+      input.origin.country_alpha2.toUpperCase(),
+      normalizePostalCode(input.origin.postal_code ?? ""),
     ],
     to: [input.destination.country.toUpperCase(), normalizePostalCode(input.destination.postal_code)],
     incoterms: input.settings.incoterms,
@@ -61,6 +65,8 @@ export function quoteCacheKey(input: {
 
 export interface FetchRatesInput {
   settings: ShippingSettings;
+  /** The ship-from address; undefined reads the default sender from the courier account doc. */
+  origin?: EasyshipAddress | null;
   destination: ShippingDestination;
   parcels: Parcel[] | null;
   currency: string;
@@ -89,10 +95,23 @@ export async function fetchCourierRates(
   if (!config) {
     return { ok: false, reason: "not_configured", message: "EASYSHIP_API_TOKEN is not set" };
   }
-  if (!input.settings.easyship_enabled) {
-    return { ok: false, reason: "disabled", message: "Easyship is turned off in Settings → Shipping" };
+  let origin = input.origin;
+  if (origin === undefined) {
+    try {
+      origin = await readSenderAddress();
+    } catch (err) {
+      console.error("[shipping] Could not read the sender address:", err);
+      return { ok: false, reason: "error", message: "The sender address could not be read" };
+    }
   }
-  const missing = missingOriginFields(input.settings.origin_address);
+  if (!origin) {
+    return {
+      ok: false,
+      reason: "invalid_origin",
+      message: "No default sender address: set one in Settings → Shipping → Couriers → Addresses",
+    };
+  }
+  const missing = missingOriginFields(origin);
   if (missing.length > 0) {
     return {
       ok: false,
@@ -101,12 +120,13 @@ export async function fetchCourierRates(
     };
   }
   if (!input.parcels || input.parcels.length === 0) {
-    return { ok: false, reason: "too_many_parcels", message: "This cart cannot be boxed for a live quote" };
+    return { ok: false, reason: "too_many_parcels", message: "This cart cannot be boxed for a live quote (too many boxes, or an item type has no box)" };
   }
 
   const now = input.now ?? new Date();
   const cacheKey = quoteCacheKey({
     settings: input.settings,
+    origin,
     destination: input.destination,
     parcels: input.parcels,
     currency: input.currency,
@@ -132,6 +152,7 @@ export async function fetchCourierRates(
       config,
       ratesRequestBody({
         settings: input.settings,
+        origin,
         destination: input.destination,
         parcels: input.parcels,
         currency: input.currency,
@@ -141,8 +162,7 @@ export async function fetchCourierRates(
     rates = normalizeEasyshipRates(raw);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Easyship request failed";
-    // A 4xx about the address is the shopper's to fix, not an outage — but both
-    // fall back to the flat rate rather than blocking the sale.
+    // A 4xx about the address or an outage: either way the live methods are hidden.
     console.error("[shipping] Easyship rates failed:", message, err instanceof EasyshipError ? err.details : "");
     return { ok: false, reason: "error", message };
   }
@@ -178,15 +198,14 @@ function freeAbove(method: ShippingMethod, subtotal: number): boolean {
   return method.free_above !== null && method.free_above !== undefined && subtotal >= Number(method.free_above);
 }
 
-/** A flat method, or an Easyship method charging its flat fallback. */
-function flatOption(method: ShippingMethod, subtotal: number, source: "flat" | "fallback"): ShippingQuoteOption {
+function flatOption(method: ShippingMethod, subtotal: number): ShippingQuoteOption {
   const amount = calculateShippingRate(method, subtotal);
   return {
     method,
     amount,
     is_free: amount === 0,
     currency: method.currency,
-    source,
+    source: "flat",
     courier: null,
     carrier_cost: null,
     min_days: null,
@@ -195,8 +214,8 @@ function flatOption(method: ShippingMethod, subtotal: number, source: "flat" | "
 }
 
 /**
- * Price one method from already-fetched rates. Null when the method cannot ship
- * to this address — Easyship answered, and no courier the method allows serves it.
+ * Price one method from already-fetched rates. Null hides a live method with no
+ * courier quote: an outage, no rates, or a currency mismatch. There is no fallback.
  */
 export function priceMethod(
   method: ShippingMethod,
@@ -204,16 +223,16 @@ export function priceMethod(
   subtotal: number,
   handlingDays: number,
 ): ShippingQuoteOption | null {
-  if ((method.rate_source ?? "flat") !== "easyship") return flatOption(method, subtotal, "flat");
-  if (!rates || !rates.ok) return flatOption(method, subtotal, "fallback");
+  if ((method.rate_source ?? "flat") !== "easyship") return flatOption(method, subtotal);
+  if (!rates || !rates.ok) return null;
 
   const currency = method.currency.toUpperCase();
   const usable = rates.rates.filter((r) => r.currency === currency);
   if (usable.length === 0 && rates.rates.length > 0) {
     console.error(
-      `[shipping] Easyship quoted in ${rates.rates[0].currency}, method ${method.slug} charges ${currency}; using base_rate`,
+      `[shipping] Easyship quoted in ${rates.rates[0].currency}, method ${method.slug} charges ${currency}; hiding it`,
     );
-    return flatOption(method, subtotal, "fallback");
+    return null;
   }
   const rate = pickRate(usable, method.easyship_strategy ?? "cheapest", method.easyship_courier_service_id);
   if (!rate) return null;
@@ -239,6 +258,8 @@ export interface QuoteMethodsInput {
   subtotal: number;
   /** Loaded lazily: a cart with only flat methods never reads settings or calls Easyship. */
   loadSettings: () => Promise<ShippingSettings>;
+  /** Each item type's box; defaults to the courier account doc. */
+  loadBoxes?: () => Promise<TypeBoxes>;
   config?: EasyshipConfig | null;
   fetchImpl?: typeof fetch;
 }
@@ -257,8 +278,9 @@ export async function quoteShippingMethods(
   let handlingDays = 0;
   if (needsLive) {
     let settings: ShippingSettings | null = null;
+    let boxes: TypeBoxes = {};
     try {
-      settings = await input.loadSettings();
+      [settings, boxes] = await Promise.all([input.loadSettings(), (input.loadBoxes ?? readTypeBoxes)()]);
     } catch (err) {
       console.error("[shipping] Could not read shipping settings:", err);
       rates = { ok: false, reason: "error", message: "Shipping settings could not be read" };
@@ -269,7 +291,7 @@ export async function quoteShippingMethods(
       rates = await fetchCourierRates(admin, {
         settings,
         destination: input.destination,
-        parcels: buildParcels(input.lines, settings.packages),
+        parcels: buildParcels(input.lines, boxes),
         currency,
         config: input.config,
         fetchImpl: input.fetchImpl,

@@ -29,7 +29,7 @@ Southeast Asian couriers in one integration, and landed-cost quotes for cross-bo
   the same parcels, destination and origin to the same `cache_key` in `shipping_rate_quotes`, so
   within the quote TTL the route reads the exact rates the page showed. After the TTL it re-prices;
   Stripe's page shows the final figure either way.
-- **Fail open on outages, closed on coverage.** No token, live rates switched off, Easyship down, an
+- **Fail open on outages, closed on coverage.** _Superseded by ADR 0022: a live method with no quote is hidden, never priced at its fallback._ No token, live rates switched off, Easyship down, an
   unreadable settings row, or rates in the wrong currency: the method charges its **Fallback rate**
   and the sale goes through. Easyship answering with no courier the method allows: the method is
   hidden for that address, because a fallback price for a parcel nobody will carry is a refund later.

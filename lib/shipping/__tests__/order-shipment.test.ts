@@ -11,27 +11,36 @@ const h = vi.hoisted(() => ({
   tables: {} as Record<string, Record<string, unknown> | null>,
   timeline: [] as Array<Record<string, unknown>>,
   sendShippingEmail: vi.fn(),
+  sender: null as Record<string, unknown> | null,
 }));
+
+const SENDER = {
+  line_1: "1 Office Road",
+  line_2: null,
+  city: "Singapore",
+  state: null,
+  postal_code: "123456",
+  country_alpha2: "SG",
+  company_name: "Mpillow",
+  contact_name: "Mpillow",
+  contact_phone: "+6560000000",
+  contact_email: "ops@mpillow.test",
+  default_for: { sender: true, return: false, pickup: false, billing: false },
+};
 
 vi.mock("@/lib/email", () => ({ sendShippingEmail: h.sendShippingEmail }));
 vi.mock("@/lib/shipping/settings", async (orig) => {
   const actual = await orig<typeof import("@/lib/shipping/settings")>();
   return {
     ...actual,
-    readShippingSettings: async () => ({
-      ...actual.DEFAULT_SHIPPING_SETTINGS,
-      origin_address: {
-        contact_name: "Mpillow",
-        contact_phone: "+6560000000",
-        contact_email: "ops@mpillow.test",
-        line_1: "1 Office Road",
-        city: "Singapore",
-        postal_code: "123456",
-        country_alpha2: "SG",
-      },
-    }),
+    readShippingSettings: async () => actual.DEFAULT_SHIPPING_SETTINGS,
   };
 });
+vi.mock("@/lib/easyship/store", () => ({
+  readSenderAddress: async () => h.sender,
+  readEasyshipConfig: async () => ({ settings: null, sync: {}, settingsError: null }),
+  readTypeBoxes: async () => ({ pillow: { length_cm: 70, width_cm: 45, height_cm: 20, tare_grams: 0, weight_grams: 1500 } }),
+}));
 vi.mock("@/lib/shipping/lines", () => ({
   loadOrderShippableLines: async () => [
     { product_type: "pillow", quantity: 1, weight_grams: null, unit_value: 190, currency: "SGD", description: "Mpillow" },
@@ -127,6 +136,7 @@ beforeEach(() => {
   h.tables = { orders: { ...order }, order_shipments: null };
   h.timeline.length = 0;
   h.sendShippingEmail.mockReset();
+  h.sender = { ...SENDER };
   fetchMock = vi.fn(async () => new Response(JSON.stringify(bought), { status: 200 }));
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -141,6 +151,7 @@ describe("buyOrderLabel", () => {
     const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
     expect(body.courier_settings).toEqual({ courier_service_id: "cs_ninja", allow_fallback: false });
     expect(body.order_data.platform_order_number).toBe("MP-1001");
+    expect(body.origin_address).toMatchObject({ postal_code: "123456", line_1: "1 Office Road" });
 
     expect(h.tables.order_shipments).toMatchObject({
       easyship_shipment_id: "ESSG1",
@@ -177,6 +188,13 @@ describe("buyOrderLabel", () => {
       expect(result).toMatchObject({ ok: false, status: 409 });
     }
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses without a default sender address", async () => {
+    h.sender = null;
+    expect(await buyOrderLabel(fakeAdmin(), order, "cs_ninja", config)).toMatchObject({ ok: false, status: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(h.tables.order_shipments).toBeNull();
   });
 
   it("does not try without an Easyship token", async () => {

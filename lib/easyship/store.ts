@@ -1,7 +1,9 @@
+import { unstable_cache } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { easyshipConfig } from "@/lib/shipping/easyship";
 import { invalidateTag } from "@/lib/cache/invalidate";
-import { EasyshipSettingsSchema, type EasyshipSettings } from "./schema";
+import { typeBoxes } from "@/lib/shipping/parcels";
+import { EasyshipSettingsSchema, type EasyshipAddress, type EasyshipSettings } from "./schema";
 import type { SyncReport } from "./sync-report";
 
 /** Desired state + sync bookkeeping live in the `easyship` row of api_configs (service-role only). */
@@ -14,7 +16,10 @@ export type EasyshipSyncState = {
   easyship_company_id: string | null;
 };
 
-export type EasyshipConfig = { settings: EasyshipSettings | null; sync: EasyshipSyncState };
+/** `settingsError` is set when a doc is saved but fails the schema; `settings` is then null and live rates are off. */
+export type EasyshipConfig = { settings: EasyshipSettings | null; sync: EasyshipSyncState; settingsError?: string | null };
+
+type Row = { settings?: unknown; sync?: Partial<EasyshipSyncState> };
 
 const EMPTY_SYNC: EasyshipSyncState = {
   last_at: null,
@@ -23,23 +28,43 @@ const EMPTY_SYNC: EasyshipSyncState = {
   easyship_company_id: null,
 };
 
-export async function readEasyshipConfig(): Promise<EasyshipConfig> {
+async function readRow(): Promise<Row> {
   const admin = supabaseAdmin();
   const { data, error } = await admin.from("api_configs").select("config").eq("slug", SLUG).maybeSingle();
   if (error) throw new Error(error.message);
-  const cfg = (data?.config ?? {}) as { settings?: unknown; sync?: Partial<EasyshipSyncState> };
+  return (data?.config ?? {}) as Row;
+}
+
+function parseRow(cfg: Row): EasyshipConfig {
+  const sync = { ...EMPTY_SYNC, ...(cfg.sync ?? {}) };
+  if (cfg.settings == null) return { settings: null, sync, settingsError: null };
   const parsed = EasyshipSettingsSchema.safeParse(cfg.settings);
-  return {
-    settings: parsed.success ? parsed.data : null,
-    sync: { ...EMPTY_SYNC, ...(cfg.sync ?? {}) },
-  };
+  if (parsed.success) return { settings: parsed.data, sync, settingsError: null };
+  const settingsError = parsed.error.issues
+    .slice(0, 3)
+    .map((i) => `${i.path.join(".") || "settings"}: ${i.message}`)
+    .join("; ");
+  console.error("[easyship] Saved courier settings are invalid, live rates are off:", settingsError);
+  return { settings: null, sync, settingsError };
+}
+
+export async function readEasyshipConfig(): Promise<EasyshipConfig> {
+  return parseRow(await readRow());
+}
+
+/** The doc address flagged default sender: where every quote and label ships from. Null when none. */
+export async function readSenderAddress(): Promise<EasyshipAddress | null> {
+  const { settings } = await readEasyshipConfig();
+  return settings?.addresses.find((a) => a.default_for.sender) ?? null;
 }
 
 export async function writeEasyshipConfig(patch: Partial<EasyshipConfig>): Promise<EasyshipConfig> {
-  const current = await readEasyshipConfig();
+  const raw = await readRow();
+  const current = parseRow(raw);
   const next: EasyshipConfig = {
     settings: patch.settings ?? current.settings,
     sync: { ...current.sync, ...(patch.sync ?? {}) },
+    settingsError: patch.settings ? null : current.settingsError,
   };
   const admin = supabaseAdmin();
   const { error } = await admin.from("api_configs").upsert(
@@ -47,7 +72,8 @@ export async function writeEasyshipConfig(patch: Partial<EasyshipConfig>): Promi
       slug: SLUG,
       name: "Easyship",
       base_url: easyshipConfig()?.baseUrl ?? "https://public-api.easyship.com/2024-09",
-      config: next,
+      // Unpatched settings are written back raw, so a sync write never nulls an invalid doc.
+      config: { settings: patch.settings ?? raw.settings ?? null, sync: next.sync },
       is_active: true,
     },
     { onConflict: "slug" },
@@ -56,3 +82,10 @@ export async function writeEasyshipConfig(patch: Partial<EasyshipConfig>): Promi
   invalidateTag("api-configs");
   return next;
 }
+
+/** Each item type's box for quotes and labels. Cached behind `api-configs`, which every doc write invalidates. */
+export const readTypeBoxes = unstable_cache(
+  async () => typeBoxes((await readEasyshipConfig()).settings),
+  ["easyship-type-boxes"],
+  { tags: ["api-configs"], revalidate: 300 },
+);

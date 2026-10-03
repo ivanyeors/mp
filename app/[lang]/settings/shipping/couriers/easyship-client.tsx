@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Download, Loader2, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,16 +15,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AD_TITLES,
+  BOX_TYPES,
   DEFAULT_SETTINGS,
   TRACKING_STATUSES,
   WEBHOOK_EVENTS,
   importFromLive,
+  keepMappedBoxes,
   type EasyshipAddress,
   type EasyshipSettings,
   type LiveSnapshot,
 } from "@/lib/easyship/schema";
 import type { SyncAction, SyncReport } from "@/lib/easyship/sync-report";
 import { ShippingRulesEditor } from "./shipping-rules-editor";
+import { apiErrorMessage, EasyshipPanel } from "./easyship-panel";
 
 export type SyncView = {
   last_at: string | null;
@@ -35,6 +38,8 @@ export type SyncView = {
 
 export type EasyshipInitial = {
   settings: EasyshipSettings | null;
+  /** Set when a saved doc fails validation; the form then starts empty. */
+  settingsError?: string | null;
   sync: SyncView;
   webhook_endpoint: string | null;
 };
@@ -57,7 +62,7 @@ async function call(method: "GET" | "PUT" | "POST", body?: unknown, query = ""):
   });
   const json = (await res.json().catch(() => ({}))) as ApiResponse;
   if (!res.ok) {
-    throw new Error(typeof json.error === "string" ? json.error : `Request failed (${res.status})`);
+    throw new Error(apiErrorMessage(json.error, `Request failed (${res.status})`));
   }
   return json;
 }
@@ -66,12 +71,16 @@ type Update = (fn: (draft: EasyshipSettings) => void) => void;
 
 const titleCase = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 
-export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipInitial }) {
+const TABS = ["connection", "addresses", "boxes", "rules", "tracking", "webhook"];
+
+export default function EasyshipSettingsPage({ initial, initialTab }: { initial?: EasyshipInitial; initialTab?: string }) {
   const [settings, setSettings] = useState<EasyshipSettings>(initial?.settings ?? DEFAULT_SETTINGS);
   const [seeded, setSeeded] = useState(!!initial?.settings);
   const [sync, setSync] = useState<SyncView>(initial?.sync ?? EMPTY_SYNC);
   const endpoint = initial?.webhook_endpoint ?? null;
   const [busy, setBusy] = useState<"save" | "sync" | "import" | null>(null);
+  const [tab, setTab] = useState(initialTab && TABS.includes(initialTab) ? initialTab : "connection");
+  const [settingsError, setSettingsError] = useState(initial?.settingsError ?? null);
 
   const update: Update = useCallback((fn) => {
     setSettings((s) => {
@@ -83,10 +92,11 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
 
   const applyResponse = (r: ApiResponse) => {
     if (r.settings) setSettings(r.settings);
+    if (r.settings !== undefined) setSettingsError(r.settingsError ?? null);
     if (r.sync) setSync(r.sync);
     if (r.report) {
-      if (r.report.ok) toast.success("Saved and synced to Easyship");
-      else toast.error("Saved, but some Easyship steps failed — see the report");
+      if (r.report.ok) toast.success("Saved and synced");
+      else toast.error("Saved, but some sync steps failed — see the report");
     }
   };
 
@@ -112,8 +122,9 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
     run("import", async () => {
       const r = await call("GET", undefined, "?live=1");
       if (!r.live) throw new Error("No live snapshot returned");
-      setSettings(importFromLive(r.live, endpoint ? new URL(endpoint).origin : null));
-      toast.success("Imported from Easyship — review, then Save & sync");
+      const imported = importFromLive(r.live, endpoint ? new URL(endpoint).origin : null);
+      setSettings((s) => ({ ...imported, ...keepMappedBoxes(s, imported.boxes) }));
+      toast.success("Imported from courier account — review, then Save & sync");
     });
 
   const spin = (kind: typeof busy) => (busy === kind ? <Loader2 className="h-4 w-4 animate-spin" /> : null);
@@ -122,15 +133,15 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Easyship</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Couriers</h1>
           <p className="text-sm text-muted-foreground">
-            Saved here, pushed to Easyship on every save. This page is the source of truth.
+            Saved here, pushed to the courier account on every save. This page is the source of truth.
             {sync.easyship_company_id ? ` Account ${sync.easyship_company_id}.` : ""}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={importLive} disabled={!!busy}>
-            {spin("import") ?? <Download className="h-4 w-4" />} Import from Easyship
+            {spin("import") ?? <Download className="h-4 w-4" />} Import from courier account
           </Button>
           <Button variant="outline" onClick={syncNow} disabled={!!busy || !seeded}>
             {spin("sync") ?? <RefreshCw className="h-4 w-4" />} Sync now
@@ -141,24 +152,40 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
         </div>
       </div>
 
-      {!seeded && (
+      {settingsError && (
+        <Card className="border-destructive/50">
+          <CardContent className="py-4 text-sm">
+            <p className="font-medium text-destructive">The saved settings don&apos;t pass validation, so live rates are off.</p>
+            <p className="text-muted-foreground">{settingsError}</p>
+            <p className="text-muted-foreground">Import from courier account, review every tab, then Save &amp; sync to replace them.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!seeded && !settingsError && (
         <Card>
           <CardContent className="py-4 text-sm text-muted-foreground">
-            Nothing saved yet. Import from Easyship to start from the live account, or fill the tabs in and save.
+            Nothing saved yet. Import from courier account to start from the live account, or fill the tabs in and save.
           </CardContent>
         </Card>
       )}
 
       <SyncReportCard sync={sync} />
 
-      <Tabs defaultValue="tracking">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="tracking">Tracking</TabsTrigger>
+          <TabsTrigger value="connection">Connection</TabsTrigger>
           <TabsTrigger value="addresses">Addresses <Count n={settings.addresses.length} /></TabsTrigger>
           <TabsTrigger value="boxes">Boxes <Count n={settings.boxes.length} /></TabsTrigger>
-          <TabsTrigger value="rules">Shipping rules <Count n={settings.shipping_rules.length} /></TabsTrigger>
+          <TabsTrigger value="rules">Rules <Count n={settings.shipping_rules.length} /></TabsTrigger>
+          <TabsTrigger value="tracking">Tracking</TabsTrigger>
           <TabsTrigger value="webhook">Webhook</TabsTrigger>
         </TabsList>
+
+        {/* Kept mounted so unsaved Connection edits survive a tab switch. */}
+        <TabsContent value="connection" forceMount className="mt-4 data-[state=inactive]:hidden">
+          <EasyshipPanel onShowAddresses={() => setTab("addresses")} />
+        </TabsContent>
 
         <TabsContent value="tracking" className="mt-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -170,7 +197,7 @@ export default function EasyshipSettingsPage({ initial }: { initial?: EasyshipIn
           <AddressesSection addresses={settings.addresses} update={update} />
         </TabsContent>
         <TabsContent value="boxes" className="mt-4">
-          <BoxesSection boxes={settings.boxes} update={update} />
+          <BoxesSection boxes={settings.boxes} boxForType={settings.box_for_type} update={update} />
         </TabsContent>
         <TabsContent value="rules" className="mt-4">
           <ShippingRulesEditor
@@ -272,7 +299,7 @@ function TrackingCard({
         <div>
           <h2 className="font-medium">{isEmail ? "Tracking email" : "Tracking page"}</h2>
           <p className="text-xs text-muted-foreground">
-            {isEmail ? "Status update emails Easyship sends your customers." : "The public trackmyshipment.co page."}
+            {isEmail ? "Status update emails the courier account sends your customers." : "The public trackmyshipment.co page."}
           </p>
         </div>
 
@@ -419,8 +446,8 @@ function AddressesSection({ addresses, update }: { addresses: EasyshipAddress[];
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Default sender, return, pickup and billing addresses. Matched to Easyship by line 1 + postal code + company;
-        other addresses in the Easyship account are left alone.
+        Default sender, return, pickup and billing addresses. Matched to the courier account by line 1 + postal code +
+        country; other addresses there are left alone.
       </p>
       {addresses.map((a, i) => (
         <Card key={i}>
@@ -484,36 +511,114 @@ const BOX_DIMS = [
   { key: "weight", label: "Box weight (kg)" },
 ] as const;
 
-function BoxesSection({ boxes, update }: { boxes: EasyshipSettings["boxes"]; update: Update }) {
+const sameBox = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+function BoxesSection({
+  boxes,
+  boxForType,
+  update,
+}: {
+  boxes: EasyshipSettings["boxes"];
+  boxForType: EasyshipSettings["box_for_type"];
+  update: Update;
+}) {
+  const renaming = useRef("");
+  // Renaming (on blur, so mid-typing names never collide) or removing a box carries its "Used for" mapping with it.
+  const remap = (d: EasyshipSettings, from: string, to: string | null) => {
+    for (const t of BOX_TYPES) {
+      const m = d.box_for_type[t];
+      if (!m || !sameBox(m.box, from)) continue;
+      if (to === null) delete d.box_for_type[t];
+      else m.box = to;
+    }
+  };
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Your custom boxes (courier flat-rate boxes are Easyship&apos;s). A box removed here is deleted in Easyship on sync.
+        Your custom boxes (courier flat-rate boxes are built in). A box removed here is deleted from the courier account on sync.
+        &ldquo;Used for&rdquo; picks the box each item type ships in, with one unit&apos;s content weight (a variant&apos;s own
+        weight wins). A type with no box gets no live rates.
       </p>
       {boxes.map((b, i) => (
         <Card key={i}>
-          <CardContent className="grid items-end gap-3 py-4 sm:grid-cols-[1fr_repeat(4,6rem)_auto]">
-            <div className="space-y-1.5">
-              <Label htmlFor={`box-${i}-name`}>Name</Label>
-              <Input id={`box-${i}-name`} value={b.name} onChange={(e) => update((d) => { d.boxes[i].name = e.target.value; })} />
-            </div>
-            {BOX_DIMS.map((f) => (
-              <div key={f.key} className="space-y-1.5">
-                <Label htmlFor={`box-${i}-${f.key}`} className="text-xs">{f.label}</Label>
+          <CardContent className="space-y-3 py-4">
+            <div className="grid items-end gap-3 sm:grid-cols-[1fr_repeat(4,6rem)_auto]">
+              <div className="space-y-1.5">
+                <Label htmlFor={`box-${i}-name`}>Name</Label>
                 <Input
-                  id={`box-${i}-${f.key}`}
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="0.1"
-                  value={b[f.key]}
-                  onChange={(e) => update((d) => { d.boxes[i][f.key] = Number(e.target.value) || 0; })}
+                  id={`box-${i}-name`}
+                  value={b.name}
+                  onFocus={() => { renaming.current = b.name; }}
+                  onChange={(e) => update((d) => { d.boxes[i].name = e.target.value; })}
+                  onBlur={() => update((d) => {
+                    const from = renaming.current;
+                    const to = d.boxes[i].name;
+                    const taken = (n: string) => d.boxes.some((o, j) => j !== i && sameBox(o.name, n));
+                    if (from !== to && !taken(from) && !taken(to)) remap(d, from, to);
+                  })}
                 />
               </div>
-            ))}
-            <Button variant="ghost" size="sm" aria-label="Remove box" onClick={() => update((d) => { d.boxes.splice(i, 1); })}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
+              {BOX_DIMS.map((f) => (
+                <div key={f.key} className="space-y-1.5">
+                  <Label htmlFor={`box-${i}-${f.key}`} className="text-xs">{f.label}</Label>
+                  <Input
+                    id={`box-${i}-${f.key}`}
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.1"
+                    value={b[f.key]}
+                    onChange={(e) => update((d) => { d.boxes[i][f.key] = Number(e.target.value) || 0; })}
+                  />
+                </div>
+              ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Remove box"
+                onClick={() => update((d) => { remap(d, d.boxes[i].name, null); d.boxes.splice(i, 1); })}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Used for</span>
+              {BOX_TYPES.map((t) => {
+                const m = boxForType[t];
+                const on = !!m && !!b.name.trim() && sameBox(m.box, b.name);
+                return (
+                  <div key={t} className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={on ? "default" : "outline"}
+                      aria-pressed={on}
+                      disabled={!b.name.trim()}
+                      className="h-7 rounded-full px-3 text-xs"
+                      onClick={() => update((d) => {
+                        if (on) delete d.box_for_type[t];
+                        else d.box_for_type[t] = { box: b.name, weight_grams: d.box_for_type[t]?.weight_grams ?? 0 };
+                      })}
+                    >
+                      {titleCase(t)}
+                    </Button>
+                    {on && (
+                      <Input
+                        aria-label={`${titleCase(t)} content weight (g)`}
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        step="10"
+                        className="h-7 w-24 text-xs"
+                        value={m.weight_grams}
+                        onChange={(e) => update((d) => { d.box_for_type[t]!.weight_grams = Math.max(0, Math.round(Number(e.target.value) || 0)); })}
+                      />
+                    )}
+                    {on && <span className="text-xs text-muted-foreground">g</span>}
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       ))}

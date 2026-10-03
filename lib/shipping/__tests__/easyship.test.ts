@@ -15,20 +15,22 @@ import {
 } from "@/lib/shipping/easyship-webhook";
 import { DEFAULT_SHIPPING_SETTINGS } from "@/lib/shipping/settings";
 import type { Parcel, ShippingSettings } from "@/lib/shipping/types";
+import type { EasyshipAddress } from "@/lib/easyship/schema";
 
-const settings: ShippingSettings = {
-  ...DEFAULT_SHIPPING_SETTINGS,
-  easyship_enabled: true,
-  origin_address: {
-    contact_name: "Mpillow",
-    company_name: "Mpillow Pte Ltd",
-    contact_phone: "+6560000000",
-    contact_email: "ops@mpillow.test",
-    line_1: "1 Office Road",
-    city: "Singapore",
-    postal_code: "123456",
-    country_alpha2: "sg",
-  },
+const settings: ShippingSettings = { ...DEFAULT_SHIPPING_SETTINGS };
+
+const origin: EasyshipAddress = {
+  line_1: "1 Office Road",
+  line_2: null,
+  city: "Singapore",
+  state: null,
+  postal_code: "123456",
+  country_alpha2: "sg",
+  company_name: "Mpillow Pte Ltd",
+  contact_name: "Mpillow",
+  contact_phone: "+6560000000",
+  contact_email: "ops@mpillow.test",
+  default_for: { sender: true, return: false, pickup: false, billing: false },
 };
 
 const parcels: Parcel[] = [
@@ -74,19 +76,20 @@ describe("easyshipConfig", () => {
 describe("request bodies", () => {
   it("always sends a destination city, since Easyship refuses a blank one", () => {
     const cityFor = (destination: { country: string; postal_code: string; city?: string | null }) =>
-      ratesRequestBody({ settings, destination, parcels, currency: "SGD" }).destination_address.city;
+      ratesRequestBody({ settings, origin, destination, parcels, currency: "SGD" }).destination_address.city;
     // A quote from a postal code alone (the delivery checker, Settings' test) sends the main city.
     expect(cityFor({ country: "sg", postal_code: "807997" })).toBe("Singapore");
     expect(cityFor({ country: "MY", postal_code: "80000", city: "  " })).toBe("Kuala Lumpur");
     // The shopper's own city wins.
     expect(cityFor({ country: "MY", postal_code: "80000", city: " Johor Bahru " })).toBe("Johor Bahru");
-    // No main city on file: none is invented, and the method falls back.
+    // No main city on file: none is invented.
     expect(cityFor({ country: "FR", postal_code: "75001" })).toBeUndefined();
   });
 
   it("asks for rates in the store currency, in kg and cm, with the HS code", () => {
     const body = ratesRequestBody({
       settings,
+      origin,
       destination: { country: "my", postal_code: "50450", city: "Kuala Lumpur" },
       parcels,
       currency: "SGD",
@@ -116,6 +119,7 @@ describe("request bodies", () => {
   it("falls back to the item category when no HS code is set", () => {
     const body = ratesRequestBody({
       settings: { ...settings, hs_code: "" },
+      origin,
       destination: { country: "SG", postal_code: "018989" },
       parcels,
       currency: "SGD",
@@ -127,6 +131,7 @@ describe("request bodies", () => {
   it("buys the label for exactly the courier chosen, with no fallback", () => {
     const body = shipmentRequestBody({
       settings,
+      origin,
       destination: { country: "SG", postal_code: "018989", line1: "10 Bayfront Ave", city: "Singapore" },
       contact: { name: "Ada", email: "ada@x.test", phone: "+6591234567" },
       parcels,
