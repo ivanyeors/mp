@@ -103,9 +103,13 @@ describe("sendReviewCardPreview", () => {
     const send = vi.fn(async () => ({ ok: true as const, chatId: -1, messageId: (id += 1) }));
     const result = await sendReviewCardPreview({ now: NOW, draft: null, send });
 
-    expect(result).toEqual({ ok: true, sent: 7, total: 7, usedClaude: false });
+    expect(result).toEqual({ ok: true, sent: 8, total: 8, usedClaude: false });
     expect(send.mock.calls[0]).toEqual([PREVIEW_INTRO, undefined]);
     expect(String((send.mock.calls[1] as unknown[])[0])).toMatch(/^🧪 PREVIEW — a new 5★ review/);
+    // Last, a customer message card a reply can be tried on.
+    const last = String((send.mock.calls.at(-1) as unknown[])[0]);
+    expect(last).toMatch(/^🧪 PREVIEW — a new Instagram message/);
+    expect(last.split("\n")[1]).toMatch(/^💬 INSTAGRAM DM · Mei Lin \(@meilin\.sleeps\)/);
   });
 
   it("stops at the first failure and says why", async () => {
@@ -117,7 +121,7 @@ describe("sendReviewCardPreview", () => {
     expect(result).toEqual({
       ok: false,
       sent: 1,
-      total: 7,
+      total: 8,
       usedClaude: false,
       error: "Forbidden: bot was kicked from the supergroup chat",
     });

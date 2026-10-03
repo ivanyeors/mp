@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * bot exactly as before.
  */
 
-const h = vi.hoisted(() => ({ after: vi.fn(), handle: vi.fn(), from: vi.fn() }));
+const h = vi.hoisted(() => ({ after: vi.fn(), handle: vi.fn(), handleInbox: vi.fn(), from: vi.fn() }));
 
 vi.mock("next/server", async (orig) => ({
   ...(await orig<typeof import("next/server")>()),
@@ -24,6 +24,10 @@ vi.mock("@/lib/supabase/server", () => ({ supabaseAdmin: () => ({ from: h.from }
 vi.mock("@/lib/reviews/telegram-handler", async (orig) => ({
   ...(await orig<typeof import("@/lib/reviews/telegram-handler")>()),
   handleReviewUpdate: h.handle,
+}));
+vi.mock("@/lib/social-inbox/telegram-handler", async (orig) => ({
+  ...(await orig<typeof import("@/lib/social-inbox/telegram-handler")>()),
+  handleInboxUpdate: h.handleInbox,
 }));
 
 const { POST } = await import("@/app/api/telegram/webhook/route");
@@ -81,6 +85,25 @@ describe("Telegram webhook review routing", () => {
       "Telegram webhook rejected: chat not in TELEGRAM_ALLOWED_CHATS",
       GROUP,
     );
+  });
+
+  it("hands a reply to a customer message card to the inbox handler after responding", async () => {
+    const update = {
+      update_id: 4,
+      message: {
+        message_id: 9,
+        chat: { id: GROUP, type: "supergroup" },
+        from: { id: 111 },
+        text: "Yes, we're open on Sunday!",
+        reply_to_message: { message_id: 8, text: "💬 INSTAGRAM DM · @jane\n…" },
+      },
+    };
+    const res = await POST(post(update));
+    expect(res.status).toBe(200);
+    expect(h.handle).not.toHaveBeenCalled();
+    expect(h.after).toHaveBeenCalledOnce();
+    await h.after.mock.calls[0][0]();
+    expect(h.handleInbox).toHaveBeenCalledWith(update);
   });
 
   it("still refuses an unsigned review update", async () => {

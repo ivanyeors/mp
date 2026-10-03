@@ -358,8 +358,28 @@ Which kind of reply a **Google review** gets, chosen from its star rating in cod
 _Avoid_: thanking or selling under a 1–2★ review; promising refunds or freebies in a public reply; giving the automated appointment WhatsApp line in a reply
 
 **Telegram operator**:
-A person allowed to press buttons on **Review cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Two roles: **Review manager** (replies on Google and moderates **Shop reviews**) and **Shop moderator** (**Shop reviews** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
+A person allowed to press buttons on **Review cards** or answer **Message cards**, listed under Staff Management → Telegram access (`telegram_operators`) and identified by their Telegram user id once they redeem a one-time `/link` code. Three roles: **Review manager** (replies on Google, moderates **Shop reviews**, answers **Customer messages**), **Shop moderator** (**Shop reviews** only) and **Inbox agent** (**Customer messages** only). Everyone in the group sees cards; only an active, linked operator whose role allows it can act.
 _Avoid_: assuming an operator is **Staff** (an `admin_users` row) or a measuring staff member (`mp_staff`) — three separate lists; an operator needs no back-office login
+
+## Customer messages (PRD-social-inbox)
+
+**Customer message**:
+A direct message someone sends Mpillow on Facebook Messenger, Instagram or TikTok, stored in `social_messages` under one `social_conversations` row per person per platform. The sender need not be a **Customer** (no account, no order) — anyone who writes.
+_Avoid_: "chat" or "lead" for the stored row; mixing these with WhatsApp (the staffed WhatsApp line is answered in the Business app, and the Cloud API number only sends appointment reminders)
+
+**Message card**:
+The Telegram message in the measurements group for one inbound **Customer message**, headed `💬 FACEBOOK MESSAGE`, `💬 INSTAGRAM DM` or `💬 TIKTOK DM` and the person's name, threaded under their previous card. An **Inbox agent**'s reply to it (or to the bot's `📤 Sent` / `↪️ Answered in` notes under it) is sent to that person on that platform.
+_Avoid_: calling it a **Review card** — those carry buttons and a draft; a Message card is answered by replying
+
+**Team note**:
+A reply under a **Message card** that starts with `//`. It stays in the group and is never sent to the customer.
+
+**Reply window**:
+How long after a person's last **Customer message** the platform accepts our reply through the API: 24 hours on Facebook and Instagram (7 days with Meta's Human Agent permission), 48 hours on TikTok. Past it the bot refuses and says to answer from the platform's own app.
+_Avoid_: retrying a refused reply from Telegram — the platform will refuse it too
+
+**Echo**:
+A message our own account sent, reported back by the platform. The echo of a reply sent from Telegram is matched and ignored; one sent from Meta Business Suite, the Instagram app or the TikTok app is recorded and noted under the card as `↪️ Answered in …`.
 
 ## Shipping (ADR 0020)
 

@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { secretMatches } from '@/lib/auth/secret'
 import { sellPillow, sellPart, receiveStock, sellBolster } from '@/app/[lang]/settings/inventory/actions'
 import { handleReviewUpdate, isReviewUpdate } from '@/lib/reviews/telegram-handler'
+import { handleInboxUpdate, isInboxUpdate } from '@/lib/social-inbox/telegram-handler'
 
 export const runtime = 'nodejs'
 // Review buttons can redraft with Claude after the response (see below).
@@ -15,7 +16,8 @@ type TelegramUpdate = {
     chat: { id: number; type: string; title?: string; username?: string; first_name?: string; last_name?: string }
     from?: { id: number; username?: string; first_name?: string; last_name?: string }
     text?: string
-    reply_to_message?: { message_id: number; text?: string }
+    caption?: string
+    reply_to_message?: { message_id: number; text?: string; caption?: string }
   }
   callback_query?: {
     id: string
@@ -627,6 +629,15 @@ export async function POST(req: NextRequest) {
     // retry the update.
     if (isReviewUpdate(update)) {
       after(() => handleReviewUpdate(update))
+      return NextResponse.json({ ok: true })
+    }
+
+    // Replies to customer message cards (Facebook / Instagram / TikTok) go back
+    // to the customer. Same gate and timing as review cards: the measurements
+    // group, an operator allowed `social_inbox.reply`, work after the 200
+    // (lib/social-inbox/telegram-handler.ts).
+    if (isInboxUpdate(update)) {
+      after(() => handleInboxUpdate(update))
       return NextResponse.json({ ok: true })
     }
 

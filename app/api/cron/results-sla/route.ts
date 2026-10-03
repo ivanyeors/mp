@@ -24,6 +24,7 @@ import { runGaSync } from "@/lib/analytics/journey/ga-sync";
 import { runGscIngestFromEnv } from "@/lib/seo-metrics/ingest-gsc";
 import { runPreOrderRestockNotices } from "@/lib/configurator/pre-order-restock";
 import { syncGoogleReviews } from "@/lib/reviews/google-sync";
+import { runSocialInboxMaintenance } from "@/lib/social-inbox/status";
 import {
   parsePaymentReminderSettings,
   PAYMENT_REMINDER_SETTING_KEYS,
@@ -452,6 +453,16 @@ export async function GET(req: Request) {
     googleReviews = { ok: false, error: e instanceof Error ? e.message : "google reviews sync failed" };
   }
 
+  // Chain: customer messages (PRD-social-inbox). Re-cards any message a
+  // webhook stored but could not post to Telegram, and refreshes the TikTok
+  // token so its rotating refresh token never lapses. No-op until connected.
+  let socialInbox: Awaited<ReturnType<typeof runSocialInboxMaintenance>> | { ok: false; error: string };
+  try {
+    socialInbox = await runSocialInboxMaintenance();
+  } catch (e) {
+    socialInbox = { ok: false, error: e instanceof Error ? e.message : "social inbox maintenance failed" };
+  }
+
   return NextResponse.json({
     ok: true,
     ...summary,
@@ -461,6 +472,7 @@ export async function GET(req: Request) {
     gscIngest,
     preOrderRestock,
     googleReviews,
+    socialInbox,
   });
 }
 

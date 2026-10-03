@@ -11,8 +11,8 @@ export const runtime = "nodejs";
  * The staff list is read on the server (the same rows `/api/staff` returns) so
  * the table mounts filled instead of fetching after hydration.
  *
- * The Telegram access tab (who may act on review cards in the measurements
- * group) is owners/admins only — the `staff` permission, as for Admin Users —
+ * The Telegram access tab (who may act on review and customer message cards in
+ * the measurements group) is owners/admins only — the `staff` permission, as for Admin Users —
  * because a review manager speaks for the business on Google Maps.
  */
 export default async function StaffManagementRoute({

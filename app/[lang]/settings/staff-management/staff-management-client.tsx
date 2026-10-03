@@ -155,7 +155,7 @@ export default function StaffManagementPage({
           <h1>Staff management</h1>
           <p className="text-sm text-muted-foreground">
             Create staff members so you can tag who measured each configuration
-            {telegram ? ", and choose who can act on review cards in Telegram" : ""}.
+            {telegram ? ", and choose who can act on review and customer message cards in Telegram" : ""}.
           </p>
         </div>
         <Button variant="secondary" onClick={load} disabled={loading || saving}>

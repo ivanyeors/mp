@@ -19,8 +19,17 @@ describe("Telegram role matrix", () => {
     expect(telegramRoleCan("shop_moderator", "google_review.reply")).toBe(false);
   });
 
-  it("both roles moderate shop reviews", () => {
-    for (const role of TELEGRAM_ROLES) expect(telegramRoleCan(role, "shop_review.moderate")).toBe(true);
+  it("review managers and shop moderators moderate shop reviews; inbox agents don't", () => {
+    expect(telegramRoleCan("review_manager", "shop_review.moderate")).toBe(true);
+    expect(telegramRoleCan("shop_moderator", "shop_review.moderate")).toBe(true);
+    expect(telegramRoleCan("inbox_agent", "shop_review.moderate")).toBe(false);
+  });
+
+  it("inbox agents and review managers answer customer messages; shop moderators don't", () => {
+    expect(telegramRoleCan("inbox_agent", "social_inbox.reply")).toBe(true);
+    expect(telegramRoleCan("review_manager", "social_inbox.reply")).toBe(true);
+    expect(telegramRoleCan("shop_moderator", "social_inbox.reply")).toBe(false);
+    expect(telegramRoleCan("inbox_agent", "google_review.reply")).toBe(false);
   });
 
   it("every role grants only known actions", () => {
@@ -28,6 +37,7 @@ describe("Telegram role matrix", () => {
       for (const action of TELEGRAM_ACTIONS) expect(typeof telegramRoleCan(role, action)).toBe("boolean");
     }
     expect(isTelegramRole("review_manager")).toBe(true);
+    expect(isTelegramRole("inbox_agent")).toBe(true);
     expect(isTelegramRole("owner")).toBe(false);
   });
 });

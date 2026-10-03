@@ -22,13 +22,15 @@ import {
   TELEGRAM_ROLES,
   type TelegramRole,
 } from "@/lib/telegram/roles";
+import { SocialInboxCard } from "./social-inbox-client";
 
 type IssuedCode = { name: string; code: string; expiresAt: string | null };
 
 /**
- * Staff Management → Telegram access: who may press buttons on review cards
- * in the measurements Telegram group. Everyone in the group sees the cards;
- * only people listed here, linked and active, can act on them.
+ * Staff Management → Telegram access: who may press buttons on review cards,
+ * and answer customer message cards, in the measurements Telegram group.
+ * Everyone in the group sees the cards; only people listed here, linked and
+ * active, can act on them.
  */
 export function TelegramAccessTab({ initialRows }: { initialRows?: TelegramOperatorRow[] }) {
   const [rows, setRows] = useState<TelegramOperatorRow[]>(initialRows ?? []);
@@ -162,9 +164,10 @@ export function TelegramAccessTab({ initialRows }: { initialRows?: TelegramOpera
       <div className="space-y-2 text-sm text-muted-foreground">
         <p>
           Review cards for new <span className="font-medium text-foreground">Google Maps</span> and{" "}
-          <span className="font-medium text-foreground">shop</span> reviews are posted to the measurements Telegram
-          group. Everyone in the group can see them; only the people listed here — linked and active — can press
-          the buttons.
+          <span className="font-medium text-foreground">shop</span> reviews, and message cards for customers writing
+          on <span className="font-medium text-foreground">Facebook, Instagram and TikTok</span>, are posted to the
+          measurements Telegram group. Everyone in the group can see them; only the people listed here — linked and
+          active — can press the buttons or answer a customer.
         </p>
         <ul className="list-disc space-y-1 pl-5">
           {TELEGRAM_ROLES.map((r) => (
@@ -176,12 +179,15 @@ export function TelegramAccessTab({ initialRows }: { initialRows?: TelegramOpera
         </ul>
       </div>
 
+      <SocialInboxCard />
+
       <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1 text-sm">
           <p className="font-medium">Preview in Telegram</p>
           <p className="text-muted-foreground">
-            Sends sample review cards to the measurements group so everyone sees how they will look. Tapping a
-            button on them tells each person whether they are set up. Nothing is posted to Google.
+            Sends sample review and message cards to the measurements group so everyone sees how they will look.
+            Tapping a button, or replying to the sample message, tells each person whether they are set up. Nothing
+            is posted to Google or sent to a customer.
           </p>
         </div>
         <Button variant="outline" onClick={sendPreview} disabled={previewing} className="shrink-0">

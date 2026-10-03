@@ -252,7 +252,7 @@ async function handleLink(message: NonNullable<ReviewTelegramUpdate["message"]>)
   const result = await redeemTelegramLinkCode(code, { id: from.id, username: from.username ?? null });
   if (result.ok) {
     await reply(
-      `✅ Linked. You're set up as ${result.operator.display_name} (${TELEGRAM_ROLE_LABELS[result.operator.role]}) and can act on review cards in the mpillow group.`,
+      `✅ Linked. You're set up as ${result.operator.display_name} (${TELEGRAM_ROLE_LABELS[result.operator.role]}) and can act on cards in the mpillow group.`,
     );
     return;
   }

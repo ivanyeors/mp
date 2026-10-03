@@ -1,7 +1,8 @@
 /**
  * A small in-memory stand-in for the Supabase query builder, enough for the
- * review and Telegram-access modules: select / insert / upsert / update /
- * delete with eq, in, is, not-is, lt, order and limit. Filters really filter
+ * review, Telegram-access and social-inbox modules: select / insert / upsert
+ * (single or composite onConflict) / update / delete with eq, in, is, not-is,
+ * lt, order and limit. Filters really filter
  * and guarded updates really miss, so "two taps, one post" is observed on the
  * rows rather than inferred from which methods were called.
  */
@@ -67,10 +68,13 @@ export function createFakeSupabase(
         return inserted;
       }
       if (state.op === "upsert") {
-        const key = state.upsert?.onConflict ?? "id";
+        // Composite keys ("a,b") as in Postgres: a NULL in the key never conflicts.
+        const keys = (state.upsert?.onConflict ?? "id").split(",").map((k) => k.trim());
+        const conflicts = (r: Row, row: Row) =>
+          keys.every((k) => row[k] != null && r[k] === row[k]);
         const out: Row[] = [];
         for (const row of list) {
-          const existing = all.find((r) => r[key] === row[key]);
+          const existing = all.find((r) => conflicts(r, row));
           if (existing) {
             if (state.upsert?.ignoreDuplicates) continue;
             Object.assign(existing, row, { updated_at: nowIso() });
